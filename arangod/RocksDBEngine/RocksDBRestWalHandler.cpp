@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBRestWalHandler.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -102,6 +103,7 @@ void RocksDBRestWalHandler::flush() {
 
   bool waitForSync = false;
   bool waitForCollector = false;
+  double maxWaitTime = 60.0;
 
   if (slice.isObject()) {
     // got a request body
@@ -118,6 +120,11 @@ void RocksDBRestWalHandler::flush() {
     } else if (value.isBoolean()) {
       waitForCollector = value.getBoolean();
     }
+    
+    value = slice.get("maxWaitTime");
+    if (value.isNumber()) {
+      maxWaitTime = value.getNumericValue<double>();
+    }
   } else {
     // no request body
     bool found;
@@ -133,11 +140,17 @@ void RocksDBRestWalHandler::flush() {
         waitForCollector = (v == "1" || v == "true");
       }
     }
+    {
+      std::string const& v = _request->value("maxWaitTime", found);
+      if (found) {
+        maxWaitTime = basics::StringUtils::doubleDecimal(v);
+      }
+    }
   }
 
   int res = TRI_ERROR_NO_ERROR;
   if (ServerState::instance()->isCoordinator()) {
-    res = flushWalOnAllDBServers(waitForSync, waitForCollector);
+    res = flushWalOnAllDBServers(waitForSync, waitForCollector, maxWaitTime);
   } else {
     if (waitForSync) {
       EngineSelectorFeature::ENGINE->flushWal();
