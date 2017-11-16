@@ -569,6 +569,9 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown old collection name");
     }
   }
+  if (col->isSystem()) {
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "Renaming system collection " << col->name();
+  }
   return Result(vocbase->renameCollection(col, name, true));
 }
 
