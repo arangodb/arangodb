@@ -407,6 +407,8 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
       return ResponseCode::SERVER_ERROR;
 
     case TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE:
+    case TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING:
+    case TRI_ERROR_CLUSTER_NOT_LEADER:
       return ResponseCode::SERVICE_UNAVAILABLE;
 
     case TRI_ERROR_CLUSTER_UNSUPPORTED:

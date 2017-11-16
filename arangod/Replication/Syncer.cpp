@@ -505,6 +505,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   VPackBuilder s;
   s.openObject();
   s.add("isSystem", VPackValue(true));
+  s.add("objectId", VPackSlice::nullSlice());
   if (uuid.isString() && !simulate32Client()) { // need to use cid for 3.2 master
     // if we received a globallyUniqueId from the remote, then we will always use this id
     // so we can discard the "cid" and "id" values for the collection

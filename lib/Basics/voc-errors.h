@@ -429,6 +429,11 @@
 /// - 1494: @LIT{conflicting shard number with distributeShardsLike parameter assignment}
 ///   Will be raised if intended number of shards does not match that of the
 ///   prototype shard given in ditributeShardsLike parameter.
+/// - 1495: @LIT{leadership challenge is ongoing}
+///   Will be raised when servers are currently competing for leadership, and
+///   the result is still unknown.
+/// - 1496: @LIT{no leader}
+///   Will be raised when an operation is sent to a non-leading server.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -2529,6 +2534,27 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS         (1494)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1495: ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING
+///
+/// leadership challenge is ongoing
+///
+/// Will be raised when servers are currently competing for leadership, and the
+/// result is still unknown.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING                    (1495)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1496: ERROR_CLUSTER_NOT_LEADER
+///
+/// no leader
+///
+/// Will be raised when an operation is sent to a non-leading server.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_NOT_LEADER                                      (1496)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

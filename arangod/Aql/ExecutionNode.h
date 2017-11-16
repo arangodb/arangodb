@@ -159,10 +159,6 @@ class ExecutionNode {
   /// @brief return the node's id
   inline size_t id() const { return _id; }
 
-  /// @brief set the id, use with care! The purpose is to use a cloned node
-  /// together with the original in the same plan.
-  void setId(size_t id) { _id = id; }
-
   /// @brief return the type of the node
   virtual NodeType getType() const = 0;
 
@@ -376,8 +372,7 @@ class ExecutionNode {
                                bool withProperties) const = 0;
 
   /// @brief execution Node clone utility to be called by derives
-  void cloneHelper(ExecutionNode* Other, ExecutionPlan* plan,
-                   bool withDependencies, bool withProperties) const;
+  void cloneHelper(ExecutionNode* Other, bool withDependencies, bool withProperties) const;
 
   /// @brief helper for cloning, use virtual clone methods for dependencies
   void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone,
@@ -493,6 +488,10 @@ class ExecutionNode {
   ExecutionPlan const* plan() const {
     return _plan;
   }
+  
+  ExecutionPlan* plan() {
+    return _plan;
+  }
 
   /// @brief static analysis, walker class and information collector
   struct VarInfo {
@@ -585,6 +584,10 @@ class ExecutionNode {
   ExecutionNode const* getLoop() const;
 
  protected:
+  /// @brief set the id, use with care! The purpose is to use a cloned node
+  /// together with the original in the same plan.
+  void setId(size_t id) { _id = id; }
+
   /// @brief factory for sort elements
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
                               arangodb::velocypack::Slice const& slice,
@@ -678,7 +681,7 @@ class SingletonNode : public ExecutionNode {
                        bool withProperties) const override final {
     auto c = new SingletonNode(plan, _id);
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }
@@ -851,7 +854,7 @@ class LimitNode : public ExecutionNode {
       c->setFullCount();
     }
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }
@@ -1245,7 +1248,7 @@ class NoResultsNode : public ExecutionNode {
                        bool withProperties) const override final {
     auto c = new NoResultsNode(plan, _id);
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }
