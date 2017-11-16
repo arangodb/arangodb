@@ -120,8 +120,17 @@ class Communicator {
   ~Communicator();
 
  public:
-  Ticket addRequest(Destination, std::unique_ptr<GeneralRequest>, Callbacks,
-                    Options);
+  // returns next ticket id and increases internal ticket id counter
+  Ticket nextTicket();
+
+  void addRequest(Ticket const& id, Destination const& destination, std::unique_ptr<GeneralRequest>, Callbacks, Options);
+
+  // compatibility function
+  Ticket addRequest(Destination const& destination, std::unique_ptr<GeneralRequest> request, Callbacks callbacks, Options options) {
+    auto ticket = nextTicket();
+    addRequest(ticket, destination, std::move(request), callbacks, options);
+    return ticket;
+  } 
 
   int work_once();
   void wait();
@@ -129,7 +138,6 @@ class Communicator {
   void abortRequests();
   void disable() { _enabled = false; };
   void enable()  { _enabled = true; };
-
 
  private:
   struct NewRequest {

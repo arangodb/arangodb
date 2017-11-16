@@ -1001,6 +1001,8 @@ int createDocumentOnCoordinator(
 
   // Now prepare the requests:
   std::vector<ClusterCommRequest> requests;
+  requests.reserve(shardMap.size());
+
   auto body = std::make_shared<std::string>();
 
   for (auto const& it : shardMap) {

@@ -436,7 +436,6 @@ OperationID ClusterComm::asyncRequest(
     };
   } else {
     callbacks._onError = [result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {
-      CONDITION_LOCKER(locker, somethingReceived);
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
         if (doLogConnectionErrors) {
@@ -449,23 +448,31 @@ OperationID ClusterComm::asyncRequest(
             << "' at endpoint '" << result->endpoint << "'";
         }
       }
+      CONDITION_LOCKER(locker, somethingReceived);
       somethingReceived.broadcast();
     };
     callbacks._onSuccess = [result, this](std::unique_ptr<GeneralResponse> response) {
       TRI_ASSERT(response.get() != nullptr);
-      CONDITION_LOCKER(locker, somethingReceived);
       result->fromResponse(std::move(response));
+      CONDITION_LOCKER(locker, somethingReceived);
       somethingReceived.broadcast();
     };
   }
 
   TRI_ASSERT(request != nullptr);
-  CONDITION_LOCKER(locker, somethingReceived);
-  auto ticketId = _communicator->addRequest(createCommunicatorDestination(result->endpoint, path),
-               std::move(request), callbacks, opt);
-
+  // fetch next ticket value from communicator. this can be done without holding a lock
+  auto ticketId = _communicator->nextTicket();
+  // attach ticket id to result
   result->operationID = ticketId;
-  responses.emplace(ticketId, AsyncResponse{TRI_microtime(), result});
+
+  // add request to communicator
+  // TODO: can we call addRequest without having to hold the CONDITION_LOCKER here?
+  {
+    CONDITION_LOCKER(locker, somethingReceived);
+    responses.emplace(ticketId, AsyncResponse{TRI_microtime(), result});
+  }
+  _communicator->addRequest(ticketId, createCommunicatorDestination(result->endpoint, path),
+               std::move(request), callbacks, opt);
   return ticketId;
 }
 
@@ -539,12 +546,15 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   opt.requestTimeout = timeout;
   TRI_ASSERT(request != nullptr);
   result->status = CL_COMM_SENDING;
-  CONDITION_LOCKER(isen, cv);
-  _communicator->addRequest(createCommunicatorDestination(result->endpoint, path),
+  auto ticketId = _communicator->nextTicket();
+  _communicator->addRequest(ticketId, createCommunicatorDestination(result->endpoint, path),
                std::move(request), callbacks, opt);
 
-  while (!wasSignaled) {
-    cv.wait(100000);
+  {
+    CONDITION_LOCKER(isen, cv);
+    while (!wasSignaled) {
+      cv.wait(100000);
+    }
   }
   return result;
 }
@@ -832,19 +842,22 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                                     ClusterCommTimeout timeout, size_t& nrDone,
                                     arangodb::LogTopic const& logTopic,
                                     bool retryOnCollNotFound) {
-  if (requests.size() == 0) {
+  if (requests.empty()) {
     nrDone = 0;
     return 0;
   }
 
+  size_t const nrRequests = requests.size();
+
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
-  ClusterCommTimeout startTime = TRI_microtime();
+  ClusterCommTimeout const startTime = TRI_microtime();
   ClusterCommTimeout now = startTime;
   ClusterCommTimeout endTime = startTime + timeout;
 
   std::vector<ClusterCommTimeout> dueTime;
-  for (size_t i = 0; i < requests.size(); ++i) {
+  dueTime.reserve(nrRequests);
+  for (size_t i = 0; i < nrRequests; ++i) {
     dueTime.push_back(startTime);
   }
 
@@ -860,7 +873,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           application_features::ApplicationServer::isStopping()) {
         break;
       }
-      if (nrDone >= requests.size()) {
+      if (nrDone >= nrRequests) {
         // All good, report
         return nrGood;
       }
@@ -868,7 +881,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
       double actionNeeded = endTime;
 
       // First send away what is due:
-      for (size_t i = 0; i < requests.size(); i++) {
+      for (size_t i = 0; i < nrRequests; i++) {
         if (!requests[i].done) {
           if (now >= dueTime[i]) {
             if (requests[i].headerFields.get() == nullptr) {
@@ -878,7 +891,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
             LOG_TOPIC(TRACE, logTopic)
                 << "ClusterComm::performRequests: sending request to "
                 << requests[i].destination << ":" << requests[i].path
-                << "body:" << requests[i].body;
+                << ", body:" << requests[i].body;
 
             dueTime[i] = endTime + 10;
             double localTimeout = endTime - now;
@@ -975,7 +988,9 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         }
         LOG_TOPIC(ERR, Logger::CLUSTER) << "ClusterComm::performRequests: "
             << "got BACKEND_UNAVAILABLE or TIMEOUT from "
-            << requests[index].destination << ":" << requests[index].path;
+            << requests[index].destination << ":" << requests[index].path 
+            << ", status: " << res.stringifyStatus(res.status) 
+            << ", elapsed: " << Logger::FIXED(now - startTime, 6) << " s";
       } else {  // a "proper error" which has to be returned to the client
         requests[index].result = res;
         requests[index].done = true;
