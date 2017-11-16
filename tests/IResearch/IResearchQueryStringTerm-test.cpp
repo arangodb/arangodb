@@ -343,10 +343,15 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // missing term
   {
-    auto queryResult = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN VIEW testView FILTER d.name == 'invalid_value' RETURN d"
-    );
+    std::string const query = "FOR d IN VIEW testView FILTER d.name == 'invalid_value' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleViewsRule_pass6
+      }
+    ));
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
     auto result = queryResult.result->slice();
@@ -363,10 +368,15 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN VIEW testView FILTER d.name == 0 RETURN d"
-    );
+    std::string const query = "FOR d IN VIEW testView FILTER d.name == 0 RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleViewsRule_pass6
+      }
+    ));
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
     auto result = queryResult.result->slice();
@@ -383,10 +393,15 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN VIEW testView FILTER d.name == null RETURN d"
-    );
+    std::string const query = "FOR d IN VIEW testView FILTER d.name == null RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleViewsRule_pass6
+      }
+    ));
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
     auto result = queryResult.result->slice();
@@ -403,10 +418,15 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN VIEW testView FILTER d.name == false RETURN d"
-    );
+    std::string const query = "FOR d IN VIEW testView FILTER d.name == false RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleViewsRule_pass6
+      }
+    ));
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
     auto result = queryResult.result->slice();

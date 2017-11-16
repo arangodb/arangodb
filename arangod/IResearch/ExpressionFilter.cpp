@@ -151,12 +151,22 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
   ArangoExpressionContext _ctx;
 }; // NondeterministicExpressionQuery
 
+FORCE_INLINE size_t hash_combine(size_t seed, size_t v) {
+  return seed ^ (v + 0x9e3779b9 + (seed<<6) + (seed>>2));
+}
+
+template<typename T>
+FORCE_INLINE size_t hash_combine(size_t seed, T const& v) {
+  return hash_combine(seed, std::hash<T>()(v));
+}
+
 NS_END // LOCAL
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 DEFINE_FILTER_TYPE(ByExpression);
+DEFINE_FACTORY_DEFAULT(ByExpression);
 
 ByExpression::ByExpression() noexcept
   : irs::filter(ByExpression::type()) {
@@ -165,11 +175,22 @@ ByExpression::ByExpression() noexcept
 bool ByExpression::equals(irs::filter const& rhs) const {
   auto const& typed = static_cast<ByExpression const&>(rhs);
   return irs::filter::equals(rhs)
-    && 0 == arangodb::aql::CompareAstNodes(_node, typed._node, true);
+    && _node == typed._node
+    && _plan == typed._plan
+    && _ast == typed._ast;
 }
 
 size_t ByExpression::hash() const {
-  return arangodb::aql::AstNodeValueHash()(_node);
+  return hash_combine(
+    hash_combine(
+      hash_combine(
+        1610612741,
+        arangodb::aql::AstNodeValueHash()(_node)
+      ),
+      _plan
+    ),
+    _ast
+  );
 }
 
 irs::filter::prepared::ptr ByExpression::prepare(

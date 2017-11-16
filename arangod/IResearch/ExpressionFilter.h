@@ -40,6 +40,7 @@ NS_BEGIN(iresearch)
 
 class ByExpression final : public irs::filter {
  public:
+  DECLARE_FACTORY_DEFAULT();
   DECLARE_FILTER_TYPE();
 
   ByExpression() noexcept;
@@ -79,8 +80,8 @@ class ByExpression final : public irs::filter {
   aql::ExecutionPlan* _plan{};
   aql::Ast* _ast{};
   aql::AstNode* _node{};
-  transaction::Methods* _trx{};
-  aql::ExpressionContext* _ctx{};
+  transaction::Methods* _trx{}; // FIXME: do not store it here, pass to prepared::execute
+  aql::ExpressionContext* _ctx{}; // // FIXME: do not store it here, pass to prepared::execute
 }; // ByExpression
 
 NS_END // iresearch

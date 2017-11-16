@@ -419,5 +419,17 @@ arangodb::aql::AstNode const* checkAttributeAccess(
     ? node : nullptr;
 }
 
+bool findReference(
+    arangodb::aql::AstNode const& root,
+    arangodb::aql::Variable const& ref
+) noexcept {
+  auto visitor = [&ref](arangodb::aql::AstNode const& node) noexcept {
+    return arangodb::aql::NODE_TYPE_REFERENCE != node.type
+      || reinterpret_cast<void const*>(&ref) != node.getData();
+  };
+
+  return !visit<true>(root, visitor);
+}
+
 } // iresearch
 } // arangodb

@@ -25,9 +25,12 @@
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ExpressionContext.h"
+#include "Aql/Ast.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "IResearch/ExpressionFilter.h"
 #include "tests/Basics/icu-helper.h"
 
 #include <velocypack/Iterator.h>

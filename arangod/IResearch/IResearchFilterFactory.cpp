@@ -26,6 +26,7 @@
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchFeature.h"
 #include "IResearchKludge.h"
+#include "ExpressionFilter.h"
 #include "ApplicationServerHelper.h"
 #include "AqlHelper.h"
 
@@ -93,6 +94,15 @@ bool fromGroup(
   irs::boolean_filter* filter,
   arangodb::aql::AstNode const& node
 );
+
+FORCE_INLINE void appendExpression(
+    irs::boolean_filter& filter,
+    arangodb::aql::AstNode const& node,
+    arangodb::iresearch::QueryContext const& ctx) {
+  filter.add<arangodb::iresearch::ByExpression>().init(
+    *ctx.plan, *ctx.ast, const_cast<arangodb::aql::AstNode&>(node), *ctx.trx, *ctx.ctx
+  );
+}
 
 bool byTerm(
     irs::by_term* filter,
@@ -432,6 +442,46 @@ bool byRange(
   return false;
 }
 
+bool fromExpression(
+    irs::boolean_filter* filter,
+    arangodb::iresearch::QueryContext const& ctx,
+    arangodb::aql::AstNode const& node
+) {
+  if (!filter) {
+    return true;
+  }
+
+  // non-deterministic condition or self-referenced variable
+  if (!node.isDeterministic() || arangodb::iresearch::findReference(node, *ctx.ref)) {
+    // not supported by IResearch, but could be handled by ArangoDB
+    appendExpression(*filter, node, ctx);
+    return true;
+  }
+
+  bool result;
+
+  if (node.isConstant()) {
+    result = node.isTrue();
+  } else { // deterministic expression
+    arangodb::iresearch::ScopedAqlValue value(node);
+
+    if (!value.execute(ctx)) {
+      // can't execute expression
+      return false;
+    }
+
+    result = value.getBoolean();
+  }
+
+  if (result) {
+    filter->add<irs::all>();
+  } else {
+    filter->add<irs::empty>();
+  }
+
+  return true;
+}
+
 bool fromInterval(
     irs::boolean_filter* filter,
     arangodb::iresearch::QueryContext const& ctx,
@@ -447,17 +497,7 @@ bool fromInterval(
   arangodb::iresearch::NormalizedCmpNode normNode;
 
   if (!arangodb::iresearch::normalizeCmpNode(node, *ctx.ref, normNode)) {
-    auto const* typeName = arangodb::iresearch::getNodeTypeName(node.type);
-
-    if (typeName) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "Unable to normalize operator " << *typeName;
-    } else {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "Unable to normalize operator " << node.type;
-    }
-
-    return false; // unable to normalize node
+    return fromExpression(filter, ctx, node);
   }
 
   bool const incl = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == normNode.cmp
@@ -483,11 +523,7 @@ bool fromBinaryEq(
   arangodb::iresearch::NormalizedCmpNode normalized;
 
   if (!arangodb::iresearch::normalizeCmpNode(node, *ctx.ref, normalized)) {
-    // FIXME no reference to IResearch variable here -> wrap expression
-
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-      << "Unable to normalize operator '=='";
-    return false; // unable to normalize node
+    return fromExpression(filter, ctx, node);
   }
 
   irs::by_term* termFilter = nullptr;
@@ -628,39 +664,6 @@ bool fromIn(
 
   // wrong value node type
   return false;
-}
-
-bool fromExpression(
-    irs::boolean_filter* filter,
-    arangodb::iresearch::QueryContext const& ctx,
-    arangodb::aql::AstNode const& node
-) {
-  if (!filter) {
-    return true;
-  }
-
-  bool result;
-
-  if (node.isConstant()) {
-    result = node.isTrue();
-  } else {
-    arangodb::iresearch::ScopedAqlValue value(node);
-
-    if (!value.execute(ctx)) {
-      // can't execute expression
-      return false;
-    }
-
-    result = value.getBoolean();
-  }
-
-  if (result) {
-    filter->add<irs::all>();
-  } else {
-    filter->add<irs::empty>();
-  }
-
-  return true;
 }
 
 bool fromNegation(
@@ -1434,6 +1437,8 @@ NS_BEGIN(iresearch)
   switch (node.type) {
     case arangodb::aql::NODE_TYPE_FILTER: // FILTER
       return fromFilter(filter, ctx, node);
+    case arangodb::aql::NODE_TYPE_VARIABLE: // variable
+      return fromExpression(filter, ctx, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_UNARY_NOT: // unary minus
       return fromNegation(filter, ctx, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND: // logical and
@@ -1450,12 +1455,16 @@ NS_BEGIN(iresearch)
       return fromInterval(filter, ctx, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN: // compare in
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN: // compare not in
-      return fromIn(filter, ctx, node);
+      return fromIn(filter, ctx, node); // FIXME check expressions!!!
     case arangodb::aql::NODE_TYPE_OPERATOR_TERNARY: // ternary
-      break;
+      return fromExpression(filter, ctx, node);
+    case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS: // attribute access
+      return fromExpression(filter, ctx, node);
     case arangodb::aql::NODE_TYPE_VALUE : // value
     case arangodb::aql::NODE_TYPE_ARRAY:  // array
     case arangodb::aql::NODE_TYPE_OBJECT: // object
+      return fromExpression(filter, ctx, node);
+    case arangodb::aql::NODE_TYPE_REFERENCE: // reference
       return fromExpression(filter, ctx, node);
     case arangodb::aql::NODE_TYPE_FCALL: // function call
       return fromFCall(filter, ctx, node);

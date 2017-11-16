@@ -494,6 +494,11 @@ arangodb::aql::AstNode const* checkAttributeAccess(
   arangodb::aql::Variable const& ref
 ) noexcept;
 
+bool findReference(
+  arangodb::aql::AstNode const& root,
+  arangodb::aql::Variable const& ref
+) noexcept;
+
 NS_END // iresearch
 NS_END // arangodb
 

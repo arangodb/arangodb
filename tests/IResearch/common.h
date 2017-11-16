@@ -25,6 +25,7 @@
 #define TESTS_IRESEARCH__COMMON_H 1
 
 #include "Aql/Query.h"
+#include "Aql/AstNode.h"
 
 #include <string>
 #include <vector>
@@ -32,12 +33,19 @@
 struct TRI_vocbase_t;
 
 namespace v8 {
-
 class Isolate; // forward declaration
-
 }
 
 namespace arangodb {
+
+namespace aql {
+class ExpressionContext;
+}
+
+namespace iresearch {
+class ByExpression;
+}
+
 namespace tests {
 
 void init(bool withICU = false);
@@ -47,6 +55,11 @@ bool assertRules(
   TRI_vocbase_t& vocbase,
   std::string const& queryString,
   std::vector<int> expectedRulesIds
+);
+
+std::unique_ptr<arangodb::aql::AstNode> parseQuery(
+  TRI_vocbase_t& vocbase,
+  std::string const& queryString
 );
 
 arangodb::aql::QueryResult executeQuery(

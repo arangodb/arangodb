@@ -34,6 +34,7 @@
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchKludge.h"
+#include "IResearch/ExpressionFilter.h"
 #include "IResearch/SystemDatabaseFeature.h"
 #include "IResearch/AqlHelper.h"
 #include "Logger/Logger.h"
@@ -160,28 +161,25 @@ std::string mangleStringIdentity(std::string name) {
   return name;
 }
 
-void assertFilter(
-    bool parseOk,
-    bool execOk,
+void assertExpressionFilter(
     std::string const& queryString,
-    irs::filter const& expected,
-    arangodb::aql::ExpressionContext* exprCtx = nullptr,
-    std::string const& refName = "d") {
+    std::string const& refName = "d"
+) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-  auto options = std::make_shared<arangodb::velocypack::Builder>();
-
   arangodb::aql::Query query(
-     false, &vocbase, arangodb::aql::QueryString(queryString),
-     bindVars, options,
-     arangodb::aql::PART_MAIN
+    false, &vocbase, arangodb::aql::QueryString(queryString),
+    nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+    arangodb::aql::PART_MAIN
   );
 
   auto const parseResult = query.parse();
   REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
 
-  auto* root = query.ast()->root();
+  auto* ast = query.ast();
+  REQUIRE(ast);
+
+  auto* root = ast->root();
   REQUIRE(root);
 
   // find first FILTER node
@@ -198,7 +196,7 @@ void assertFilter(
   REQUIRE(filterNode);
 
   // find referenced variable
-  auto* allVars = query.ast()->variables();
+  auto* allVars = ast->variables();
   REQUIRE(allVars);
   arangodb::aql::Variable* ref = nullptr;
   for (auto entry : allVars->variables(true)) {
@@ -209,19 +207,106 @@ void assertFilter(
   }
   REQUIRE(ref);
 
-  std::vector<std::string> const EMPTY;
+  // supportsFilterCondition
+  {
+    arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+    CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+  }
 
-  auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+  // iteratorForCondition
+  {
+    arangodb::transaction::UserTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+    );
 
-  arangodb::transaction::UserTransaction trx(
-    arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+
+    irs::Or expected;
+    expected.add<arangodb::iresearch::ByExpression>().init(
+      *dummyPlan,
+      *ast,
+      *filterNode->getMember(0), // 'd.a.b[_REFERENCE_('c')]
+      trx,
+      ExpressionContextMock::EMPTY
+    );
+
+    irs::Or actual;
+    arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
+    CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+    CHECK((expected == actual));
+  }
+}
+
+void assertFilter(
+    bool parseOk,
+    bool execOk,
+    std::string const& queryString,
+    irs::filter const& expected,
+    arangodb::aql::ExpressionContext* exprCtx = nullptr,
+    std::string const& refName = "d") {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+
+  auto options = std::make_shared<arangodb::velocypack::Builder>();
+
+  arangodb::aql::Query query(
+     false, &vocbase, arangodb::aql::QueryString(queryString),
+     nullptr, options,
+     arangodb::aql::PART_MAIN
   );
 
-  irs::Or actual;
-  arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), query.ast(), exprCtx, ref };
-  CHECK((parseOk == arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
-  CHECK((execOk == arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
-  CHECK((!execOk || expected == actual));
+  auto const parseResult = query.parse();
+  REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+
+  auto* ast = query.ast();
+  REQUIRE(ast);
+
+  auto* root = ast->root();
+  REQUIRE(root);
+
+  // find first FILTER node
+  arangodb::aql::AstNode* filterNode = nullptr;
+  for (size_t i = 0; i < root->numMembers(); ++i) {
+    auto* node = root->getMemberUnchecked(i);
+    REQUIRE(node);
+
+    if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+      filterNode = node;
+      break;
+    }
+  }
+  REQUIRE(filterNode);
+
+  // find referenced variable
+  auto* allVars = ast->variables();
+  REQUIRE(allVars);
+  arangodb::aql::Variable* ref = nullptr;
+  for (auto entry : allVars->variables(true)) {
+    if (entry.second == refName) {
+      ref = allVars->getVariable(entry.first);
+      break;
+    }
+  }
+  REQUIRE(ref);
+
+  // supportsFilterCondition
+  {
+    arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+    CHECK((parseOk == arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+  }
+
+  // iteratorForCondition
+  {
+    arangodb::transaction::UserTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+    );
+
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+
+    irs::Or actual;
+    arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, exprCtx, ref };
+    CHECK((execOk == arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+    CHECK((!execOk || expected == actual));
+  }
 }
 
 void assertFilterSuccess(
@@ -1799,6 +1884,14 @@ SECTION("BinaryEq") {
     assertFilterSuccess("FOR d IN collection FILTER false == d['a'].b['c'].bool RETURN d", expected);
   }
 
+  // expression
+  {
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER 1 == true RETURN d", expected, &ExpressionContextMock::EMPTY);
+  }
+
   // boolean expression
   {
     arangodb::aql::Variable var("c", 0);
@@ -2084,17 +2177,27 @@ SECTION("BinaryEq") {
     assertFilterSuccess("FOR d IN collection FILTER 3 == 2 == d.a.b.c RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
-  // unsupported expression (d referenced inside)
-  /*assertFilterExecutionFail*/assertFilterFail("FOR d IN collection FILTER 3 == (2 == d.a.b.c) RETURN d", &ExpressionContextMock::EMPTY);
+  // expression without reference to loop variable, unreachable criteria
+  {
+    auto obj = arangodb::velocypack::Parser::fromJson("{}");
 
-  // invalid attribute access
-  assertFilterExecutionFail("FOR d IN collection FILTER d.a.b.c RETURN d", &ExpressionContextMock::EMPTY);
-  assertFilterExecutionFail("FOR d IN collection FILTER d.a.b[_REFERENCE_('c')] RETURN d", &ExpressionContextMock::EMPTY);
-  assertFilterFail("FOR d IN collection FILTER k.a == '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d == '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d[*] == '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a[*] == '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER '1' == d RETURN d");
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("k", arangodb::aql::AqlValue(obj->slice()));
+
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("LET k={} FOR d IN collection FILTER k.a == '1' RETURN d", expected, &ctx);
+  }
+
+  // unsupported expression (d referenced inside) -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER 3 == (2 == d.a.b.c) RETURN d");
+
+  // expression with self-reference is not supported by IResearch -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER d == '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d[*] == '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a[*] == '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER '1' == d RETURN d");
 
   // unsupported node types : fail on parse
   assertFilterFail("FOR d IN collection FILTER d.a == {} RETURN d");
@@ -2104,9 +2207,39 @@ SECTION("BinaryEq") {
   assertFilterExecutionFail("FOR d IN collection FILTER d.a == 1..2 RETURN d", &ExpressionContextMock::EMPTY);
   assertFilterExecutionFail("FOR d IN collection FILTER 1..2 == d.a RETURN d", &ExpressionContextMock::EMPTY);
 
-  // invalid equality (supported by AQL)
-  assertFilterFail("FOR d IN collection FILTER 2 == d.a.b.c.numeric == 3 RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric == 2 == 3 RETURN d");
+  // expression is not supported by IResearch -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b.c.numeric == 2 == 3 RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER 2 == d.a.b.c.numeric == 3 RETURN d");
+}
+
+SECTION("Ternary") {
+  // can evaluate expression
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{3})));
+
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("LET x=3 FOR d IN collection FILTER x > 2 ? true : false RETURN d", expected, &ctx);
+  }
+
+  // can evaluate expression
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1})));
+
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("LET x=1 FOR d IN collection FILTER x > 2 ? true : false RETURN d", expected, &ctx);
+  }
+
+  // nondeterministic expression -> wrap it
+  assertExpressionFilter("LET x=1 FOR d IN collection FILTER x > 2 ? _REFERENCE_(true) : false RETURN d");
+
+  // can't evaluate expression: no referenced variable in context
+  assertFilterExecutionFail("LET x=1 FOR d IN collection FILTER x > 2 ? true : false RETURN d", &ExpressionContextMock::EMPTY);
 }
 
 SECTION("BinaryNotEq") {
@@ -2537,31 +2670,47 @@ SECTION("BinaryNotEq") {
     assertFilterSuccess("FOR d IN collection FILTER 3 != 2 != d.a.b.c RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
-  // unsupported expression (d referenced inside)
-  /*assertFilterExecutionFail*/assertFilterFail("FOR d IN collection FILTER 3 != (2 != d.a.b.c) RETURN d", &ExpressionContextMock::EMPTY);
+  // expression without reference to loop variable, reachable criteria
+  {
+    auto obj = arangodb::velocypack::Parser::fromJson("{}");
 
-  // invalid attribute access
-  assertFilterFail("FOR d IN collection FILTER ['d'] != '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER [] != '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER k.a != '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d != '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d[*] != '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a[*] != '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER '1' != d RETURN d");
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("k", arangodb::aql::AqlValue(obj->slice()));
+
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("LET k={} FOR d IN collection FILTER k.a != '1' RETURN d", expected, &ctx);
+  }
+
+  // array in expression
+  {
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("FOR d IN collection FILTER ['d'] != '1' RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN collection FILTER [] != '1' RETURN d", expected, &ExpressionContextMock::EMPTY);
+  }
+
+  // unsupported expression (d referenced inside) -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER 3 != (2 != d.a.b.c) RETURN d");
+
+  // expression is not supported by IResearch -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER d != '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d[*] != '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a[*] != '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER '1' != d RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER 2 != d.a.b.c.numeric != 3 RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER 2 == d.a.b.c.numeric != 3 RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b.c.numeric != 2 != 3 RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b.c.numeric != 2 == 3 RETURN d");
 
   // unsupported node types : fail on parse
   assertFilterFail("FOR d IN collection FILTER d.a != {} RETURN d");
   assertFilterFail("FOR d IN collection FILTER {} != d.a RETURN d");
-
   // unsupported node types : fail on execution
   assertFilterExecutionFail("FOR d IN collection FILTER d.a != 1..2 RETURN d", &ExpressionContextMock::EMPTY);
   assertFilterExecutionFail("FOR d IN collection FILTER 1..2 != d.a RETURN d", &ExpressionContextMock::EMPTY);
-
-  // invalid inequality (supported by AQL)
-  assertFilterFail("FOR d IN collection FILTER 2 != d.a.b.c.numeric != 3 RETURN d");
-  assertFilterFail("FOR d IN collection FILTER 2 == d.a.b.c.numeric != 3 RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric != 2 != 3 RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric != 2 == 3 RETURN d");
 }
 
 SECTION("BinaryGE") {
@@ -3008,28 +3157,45 @@ SECTION("BinaryGE") {
     assertFilterSuccess("FOR d IN collection FILTER 3 >= 2 >= d.a.b.c RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
-  // unsupported expression (d referenced inside)
-  /*assertFilterExecutionFail*/assertFilterFail("FOR d IN collection FILTER 3 >= (2 >= d.a.b.c) RETURN d", &ExpressionContextMock::EMPTY);
+  // expression without reference to loop variable, unreachable criteria
+  {
+    auto obj = arangodb::velocypack::Parser::fromJson("{}");
 
-  // invalid attribute access
-  assertFilterFail("FOR d IN collection FILTER [] >= '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER ['d'] >= '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER k.a >= '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d >= '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d[*] >= '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a[*] >= '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER '1' <= d RETURN d");
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("k", arangodb::aql::AqlValue(obj->slice()));
+
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("LET k='' FOR d IN collection FILTER k.a >= '1' RETURN d", expected, &ctx);
+  }
+
+  // array in expression
+  {
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("FOR d IN collection FILTER [] >= '1' RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN collection FILTER ['d'] >= '1' RETURN d", expected, &ExpressionContextMock::EMPTY);
+  }
+
+  // unsupported expression (d referenced inside) -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER 3 >= (2 >= d.a.b.c) RETURN d");
+
+  // expression is not supported by IResearch -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER d >= '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d[*] >= '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a[*] >= '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER '1' <= d RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER 2 >= d.a.b.c.numeric >= 3 RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b.c.numeric >= 2 >= 3 RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b.c.numeric >= 2 >= 3 RETURN d");
 
   // unsupported node types
   assertFilterFail("FOR d IN collection FILTER d.a >= {} RETURN d");
   assertFilterFail("FOR d IN collection FILTER {} <= d.a RETURN d");
   assertFilterExecutionFail("FOR d IN collection FILTER d.a >= 1..2 RETURN d", &ExpressionContextMock::EMPTY);
   assertFilterExecutionFail("FOR d IN collection FILTER 1..2 <= d.a RETURN d", &ExpressionContextMock::EMPTY);
-
-  // invalid comparison (supported by AQL)
-  assertFilterFail("FOR d IN collection FILTER 2 >= d.a.b.c.numeric >= 3 RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric >= 2 >= 3 RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric >= 2 >= 3 RETURN d");
 }
 
 SECTION("BinaryGT") {
@@ -3492,28 +3658,45 @@ SECTION("BinaryGT") {
     assertFilterSuccess("FOR d IN collection FILTER 3 > 2 > d.a.b.c RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
-  // unsupported expression (d referenced inside)
-  /*assertFilterExecutionFail*/assertFilterFail("FOR d IN collection FILTER 3 > (2 > d.a.b.c) RETURN d", &ExpressionContextMock::EMPTY);
+  // expression without reference to loop variable, unreachable criteria
+  {
+    auto obj = arangodb::velocypack::Parser::fromJson("{}");
 
-  // invalid attribute access
-  assertFilterFail("FOR d IN collection FILTER [] > '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER ['d'] > '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER k.a > '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d > '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d[*] > '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a[*] > '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER '1' < d RETURN d");
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("k", arangodb::aql::AqlValue(obj->slice()));
+
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("LET k={} FOR d IN collection FILTER k.a > '1' RETURN d", expected, &ctx);
+  }
+
+  // array in expression
+  {
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("FOR d IN collection FILTER [] > '1' RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN collection FILTER ['d'] > '1' RETURN d", expected, &ExpressionContextMock::EMPTY);
+  }
+
+  // unsupported expression (d referenced inside) -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER 3 > (2 > d.a.b.c) RETURN d");
+
+  // expression is not supported by IResearch -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER d > '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d[*] > '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a[*] > '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER '1' < d RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER 2 > d.a.b.c.numeric > 3 RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b.c.numeric > 2 > 3 RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b.c.numeric > 2 > 3 RETURN d");
 
   // unsupported node types
   assertFilterFail("FOR d IN collection FILTER d.a > {} RETURN d");
   assertFilterFail("FOR d IN collection FILTER {} < d.a RETURN d");
   assertFilterExecutionFail("FOR d IN collection FILTER d.a > 1..2 RETURN d", &ExpressionContextMock::EMPTY);
   assertFilterExecutionFail("FOR d IN collection FILTER 1..2 < d.a RETURN d", &ExpressionContextMock::EMPTY);
-
-  // invalid comparison (supported by AQL)
-  assertFilterFail("FOR d IN collection FILTER 2 > d.a.b.c.numeric > 3 RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric > 2 > 3 RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric > 2 > 3 RETURN d");
 }
 
 SECTION("BinaryLE") {
@@ -3960,28 +4143,45 @@ SECTION("BinaryLE") {
     assertFilterSuccess("FOR d IN collection FILTER 3 <= 2 <= d.a.b.c RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
-  // unsupported expression (d referenced inside)
-  /*assertFilterExecutionFail*/assertFilterFail("FOR d IN collection FILTER 3 <= (2 <= d.a.b.c) RETURN d", &ExpressionContextMock::EMPTY);
+  // expression without reference to loop variable, unreachable criteria
+  {
+    auto obj = arangodb::velocypack::Parser::fromJson("{}");
 
-  // invalid attribute access
-  assertFilterFail("FOR d IN collection FILTER []  <= '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER ['d'] <= '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER k.a <= '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d <= '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d[*] <= '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a[*] <= '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER '1' >= d RETURN d");
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("k", arangodb::aql::AqlValue(obj->slice()));
+
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("LET k={} FOR d IN collection FILTER k.a <= '1' RETURN d", expected, &ctx);
+  }
+
+  // array in expression
+  {
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("FOR d IN collection FILTER [] <= '1' RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN collection FILTER ['d'] <= '1' RETURN d", expected, &ExpressionContextMock::EMPTY);
+  }
+
+  // unsupported expression (d referenced inside) -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER 3 <= (2 <= d.a.b.c) RETURN d");
+
+  // expression is not supported by IResearch -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER d <= '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d[*] <= '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a[*] <= '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER '1' >= d RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER 2 <= d.a.b.c.numeric <= 3 RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b.c.numeric <= 2 <= 3 RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b.c.numeric <= 2 <= 3 RETURN d");
 
   // unsupported node types
   assertFilterFail("FOR d IN collection FILTER d.a <= {} RETURN d");
   assertFilterFail("FOR d IN collection FILTER {} >= d.a RETURN d");
   assertFilterExecutionFail("FOR d IN collection FILTER d.a <= 1..2 RETURN d", &ExpressionContextMock::EMPTY);
   assertFilterExecutionFail("FOR d IN collection FILTER 1..2 >= d.a RETURN d", &ExpressionContextMock::EMPTY);
-
-  // invalid comparison (supported by AQL)
-  assertFilterFail("FOR d IN collection FILTER 2 <= d.a.b.c.numeric <= 3 RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric <= 2 <= 3 RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric <= 2 <= 3 RETURN d");
 }
 
 SECTION("BinaryLT") {
@@ -4428,28 +4628,45 @@ SECTION("BinaryLT") {
     assertFilterSuccess("FOR d IN collection FILTER 3 < 2 < d.a.b.c RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
-  // unsupported expression (d referenced inside)
-  /*assertFilterExecutionFail*/assertFilterFail("FOR d IN collection FILTER 3 < (2 < d.a.b.c) RETURN d", &ExpressionContextMock::EMPTY);
+  // expression without reference to loop variable, unreachable criteria
+  {
+    auto obj = arangodb::velocypack::Parser::fromJson("{}");
 
-  // invalid attribute access
-  assertFilterFail("FOR d IN collection FILTER [] < '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER ['d'] < '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER k.a < '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d < '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d[*] < '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a[*] < '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER '1' > d RETURN d");
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("k", arangodb::aql::AqlValue(obj->slice()));
+
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("LET k={} FOR d IN collection FILTER k.a < '1' RETURN d", expected, &ctx);
+  }
+
+  // array in expression
+  {
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("FOR d IN collection FILTER [] < '1' RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN collection FILTER ['d'] < '1' RETURN d", expected, &ExpressionContextMock::EMPTY);
+  }
+
+  // unsupported expression (d referenced inside) -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER 3 < (2 < d.a.b.c) RETURN d");
+
+  // expression is not supported by IResearch -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER d < '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d[*] < '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a[*] < '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER '1' > d RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER 2 < d.a.b.c.numeric < 3 RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b.c.numeric < 2 < 3 RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b.c.numeric < 2 < 3 RETURN d");
 
   // unsupported node types
   assertFilterFail("FOR d IN collection FILTER d.a < {} RETURN d");
   assertFilterFail("FOR d IN collection FILTER {} > d.a RETURN d");
   assertFilterExecutionFail("FOR d IN collection FILTER d.a < 1..2 RETURN d", &ExpressionContextMock::EMPTY);
   assertFilterExecutionFail("FOR d IN collection FILTER 1..2 > d.a RETURN d", &ExpressionContextMock::EMPTY);
-
-  // invalid comparison (supported by AQL)
-  assertFilterFail("FOR d IN collection FILTER 2 < d.a.b.c.numeric < 3 RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric < 2 < 3 RETURN d");
-  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric < 2 < 3 RETURN d");
 }
 
 SECTION("UnaryNot") {
@@ -4909,14 +5126,21 @@ SECTION("UnaryNot") {
     assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == 42.5) RETURN d", &ctx);
   }
 
-  // invalid unary not usage
-  assertFilterFail("FOR d IN collection FILTER not d == '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER not d[*] == '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER not d.a[*] == '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER not [] == '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER not d.a == '1' RETURN d");
-  assertFilterFail("FOR d IN collection FILTER not '1' == not d.a RETURN d");
-  assertFilterFail("FOR d IN collection FILTER '1' == not d.a RETURN d", &ExpressionContextMock::EMPTY);
+  // array in expression
+  {
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("FOR d IN collection FILTER not [] == '1' RETURN d", expected, &ExpressionContextMock::EMPTY);
+  }
+
+  // expression is not supported by IResearch -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER not d == '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER not d[*] == '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER not d.a[*] == '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER not d.a == '1' RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER not '1' == not d.a RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER '1' == not d.a RETURN d");
 }
 
 SECTION("BinaryOr") {
@@ -5225,8 +5449,87 @@ SECTION("BinaryAnd") {
     assertFilterSuccess("FOR d IN collection FILTER '1' > d.a['b']['c'] and not (d.c.b.a == '2') RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b.c and not ('2' == d.c.b.a) RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' > d['a'].b.c and not ('2' == d.c.b['a']) RETURN d", expected);
+  }
 
-    assertFilterFail("FOR d IN collection FILTER d.a.b.c < '1' and not d.c.b.a == '2' RETURN d");
+  // expression is not supported by IResearch -> wrap it
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+
+    std::string const refName = "d";
+    std::string const queryString = "FOR d IN collection FILTER d.a.b.c < '1' and not d.c.b.a == '2' RETURN d";
+
+    arangodb::aql::Query query(
+      false, &vocbase, arangodb::aql::QueryString(queryString),
+      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      arangodb::aql::PART_MAIN
+    );
+
+    auto const parseResult = query.parse();
+    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+
+    auto* ast = query.ast();
+    REQUIRE(ast);
+
+    auto* root = ast->root();
+    REQUIRE(root);
+
+    // find first FILTER node
+    arangodb::aql::AstNode* filterNode = nullptr;
+    for (size_t i = 0; i < root->numMembers(); ++i) {
+      auto* node = root->getMemberUnchecked(i);
+      REQUIRE(node);
+
+      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+        filterNode = node;
+        break;
+      }
+    }
+    REQUIRE(filterNode);
+
+    // find referenced variable
+    auto* allVars = ast->variables();
+    REQUIRE(allVars);
+    arangodb::aql::Variable* ref = nullptr;
+    for (auto entry : allVars->variables(true)) {
+      if (entry.second == refName) {
+        ref = allVars->getVariable(entry.first);
+        break;
+      }
+    }
+    REQUIRE(ref);
+
+    // supportsFilterCondition
+    {
+      arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+    }
+
+    // iteratorForCondition
+    {
+      arangodb::transaction::UserTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+      );
+
+      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_range>()
+          .field(mangleStringIdentity("a.b.c"))
+          .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
+      root.add<arangodb::iresearch::ByExpression>().init(
+        *dummyPlan,
+        *ast,
+        *filterNode->getMember(0)->getMember(1), // not d.c.b.a == '2'
+        trx,
+        ExpressionContextMock::EMPTY
+      );
+
+      irs::Or actual;
+      arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((expected == actual));
+    }
   }
 
   // bool and null
@@ -5274,8 +5577,91 @@ SECTION("BinaryAnd") {
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15.0 and 40.0 > d.a.b.c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a']['b']['c'] > 15.0 and 40.0 > d.a['b']['c'] RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c and 40.0 > d.a.b.c RETURN d", expected);
+  }
 
-    assertFilterFail("FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b < 40 RETURN d");
+  // expression is not supported by IResearch -> wrap it
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+
+    std::string const refName = "d";
+    std::string const queryString = "FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b < 40 RETURN d";
+
+    arangodb::aql::Query query(
+      false, &vocbase, arangodb::aql::QueryString(queryString),
+      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      arangodb::aql::PART_MAIN
+    );
+
+    auto const parseResult = query.parse();
+    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+
+    auto* ast = query.ast();
+    REQUIRE(ast);
+
+    auto* root = ast->root();
+    REQUIRE(root);
+
+    // find first FILTER node
+    arangodb::aql::AstNode* filterNode = nullptr;
+    for (size_t i = 0; i < root->numMembers(); ++i) {
+      auto* node = root->getMemberUnchecked(i);
+      REQUIRE(node);
+
+      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+        filterNode = node;
+        break;
+      }
+    }
+    REQUIRE(filterNode);
+
+    // find referenced variable
+    auto* allVars = ast->variables();
+    REQUIRE(allVars);
+    arangodb::aql::Variable* ref = nullptr;
+    for (auto entry : allVars->variables(true)) {
+      if (entry.second == refName) {
+        ref = allVars->getVariable(entry.first);
+        break;
+      }
+    }
+    REQUIRE(ref);
+
+    // supportsFilterCondition
+    {
+      arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+    }
+
+    // iteratorForCondition
+    {
+      arangodb::transaction::UserTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+      );
+
+      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<arangodb::iresearch::ByExpression>().init(
+        *dummyPlan,
+        *ast,
+        *filterNode->getMember(0)->getMember(0), // d.a[*].b > 15
+        trx,
+        ExpressionContextMock::EMPTY
+      );
+      root.add<arangodb::iresearch::ByExpression>().init(
+        *dummyPlan,
+        *ast,
+        *filterNode->getMember(0)->getMember(1), // d.a[*].b < 40
+        trx,
+        ExpressionContextMock::EMPTY
+      );
+
+      irs::Or actual;
+      arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((expected == actual));
+    }
   }
 
   // numeric range with offset
@@ -5328,8 +5714,6 @@ SECTION("BinaryAnd") {
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15.0 and 40.0 > d.a.b.c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 15.0 <= d.a.b.c and 40.0 > d.a.b.c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 15.0 <= d['a']['b']['c'] and 40.0 > d.a['b']['c'] RETURN d", expected);
-
-    assertFilterFail("FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b < 40 RETURN d");
   }
 
   // numeric range
@@ -5357,8 +5741,91 @@ SECTION("BinaryAnd") {
     assertFilterSuccess("FOR d IN collection FILTER d['a']['b'].c >= 15.0 and 40.0 >= d.a.b.c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 15.0 <= d.a.b.c and 40.0 >= d.a.b.c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 15.0 <= d['a']['b']['c'] and 40.0 >= d.a.b.c RETURN d", expected);
+  }
 
-    assertFilterFail("FOR d IN collection FILTER d.a[*].b.c >= 15 and d.a.b.c <= 40 RETURN d");
+  // expression is not supported by IResearch -> wrap it
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+
+    std::string const refName = "d";
+    std::string const queryString = "FOR d IN collection FILTER d.a[*].b >= 15 and d.a[*].b <= 40 RETURN d";
+
+    arangodb::aql::Query query(
+      false, &vocbase, arangodb::aql::QueryString(queryString),
+      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      arangodb::aql::PART_MAIN
+    );
+
+    auto const parseResult = query.parse();
+    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+
+    auto* ast = query.ast();
+    REQUIRE(ast);
+
+    auto* root = ast->root();
+    REQUIRE(root);
+
+    // find first FILTER node
+    arangodb::aql::AstNode* filterNode = nullptr;
+    for (size_t i = 0; i < root->numMembers(); ++i) {
+      auto* node = root->getMemberUnchecked(i);
+      REQUIRE(node);
+
+      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+        filterNode = node;
+        break;
+      }
+    }
+    REQUIRE(filterNode);
+
+    // find referenced variable
+    auto* allVars = ast->variables();
+    REQUIRE(allVars);
+    arangodb::aql::Variable* ref = nullptr;
+    for (auto entry : allVars->variables(true)) {
+      if (entry.second == refName) {
+        ref = allVars->getVariable(entry.first);
+        break;
+      }
+    }
+    REQUIRE(ref);
+
+    // supportsFilterCondition
+    {
+      arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+    }
+
+    // iteratorForCondition
+    {
+      arangodb::transaction::UserTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+      );
+
+      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<arangodb::iresearch::ByExpression>().init(
+        *dummyPlan,
+        *ast,
+        *filterNode->getMember(0)->getMember(0), // d.a[*].b >= 15
+        trx,
+        ExpressionContextMock::EMPTY
+      );
+      root.add<arangodb::iresearch::ByExpression>().init(
+        *dummyPlan,
+        *ast,
+        *filterNode->getMember(0)->getMember(1), // d.a[*].b <= 40
+        trx,
+        ExpressionContextMock::EMPTY
+      );
+
+      irs::Or actual;
+      arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((expected == actual));
+    }
   }
 
   // numeric range
@@ -5386,8 +5853,91 @@ SECTION("BinaryAnd") {
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15.0 and 40.0 >= d.a.b.c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c and 40.0 >= d.a.b.c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 15.0 < d['a']['b'].c and 40.0 >= d.a.b.c RETURN d", expected);
+  }
 
-    assertFilterFail("FOR d IN collection FILTER d.a.b[*] > 15 and d.a.b.c <= 40 RETURN d");
+  // expression is not supported by IResearch -> wrap it
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+
+    std::string const refName = "d";
+    std::string const queryString = "FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b <= 40 RETURN d";
+
+    arangodb::aql::Query query(
+      false, &vocbase, arangodb::aql::QueryString(queryString),
+      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      arangodb::aql::PART_MAIN
+    );
+
+    auto const parseResult = query.parse();
+    REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+
+    auto* ast = query.ast();
+    REQUIRE(ast);
+
+    auto* root = ast->root();
+    REQUIRE(root);
+
+    // find first FILTER node
+    arangodb::aql::AstNode* filterNode = nullptr;
+    for (size_t i = 0; i < root->numMembers(); ++i) {
+      auto* node = root->getMemberUnchecked(i);
+      REQUIRE(node);
+
+      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+        filterNode = node;
+        break;
+      }
+    }
+    REQUIRE(filterNode);
+
+    // find referenced variable
+    auto* allVars = ast->variables();
+    REQUIRE(allVars);
+    arangodb::aql::Variable* ref = nullptr;
+    for (auto entry : allVars->variables(true)) {
+      if (entry.second == refName) {
+        ref = allVars->getVariable(entry.first);
+        break;
+      }
+    }
+    REQUIRE(ref);
+
+    // supportsFilterCondition
+    {
+      arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+    }
+
+    // iteratorForCondition
+    {
+      arangodb::transaction::UserTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+      );
+
+      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<arangodb::iresearch::ByExpression>().init(
+        *dummyPlan,
+        *ast,
+        *filterNode->getMember(0)->getMember(0), // d.a[*].b >= 15
+        trx,
+        ExpressionContextMock::EMPTY
+      );
+      root.add<arangodb::iresearch::ByExpression>().init(
+        *dummyPlan,
+        *ast,
+        *filterNode->getMember(0)->getMember(1), // d.a[*].b <= 40
+        trx,
+        ExpressionContextMock::EMPTY
+      );
+
+      irs::Or actual;
+      arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((expected == actual));
+    }
   }
 
   // dynamic complex attribute field in string range
@@ -5989,7 +6539,42 @@ SECTION("BinaryAnd") {
   }
 }
 
-SECTION("Value") {
+SECTION("AttributeAccess") {
+  // attribute access, non empty object
+  {
+    auto obj = arangodb::velocypack::Parser::fromJson("{ \"a\": { \"b\": \"1\" } }");
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(obj->slice()));
+
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("LET x={} FOR d IN collection FILTER x.a.b RETURN d", expected, &ctx);
+  }
+
+  // attribute access, empty object
+  {
+    auto obj = arangodb::velocypack::Parser::fromJson("{}");
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(obj->slice()));
+
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("LET x={} FOR d IN collection FILTER x.a.b RETURN d", expected, &ctx);
+  }
+
+  assertExpressionFilter("FOR d IN collection FILTER d RETURN d"); // no reference to `d`
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b.c RETURN d"); // no reference to `d`
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b[TO_STRING('c')] RETURN d"); // no reference to `d`
+
+  // nondeterministic expression -> wrap it
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b[_REFERENCE_('c')] RETURN d");
+}
+
+SECTION("ValueReference") {
   // string value == true
   {
     irs::Or expected;
@@ -5998,12 +6583,15 @@ SECTION("Value") {
     assertFilterSuccess("FOR d IN collection FILTER '1' RETURN d", expected);
   }
 
-  // true value
+  // string reference
   {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue("abc")));
+
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess("FOR d IN collection FILTER true RETURN d", expected);
+    assertFilterSuccess("LET x='abc' FOR d IN collection FILTER x RETURN d", expected, &ctx); // reference
   }
 
   // string empty value == false
@@ -6014,12 +6602,53 @@ SECTION("Value") {
     assertFilterSuccess("FOR d IN collection FILTER '' RETURN d", expected);
   }
 
+  // empty string reference false
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue("")));
+
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("LET x='' FOR d IN collection FILTER x RETURN d", expected, &ctx); // reference
+  }
+
+  // true value
+  {
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("FOR d IN collection FILTER true RETURN d", expected);
+  }
+
+  // boolean reference
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true})));
+
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("LET x=true FOR d IN collection FILTER x RETURN d", expected, &ctx); // reference
+  }
+
   // false
   {
     irs::Or expected;
     expected.add<irs::empty>();
 
     assertFilterSuccess("FOR d IN collection FILTER false RETURN d", expected);
+  }
+
+  // boolean reference
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})));
+
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("LET x=false FOR d IN collection FILTER x RETURN d", expected, &ctx); // reference
   }
 
   // null == value
@@ -6038,12 +6667,34 @@ SECTION("Value") {
     assertFilterSuccess("FOR d IN collection FILTER 1 RETURN d", expected);
   }
 
+  // non zero numeric reference
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1})));
+
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("LET x=1 FOR d IN collection FILTER x RETURN d", expected, &ctx); // reference
+  }
+
   // zero numeric value
   {
     irs::Or expected;
     expected.add<irs::empty>();
 
     assertFilterSuccess("FOR d IN collection FILTER 0 RETURN d", expected);
+  }
+
+  // zero numeric reference
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{0})));
+
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("LET x=0 FOR d IN collection FILTER x RETURN d", expected, &ctx); // reference
   }
 
   // zero floating value
@@ -6054,12 +6705,34 @@ SECTION("Value") {
     assertFilterSuccess("FOR d IN collection FILTER 0.0 RETURN d", expected);
   }
 
+  // zero floating reference
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.0})));
+
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("LET x=0.0 FOR d IN collection FILTER x RETURN d", expected, &ctx); // reference
+  }
+
   // non zero floating value
   {
     irs::Or expected;
     expected.add<irs::all>();
 
     assertFilterSuccess("FOR d IN collection FILTER 0.1 RETURN d", expected);
+  }
+
+  // non zero floating reference
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.1})));
+
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("LET x=0.1 FOR d IN collection FILTER x RETURN d", expected, &ctx); // reference
   }
 
   // Array == true
@@ -6070,12 +6743,36 @@ SECTION("Value") {
     assertFilterSuccess("FOR d IN collection FILTER [] RETURN d", expected);
   }
 
+  // Array reference
+  {
+    auto obj = arangodb::velocypack::Parser::fromJson("[]");
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(obj->slice())));
+
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("LET x=[] FOR d IN collection FILTER x RETURN d", expected, &ctx); // reference
+  }
+
   // Range == true
   {
     irs::Or expected;
     expected.add<irs::all>();
 
     assertFilterSuccess("FOR d IN collection FILTER 1..2 RETURN d", expected);
+  }
+
+  // Range reference
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(1, 1)));
+
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("LET x=1..1 FOR d IN collection FILTER x RETURN d", expected, &ctx); // reference
   }
 
   // Object == true
@@ -6086,15 +6783,17 @@ SECTION("Value") {
     assertFilterSuccess("FOR d IN collection FILTER {} RETURN d", expected);
   }
 
-  // string expression
+  // Object reference
   {
+    auto obj = arangodb::velocypack::Parser::fromJson("{}");
+
     ExpressionContextMock ctx;
-    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(obj->slice())));
 
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess("LET numVal=2 FOR d IN collection FILTER TO_STRING(numVal) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET x={} FOR d IN collection FILTER x RETURN d", expected, &ctx); // reference
   }
 
   // numeric expression
@@ -6109,33 +6808,62 @@ SECTION("Value") {
   }
 
   // boolean expression
-//  {
-//    ExpressionContextMock ctx;
-//    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
-//
-//    irs::Or expected;
-//    expected.add<irs::empty>();
-//
-//    assertFilterSuccess("LET numVal=2 FOR d IN collection FILTER ((numVal+1) < 2) RETURN d", expected, &ctx);
-//  }
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("LET numVal=2 FOR d IN collection FILTER ((numVal+1) < 2) RETURN d", expected, &ctx);
+  }
 
   // null expression
-//  {
-//    ExpressionContextMock ctx;
-//    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
-//
-//    irs::Or expected;
-//    expected.add<irs::And>().add<irs::empty>();
-//
-//    assertFilterSuccess("LET nullVal=null FOR d IN collection FILTER (nullVal && true) RETURN d", expected, &ctx);
-//  }
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
-  // reference
-  assertFilterExecutionFail("FOR d IN collection FILTER d RETURN d", &ExpressionContextMock::EMPTY);
-  assertFilterExecutionFail("FOR d IN collection FILTER d[1] RETURN d", &ExpressionContextMock::EMPTY);
-  assertFilterExecutionFail("FOR d IN collection FILTER d.a[1] RETURN d", &ExpressionContextMock::EMPTY);
-  assertFilterExecutionFail("FOR d IN collection FILTER d[*] RETURN d", &ExpressionContextMock::EMPTY);
-  assertFilterExecutionFail("FOR d IN collection FILTER d.a[*] RETURN d", &ExpressionContextMock::EMPTY);
+    irs::Or expected;
+    auto& root = expected.add<irs::And>();
+    root.add<irs::empty>();
+    root.add<irs::all>();
+
+    assertFilterSuccess("LET nullVal=null FOR d IN collection FILTER (nullVal && true) RETURN d", expected, &ctx);
+  }
+
+  // self-reference
+  assertExpressionFilter("FOR d IN collection FILTER d RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d[1] RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a[1] RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d[*] RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER d.a[*] RETURN d");
+}
+
+SECTION("SystemFunctions") {
+  // scalar
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1})));
+
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("LET x=1 FOR d IN collection FILTER TO_STRING(x) RETURN d", expected, &ctx); // reference
+  }
+
+  // scalar
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{0})));
+
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("LET x=0 FOR d IN collection FILTER TO_BOOL(x) RETURN d", expected, &ctx); // reference
+  }
+
+  // nondeterministic expression : wrap it
+  assertExpressionFilter("FOR d IN VIEW myView FILTER RAND() RETURN d");
 }
 
 SECTION("UnsupportedUserFunctions") {
