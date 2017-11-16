@@ -70,9 +70,9 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
 }
 
 static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
-    transaction::Methods* trx, AstNode const* direction,
+    aql::Query* query, AstNode const* direction,
     AstNode const* optionsNode) {
-  auto options = std::make_unique<traverser::TraverserOptions>(trx);
+  auto options = std::make_unique<traverser::TraverserOptions>(query);
 
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
@@ -150,8 +150,8 @@ static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
 }
 
 static std::unique_ptr<graph::BaseOptions> CreateShortestPathOptions(
-    arangodb::transaction::Methods* trx, AstNode const* node) {
-  auto options = std::make_unique<graph::ShortestPathOptions>(trx);
+    arangodb::aql::Query* query, AstNode const* node) {
+  auto options = std::make_unique<graph::ShortestPathOptions>(query);
 
   if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
     size_t n = node->numMembers();
@@ -256,29 +256,6 @@ ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(
   return plan.release();
 }
 
-/// @brief clone the plan by recursively cloning starting from the root
-class CloneNodeAdder final : public WalkerWorker<ExecutionNode> {
-  ExecutionPlan* _plan;
-
- public:
-  bool success;
-
-  explicit CloneNodeAdder(ExecutionPlan* plan) : _plan(plan), success(true) {}
-
-  ~CloneNodeAdder() {}
-
-  bool before(ExecutionNode* node) override final {
-    // We need to catch exceptions because the walk has to finish
-    // and either register the nodes or delete them.
-    try {
-      _plan->registerNode(node);
-    } catch (...) {
-      success = false;
-    }
-    return false;
-  }
-};
-
 /// @brief clone an existing execution plan
 ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
   auto plan = std::make_unique<ExecutionPlan>(ast);
@@ -288,12 +265,6 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
   plan->_appliedRules = _appliedRules;
   plan->_isResponsibleForInitialize = _isResponsibleForInitialize;
 
-  CloneNodeAdder adder(plan.get());
-  plan->_root->walk(&adder);
-
-  if (!adder.success) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Could not clone plan");
-  }
   // plan->findVarUsage();
   // Let's not do it here, because supposedly the plan is modified as
   // the very next thing anyway!
@@ -611,6 +582,7 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
 ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->id() > 0);
+  TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   try {
     _ids.emplace(node->id(), node);
@@ -727,7 +699,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     previous = calc;
   }
 
-  auto options = CreateTraversalOptions(getAst()->query()->trx(), direction,
+  auto options = CreateTraversalOptions(getAst()->query(), direction,
                                         node->getMember(3));
 
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
@@ -809,7 +781,7 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
       parseTraversalVertexNode(previous, node->getMember(2));
   AstNode const* graph = node->getMember(3);
 
-  auto options = CreateShortestPathOptions(getAst()->query()->trx(), node->getMember(4));
+  auto options = CreateShortestPathOptions(getAst()->query(), node->getMember(4));
 
   // First create the node
   auto spNode = new ShortestPathNode(this, nextId(), _ast->query()->vocbase(),

@@ -78,6 +78,8 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
 
+  uint64_t numCommits() const { return _numCommits; }
+  uint64_t numInternal() const { return _numInternal; }
   uint64_t numInserts() const { return _numInserts; }
   uint64_t numUpdates() const { return _numUpdates; }
   uint64_t numRemoves() const { return _numRemoves; }
@@ -86,7 +88,7 @@ class RocksDBTransactionState final : public TransactionState {
   void resetLogState() { _lastUsedCollection = 0; }
 
   inline bool hasOperations() const {
-    return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
+    return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0 || _numInternal > 0);
   }
 
   bool hasFailedOperations() const override {
@@ -102,6 +104,10 @@ class RocksDBTransactionState final : public TransactionState {
       TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
       TRI_voc_document_operation_e operationType, uint64_t operationSize,
       uint64_t keySize);
+  
+  /// @brief add an internal operation for a transaction
+  RocksDBOperationResult addInternalOperation(
+      uint64_t operationSize, uint64_t keySize);
 
   RocksDBMethods* rocksdbMethods();
 
@@ -143,6 +149,7 @@ class RocksDBTransactionState final : public TransactionState {
  private:
   void createTransaction();
   arangodb::Result internalCommit();
+  void checkIntermediateCommit(uint64_t newSize);
 
  private:
   /// @brief rocksdb transaction may be null for read only transactions
@@ -158,6 +165,8 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
 
+  uint64_t _numCommits;
+  uint64_t _numInternal;
   // if a transaction gets bigger than these values then an automatic
   // intermediate commit will be done
   uint64_t _numInserts;

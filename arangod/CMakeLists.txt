@@ -207,6 +207,7 @@ SET(ARANGOD_SOURCES
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
+  Cluster/ShardDistributionReporter.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Cluster/v8-cluster.cpp
@@ -240,6 +241,7 @@ SET(ARANGOD_SOURCES
   Graph/Traverser.cpp
   Graph/TraverserOptions.cpp
   Indexes/Index.cpp
+  Indexes/IndexFactory.cpp
   Indexes/IndexIterator.cpp
   Indexes/IndexLookupContext.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
@@ -285,10 +287,12 @@ SET(ARANGOD_SOURCES
   Replication/TailingSyncer.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
+  RestHandler/RestAdminServerHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
+  RestHandler/RestCollectionHandler.cpp
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDatabaseHandler.cpp
   RestHandler/RestDebugHandler.cpp
@@ -410,7 +414,6 @@ SET(ARANGOD_SOURCES
   VocBase/LogicalCollection.cpp
   VocBase/LogicalView.cpp
   VocBase/ManagedDocumentResult.cpp
-  VocBase/modes.cpp
   VocBase/replication-common.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp

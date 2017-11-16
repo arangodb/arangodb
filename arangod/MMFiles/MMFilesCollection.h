@@ -126,8 +126,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
  public:
   explicit MMFilesCollection(LogicalCollection*, VPackSlice const& info);
-  explicit MMFilesCollection(LogicalCollection*,
-                             PhysicalCollection*);  // use in cluster only!!!!!
+  MMFilesCollection(LogicalCollection*, PhysicalCollection const*);  // use in cluster only!!!!!
 
   ~MMFilesCollection();
   
@@ -143,7 +142,7 @@ class MMFilesCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*) override;
+  virtual PhysicalCollection* clone(LogicalCollection*) const override;
 
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   TRI_voc_rid_t revision() const;
@@ -180,7 +179,7 @@ class MMFilesCollection final : public PhysicalCollection {
                        std::vector<MMFilesDatafile*>&& compactors);
 
   /// @brief rotate the active journal - will do nothing if there is no journal
-  int rotateActiveJournal();
+  int rotateActiveJournal() override;
 
   /// @brief sync the active journal - will do nothing if there is no journal
   /// or if the journal is volatile
@@ -209,8 +208,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief increase dead stats for a datafile, if it exists
   void updateStats(TRI_voc_fid_t fid,
-                   MMFilesDatafileStatisticsContainer const& values) {
-    _datafileStatistics.update(fid, values);
+                   MMFilesDatafileStatisticsContainer const& values,
+                   bool warn) {
+    _datafileStatistics.update(fid, values, warn);
   }
 
   uint64_t numberDocuments(transaction::Methods* trx) const override;

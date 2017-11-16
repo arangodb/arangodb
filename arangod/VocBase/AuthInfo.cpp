@@ -142,8 +142,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
-                                   "Error executing user query: " + queryResult.details);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        queryResult.code, "Error executing user query: " + queryResult.details);
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
@@ -189,8 +189,8 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
-                                   "Error executing user query: " + queryResult.details);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        queryResult.code, "Error executing user query: " + queryResult.details);
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
@@ -450,7 +450,7 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
     return TRI_ERROR_USER_DUPLICATE;
   }
 
-  std::string oldKey; // will only be populated during replace
+  std::string oldKey;  // will only be populated during replace
 
   if (replace) {
     auto const& oldEntry = it->second;
@@ -603,6 +603,7 @@ VPackBuilder AuthInfo::serializeUser(std::string const& user) {
 static Result RemoveUserInternal(AuthUserEntry const& entry) {
   TRI_ASSERT(!entry.key().empty());
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
@@ -617,6 +618,7 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
+
   if (res.ok()) {
     VPackBuilder builder;
     {
@@ -629,6 +631,7 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
         trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
     res = trx.finish(result.code);
   }
+
   return res;
 }
 
@@ -636,10 +639,13 @@ Result AuthInfo::removeUser(std::string const& user) {
   if (user.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
+
   if (user == "root") {
     return TRI_ERROR_FORBIDDEN;
   }
+
   loadFromDB();
+
   Result res;
   {
     WRITE_LOCKER(guard, _authInfoLock);
@@ -663,13 +669,16 @@ Result AuthInfo::removeUser(std::string const& user) {
       _authBasicCache.clear();
     }
   }
+
   reloadAllUsers();
   return res;
 }
 
 Result AuthInfo::removeAllUsers() {
   loadFromDB();
+
   Result res;
+
   {
     WRITE_LOCKER(guard, _authInfoLock);
 
@@ -785,8 +794,9 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   auto it = _authInfo.find(username);
   auto feature = AuthenticationFeature::INSTANCE;
 
-  if (it != _authInfo.end() && (it->second.source() == AuthSource::COLLECTION)
-      && feature != nullptr && ! feature->localAuthentication()) {
+  if (it != _authInfo.end() &&
+      (it->second.source() == AuthSource::COLLECTION) && feature != nullptr &&
+      !feature->localAuthentication()) {
     return result;
   }
 
@@ -848,12 +858,30 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   return result;
 }
 
-#include <iostream>
-
 AuthLevel AuthInfo::canUseDatabase(std::string const& username,
                                    std::string const& dbname) {
   loadFromDB();
-  READ_LOCKER(guard, _authInfoLock);
+  AuthLevel level;
+  {
+    READ_LOCKER(guard, _authInfoLock);
+    level = canUseDatabaseInternal(username, dbname, 0);
+  }
+
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    // no write operations allowed on this server at all
+    LOG_TOPIC(TRACE, Logger::FIXME) << "downgrading user rights";
+    return AuthLevel::RO;
+  }
+  // return actual level
+  return level;
+}
+
+// worker function for canUseDatabase
+// must only be called with the read-lock on _authInfoLock being held
+AuthLevel AuthInfo::canUseDatabaseInternal(std::string const& username,
+                                           std::string const& dbname,
+                                           size_t depth) const {
   auto it = _authInfo.find(username);
 
   if (it == _authInfo.end()) {
@@ -863,18 +891,26 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
   auto const& entry = it->second;
   AuthLevel level = entry.databaseAuthLevel(dbname);
 
+#ifdef USE_ENTERPRISE
+  // check all roles and use the highest permission from them
   for (auto const& role : entry.roles()) {
     if (level == AuthLevel::RW) {
-      return level;
+      // we already have highest permission
+      break;
     }
 
-    AuthLevel roleLevel = canUseDatabase(role, dbname);
+    // recurse into function, but only one level deep.
+    // this allows us to avoid endless recursion without major overhead
+    if (depth == 0) {
+      AuthLevel roleLevel = canUseDatabaseInternal(role, dbname, depth + 1);
 
-    if (level == AuthLevel::NONE) {
-      level = roleLevel;
+      if (level == AuthLevel::NONE) {
+        // use the permission of the role we just found
+        level = roleLevel;
+      }
     }
   }
-
+#endif
   return level;
 }
 
@@ -889,7 +925,9 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
   if (coll[0] >= '0' && coll[0] <= '9') {
     // lookup by collection id
     // translate numeric collection id into collection name
-    return canUseCollectionInternal(username, dbname, DatabaseFeature::DATABASE->translateCollectionName(dbname, coll));
+    return canUseCollectionInternal(
+        username, dbname,
+        DatabaseFeature::DATABASE->translateCollectionName(dbname, coll));
   }
 
   // lookup by collection name
@@ -920,6 +958,7 @@ AuthLevel AuthInfo::canUseCollectionInternal(std::string const& username,
   auto const& entry = it->second;
   AuthLevel level = entry.collectionAuthLevel(dbname, coll);
 
+#ifdef USE_ENTERPRISE
   for (auto const& role : entry.roles()) {
     if (level == AuthLevel::RW) {
       return level;
@@ -931,7 +970,13 @@ AuthLevel AuthInfo::canUseCollectionInternal(std::string const& username,
       level = roleLevel;
     }
   }
+#endif
 
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "downgrading user rights";
+    return AuthLevel::RO;
+  }
   return level;
 }
 

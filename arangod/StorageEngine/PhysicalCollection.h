@@ -62,7 +62,7 @@ class PhysicalCollection {
       arangodb::velocypack::Slice const& slice, bool doSync) = 0;
   virtual arangodb::Result persistProperties() = 0;
 
-  virtual PhysicalCollection* clone(LogicalCollection*) = 0;
+  virtual PhysicalCollection* clone(LogicalCollection*) const = 0;
 
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const = 0;
 
@@ -79,6 +79,9 @@ class PhysicalCollection {
   virtual int close() = 0;
   virtual void load() = 0;
   virtual void unload() = 0;
+  
+  /// @brief rotate the active journal - will do nothing if there is no journal
+  virtual int rotateActiveJournal() { return TRI_ERROR_NO_ERROR; }
 
   // @brief Return the number of documents in this collection
   virtual uint64_t numberDocuments(transaction::Methods* trx) const = 0;
@@ -90,7 +93,7 @@ class PhysicalCollection {
   virtual void open(bool ignoreErrors) = 0;
 
   void drop();
-
+  
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
@@ -107,9 +110,9 @@ class PhysicalCollection {
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
-
-  void getIndexesVPack(velocypack::Builder&, bool,
-                       bool forPersistence = false) const;
+                       
+  void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
+                       std::function<bool(arangodb::Index const*)> const& filter) const;
 
   virtual std::shared_ptr<Index> createIndex(
       transaction::Methods* trx, arangodb::velocypack::Slice const& info,
@@ -194,7 +197,7 @@ class PhysicalCollection {
   ///        it at that moment.
   virtual void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) = 0;
-
+  
  protected:
   /// @brief Inject figures that are specific to StorageEngine
   virtual void figuresSpecific(

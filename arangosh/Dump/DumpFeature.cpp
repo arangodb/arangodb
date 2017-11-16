@@ -54,8 +54,8 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
                          int* result)
     : ApplicationFeature(server, "Dump"),
       _collections(),
-      _chunkSize(1024 * 1024 * 2),
-      _maxChunkSize(1024 * 1024 * 12),
+      _chunkSize(1024 * 1024 * 8),
+      _maxChunkSize(1024 * 1024 * 64),
       _dumpData(true),
       _force(false),
       _ignoreDistributeShardsLikeErrors(false),
@@ -90,7 +90,7 @@ void DumpFeature::collectOptions(
                      new UInt64Parameter(&_chunkSize));
 
   options->addOption("--batch-size",
-                     "initial size for individual data batches (in bytes)",
+                     "maximum size for individual data batches (in bytes)",
                      new UInt64Parameter(&_maxChunkSize));
 
   options->addOption("--dump-data", "dump collection data",
@@ -104,7 +104,7 @@ void DumpFeature::collectOptions(
       "--ignore-distribute-shards-like-errors",
       "continue dump even if sharding prototype collection is not backed up along",
       new BooleanParameter(&_ignoreDistributeShardsLikeErrors));
-  
+
   options->addOption("--include-system-collections",
                      "include system collections",
                      new BooleanParameter(&_includeSystemCollections));
@@ -673,16 +673,18 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
 /// @brief dump a single shard, that is a collection on a DBserver
 int DumpFeature::dumpShard(int fd, std::string const& DBserver,
                            std::string const& name, std::string& errorMsg) {
+  uint64_t chunkSize = _chunkSize;
+
   std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
                               "&batchId=" + StringUtils::itoa(_batchId) +
-                              "&collection=" + name + "&chunkSize=" +
-                              StringUtils::itoa(_chunkSize) + "&ticks=false";
+                              "&collection=" + name + "&ticks=false";
 
   uint64_t fromTick = 0;
   uint64_t maxTick = UINT64_MAX;
 
   while (true) {
-    std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
+    std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick) +
+                      "&chunkSize=" + StringUtils::itoa(chunkSize);
 
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
@@ -758,6 +760,15 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
     if (!checkMore || fromTick == 0) {
       // done
       return res;
+    }
+
+    if (chunkSize < _maxChunkSize) {
+      // adaptively increase chunksize
+      chunkSize = static_cast<uint64_t>(chunkSize * 1.5);
+
+      if (chunkSize > _maxChunkSize) {
+        chunkSize = _maxChunkSize;
+      }
     }
   }
 

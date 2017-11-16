@@ -170,6 +170,9 @@ class MMFilesEngine final : public StorageEngine {
   void waitForSyncTick(TRI_voc_tick_t tick) override;
   
   void waitForSyncTimeout(double maxWait) override;
+  
+  Result flushWal(bool waitForSync, bool waitForCollector,
+                  bool writeShutdownFile) override;
 
   virtual TRI_vocbase_t* openDatabase(
       arangodb::velocypack::Slice const& parameters, bool isUpgrade,
@@ -511,9 +514,9 @@ class MMFilesEngine final : public StorageEngine {
   // lock for threads
   arangodb::Mutex _threadsLock;
   // per-database compactor threads, protected by _threadsLock
-  std::unordered_map<TRI_vocbase_t*, MMFilesCompactorThread*> _compactorThreads;
+  std::unordered_map<TRI_vocbase_t*, std::shared_ptr<MMFilesCompactorThread>> _compactorThreads;
   // per-database cleanup threads, protected by _threadsLock
-  std::unordered_map<TRI_vocbase_t*, MMFilesCleanupThread*> _cleanupThreads;
+  std::unordered_map<TRI_vocbase_t*, std::shared_ptr<MMFilesCleanupThread>> _cleanupThreads;
 };
 }
 

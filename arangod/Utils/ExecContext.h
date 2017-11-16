@@ -42,26 +42,61 @@ class ExecContext : public RequestContext {
   ExecContext(bool isInternal, std::string const& user,
               std::string const& database, AuthLevel systemLevel,
               AuthLevel dbLevel)
-      : _isInternal(isInternal),
+      : _internal(isInternal),
+        _canceled(false),
         _user(user),
         _database(database),
         _systemDbAuthLevel(systemLevel),
         _databaseAuthLevel(dbLevel) {
-    TRI_ASSERT(!_isInternal || _user.empty());
+    TRI_ASSERT(!_internal || _user.empty());
   }
   ExecContext(ExecContext const&) = delete;
 
  public:
   virtual ~ExecContext() {}
 
+  /// shortcut helper to check the AuthenticationFeature
+  static bool isAuthEnabled();
+  
   /// @brief an internal superuser context, is
   ///        a singleton instance, deleting is an error
   static ExecContext const* superuser();
   
   /// @brief create user context, caller is responsible for deleting
   static ExecContext* create(std::string const& user, std::string const& db);
+  
+  /// @brief an internal user is none / ro / rw for all collections / dbs
+  bool isInternal() const {
+    return _internal;
+  }
+  
+  /// @brief any internal operation is a superuser.
+  bool isSuperuser() const { return _internal &&
+    _systemDbAuthLevel == AuthLevel::RW &&
+    _databaseAuthLevel == AuthLevel::RW;
+  }
+  
+  /// @brief is this an internal read-only user
+  bool isReadOnly() const {
+    return _internal && _systemDbAuthLevel == AuthLevel::RO;
+  }
+  
+  /// @brief is allowed to manage users, create databases, ...
+  bool isAdminUser() const {
+    // conflicts with read-only: TRI_ASSERT(!_internal || _systemDbAuthLevel == AuthLevel::RW);
+    return _systemDbAuthLevel == AuthLevel::RW;
+  }
+  
+  /// @brief should immediately cance this operation
+  bool isCanceled() const {
+    return _canceled;
+  }
+  
+  void cancel() {
+    _canceled = true;
+  }
 
-  /// @brief current user, may be empty for internal superuser
+  /// @brief current user, may be empty for internal users
   std::string const& user() const { return _user; }
 
   // std::string const& database() const { return _database; }
@@ -72,20 +107,6 @@ class ExecContext : public RequestContext {
   ///        request scope. Should almost always contain something,
   ///        if this thread originated in v8 or from HTTP / VST
   AuthLevel databaseAuthLevel() const { return _databaseAuthLevel; };
-
-  /// @brief any internal operation is a superuser.
-  bool isSuperuser() const { return _isInternal &&
-                                    _systemDbAuthLevel == AuthLevel::RW; }
-  
-  /// @brief is this an internal read-only user
-  bool isReadOnly() const { return _isInternal &&
-                                   _systemDbAuthLevel == AuthLevel::RO; }
-
-  /// @brief is allowed to manage users, create databases, ...
-  bool isAdminUser() const {
-    TRI_ASSERT(!_isInternal || _systemDbAuthLevel == AuthLevel::RW);
-    return _systemDbAuthLevel == AuthLevel::RW;
-  }
 
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseDatabase(AuthLevel requested) const {
@@ -110,17 +131,23 @@ class ExecContext : public RequestContext {
   }
 
  public:
+  
   /// Should always contain a reference to current user context
   static thread_local ExecContext const* CURRENT;
 
  protected:
   
   /// Internal superuser or read-only user
-  bool _isInternal;
-  
+  bool _internal;
+  /// should be used to indicate a canceled request / thread
+  bool _canceled;
+  /// current user, may be empty for internal users
   std::string const _user;
+  /// current database to use
   std::string const _database;
+  /// level of system database
   AuthLevel _systemDbAuthLevel;
+  /// level of current database
   AuthLevel _databaseAuthLevel;
 
   static ExecContext SUPERUSER;

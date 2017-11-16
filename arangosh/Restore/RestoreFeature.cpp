@@ -63,7 +63,6 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _importStructure(true),
       _progress(true),
       _overwrite(true),
-      _recycleIds(false),
       _force(false),
       _ignoreDistributeShardsLikeErrors(false),
       _clusterMode(false),
@@ -86,6 +85,9 @@ void RestoreFeature::collectOptions(
       "--collection",
       "restrict to collection name (can be specified multiple times)",
       new VectorParameter<StringParameter>(&_collections));
+
+  options->addObsoleteOption("--recycle-ids", 
+                             "collection ids are now handled automatically", false);
 
   options->addOption("--batch-size",
                      "maximum size for individual data batches (in bytes)",
@@ -113,9 +115,6 @@ void RestoreFeature::collectOptions(
 
   options->addOption("--overwrite", "overwrite collections if they exist",
                      new BooleanParameter(&_overwrite));
-
-  options->addOption("--recycle-ids", "recycle collection ids from dump",
-                     new BooleanParameter(&_recycleIds));
 
   options->addOption("--default-number-of-shards",
                      "default value for numberOfShards if not specified",
@@ -230,8 +229,7 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
   std::string url =
     "/_api/replication/restore-collection"
     "?overwrite=" +
-    std::string(_overwrite ? "true" : "false") + "&recycleIds=" +
-    std::string(_recycleIds ? "true" : "false") + "&force=" +
+    std::string(_overwrite ? "true" : "false") + "&force=" +
     std::string(_force ? "true" : "false") +
     "&ignoreDistributeShardsLikeErrors=" +
     std::string(_ignoreDistributeShardsLikeErrors ? "true":"false");
@@ -317,8 +315,7 @@ int RestoreFeature::sendRestoreData(std::string const& cname,
                                     char const* buffer, size_t bufferSize,
                                     std::string& errorMsg) {
   std::string const url = "/_api/replication/restore-data?collection=" +
-                          StringUtils::urlEncode(cname) + "&recycleIds=" +
-                          (_recycleIds ? "true" : "false") + "&force=" +
+                          StringUtils::urlEncode(cname) + "&force=" +
                           (_force ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(
@@ -462,16 +459,9 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         }
 
         if (overwriteName) {
-          // TODO MAX
-          // Situation:
-          // Ich habe ein Json-Object von Datei (teile des Inhalts im Zweifel
-          // unbekannt)
-          // Es gibt ein Sub-Json-Object "parameters" mit einem Attribute "name"
-          // der gesetzt ist.
-          // Ich muss nur diesen namen überschreiben, der Rest soll identisch
-          // bleiben.
+          // TODO: we have a JSON object with sub-object "parameters" with
+          // attribute "name". we only want to replace this. how?
         } else {
-          //std::shared_ptr<VPackBuffer<uint8_t>> buff = fileContentBuilder.steal();
           collections.emplace_back(std::move(fileContentBuilder));
         }
       }

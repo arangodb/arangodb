@@ -321,6 +321,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_ARANGO_VALIDATION_FAILED:
     case TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED:
     case TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST:
+    case TRI_ERROR_ARANGO_ILLEGAL_NAME:
     case TRI_ERROR_ARANGO_INDEX_HANDLE_BAD:
     case TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE:
     case TRI_ERROR_QUERY_PARSE:
@@ -355,6 +356,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_GRAPH_INVALID_ID:
     case TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS:
     case TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST:
+    case TRI_ERROR_ARANGO_NO_JOURNAL:
       return ResponseCode::BAD;
 
     case TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE:
@@ -405,6 +407,8 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
       return ResponseCode::SERVER_ERROR;
 
     case TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE:
+    case TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING:
+    case TRI_ERROR_CLUSTER_NOT_LEADER:
       return ResponseCode::SERVICE_UNAVAILABLE;
 
     case TRI_ERROR_CLUSTER_UNSUPPORTED:

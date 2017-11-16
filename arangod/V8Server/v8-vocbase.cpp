@@ -84,7 +84,6 @@
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Transactions.h"
 
@@ -938,7 +937,7 @@ static void JS_QueriesPropertiesAql(
           obj->Get(TRI_V8_ASCII_STRING(isolate, "maxQueryStringLength")))));
     }
 
-    // fall-through intentional
+    // intentionally falls through
   }
 
   // return current settings
@@ -1750,10 +1749,6 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_ASSERT(!vocbase->isDangling());
-
-  if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
-  }
 
   if (!vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);

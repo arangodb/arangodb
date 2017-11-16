@@ -46,9 +46,10 @@ bool RestShutdownHandler::isDirect() const { return true; }
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestShutdownHandler::execute() {
-  if (ExecContext::CURRENT == nullptr ||
+  if (ExecContext::CURRENT != nullptr &&
       !ExecContext::CURRENT->isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "you need admin rights to trigger shutdown");
     return RestStatus::DONE;
   }
   if (_request->requestType() != rest::RequestType::DELETE_REQ) {

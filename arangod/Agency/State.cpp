@@ -41,6 +41,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -143,7 +144,11 @@ std::vector<index_t> State::logLeaderMulti(
       30000, "Agency syntax requires array of transactions [[<queries>]]");
   }
 
-  TRI_ASSERT(slice.length() == applicable.size());
+  if (slice.length() != applicable.size()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      30000, "Invalid transaction syntax");
+  }
+
   MUTEX_LOCKER(mutexLocker, _logLock); 
   
   TRI_ASSERT(!_log.empty()); // log must never be empty
@@ -158,8 +163,8 @@ std::vector<index_t> State::logLeaderMulti(
     }
     
     if (applicable[j]) {
-      std::string clientId((i.length()==3) ? i[2].copyString() : "");
-      idx[j] = logNonBlocking(_log.back().index+1, i[0], term, clientId, true);
+      std::string clientId((i.length() == 3) ? i[2].copyString() : "");
+      idx[j] = logNonBlocking(_log.back().index + 1, i[0], term, clientId, true);
     }
     ++j;
   }
@@ -785,10 +790,22 @@ bool State::loadOrPersistConfiguration() {
   if (result.isArray() &&
       result.length()) {  // We already have a persisted conf
 
+    auto resolved = result[0].resolveExternals();
+
+    TRI_ASSERT(resolved.hasKey("id"));
+    auto id = resolved.get("id");
+
+    TRI_ASSERT(id.isString());
+    if (ServerState::instance()->hasPersistedId()) {
+      TRI_ASSERT(id.copyString() == ServerState::instance()->getPersistedId());
+    } else {
+      ServerState::instance()->writePersistedId(id.copyString());
+    }
+
     try {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << "Merging configuration " << result[0].resolveExternals().toJson();
-      _agent->mergeConfiguration(result[0].resolveExternals());
+        << "Merging configuration " << resolved.toJson();
+      _agent->mergeConfiguration(resolved);
       
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY)
@@ -798,14 +815,31 @@ bool State::loadOrPersistConfiguration() {
       FATAL_ERROR_EXIT();
     }
 
-  } else {  // Fresh start
+  } else {  // Fresh start or disaster recovery
 
     MUTEX_LOCKER(guard, _configurationWriteLock);
 
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "New agency!";
 
     TRI_ASSERT(_agent != nullptr);
-    _agent->id(to_string(boost::uuids::random_generator()()));
+
+    // If we have persisted id, we use that. Otherwise we check, if we were
+    // given a disaster recovery id that wins then before a new one is generated
+    // and that choice persisted.
+    std::string uuid;
+    if (ServerState::instance()->hasPersistedId()) {
+      uuid = ServerState::instance()->getPersistedId();
+    } else {
+      std::string recoveryId = _agent->config().recoveryId();
+      if (recoveryId.empty()) { 
+        uuid =
+          ServerState::instance()->generatePersistedId(ServerState::ROLE_AGENT);
+      } else {
+        uuid = recoveryId;
+        ServerState::instance()->writePersistedId(recoveryId);
+      }
+    }
+    _agent->id(uuid);
 
     auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
     SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);

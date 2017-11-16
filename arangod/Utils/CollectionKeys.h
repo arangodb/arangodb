@@ -104,7 +104,7 @@ class CollectionKeys {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void dumpDocs(arangodb::velocypack::Builder& result, size_t chunk, 
-                        size_t chunkSize, size_t offsetInChunk,
+                        size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize,
                         arangodb::velocypack::Slice const& ids) const = 0;
 
  protected:

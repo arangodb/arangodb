@@ -11,7 +11,7 @@ You want to store XML data files into a database to have the ability to make que
 Solution
 --------
 
-Since version 3.1.0 the aragodb-java-driver supports writing, reading and querying of raw strings containing the JSON documents.
+Since version 3.1.0 the arangodb-java-driver supports writing, reading and querying of raw strings containing the JSON documents.
 
 With [JsonML](http://www.jsonml.org/) you can convert a XML string into a JSON string and back to XML again.
 

@@ -31,6 +31,7 @@
 
 namespace arangodb {
 class AgencyComm;
+class Result;
 
 class ServerState {
  public:
@@ -51,6 +52,19 @@ class ServerState {
     STATE_STOPPING,       // primary only
     STATE_STOPPED,        // primary only
     STATE_SHUTDOWN        // used by all roles
+  };
+  
+  enum class Mode : uint8_t {
+    DEFAULT = 0,
+    /// reject all requests
+    MAINTENANCE = 1,
+    /// status unclear, client must try again
+    TRYAGAIN = 2,
+    /// redirect to lead server if possible
+    REDIRECT = 3,
+    /// redirect to lead server if possible
+    READ_ONLY = 4,
+    INVALID = 255, // this mode is used to indicate shutdown
   };
 
  public:
@@ -81,6 +95,30 @@ class ServerState {
 
   /// @brief convert a string representation to a state
   static StateEnum stringToState(std::string const&);
+  
+  /// @brief get the string representation of a mode
+  static std::string modeToString(Mode);
+    
+  /// @brief convert a string representation to a mode
+  static Mode stringToMode(std::string const&);
+  
+  /// @brief sets server mode, returns previously held
+  /// value (performs atomic read-modify-write operation)
+  static Mode setServerMode(Mode mode);
+  
+  /// @brief atomically load current server mode
+  static Mode serverMode();
+  
+  /// @brief checks maintenance mode
+  static bool isMaintenance() {
+    return serverMode() == Mode::MAINTENANCE;
+  }
+  
+  /// @brief should not allow DDL operations / transactions
+  static bool writeOpsEnabled() {
+    Mode mode = serverMode();
+    return mode == Mode::DEFAULT || mode == Mode::MAINTENANCE;
+  }
 
  public:
   /// @brief sets the initialized flag
@@ -202,7 +240,15 @@ class ServerState {
   
   bool getFoxxmasterQueueupdate();
 
- private:
+  std::string getPersistedId();
+  bool hasPersistedId();
+  bool writePersistedId(std::string const&);
+  std::string generatePersistedId(RoleEnum const&);
+
+  /// @brief sets server mode and propagates new mode to agency
+  Result propagateClusterServerMode(Mode);
+
+private:
   /// @brief atomically fetches the server role
   RoleEnum loadRole() {
     return static_cast<RoleEnum>(_role.load(std::memory_order_consume));
@@ -222,13 +268,9 @@ class ServerState {
   /// @brief register shortname for an id
   bool registerShortName(std::string const& id, const RoleEnum&);
 
+  /// 
   std::string getUuidFilename();
-  std::string getPersistedId();
-  bool hasPersistedId();
-  std::string generatePersistedId(RoleEnum const&);
-  bool writePersistedId(std::string const&);
 
- private:
   /// @brief the pointer to the singleton instance
   static ServerState* _theinstance;
   

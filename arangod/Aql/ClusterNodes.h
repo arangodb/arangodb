@@ -85,7 +85,7 @@ class RemoteNode : public ExecutionNode {
     auto c = new RemoteNode(plan, _id, _vocbase, _collection, _server, _ownName,
                             _queryId);
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }
@@ -169,7 +169,7 @@ class ScatterNode : public ExecutionNode {
                        bool withProperties) const override final {
     auto c = new ScatterNode(plan, _id, _vocbase, _collection);
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }
@@ -238,7 +238,7 @@ class DistributeNode : public ExecutionNode {
                                 _alternativeVarId, _createKeys,
                                 _allowKeyConversionToObject);
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }
@@ -304,12 +304,10 @@ class GatherNode : public ExecutionNode {
   /// @brief constructor with an id
  public:
   GatherNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-             Collection const* collection)
-      : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection),
-        _auxiliaryCollections() {}
+             Collection const* collection, std::size_t shardsRequiredForHeapMerge = 5);
 
   GatherNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
-             SortElementVector const& elements);
+             SortElementVector const& elements, std::size_t shardsRequiredForHeapMerge = 5);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return GATHER; }
@@ -323,7 +321,7 @@ class GatherNode : public ExecutionNode {
                        bool withProperties) const override final {
     auto c = new GatherNode(plan, _id, _vocbase, _collection);
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }
@@ -373,6 +371,9 @@ class GatherNode : public ExecutionNode {
 
   bool hasAuxiliaryCollections() const { return !_auxiliaryCollections.empty(); }
 
+  void forceSortHeap(){ _sortmode='h'; }
+  void forceSortMinElement(){ _sortmode='m'; }
+
  private:
   /// @brief sort elements, variable, ascending flags and possible attribute
   /// paths.
@@ -386,6 +387,7 @@ class GatherNode : public ExecutionNode {
 
   /// @brief (optional) auxiliary collections (satellites)
   std::unordered_set<Collection const*> _auxiliaryCollections;
+  char _sortmode; // u - unset, m - min element, h - heap
 };
 
 }  // namespace arangodb::aql

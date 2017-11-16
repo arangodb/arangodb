@@ -53,6 +53,7 @@ BootstrapFeature::BootstrapFeature(
   startsAfter("FoxxQueues");
   startsAfter("GeneralServer");
   startsAfter("Cluster");
+  startsAfter("V8Dealer");
 }
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -203,10 +204,9 @@ void BootstrapFeature::start() {
         }
       }
     } else if (ServerState::isDBServer(role)) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP)
-      << "Running server/bootstrap/db-server.js";
-      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
-                                                               "server/bootstrap/db-server.js", nullptr);
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/bootstrap/db-server.js";
+      // only run the JavaScript in V8 context #0.
+      V8DealerFeature::DEALER->loadJavaScriptFileInDefaultContext(vocbase, "server/bootstrap/db-server.js", nullptr);
     } else {
       TRI_ASSERT(false);
     }
@@ -222,17 +222,20 @@ void BootstrapFeature::start() {
         VPackBuilder myIdBuilder;
         myIdBuilder.add(VPackValue(myId));
         AgencyComm agency;
-        AgencyCommResult res = agency.casValue(leaderPath, myIdBuilder.slice(), false,
-                                                  /* ttl */ 60.0, /* timeout */ 5.0);
+        AgencyCommResult res = agency.getValues(leaderPath);
+        VPackSlice leaderSlice;
         if (res.successful()) {
-          // sucessfull leadership takeover
-          ServerState::instance()->setFoxxmaster(myId);
-          LOG_TOPIC(INFO, Logger::STARTUP) << "Became leader in automatic failover setup";
-        } else {
-          res = agency.getValues(leaderPath);
-          if (res.successful()) {
-            VPackSlice value = res.slice()[0].get(AgencyCommManager::slicePath(leaderPath));
-            ss->setFoxxmaster(value.copyString());
+          leaderSlice = res.slice()[0].get(AgencyCommManager::slicePath(leaderPath));
+          if (!leaderSlice.isString() || leaderSlice.getStringLength() == 0) {
+            res = agency.casValue(leaderPath, leaderSlice, myIdBuilder.slice(),
+                                  /* ttl */ 0, /* timeout */ 5.0);
+            if (res.successful()) {
+              // sucessfull leadership takeover
+              ss->setFoxxmaster(myId);
+              LOG_TOPIC(INFO, Logger::STARTUP) << "Became leader in automatic failover setup";
+            } // heartbeat thread will take care later
+          } else {
+            ss->setFoxxmaster(leaderSlice.copyString());
             LOG_TOPIC(INFO, Logger::STARTUP) << "Following " << ss->getFoxxmaster();
           }
         }
@@ -244,17 +247,22 @@ void BootstrapFeature::start() {
     V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js", nullptr);
     // Agency is not allowed to call this
     if (ServerState::isSingleServer(role)) {
-      // only creates root user if it does not exist
+      // only creates root user if it does not exist, will be overwritten on slaves
       AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
     }
-    
   }
   
-  // Start service properly:
-  rest::RestHandlerFactory::setServerMode(rest::RestHandlerFactory::Mode::DEFAULT);
+  
+  if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
+    // simon: is set to correct value in the heartbeat thread
+    ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
+  } else {
+    // Start service properly:
+    ServerState::setServerMode(ServerState::Mode::DEFAULT);
+  }
+  
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";
-
   if (_bark) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "The dog says: wau wau!";
   }

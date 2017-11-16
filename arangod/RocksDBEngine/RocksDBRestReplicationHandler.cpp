@@ -308,6 +308,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
         dumper.dump(marker);
         httpResponse->body().appendChar('\n');
+        //LOG_TOPIC(INFO, Logger::FIXME) << marker.toJson(trxContext->getVPackOptions());
       }
     }
     // add client
@@ -561,10 +562,17 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   }
   
   size_t offsetInChunk = 0;
+  size_t maxChunkSize = SIZE_MAX;
   std::string const& value4 = _request->value("offset", found);
   if (found) {
     offsetInChunk = static_cast<size_t>(StringUtils::uint64(value4));
-  }
+    // "offset" was introduced with ArangoDB 3.3. if the client sends it,
+    // it means we can adapt the result size dynamically and the client
+    // may refetch data for the same chunk
+    maxChunkSize = 8 * 1024 * 1024; 
+    // if a client does not send an "offset" parameter at all, we are
+    // not sure if it supports this protocol (3.2 and before) or not
+  } 
 
   std::string const& id = suffixes[1];
 
@@ -592,7 +600,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   
   if (keys) {
     Result rv = ctx->dumpKeys(builder, chunk, static_cast<size_t>(chunkSize), lowKey);
-    if (rv.fail()){
+    if (rv.fail()) {
       generateError(rv);
       return;
     }
@@ -603,7 +611,8 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
     }
-    Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk, lowKey, parsedIds->slice());
+    
+    Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk, maxChunkSize, lowKey, parsedIds->slice());
     if (rv.fail()) {
       generateError(rv);
       return;

@@ -508,8 +508,98 @@ function HashIndexSuite() {
 
       var doc2 = collection.save({ a : "test3", b : 1});
       assertTrue(doc2._key !== "");
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testUniquenessAndLookup : function () {
+      var idx = collection.ensureIndex({ type: "hash", unique: true, fields: ["value"] });
+
+      assertEqual("hash", idx.type);
+      assertEqual(true, idx.unique);
+      assertEqual(["value"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      var bound = 1000;
+      var i;
+      for (i = -bound; i < bound; ++i) {
+        collection.insert({ value: i });
+      }
+      
+      if (internal.db._engine().name === "rocksdb") {
+        internal.db._executeTransaction({
+          collections: { write: cn },
+          action: function(params) {
+            // need to run compaction in the rocksdb case, as the lookups
+            // may use bloom filters afterwards but not for memtables
+            require("internal").db[params.cn].compact();
+          },
+          params: { cn }
+        });
+      }
+
+      assertEqual(2 * bound, collection.count());
+
+      for (i = -bound; i < bound; ++i) {
+        var docs = collection.byExample({ value: i }).toArray();
+        assertEqual(1, docs.length);
+        assertEqual(i, docs[0].value);
+        
+        collection.update(docs[0]._key, docs[0]);
+      }
+
+      for (i = -bound; i < bound; ++i) {
+        try {
+          collection.insert({ value: i });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+        }
+      }
+    },
+
+    testUniquenessAndLookup2 : function () {
+      var idx = collection.ensureIndex({ type: "hash", unique: true, fields: ["value"] });
+
+      assertEqual("hash", idx.type);
+      assertEqual(true, idx.unique);
+      assertEqual(["value"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      var i = 0;
+      while (i < 100000) {
+        for (var j = 0; j < 20; ++j) {
+          collection.insert({ value: i++ });
+        }
+        i *= 2;
+      }
+
+      if (internal.db._engine().name === "rocksdb") {
+        internal.db._executeTransaction({
+          collections: { write: cn },
+          action: function(params) {
+            // need to run compaction in the rocksdb case, as the lookups
+            // may use bloom filters afterwards but not for memtables
+            require("internal").db[params.cn].compact();
+          },
+          params: { cn }
+        });
+      }
+        
+      i = 0;
+      while (i < 100000) {
+        for (j = 0; j < 20; ++j) {
+          var docs = collection.byExample({ value: i }).toArray();
+          assertEqual(1, docs.length);
+          assertEqual(i, docs[0].value);
+          collection.update(docs[0]._key, docs[0]);
+          ++i;
+        }
+        i *= 2;
+      }
+    }
   };
 }
 

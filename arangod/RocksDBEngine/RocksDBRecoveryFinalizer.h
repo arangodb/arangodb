@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,18 +20,25 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "modes.h"
+#ifndef ROCKSDB_RECOVERY_FINALIZER_H
+#define ROCKSDB_RECOVERY_FINALIZER_H 1
 
-/// @brief server operation mode (e.g. read-only, normal etc).
-static TRI_vocbase_operationmode_e Mode = TRI_VOCBASE_MODE_NORMAL;
+#include "ApplicationFeatures/ApplicationFeature.h"
 
-/// @brief sets the current operation mode of the server
-int TRI_ChangeOperationModeServer(TRI_vocbase_operationmode_e mode) {
-  Mode = mode;
+namespace arangodb {
+// a small glue feature that only establishes the dependencies between the RocksDBEngine
+// feature and the DatabaseFeature
+// its start method will be run after both the RocksDBEngine and the DatabaseFeature
+// have started and all databases have been established
+// it will then call the DatabaseFeature's recoveryDone() method, which will start
+// replication in all databases if nececessary
+class RocksDBRecoveryFinalizer final : public application_features::ApplicationFeature {
+ public:
+  explicit RocksDBRecoveryFinalizer(application_features::ApplicationServer* server);
 
-  return TRI_ERROR_NO_ERROR;
+ public:
+  void start() override final;
+};
 }
 
-/// @brief returns the current operation server of the server
-TRI_vocbase_operationmode_e TRI_GetOperationModeServer() { return Mode; }
-
+#endif

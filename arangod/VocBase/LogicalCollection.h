@@ -56,7 +56,7 @@ namespace transaction {
 class Methods;
 }
 
-class ChecksumResult: public Result {
+class ChecksumResult : public Result {
  public:
   explicit ChecksumResult(Result&& result) : Result(std::move(result)) {}
   explicit ChecksumResult(velocypack::Builder&& builder): Result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
@@ -77,7 +77,7 @@ class LogicalCollection {
   friend struct ::TRI_vocbase_t;
 
  public:
-  LogicalCollection(TRI_vocbase_t*, velocypack::Slice const&);
+  LogicalCollection(TRI_vocbase_t*, velocypack::Slice const&, bool isAStub);
 
   virtual ~LogicalCollection();
 
@@ -93,8 +93,7 @@ class LogicalCollection {
   LogicalCollection() = delete;
 
   virtual std::unique_ptr<LogicalCollection> clone() {
-    auto p = new LogicalCollection(*this);
-    return std::unique_ptr<LogicalCollection>(p);
+    return std::unique_ptr<LogicalCollection>(new LogicalCollection(*this));
   }
 
   /// @brief hard-coded minimum version number for collections
@@ -104,10 +103,7 @@ class LogicalCollection {
 
   /// @brief determine whether a collection name is a system collection name
   static inline bool IsSystemName(std::string const& name) {
-    if (name.empty()) {
-      return false;
-    }
-    return name[0] == '_';
+    return (!name.empty() && name[0] == '_');
   }
 
   static bool IsAllowedName(velocypack::Slice parameters);
@@ -122,14 +118,14 @@ class LogicalCollection {
 
   inline TRI_voc_cid_t cid() const { return _cid; }
 
-  std::string cid_as_string() const;
+  virtual std::string cid_as_string() const;
 
   TRI_voc_cid_t planId() const;
   std::string planId_as_string() const;
 
   TRI_col_type_e type() const;
 
-  std::string name() const;
+  virtual std::string name() const;
   std::string dbName() const;
 
   std::string globallyUniqueId() const;
@@ -177,6 +173,7 @@ class LogicalCollection {
   bool isSystem() const;
   bool waitForSync() const;
   bool isSmart() const;
+  bool isAStub() const { return _isAStub; }
 
   void waitForSync(bool value) { _waitForSync = value; }
 
@@ -213,7 +210,9 @@ class LogicalCollection {
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence) const;
+  void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
+                       std::function<bool(arangodb::Index const*)> const& filter =
+                         [](arangodb::Index const*) -> bool { return true; }) const;
 
   // SECTION: Replication
   int replicationFactor() const;
@@ -226,7 +225,9 @@ class LogicalCollection {
   bool allowUserKeys() const;
   virtual bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
-  std::shared_ptr<ShardMap> shardIds() const;
+
+  virtual std::shared_ptr<ShardMap> shardIds() const;
+
   // return a filtered list of the collection's shards
   std::shared_ptr<ShardMap> shardIds(
       std::unordered_set<std::string> const& includedShards) const;
@@ -248,6 +249,10 @@ class LogicalCollection {
   // SECTION: Serialisation
   void toVelocyPack(velocypack::Builder&, bool translateCids,
                     bool forPersistence = false) const;
+  
+  void toVelocyPackIgnore(velocypack::Builder& result,
+      std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
+      bool forPersistence) const;
 
   velocypack::Builder toVelocyPackIgnore(
       std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
@@ -263,7 +268,7 @@ class LogicalCollection {
   virtual arangodb::Result updateProperties(velocypack::Slice const&, bool);
 
   /// @brief return the figures for a collection
-  virtual std::shared_ptr<velocypack::Builder> figures();
+  virtual std::shared_ptr<velocypack::Builder> figures() const;
 
   /// @brief opens an existing collection
   void open(bool ignoreErrors);
@@ -374,6 +379,8 @@ class LogicalCollection {
   //
   // @brief Internal version used for caching
   uint32_t _internalVersion;
+  
+  bool const _isAStub;
 
   // @brief Local collection id
   TRI_voc_cid_t const _cid;
@@ -400,7 +407,7 @@ class LogicalCollection {
 
   // @brief Current state of this colletion
   TRI_vocbase_col_status_e _status;
-  
+
   // @brief Flag if this collection is a smart one. (Enterprise only)
   bool _isSmart;
 

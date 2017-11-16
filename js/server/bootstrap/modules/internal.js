@@ -376,4 +376,13 @@
     delete global.SYS_GET_TASK;
   }
 
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief getShardDistrbiution
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_CLUSTER_SHARD_DISTRIBUTION) {
+    exports.getShardDistribution = global.SYS_CLUSTER_SHARD_DISTRIBUTION;
+    delete global.SYS_CLUSTER_SHARD_DISTRIBUTION;
+  }
+
 }());

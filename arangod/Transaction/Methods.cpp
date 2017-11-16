@@ -42,6 +42,7 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -49,6 +50,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Options.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
@@ -99,18 +101,6 @@ static bool indexSupportsSort(Index const* idx,
     estimatedCost = 0.0;
   }
   return false;
-}
-
-/// @brief Return an Operation Result that parses the error information returned
-///        by the DBServer.
-static OperationResult dbServerResponseBad(
-    std::shared_ptr<VPackBuilder> resultBody) {
-  VPackSlice res = resultBody->slice();
-  return OperationResult(
-      arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          res, "errorNum", TRI_ERROR_INTERNAL),
-      arangodb::basics::VelocyPackHelper::getStringValue(
-          res, "errorMessage", "JSON sent to DBserver was bad"));
 }
 
 /// @brief Insert an error reported instead of the new document
@@ -717,7 +707,7 @@ Result transaction::Methods::begin() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction state");
   }
-
+  
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::RUNNING);
@@ -734,9 +724,17 @@ Result transaction::Methods::commit() {
     // transaction not created or not running
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
+  
+  ExecContext const* exe = ExecContext::CURRENT;
+  if (exe != nullptr && !_state->isReadOnlyTransaction()) {
+    bool cancelRW = !ServerState::writeOpsEnabled() && !exe->isSuperuser();
+    if (exe->isCanceled() || cancelRW) {
+      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
+    }
+  }
 
   CallbackInvoker invoker(this);
-
+  
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::COMMITTED);
@@ -797,7 +795,9 @@ Result transaction::Methods::finish(Result const& res) {
 
 std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
   auto c = trxCollection(cid);
-  TRI_ASSERT(c != nullptr);
+  if (c == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
   return c->collectionName();
 }
 
@@ -1022,7 +1022,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   mmdr->addToBuilder(result, true);
   return Result(TRI_ERROR_NO_ERROR);
 }
-
+      
 /// @brief return one document from a collection, fast path
 ///        If everything went well the result will contain the found document
 ///        (as an external on single_server) and this function will return
@@ -1053,6 +1053,28 @@ Result transaction::Methods::documentFastPathLocal(
   return res;
 }
 
+static OperationResult errorCodeFromClusterResult(std::shared_ptr<VPackBuilder> const& resultBody, 
+                                                  int defaultErrorCode) {
+  // read the error number from the response and use it if present
+  if (resultBody != nullptr) {
+    VPackSlice slice = resultBody->slice();
+    if (slice.isObject()) {
+      VPackSlice num = slice.get("errorNum");
+      VPackSlice msg = slice.get("errorMessage");
+      if (num.isNumber()) {
+        if (msg.isString()) {
+          // found an error number and an error message, so let's use it!
+          return OperationResult(num.getNumericValue<int>(), msg.copyString());
+        }
+        // we found an error number, so let's use it!
+        return OperationResult(num.getNumericValue<int>());
+      }
+    }
+  }
+  
+  return OperationResult(defaultErrorCode);
+}
+
 /// @brief Create Cluster Communication result for document
 OperationResult transaction::Methods::clusterResultDocument(
     rest::ResponseCode const& responseCode,
@@ -1067,9 +1089,9 @@ OperationResult transaction::Methods::clusterResultDocument(
                                  : TRI_ERROR_ARANGO_CONFLICT,
                              false, errorCounter);
     case rest::ResponseCode::NOT_FOUND:
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
   }
 }
 
@@ -1085,15 +1107,15 @@ OperationResult transaction::Methods::clusterResultInsert(
           resultBody->steal(), nullptr, "", TRI_ERROR_NO_ERROR,
           responseCode == rest::ResponseCode::CREATED, errorCounter);
     case rest::ResponseCode::PRECONDITION_FAILED:
-      return OperationResult(TRI_ERROR_ARANGO_CONFLICT);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_CONFLICT);
     case rest::ResponseCode::BAD:
-      return dbServerResponseBad(resultBody);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
     case rest::ResponseCode::NOT_FOUND:
-      return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     case rest::ResponseCode::CONFLICT:
-      return OperationResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
   }
 }
 
@@ -1118,11 +1140,11 @@ OperationResult transaction::Methods::clusterResultModify(
                              responseCode == rest::ResponseCode::CREATED,
                              errorCounter);
     case rest::ResponseCode::BAD:
-      return dbServerResponseBad(resultBody);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
     case rest::ResponseCode::NOT_FOUND:
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
   }
 }
 
@@ -1142,11 +1164,11 @@ OperationResult transaction::Methods::clusterResultRemove(
               : TRI_ERROR_NO_ERROR,
           responseCode != rest::ResponseCode::ACCEPTED, errorCounter);
     case rest::ResponseCode::BAD:
-      return dbServerResponseBad(resultBody);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
     case rest::ResponseCode::NOT_FOUND:
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
   }
 }
 
@@ -2355,6 +2377,9 @@ OperationResult transaction::Methods::truncateLocal(
                                 path, body);
         }
         size_t nrDone = 0;
+        // TODO: is TRX_FOLLOWER_TIMEOUT actually appropriate here? truncate
+        // can be a much more expensive operation than a single document
+        // insert/update/remove...
         size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT,
                                             nrDone, Logger::REPLICATION, false);
         if (nrGood < followers->size()) {
@@ -2394,6 +2419,46 @@ OperationResult transaction::Methods::truncateLocal(
   }
 
   res = unlock(cid, AccessMode::Type::WRITE);
+
+  return OperationResult(res);
+}
+
+/// @brief rotate all active journals of a collection
+OperationResult transaction::Methods::rotateActiveJournal(
+    std::string const& collectionName, OperationOptions const& options) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  OperationResult result;
+
+  if (_state->isCoordinator()) {
+    result = rotateActiveJournalCoordinator(collectionName, options);
+  } else {
+    result = rotateActiveJournalLocal(collectionName, options);
+  }
+
+  return result;
+}
+
+/// @brief rotate the journal of a collection
+OperationResult transaction::Methods::rotateActiveJournalCoordinator(
+    std::string const& collectionName, OperationOptions const& options) {
+
+  return OperationResult(rotateActiveJournalOnAllDBServers(databaseName(), collectionName));
+}
+
+/// @brief rotate the journal of a collection
+OperationResult transaction::Methods::rotateActiveJournalLocal(
+    std::string const& collectionName, OperationOptions const& options) {
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+
+  LogicalCollection* collection = documentCollection(trxCollection(cid));
+
+  Result res;
+  try {
+    res.reset(collection->getPhysical()->rotateActiveJournal());
+  } catch (basics::Exception const& ex) {
+    return OperationResult(ex.code(), ex.what());
+  }
 
   return OperationResult(res);
 }

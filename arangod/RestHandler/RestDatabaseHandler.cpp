@@ -69,8 +69,8 @@ RestStatus RestDatabaseHandler::getDatabases() {
     return RestStatus::DONE;
   }
 
-  VPackBuilder result;
-
+  VPackBuilder builder;
+  
   if (suffixes.empty() || suffixes[0] == "user") {
     std::vector<std::string> names;
     if (suffixes.empty()) {
@@ -79,23 +79,23 @@ RestStatus RestDatabaseHandler::getDatabases() {
       names = methods::Databases::list(_request->user());
     }
 
-    result.openArray();
+    builder.openArray();
     for (std::string const& name : names) {
-      result.add(VPackValue(name));
+      builder.add(VPackValue(name));
     }
-    result.close();
+    builder.close();
   } else if (suffixes[0] == "current") {
-    Result res = methods::Databases::info(_vocbase, result);
+    Result res = methods::Databases::info(_vocbase, builder);
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber());
       return RestStatus::DONE;
     }
   }
 
-  if (result.isEmpty()) {
+  if (builder.isEmpty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
   } else {
-    generateSuccess(rest::ResponseCode::OK, result.slice());
+    generateOk(rest::ResponseCode::OK, builder.slice());
   }
   return RestStatus::DONE;
 }
@@ -124,7 +124,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
 
   Result res = methods::Databases::create(dbName, users, options);
   if (res.ok()) {
-    generateSuccess(rest::ResponseCode::CREATED, VPackSlice::trueSlice());
+    generateOk(rest::ResponseCode::CREATED, VPackSlice::trueSlice());
   } else {
     if (res.errorNumber() == TRI_ERROR_FORBIDDEN ||
         res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
@@ -154,7 +154,7 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
   std::string const& dbName = suffixes[0];
   Result res = methods::Databases::drop(_vocbase, dbName);
   if (res.ok()) {
-    generateSuccess(rest::ResponseCode::OK, VPackSlice::trueSlice());
+    generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
   } else {
     generateError(res);
   }

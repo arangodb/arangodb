@@ -136,7 +136,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = new IndexNode(plan, _id, _vocbase, _collection, outVariable,
                          _indexes, _condition->clone(), _reverse);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }

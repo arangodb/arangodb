@@ -41,13 +41,7 @@ RocksDBRestWalHandler::RocksDBRestWalHandler(GeneralRequest* request,
                                              GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
-RestStatus RocksDBRestWalHandler::execute() {
-  if (ExecContext::CURRENT == nullptr ||
-      !ExecContext::CURRENT->isAdminUser()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
-  }
-  
+RestStatus RocksDBRestWalHandler::execute() {  
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -146,7 +140,7 @@ void RocksDBRestWalHandler::flush() {
     res = flushWalOnAllDBServers(waitForSync, waitForCollector);
   } else {
     if (waitForSync) {
-      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal();
+      EngineSelectorFeature::ENGINE->flushWal();
     }
   }
 

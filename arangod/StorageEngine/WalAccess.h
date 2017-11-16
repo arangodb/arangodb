@@ -51,6 +51,15 @@ struct WalAccessResult : public Result {
         _fromTickIncluded(other._fromTickIncluded),
         _lastIncludedTick(other._lastIncludedTick),
         _latestTick(other._latestTick) {}
+  
+  WalAccessResult& operator=(WalAccessResult const& other) {
+    _errorNumber = other._errorNumber;
+    _errorMessage = other._errorMessage;
+    _fromTickIncluded = other._fromTickIncluded;
+    _lastIncludedTick = other._lastIncludedTick;
+    _latestTick = other._latestTick;
+    return *this;
+  }
 
   bool fromTickIncluded() const { return _fromTickIncluded; }
   TRI_voc_tick_t lastIncludedTick() const { return _lastIncludedTick; }
@@ -139,6 +148,9 @@ struct WalAccessContext {
       : _filter(filter), _callback(c), _responseSize(0) {}
 
   ~WalAccessContext() {}
+
+  
+  bool shouldHandleDB(TRI_voc_tick_t dbid);
 
   /// @brief Check if collection is in filter
   bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);

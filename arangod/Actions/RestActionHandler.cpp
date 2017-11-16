@@ -90,7 +90,7 @@ RestStatus RestActionHandler::execute() {
 }
 
 bool RestActionHandler::cancel() {
-  RestHandler::cancel();
+  RestVocbaseBaseHandler::cancel();
   return _action->cancel(&_dataLock, &_data);
 }
 
