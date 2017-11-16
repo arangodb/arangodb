@@ -349,8 +349,13 @@ public:
     if (!shouldHandleKey(column_family_id, false, key) ||
         column_family_id != _documentsCF) {
       if (column_family_id == _documentsCF) {
-        _removeDocumentKey.clear();
-        return rocksdb::Status();
+        if (_lastLogType == RocksDBLogType::SingleRemove) {
+          TRI_ASSERT(!_seenBeginTransaction);
+          resetTransientState(); // ignoring the entire op
+        } else {
+          TRI_ASSERT(!_singleOp);
+          _removeDocumentKey.clear(); // just ignoring this key
+        }
       }
       return rocksdb::Status();
     }

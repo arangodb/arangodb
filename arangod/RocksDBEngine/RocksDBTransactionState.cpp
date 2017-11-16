@@ -503,6 +503,7 @@ void RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize) {
       _options.intermediateCommitSize <= newSize) {
     // LOG_TOPIC(ERR, Logger::FIXME) << "INTERMEDIATE COMMIT!";
     internalCommit();
+    _lastUsedCollection = 0;
     _numInternal = 0;
     _numInserts = 0;
     _numUpdates = 0;
