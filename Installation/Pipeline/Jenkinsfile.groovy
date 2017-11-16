@@ -628,6 +628,7 @@ def setBuildsAndTests() {
     else if (buildType == "Quick Test") {
         restrictions = [
             // OS EDITION MAINTAINER
+            "build-linux-community-user" : true,
             "build-linux-enterprise-maintainer" : true,
 
             // OS EDITION MAINTAINER MODE ENGINE
