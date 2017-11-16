@@ -1400,7 +1400,7 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
     Result tmpres = rIdx->insertInternal(trx, mthd, documentId, doc,
-                                         options.indexOpMode);
+                                         options.indexOperationMode);
     if (!tmpres.ok()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
@@ -1462,7 +1462,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   RocksDBOperationResult resInner;
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
-    Result tmpres = idx->remove(trx, documentId, doc, options.indexOpMode);
+    Result tmpres = idx->remove(trx, documentId, doc, options.indexOperationMode);
     if (!tmpres.ok()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
@@ -1550,7 +1550,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
     Result tmpres = rIdx->updateInternal(trx, mthd, oldDocumentId, oldDoc,
                                          newDocumentId, newDoc,
-                                         options.indexOpMode);
+                                         options.indexOperationMode);
     if (!tmpres.ok()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately

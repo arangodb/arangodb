@@ -60,10 +60,10 @@ class IndexResult : public Result {
     }
   }
 
-  IndexResult(int errorNumber, Index const* index, std::string key) :
-      IndexResult(errorNumber, index) {
+  IndexResult(int errorNumber, Index const* index, std::string const& key) 
+      : IndexResult(errorNumber, index) {
     // provide conflicting key
-    if (key.length() > 0) {
+    if (!key.empty()) {
       _errorMessage.append("; conflicting key: ");
       _errorMessage.append(key);
     }

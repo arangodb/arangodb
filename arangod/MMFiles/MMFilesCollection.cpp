@@ -2897,7 +2897,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
     return Result(TRI_ERROR_INTERNAL);
   }
 
-  res = Result(TRI_ERROR_NO_ERROR);
+  res = Result();
   {
     // use lock?
     bool const useDeadlockDetector =
@@ -2934,7 +2934,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
       operation.revert(trx);
     }
   }
-
+  
   if (res.ok()) {
     uint8_t const* vpack = lookupDocumentVPack(documentId);
     if (vpack != nullptr) {
@@ -3062,7 +3062,7 @@ Result MMFilesCollection::insertPrimaryIndex(transaction::Methods* trx,
   TRI_IF_FAILURE("InsertPrimaryIndex") { return Result(TRI_ERROR_DEBUG); }
 
   // insert into primary index
-  return primaryIndex()->insertKey(trx, documentId, doc, options.indexOpMode);
+  return primaryIndex()->insertKey(trx, documentId, doc, options.indexOperationMode);
 }
 
 /// @brief deletes an entry from the primary index
@@ -3071,7 +3071,7 @@ Result MMFilesCollection::deletePrimaryIndex(
     VPackSlice const& doc, OperationOptions& options) {
   TRI_IF_FAILURE("DeletePrimaryIndex") { return Result(TRI_ERROR_DEBUG); }
 
-  return primaryIndex()->removeKey(trx, documentId, doc, options.indexOpMode);
+  return primaryIndex()->removeKey(trx, documentId, doc, options.indexOperationMode);
 }
 
 /// @brief creates a new entry in the secondary indexes
@@ -3197,7 +3197,7 @@ Result MMFilesCollection::insertIndexes(arangodb::transaction::Methods* trx,
   }
 
   // insert into secondary indexes
-  res = insertSecondaryIndexes(trx, documentId, doc, options.indexOpMode);
+  res = insertSecondaryIndexes(trx, documentId, doc, options.indexOperationMode);
 
   if (res.fail()) {
     deleteSecondaryIndexes(trx, documentId, doc,
@@ -3599,7 +3599,7 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
 
     // delete from indexes
     res = deleteSecondaryIndexes(trx, oldDocumentId, oldDoc,
-                                 options.indexOpMode);
+                                 options.indexOperationMode);
 
     if (res.fail()) {
       insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
@@ -3669,7 +3669,7 @@ Result MMFilesCollection::rollbackOperation(
     LocalDocumentId const& oldDocumentId, VPackSlice const& oldDoc,
     LocalDocumentId const& newDocumentId, VPackSlice const& newDoc) {
   OperationOptions options;
-  options.indexOpMode=  Index::OperationMode::rollback;
+  options.indexOperationMode=  Index::OperationMode::rollback;
 
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     TRI_ASSERT(oldDocumentId.empty());
@@ -3770,7 +3770,7 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
   Result res;
   try {
     res = deleteSecondaryIndexes(trx, oldDocumentId, oldDoc,
-                                 options.indexOpMode);
+                                 options.indexOperationMode);
 
     if (res.fail()) {
       insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
@@ -3857,7 +3857,7 @@ Result MMFilesCollection::updateDocument(
   // remove old document from secondary indexes
   // (it will stay in the primary index as the key won't change)
   Result res = deleteSecondaryIndexes(trx, oldDocumentId, oldDoc,
-                                      options.indexOpMode);
+                                      options.indexOperationMode);
 
   if (res.fail()) {
     // re-enter the document in case of failure, ignore errors during rollback
@@ -3868,7 +3868,7 @@ Result MMFilesCollection::updateDocument(
 
   // insert new document into secondary indexes
   res = insertSecondaryIndexes(trx, newDocumentId, newDoc,
-                               options.indexOpMode);
+                               options.indexOperationMode);
 
   if (res.fail()) {
     // rollback

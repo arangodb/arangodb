@@ -55,7 +55,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
-  options.indexOpMode = Index::OperationMode::internal;
+  options.indexOperationMode = Index::OperationMode::internal;
   if (!syncer._leaderId.empty()) {
     options.isSynchronousReplicationFrom = syncer._leaderId;
   }
@@ -283,7 +283,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 
       LocalDocumentId const documentId = physical->lookupKey(trx, keySlice);
 
-      auto removeConflict = [&](std::string conflictingKey) -> OperationResult {
+      auto removeConflict = [&](std::string const& conflictingKey) -> OperationResult {
         VPackBuilder conflict;
         conflict.add(VPackValue(conflictingKey));
         LocalDocumentId conflictId = physical->lookupKey(trx, conflict.slice());
@@ -317,7 +317,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
           }
         }
       } else {
-        // UPDATE
+        // REPLACE
         OperationResult opRes = trx->update(collectionName, it, options);
         if (opRes.code != TRI_ERROR_NO_ERROR) {
           if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && opRes.errorMessage > keySlice.copyString()) {
@@ -326,7 +326,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
             if (inner.code != TRI_ERROR_NO_ERROR) {
               return opRes.errorMessage.empty() ? Result(opRes.code) : Result(opRes.code, opRes.errorMessage);
             }
-            opRes = trx->update(collectionName, it, options);
+            opRes = trx->replace(collectionName, it, options);
             if (opRes.code != TRI_ERROR_NO_ERROR) {
               return opRes.errorMessage.empty() ? Result(opRes.code) : Result(opRes.code, opRes.errorMessage);
             }

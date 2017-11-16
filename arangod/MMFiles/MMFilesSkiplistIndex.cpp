@@ -802,7 +802,7 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
                             .get(StaticStrings::KeyString)
                             .copyString());
     if (mode == OperationMode::internal) {
-      return IndexResult(res, existingId);
+      return IndexResult(res, std::move(existingId));
     }
     return IndexResult(res, this, existingId);
   }

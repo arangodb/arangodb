@@ -34,7 +34,7 @@ struct OperationOptions {
       : recoveryData(nullptr), waitForSync(false), keepNull(true),
         mergeObjects(true), silent(false), ignoreRevs(true),
         returnOld(false), returnNew(false), isRestore(false),
-        indexOpMode(Index::OperationMode::normal) {}
+        indexOperationMode(Index::OperationMode::normal) {}
 
   // original marker, set by an engine's recovery procedure only!
   void* recoveryData;
@@ -70,7 +70,7 @@ struct OperationOptions {
   // from the wrong leader.
   std::string isSynchronousReplicationFrom;
 
-  Index::OperationMode indexOpMode;
+  Index::OperationMode indexOperationMode;
 };
 
 }

@@ -379,7 +379,7 @@ Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
     std::string existingId(doc.get(StaticStrings::KeyString).copyString());
     if (mode == OperationMode::internal) {
-      return IndexResult(res, existingId);
+      return IndexResult(res, std::move(existingId));
     }
     return IndexResult(res, this, existingId);
   }
@@ -400,7 +400,7 @@ Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
     std::string existingId(doc.get(StaticStrings::KeyString).copyString());
     if (mode == OperationMode::internal) {
-      return IndexResult(res, existingId);
+      return IndexResult(res, std::move(existingId));
     }
     return IndexResult(res, this, existingId);
   }

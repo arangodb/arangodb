@@ -624,7 +624,7 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
     std::string existingKey(
       VPackSlice(mmdr.vpack()).get(StaticStrings::KeyString).copyString());
     if (mode == OperationMode::internal) {
-      return IndexResult(res, existingKey);
+      return IndexResult(res, std::move(existingKey));
     }
     return IndexResult(res, this, existingKey);
   }

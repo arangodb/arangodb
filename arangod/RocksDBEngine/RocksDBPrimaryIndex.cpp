@@ -231,7 +231,7 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
 
     if (mode == OperationMode::internal) {
       return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,
-                         existingId);
+                         std::move(existingId));
     }
     return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, this,
                        existingId);

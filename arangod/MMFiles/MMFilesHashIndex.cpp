@@ -632,7 +632,7 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
         std::string existingId(
           VPackSlice(mmdr.vpack()).get(StaticStrings::KeyString).copyString());
         if (mode == OperationMode::internal) {
-          error = IndexResult(res, existingId);
+          error = IndexResult(res, std::move(existingId));
         } else {
           error = IndexResult(res, this, existingId);
         }
