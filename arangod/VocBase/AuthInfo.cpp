@@ -934,13 +934,19 @@ AuthLevel AuthInfo::configuredCollectionAuthLevelInternal(std::string const& use
 #ifdef USE_ENTERPRISE
   for (auto const& role : entry.roles()) {
     if (level == AuthLevel::RW) {
+      // we already have highest permission
       return level;
     }
 
-    AuthLevel roleLevel = canUseCollectionInternal(role, dbname, coll, depth + 1);
+    // recurse into function, but only one level deep.
+    // this allows us to avoid endless recursion without major overhead
+    if (depth == 0) {
+      AuthLevel roleLevel = canUseCollectionInternal(role, dbname, coll, depth + 1);
 
-    if (level == AuthLevel::NONE) {
-      level = roleLevel;
+      if (level == AuthLevel::NONE) {
+        // use the permission of the role we just found
+        level = roleLevel;
+      }
     }
   }
 #endif
