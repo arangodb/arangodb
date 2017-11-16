@@ -693,37 +693,6 @@ ClusterCommResult const ClusterComm::wait(
 
   return return_result;
 
-  #if 0
-  CONDITION_LOCKER(locker, somethingReceived);
-  if (ticketId == 0) {
-    for (i = responses.begin(); i != responses.end(); i++) {
-      if (match(clientTransactionID, coordTransactionID, shardID, i->second.result.get())) {
-        break;
-      }
-    }
-  } else {
-    i = responses.find(ticketId);
-  }
-  if (i == responses.end()) {
-    // Nothing known about this operation, return with failure:
-    ClusterCommResult res;
-    res.operationID = ticketId;
-    // does res.coordTransactionID need to be set here too?
-    res.status = CL_COMM_DROPPED;
-    // tell Dispatcher that we are back in business
-    return res;
-  }
-  response = i->second;
-
-  ClusterCommOpStatus status = response.result->status;
-
-  while (status == CL_COMM_SUBMITTED) {
-    somethingReceived.wait(100000);
-    status = response.result->status;
-  }
-  responses.erase(i);
-  return *response.result.get();
-  #endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
