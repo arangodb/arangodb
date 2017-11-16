@@ -200,7 +200,7 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 
 Result MMFilesFulltextIndex::insert(transaction::Methods*,
                                     LocalDocumentId const& documentId,
-                                    VPackSlice const& doc, bool isRollback) {
+                                    VPackSlice const& doc, OperationMode mode) {
   int res = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
 
@@ -212,7 +212,7 @@ Result MMFilesFulltextIndex::insert(transaction::Methods*,
 
 Result MMFilesFulltextIndex::remove(transaction::Methods*,
                                     LocalDocumentId const& documentId,
-                                    VPackSlice const& doc, bool isRollback) {
+                                    VPackSlice const& doc, OperationMode mode) {
   int res = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
 

@@ -91,8 +91,8 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   VPackBuilder output;
   Result res = methods::Indexes::ensureIndex(collection, builder.slice(),
                                              create, output);
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, output.slice());
   TRI_V8_RETURN(result);
@@ -184,8 +184,8 @@ static void JS_GetIndexesVocbaseCol(
   
   VPackBuilder output;
   Result res = methods::Indexes::getAll(collection, withFigures, output);
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
   
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, output.slice());

@@ -775,7 +775,7 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   }
 
   if (res.fail()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   VPackBuilder result;
@@ -924,9 +924,7 @@ Result RestReplicationHandler::processRestoreCollection(
         OperationOptions options;
         OperationResult opRes = trx.truncate(name, options);
 
-        res = trx.finish(opRes.code);
-
-        return res;
+        return trx.finish(opRes.result);
       }
 
       if (!res.ok()) {
@@ -989,7 +987,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
     // drop an existing collection if it exists
     if (dropExisting) {
-      std::string errorMsg; 
+      std::string errorMsg;
       int res = ci->dropCollectionCoordinator(dbName, col->cid_as_string(),
                                               errorMsg, 0.0);
       if (res == TRI_ERROR_FORBIDDEN ||
@@ -998,9 +996,9 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
         // some collections must not be dropped
         res = truncateCollectionOnCoordinator(dbName, name);
         if (res != TRI_ERROR_NO_ERROR) {
-          return Result(res, std::string("unable to truncate collection (dropping is forbidden): ") + name);
+          return Result(res, std::string("unable to truncate collection (dropping is forbidden): '") + name + "'");
         }
-        return Result(res, TRI_errno_string(res));
+        return Result(res);
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -1324,13 +1322,15 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.waitForSync = false;
     OperationResult opRes =
         trx.remove(collectionName, oldBuilder.slice(), options);
-    if (!opRes.successful()) {
-      return opRes.code;
+    if (opRes.fail()) {
+      return opRes.result;
     }
   } catch (arangodb::basics::Exception const& ex) {
-    return ex.code();
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL);
   }
 
   // Now try to insert all keys for which the last marker was a document
@@ -1401,13 +1401,15 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.isRestore = true;
     options.waitForSync = false;
     opRes = trx.insert(collectionName, requestSlice, options);
-    if (!opRes.successful()) {
-      return opRes.code;
+    if (opRes.fail()) {
+      return opRes.result;
     }
   } catch (arangodb::basics::Exception const& ex) {
-    return ex.code();
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL);
   }
 
   // Now go through the individual results and check each error, if it was
@@ -1434,7 +1436,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
             return code;
           }
         } else {
-          return TRI_ERROR_INTERNAL;
+          return Result(TRI_ERROR_INTERNAL);
         }
       }
       itRequest.next();
@@ -1448,16 +1450,18 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.isRestore = true;
     options.waitForSync = false;
     opRes = trx.replace(collectionName, replBuilder.slice(), options);
-    if (!opRes.successful()) {
-      return opRes.code;
+    if (opRes.fail()) {
+      return opRes.result;
     }
   } catch (arangodb::basics::Exception const& ex) {
-    return ex.code();
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1932,7 +1936,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     auto res = trx.begin();
     if (res.ok()) {
       auto countRes = trx.count(col->name(), false);
-      if (countRes.successful()) {
+      if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
         uint64_t nr = nrSlice.getNumber<uint64_t>();
         if (nr == 0) {
