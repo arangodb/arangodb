@@ -563,6 +563,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   // these parameters are relevant to determine if we can print
   // a specific marker from the WAL
   TRI_vocbase_t* const _vocbase;
+  
   bool const _includeSystem;
   TRI_voc_cid_t const _onlyCollectionId;
   /// result builder

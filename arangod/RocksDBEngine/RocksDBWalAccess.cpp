@@ -150,7 +150,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
             marker->add("cuid", VPackValuePair(uuid.data(), uuid.size(),
                                                VPackValueType::String));
           }
-          _callback(loadVocbase(_currentDbId), _builder.slice());
+          _callback(vocbase, _builder.slice());
           _builder.clear();
         }
         break;
@@ -161,18 +161,19 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
         _currentCid = RocksDBLogValue::collectionId(blob);
         // only print markers from this collection if it is set
         if (shouldHandleCollection(_currentDbId, _currentCid)) {
+          TRI_vocbase_t* vocbase = loadVocbase(_currentDbId);
           LogicalCollection* col = loadCollection(_currentDbId, _currentCid);
-          if (col != nullptr) {
+          if (vocbase != nullptr && col != nullptr) {
             {
               uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
               VPackObjectBuilder marker(&_builder, true);
               marker->add("tick", VPackValue(std::to_string(tick)));
               marker->add("type", VPackValue(rocksutils::convertLogType(type)));
-              marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
+              marker->add("db", VPackValue(vocbase->name()));
               marker->add("cuid", VPackValue(col->globallyUniqueId()));
               marker->add("data", RocksDBLogValue::indexSlice(blob));
             }
-            _callback(loadVocbase(_currentDbId), _builder.slice());
+            _callback(vocbase, _builder.slice());
             _builder.clear();
           }
         }
@@ -513,15 +514,18 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
                       
   void writeCommitMarker() {
     TRI_ASSERT(_seenBeginTransaction && !_singleOp);
-    _builder.openObject();
-    _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-    _builder.add("type", VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_COMMIT)));
-    _builder.add("db", VPackValue(loadVocbase(_currentDbId)->name()));
-    _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
-    _builder.close();
-    _callback(loadVocbase(_currentDbId), _builder.slice());
-    _builder.clear();
-    _seenBeginTransaction = false;
+    TRI_vocbase_t* vocbase = loadVocbase(_currentDbId);
+    if (vocbase != nullptr) { // we be in shutdown
+      _builder.openObject();
+      _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
+      _builder.add("type", VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_COMMIT)));
+      _builder.add("db", VPackValue(vocbase->name()));
+      _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
+      _builder.close();
+      _callback(vocbase, _builder.slice());
+      _builder.clear();
+      _seenBeginTransaction = false;
+    }
   }
 
   // should reset state flags which are only valid between
