@@ -350,7 +350,7 @@ public:
         column_family_id != _documentsCF) {
       if (column_family_id == _documentsCF) {
         if (_lastLogType == RocksDBLogType::SingleRemove) {
-          // no asserts here, because _singleOp might not be set
+          TRI_ASSERT(!_seenBeginTransaction);
           resetTransientState(); // ignoring the entire op
         } else {
           TRI_ASSERT(!_singleOp);
