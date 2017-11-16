@@ -159,6 +159,22 @@ Specifies the optional *type* of the collection, it can either be *document*
 or *edge*. On default it is document. Instead of giving a type you can also use 
 *db._createEdgeCollection* or *db._createDocumentCollection*.
 
+`db._create(collection-name, properties[, type], options)`
+
+As an optional third (if the *type* string is being omitted) or fourth
+parameter you can specify an optional options map that controls how the
+cluster will create the collection. These options are only relevant at
+creation time and will not be persisted:
+
+- *waitForSyncReplication* (default: true)
+  When enabled the server will only report success back to the client
+  if all replicas have created the collection. Set to *false* if you want faster
+  server responses and don't care about full replication.
+
+- *enforceReplicationFactor* (default: true)
+  When enabled which means the server will check if there are enough replicas
+  available at creation time and bail out otherwise. Set to *false* to disable
+  this extra check.
 
 **Examples**
 

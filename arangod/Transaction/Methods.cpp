@@ -103,18 +103,6 @@ static bool indexSupportsSort(Index const* idx,
   return false;
 }
 
-/// @brief Return an Operation Result that parses the error information returned
-///        by the DBServer.
-static OperationResult dbServerResponseBad(
-    std::shared_ptr<VPackBuilder> resultBody) {
-  VPackSlice res = resultBody->slice();
-  return OperationResult(
-      arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          res, "errorNum", TRI_ERROR_INTERNAL),
-      arangodb::basics::VelocyPackHelper::getStringValue(
-          res, "errorMessage", "JSON sent to DBserver was bad"));
-}
-
 /// @brief Insert an error reported instead of the new document
 static void createBabiesError(VPackBuilder& builder,
                               std::unordered_map<int, size_t>& countErrorCodes,
@@ -807,7 +795,9 @@ Result transaction::Methods::finish(Result const& res) {
 
 std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
   auto c = trxCollection(cid);
-  TRI_ASSERT(c != nullptr);
+  if (c == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
   return c->collectionName();
 }
 
@@ -1032,7 +1022,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   mmdr->addToBuilder(result, true);
   return Result(TRI_ERROR_NO_ERROR);
 }
-
+      
 /// @brief return one document from a collection, fast path
 ///        If everything went well the result will contain the found document
 ///        (as an external on single_server) and this function will return
@@ -1063,6 +1053,28 @@ Result transaction::Methods::documentFastPathLocal(
   return res;
 }
 
+static OperationResult errorCodeFromClusterResult(std::shared_ptr<VPackBuilder> const& resultBody, 
+                                                  int defaultErrorCode) {
+  // read the error number from the response and use it if present
+  if (resultBody != nullptr) {
+    VPackSlice slice = resultBody->slice();
+    if (slice.isObject()) {
+      VPackSlice num = slice.get("errorNum");
+      VPackSlice msg = slice.get("errorMessage");
+      if (num.isNumber()) {
+        if (msg.isString()) {
+          // found an error number and an error message, so let's use it!
+          return OperationResult(num.getNumericValue<int>(), msg.copyString());
+        }
+        // we found an error number, so let's use it!
+        return OperationResult(num.getNumericValue<int>());
+      }
+    }
+  }
+  
+  return OperationResult(defaultErrorCode);
+}
+
 /// @brief Create Cluster Communication result for document
 OperationResult transaction::Methods::clusterResultDocument(
     rest::ResponseCode const& responseCode,
@@ -1077,9 +1089,9 @@ OperationResult transaction::Methods::clusterResultDocument(
                                  : TRI_ERROR_ARANGO_CONFLICT,
                              false, errorCounter);
     case rest::ResponseCode::NOT_FOUND:
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
   }
 }
 
@@ -1095,15 +1107,15 @@ OperationResult transaction::Methods::clusterResultInsert(
           resultBody->steal(), nullptr, "", TRI_ERROR_NO_ERROR,
           responseCode == rest::ResponseCode::CREATED, errorCounter);
     case rest::ResponseCode::PRECONDITION_FAILED:
-      return OperationResult(TRI_ERROR_ARANGO_CONFLICT);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_CONFLICT);
     case rest::ResponseCode::BAD:
-      return dbServerResponseBad(resultBody);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
     case rest::ResponseCode::NOT_FOUND:
-      return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     case rest::ResponseCode::CONFLICT:
-      return OperationResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
   }
 }
 
@@ -1128,11 +1140,11 @@ OperationResult transaction::Methods::clusterResultModify(
                              responseCode == rest::ResponseCode::CREATED,
                              errorCounter);
     case rest::ResponseCode::BAD:
-      return dbServerResponseBad(resultBody);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
     case rest::ResponseCode::NOT_FOUND:
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
   }
 }
 
@@ -1152,11 +1164,11 @@ OperationResult transaction::Methods::clusterResultRemove(
               : TRI_ERROR_NO_ERROR,
           responseCode != rest::ResponseCode::ACCEPTED, errorCounter);
     case rest::ResponseCode::BAD:
-      return dbServerResponseBad(resultBody);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
     case rest::ResponseCode::NOT_FOUND:
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
   }
 }
 

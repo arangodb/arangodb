@@ -742,7 +742,10 @@
       }
 
       if (self.server !== '-local-') {
-        urlParams += '&type=short&DBserver=' + self.serverInfo.target;
+        urlParams += '&type=short';
+        if (self.serverInfo.target) {
+          urlParams += '&DBserver=' + self.serverInfo.target;
+        }
 
         if (!self.history.hasOwnProperty(self.server)) {
           self.history[self.server] = {};

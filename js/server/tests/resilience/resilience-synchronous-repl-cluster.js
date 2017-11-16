@@ -344,7 +344,6 @@ function SynchronousReplicationSuite () {
 
     tearDown : function () {
       db._drop(cn);
-      global.ArangoAgency.remove('Target/FailedServers');
       global.ArangoAgency.set('Target/FailedServers', {});
     },
 

@@ -344,7 +344,7 @@ inline void RocksRead(RocksDBMethods* rocksMethods, RocksDBKey const& key, std::
   arangodb::Result r =
       rocksMethods->Get(RocksDBColumnFamily::geo(), key, val);
   if (!r.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), "GeoIndex - document read " + r.errorMessage());
   }
 }
 
@@ -364,16 +364,17 @@ inline void RocksWrite(RocksDBMethods* rocksMethods, RocksDBKey const& key,
     arangodb::Result r = rocksMethods->Put(RocksDBColumnFamily::geo(), key,
                                            slice, rocksutils::index);
     if (!r.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+      THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), "GeoIndex - document wirte " + r.errorMessage());
     }
   }
 }
 
 inline void RocksDelete(RocksDBMethods* rocksMethods, RocksDBKey const& key) {
+  TRI_ASSERT(rocksMethods);
   arangodb::Result r =
       rocksMethods->Delete(RocksDBColumnFamily::geo(), key);
   if (!r.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), "GeoIndex - document delete " + r.errorMessage());
   }
 }
 

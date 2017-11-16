@@ -213,6 +213,8 @@ ERROR_CLUSTER_SHARD_LEADER_RESIGNED,1491,"a (former) shard leader refuses to per
 ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,1492,"some agency operation failed","Will be raised if after various retries an agency operation could not be performed successfully."
 ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR,1493,"conflicting replication factor with distributeShardsLike parameter assignment","Will be raised if intended replication factor does not match that of the prototype shard given in ditributeShardsLike parameter."
 ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS,1494,"conflicting shard number with distributeShardsLike parameter assignment","Will be raised if intended number of shards does not match that of the prototype shard given in ditributeShardsLike parameter."
+ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,1495,"leadership challenge is ongoing","Will be raised when servers are currently competing for leadership, and the result is still unknown."
+ERROR_CLUSTER_NOT_LEADER,1496,"no leader","Will be raised when an operation is sent to a non-leading server."
 
 ################################################################################
 ## ArangoDB query errors

@@ -861,7 +861,27 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 AuthLevel AuthInfo::canUseDatabase(std::string const& username,
                                    std::string const& dbname) {
   loadFromDB();
-  READ_LOCKER(guard, _authInfoLock);
+  AuthLevel level;
+  {
+    READ_LOCKER(guard, _authInfoLock);
+    level = canUseDatabaseInternal(username, dbname, 0);
+  }
+
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    // no write operations allowed on this server at all
+    LOG_TOPIC(TRACE, Logger::FIXME) << "downgrading user rights";
+    return AuthLevel::RO;
+  }
+  // return actual level
+  return level;
+}
+
+// worker function for canUseDatabase
+// must only be called with the read-lock on _authInfoLock being held
+AuthLevel AuthInfo::canUseDatabaseInternal(std::string const& username,
+                                           std::string const& dbname,
+                                           size_t depth) const {
   auto it = _authInfo.find(username);
 
   if (it == _authInfo.end()) {
@@ -872,23 +892,25 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
   AuthLevel level = entry.databaseAuthLevel(dbname);
 
 #ifdef USE_ENTERPRISE
+  // check all roles and use the highest permission from them
   for (auto const& role : entry.roles()) {
     if (level == AuthLevel::RW) {
-      return level;
+      // we already have highest permission
+      break;
     }
 
-    AuthLevel roleLevel = canUseDatabase(role, dbname);
+    // recurse into function, but only one level deep.
+    // this allows us to avoid endless recursion without major overhead
+    if (depth == 0) {
+      AuthLevel roleLevel = canUseDatabaseInternal(role, dbname, depth + 1);
 
-    if (level == AuthLevel::NONE) {
-      level = roleLevel;
+      if (level == AuthLevel::NONE) {
+        // use the permission of the role we just found
+        level = roleLevel;
+      }
     }
   }
 #endif
-  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
-  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "downgrading user rights";
-    return AuthLevel::RO;
-  }
   return level;
 }
 

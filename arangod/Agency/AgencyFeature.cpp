@@ -332,7 +332,23 @@ void AgencyFeature::stop() {
         LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for agent thread to finish";
       }
     }
+
+    // Wait until all agency threads have been shut down. Note that the
+    // actual agent object is only destroyed in the destructor to allow
+    // server jobs from RestAgencyHandlers to complete without incident:
+    _agent->waitForThreadsStop();
   }
 
   AGENT = nullptr;
 }
+
+void AgencyFeature::unprepare() {
+  if (!isEnabled()) {
+    return;
+  }
+  // delete the Agent object here ensures it shuts down all of its threads
+  // this is a precondition that it must fulfill before we can go on with the
+  // shutdown
+  _agent.reset();
+}
+

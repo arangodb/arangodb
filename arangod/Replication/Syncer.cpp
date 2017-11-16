@@ -351,20 +351,24 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
                                                        VPackSlice const& slice) {
   TRI_ASSERT(vocbase != nullptr);
-  VPackSlice uuid;
-  if ((uuid = slice.get("cuid")).isString()) {
-    return vocbase->lookupCollectionByUuid(uuid.copyString());
-  } else if ((uuid = slice.get("globallyUniqueId")).isString()) {
-    return vocbase->lookupCollectionByUuid(uuid.copyString());
-  } else {
-    // extract "cid"
-    TRI_voc_cid_t cid = getCid(slice);
-    if (cid == 0) {
-      return nullptr;
+  if (!simulate32Client()) {
+    VPackSlice uuid;
+    if ((uuid = slice.get("cuid")).isString()) {
+      return vocbase->lookupCollectionByUuid(uuid.copyString());
+    } else if ((uuid = slice.get("globallyUniqueId")).isString()) {
+      return vocbase->lookupCollectionByUuid(uuid.copyString());
     }
-    // extract optional "cname"
-    return getCollectionByIdOrName(vocbase, cid, getCName(slice));
   }
+  
+  // extract "cid"
+  TRI_voc_cid_t cid = getCid(slice);
+  if (cid == 0) {
+    LOG_TOPIC(ERR, Logger::REPLICATION) <<
+      TRI_errno_string(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
+    return nullptr;
+  }
+  // extract optional "cname"
+  return getCollectionByIdOrName(vocbase, cid, getCName(slice));
 }
 
 Result Syncer::applyCollectionDumpMarker(
@@ -501,7 +505,8 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   VPackBuilder s;
   s.openObject();
   s.add("isSystem", VPackValue(true));
-  if (uuid.isString() && !simulate32Client()) {
+  s.add("objectId", VPackSlice::nullSlice());
+  if (uuid.isString() && !simulate32Client()) { // need to use cid for 3.2 master
     // if we received a globallyUniqueId from the remote, then we will always use this id
     // so we can discard the "cid" and "id" values for the collection
     s.add("id", VPackSlice::nullSlice());
@@ -511,7 +516,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
 
   VPackBuilder merged = VPackCollection::merge(slice, s.slice(),
                                                /*mergeValues*/true, /*nullMeansRemove*/true);
-
+  
   try {
     col = vocbase->createCollection(merged.slice());
   } catch (basics::Exception const& ex) {

@@ -463,7 +463,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->checkConditionsDefined();
 #endif
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
