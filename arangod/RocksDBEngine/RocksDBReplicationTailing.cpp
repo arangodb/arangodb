@@ -359,7 +359,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         column_family_id != _documentsCF) {
       if (column_family_id == _documentsCF) {
         if (_lastLogType == RocksDBLogType::SingleRemove) {
-          TRI_ASSERT(!_seenBeginTransaction && _singleOp);
+          TRI_ASSERT(!_seenBeginTransaction);
           resetTransientState(); // ignoring the entire op
         } else {
           TRI_ASSERT(!_singleOp);
