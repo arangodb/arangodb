@@ -72,7 +72,7 @@ static void JS_RotateVocbaseCol(
   }
 
   OperationResult result = trx.rotateActiveJournal(collection->name(), OperationOptions());
-  res.reset(result.code);
+  res.reset(result.result);
 
   trx.finish(res);
 

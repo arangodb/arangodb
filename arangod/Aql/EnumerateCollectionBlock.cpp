@@ -50,7 +50,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
                           (ep->_random ? transaction::Methods::CursorType::ANY
                                        : transaction::Methods::CursorType::ALL),
                           _mmdr.get(), false)) {
-  TRI_ASSERT(_cursor->successful());
+  TRI_ASSERT(_cursor->ok());
 }
 
 int EnumerateCollectionBlock::initialize() {

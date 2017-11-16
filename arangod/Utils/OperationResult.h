@@ -33,12 +33,11 @@
 
 namespace arangodb {
   
-//TODO FIXME -- This class should be based on the arangodb::Result class
 struct OperationResult {
 
   OperationResult() 
-      : code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
-  
+      : result(), wasSynchronous(false) {}
+/*  
   explicit OperationResult(int code) 
       : buffer(std::make_shared<VPackBuffer<uint8_t>>()), 
         customTypeHandler(), 
@@ -48,7 +47,8 @@ struct OperationResult {
       errorMessage = TRI_errno_string(code);
     }
   }
-  
+  */
+  /*
   OperationResult(OperationResult&& other)
       : buffer(std::move(other.buffer)),
         customTypeHandler(std::move(other.customTypeHandler)),
@@ -68,65 +68,60 @@ struct OperationResult {
     }
     return *this;
   }
-
+*/
   OperationResult(int code, std::string const& message) 
-      : buffer(std::make_shared<VPackBuffer<uint8_t>>()), 
+      : result(code, message),
+        buffer(std::make_shared<VPackBuffer<uint8_t>>()), 
         customTypeHandler(), 
-        errorMessage(message), 
-        code(code),
         wasSynchronous(false) { 
     TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
   }
   
   //TODO FIXME -- more and better ctors for creation from Result
   explicit OperationResult(Result const& other) 
-      : buffer(std::make_shared<VPackBuffer<uint8_t>>()), 
+      : result(other),
+        buffer(std::make_shared<VPackBuffer<uint8_t>>()), 
         customTypeHandler(), 
-        errorMessage(other.errorMessage()), 
-        code(other.errorNumber()),
         wasSynchronous(false) {}
 
   OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> const& buffer,
                   std::shared_ptr<VPackCustomTypeHandler> const& handler,
                   std::string const& message, int code, bool wasSynchronous)
-      : buffer(buffer),
+      : result(code, message),
+        buffer(buffer),
         customTypeHandler(handler),
-        errorMessage(message),
-        code(code),
         wasSynchronous(wasSynchronous) {}
 
   OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> const& buffer,
                   std::shared_ptr<VPackCustomTypeHandler> const& handler,
                   std::string const& message, int code, bool wasSynchronous,
                   std::unordered_map<int, size_t> const& countErrorCodes)
-      : buffer(buffer),
+      : result(code, message),
+        buffer(buffer),
         customTypeHandler(handler),
-        errorMessage(message),
-        code(code),
         wasSynchronous(wasSynchronous),
         countErrorCodes(countErrorCodes) {}
 
   ~OperationResult() {}
 
-  bool successful() const {
-    return code == TRI_ERROR_NO_ERROR;
-  }
+  bool ok() const { return result.ok(); }
   
-  bool failed() const {
-    return !successful();
-  }
+  bool fail() const { return result.fail(); }
+
+  int errorNumber() const { return result.errorNumber(); }
+  bool is(int errorNumber) const { return result.errorNumber() == errorNumber; }
+  bool isNot(int errorNumber) const { return !is(errorNumber); }
+  std::string errorMessage() const { return result.errorMessage(); }
 
   inline VPackSlice slice() const {
     TRI_ASSERT(buffer != nullptr); 
     return VPackSlice(buffer->data());
   }
 
+  Result result;
   // TODO: add a slice that points to either buffer or raw data
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
-
   std::shared_ptr<VPackCustomTypeHandler> customTypeHandler;
-  std::string errorMessage;
-  int code;
   bool wasSynchronous;
 
   // Executive summary for baby operations: reports all errors that did occur

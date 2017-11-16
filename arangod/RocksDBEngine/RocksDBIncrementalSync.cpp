@@ -301,37 +301,37 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
       if (!documentId.isSet()) {
         // INSERT
         OperationResult opRes = trx->insert(collectionName, it, options);
-        if (opRes.code != TRI_ERROR_NO_ERROR) {
-          if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && opRes.errorMessage > keySlice.copyString()) {
+        if (opRes.fail()) {
+          if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) && opRes.errorMessage() > keySlice.copyString()) {
             // remove conflict and retry
-            auto inner = removeConflict(opRes.errorMessage);
-            if (inner.code != TRI_ERROR_NO_ERROR) {
-              return opRes.errorMessage.empty() ? Result(opRes.code) : Result(opRes.code, opRes.errorMessage);
+            auto inner = removeConflict(opRes.errorMessage());
+            if (inner.fail()) {
+              return opRes.result;
             }
             opRes = trx->insert(collectionName, it, options);
-            if (opRes.code != TRI_ERROR_NO_ERROR) {
-              return opRes.errorMessage.empty() ? Result(opRes.code) : Result(opRes.code, opRes.errorMessage);
+            if (opRes.fail()) {
+              return opRes.result;
             }
           } else {
-            return opRes.errorMessage.empty() ? Result(opRes.code) : Result(opRes.code, opRes.errorMessage);
+            return opRes.result;
           }
         }
       } else {
         // REPLACE
-        OperationResult opRes = trx->update(collectionName, it, options);
-        if (opRes.code != TRI_ERROR_NO_ERROR) {
-          if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && opRes.errorMessage > keySlice.copyString()) {
+        OperationResult opRes = trx->replace(collectionName, it, options);
+        if (opRes.fail()) {
+          if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) && opRes.errorMessage() > keySlice.copyString()) {
             // remove conflict and retry
-            auto inner = removeConflict(opRes.errorMessage);
-            if (inner.code != TRI_ERROR_NO_ERROR) {
-              return opRes.errorMessage.empty() ? Result(opRes.code) : Result(opRes.code, opRes.errorMessage);
+            auto inner = removeConflict(opRes.errorMessage());
+            if (inner.fail()) {
+              return opRes.result;
             }
             opRes = trx->replace(collectionName, it, options);
-            if (opRes.code != TRI_ERROR_NO_ERROR) {
-              return opRes.errorMessage.empty() ? Result(opRes.code) : Result(opRes.code, opRes.errorMessage);
+            if (opRes.fail()) {
+              return opRes.result;
             }
           } else {
-            return opRes.errorMessage.empty() ? Result(opRes.code) : Result(opRes.code, opRes.errorMessage);
+            return opRes.result;
           }
         }
       }

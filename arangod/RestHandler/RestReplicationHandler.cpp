@@ -772,19 +772,19 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   }
 
   std::string errorMsg;
-  int res;
+  Result res;
 
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreCollectionCoordinator(
-        slice, overwrite, recycleIds, force, numberOfShards, errorMsg,
+        slice, overwrite, recycleIds, force, numberOfShards,
         replicationFactor, ignoreDistributeShardsLikeErrors);
   } else {
     res =
-        processRestoreCollection(slice, overwrite, recycleIds, force, errorMsg);
+        processRestoreCollection(slice, overwrite, recycleIds, force);
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, errorMsg);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   VPackBuilder result;
@@ -882,44 +882,35 @@ void RestReplicationHandler::handleCommandRestoreData() {
 /// @brief restores the structure of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreCollection(
-    VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
-    std::string& errorMsg) {
+Result RestReplicationHandler::processRestoreCollection(
+    VPackSlice const& collection, bool dropExisting, bool reuseId, bool force) {
   if (!collection.isObject()) {
-    errorMsg = "collection declaration is invalid";
-
-    return TRI_ERROR_HTTP_BAD_PARAMETER;
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection declaration is invalid");
   }
 
   VPackSlice const parameters = collection.get("parameters");
 
   if (!parameters.isObject()) {
-    errorMsg = "collection parameters declaration is invalid";
-
-    return TRI_ERROR_HTTP_BAD_PARAMETER;
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection parameters declaration is invalid");
   }
 
   VPackSlice const indexes = collection.get("indexes");
 
   if (!indexes.isArray()) {
-    errorMsg = "collection indexes declaration is invalid";
-
-    return TRI_ERROR_HTTP_BAD_PARAMETER;
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection indexes declaration is invalid");
   }
 
   std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
       parameters, "name", "");
 
   if (name.empty()) {
-    errorMsg = "collection name is missing";
-
-    return TRI_ERROR_HTTP_BAD_PARAMETER;
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection name is missing");
   }
 
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
                                                           false)) {
     // we don't care about deleted collections
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
   grantTemporaryRights();
@@ -929,9 +920,7 @@ int RestReplicationHandler::processRestoreCollection(
         arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
 
     if (cid == 0) {
-      errorMsg = "collection id is missing";
-
-      return TRI_ERROR_HTTP_BAD_PARAMETER;
+      return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection id is missing");
     }
 
     // first look up the collection by the cid
@@ -960,31 +949,20 @@ int RestReplicationHandler::processRestoreCollection(
 
         res = trx.begin();
         if (!res.ok()) {
-          return res.errorNumber();
+          return res;
         }
 
         OperationOptions options;
         OperationResult opRes = trx.truncate(name, options);
 
-        res = trx.finish(opRes.code);
-
-        return res.errorNumber();
+        return trx.finish(opRes.result);
       }
 
       if (!res.ok()) {
-        errorMsg =
-            "unable to drop collection '" + name + "': " + res.errorMessage();
-        res.reset(res.errorNumber(), errorMsg);
-        return res.errorNumber();
+        return Result(res.errorNumber(), std::string("unable to drop collection '") + name + "': " + res.errorMessage());
       }
     } else {
-      Result res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
-
-      errorMsg =
-          "unable to create collection '" + name + "': " + res.errorMessage();
-      res.reset(res.errorNumber(), errorMsg);
-
-      return res.errorNumber();
+      return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("unable to create collection '") + name + "': " + TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
     }
   }
 
@@ -992,49 +970,41 @@ int RestReplicationHandler::processRestoreCollection(
   int res = createCollection(parameters, &col, reuseId);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg =
-        "unable to create collection: " + std::string(TRI_errno_string(res));
-
-    return res;
+    return Result(res, std::string("unable to create collection: ") + std::string(TRI_errno_string(res)));
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the structure of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreCollectionCoordinator(
+Result RestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
-    uint64_t numberOfShards, std::string& errorMsg, uint64_t replicationFactor,
+    uint64_t numberOfShards, uint64_t replicationFactor,
     bool ignoreDistributeShardsLikeErrors) {
   if (!collection.isObject()) {
-    errorMsg = "collection declaration is invalid";
-
-    return TRI_ERROR_HTTP_BAD_PARAMETER;
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection declaration is invalid");
   }
 
   VPackSlice const parameters = collection.get("parameters");
 
   if (!parameters.isObject()) {
-    errorMsg = "collection parameters declaration is invalid";
-
-    return TRI_ERROR_HTTP_BAD_PARAMETER;
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection parameters declaration is invalid");
   }
 
   std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
       parameters, "name", "");
 
   if (name.empty()) {
-    errorMsg = "collection name is missing";
-    return TRI_ERROR_HTTP_BAD_PARAMETER;
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection name is missing");
   }
 
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
                                                           false)) {
     // we don't care about deleted collections
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
   std::string dbName = _vocbase->name();
@@ -1047,6 +1017,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
     // drop an existing collection if it exists
     if (dropExisting) {
+      std::string errorMsg;
       int res = ci->dropCollectionCoordinator(dbName, col->cid_as_string(),
                                               errorMsg, 0.0);
       if (res == TRI_ERROR_FORBIDDEN ||
@@ -1055,25 +1026,16 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
         // some collections must not be dropped
         res = truncateCollectionOnCoordinator(dbName, name);
         if (res != TRI_ERROR_NO_ERROR) {
-          errorMsg =
-              "unable to truncate collection (dropping is forbidden): " + name;
+          return Result(res, std::string("unable to truncate collection (dropping is forbidden): '") + name + "'");
         }
-        return res;
+        return Result(res);
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "unable to drop collection '" + name + "': " +
-                   std::string(TRI_errno_string(res));
-
-        return res;
+        return Result(res, std::string("unable to drop collection '") + name + "'");
       }
     } else {
-      int res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
-
-      errorMsg = "unable to create collection '" + name + "': " +
-                 std::string(TRI_errno_string(res));
-
-      return res;
+      return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("unable to create collection '") + name + "': " + TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
     }
   } catch (basics::Exception const& e) {
     LOG_TOPIC(DEBUG, Logger::FIXME) << "processRestoreCollectionCoordinator "
@@ -1134,8 +1096,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
   if (type.isNumber()) {
     collectionType = static_cast<TRI_col_type_e>(type.getNumericValue<int>());
   } else {
-    errorMsg = "collection type not given or wrong";
-    return TRI_ERROR_HTTP_BAD_PARAMETER;
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection type not given or wrong");
   }
 
   VPackSlice const sliceToMerge = toMerge.slice();
@@ -1163,13 +1124,12 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
                        entry.grantCollection(dbName, col->name(), AuthLevel::RW);
                      });
     }
-  } catch (basics::Exception const& e) {
+  } catch (basics::Exception const& ex) {
     // Error, report it.
-    errorMsg = e.message();
-    return e.code();
+    return Result(ex.code(), ex.what());
   }
   // All other errors are thrown to the outside.
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1393,13 +1353,15 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.waitForSync = false;
     OperationResult opRes =
         trx.remove(collectionName, oldBuilder.slice(), options);
-    if (!opRes.successful()) {
-      return opRes.code;
+    if (opRes.fail()) {
+      return opRes.result;
     }
   } catch (arangodb::basics::Exception const& ex) {
-    return ex.code();
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL);
   }
 
   // Now try to insert all keys for which the last marker was a document
@@ -1470,13 +1432,15 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.isRestore = true;
     options.waitForSync = false;
     opRes = trx.insert(collectionName, requestSlice, options);
-    if (!opRes.successful()) {
-      return opRes.code;
+    if (opRes.fail()) {
+      return opRes.result;
     }
   } catch (arangodb::basics::Exception const& ex) {
-    return ex.code();
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL);
   }
 
   // Now go through the individual results and check each error, if it was
@@ -1503,7 +1467,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
             return code;
           }
         } else {
-          return TRI_ERROR_INTERNAL;
+          return Result(TRI_ERROR_INTERNAL);
         }
       }
       itRequest.next();
@@ -1517,16 +1481,18 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.isRestore = true;
     options.waitForSync = false;
     opRes = trx.replace(collectionName, replBuilder.slice(), options);
-    if (!opRes.successful()) {
-      return opRes.code;
+    if (opRes.fail()) {
+      return opRes.result;
     }
   } catch (arangodb::basics::Exception const& ex) {
-    return ex.code();
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2001,7 +1967,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     auto res = trx.begin();
     if (res.ok()) {
       auto countRes = trx.count(col->name(), false);
-      if (countRes.successful()) {
+      if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
         uint64_t nr = nrSlice.getNumber<uint64_t>();
         if (nr == 0) {

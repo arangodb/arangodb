@@ -3429,8 +3429,8 @@ AqlValue Functions::CollectionCount(
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
   std::string const collectionName = element.slice().copyString();
   OperationResult res = trx->count(collectionName, true);
-  if (res.failed()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.code, res.errorMessage);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res.result);
   }
 
   return AqlValue(res.slice());

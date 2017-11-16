@@ -996,11 +996,11 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
     options.ignoreRevs = true;
 
     OperationResult opRes = documentCoordinator(collectionName, value, options);
-    if (opRes.failed()) {
-      return opRes.code;
+    if (opRes.fail()) {
+      return opRes.result;
     }
     result.add(opRes.slice());
-    return Result(TRI_ERROR_NO_ERROR);
+    return Result();
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
@@ -2267,7 +2267,7 @@ OperationResult transaction::Methods::allLocal(
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, transaction::Methods::CursorType::ALL, &mmdr, false);
 
-  if (cursor->failed()) {
+  if (cursor->fail()) {
     return OperationResult(cursor->code);
   }
 
@@ -2303,7 +2303,7 @@ OperationResult transaction::Methods::truncate(
     result = truncateLocal(collectionName, optionsCopy);
   }
 
-  events::TruncateCollection(collectionName, result.code);
+  events::TruncateCollection(collectionName, result.errorNumber());
   return result;
 }
 

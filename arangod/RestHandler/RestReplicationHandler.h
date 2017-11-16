@@ -237,16 +237,14 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the structure of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreCollection(VPackSlice const&, bool, bool, bool,
-                               std::string&);
+  Result processRestoreCollection(VPackSlice const&, bool, bool, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection, coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreCollectionCoordinator(VPackSlice const&, bool, bool, bool,
-                                          uint64_t, std::string&, uint64_t,
-                                          bool);
+  Result processRestoreCollectionCoordinator(VPackSlice const&, bool, bool, bool,
+                                             uint64_t, uint64_t, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _users collection

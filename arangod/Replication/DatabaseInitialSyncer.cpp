@@ -670,11 +670,11 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
     }
     OperationResult opRes = trx.truncate(collectionName, options);
 
-    if (!opRes.successful()) {
-      return Result(opRes.code, std::string("unable to truncate collection '") + collectionName + "': " + TRI_errno_string(opRes.code));
+    if (opRes.fail()) {
+      return Result(opRes.errorNumber(), std::string("unable to truncate collection '") + collectionName + "': " + TRI_errno_string(opRes.errorNumber()));
     }
 
-    return trx.finish(opRes.code);
+    return trx.finish(opRes.result);
   }
 
   // now we can fetch the complete chunk information from the master
@@ -826,11 +826,11 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             }
             OperationResult opRes = trx.truncate(col->name(), options);
 
-            if (!opRes.successful()) {
-              return Result(opRes.code, std::string("unable to truncate ") + collectionMsg + ": " + TRI_errno_string(opRes.code));
+            if (opRes.fail()) {
+              return Result(opRes.errorNumber(), std::string("unable to truncate ") + collectionMsg + ": " + TRI_errno_string(opRes.errorNumber()));
             }
 
-            res = trx.finish(opRes.code);
+            res = trx.finish(opRes.result);
 
             if (!res.ok()) {
               return Result(res.errorNumber(), std::string("unable to truncate ") + collectionMsg + ": " + res.errorMessage());
