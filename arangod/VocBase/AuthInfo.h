@@ -134,12 +134,18 @@ class AuthInfo {
   void setAuthInfo(AuthUserEntryMap const& userEntryMap);
 
  private:
+  // worker function for canUseDatabase
+  // must only be called with the read-lock on _authInfoLock being held
+  AuthLevel configuredDatabaseAuthLevelInternal(std::string const& username,
+                                   std::string const& dbname, size_t depth) const;
+
   // internal method called by canUseCollection
   // asserts that collection name is non-empty and already translated
   // from collection id to name
-  AuthLevel canUseCollectionInternal(std::string const& username,
-                                     std::string const& dbname,
-                                     std::string const& coll);
+  AuthLevel configuredCollectionAuthLevelInternal(std::string const& username,
+                                                  std::string const& dbname,
+                                                  std::string const& coll,
+                                                  size_t depth) const;
   void loadFromDB();
   bool parseUsers(velocypack::Slice const& slice);
   Result storeUserInternal(AuthUserEntry const& user, bool replace);

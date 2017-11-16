@@ -858,10 +858,11 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   return result;
 }
 
-AuthLevel AuthInfo::configuredDatabaseAuthLevel(std::string const& username,
-                                                std::string const& dbname) {
-  loadFromDB();
-  READ_LOCKER(guard, _authInfoLock);
+// worker function for configuredDatabaseAuthLevel
+// must only be called with the read-lock on _authInfoLock being held
+AuthLevel AuthInfo::configuredDatabaseAuthLevelInternal(std::string const& username,
+                                                        std::string const& dbname,
+                                                        size_t depth) const {
   auto it = _authInfo.find(username);
 
   if (it == _authInfo.end()) {
@@ -872,12 +873,71 @@ AuthLevel AuthInfo::configuredDatabaseAuthLevel(std::string const& username,
   AuthLevel level = entry.databaseAuthLevel(dbname);
 
 #ifdef USE_ENTERPRISE
+  // check all roles and use the highest permission from them
+  for (auto const& role : entry.roles()) {
+    if (level == AuthLevel::RW) {
+      // we already have highest permission
+      break;
+    }
+
+    // recurse into function, but only one level deep.
+    // this allows us to avoid endless recursion without major overhead
+    if (depth == 0) {
+      AuthLevel roleLevel = configuredDatabaseAuthLevelInternal(role, dbname, depth + 1);
+
+      if (level == AuthLevel::NONE) {
+        // use the permission of the role we just found
+        level = roleLevel;
+      }
+    }
+  }
+#endif
+  return level;
+}
+
+AuthLevel AuthInfo::configuredDatabaseAuthLevel(std::string const& username,
+                                                std::string const& dbname) {
+  loadFromDB();
+  READ_LOCKER(guard, _authInfoLock);
+  return configuredDatabaseAuthLevelInternal(username, dbname, 0);
+}
+
+AuthLevel AuthInfo::canUseDatabase(std::string const& username,
+                                   std::string const& dbname) {
+  AuthLevel level = configuredDatabaseAuthLevel(username, dbname);
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    return AuthLevel::RO;
+  }
+  return level;
+}
+
+// internal method called by configuredCollectionAuthLevel
+// asserts that collection name is non-empty and already translated
+// from collection id to name
+AuthLevel AuthInfo::configuredCollectionAuthLevelInternal(std::string const& username,
+                                                          std::string const& dbname,
+                                                          std::string const& coll,
+                                                          size_t depth) const {
+
+  // we must have got a non-empty collection name when we get here
+  TRI_ASSERT(coll[0] < '0' || coll[0] > '9');
+
+  auto it = _authInfo.find(username);
+  if (it == _authInfo.end()) {
+    return AuthLevel::NONE;
+  }
+
+  auto const& entry = it->second;
+  AuthLevel level = entry.collectionAuthLevel(dbname, coll);
+
+#ifdef USE_ENTERPRISE
   for (auto const& role : entry.roles()) {
     if (level == AuthLevel::RW) {
       return level;
     }
 
-    AuthLevel roleLevel = canUseDatabase(role, dbname);
+    AuthLevel roleLevel = canUseCollectionInternal(role, dbname, coll, depth + 1);
 
     if (level == AuthLevel::NONE) {
       level = roleLevel;
@@ -890,23 +950,18 @@ AuthLevel AuthInfo::configuredDatabaseAuthLevel(std::string const& username,
 AuthLevel AuthInfo::configuredCollectionAuthLevel(std::string const& username,
                                                   std::string const& dbname,
                                                   std::string coll) {
+  if (coll.empty()) {
+    // no collection name given
+    return AuthLevel::NONE;
+  }
   if (coll[0] >= '0' && coll[0] <= '9') {
-    // lookup by collection id
-    // translate numeric collection id into collection name
     coll = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
   }
 
-  return canUseCollectionInternal(username, dbname, coll);
-}
+  loadFromDB();
+  READ_LOCKER(guard, _authInfoLock);
 
-AuthLevel AuthInfo::canUseDatabase(std::string const& username,
-                                   std::string const& dbname) {
-  AuthLevel level = configuredDatabaseAuthLevel(username, dbname);
-  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
-  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
-    return AuthLevel::RO;
-  }
-  return level;
+  return configuredCollectionAuthLevelInternal(username, dbname, coll, 0);
 }
 
 AuthLevel AuthInfo::canUseCollection(std::string const& username,
@@ -925,45 +980,7 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
   return level;
 }
 
-// internal method called by canUseCollection
-// asserts that collection name is non-empty and already translated
-// from collection id to name
-AuthLevel AuthInfo::canUseCollectionInternal(std::string const& username,
-                                             std::string const& dbname,
-                                             std::string const& coll) {
-  if (coll.empty()) {
-    // no collection name given
-    return AuthLevel::NONE;
-  }
-  // we must have got a non-empty collection name when we get here
-  TRI_ASSERT(coll[0] < '0' || coll[0] > '9');
 
-  loadFromDB();
-  READ_LOCKER(guard, _authInfoLock);
-  auto it = _authInfo.find(username);
-
-  if (it == _authInfo.end()) {
-    return AuthLevel::NONE;
-  }
-
-  auto const& entry = it->second;
-  AuthLevel level = entry.collectionAuthLevel(dbname, coll);
-
-#ifdef USE_ENTERPRISE
-  for (auto const& role : entry.roles()) {
-    if (level == AuthLevel::RW) {
-      return level;
-    }
-
-    AuthLevel roleLevel = canUseCollection(role, dbname, coll);
-
-    if (level == AuthLevel::NONE) {
-      level = roleLevel;
-    }
-  }
-#endif
-  return level;
-}
 
 // public called from HttpCommTask.cpp and VstCommTask.cpp
 // should only lock if required, otherwise we will serialize all
