@@ -361,13 +361,13 @@ static void ExistsVocbaseVPack(
   options.ignoreRevs = false;
   OperationResult opResult = trx.document(collectionName, search, options);
 
-  res = trx.finish(opResult.code);
+  res = trx.finish(opResult.result);
 
-  if (!opResult.successful()) {
-    if (opResult.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+  if (opResult.fail()) {
+    if (opResult.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       TRI_V8_RETURN_FALSE();
     }
-    TRI_V8_THROW_EXCEPTION(opResult.code);
+    TRI_V8_THROW_EXCEPTION(opResult.result);
   }
 
   if (!res.ok()) {
@@ -454,10 +454,10 @@ static void DocumentVocbaseCol(
 
   OperationResult opResult = trx.document(collectionName, search, options);
 
-  res = trx.finish(opResult.code);
+  res = trx.finish(opResult.result);
 
-  if (!opResult.successful()) {
-    TRI_V8_THROW_EXCEPTION(opResult.code);
+  if (opResult.fail()) {
+    TRI_V8_THROW_EXCEPTION(opResult.result);
   }
 
   if (!res.ok()) {
@@ -530,10 +530,10 @@ static void DocumentVocbase(
 
   OperationResult opResult = trx.document(collectionName, search, options);
 
-  res = trx.finish(opResult.code);
+  res = trx.finish(opResult.result);
 
-  if (!opResult.successful()) {
-    TRI_V8_THROW_EXCEPTION(opResult.code);
+  if (opResult.fail()) {
+    TRI_V8_THROW_EXCEPTION(opResult.result);
   }
 
   if (!res.ok()) {
@@ -656,10 +656,10 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   OperationResult result = trx.remove(collectionName, toRemove, options);
 
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
 
-  if (!result.successful()) {
-    TRI_V8_THROW_EXCEPTION(result.code);
+  if (result.fail()) {
+    TRI_V8_THROW_EXCEPTION(result.result);
   }
 
   if (!res.ok()) {
@@ -769,10 +769,10 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   OperationResult result = trx.remove(collectionName, toRemove, options);
 
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
 
-  if (!result.successful()) {
-    TRI_V8_THROW_EXCEPTION(result.code);
+  if (result.fail()) {
+    TRI_V8_THROW_EXCEPTION(result.result);
   }
 
   if (!res.ok()) {
@@ -865,10 +865,10 @@ static void JS_BinaryDocumentVocbaseCol(
 
   OperationResult opResult = trx.document(collectionName, search, options);
 
-  res = trx.finish(opResult.code);
+  res = trx.finish(opResult.result);
 
-  if (!opResult.successful()) {
-    TRI_V8_THROW_EXCEPTION(opResult.code);
+  if (opResult.fail()) {
+    TRI_V8_THROW_EXCEPTION(opResult.result);
   }
 
   if (!res.ok()) {
@@ -1696,10 +1696,10 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   } else {
     opResult = trx.update(collectionName, update, options);
   }
-  res = trx.finish(opResult.code);
+  res = trx.finish(opResult.result);
 
-  if (!opResult.successful()) {
-    TRI_V8_THROW_EXCEPTION(opResult.code);
+  if (opResult.fail()) {
+    TRI_V8_THROW_EXCEPTION(opResult.result);
   }
 
   if (!res.ok()) {
@@ -1824,10 +1824,10 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
     opResult = trx.update(collectionName, update, options);
   }
 
-  res = trx.finish(opResult.code);
+  res = trx.finish(opResult.result);
 
-  if (!opResult.successful()) {
-    TRI_V8_THROW_EXCEPTION(opResult.code);
+  if (opResult.fail()) {
+    TRI_V8_THROW_EXCEPTION(opResult.result);
   }
 
   if (!res.ok()) {
@@ -2201,7 +2201,7 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   OperationResult result = trx.insert(collectionName, builder.slice(), options);
 
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2369,7 +2369,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   OperationResult result =
       trx.insert(collection->name(), builder.slice(), options);
 
-  res = trx.finish(Result(result.code, result.errorMessage));
+  res = trx.finish(result.result);
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2509,10 +2509,10 @@ static void JS_TruncateVocbaseCol(
   }
 
   OperationResult result = trx.truncate(collection->name(), opOptions);
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
 
-  if (result.failed()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(result.code, result.errorMessage);
+  if (result.fail()) {
+    TRI_V8_THROW_EXCEPTION(result.result);
   }
 
   if (!res.ok()) {
@@ -2888,9 +2888,9 @@ static void JS_CountVocbaseCol(
   }
 
   OperationResult opResult = trx.count(collectionName, !details);
-  res = trx.finish(opResult.code);
+  res = trx.finish(opResult.result);
 
-  if (!res.ok()) {
+  if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 

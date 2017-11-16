@@ -25,6 +25,7 @@
 #define ARANGOD_REST_HANDLER_REST_IMPORT_HANDLER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include <velocypack/Builder.h>
@@ -126,10 +127,10 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief perform the actual import (insert/update/replace) operations
   //////////////////////////////////////////////////////////////////////////////
 
-  int performImport(SingleCollectionTransaction& trx, RestImportResult& result,
-                    std::string const& collectionName,
-                    VPackBuilder const& babies, bool complete,
-                    OperationOptions const& opOptions);
+  Result performImport(SingleCollectionTransaction& trx, RestImportResult& result,
+                       std::string const& collectionName,
+                       VPackBuilder const& babies, bool complete,
+                       OperationOptions const& opOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates the result

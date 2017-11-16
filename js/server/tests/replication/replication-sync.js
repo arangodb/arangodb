@@ -133,7 +133,7 @@ function BaseTestConfig() {
         },
         true
       );
-  
+
       connectToSlave();
 
       assertEqual(5000, collectionCount(cn));
@@ -141,16 +141,16 @@ function BaseTestConfig() {
       // remove some random documents
       for (var i = 0; i < 50; ++i) {
         c.remove(c.any());
-      } 
+      }
       assertEqual(4950, collectionCount(cn));
-  
-      // and sync again    
+
+      // and sync again
       var syncResult = replication.syncCollection(cn, {
         endpoint: masterEndpoint,
         verbose: true,
         incremental: true
       });
-  
+
       assertEqual(st.count, collectionCount(cn));
       assertEqual(st.checksum, collectionChecksum(cn));
     },
@@ -189,24 +189,24 @@ function BaseTestConfig() {
         },
         true
       );
-   
+
       connectToSlave();
 
       var c = db._collection(cn);
       // insert some random documents
       for (var i = 0; i < 100; ++i) {
         c.insert({ foo: "bar" + i });
-      } 
-      
+      }
+
       assertEqual(5100, collectionCount(cn));
-  
-      // and sync again    
+
+      // and sync again
       var syncResult = replication.syncCollection(cn, {
         endpoint: masterEndpoint,
         verbose: true,
         incremental: true
       });
-          
+
       assertEqual(st.count, collectionCount(cn));
       assertEqual(st.checksum, collectionChecksum(cn));
     },
@@ -1068,7 +1068,7 @@ function BaseTestConfig() {
         true
       );
     }
-  
+
   };
 }
 
@@ -1198,7 +1198,7 @@ function ReplicationIncrementalKeyConflict() {
       c.insert({ _key: "x", value: 1 });
       c.insert({ _key: "y", value: 2 });
       c.insert({ _key: "z", value: 3 });
-  
+
       connectToSlave();
       var syncResult = replication.syncCollection(cn, {
         endpoint: masterEndpoint,
@@ -1220,12 +1220,12 @@ function ReplicationIncrementalKeyConflict() {
       c = db._collection(cn);
       c.remove("z");
       c.insert({ _key: "w", value: 3 });
-      
+
       assertEqual(3, c.count());
       assertEqual(3, c.document("w").value);
       assertEqual(1, c.document("x").value);
       assertEqual(2, c.document("y").value);
-      
+
       connectToSlave();
       replication.syncCollection(cn, {
         endpoint: masterEndpoint,
@@ -1234,13 +1234,13 @@ function ReplicationIncrementalKeyConflict() {
       });
 
       db._flushCache();
-      
+
       c = db._collection(cn);
       assertEqual(3, c.count());
       assertEqual(3, c.document("w").value);
       assertEqual(1, c.document("x").value);
       assertEqual(2, c.document("y").value);
-      
+
       assertEqual("hash", c.getIndexes()[1].type);
       assertTrue(c.getIndexes()[1].unique);
     },
@@ -1252,7 +1252,7 @@ function ReplicationIncrementalKeyConflict() {
       for (i = 0; i < 10000; ++i) {
         c.insert({ _key: "test" + i, value: i });
       }
-  
+
       connectToSlave();
       replication.syncCollection(cn, {
         endpoint: masterEndpoint,
@@ -1279,9 +1279,9 @@ function ReplicationIncrementalKeyConflict() {
       c.insert({ _key: "test1", value: 9998 });
       c.insert({ _key: "test9998", value: 1 });
       c.insert({ _key: "test9999", value: 0 });
-      
+
       assertEqual(10000, c.count());
-      
+
       connectToSlave();
       replication.syncCollection(cn, {
         endpoint: masterEndpoint,
@@ -1290,10 +1290,10 @@ function ReplicationIncrementalKeyConflict() {
       });
 
       db._flushCache();
-      
+
       c = db._collection(cn);
       assertEqual(10000, c.count());
-      
+
       assertEqual("hash", c.getIndexes()[1].type);
       assertTrue(c.getIndexes()[1].unique);
     }
@@ -1307,6 +1307,6 @@ function ReplicationIncrementalKeyConflict() {
 jsunity.run(ReplicationSuite);
 jsunity.run(ReplicationOtherDBSuite);
 // TODO: activate this test once it works
-// jsunity.run(ReplicationIncrementalKeyConflict);
+jsunity.run(ReplicationIncrementalKeyConflict);
 
 return jsunity.done();
