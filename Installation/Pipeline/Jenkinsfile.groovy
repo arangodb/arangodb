@@ -631,7 +631,6 @@ def setBuildsAndTests() {
             "build-linux-enterprise-maintainer" : true,
 
             // OS EDITION MAINTAINER MODE ENGINE
-            "test-linux-enterprise-maintainer-singleserver-rocksdb" : true,
             "test-linux-enterprise-maintainer-cluster-mmfiles" : true,
         ]
 
