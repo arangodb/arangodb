@@ -592,7 +592,7 @@ def checkCommitMessages() {
         }
         else if (env.BRANCH_NAME =~ /^PR-/) {
             echo "build pull-request"
-            buildType = "PR Test"
+            buildType = "Quick Test"
         }
         else {
             echo "build branch"
@@ -954,94 +954,90 @@ def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
     }
 }
 
-def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex, stageName, name, port, concurrency) {
+def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex, stageName, name, port) {
   return {
           def portInterval = 40
 
           stage("${stageName}-${name}") {
-              def archDir  = "${os}-${edition}-${maintainer}"
-              def arch     = "${archDir}/03-test/${mode}-${engine}"
-              def archRun  = "${arch}-RUN"
+              def archDir    = "${os}-${edition}-${maintainer}"
+              def arch       = "${archDir}/03-test/${mode}-${engine}"
+              def archRun    = "${arch}-RUN"
 
               def logFile    = pwd() + "/" + "${arch}/${name}.log"
               def logFileRel = "${arch}/${name}.log"
 
-              def runDir = "run.${testIndex}"
-              def concurrencyIndex = testIndex % concurrency
+              def runDir     = "run.${testIndex}"
 
-              lock("tests-${env.NODE_NAME}-${concurrencyIndex}") {
+              try {
                   logStartStage(os, logFileRel, logFileRel)
 
-                  try {
+                  // setup links
+                  setupTestEnvironment(os, edition, maintainer, logFile, runDir)
 
-                      // setup links
-                      setupTestEnvironment(os, edition, maintainer, logFile, runDir)
+                  // assemble command
+                  def command = "./build/bin/arangosh " +
+                                "-c etc/jenkins/arangosh.conf " +
+                                "--log.level warning " +
+                                "--javascript.execute UnitTests/unittest.js " +
+                                "${test} -- " +
+                                "${testArgs} " + 
+                                "--minPort " + (port + testIndex * portInterval) + " " +
+                                "--maxPort " + (port + (testIndex + 1) * portInterval - 1)
 
-                      // assemble command
-                      def command = "./build/bin/arangosh " +
-                                    "-c etc/jenkins/arangosh.conf " +
-                                    "--log.level warning " +
-                                    "--javascript.execute UnitTests/unittest.js " +
-                                    "${test} -- " +
-                                    "${testArgs} " + 
-                                    "--minPort " + (port + testIndex * portInterval) + " " +
-                                    "--maxPort " + (port + (testIndex + 1) * portInterval - 1)
+                  // 30 minutes is the super absolute max max max.
+                  // even in the worst situations ArangoDB MUST be able to
+                  // finish within 60 minutes. Even if the features are green
+                  // this is completely broken performance wise...
+                  // DO NOT INCREASE!!
 
-                      // 30 minutes is the super absolute max max max.
-                      // even in the worst situations ArangoDB MUST be able to
-                      // finish within 60 minutes. Even if the features are green
-                      // this is completely broken performance wise...
-                      // DO NOT INCREASE!!
+                  timeout(os == 'linux' ? 30 : 60) {
+                      def tmpDir = pwd() + "/" + runDir + "/tmp"
 
-                      timeout(os == 'linux' ? 30 : 60) {
-                          def tmpDir = pwd() + "/" + runDir + "/tmp"
+                      withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
+                          if (os == "windows") {
+                              def hostname = powershell(returnStdout: true, script: "hostname")
 
-                          withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
-                              if (os == "windows") {
-                                  def hostname = powershell(returnStdout: true, script: "hostname")
+                              echo "executing ${command} on ${hostname}"
+                              powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
+                          }
+                          else {
+                              shellAndPipe("echo \"Host: `hostname`\"", logFile)
+                              shellAndPipe("echo \"PWD:  `pwd`\"", logFile)
+                              shellAndPipe("echo \"Date: `date`\"", logFile)
 
-                                  echo "executing ${command} on ${hostname}"
-                                  powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
-                              }
-                              else {
-                                  shellAndPipe("echo \"Host: `hostname`\"", logFile)
-                                  shellAndPipe("echo \"PWD:  `pwd`\"", logFile)
-                                  shellAndPipe("echo \"Date: `date`\"", logFile)
+                              shellAndPipe("cd ${runDir} ; ./build/bin/arangosh --version", logFile)
 
-                                  shellAndPipe("cd ${runDir} ; ./build/bin/arangosh --version", logFile)
-
-                                  command = "(cd ${runDir} ; ${command})"
-                                  echo "executing ${command}"
-                                  shellAndPipe(command, logFile)
-                              }
+                              command = "(cd ${runDir} ; ${command})"
+                              echo "executing ${command}"
+                              shellAndPipe(command, logFile)
                           }
                       }
-
-                      checkCores(os, runDir)
-                      logStopStage(os, logFileRel)
                   }
-                  catch (exc) {
-                      logExceptionStage(os, logFileRel, logFileRel, exc)
 
-                      def msg = exc.toString()
-                      echo "caught error, copying log to ${logFile}: ${msg}"
+                  checkCores(os, runDir)
+                  logStopStage(os, logFileRel)
+              }
+              catch (exc) {
+                  logExceptionStage(os, logFileRel, logFileRel, exc)
 
-                      if (os == 'linux' || os == 'mac') {
-                          sh "echo \"${msg}\" >> ${logFile}"
-                      }
-                      else {
-                          powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
-                      }
+                  def msg = exc.toString()
+                  echo "caught error, copying log to ${logFile}: ${msg}"
 
-                      throw exc
+                  if (os == 'linux' || os == 'mac') {
+                      sh "echo \"${msg}\" >> ${logFile}"
                   }
-                  finally {
-                      saveCores(os, runDir, name, archRun)
-
-                      archiveArtifacts allowEmptyArchive: true,
-                          artifacts: "${archRun}/**, ${logFileRel}",
-                          defaultExcludes: false
+                  else {
+                      powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
                   }
+
+                  throw exc
+              }
+              finally {
+                  saveCores(os, runDir, name, archRun)
+
+                  archiveArtifacts allowEmptyArchive: true,
+                      artifacts: "${archRun}/**, ${logFileRel}",
+                      defaultExcludes: false
               }
           }
     }
@@ -1054,12 +1050,6 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
 
     def testIndex = 0
     def tests = getTests(os, edition, maintainer, mode, engine)
-
-    def concurrency = 2
-
-    if (os == 'linux') {
-        concurrency = 8
-    }
 
     node(testJenkins[os]) {
 
@@ -1100,7 +1090,7 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
 
                 testMap["${stageName}-${name}"] = singleTest(os, edition, maintainer, mode, engine,
                                                              test, testArgs, testIndex,
-                                                             stageName, name, port, concurrency)
+                                                             stageName, name, port)
 
                 return testMap
             }

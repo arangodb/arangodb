@@ -592,7 +592,7 @@ def checkCommitMessages() {
         }
         else if (env.BRANCH_NAME =~ /^PR-/) {
             echo "build pull-request"
-            buildType = "PR Test"
+            buildType = "Quick Test"
         }
         else {
             echo "build branch"
