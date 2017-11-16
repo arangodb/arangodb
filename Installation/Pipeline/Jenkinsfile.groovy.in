@@ -457,7 +457,7 @@ def setBuildStatus(String message, String state, String commitSha) {
 // -----------------------------------------------------------------------------
 
 def checkoutCommunity(os) {
-    if (cleanBuild) {
+    if (cleanBuild || os == "windows") {
         deleteDirDocker(os)
     }
 
