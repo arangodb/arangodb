@@ -1182,7 +1182,6 @@ function CollectionDbSuite () {
 
       db._truncate(cn);
 
-      assertEqual(ArangoCollection.STATUS_LOADED, c1.status());
       assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
       assertEqual(0, c1.count());
 

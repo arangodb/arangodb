@@ -1,6 +1,12 @@
 devel
 -----
 
+* removed `--recycle-ids` option for arangorestore
+
+  using that option could have led to problems on the restore, with potential
+  id conflicts between the originating server (the source dump server) and the 
+  target server (the restore server)
+
 * add readonly mode REST API
 
 * allow compilation of ArangoDB source code with g++7
