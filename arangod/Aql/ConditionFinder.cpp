@@ -197,7 +197,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
       auto canUseIndex =
           condition->findIndexes(node, usedIndexes, sortCondition.get());
 
-      if (canUseIndex.first || canUseIndex.second) {
+      if (canUseIndex.first /*filtering*/ || canUseIndex.second /*sorting*/) {
         bool reverse = false;
         if (canUseIndex.second && sortCondition->isUnidirectional()) {
           reverse = sortCondition->isDescending();

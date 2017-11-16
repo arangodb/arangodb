@@ -668,7 +668,7 @@ struct AstNode {
 
  public:
   /// @brief the node type
-  AstNodeType const type;
+  AstNodeType type;
 
   /// @brief flags for the node
   AstNodeFlagsType mutable flags;
