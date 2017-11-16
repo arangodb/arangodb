@@ -212,6 +212,16 @@ void RocksDBTransactionState::createTransaction() {
 
 arangodb::Result RocksDBTransactionState::internalCommit() {
   TRI_ASSERT(_rocksTransaction != nullptr);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  uint64_t x = _numInserts + _numRemoves + _numUpdates;
+  if (hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+    TRI_ASSERT(x <= 1);
+    TRI_ASSERT(_numLogdata == x);
+  } else {
+    // begin transaction + n DocumentOpsPrologue + m doc removes
+    TRI_ASSERT(_numLogdata >= 1 + (x > 0 ? 1 : 0) + _numRemoves);
+  }
+#endif
   
   ExecContext const* exe = ExecContext::CURRENT;
   if (!isReadOnlyTransaction() && exe != nullptr) {

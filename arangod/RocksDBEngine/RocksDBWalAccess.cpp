@@ -284,6 +284,11 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
                         rocksdb::Slice const& value) override {
     tick();
     if (!shouldHandleMarker(column_family_id, true, key)) {
+      if (column_family_id == _documentsCF && // ignoring collection
+          _lastLogType == RocksDBLogType::SinglePut) {
+        TRI_ASSERT(!_seenBeginTransaction && _singleOp);
+        resetTransientState(); // ignoring the put
+      }
       return rocksdb::Status();
     }
     //LOG_TOPIC(ERR, Logger::ROCKSDB) << "[PUT] cf: " << column_family_id
@@ -433,8 +438,15 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
     if (column_family_id != _documentsCF ||
         !shouldHandleMarker(column_family_id, false, key)) {
       if (column_family_id == _documentsCF) {
-        _removeDocumentKey.clear();
+        if (_lastLogType == RocksDBLogType::SingleRemove) {
+          TRI_ASSERT(!_seenBeginTransaction && _singleOp);
+          resetTransientState(); // ignoring the entire op
+        } else {
+          TRI_ASSERT(!_singleOp);
+          _removeDocumentKey.clear(); // just ignoring this key
+        }
       }
+      
       return rocksdb::Status();
     }
     
