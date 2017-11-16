@@ -358,7 +358,13 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     if (!shouldHandleKey(column_family_id, false, key) ||
         column_family_id != _documentsCF) {
       if (column_family_id == _documentsCF) {
-        _removeDocumentKey.clear();
+        if (_lastLogType == RocksDBLogType::SingleRemove) {
+          TRI_ASSERT(!_seenBeginTransaction && _singleOp);
+          resetTransientState(); // ignoring the entire op
+        } else {
+          TRI_ASSERT(!_singleOp);
+          _removeDocumentKey.clear(); // just ignoring this key
+        }
       }
       return rocksdb::Status();
     }
