@@ -1,8 +1,11 @@
-EMC IResearch search engine
+IResearch search engine
 
 Third Party Software Read Me
 
-Copyright© 2016 EMC Corporation. All rights reserved.
+Copyright© 2017 ArangoDB GmbH. All rights reserved.
+Published October, 2017
+
+Copyright© 2016-2017 EMC Corporation. All rights reserved.
 Published October, 2016
 
 EMC believes the information in this publication is accurate as of its
@@ -18,13 +21,13 @@ applicable software license.
 EMC2, EMC, the EMC Logo are registered trademarks or trademarks of EMC
 Corporation in the United States and other countries.
 
-# EMC IResearch search engine
+# IResearch search engine
 ## Third Party Software Read Me
 
-In order to function, EMC IResearch search engine depends on a
+In order to function, IResearch search engine depends on a
 number of components produced by third parties
 
-## Third Party Software used by EMC IResearch search engine
+## Third Party Software used by IResearch search engine
 
 1.  Title: OpenFST 
     - Copyright: Cyril Allauzen, Michael Riley 

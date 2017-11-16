@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #include "directory_test_case.hpp"
 
@@ -106,10 +118,10 @@ void directory_test_case::read_multiple_streams() {
 
   // read data
   {
-    auto in0 = dir_->open("test");
+    auto in0 = dir_->open("test", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in0);
     ASSERT_FALSE(in0->eof());
-    auto in1 = dir_->open("test");
+    auto in1 = dir_->open("test", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in1);
     ASSERT_FALSE(in1->eof());
     ASSERT_EQ(0, in0->read_vint());
@@ -140,7 +152,7 @@ void directory_test_case::read_multiple_streams() {
 
   // read data using dup
   {
-    auto in0 = dir_->open("test");
+    auto in0 = dir_->open("test", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in0);
     auto in1 = in0->dup();
     ASSERT_FALSE(!in1);
@@ -174,7 +186,7 @@ void directory_test_case::read_multiple_streams() {
 
   // read data using reopen
   {
-    auto in0 = dir_->open("test");
+    auto in0 = dir_->open("test", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in0);
     auto in1 = in0->reopen();
     ASSERT_FALSE(!in1);
@@ -217,7 +229,7 @@ void directory_test_case::read_multiple_streams() {
       }
     }
 
-    auto in = dir_->open("test_async");
+    auto in = dir_->open("test_async", irs::IOAdvice::NORMAL);
     std::mutex in_mtx;
     std::mutex mutex;
     irs::async_utils::thread_pool pool(16, 16);
@@ -328,7 +340,7 @@ void directory_test_case::string_read_write() {
     
     // read strings
     {
-      auto in = dir_->open("test");
+      auto in = dir_->open("test", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       ASSERT_FALSE(in->eof());
       EXPECT_EQ(strings.size(), in->read_vint());
@@ -459,7 +471,7 @@ void directory_test_case::string_read_write() {
   
     // read strings
     {
-      auto in = dir_->open("test");
+      auto in = dir_->open("test", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       ASSERT_FALSE(in->eof());
       EXPECT_EQ(strings.size(), in->read_vint());
@@ -590,7 +602,7 @@ void directory_test_case::string_read_write() {
   
     // read strings
     {
-      auto in = dir_->open("test");
+      auto in = dir_->open("test", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       ASSERT_FALSE(in->eof());
       EXPECT_EQ(strings.size(), in->read_vint());
@@ -755,7 +767,7 @@ void directory_test_case::smoke_index_io() {
 
   // read from file
   {
-    auto in = dir_->open(name);
+    auto in = dir_->open(name, irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in);
     EXPECT_FALSE(in->eof());
 
@@ -907,7 +919,7 @@ void directory_test_case::smoke_store() {
     uint64_t length;
     EXPECT_TRUE(dir_->length(length, name) && length == it->size());
 
-    auto in = dir_->open(name);
+    auto in = dir_->open(name, irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in);
     checksum_index_input<boost::crc_32_type> file(std::move(in));
     EXPECT_FALSE(file.eof());
@@ -940,7 +952,7 @@ void directory_test_case::smoke_store() {
   EXPECT_EQ(0, files.size());
 
   // Try to open non existing input
-  ASSERT_FALSE(dir_->open("invalid_file_name"));
+  ASSERT_FALSE(dir_->open("invalid_file_name", irs::IOAdvice::NORMAL));
 
   // Check locking logic
   auto l = dir_->make_lock("sample_lock");
@@ -963,7 +975,7 @@ void directory_test_case::smoke_store() {
 
     // read from file
     {
-      auto in = dir_->open("empty_file");
+      auto in = dir_->open("empty_file", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
 
       size_t read = std::numeric_limits<size_t>::max();
@@ -996,15 +1008,17 @@ void directory_test_case::smoke_store() {
 
     // read from file
     {
-      byte_type buf[1024 + 691 + 1]{}; // 1024 + 691 from above, +1 to allow GCC to set last byte to EOF
-      auto in = dir_->open("nonempty_file");
+      byte_type buf[1024 + 691]{}; // 1024 + 691 from above
+      auto in = dir_->open("nonempty_file", irs::IOAdvice::NORMAL);
+      size_t expected = sizeof buf;
       ASSERT_FALSE(!in);
-      ASSERT_EQ(sizeof buf, in->read_bytes(buf, sizeof buf));
+      ASSERT_EQ(expected, in->read_bytes(buf, sizeof buf));
 
       size_t read = std::numeric_limits<size_t>::max();
       try {
-        read = in->read_bytes(buf, 67872);
-        ASSERT_EQ(in->length() - sizeof buf, read);
+        expected = in->length() - sizeof buf; // 'sizeof buf' already read above
+        read = in->read_bytes(buf, sizeof buf);
+        ASSERT_EQ(expected, read);
       } catch (const io_error&) {
         // TODO: rework stream logic, stream should not throw an error
       } catch (...) {

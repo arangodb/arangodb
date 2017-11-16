@@ -295,7 +295,7 @@ if (ICU_INCLUDE_DIR
     list(APPEND ICU_STATIC_LIBS ${ICU_STATIC_LIBRARY_DT} ${ICU_STATIC_LIBRARY_IN} ${ICU_STATIC_LIBRARY_UC})
   endif()
 
-  add_library(icu-shared IMPORTED SHARED)
+  add_library(icu-shared SHARED IMPORTED GLOBAL)
   set_property(TARGET icu-shared PROPERTY INTERFACE_INCLUDE_DIRECTORIES # $<TARGET_PROPERTY:tgt,INCLUDE_DIRECTORIES> does not get expanded
     "${ICU_INCLUDE_DIR}"
   )
@@ -307,7 +307,7 @@ if (ICU_INCLUDE_DIR
     "${ICU_SHARED_LIBRARY_DT}" # must be after icuuc
   )
 
-  add_library(icu-static IMPORTED STATIC)
+  add_library(icu-static STATIC IMPORTED GLOBAL)
   set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES # $<TARGET_PROPERTY:tgt,INCLUDE_DIRECTORIES> does not get expanded
     "${ICU_INCLUDE_DIR}"
   )

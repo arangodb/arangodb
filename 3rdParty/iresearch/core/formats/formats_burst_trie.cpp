@@ -197,6 +197,7 @@ inline void prepare_output(
 inline void prepare_input(
     std::string& str,
     index_input::ptr& in,
+    irs::IOAdvice advice,
     const reader_state& state,
     const string_ref& ext,
     const string_ref& format,
@@ -205,7 +206,7 @@ inline void prepare_input(
   assert(!in);
 
   file_name(str, state.meta->name, ext);
-  in = state.dir->open(str);
+  in = state.dir->open(str, advice);
 
   if (!in) {
     std::stringstream ss;
@@ -1672,7 +1673,8 @@ bool field_reader::prepare(
   // check index header 
   index_input::ptr index_in;
   detail::prepare_input(
-    str, index_in, state,
+    str, index_in,
+    irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE, state,
     field_writer::TERMS_INDEX_EXT,
     field_writer::FORMAT_TERMS_INDEX,
     field_writer::FORMAT_MIN,
@@ -1685,7 +1687,7 @@ bool field_reader::prepare(
 
   // check index checksum
   format_utils::check_checksum<boost::crc_32_type>(*index_in);
- 
+
   // read total number of indexed fields
   size_t fields_count{ 0 };
   {
@@ -1741,7 +1743,7 @@ bool field_reader::prepare(
 
   // check term header
   detail::prepare_input(
-    str, terms_in_, state,
+    str, terms_in_, irs::IOAdvice::RANDOM, state,
     field_writer::TERMS_EXT,
     field_writer::FORMAT_TERMS,
     field_writer::FORMAT_MIN,

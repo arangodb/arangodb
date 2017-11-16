@@ -8,13 +8,12 @@
 [AppveyorMasterBadge]: https://ci.appveyor.com/api/projects/status/umr1pa805v7xa54a/branch/master?svg=true "Windows"
 [AppveyorLink]: https://ci.appveyor.com/project/gnusi/iresearch/branch/master "Windows"
 
-# EMC IResearch search engine
+# IResearch search engine
 ### Version 1.0
 
 ## Table of contents
 - [Overview](#overview)
 - [High level architecture and main concepts](#high-level-architecture-and-main-concepts)
-- [Project structure](#project-structure)
 - [Build](#build)
 - [Included 3rd party dependencies](#included-3rd-party-dependencies)
 - [External 3rd party dependencies](#external-3rd-party-dependencies)
@@ -23,7 +22,7 @@
 - [License](#license)
 
 ## Overview
-The iResearch library is meant to be treated as a standalone index that is capable of both indexing and storing individual values verbatim.
+The IResearch library is meant to be treated as a standalone index that is capable of both indexing and storing individual values verbatim.
 Indexed data is treated on a per-version/per-revision basis, i.e. existing data version/revision is never modified and updates/removals
 are treated as new versions/revisions of the said data. This allows for trivial multi-threaded read/write operations on the index.
 The index exposes its data processing functionality via a multi-threaded 'writer' interface that treats each document abstraction as a
@@ -33,13 +32,13 @@ The queries themselves are constructed from either string IQL (index query langu
 building blocks available in the API.
 The querying infrastructure provides the capability of ordering the result set by one or more ranking/scoring implementations.
 The ranking/scoring implementation logic is plugin-based and lazy-initialized during runtime as needed, allowing for addition of custom
-ranking/scoring logic without the need to even recompile the iResearch library.
+ranking/scoring logic without the need to even recompile the IResearch library.
 
 
 ## High level architecture and main concepts
 ### Index
-An index consists of multiple independent parts, called segments and index metadata. Index metadata stores information about 
-active index segments for the particular index version/revision.  Each index segment is an index itself and consists of the 
+An index consists of multiple independent parts, called segments and index metadata. Index metadata stores information about
+active index segments for the particular index version/revision.  Each index segment is an index itself and consists of the
 following logical components:
 
 - segment metadata
@@ -47,26 +46,33 @@ following logical components:
 - term dictionary
 - postings lists
 - list of deleted documents
-- stored values 
+- stored values
 
 Read/write access to the components carried via plugin-based formats. Index may contain segments created using different formats.
 
 ### Document
 A database record is represented as an abstraction called a document.
 A document is actually a collection of indexed/stored fields.
-In order to be processed each field should satisfy the Field concept.
- 
-#### Field concept
-For type T to be Field, the following conditions have to be satisfied for an object m of type T:
+In order to be processed each field should satisfy at least `IndexedField` or `StoredField` concept.
+
+#### IndexedField concept
+For type `T` to be `IndexedField`, the following conditions have to be satisfied for an object m of type `T`:
 
 |Expression|Requires|Effects|
 |----|----|----|
-|m.name()|The output type must be convertible to iresearch::string_ref|A value uses as a key name.|
-|m.boost()|The output type must be convertible to float_t|A value uses as a boost factor for a document.|
-|m.get_tokens()|The output type must be convertible to iresearch::token_stream*|A token stream uses for populating in invert procedure. If value is nullptr field is treated as non-indexed.| 
-|m.features()|The output type must be convertible to const iresearch::flags&|A set of features requested for evaluation during indexing. E.g. it may contain request of processing positions and frequencies. Later the evaluated information can be used during querying.| 
-|m.serializer()|The output type must be convertible to const iresearch::serializer*|A serializer uses for storing arbitrary value in the index. Later one can retrieve stored value using index_reader API. If value is nullptr field is treated as non-stored.| 
-  
+|`m.name()`|The output type must be convertible to `iresearch::string_ref`|A value uses as a key name.|
+|`m.boost()`|The output type must be convertible to `float_t`|A value uses as a boost factor for a document.|
+|`m.get_tokens()`|The output type must be convertible to `iresearch::token_stream*`|A token stream uses for populating in invert procedure. If value is `nullptr` field is treated as non-indexed.|
+|`m.features()`|The output type must be convertible to `const iresearch::flags&`|A set of features requested for evaluation during indexing. E.g. it may contain request of processing positions and frequencies. Later the evaluated information can be used during querying.|
+
+#### StoredField concept
+For type `T` to be `StoredField`, the following conditions have to be satisfied for an object m of type `T`:
+
+|Expression|Requires|Effects|
+|----|----|----|
+|`m.name()`|The output type must be convertible to `iresearch::string_ref`|A value uses as a key name.|
+|`m.write(iresearch::data_output& out)`|The output type must be convertible to bool.|One may write arbitrary data to stream denoted by `out` in order to retrieve written value using index_reader API later. If nothing has written but returned value is `true` then stored value is treated as flag. If returned value is `false` then nothing is stored even if something has been written to `out` stream.|
+
 ### Directory
 A data storage abstraction that can either store data in memory or on the filesystem depending on which implementation is instantiated.
 A directory stores at least all the currently in-use index data versions/revisions. For the case where there are no active users of the
@@ -76,40 +82,14 @@ A single version/revision of the index is composed of one or more segments assoc
 ### Writer
 A single instance per-directory object that is used for indexing data. Data may be indexed in a per-document basis or sourced from
 another reader for trivial directory merge functionality.
-Each commit() of a writer produces a new version/revision of the view of the data in the corresponding directory.
+Each `commit()` of a writer produces a new version/revision of the view of the data in the corresponding directory.
 Additionally the interface also provides directory defragmentation capabilities to allow compacting multiple smaller version/revision
 segments into larger more compact representations.
-A writer supports two-phase transactions via begin()/commit()/rollback() methods. 
+A writer supports two-phase transactions via `begin()`/`commit()`/`rollback()` methods.
 
 ### Reader
 A reusable/refreshable view of an index at a given point in time. Multiple readers can use the same directory and may point to different
 versions/revisions of data in the said directory.
-
-## Project structure
-
-|Path|Description|
-|----|---|
-|core|IResearch library source code|
-|core/analysis|indexed field token streams, indexed fields with additional processing logic|
-|core/document|interfaces and classes required to represent an indexed document abstraction|
-|core/error|definitions of errors that can be thrown|
-|core/formats|interfaces and classes representing indexed data encoding and storage formats, both for memory and filesystem storage|
-|core/index|interfaces and classes required to represent document field metadata, index structure and index data-flow (i.e. read, write, merge)|
-|core/iql|interfaces and classes implementing the 'index query language' processing and query tree generation|
-|core/search|interfaces and classes implementing the search query tree compilation processing and document matching|
-|core/store|interfaces and classes implementing index data persistence (i.e. in-memory and filesystem storage) and storage maintenance functionality|
-|core/utils|utility classes used by the library|
-|external|included 3rd party dependencies (i.e. murmurhash, openfst)|
-|tests|IResearch library tests|
-|tests/analysis|tests for code in core/analysis|
-|tests/formats|tests for code in core/formats|
-|tests/index|tests for code in core/index|
-|tests/iql|tests for code in core/iql|
-|tests/resources|test data used by the test suite|
-|tests/search|tests for code in core/search|
-|tests/store|tests for code in core/store|
-|tests/unicode|utf8 helpers use by the test suite|
-|tests/utils|tests for code in core/utils|
 
 ## Build prerequisites
 
@@ -117,21 +97,29 @@ versions/revisions of data in the said directory.
 v3.2 or later
 
 ### [Boost](http://www.boost.org/doc/libs/1_57_0/more/getting_started/index.html)
-v1.57.0 or later (filesystem locale system program_options thread)
+v1.57.0 or later (filesystem locale system thread)
 
 #### install (*nix)
 > It looks like it is important to pass arguments to the bootstrap script in one 
 > line
 
 ```bash
-./bootstrap.sh --with-libraries=filesystem,locale,program_options,system,regex,thread
+./bootstrap.sh --with-libraries=filesystem,locale,system,regex,thread
 ./b2
+```
+
+#### install (MacOS)
+> Do not link Boost against 'iconv' because on MacOS it causes problems when
+> linking against Boost locale. Unfortunately this requires linking against ICU.
+
+```bash
+./bootstrap.sh --with-libraries=filesystem,locale,system,regex,thread
+./b2 -sICU_PATH="${ICU_ROOT}" boost.locale.iconv=off boost.locale.icu=on
 ```
 
 #### install (win32)
 ```bash
 bootstrap.bat --with-libraries=filesystem
-bootstrap.bat --with-libraries=program_options
 bootstrap.bat --with-libraries=test
 bootstrap.bat --with-libraries=thread
 b2 --build-type=complete stage address-model=64
@@ -149,10 +137,12 @@ BOOST_ROOT=<path-to>/boost_1_57_0
 make
 make install
 ```
+or
+point LZ4_ROOT at the source directory to build together with IResearch
 
 #### install (win32)
 
-> If compiling iResearch with /MT add add_definitions("/MTd") to the end of
+> If compiling IResearch with /MT add add_definitions("/MTd") to the end of
 > cmake_unofficial/CMakeLists.txt since cmake will ignore the command line argument
 > -DCMAKE_C_FLAGS=/MTd
 
@@ -162,6 +152,8 @@ cmake -DCMAKE_INSTALL_PREFIX=<install-path> -DBUILD_LIBS=on -g "Visual studio 12
 cmake --build .
 cmake --build . --target install
 ```
+or
+point LZ4_ROOT at the source directory to build together with IResearch
 
 #### set environment
 ```bash
@@ -178,36 +170,34 @@ win32 binaries also available in:
 
 ### [ICU](http://site.icu-project.org/download)
 
-#### install
-look for link: "ICU4C Binaries"
+#### install (*nix)
+```bash
+./configure --disable-samples --disable-tests --enable-static --srcdir="$(pwd)" --prefix=<install-path> --exec-prefix=<install-path>
+make install
+```
+or
+point ICU_ROOT at the source directory to build together with IResearch
 or
 via the distributions' package manager: libicu<version>
-or
-build from source via:
-```bash
-configure --enable-static
-make
-```
+
+#### install (win32)
+look for link: "ICU4C Binaries"
 
 #### set environment
 ```bash
-ICU_ROOT=<path-to>/ICU_<version>
-```
-or
-```bash
-ICU_ROOT_SUFFIX is set (e.g. ICU_ROOT_SUFFIX=x86_64-linux-gnu for Ubuntu)
+ICU_ROOT=<path-to-icu>
 ```
 
 ### [Snowball](http://snowball.tartarus.org)
 
 #### install (*nix)
 
-> use revision no later than 9e0a8340d58c70f91e8a0233b985242dc69c6fb8 (Sep 2, 2015)
-> because the next revision (06565ab26f361de836c505b6dcb8c7fa9542d970) removes support for > > cmake
+> the custom CMakeLists.txt was based on revision 5137019d68befd633ce8b1cd48065f41e77ed43e
+> later versions may be used at your own risk of compilation failure
 
 ```bash
 git clone https://github.com/snowballstem/snowball.git
-git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
+git reset --hard 5137019d68befd633ce8b1cd48065f41e77ed43e
 mkdir build && cd build
 cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g "Unix Makefiles" ..
 cmake --build .
@@ -215,16 +205,18 @@ cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g "Unix Makefiles" ..
 cmake --build .
 ```
 or
+point SNOWBALL_ROOT at the source directory to build together with IResearch
+or
 via the distributions' package manager: libstemmer
 
 #### install (win32)
 
-> use revision no later than 9e0a8340d58c70f91e8a0233b985242dc69c6fb8 (Sep 2, 2015) 
-> because the next revision (06565ab26f361de836c505b6dcb8c7fa9542d970) removes support for > > cmake
+> the custom CMakeLists.txt was based on revision 5137019d68befd633ce8b1cd48065f41e77ed43e
+> later versions may be used at your own risk of compilation failure
 
 ```bash
 git clone https://github.com/snowballstem/snowball.git
-git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
+git reset --hard 5137019d68befd633ce8b1cd48065f41e77ed43e
 mkdir build && cd build
 set PATH=%PATH%;<path-to>/build/Debug
 cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g "Visual studio 12" -Ax64 ..
@@ -232,6 +224,8 @@ cmake --build .
 cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g "Visual studio 12" -Ax64 ..
 cmake --build .
 ```
+or
+point SNOWBALL_ROOT at the source directory to build together with IResearch
 
 > For static builds:
 > 1. in MSVC open: build/snowball.sln
@@ -300,6 +294,8 @@ mkdir build && cd build
 cmake ..
 make
 ```
+or
+point GTEST_ROOT at the source directory to build together with IResearch
 
 #### install (win32)
 ```bash
@@ -308,6 +304,8 @@ cmake -g "Visual studio 12" -Ax64 -Dgtest_force_shared_crt=ON -DCMAKE_DEBUG_POST
 cmake --build .
 mv Debug ../lib
 ```
+or
+point GTEST_ROOT at the source directory to build together with IResearch
 
 #### set environment
 ```bash
@@ -337,7 +335,7 @@ IRESEARCH_TEXT_STOPWORD_PATH=<path-to-stopword-lists>
 
 ## Build
 ```bash
-git clone <iResearch code repository>/iresearch.git iresearch
+git clone <IResearch code repository>/iresearch.git iresearch
 cd iresearch
 mkdir build && cd build
 ```
@@ -395,12 +393,12 @@ used to generate very compact term dictionary prefix tries which can to be loade
 in memory even for huge dictionaries
 
 ## External 3rd party dependencies
-External 3rd party dependencies must be made available to the iResearch library separately.
+External 3rd party dependencies must be made available to the IResearch library separately.
 They may either be installed through the distribution package management system or build
 from source and the appropriate environment variables set accordingly.
 
 ### [Boost](http://www.boost.org/doc/libs/1_57_0/more/getting_started/index.html)
-v1.57.0 or later (filesystem locale system program_options thread) 
+v1.57.0 or later (filesystem locale system thread)
 used for functionality not available in the STL (excluding functionality available in ICU)
 
 ### [Lz4](https://code.google.com/p/lz4)
@@ -418,7 +416,7 @@ used by analysis::text_analyzer for computing word stems (i.e. roots) for more f
 matching of words from languages not supported by 'snowball' are done verbatim
 
 ### [Google Test](https://code.google.com/p/googletest)
-used for writing tests for the iResearch library
+used for writing tests for the IResearch library
 
 ### Stopword list
 used by analysis::text_analyzer for filtering out noise words that should not impact text ranging
@@ -446,7 +444,7 @@ the first whitespace is ignored), in the directory corresponding to its language
 |iresearch::Not|boolean negation of multiple filters
 
 ## Index Query Language
-The iResearch index may be queries either via query trees built directly using the query building blocks available
+The IResearch index may be queries either via query trees built directly using the query building blocks available
 in the API or via the IQL query builder that generates a comparable query from a string representation of the query
 expressed using the IQL syntax.
 
@@ -554,9 +552,11 @@ The following grammar is currently defined via Bison (the root is <query>):
 ```
 
 ## License
-Copyright (c) 2016 EMC Corporation
-  
+Copyright (c) 2017 ArangoDB GmbH
+
+Copyright (c) 2016-2017 EMC Corporation
+
 This software is provided under the Apache 2.0 Software license provided in the
 [LICENSE.md](LICENSE.md) file. Licensing information for third-party products used
-by EMC IResearch search engine can be found in
+by IResearch search engine can be found in
 [THIRD_PARTY_README.md](THIRD_PARTY_README.md)

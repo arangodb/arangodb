@@ -38,6 +38,7 @@ configure_file(
 
 set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
+  ./analysis/delimited_token_stream_tests.cpp
   ./analysis/token_stream_tests.cpp
   ./formats/formats_tests.cpp
   ./formats/skip_list_test.cpp
@@ -138,6 +139,7 @@ add_executable(${IResearchTests_TARGET_NAME}-static
 )
 
 add_dependencies(${IResearchTests_TARGET_NAME}-shared
+  ${IResearch_TARGET_NAME}-analyzer-delimited-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${IResearch_TARGET_NAME}-scorer-tfidf-shared
@@ -145,6 +147,7 @@ add_dependencies(${IResearchTests_TARGET_NAME}-shared
 )
 
 add_dependencies(${IResearchTests_TARGET_NAME}-static
+  ${IResearch_TARGET_NAME}-analyzer-delimited-static
   ${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
@@ -184,6 +187,7 @@ set_target_properties(${IResearchTests_TARGET_NAME}-static
 target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
   ${IResearch_TARGET_NAME}-shared
+  ${IResearch_TARGET_NAME}-analyzer-delimited-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${GTEST_STATIC_LIBS}

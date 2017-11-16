@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
 #include "file_utils.hpp"
@@ -17,6 +29,7 @@
 #include "string.hpp"
 #include "error/error.hpp"
 #include "utils/log.hpp"
+#include "utils/memory.hpp"
 
 #if defined(__APPLE__)
   #include <sys/param.h> // for MAXPATHLEN
@@ -219,6 +232,18 @@ bool file_sync(const file_path_t file) NOEXCEPT {
   return res;
 }
 
+bool file_sync(int fd) NOEXCEPT {
+  // Attempt to convert file descriptor into an operating system file handle
+  HANDLE handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+
+  // An invalid file system handle was returned.
+  if (handle == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+
+  return !FlushFileBuffers(handle);
+}
+
 #else
 
 void lock_file_deleter::operator()(void* handle) const {
@@ -356,6 +381,10 @@ bool file_sync(const file_path_t file) NOEXCEPT {
   return res;
 }
 
+bool file_sync(int fd) NOEXCEPT {
+  return 0 == fsync(fd);
+}
+
 #endif // _WIN32
 
 ptrdiff_t file_size(const file_path_t file) NOEXCEPT {
@@ -372,6 +401,7 @@ ptrdiff_t file_size(int fd) NOEXCEPT {
 ptrdiff_t block_size(int fd) NOEXCEPT {
 #ifdef _WIN32
   // fixme
+  UNUSED(fd);
   return 512;
 #else
   file_stat_t info;
@@ -400,11 +430,19 @@ bool is_directory(const file_path_t name) NOEXCEPT {
 handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT {
   #ifdef _WIN32
     #pragma warning(disable: 4996) // '_wfopen': This function or variable may be unsafe.
-    return handle_t(::_wfopen(path ? path : _T("NUL:"), mode));
+    handle_t handle(::_wfopen(path ? path : _T("NUL:"), mode));
     #pragma warning(default: 4996)
   #else
-    return handle_t(::fopen(path ? path : "/dev/null", mode));
+    handle_t handle(::fopen(path ? path : "/dev/null", mode));
   #endif
+
+  if (!handle) {
+    // even win32 uses 'errno' for error codes in calls to _wfopen(...)
+    IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
+    IR_STACK_TRACE();
+  }
+
+  return handle;
 }
 
 handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
@@ -418,21 +456,44 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
       return nullptr;
     }
 
-    const auto size = sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH + 1; // +1 for \0
-    char info_buf[size];
-    PFILE_NAME_INFO info = reinterpret_cast<PFILE_NAME_INFO>(info_buf);
+    const auto size = MAX_PATH + 1; // +1 for \0
+    TCHAR path[size];
+    auto length = GetFinalPathNameByHandle(handle, path, size - 1, VOLUME_NAME_DOS); // -1 for \0
 
-    if (!GetFileInformationByHandleEx(handle, FileNameInfo, info, size)) {
+    if (!length) {
       IR_FRMT_ERROR("Failed to get filename from file handle, error %d", GetLastError());
+
       return nullptr;
     }
 
-    auto path = info->FileName;
-    auto length = info->FileNameLength >> (sizeof(path[0]) - 1); // FileNameLength is in bytes
+    if(length < size) {
+      path[length] = '\0';
 
-    path[length] = '\0';
+      return open(path, mode);
+    }
 
-    return open(path, mode);
+    IR_FRMT_WARN(
+      "Required file path buffer size of %d is greater than the expected size of %d, malloc necessary",
+      length + 1, size // +1 for \0
+    );
+
+    auto buf_size = length + 1; // +1 for \0
+    auto buf = irs::memory::make_unique<TCHAR[]>(buf_size);
+
+    length = GetFinalPathNameByHandle(handle, buf.get(), buf_size - 1, VOLUME_NAME_DOS); // -1 for \0
+
+    if(length && length < buf_size) {
+      buf[length] = '\0';
+
+      return open(buf.get(), mode);
+    }
+
+    IR_FRMT_ERROR(
+      "Failed to get filename from file handle, inconsistent length detected, first %d then %d",
+      buf_size, length + 1 // +1 for \0
+    );
+
+    return nullptr;
   #elif defined(__APPLE__)
     // MacOS approach is to open the original file via the file descriptor link under /dev/fd
     // the link is garanteed to point to the original inode even if the original file was removed

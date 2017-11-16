@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #include <memory>
 #include <mutex>
@@ -25,9 +37,12 @@
   #include <cxxabi.h> // for abi::__cxa_demangle(...)
   #include <dlfcn.h> // for dladdr(...)
   #include <execinfo.h>
-  #include <string.h> // for strlen(...)
   #include <unistd.h> // for STDIN_FILENO/STDOUT_FILENO/STDERR_FILENO
   #include <sys/wait.h> // for waitpid(...)
+#endif
+
+#if defined(__APPLE__)
+  #include <libproc.h> // for proc_pidpath(...)
 #endif
 
 #if defined(USE_LIBBFD)
@@ -43,12 +58,10 @@
 #include "singleton.hpp"
 #include "thread_utils.hpp"
 
+#include "misc.hpp"
 #include "log.hpp"
 
 NS_LOCAL
-
-template <typename T, size_t Size>
-inline CONSTEXPR size_t array_size(const T(&)[Size]) { return Size; }
 
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprecated declaration
@@ -85,7 +98,9 @@ class file_streambuf: public std::streambuf {
 
 class logger_ctx: public iresearch::singleton<logger_ctx> {
  public:
-  logger_ctx(): singleton() {
+  logger_ctx()
+    : singleton(),
+      stack_trace_level_(irs::logger::level_t::IRL_DEBUG) {
     // set everything up to and including INFO to stderr
     for (size_t i = 0, last = iresearch::logger::IRL_INFO; i <= last; ++i) {
       out_[i].file_ = stderr;
@@ -101,9 +116,14 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
     return *this;
   }
   logger_ctx& output_le(iresearch::logger::level_t level, FILE* out) {
-    for (size_t i = 0, count = array_size(out_); i < count; ++i) {
+    for (size_t i = 0, count = IRESEARCH_COUNTOF(out_); i < count; ++i) {
       output(static_cast<iresearch::logger::level_t>(i), i > level ? nullptr : out);
     }
+    return *this;
+  }
+  irs::logger::level_t stack_trace_level() { return stack_trace_level_; }
+  logger_ctx& stack_trace_level(irs::logger::level_t level) {
+    stack_trace_level_ = level;
     return *this;
   }
   std::ostream& stream(iresearch::logger::level_t level) { return out_[level].stream_; }
@@ -117,6 +137,7 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
   };
 
   level_ctx_t out_[iresearch::logger::IRL_TRACE + 1]; // IRL_TRACE is the last value, +1 for 0'th id
+  irs::logger::level_t stack_trace_level_;
 };
 
 typedef std::function<void(const char* file, size_t line, const char* fn)> bfd_callback_type_t;
@@ -227,7 +248,27 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
 #else
   #if defined(__APPLE__)
     bool file_line_addr2line(iresearch::logger::level_t level, const char* obj, const char* addr) {
-      return false; // on MacOS there is no access to the executable file path from a diffierent process 
+      auto fd = fileno(output(level));
+      auto pid = fork();
+
+      if (!pid) {
+        char name_buf[PROC_PIDPATHINFO_MAXSIZE]; // buffer size requirement for proc_pidpath(...)
+        auto ppid = getppid();
+
+        if (0 < proc_pidpath(ppid, name_buf, sizeof(name_buf))) {
+          // The exec() family of functions replaces the current process image with a new process image.
+          // The exec() functions only return if an error has occurred.
+          dup2(fd, 1); // redirect stdout to fd
+          dup2(fd, 2); // redirect stderr to fd
+          execlp("addr2line", "addr2line", "-e", obj, addr, NULL);
+        }
+
+        exit(1);
+      }
+
+      int status;
+
+      return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
     }
   #else
     bool file_line_addr2line(iresearch::logger::level_t level, const char* obj, const char* addr) {
@@ -235,8 +276,9 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       auto pid = fork();
 
       if (!pid) {
-        size_t pid_size = sizeof(pid_t)*3 + 1; // aproximately 3 chars per byte +1 for \0
-        size_t name_size = strlen("/proc//exe") + pid_size + 1; // +1 for \0
+        CONSTEXPR const size_t pid_size = sizeof(pid_t)*3 + 1; // aproximately 3 chars per byte +1 for \0
+        CONSTEXPR const char PROC_EXE[] = { "/proc//exe" };
+        CONSTEXPR const size_t name_size = IRESEARCH_COUNTOF(PROC_EXE) + pid_size + 1; // +1 for \0
         char pid_buf[pid_size];
         char name_buf[name_size];
         auto ppid = getppid();
@@ -275,36 +317,67 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     return buf && !status ? std::move(buf) : nullptr;
   }
 
-  bool stack_trace_gdb(iresearch::logger::level_t level) {
-    auto fd = fileno(output(level));
-    auto pid = fork();
+  #if defined(__APPLE__)
+    bool stack_trace_gdb(iresearch::logger::level_t level) {
+      auto fd = fileno(output(level));
+      auto pid = fork();
 
-    if (!pid) {
-      size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
-      size_t name_size = strlen("/proc//exe") + pid_size + 1; // +1 for \0
-      char pid_buf[pid_size];
-      char name_buf[name_size];
-      auto ppid = getppid();
+      if (!pid) {
+        CONSTEXPR const size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
+        char pid_buf[pid_size];
+        char name_buf[PROC_PIDPATHINFO_MAXSIZE]; // buffer size requirement for proc_pidpath(...)
+        auto ppid = getppid();
 
-      snprintf(pid_buf, pid_size, "%d", ppid);
-      snprintf(name_buf, name_size, "/proc/%d/exe", ppid);
+        snprintf(pid_buf, pid_size, "%d", ppid);
 
-      // The exec() family of functions replaces the current process image with a new process image.
-      // The exec() functions only return if an error has occurred.
-      dup2(fd, 1); // redirect stdout to fd
-      dup2(fd, 2); // redirect stderr to fd
-      execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
-      exit(1);
+        if (0 < proc_pidpath(ppid, name_buf, sizeof(name_buf))) {
+          // The exec() family of functions replaces the current process image with a new process image.
+          // The exec() functions only return if an error has occurred.
+          dup2(fd, 1); // redirect stdout to fd
+          dup2(fd, 2); // redirect stderr to fd
+          execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
+        }
+
+        exit(1);
+      }
+
+      int status;
+
+      return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
     }
+  #else
+    bool stack_trace_gdb(iresearch::logger::level_t level) {
+      auto fd = fileno(output(level));
+      auto pid = fork();
 
-    int status;
+      if (!pid) {
+        CONSTEXPR const size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
+        CONSTEXPR const char PROC_EXE[] = { "/proc//exe" };
+        CONSTEXPR const size_t name_size = IRESEARCH_COUNTOF(PROC_EXE) + pid_size + 1; // +1 for \0
+        char pid_buf[pid_size];
+        char name_buf[name_size];
+        auto ppid = getppid();
 
-    return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
-  }
+        snprintf(pid_buf, pid_size, "%d", ppid);
+        snprintf(name_buf, name_size, "/proc/%d/exe", ppid);
+
+        // The exec() family of functions replaces the current process image with a new process image.
+        // The exec() functions only return if an error has occurred.
+        dup2(fd, 1); // redirect stdout to fd
+        dup2(fd, 2); // redirect stderr to fd
+        execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
+        exit(1);
+      }
+
+      int status;
+
+      return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
+    }
+  #endif
 
   void stack_trace_posix(iresearch::logger::level_t level) {
     auto* out = output(level);
-    static const size_t frames_max = 128; // arbitrary size
+    CONSTEXPR const size_t frames_max = 128; // arbitrary size
     void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
 
@@ -325,7 +398,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
     }
 
     size_t buf_len = 0;
-    size_t buf_size = 1024; // arbitrary size
+    CONSTEXPR const size_t buf_size = 1024; // arbitrary size
     char buf[buf_size];
     std::thread thread([&pipefd, level, out, &buf, &buf_len, buf_size]()->void {
       for (char ch; read(pipefd[0], &ch, 1) > 0;) {
@@ -467,7 +540,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
       return false;
     }
 
-    size_t symbols_size = 1048576; // arbitrary size (4K proved too small)
+    CONSTEXPR const size_t symbols_size = 1048576; // arbitrary size (4K proved too small)
     auto symbol_bytes = bfd_get_symtab_upper_bound(file_bfd);
 
     if (symbol_bytes <= 0 || symbols_size < size_t(symbol_bytes)) {
@@ -602,7 +675,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
         continue;
       }
 
-      size_t proc_size = 1024; // arbitrary size
+      CONSTEXPR const size_t proc_size = 1024; // arbitrary size
       char proc_buf[proc_size];
       unw_word_t offset;
 
@@ -706,7 +779,7 @@ void stack_trace(level_t level, const std::exception_ptr& eptr) {
       return; // skip generating trace if logging is disabled for this level altogether
     }
 
-    static const size_t frames_max = 128; // arbitrary size
+    CONSTEXPR const size_t frames_max = 128; // arbitrary size
     void* frames_buf[frames_max];
     auto frames_count = backtrace(frames_buf, frames_max);
 
@@ -717,6 +790,14 @@ void stack_trace(level_t level, const std::exception_ptr& eptr) {
     }
   }
 #endif
+
+irs::logger::level_t stack_trace_level() {
+  return logger_ctx::instance().stack_trace_level();
+}
+
+void stack_trace_level(level_t level) {
+  logger_ctx::instance().stack_trace_level(level);
+}
 
 std::ostream& stream(level_t level) {
   return logger_ctx::instance().stream(level);

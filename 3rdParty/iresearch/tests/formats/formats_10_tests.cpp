@@ -124,7 +124,7 @@ class format_10_test_case : public tests::format_test_case_base {
       state.dir = &dir();
       state.meta = &meta;
 
-      auto in = dir().open("attributes");
+      auto in = dir().open("attributes", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
 
       // prepare reader
@@ -253,7 +253,7 @@ class format_10_test_case : public tests::format_test_case_base {
       state.dir = &dir();
       state.meta = &meta;
 
-      auto in = dir().open("attributes");
+      auto in = dir().open("attributes", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
 
       // prepare reader
@@ -409,7 +409,7 @@ class format_10_test_case : public tests::format_test_case_base {
       state.dir = &dir();
       state.meta = &meta;
 
-      auto in = dir().open("attributes");
+      auto in = dir().open("attributes", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       ir::read_string<std::string>(*in);
 

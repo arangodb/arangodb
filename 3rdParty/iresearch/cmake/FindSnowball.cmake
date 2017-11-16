@@ -75,7 +75,10 @@ if (Snowball_INCLUDE_DIR AND Snowball_SRC_DIR_LIBSTEMMER)# AND Snowball_SRC_DIR_
   set(Snowball_FOUND TRUE)
   get_filename_component(Snowball_SRC_DIR_PARENT ${Snowball_SRC_DIR_LIBSTEMMER} DIRECTORY)
   set(STEMMER_SOURCE_DIR ${Snowball_SRC_DIR_PARENT})
-  add_subdirectory(${PROJECT_SOURCE_DIR}/external/snowball)
+  add_subdirectory(
+    ${PROJECT_SOURCE_DIR}/external/snowball
+    EXCLUDE_FROM_ALL # do not build unused targets
+  )
   set(Snowball_LIBRARY_DIR ${Snowball_SEARCH_LIB_PATHS})
   set(Snowball_SHARED_LIB stemmer-shared)
   set(Snowball_STATIC_LIB stemmer-static)

@@ -371,7 +371,7 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
+      REQUIRE((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 

@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_DIRECTORY_H
 #define IRESEARCH_DIRECTORY_H
@@ -25,7 +37,7 @@
 NS_ROOT
 
 //////////////////////////////////////////////////////////////////////////////
-/// @struct index_lock 
+/// @struct index_lock
 /// @brief an interface for abstract resource locking
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_lock : private util::noncopyable {
@@ -69,7 +81,49 @@ struct IRESEARCH_API index_lock : private util::noncopyable {
 }; // unique_lock
 
 //////////////////////////////////////////////////////////////////////////////
-/// @struct directory 
+/// @enum IOAdvice
+/// @brief defines access patterns for data in a directory
+//////////////////////////////////////////////////////////////////////////////
+enum class IOAdvice : uint32_t {
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief Indicates that caller has no advice to give about its access
+  ///        pattern for the data
+  ////////////////////////////////////////////////////////////////////////////
+  NORMAL = 0,
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief Indicates that caller expects to access data sequentially
+  ////////////////////////////////////////////////////////////////////////////
+  SEQUENTIAL = 1,
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief Indicates that caller expects to access data in random order
+  ////////////////////////////////////////////////////////////////////////////
+  RANDOM = 2,
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief Indicates that caller expects that data will not be accessed
+  ///        in the near future
+  ////////////////////////////////////////////////////////////////////////////
+  READONCE = 4,
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief convenience value for READONCE | SEQUENTIAL
+  ///        explicitly required for MSVC2013
+  ////////////////////////////////////////////////////////////////////////////
+  READONCE_SEQUENTIAL = 5,
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief convenience value for READONCE | RANDOM
+  ///        explicitly required for MSVC2013
+  ////////////////////////////////////////////////////////////////////////////
+  READONCE_RANDOM = 6,
+}; // IOAdvice
+
+ENABLE_BITMASK_ENUM(IOAdvice); // enable bitmap operations on the enum
+
+//////////////////////////////////////////////////////////////////////////////
+/// @struct directory
 /// @brief represents a flat directory of write once/read many files
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API directory 
@@ -139,7 +193,10 @@ struct IRESEARCH_API directory
   /// @param[in] name   name of the file to open
   /// @returns input stream associated with the file with the specified name
   ////////////////////////////////////////////////////////////////////////////
-  virtual index_input::ptr open(const std::string& name) const NOEXCEPT = 0;
+  virtual index_input::ptr open(
+    const std::string& name,
+    IOAdvice advice
+  ) const NOEXCEPT = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief removes the file specified by the given name from directory

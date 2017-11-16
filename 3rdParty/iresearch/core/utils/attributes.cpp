@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
 #include "utils/register.hpp"
@@ -20,6 +32,9 @@ NS_LOCAL
 class attribute_register:
   public iresearch::generic_register<iresearch::string_ref, const iresearch::attribute::type_id*, attribute_register> {
 };
+
+const iresearch::attribute_store EMPTY_ATTRIBUTE_STORE(0);
+const iresearch::attribute_view  EMPTY_ATTRIBUTE_VIEW(0);
 
 NS_END
 
@@ -110,26 +125,14 @@ attribute_registrar::operator bool() const NOEXCEPT {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     attribute_map
-// -----------------------------------------------------------------------------
-
-#if defined(_MSC_VER) && defined(IRESEARCH_DLL)
-
-  template class IRESEARCH_API attribute_map<attribute*>;
-  template class IRESEARCH_API attribute_map<std::shared_ptr<stored_attribute>>;
-
-#endif
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                   attribute_store
 // -----------------------------------------------------------------------------
 
 attribute_store::attribute_store(size_t /*reserve = 0*/) {
 }
 
-/*static*/ const attribute_store& attribute_store::empty_instance() {
-  static attribute_store instance(0);
-  return instance;
+/*static*/ const attribute_store& attribute_store::empty_instance() {  
+  return EMPTY_ATTRIBUTE_STORE;
 }
 
 // -----------------------------------------------------------------------------
@@ -139,9 +142,8 @@ attribute_store::attribute_store(size_t /*reserve = 0*/) {
 attribute_view::attribute_view(size_t /*reserve = 0*/) {
 }
 
-/*static*/ const attribute_view& attribute_view::empty_instance() {
-  static attribute_view instance(0);
-  return instance;
+/*static*/ const attribute_view& attribute_view::empty_instance() {  
+  return EMPTY_ATTRIBUTE_VIEW;
 }
 
 NS_END

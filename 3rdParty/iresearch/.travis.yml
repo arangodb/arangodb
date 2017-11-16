@@ -338,6 +338,46 @@ matrix:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - BUILD_TYPE="Release"
 
+    ############################################################################
+    # OSX
+    ############################################################################
+
+    ############################################################################
+    # Debug build, static library
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      env:
+        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, static library
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      env:
+        - BUILD_TYPE="Release" STATIC_LIB="true"
+
+    ############################################################################
+    # Debug build, shared library
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      env:
+        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, shared library
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      env:
+        - BUILD_TYPE="Release"
+
 before_install:
   - eval "${SET_ENV}"
 
@@ -383,7 +423,8 @@ install:
           BOOST_URL="http://github.com/boostorg/boost.git"
           travis_retry git clone --depth 1 --recursive --quiet ${BOOST_URL} ${BOOST_DIR} || exit 1
         else
-          BOOST_URL="https://mirrors.netix.net/sourceforge/b/bo/boost/boost/${BOOST_VERSION}/boost_${BOOST_VERSION//\./_}.tar.gz"
+          #BOOST_URL="https://mirrors.netix.net/sourceforge/b/bo/boost/boost/${BOOST_VERSION}/boost_${BOOST_VERSION//\./_}.tar.gz"
+          BOOST_URL="https://kent.dl.sourceforge.net/project/boost/boost/${BOOST_VERSION}/boost_${BOOST_VERSION//\./_}.tar.gz"
           mkdir -p ${BOOST_DIR}
           { travis_retry wget --quiet -O - ${BOOST_URL} | tar --strip-components=1 -xz -C ${BOOST_DIR}; } || exit 1
         fi
@@ -416,12 +457,7 @@ install:
       cd ${DEPS_DIR}
       travis_retry git clone --quiet ${SNOWBALL_URL} ${SNOWBALL_DIR} || exit 1
       cd ${SNOWBALL_DIR}
-      git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
-      mkdir build && cd build
-      cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g "Unix Makefiles" ..
-      cmake --build .
-      cmake -DENABLE_STATIC=OFF -DNO_SHARED=ON -g "Unix Makefiles" ..
-      cmake --build .
+      git reset --hard 5137019d68befd633ce8b1cd48065f41e77ed43e
     fi
     export SNOWBALL_ROOT=${SNOWBALL_DIR}
 
@@ -450,16 +486,22 @@ before_script:
   - (mkdir build && cd build && cmake .. ${CMAKE_OPTIONS})
 
 script:
-    - if [[ "${STATIC_LIB}" == "true" ]]; then BUILD_TYPE_SUFFIX="-static" TEST_EXECUTABLE_SUFFIX="-s"; fi
     - cd ${TRAVIS_BUILD_DIR}/build
     - |
+      if [[ "${STATIC_LIB}" == "true" ]]; then
+        BUILD_TYPE_SUFFIX="-static"
+        TEST_EXECUTABLE_SUFFIX="-s"
+      else
+        BUILD_TYPE_SUFFIX="-shared"
+        TEST_EXECUTABLE_SUFFIX=""
+      fi
       if [[ "${SUPPRESS_MAKE_ERRORS}" == true ]]; then
         make iresearch-tests${BUILD_TYPE_SUFFIX} 2>/dev/null
       else
         make iresearch-tests${BUILD_TYPE_SUFFIX}
       fi
-    - travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}
-    - tar -czf iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}${BUILD_TYPE_SUFFIX}-${TRAVIS_BUILD_NUMBER}.tar.gz bin
+      travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}
+      tar -czf iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}${BUILD_TYPE_SUFFIX}-${TRAVIS_BUILD_NUMBER}.tar.gz bin
 
 deploy:
   provider: releases

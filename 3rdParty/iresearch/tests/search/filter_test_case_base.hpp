@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FILTER_TEST_CASE_BASE
 #define IRESEARCH_FILTER_TEST_CASE_BASE
@@ -37,7 +49,7 @@ struct boost : public iresearch::sort {
     DECLARE_FACTORY(scorer);
 
     scorer(
-        const irs::attribute_store::ref<irs::boost>& boost,
+        const irs::attribute_store::ref<irs::boost>::type& boost,
         const irs::attribute_store& attrs
     ): attrs_(attrs), boost_(boost) {
     }
@@ -48,7 +60,7 @@ struct boost : public iresearch::sort {
 
    private:
     const irs::attribute_store& attrs_;
-    const irs::attribute_store::ref<irs::boost>& boost_;
+    const irs::attribute_store::ref<irs::boost>::type& boost_;
   }; // sort::boost::scorer
 
   class prepared: public iresearch::sort::prepared_base<iresearch::boost::boost_t> {
@@ -279,12 +291,12 @@ struct frequency_sort: public iresearch::sort {
 
      private:
       size_t docs_count{};
-      irs::attribute_view::ref<irs::term_meta> meta_attr;
+      irs::attribute_view::ref<irs::term_meta>::type meta_attr;
     };
 
     class scorer: public iresearch::sort::scorer_base<score_t> {
      public:
-      scorer(const size_t* v_docs_count, const irs::attribute_view::ref<irs::document>& doc_id_t):
+      scorer(const size_t* v_docs_count, const irs::attribute_view::ref<irs::document>::type& doc_id_t):
         doc_id_t_attr(doc_id_t), docs_count(v_docs_count) {
       }
 
@@ -295,7 +307,7 @@ struct frequency_sort: public iresearch::sort {
       }
 
      private:
-      const irs::attribute_view::ref<irs::document>& doc_id_t_attr;
+      const irs::attribute_view::ref<irs::document>::type& doc_id_t_attr;
       const size_t* docs_count;
     };
 
@@ -408,7 +420,7 @@ class filter_test_case_base : public index_test_base {
     for (const auto& sub: rdr) {
       auto docs = prepared_filter->execute(sub, prepared_order);
       auto& score = docs->attributes().get<ir::score>();
-      ASSERT_TRUE(score);
+      ASSERT_TRUE(bool(score));
 
       // ensure that we avoid COW for pre c++11 std::basic_string
       const irs::bytes_ref score_value = score->value();

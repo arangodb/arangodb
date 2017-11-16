@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #include <deque>
 #include <unordered_map>
@@ -46,7 +58,7 @@ class compound_attributes: public irs::attribute_view {
   void add(const irs::attribute_view& attributes) {
     auto visitor = [this](
         const irs::attribute::type_id& type_id,
-        const irs::attribute_view::ref<irs::attribute>&
+        const irs::attribute_view::ref<irs::attribute>::type&
     ) ->bool {
 #if defined(__GNUC__) && (__GNUC__ < 5)
       // GCCs before 5 are unable to call protected
@@ -65,14 +77,14 @@ class compound_attributes: public irs::attribute_view {
   void set(const irs::attribute_view& attributes) {
     auto visitor_unset = [](
       const irs::attribute::type_id&,
-      irs::attribute_view::ref<irs::attribute>& value
+      irs::attribute_view::ref<irs::attribute>::type& value
     )->bool {
       value = nullptr;
       return true;
     };
     auto visitor_update = [this](
       const irs::attribute::type_id& type_id,
-      const irs::attribute_view::ref<irs::attribute>& value
+      const irs::attribute_view::ref<irs::attribute>::type& value
     )->bool {
 #if defined(__GNUC__) && (__GNUC__ < 5)
       // GCCs before 5 are unable to call protected
@@ -98,7 +110,7 @@ class compound_attributes: public irs::attribute_view {
 
   void insert(
       const irs::attribute::type_id& type_id,
-      const irs::attribute_view::ref<irs::attribute>& value) {
+      const irs::attribute_view::ref<irs::attribute>::type& value) {
     bool inserted;
     attribute_map::emplace(inserted, type_id) = value;
   }

@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
 #include "index/index_meta.hpp"
@@ -469,7 +481,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     file1->write_byte(42);
     file1->flush();
 
-    auto file2 = track_dir.open("abc");
+    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
 
     ASSERT_FALSE(!file2);
     ASSERT_TRUE(track_dir.sync("abc")); // does nothing in memory_directory, but adds line coverage
@@ -568,7 +580,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     iresearch::ref_tracking_directory track_dir(dir);
     auto file1 = dir.create("abc");
     ASSERT_FALSE(!file1);
-    auto file2 = track_dir.open("abc");
+    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
     size_t count = 0;
     auto visitor = [&count](const iresearch::index_file_refs::ref_t& ref)->bool { ++count; return true; };
@@ -583,7 +595,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     iresearch::ref_tracking_directory track_dir(dir, true);
     auto file1 = dir.create("abc");
     ASSERT_FALSE(!file1);
-    auto file2 = track_dir.open("abc");
+    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
     size_t count = 0;
     auto visitor = [&count](const iresearch::index_file_refs::ref_t& ref)->bool { ++count; return true; };
@@ -621,7 +633,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     virtual bool visit(const visitor_f&) const override { return false; }
     virtual iresearch::index_lock::ptr make_lock(const std::string&) NOEXCEPT override { return nullptr; }
     virtual bool mtime(std::time_t& result, const std::string& name) const NOEXCEPT override { return false; }
-    virtual iresearch::index_input::ptr open(const std::string&) const NOEXCEPT override { return nullptr; }
+    virtual iresearch::index_input::ptr open(const std::string&, irs::IOAdvice) const NOEXCEPT override { return nullptr; }
     virtual bool remove(const std::string&) NOEXCEPT override { return false; }
     virtual bool rename(const std::string&, const std::string&) NOEXCEPT override { return false; }
     virtual bool sync(const std::string& name) NOEXCEPT override { return false; }
@@ -648,7 +660,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
 
     iresearch::ref_tracking_directory track_dir(error_dir, true);
 
-    ASSERT_FALSE(track_dir.open("abc"));
+    ASSERT_FALSE(track_dir.open("abc", irs::IOAdvice::NORMAL));
 
     std::set<std::string> refs;
     auto visitor = [&refs](const iresearch::index_file_refs::ref_t& ref)->bool { refs.insert(*ref); return true; };
@@ -693,7 +705,7 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     file1->write_byte(42);
     file1->flush();
 
-    auto file2 = track_dir.open("abc");
+    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
 
     ASSERT_TRUE(track_dir.sync("abc")); // does nothing in memory_directory, but adds line coverage
@@ -715,7 +727,7 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     iresearch::tracking_directory track_dir(dir);
     auto file1 = dir.create("abc");
     ASSERT_FALSE(!file1);
-    auto file2 = track_dir.open("abc");
+    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
     iresearch::tracking_directory::file_set files;
 
@@ -729,7 +741,7 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     iresearch::tracking_directory track_dir(dir, true);
     auto file1 = dir.create("abc");
     ASSERT_FALSE(!file1);
-    auto file2 = track_dir.open("abc");
+    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
     iresearch::tracking_directory::file_set files;
 

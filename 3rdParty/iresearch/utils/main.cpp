@@ -32,6 +32,7 @@
 #include <functional>
 
 #include <cmdline.h>
+#include <unicode/uclean.h> // u_cleanup
 
 typedef std::unordered_map<
   std::string,
@@ -92,6 +93,8 @@ int main(int argc, char* argv[]) {
   if (handlers.end() != entry) {
     return entry->second(argc, argv);
   }
+
+  u_cleanup(); // cleanup ICU resources
 
   return 0;
 }

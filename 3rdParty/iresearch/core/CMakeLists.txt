@@ -33,9 +33,24 @@ if (MSVC)
   add_definitions(/W4)
   # disable "checked iterators" feature
   add_definitions(-D_SCL_SECURE_NO_WARNINGS)
+
+  # set OS specific sources
+  set(IResearch_core_os_specific_sources
+    ./utils/mman_win32.cpp
+  )
+
+  # set OS specific headers
+  set(IResearch_core_os_specific_headers
+    ./utils/mman_win32.hpp
+  )
 else()
   add_definitions(-fvisibility=hidden -Wall)
   set(CMAKE_CXX_FLAGS_RELEASE "-s ${CMAKE_CXX_FLAGS_RELEASE}")
+
+  # set OS specific headers
+  set(IResearch_core_os_specific_headers
+    ./utils/mman_posix.hpp
+  )
 endif()
 
 source_group("analysis" ./analysis/*)
@@ -124,6 +139,7 @@ set(IResearch_core_sources
   ./utils/network_utils.cpp
   ./utils/cpuinfo.cpp
   ./utils/numeric_utils.cpp
+  ${IResearch_core_os_specific_sources}
 )
 
 set(IResearch_core_headers
@@ -185,6 +201,7 @@ set(IResearch_core_headers
   ./utils/fst.hpp
   ./utils/fst_decl.hpp
   ./utils/fst_utils.hpp
+  ./utils/mmap_utils.hpp 
   ./utils/integer.hpp
   ./utils/io_utils.hpp
   ./utils/iterator.hpp
@@ -317,6 +334,7 @@ add_dependencies(${IResearch_TARGET_NAME}-shared
 add_dependencies(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-build_identifier
   ${IResearch_TARGET_NAME}-build_version
+  ${IResearch_TARGET_NAME}-analyzer-delimited-static
   ${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
@@ -333,6 +351,7 @@ if(MSVC)
   add_dependencies(${IResearch_TARGET_NAME}-static-scrt
     ${IResearch_TARGET_NAME}-build_identifier
     ${IResearch_TARGET_NAME}-build_version
+    ${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt
     ${IResearch_TARGET_NAME}-analyzer-text-static-scrt
     ${IResearch_TARGET_NAME}-format-1_0-static-scrt
     ${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
@@ -461,6 +480,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
+  ${IResearch_TARGET_NAME}-analyzer-delimited-static
   ${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
@@ -486,6 +506,7 @@ if(MSVC)
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-static-scrt
+    ${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt
     ${IResearch_TARGET_NAME}-analyzer-text-static-scrt
     ${IResearch_TARGET_NAME}-format-1_0-static-scrt
     ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
@@ -513,6 +534,7 @@ elseif (MSVC)
     $<TARGET_FILE:icu-static>
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
+    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
@@ -539,6 +561,7 @@ elseif (MSVC)
     $<TARGET_FILE:icu-static>
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
+    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static-scrt>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static-scrt>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt>"
@@ -566,6 +589,7 @@ elseif (APPLE)
     $<TARGET_FILE:icu-static>
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
+    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
@@ -593,6 +617,7 @@ else()
     $<TARGET_FILE:icu-static>
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
+    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
@@ -610,7 +635,136 @@ else()
 endif()
 
 ################################################################################
-### analysis plugins
+### analysis plugin : delimited
+################################################################################
+
+add_library(${IResearch_TARGET_NAME}-analyzer-delimited-shared
+  SHARED
+  ./analysis/delimited_token_stream.cpp
+  ./analysis/delimited_token_stream.hpp
+)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-delimited-static
+  STATIC
+  ./analysis/delimited_token_stream.cpp
+)
+
+# setup CRT
+if(MSVC)
+  add_library(${IResearch_TARGET_NAME}-analyzer-delimited-shared-scrt
+    SHARED
+    ./analysis/delimited_token_stream.cpp
+  )
+
+  add_library(${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt
+    STATIC
+    ./analysis/delimited_token_stream.cpp
+  )
+endif()
+
+target_compile_features(${IResearch_TARGET_NAME}-analyzer-delimited-shared
+  PRIVATE
+  cxx_final
+  cxx_variadic_templates
+)
+
+target_compile_features(${IResearch_TARGET_NAME}-analyzer-delimited-static
+  PRIVATE
+  cxx_final
+  cxx_variadic_templates
+)
+
+# setup CRT
+if(MSVC)
+  target_compile_features(${IResearch_TARGET_NAME}-analyzer-delimited-shared-scrt
+    PRIVATE
+    cxx_final
+    cxx_variadic_templates
+  )
+
+  target_compile_features(${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt
+    PRIVATE
+    cxx_final
+    cxx_variadic_templates
+  )
+endif()
+
+# setup CRT
+if(MSVC)
+  target_compile_options(${IResearch_TARGET_NAME}-analyzer-delimited-shared
+    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+  )
+
+  target_compile_options(${IResearch_TARGET_NAME}-analyzer-delimited-static
+    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+  )
+
+  target_compile_options(${IResearch_TARGET_NAME}-analyzer-delimited-shared-scrt
+    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+  )
+
+  target_compile_options(${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt
+    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+  )
+endif()
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-delimited-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-delimited
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-delimited-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-delimited-s
+  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+)
+
+# setup CRT
+if(MSVC)
+  set_target_properties(${IResearch_TARGET_NAME}-analyzer-delimited-shared-scrt
+    PROPERTIES
+    PREFIX lib
+    IMPORT_PREFIX lib
+    OUTPUT_NAME analyzer-delimited-scrt
+    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
+  )
+
+  set_target_properties(${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt
+    PROPERTIES
+    PREFIX lib
+    IMPORT_PREFIX lib
+    OUTPUT_NAME analyzer-delimited-scrt-s
+    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+  )
+endif()
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-delimited-shared
+  ${IResearch_TARGET_NAME}-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-delimited-static
+  ${IResearch_TARGET_NAME}-static
+)
+
+# setup CRT
+if(MSVC)
+  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-delimited-shared-scrt
+    ${IResearch_TARGET_NAME}-shared-scrt
+  )
+
+  target_link_libraries(${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt
+    ${IResearch_TARGET_NAME}-static-scrt
+  )
+endif()
+
+################################################################################
+### analysis plugin : text
 ################################################################################
 
 add_library(${IResearch_TARGET_NAME}-analyzer-text-shared
@@ -745,7 +899,8 @@ endif()
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-shared
   ${Boost_SHARED_sharedRT_LIBRARIES}
-  icu-shared
+  $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
+  $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
   stemmer-shared
 )
 
@@ -760,7 +915,8 @@ if(MSVC)
   target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
     ${IResearch_TARGET_NAME}-shared-scrt
     ${Boost_SHARED_sharedRT_LIBRARIES}
-    icu-shared
+    $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
+    $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
     stemmer-shared
   )
 

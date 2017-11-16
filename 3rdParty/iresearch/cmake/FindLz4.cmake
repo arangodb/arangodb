@@ -91,6 +91,7 @@ if (Lz4_INCLUDE_DIR AND Lz4_SRC_DIR_LZ4 AND Lz4_SRC_DIR_CMAKE)
   add_subdirectory(
     ${Lz4_SRC_DIR_CMAKE}
     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-lz4.dir
+    EXCLUDE_FROM_ALL # do not build unused targets
   )
 
   set(Lz4_LIBRARY_DIR ${LZ4_SEARCH_LIB_PATHS})

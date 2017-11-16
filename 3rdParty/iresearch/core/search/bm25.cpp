@@ -1,13 +1,27 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
+
+#include <rapidjson/rapidjson/document.h> // for rapidjson::Document
 
 #include "bm25.hpp"
 
@@ -38,9 +52,6 @@ NS_BEGIN(bm25)
 
 // empty frequency
 const frequency EMPTY_FREQ;
-
-// set of features required for bm25 model
-const flags FEATURES{ frequency::type(), norm::type() };
 
 struct stats final : stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -127,8 +138,8 @@ class norm_scorer final : public scorer {
 
 class collector final : public iresearch::sort::collector {
  public:
-  explicit collector(float_t k, float_t b) 
-    : k_(k), b_(b) {
+  explicit collector(float_t k, float_t b, bool normalize)
+    : k_(k), b_(b), normalize_(normalize) {
   }
 
   virtual void collect(
@@ -160,6 +171,10 @@ class collector final : public iresearch::sort::collector {
     bm25stats->idf =
       1 + float_t(std::log(index.docs_count() / double_t(docs_count + 1)));
 
+    if (!normalize_) {
+      return; // nothing more to do
+    }
+
     // precomputed length norm
     const float_t kb = k_ * b_;
     bm25stats->norm_const = k_ - kb;
@@ -179,24 +194,33 @@ class collector final : public iresearch::sort::collector {
   uint64_t total_term_freq = 0; // number of tokens for processed fields
   float_t k_;
   float_t b_;
+  bool normalize_;
 }; // collector
 
 class sort final : iresearch::sort::prepared_base<bm25::score_t> {
  public:
   DECLARE_FACTORY(prepared);
 
-  sort(float_t k, float_t b, bool reverse): k_(k), b_(b) {
+  sort(float_t k, float_t b, bool normalize, bool reverse)
+    : k_(k),
+      b_(b),
+      normalize_(normalize) {
     static const std::function<bool(score_t, score_t)> greater = std::greater<score_t>();
     static const std::function<bool(score_t, score_t)> less = std::less<score_t>();
     less_ = reverse ? &greater : &less;
   }
 
   virtual const flags& features() const override {
-    return bm25::FEATURES;
+    static const irs::flags FEATURES[] = {
+      irs::flags({ irs::frequency::type() }), // without normalization
+      irs::flags({ irs::frequency::type(), irs::norm::type() }), // with normalization
+    };
+
+    return FEATURES[normalize_];
   }
 
   virtual iresearch::sort::collector::ptr prepare_collector() const override {
-    return iresearch::sort::collector::make<bm25::collector>(k_, b_);
+    return irs::sort::collector::make<bm25::collector>(k_, b_, normalize_);
   }
 
   virtual scorer::ptr prepare_scorer(
@@ -241,6 +265,7 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
   const std::function<bool(score_t, score_t)>* less_;
   float_t k_;
   float_t b_;
+  bool normalize_;
 }; // sort
 
 NS_END // bm25 
@@ -252,18 +277,83 @@ DEFINE_FACTORY_DEFAULT(irs::bm25_sort);
 
 /*static*/ sort::ptr bm25_sort::make(const string_ref& args) {
   static PTR_NAMED(bm25_sort, ptr);
-  UNUSED(args);
+
+  if (args.null()) {
+    return ptr;
+  }
+
+  rapidjson::Document json;
+
+  if (json.Parse(args.c_str(), args.size()).HasParseError() || !json.IsObject()) {
+    IR_FRMT_ERROR("Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", args.c_str());
+
+    return nullptr;
+  }
+
+  #ifdef IRESEARCH_DEBUG
+    auto& scorer = dynamic_cast<bm25_sort&>(*ptr);
+  #else
+    auto& scorer = static_cast<bm25_sort&>(*ptr);
+  #endif
+
+  {
+    // optional float
+    const auto* key = "b";
+
+    if (json.HasMember(key)) {
+      if (!json[key].IsFloat()) {
+        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
+
+        return nullptr;
+      }
+
+      scorer.b(json[key].GetFloat());
+    }
+  }
+
+  {
+    // optional float
+    const auto* key = "k";
+
+    if (json.HasMember(key)) {
+      if (!json[key].IsFloat()) {
+        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
+
+        return nullptr;
+      }
+
+      scorer.k(json[key].GetFloat());
+    }
+  }
+
+  {
+    // optional bool
+    const auto* key= "with-norms";
+
+    if (json.HasMember(key)) {
+      if (!json[key].IsBool()) {
+        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
+
+        return nullptr;
+      }
+
+      scorer.normalize(json[key].GetBool());
+    }
+  }
 
   return ptr;
 }
 
-bm25_sort::bm25_sort(float_t k, float_t b) 
-  : sort(bm25_sort::type()), k_(k), b_(b) {
+bm25_sort::bm25_sort(
+    float_t k /*= 1.2f*/,
+    float_t b /*= 0.75f*/,
+    bool normalize /*= false*/
+): sort(bm25_sort::type()), k_(k), b_(b), normalize_(normalize) {
   reverse(true); // return the most relevant results first
 }
 
 sort::prepared::ptr bm25_sort::prepare() const {
-  return bm25::sort::make<bm25::sort>(k_, b_, reverse());
+  return bm25::sort::make<bm25::sort>(k_, b_, normalize_, reverse());
 }
 
 NS_END // ROOT

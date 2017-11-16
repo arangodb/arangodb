@@ -95,9 +95,10 @@ struct directory_mock : public ir::directory {
     return impl_.mtime(result, name);
   }
   virtual ir::index_input::ptr open(
-    const std::string& name
+    const std::string& name,
+    irs::IOAdvice advice
   ) const NOEXCEPT override {
-    return impl_.open(name);
+    return impl_.open(name, advice);
   }
   virtual bool remove(const std::string& name) NOEXCEPT override {
     return impl_.remove(name);
@@ -719,7 +720,13 @@ class index_test_case_base : public tests::index_test_base {
     }
   }
 
-  void profile_bulk_index(size_t num_insert_threads, size_t num_import_threads, size_t num_update_threads, size_t batch_size, ir::index_writer::ptr writer = nullptr, std::atomic<size_t>* commit_count = nullptr) {
+  void profile_bulk_index(
+      size_t num_insert_threads,
+      size_t num_import_threads,
+      size_t num_update_threads,
+      size_t batch_size,
+      ir::index_writer::ptr writer = nullptr,
+      std::atomic<size_t>* commit_count = nullptr) {
     struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
       virtual void init() {
         clear();
@@ -867,7 +874,8 @@ class index_test_case_base : public tests::index_test_base {
             std::lock_guard<std::mutex> lock(mutex);
           }
 
-          while (import_again.load()) {
+          // ensure there will be at least 1 commit if scheduled
+          do {
             import_docs_count += import_reader.docs_count();
 
             {
@@ -877,7 +885,7 @@ class index_test_case_base : public tests::index_test_base {
 
             ++writer_import_count;
             std::this_thread::sleep_for(std::chrono::milliseconds(import_interval));
-          }
+          } while (import_again.load());
         });
       }
 
@@ -970,6 +978,9 @@ class index_test_case_base : public tests::index_test_base {
     }
 
     thread_pool.stop();
+
+    // ensure all data have been commited
+    writer->commit();
 
     auto path = fs::path(test_dir()).append("profile_bulk_index.log");
     std::ofstream out(path.native());
@@ -7763,16 +7774,16 @@ TEST_F(memory_index_test, monarch_eco_onthology) {
   assert_index();
 }
 
-TEST_F(memory_index_test, concurrent_read_column) {
+TEST_F(memory_index_test, concurrent_read_column_mt) {
   concurrent_read_single_column_smoke();
   concurrent_read_multiple_columns();
 }
 
-TEST_F(memory_index_test, concurrent_read_index) {
+TEST_F(memory_index_test, concurrent_read_index_mt) {
   concurrent_read_index();
 }
 
-TEST_F(memory_index_test, concurrent_add) {
+TEST_F(memory_index_test, concurrent_add_mt) {
   tests::json_doc_generator gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
   std::vector<const tests::document*> docs;
 
@@ -7810,7 +7821,7 @@ TEST_F(memory_index_test, concurrent_add) {
   }
 }
 
-TEST_F(memory_index_test, concurrent_add_remove) {
+TEST_F(memory_index_test, concurrent_add_remove_mt) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -9393,57 +9404,57 @@ TEST_F(memory_index_test, import_reader) {
   }
 }
 
-TEST_F(memory_index_test, profile_bulk_index_singlethread_full) {
+TEST_F(memory_index_test, profile_bulk_index_singlethread_full_mt) {
   profile_bulk_index(0, 0, 0, 0);
 }
 
-TEST_F(memory_index_test, profile_bulk_index_singlethread_batched) {
+TEST_F(memory_index_test, profile_bulk_index_singlethread_batched_mt) {
   profile_bulk_index(0, 0, 0, 10000);
 }
 
-TEST_F(memory_index_test, profile_bulk_index_multithread_cleanup) {
+TEST_F(memory_index_test, profile_bulk_index_multithread_cleanup_mt) {
   profile_bulk_index_dedicated_cleanup(16, 10000, 100);
 }
 
-TEST_F(memory_index_test, profile_bulk_index_multithread_consolidate) {
+TEST_F(memory_index_test, profile_bulk_index_multithread_consolidate_mt) {
   // a lot of threads cause a lot of contention for the segment pool
   // small consolidate_interval causes too many policies to be added and slows down test
   profile_bulk_index_dedicated_consolidate(8, 10000, 5000);
 }
 
-TEST_F(memory_index_test, profile_bulk_index_multithread_dedicated_commit) {
+TEST_F(memory_index_test, profile_bulk_index_multithread_dedicated_commit_mt) {
   profile_bulk_index_dedicated_commit(16, 1, 1000);
 }
 
-TEST_F(memory_index_test, profile_bulk_index_multithread_full) {
+TEST_F(memory_index_test, profile_bulk_index_multithread_full_mt) {
   profile_bulk_index(16, 0, 0, 0);
 }
 
-TEST_F(memory_index_test, profile_bulk_index_multithread_batched) {
+TEST_F(memory_index_test, profile_bulk_index_multithread_batched_mt) {
   profile_bulk_index(16, 0, 0, 10000);
 }
 
-TEST_F(memory_index_test, profile_bulk_index_multithread_import_full) {
+TEST_F(memory_index_test, profile_bulk_index_multithread_import_full_mt) {
   profile_bulk_index(12, 4, 0, 0);
 }
 
-TEST_F(memory_index_test, profile_bulk_index_multithread_import_batched) {
+TEST_F(memory_index_test, profile_bulk_index_multithread_import_batched_mt) {
   profile_bulk_index(12, 4, 0, 10000);
 }
 
-TEST_F(memory_index_test, profile_bulk_index_multithread_import_update_full) {
+TEST_F(memory_index_test, profile_bulk_index_multithread_import_update_full_mt) {
   profile_bulk_index(9, 7, 5, 0); // 5 does not divide evenly into 9 or 7
 }
 
-TEST_F(memory_index_test, profile_bulk_index_multithread_import_update_batched) {
+TEST_F(memory_index_test, profile_bulk_index_multithread_import_update_batched_mt) {
   profile_bulk_index(9, 7, 5, 10000); // 5 does not divide evenly into 9 or 7
 }
 
-TEST_F(memory_index_test, profile_bulk_index_multithread_update_full) {
+TEST_F(memory_index_test, profile_bulk_index_multithread_update_full_mt) {
   profile_bulk_index(16, 0, 5, 0); // 5 does not divide evenly into 16
 }
 
-TEST_F(memory_index_test, profile_bulk_index_multithread_update_batched) {
+TEST_F(memory_index_test, profile_bulk_index_multithread_update_batched_mt) {
   profile_bulk_index(16, 0, 5, 10000); // 5 does not divide evenly into 16
 }
 
@@ -11201,12 +11212,12 @@ TEST_F(fs_index_test, create_empty_index) {
   writer_check_open_modes();
 }
 
-TEST_F(fs_index_test, concurrent_read_column) {
+TEST_F(fs_index_test, concurrent_read_column_mt) {
   concurrent_read_single_column_smoke();
   concurrent_read_multiple_columns();
 }
 
-TEST_F(fs_index_test, concurrent_read_index) {
+TEST_F(fs_index_test, concurrent_read_index_mt) {
   concurrent_read_index();
 }
 
@@ -11276,57 +11287,57 @@ TEST_F(fs_index_test, writer_close) {
   ASSERT_TRUE(files.empty());
 }
 
-TEST_F(fs_index_test, profile_bulk_index_singlethread_full) {
+TEST_F(fs_index_test, profile_bulk_index_singlethread_full_mt) {
   profile_bulk_index(0, 0, 0, 0);
 }
 
-TEST_F(fs_index_test, profile_bulk_index_singlethread_batched) {
+TEST_F(fs_index_test, profile_bulk_index_singlethread_batched_mt) {
   profile_bulk_index(0, 0, 0, 10000);
 }
 
-TEST_F(fs_index_test, profile_bulk_index_multithread_cleanup) {
+TEST_F(fs_index_test, profile_bulk_index_multithread_cleanup_mt) {
   profile_bulk_index_dedicated_cleanup(16, 10000, 100);
 }
 
-TEST_F(fs_index_test, profile_bulk_index_multithread_consolidate) {
+TEST_F(fs_index_test, profile_bulk_index_multithread_consolidate_mt) {
   // a lot of threads cause a lot of contention for the segment pool
   // small consolidate_interval causes too many policies to be added and slows down test
   profile_bulk_index_dedicated_consolidate(8, 10000, 5000);
 }
 
-TEST_F(fs_index_test, profile_bulk_index_multithread_dedicated_commit) {
+TEST_F(fs_index_test, profile_bulk_index_multithread_dedicated_commit_mt) {
   profile_bulk_index_dedicated_commit(16, 1, 1000);
 }
 
-TEST_F(fs_index_test, profile_bulk_index_multithread_full) {
+TEST_F(fs_index_test, profile_bulk_index_multithread_full_mt) {
   profile_bulk_index(16, 0, 0, 0);
 }
 
-TEST_F(fs_index_test, profile_bulk_index_multithread_batched) {
+TEST_F(fs_index_test, profile_bulk_index_multithread_batched_mt) {
   profile_bulk_index(16, 0, 0, 10000);
 }
 
-TEST_F(fs_index_test, profile_bulk_index_multithread_import_full) {
+TEST_F(fs_index_test, profile_bulk_index_multithread_import_full_mt) {
   profile_bulk_index(12, 4, 0, 0);
 }
 
-TEST_F(fs_index_test, profile_bulk_index_multithread_import_batched) {
+TEST_F(fs_index_test, profile_bulk_index_multithread_import_batched_mt) {
   profile_bulk_index(12, 4, 0, 10000);
 }
 
-TEST_F(fs_index_test, profile_bulk_index_multithread_import_update_full) {
+TEST_F(fs_index_test, profile_bulk_index_multithread_import_update_full_mt) {
   profile_bulk_index(9, 7, 5, 0); // 5 does not divide evenly into 9 or 7
 }
 
-TEST_F(fs_index_test, profile_bulk_index_multithread_import_update_batched) {
+TEST_F(fs_index_test, profile_bulk_index_multithread_import_update_batched_mt) {
   profile_bulk_index(9, 7, 5, 10000); // 5 does not divide evenly into 9 or 7
 }
 
-TEST_F(fs_index_test, profile_bulk_index_multithread_update_full) {
+TEST_F(fs_index_test, profile_bulk_index_multithread_update_full_mt) {
   profile_bulk_index(16, 0, 5, 0); // 5 does not divide evenly into 16
 }
 
-TEST_F(fs_index_test, profile_bulk_index_multithread_update_batched) {
+TEST_F(fs_index_test, profile_bulk_index_multithread_update_batched_mt) {
   profile_bulk_index(16, 0, 5, 10000); // 5 does not divide evenly into 16
 }
 
@@ -11370,12 +11381,12 @@ TEST_F(mmap_index_test, create_empty_index) {
   writer_check_open_modes();
 }
 
-TEST_F(mmap_index_test, concurrent_read_column) {
+TEST_F(mmap_index_test, concurrent_read_column_mt) {
   concurrent_read_single_column_smoke();
   concurrent_read_multiple_columns();
 }
 
-TEST_F(mmap_index_test, concurrent_read_index) {
+TEST_F(mmap_index_test, concurrent_read_index_mt) {
   concurrent_read_index();
 }
 
@@ -11455,57 +11466,57 @@ TEST_F(mmap_index_test, writer_close) {
   ASSERT_TRUE(files.empty());
 }
 
-TEST_F(mmap_index_test, profile_bulk_index_singlethread_full) {
+TEST_F(mmap_index_test, profile_bulk_index_singlethread_full_mt) {
   profile_bulk_index(0, 0, 0, 0);
 }
 
-TEST_F(mmap_index_test, profile_bulk_index_singlethread_batched) {
+TEST_F(mmap_index_test, profile_bulk_index_singlethread_batched_mt) {
   profile_bulk_index(0, 0, 0, 10000);
 }
 
-TEST_F(mmap_index_test, profile_bulk_index_multithread_cleanup) {
+TEST_F(mmap_index_test, profile_bulk_index_multithread_cleanup_mt) {
   profile_bulk_index_dedicated_cleanup(16, 10000, 100);
 }
 
-TEST_F(mmap_index_test, profile_bulk_index_multithread_consolidate) {
+TEST_F(mmap_index_test, profile_bulk_index_multithread_consolidate_mt) {
   // a lot of threads cause a lot of contention for the segment pool
   // small consolidate_interval causes too many policies to be added and slows down test
   profile_bulk_index_dedicated_consolidate(8, 10000, 5000);
 }
 
-TEST_F(mmap_index_test, profile_bulk_index_multithread_dedicated_commit) {
+TEST_F(mmap_index_test, profile_bulk_index_multithread_dedicated_commit_mt) {
   profile_bulk_index_dedicated_commit(16, 1, 1000);
 }
 
-TEST_F(mmap_index_test, profile_bulk_index_multithread_full) {
+TEST_F(mmap_index_test, profile_bulk_index_multithread_full_mt) {
   profile_bulk_index(16, 0, 0, 0);
 }
 
-TEST_F(mmap_index_test, profile_bulk_index_multithread_batched) {
+TEST_F(mmap_index_test, profile_bulk_index_multithread_batched_mt) {
   profile_bulk_index(16, 0, 0, 10000);
 }
 
-TEST_F(mmap_index_test, profile_bulk_index_multithread_import_full) {
+TEST_F(mmap_index_test, profile_bulk_index_multithread_import_full_mt) {
   profile_bulk_index(12, 4, 0, 0);
 }
 
-TEST_F(mmap_index_test, profile_bulk_index_multithread_import_batched) {
+TEST_F(mmap_index_test, profile_bulk_index_multithread_import_batched_mt) {
   profile_bulk_index(12, 4, 0, 10000);
 }
 
-TEST_F(mmap_index_test, profile_bulk_index_multithread_import_update_full) {
+TEST_F(mmap_index_test, profile_bulk_index_multithread_import_update_full_mt) {
   profile_bulk_index(9, 7, 5, 0); // 5 does not divide evenly into 9 or 7
 }
 
-TEST_F(mmap_index_test, profile_bulk_index_multithread_import_update_batched) {
+TEST_F(mmap_index_test, profile_bulk_index_multithread_import_update_batched_mt) {
   profile_bulk_index(9, 7, 5, 10000); // 5 does not divide evenly into 9 or 7
 }
 
-TEST_F(mmap_index_test, profile_bulk_index_multithread_update_full) {
+TEST_F(mmap_index_test, profile_bulk_index_multithread_update_full_mt) {
   profile_bulk_index(16, 0, 5, 0); // 5 does not divide evenly into 16
 }
 
-TEST_F(mmap_index_test, profile_bulk_index_multithread_update_batched) {
+TEST_F(mmap_index_test, profile_bulk_index_multithread_update_batched_mt) {
   profile_bulk_index(16, 0, 5, 10000); // 5 does not divide evenly into 16
 }
 

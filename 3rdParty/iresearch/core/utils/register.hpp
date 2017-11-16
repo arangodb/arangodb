@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_REGISTER_H
 #define IRESEARCH_REGISTER_H
@@ -148,6 +160,46 @@ class generic_register: public singleton<RegisterType> {
   register_map_t reg_map_;
   std::vector<std::unique_ptr<void, std::function<void(void*)>>> so_handles_;
 }; // generic_register
+
+// A generic_registrar capable of storing an associated tag for each entry
+template<typename KeyType, typename EntryType, typename TagType, typename RegisterType>
+class tagged_generic_register: public generic_register<KeyType, EntryType, RegisterType> {
+ public:
+  typedef typename irs::generic_register<KeyType, EntryType, RegisterType> parent_type;
+  typedef typename parent_type::key_type key_type;
+  typedef typename parent_type::entry_type entry_type;
+  typedef TagType tag_type;
+
+  virtual ~tagged_generic_register() { }
+
+  // @return the entry registered under the key and if an insertion took place
+  std::pair<entry_type, bool> set(
+      const key_type& key,
+      const entry_type& entry,
+      const tag_type* tag = nullptr
+  ) {
+    auto itr = parent_type::set(key, entry);
+
+    if (tag && itr.second) {
+      std::lock_guard<mutex_t> lock(mutex_);
+      tag_map_.emplace(key, *tag);
+    }
+
+    return itr;
+  }
+
+  const tag_type* tag(const key_type& key) const {
+    std::lock_guard<mutex_t> lock(mutex_);
+    auto itr = tag_map_.find(key);
+
+   return itr == tag_map_.end() ? nullptr : &(itr->second);
+  }
+
+  private:
+   typedef std::unordered_map<key_type, tag_type> tag_map_t;
+   mutable mutex_t mutex_;
+   tag_map_t tag_map_;
+};
 
 NS_END
 

@@ -77,11 +77,11 @@ class Prepared: public irs::sort::prepared_base<Score> {
   ) const override;
 
  private:
-  irs::attribute_view::ref<arangodb::iresearch::attribute::AttributePath>& _attr; // a jSON array representation of the attribute path
+  irs::attribute_view::ref<arangodb::iresearch::attribute::AttributePath>::type& _attr; // a jSON array representation of the attribute path
   mutable size_t _nextOrder;
   mutable size_t _order[arangodb::iresearch::AttributeScorer::ValueType::eLast + 1]; // type precedence order, +1 for unordered/unsuported types
   bool _reverse;
-  irs::attribute_view::ref<arangodb::iresearch::attribute::Transaction>& _trx;
+  irs::attribute_view::ref<arangodb::iresearch::attribute::Transaction>::type& _trx;
 
   size_t precedence(arangodb::velocypack::Slice const& slice) const;
 };

@@ -1,13 +1,27 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
+
+#include <rapidjson/rapidjson/document.h> // for rapidjson::Document
 
 #include "tfidf.hpp"
 
@@ -21,18 +35,6 @@ NS_BEGIN(tfidf)
 
 // empty frequency
 const frequency EMPTY_FREQ;
-
-const flags& features(bool normalize) {
-  if (normalize) {
-    // set of features required for tf-idf model without normalization
-    static const flags FEATURES{ frequency::type() };
-    return FEATURES;
-  }
-
-  // set of features required for tf-idf model with normalization
-  static const flags NORM_FEATURES{ frequency::type(), norm::type() };
-  return NORM_FEATURES;
-}
 
 struct idf final : basic_stored_attribute<float_t> {
   DECLARE_ATTRIBUTE_TYPE();
@@ -145,7 +147,12 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
   }
 
   virtual const flags& features() const override {
-    return tfidf::features(normalize_); 
+    static const irs::flags FEATURES[] = {
+      irs::flags({ irs::frequency::type() }), // without normalization
+      irs::flags({ irs::frequency::type(), irs::norm::type() }), // with normalization
+    };
+
+    return FEATURES[normalize_];
   }
 
   virtual collector::ptr prepare_collector() const override {
@@ -202,7 +209,46 @@ DEFINE_FACTORY_DEFAULT(irs::tfidf_sort);
 
 /*static*/ sort::ptr tfidf_sort::make(const string_ref& args) {
   static PTR_NAMED(tfidf_sort, ptr);
-  UNUSED(args);
+
+  if (args.null()) {
+    return ptr;
+  }
+
+  rapidjson::Document json;
+
+  if (json.Parse(args.c_str(), args.size()).HasParseError()
+      || !(json.IsObject() || json.IsBool())) {
+    IR_FRMT_ERROR("Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", args.c_str());
+
+    return nullptr;
+  }
+
+  #ifdef IRESEARCH_DEBUG
+    auto& scorer = dynamic_cast<tfidf_sort&>(*ptr);
+  #else
+    auto& scorer = static_cast<tfidf_sort&>(*ptr);
+  #endif
+
+  if (json.IsBool()) {
+    scorer.normalize(json.GetBool());
+
+    return ptr;
+  }
+
+  {
+    // optional bool
+    const auto* key= "with-norms";
+
+    if (json.HasMember(key)) {
+      if (!json[key].IsBool()) {
+        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing tfidf scorer from jSON arguments: %s", key, args.c_str());
+
+        return nullptr;
+      }
+
+      scorer.normalize(json[key].GetBool());
+    }
+  }
 
   return ptr;
 }

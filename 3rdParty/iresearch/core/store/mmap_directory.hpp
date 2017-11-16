@@ -36,7 +36,8 @@ class IRESEARCH_API mmap_directory : public fs_directory {
   explicit mmap_directory(const std::string& dir);
 
   virtual index_input::ptr open(
-    const std::string& name
+    const std::string& name,
+    IOAdvice advice
   ) const NOEXCEPT final;
 }; // mmap_directory
 

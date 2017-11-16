@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_STORE_UTILS_H
 #define IRESEARCH_STORE_UTILS_H
@@ -233,6 +245,30 @@ struct vencode_traits<uint64_t>: ::detail::vencode_traits_base<size_t, 10> {
     return read_vlong(begin);
   }
 }; // vencode_traits<uint64_t>
+
+// MacOS size_t is a different type from any of the above
+#if defined(__APPLE__)
+  template<>
+  struct vencode_traits<size_t>: ::detail::vencode_traits_base<size_t, 10> {
+    typedef size_t type;
+
+    static size_t size(type v) {
+      return vencode_size_64(v);
+    }
+
+    CONSTEXPR static size_t max_size() {
+      return const_max_size; // may take up to 10 bytes
+    }
+
+    static byte_type* write(type v, byte_type* begin) {
+      return write_vlong(v, begin);
+    }
+
+    static std::pair<type, const byte_type*> read(const byte_type* begin) {
+      return read_vlong(begin);
+    }
+  };
+#endif
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                               read/write helpers
