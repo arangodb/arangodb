@@ -46,6 +46,17 @@ function guid() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief shuffle array elements
+////////////////////////////////////////////////////////////////////////////////
+
+function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -317,12 +328,84 @@ function agencyTestSuite () {
       res = accessAgency("write",[[{"/b":3},{"/a/b/c":{"in":3},"/a/e":{"in":2}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/b"]]), [{b:3}]);
+
+      // Permute order of keys and objects within precondition
+      var localObj =
+          {"foo" : "bar",
+           "baz" : {
+             "_id": "5a00203e4b660989b2ae5493", "index": 0,
+             "guid": "7a709cc2-1479-4079-a0a3-009cbe5674f4",
+             "isActive": true, "balance": "$3,072.23", "picture": "http://placehold.it/32x32",
+             "age": 21, "eyeColor": "green", "name": { "first": "Durham", "last": "Duke" },
+             "tags": ["anim","et","id","do","est",1.0,-1024,1024]
+           },
+           "qux" : ["3.14159265359",3.14159265359]
+          };
+      var test;
+      var localKeys = [];
+      for (var i in localObj.baz) {
+        localKeys.push(i);
+      }
+      var permuted;
+      
+      res = accessAgency("write", [[localObj, localObj]]);
+      assertEqual(res.statusCode, 412);
+      res = writeAndCheck([[localObj]]);
+      res = writeAndCheck([[localObj, localObj]]);
+      res = writeAndCheck(
+        [[localObj, {"baz":localObj.baz,"foo":localObj.foo,"qux":localObj.qux}]]);
+      res = writeAndCheck(
+        [[localObj, {"baz":localObj.baz,"qux":localObj.qux,"foo":localObj.foo}]]);
+      res = writeAndCheck(
+        [[localObj, {"qux":localObj.qux,"baz":localObj.baz,"foo":localObj.foo}]]);
+
+      for (var j in localKeys) {
+        permuted = {};      
+        shuffle(localKeys);
+        for (var k in localKeys) {
+          permuted[localKeys[k]] = localObj.baz[localKeys[k]];
+        }
+        res = writeAndCheck(
+          [[localObj, {"baz":permuted,"foo":localObj.foo,"qux":localObj.qux}]]);
+        res = writeAndCheck(
+          [[localObj, {"foo":localObj.foo,"qux":localObj.qux,"baz":permuted}]]);
+        res = writeAndCheck(
+          [[localObj, {"qux":localObj.qux,"baz":permuted,"foo":localObj.foo}]]);
+      }
+
+      // Permute order of keys and objects within arrays in preconditions
+      writeAndCheck([[{"a":[{"b":12,"c":13}]}]]);
+      writeAndCheck([[{"a":[{"b":12,"c":13}]},{"a":[{"b":12,"c":13}]}]]);
+      writeAndCheck([[{"a":[{"b":12,"c":13}]},{"a":[{"c":13,"b":12}]}]]);
+
+      localObj = {"b":"Hello world!", "c":3.14159265359, "d":314159265359, "e": -3};
+      var localObk = {"b":1, "c":1.0, "d": 100000000001, "e": -1};
+      localKeys  = [];
+      for (var l in localObj) {
+        localKeys.push(l);
+      }
+      permuted = {};
+      var per2 = {};
+      writeAndCheck([[ { "a" : [localObj,localObk] } ]]);
+      writeAndCheck([[ { "a" : [localObj,localObk] }, {"a" : [localObj,localObk] }]]);
+      for (var m = 0; m < 7; m++) {
+        permuted = {};
+        shuffle(localKeys);
+        for (k in localKeys) {
+          permuted[localKeys[k]] = localObj[localKeys[k]];
+          per2 [localKeys[k]] = localObk[localKeys[k]];
+        }
+        writeAndCheck([[ { "a" : [localObj,localObk] }, {"a" : [permuted,per2] }]]);
+        res = accessAgency("write",
+                           [[ { "a" : [localObj,localObk] }, {"a" : [per2,permuted] }]]);
+        assertEqual(res.statusCode, 412);        
+      }
+      
     },
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test clientIds
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief test clientIds
+  ////////////////////////////////////////////////////////////////////////////////
 
     testClientIds : function () {
       var res;

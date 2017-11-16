@@ -36,7 +36,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
-using namespace fakeit;
 
 namespace arangodb {
 namespace tests {
@@ -52,13 +51,13 @@ TEST_CASE("ClusterTraverserCache", "[aql][cluster]") {
     std::string vertexId = "UnitTest/Vertex";
     std::string expectedMessage = "vertex '" + vertexId + "' not found";
 
-    Mock<transaction::Methods> trxMock;
+    fakeit::Mock<transaction::Methods> trxMock;
     transaction::Methods& trx = trxMock.get();
 
-    Mock<Query> queryMock;
+    fakeit::Mock<Query> queryMock;
     Query& query = queryMock.get();
-    When(Method(queryMock, trx)).AlwaysReturn(&trx);
-    When(Method(queryMock, registerWarning)).Do([&] (int code, char const* message) {
+    fakeit::When(Method(queryMock, trx)).AlwaysReturn(&trx);
+    fakeit::When(Method(queryMock, registerWarning)).Do([&] (int code, char const* message) {
       REQUIRE(code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       REQUIRE(strcmp(message, expectedMessage.c_str()) == 0);
     });
@@ -68,7 +67,7 @@ TEST_CASE("ClusterTraverserCache", "[aql][cluster]") {
     // NOTE: we do not put anything into the cache, so we get null for any vertex
     AqlValue val = testee.fetchVertexAqlResult(StringRef(vertexId));
     REQUIRE(val.isNull(false));
-    Verify(Method(queryMock, registerWarning)).Exactly(1);
+    fakeit::Verify(Method(queryMock, registerWarning)).Exactly(1);
   }
 
   SECTION("it should insert a NULL VPack if vertex not cached") {
@@ -76,13 +75,13 @@ TEST_CASE("ClusterTraverserCache", "[aql][cluster]") {
     std::string vertexId = "UnitTest/Vertex";
     std::string expectedMessage = "vertex '" + vertexId + "' not found";
 
-    Mock<transaction::Methods> trxMock;
+    fakeit::Mock<transaction::Methods> trxMock;
     transaction::Methods& trx = trxMock.get();
 
-    Mock<Query> queryMock;
+    fakeit::Mock<Query> queryMock;
     Query& query = queryMock.get();
-    When(Method(queryMock, trx)).AlwaysReturn(&trx);
-    When(Method(queryMock, registerWarning)).Do([&] (int code, char const* message) {
+    fakeit::When(Method(queryMock, trx)).AlwaysReturn(&trx);
+    fakeit::When(Method(queryMock, registerWarning)).Do([&] (int code, char const* message) {
       REQUIRE(code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       REQUIRE(strcmp(message, expectedMessage.c_str()) == 0);
     });
@@ -97,7 +96,7 @@ TEST_CASE("ClusterTraverserCache", "[aql][cluster]") {
     VPackSlice sl = result.slice();
     REQUIRE(sl.isNull());
 
-    Verify(Method(queryMock, registerWarning)).Exactly(1);
+    fakeit::Verify(Method(queryMock, registerWarning)).Exactly(1);
   }
 
 }

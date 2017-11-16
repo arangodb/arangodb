@@ -97,10 +97,6 @@ void RocksDBCounterManager::runRecovery() {
       sync(false);
     }
   }
-
-  // notify everyone that recovery is now done
-  auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
-  databaseFeature->recoveryDone();
 }
 
 RocksDBCounterManager::CounterAdjustment RocksDBCounterManager::loadCounter(

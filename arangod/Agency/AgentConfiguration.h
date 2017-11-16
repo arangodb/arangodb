@@ -60,6 +60,7 @@ static const std::string startupStr = "startup";
 struct config_t {
  private:
   std::string _id;
+  std::string _recoveryId;
   size_t _agencySize;
   size_t _poolSize;
   double _minPing;
@@ -88,15 +89,16 @@ struct config_t {
   config_t();
 
   /// @brief ctor
-  config_t(size_t as, size_t ps, double minp, double maxp, std::string const& e,
-           std::vector<std::string> const& g, bool s, bool st, bool w, double f,
-           uint64_t c, uint64_t k, double p, bool t, size_t a);
+  config_t(std::string const& rid, size_t as, size_t ps, double minp, double maxp,
+           std::string const& e, std::vector<std::string> const& g, bool s,
+           bool st, bool w, double f, uint64_t c, uint64_t k, double p, bool t,
+           size_t a);
 
   /// @brief copy constructor
   config_t(config_t const&);
 
   /// @brief move constructor
-  config_t(config_t&&);
+  config_t(config_t&&) = delete;
 
   /// @brief assignement operator
   config_t& operator=(config_t const&);
@@ -109,6 +111,9 @@ struct config_t {
 
   /// @brief agent id
   std::string id() const;
+
+  /// @brief agent id
+  std::string recoveryId() const;
 
   /// @brief pool completed
   bool poolComplete() const;
@@ -124,6 +129,9 @@ struct config_t {
 
   /// @brief add pool member
   bool addToPool(std::pair<std::string, std::string> const& i);
+
+  /// @brief active agency size
+  void activate();
 
   /// @brief active agency size
   size_t size() const;
@@ -150,9 +158,6 @@ struct config_t {
   query_t activeToBuilder() const;
   query_t activeAgentsToBuilder() const;
   query_t poolToBuilder() const;
-
-  /// @brief override this configuration with prevailing opinion (startup)
-  void override(VPackSlice const& conf);
 
   /// @brief vpack representation
   query_t toBuilder() const;
@@ -204,12 +209,6 @@ struct config_t {
 
   /// @brief Supervision grace period
   double supervisionGracePeriod() const;
-
-  /// @brief Get replacement for deceased active agent
-  bool swapActiveMember(std::string const&, std::string const&);
-
-  /// @brief Get next agent in line of succession
-  std::string nextAgentInLine() const;
 
   /// @brief
   std::string startup() const;

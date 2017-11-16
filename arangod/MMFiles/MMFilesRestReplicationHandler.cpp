@@ -441,6 +441,13 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "invalid response type");
       }
+      
+      /*std::string ll(TRI_BeginStringBuffer(dump._buffer),
+                       TRI_LengthStringBuffer(dump._buffer));
+      for (std::string const& str : basics::StringUtils::split(ll, '\n')) {
+        if (!str.empty()) LOG_TOPIC(WARN, Logger::FIXME) << str;
+      }*/
+      
       // transfer ownership of the buffer contents
       httpResponse->body().set(dump._buffer);
 
@@ -804,9 +811,16 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
   }
 
   size_t offsetInChunk = 0;
+  size_t maxChunkSize = SIZE_MAX;
   std::string const& value4 = _request->value("offset", found);
   if (found) {
     offsetInChunk = static_cast<size_t>(StringUtils::uint64(value4));
+    // "offset" was introduced with ArangoDB 3.3. if the client sends it,
+    // it means we can adapt the result size dynamically and the client
+    // may refetch data for the same chunk
+    maxChunkSize = 8 * 1024 * 1024; 
+    // if a client does not send an "offset" parameter at all, we are
+    // not sure if it supports this protocol (3.2 and before) or not
   }
 
   std::string const& id = suffixes[1];
@@ -843,7 +857,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
       }
       collectionKeys->dumpDocs(resultBuilder, chunk,
                                static_cast<size_t>(chunkSize), offsetInChunk,
-                               parsedIds->slice());
+                               maxChunkSize, parsedIds->slice());
     }
 
     resultBuilder.close();

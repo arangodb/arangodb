@@ -73,10 +73,6 @@
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
-namespace {
-static std::string const Empty;
-}  // namespace
-
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
                                      VPackSlice const& info)
     : PhysicalCollection(collection, info),
@@ -135,7 +131,7 @@ RocksDBCollection::~RocksDBCollection() {
 }
 
 std::string const& RocksDBCollection::path() const {
-  return Empty;  // we do not have any path
+  return StaticStrings::Empty;  // we do not have any path
 }
 
 void RocksDBCollection::setPath(std::string const&) {

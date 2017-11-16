@@ -29,81 +29,60 @@
 using namespace arangodb::consensus;
 
 config_t::config_t()
-    : _agencySize(0),
-      _poolSize(0),
-      _minPing(0.0),
-      _maxPing(0.0),
-      _timeoutMult(1),
-      _endpoint(defaultEndpointStr),
-      _supervision(false),
-      _supervisionTouched(false),
-      _waitForSync(true),
-      _supervisionFrequency(5.0),
-      _compactionStepSize(2000),
-      _compactionKeepSize(500),
-      _supervisionGracePeriod(15.0),
-      _cmdLineTimings(false),
-      _version(0),
-      _startup("origin"),
-      _maxAppendSize(250),
-      _lock()
-      {}
+  : _agencySize(0),
+    _poolSize(0),
+    _minPing(0.0),
+    _maxPing(0.0),
+    _timeoutMult(1),
+    _endpoint(defaultEndpointStr),
+    _supervision(false),
+    _supervisionTouched(false),
+    _waitForSync(true),
+    _supervisionFrequency(5.0),
+    _compactionStepSize(2000),
+    _compactionKeepSize(500),
+    _supervisionGracePeriod(15.0),
+    _cmdLineTimings(false),
+    _version(0),
+    _startup("origin"),
+    _maxAppendSize(250),
+    _lock() {}
 
-config_t::config_t(size_t as, size_t ps, double minp, double maxp,
-                   std::string const& e, std::vector<std::string> const& g,
-                   bool s, bool st, bool w, double f, uint64_t c, uint64_t k,
-                   double p, bool t, size_t a)
-    : _agencySize(as),
-      _poolSize(ps),
-      _minPing(minp),
-      _maxPing(maxp),
-      _timeoutMult(1),
-      _endpoint(e),
-      _gossipPeers(g),
-      _supervision(s),
-      _supervisionTouched(st),
-      _waitForSync(w),
-      _supervisionFrequency(f),
-      _compactionStepSize(c),
-      _compactionKeepSize(k),      
-      _supervisionGracePeriod(p),
-      _cmdLineTimings(t),
-      _version(0),
-      _startup("origin"),
-      _maxAppendSize(a),
-      _lock()
-      {}
+config_t::config_t(
+  std::string const& rid, size_t as, size_t ps, double minp, double maxp,
+  std::string const& e, std::vector<std::string> const& g, bool s, bool st,
+  bool w, double f, uint64_t c, uint64_t k, double p, bool t, size_t a)
+  : _recoveryId(rid),
+    _agencySize(as),
+    _poolSize(ps),
+    _minPing(minp),
+    _maxPing(maxp),
+    _timeoutMult(1),
+    _endpoint(e),
+    _gossipPeers(g),
+    _supervision(s),
+    _supervisionTouched(st),
+    _waitForSync(w),
+    _supervisionFrequency(f),
+    _compactionStepSize(c),
+    _compactionKeepSize(k),      
+    _supervisionGracePeriod(p),
+    _cmdLineTimings(t),
+    _version(0),
+    _startup("origin"),
+    _maxAppendSize(a),
+    _lock() {}
 
-config_t::config_t(config_t const& other) { *this = other; }
-
-config_t::config_t(config_t&& other)
-    : _id(std::move(other._id)),
-      _agencySize(std::move(other._agencySize)),
-      _poolSize(std::move(other._poolSize)),
-      _minPing(std::move(other._minPing)),
-      _maxPing(std::move(other._maxPing)),
-      _timeoutMult(std::move(other._timeoutMult)),
-      _endpoint(std::move(other._endpoint)),
-      _pool(std::move(other._pool)),
-      _gossipPeers(std::move(other._gossipPeers)),
-      _active(std::move(other._active)),
-      _supervision(std::move(other._supervision)),
-      _supervisionTouched(std::move(other._supervisionTouched)),
-      _waitForSync(std::move(other._waitForSync)),
-      _supervisionFrequency(std::move(other._supervisionFrequency)),
-      _compactionStepSize(std::move(other._compactionStepSize)),
-      _compactionKeepSize(std::move(other._compactionKeepSize)),
-      _supervisionGracePeriod(std::move(other._supervisionGracePeriod)),
-      _cmdLineTimings(std::move(other._cmdLineTimings)),
-      _version(std::move(other._version)),
-      _startup(std::move(other._startup)),
-      _maxAppendSize(std::move(other._maxAppendSize)){}
+config_t::config_t(config_t const& other) { 
+  READ_LOCKER(readLocker, other._lock);
+  *this = other; 
+}
 
 config_t& config_t::operator=(config_t const& other) {
   // must hold the lock of other to copy _pool, _minPing, _maxPing etc.
   READ_LOCKER(readLocker, other._lock);
-
   _id = other._id;
+  _recoveryId = other._recoveryId;
   _agencySize = other._agencySize;
   _poolSize = other._poolSize;
   _minPing = other._minPing;
@@ -128,6 +107,8 @@ config_t& config_t::operator=(config_t const& other) {
 }
 
 config_t& config_t::operator=(config_t&& other) {
+  READ_LOCKER(readLocker, other._lock);
+
   _id = std::move(other._id);
   _agencySize = std::move(other._agencySize);
   _poolSize = std::move(other._poolSize);
@@ -209,6 +190,11 @@ std::string config_t::id() const {
   return _id;
 }
 
+std::string config_t::recoveryId() const {
+  READ_LOCKER(readLocker, _lock);
+  return _recoveryId;
+}
+
 std::string config_t::poolAt(std::string const& id) const {
   READ_LOCKER(readLocker, _lock);
   return _pool.at(id);
@@ -227,6 +213,14 @@ std::vector<std::string> config_t::active() const {
 bool config_t::activeEmpty() const {
   READ_LOCKER(readLocker, _lock);
   return _active.empty();
+}
+
+void config_t::activate() {
+  WRITE_LOCKER(readLocker, _lock);
+  _active.clear();
+  for (auto const& pair : _pool) {
+    _active.push_back(pair.first);
+  }
 }
 
 bool config_t::waitForSync() const {
@@ -284,37 +278,6 @@ bool config_t::addToPool(std::pair<std::string, std::string> const& i) {
     }
   }
   return true;
-}
-
-bool config_t::swapActiveMember(
-  std::string const& failed, std::string const& repl) {
-  try {
-    WRITE_LOCKER(writeLocker, _lock);
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Replacing " << failed << " with " << repl;
-    std::replace (_active.begin(), _active.end(), failed, repl);
-    ++_version;
-  } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Replacing " << failed << " with " << repl << "failed : " << e.what();
-    return false;
-  }
-
-  return true;
-}
-
-std::string config_t::nextAgentInLine() const {
-
-  READ_LOCKER(readLocker, _lock);
-
-  if (_poolSize > _agencySize) {
-    for (const auto& p : _pool) {
-      if (std::find(_active.begin(), _active.end(), p.first) == _active.end()) {
-        return p.first;
-      }
-    }
-  }
-  
-  return ""; // No one left
 }
 
 size_t config_t::maxAppendSize() const {
@@ -440,111 +403,6 @@ void config_t::update(query_t const& message) {
   }
 }
 
-/// @brief override this configuration with prevailing opinion (startup)
-void config_t::override(VPackSlice const& conf) {
-  WRITE_LOCKER(writeLocker, _lock);
-
-  if (conf.hasKey(agencySizeStr) && conf.get(agencySizeStr).isUInt()) {
-    _agencySize = conf.get(agencySizeStr).getUInt();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << agencySizeStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(poolSizeStr) && conf.get(poolSizeStr).isUInt()) {
-    _poolSize = conf.get(poolSizeStr).getUInt();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << poolSizeStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(minPingStr) && conf.get(minPingStr).isDouble()) {
-    _minPing = conf.get(minPingStr).getNumber<double>();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << minPingStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(maxPingStr) && conf.get(maxPingStr).isDouble()) {
-    _maxPing = conf.get(maxPingStr).getNumber<double>();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << maxPingStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(timeoutMultStr) && conf.get(timeoutMultStr).isInteger()) {
-    _timeoutMult = conf.get(timeoutMultStr).getNumber<int64_t>();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << timeoutMultStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(poolStr) && conf.get(poolStr).isArray()) {
-    _pool.clear();
-    for (auto const& peer : VPackArrayIterator(conf.get(poolStr))) {
-      auto key = peer.get(idStr).copyString();
-      auto value = peer.get(endpointStr).copyString();
-      _pool[key] = value;
-    }
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << poolStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(activeStr) && conf.get(activeStr).isArray()) {
-    _active.clear();
-    for (auto const& peer : VPackArrayIterator(conf.get(activeStr))) {
-      _active.push_back(peer.copyString());
-    }
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override poolSize from "
-                                   << conf.toJson();
-  }
-
-  if (conf.hasKey(supervisionStr) && conf.get(supervisionStr).isBoolean()) {
-    _supervision = conf.get(supervisionStr).getBoolean();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << supervisionStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(waitForSyncStr) && conf.get(waitForSyncStr).isBoolean()) {
-    _waitForSync = conf.get(waitForSyncStr).getBoolean();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << waitForSyncStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(supervisionFrequencyStr) &&
-      conf.get(supervisionFrequencyStr).isDouble()) {
-    _supervisionFrequency = conf.get(supervisionFrequencyStr).getNumber<double>();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override "
-                                   << supervisionFrequencyStr << " from "
-                                   << conf.toJson();
-  }
-
-  if (conf.hasKey(compactionStepSizeStr) &&
-      conf.get(compactionStepSizeStr).isUInt()) {
-    _compactionStepSize = conf.get(compactionStepSizeStr).getUInt();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override "
-                                   << compactionStepSizeStr << " from "
-                                   << conf.toJson();
-  }
-
-  if (conf.hasKey(compactionKeepSizeStr) &&
-      conf.get(compactionKeepSizeStr).isUInt()) {
-    _compactionKeepSize = conf.get(compactionKeepSizeStr).getUInt();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override "
-                                   << compactionKeepSizeStr << " from "
-                                   << conf.toJson();
-  }
-
-  ++_version;
-}
-
 /// @brief vpack representation
 query_t config_t::toBuilder() const {
 
@@ -615,6 +473,7 @@ bool config_t::merge(VPackSlice const& conf) {
   // the given default values never happen. Only fixed _supervision with
   // _supervisionTouched as an emergency measure.
   _id = conf.get(idStr).copyString();  // I get my id
+  _recoveryId.clear();
   _startup = "persistence";
 
   std::stringstream ss;

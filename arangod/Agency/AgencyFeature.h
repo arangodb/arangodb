@@ -45,6 +45,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   void start() override final;
   void beginShutdown() override final;
   void stop() override final;
+  void unprepare() override final;
 
  private:
   bool _activated;
@@ -63,6 +64,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   std::string _agencyMyAddress;
   std::vector<std::string> _agencyEndpoints;
   bool _cmdLineTimings;
+  std::string _recoveryId;
 
  public:
   consensus::Agent* agent() const { return _agent.get(); }

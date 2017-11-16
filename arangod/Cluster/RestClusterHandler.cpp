@@ -133,8 +133,11 @@ void RestClusterHandler::handleCommandEndpoints() {
   builder.add("code", VPackValue(200));
   {
     VPackArrayBuilder array(&builder, "endpoints", true);
+
     for (ServerID const& sid : endpoints) {
-      array->add(VPackValue(ci->getServerEndpoint(sid)));
+      VPackObjectBuilder obj(&builder);
+      builder.add(VPackValue("endpoint"));
+      builder.add(VPackValue(ci->getServerEndpoint(sid)));
     }
   }
   builder.close();
