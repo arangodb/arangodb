@@ -61,7 +61,7 @@ class MaintenanceHandler : public RestBaseHandler {
         ReplicationFeature* replication = ReplicationFeature::INSTANCE;
         if (replication != nullptr && replication->isAutomaticFailoverEnabled()) {
           GlobalReplicationApplier* applier = replication->globalReplicationApplier();
-          if (applier != nullptr && applier->isRunning()) {
+          if (applier != nullptr) {
             endpoint = applier->endpoint();
             // replace tcp:// with http://, and ssl:// with https://
             endpoint = fixEndpointProtocol(endpoint);
@@ -69,7 +69,7 @@ class MaintenanceHandler : public RestBaseHandler {
         }
         generateError(Result(TRI_ERROR_CLUSTER_NOT_LEADER));
         // return the endpoint of the actual leader
-        _response->setHeader("x-arango-endpoint", endpoint);
+        _response->setHeader(StaticStrings::LeaderEndpoint, endpoint);
         break;
       }
 
@@ -78,7 +78,7 @@ class MaintenanceHandler : public RestBaseHandler {
         // intentionally do not set "Location" header, but use a custom header that 
         // clients can inspect. if they find an empty endpoint, it means that there
         // is an ongoing leadership challenge
-        _response->setHeader("x-arango-endpoint", "");
+        _response->setHeader(StaticStrings::LeaderEndpoint, "");
         break;
       }
 
