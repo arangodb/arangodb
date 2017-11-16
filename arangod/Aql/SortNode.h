@@ -73,7 +73,7 @@ class SortNode : public ExecutionNode {
                        bool withProperties) const override final {
     auto c = new SortNode(plan, _id, _elements, _stable);
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }

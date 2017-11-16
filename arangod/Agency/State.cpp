@@ -144,7 +144,11 @@ std::vector<index_t> State::logLeaderMulti(
       30000, "Agency syntax requires array of transactions [[<queries>]]");
   }
 
-  TRI_ASSERT(slice.length() == applicable.size());
+  if (slice.length() != applicable.size()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      30000, "Invalid transaction syntax");
+  }
+
   MUTEX_LOCKER(mutexLocker, _logLock); 
   
   TRI_ASSERT(!_log.empty()); // log must never be empty
@@ -159,8 +163,8 @@ std::vector<index_t> State::logLeaderMulti(
     }
     
     if (applicable[j]) {
-      std::string clientId((i.length()==3) ? i[2].copyString() : "");
-      idx[j] = logNonBlocking(_log.back().index+1, i[0], term, clientId, true);
+      std::string clientId((i.length() == 3) ? i[2].copyString() : "");
+      idx[j] = logNonBlocking(_log.back().index + 1, i[0], term, clientId, true);
     }
     ++j;
   }

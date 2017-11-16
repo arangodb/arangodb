@@ -58,7 +58,6 @@ class RestoreFeature final
   bool _importStructure;
   bool _progress;
   bool _overwrite;
-  bool _recycleIds;
   bool _force;
   bool _ignoreDistributeShardsLikeErrors;
   bool _clusterMode;

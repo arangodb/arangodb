@@ -125,6 +125,11 @@ class AuthInfo {
   std::string generateRawJwt(VPackBuilder const&);
 
  private:
+  // worker function for canUseDatabase
+  // must only be called with the read-lock on _authInfoLock being held
+  AuthLevel canUseDatabaseInternal(std::string const& username,
+                                   std::string const& dbname, size_t depth) const;
+
   // internal method called by canUseCollection
   // asserts that collection name is non-empty and already translated
   // from collection id to name
