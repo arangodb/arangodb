@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
@@ -342,9 +343,11 @@ void TRI_GetBacktrace(std::string& btstr) {
 void TRI_PrintBacktrace() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
-  std::string out;
-  TRI_GetBacktrace(out);
-  fprintf(stderr, "%s", out.c_str());
+  if (LogAppender::allowStdLogging()) {
+    std::string out;
+    TRI_GetBacktrace(out);
+    fprintf(stderr, "%s", out.c_str());
+  }
 #endif
 #if TRI_HAVE_PSTACK
   char buf[64];

@@ -127,9 +127,13 @@ void LogAppenderFile::writeLogMessage(LogLevel level, char const* buffer, size_t
     ssize_t n = TRI_WRITE(fd, buffer, static_cast<TRI_write_t>(len));
 
     if (n < 0) {
-      fprintf(stderr, "cannot log data: %s\n", TRI_LAST_ERROR_STR);
-      return;  // give up, but do not try to log failure
-    } else if (n == 0) {
+      if (allowStdLogging()) {
+        fprintf(stderr, "cannot log data: %s\n", TRI_LAST_ERROR_STR);
+      }
+      return;  // give up, but do not try to log the failure via the Logger
+    }
+
+    if (n == 0) {
       if (!giveUp) {
         giveUp = true;
         continue;
@@ -216,8 +220,10 @@ LogAppenderStdStream::LogAppenderStdStream(std::string const& filename, std::str
 
 LogAppenderStdStream::~LogAppenderStdStream() {
   // flush output stream on shutdown
-  FILE* fp = (_fd == STDOUT_FILENO ? stdout : stderr);
-  fflush(fp);
+  if (allowStdLogging()) {
+    FILE* fp = (_fd == STDOUT_FILENO ? stdout : stderr);
+    fflush(fp);
+  }
 }
   
 void LogAppenderStdStream::writeLogMessage(LogLevel level, char const* buffer, size_t len) {
@@ -225,6 +231,9 @@ void LogAppenderStdStream::writeLogMessage(LogLevel level, char const* buffer, s
 }
 
 void LogAppenderStdStream::writeLogMessage(int fd, bool isTty, LogLevel level, char const* buffer, size_t len, bool appendNewline) {
+  if (!allowStdLogging()) {
+    return;
+  }
   // out stream
   FILE* fp = (fd == STDOUT_FILENO ? stdout : stderr);
   char const* nl = (appendNewline ? "\n" : "");
