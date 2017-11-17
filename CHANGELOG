@@ -1,5 +1,5 @@
-devel
------
+v3.3.rc1 (2017-11-17)
+---------------------
 
 * removed `--recycle-ids` option for arangorestore
 

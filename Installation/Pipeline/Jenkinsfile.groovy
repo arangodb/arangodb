@@ -130,7 +130,7 @@ credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 // source branch for pull requests
 mainBranch = "unknown"
 
-if ("beta1" == "devel") {
+if ("rc1" == "devel") {
     mainBranch = "devel"
 }
 else { 
@@ -634,8 +634,6 @@ def setBuildsAndTests() {
             // OS EDITION MAINTAINER MODE ENGINE
             "test-linux-enterprise-maintainer-cluster-mmfiles" : true,
         ]
-
-        runResilience = params.RunResilience
     }
     else if (buildType == "PR Test") {
         restrictions = [
@@ -653,8 +651,6 @@ def setBuildsAndTests() {
             "resilience-linux-enterprise-maintainer-rocksdb-single" : true,
             "resilience-linux-enterprise-maintainer-mmfiles-single" : true,
         ]
-
-        runResilience = params.RunResilience
     }
     else if (buildType == "Nightly Test") {
         useDocker = true
@@ -686,8 +682,6 @@ def setBuildsAndTests() {
             "resilience-linux-enterprise-maintainer-rocksdb-single" : true,
             "resilience-linux-enterprise-maintainer-mmfiles-single" : true,
         ]
-
-        runResilience = params.RunResilience
     }
 
     overview = """<html><body><table>
