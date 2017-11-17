@@ -628,7 +628,7 @@ def setBuildsAndTests() {
     else if (buildType == "Quick Test") {
         restrictions = [
             // OS EDITION MAINTAINER
-            "build-linux-community-user" : true,
+            "build-windows-community-user" : true,
             "build-linux-enterprise-maintainer" : true,
 
             // OS EDITION MAINTAINER MODE ENGINE
@@ -648,6 +648,10 @@ def setBuildsAndTests() {
             // OS EDITION MAINTAINER MODE ENGINE
             "test-linux-enterprise-maintainer-cluster-rocksdb" : true,
             "test-linux-community-maintainer-singleserver-mmfiles" : true,
+
+            // OS EDITION MAINTAINER ENGINE TYPE
+            "resilience-linux-enterprise-maintainer-rocksdb-single" : true,
+            "resilience-linux-enterprise-maintainer-mmfiles-single" : true,
         ]
 
         runResilience = params.RunResilience
@@ -675,6 +679,12 @@ def setBuildsAndTests() {
             "test-mac-enterprise-user-cluster-rocksdb" : true,
             "test-windows-community-user-singleserver-rocksdb" : true,
             "test-windows-mac-enterprise-user-cluster-rocksdb" : true,
+
+            // OS EDITION MAINTAINER ENGINE TYPE
+            "resilience-linux-community-user-rocksdb-single" : true,
+            "resilience-linux-community-user-mmfiles-single" : true,
+            "resilience-linux-enterprise-maintainer-rocksdb-single" : true,
+            "resilience-linux-enterprise-maintainer-mmfiles-single" : true,
         ]
 
         runResilience = params.RunResilience
@@ -708,6 +718,7 @@ def setBuildsAndTests() {
         useUser = true
 
         runTests = true
+        runResilience = true
 
         overview += "<tr><td>Restrictions</td></tr>\n"
 
@@ -1211,6 +1222,10 @@ def testResilienceCheck(os, edition, maintainer, engine, type) {
 
     if (! checkEnabledMaintainer(maintainer, os, 'resilience')) {
        return false
+    }
+
+    if (restrictions && !restrictions["resilience-${os}-${edition}-${maintainer}-${engine}-${type}"]) {
+        return false
     }
 
     return true
