@@ -72,7 +72,7 @@ static void JS_RotateVocbaseCol(
   }
 
   OperationResult result = trx.rotateActiveJournal(collection->name(), OperationOptions());
-  res.reset(result.code);
+  res.reset(result.result);
 
   trx.finish(res);
 
@@ -385,6 +385,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool waitForSync = false;
   bool waitForCollector = false;
   bool writeShutdownFile = false;
+  double maxWaitTime = -1.0;
 
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
@@ -401,6 +402,10 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
         writeShutdownFile = TRI_ObjectToBoolean(
             obj->Get(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")));
       }
+      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "maxWaitTime"))) {
+        maxWaitTime = TRI_ObjectToDouble(
+            obj->Get(TRI_V8_ASCII_STRING(isolate, "maxWaitTime")));
+      }
     } else {
       waitForSync = TRI_ObjectToBoolean(args[0]);
 
@@ -409,6 +414,10 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
         if (args.Length() > 2) {
           writeShutdownFile = TRI_ObjectToBoolean(args[2]);
+        
+          if (args.Length() > 3) {
+            maxWaitTime = TRI_ObjectToDouble(args[3]);
+          }
         }
       }
     }
@@ -417,7 +426,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
-    res = flushWalOnAllDBServers(waitForSync, waitForCollector);
+    res = flushWalOnAllDBServers(waitForSync, waitForCollector, maxWaitTime);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -426,7 +435,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   res = MMFilesLogfileManager::instance()->flush(
-      waitForSync, waitForCollector, writeShutdownFile);
+      waitForSync, waitForCollector, writeShutdownFile, maxWaitTime);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_LOCK_TIMEOUT) {

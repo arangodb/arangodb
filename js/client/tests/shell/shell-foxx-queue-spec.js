@@ -56,7 +56,7 @@ describe('Foxx service', () => {
       method: 'delete'
     });
     if (db._collection('foxx_queue_test')) {
-      db.foxx_queue_test.truncate();
+      db.foxx_queue_test.truncate({ compact: false });
     }
   });
   it('should support queue registration', () => {

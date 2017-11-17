@@ -84,7 +84,7 @@ void RestEdgesHandler::readCursor(
   std::unique_ptr<OperationCursor> cursor(trx.indexScanForCondition(
       indexId, condition, var, &mmdr, false));
 
-  if (cursor->failed()) {
+  if (cursor->fail()) {
     THROW_ARANGO_EXCEPTION(cursor->code);
   }
 

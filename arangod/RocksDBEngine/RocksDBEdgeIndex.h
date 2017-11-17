@@ -163,13 +163,15 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   void recalculateEstimates() override;
 
-  Result insertInternal(transaction::Methods*, RocksDBMethods*, 
+  Result insertInternal(transaction::Methods*, RocksDBMethods*,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&) override;
+                        arangodb::velocypack::Slice const&,
+                        OperationMode mode) override;
 
-  Result removeInternal(transaction::Methods*, RocksDBMethods*, 
+  Result removeInternal(transaction::Methods*, RocksDBMethods*,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&) override;
+                        arangodb::velocypack::Slice const&,
+                        OperationMode mode) override;
 
  protected:
   Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
@@ -188,10 +190,10 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   /// @brief add a single value node to the iterator's keys
   void handleValNode(VPackBuilder* keys,
                      arangodb::aql::AstNode const* valNode) const;
-  
+
   void warmupInternal(transaction::Methods* trx,
                       rocksdb::Slice const& lower, rocksdb::Slice const& upper);
-  
+
  private:
 
   std::string _directionAttr;

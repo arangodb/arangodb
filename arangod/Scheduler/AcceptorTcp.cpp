@@ -67,6 +67,7 @@ void AcceptorTcp::open() {
       boost::asio::ip::tcp::acceptor::reuse_address(
         ((EndpointIp*)_endpoint)->reuseAddress()));
 
+#if 0
 #ifdef _WIN32
   // on Windows everything is different of course:
   // we need to set SO_EXCLUSIVEADDRUSE to prevent others from binding to our
@@ -78,6 +79,7 @@ void AcceptorTcp::open() {
     LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to set acceptor socket option: " << WSAGetLastError();
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "unable to set acceptor socket option");
   }
+#endif
 #endif
 
   _acceptor.bind(asioEndpoint, err);
