@@ -477,9 +477,13 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (mode == FIRST_FAIL) {
             break;
           }
-        } else {
-          throw StoreException(
-            std::string("Invalid precondition ") + precond.value.toJson());
+        }  else {
+          // Objects without any of the above cases are not considered to
+          // be a precondition:
+          LOG_TOPIC(WARN, Logger::AGENCY)
+            << "Malformed object-type precondition was ignored: "
+            << "key: " << precond.key.toJson() << " value: "
+            << precond.value.toJson();
         }
       }
     } else {
