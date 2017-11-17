@@ -145,7 +145,7 @@ describe('User Rights Management', () => {
             const rootPrepareCollection = () => {
               if (rootTestCollection(false)) {
                 const col = db._collection(colName);
-                col.truncate();
+                col.truncate({ compact: false });
                 col.save({_key: '123'});
                 col.save({_key: '456'});
                 col.save({_key: '789'});
@@ -182,7 +182,7 @@ describe('User Rights Management', () => {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      db._collection('${colName}').truncate();
+                      db._collection('${colName}').truncate({ compact: false });
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);

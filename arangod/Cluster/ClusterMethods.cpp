@@ -2391,7 +2391,7 @@ int modifyDocumentOnCoordinator(
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
+int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWaitTime) {
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -2403,6 +2403,10 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   std::string url = std::string("/_admin/wal/flush?waitForSync=") +
                     (waitForSync ? "true" : "false") + "&waitForCollector=" +
                     (waitForCollector ? "true" : "false");
+  if (maxWaitTime >= 0.0) {
+    url += "&maxWaitTime=" + std::to_string(maxWaitTime);
+  }
+
   auto body = std::make_shared<std::string const>();
   for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
     auto headers =

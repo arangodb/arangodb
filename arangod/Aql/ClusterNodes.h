@@ -85,7 +85,7 @@ class RemoteNode : public ExecutionNode {
     auto c = new RemoteNode(plan, _id, _vocbase, _collection, _server, _ownName,
                             _queryId);
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }
@@ -169,7 +169,7 @@ class ScatterNode : public ExecutionNode {
                        bool withProperties) const override final {
     auto c = new ScatterNode(plan, _id, _vocbase, _collection);
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }
@@ -238,7 +238,7 @@ class DistributeNode : public ExecutionNode {
                                 _alternativeVarId, _createKeys,
                                 _allowKeyConversionToObject);
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }
@@ -321,7 +321,7 @@ class GatherNode : public ExecutionNode {
                        bool withProperties) const override final {
     auto c = new GatherNode(plan, _id, _vocbase, _collection);
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }

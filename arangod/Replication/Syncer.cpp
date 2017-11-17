@@ -421,15 +421,12 @@ Result Syncer::applyCollectionDumpMarkerInternal(
       // try insert first
       OperationResult opRes = trx.insert(collectionName, slice, options); 
 
-      if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+      if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
         // perform an update
         opRes = trx.replace(collectionName, slice, options); 
       }
    
-      if (opRes.code != TRI_ERROR_NO_ERROR && opRes.errorMessage.empty()) {
-        opRes.errorMessage = TRI_errno_string(opRes.code);
-      } 
-      return Result(opRes.code, opRes.errorMessage);
+      return Result(opRes.result);
     } catch (arangodb::basics::Exception const& ex) {
       return Result(ex.code(), std::string("document insert/replace operation failed: ") + ex.what());
     } catch (std::exception const& ex) {
@@ -451,17 +448,13 @@ Result Syncer::applyCollectionDumpMarkerInternal(
       }
       OperationResult opRes = trx.remove(collectionName, old, options);
 
-      if (opRes.successful() ||
-          opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      if (opRes.ok() ||
+          opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // ignore document not found errors
         return Result();
       }
       
-      if (opRes.code != TRI_ERROR_NO_ERROR && opRes.errorMessage.empty()) {
-        opRes.errorMessage = TRI_errno_string(opRes.code);
-      } 
-
-      return Result(opRes.code, opRes.errorMessage);
+      return Result(opRes.result);
     } catch (arangodb::basics::Exception const& ex) {
       return Result(ex.code(), std::string("document remove operation failed: ") + ex.what());
     } catch (std::exception const& ex) {
@@ -505,6 +498,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   VPackBuilder s;
   s.openObject();
   s.add("isSystem", VPackValue(true));
+  s.add("objectId", VPackSlice::nullSlice());
   if (uuid.isString() && !simulate32Client()) { // need to use cid for 3.2 master
     // if we received a globallyUniqueId from the remote, then we will always use this id
     // so we can discard the "cid" and "id" values for the collection

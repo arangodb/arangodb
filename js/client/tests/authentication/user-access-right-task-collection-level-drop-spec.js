@@ -144,7 +144,7 @@ describe('User Rights Management', () => {
 
             const rootPrepareCollection = () => {
               if (rootTestCollection(false)) {
-                db._collection(colName).truncate();
+                db._collection(colName).truncate({ compact: false });
                 db._collection(colName).save({_key: '123'});
                 db._collection(colName).save({_key: '456'});
               }

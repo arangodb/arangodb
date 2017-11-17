@@ -376,8 +376,9 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result MMFilesGeoIndex::insert(transaction::Methods*, LocalDocumentId const& documentId,
-                               VPackSlice const& doc, bool isRollback) {
+Result MMFilesGeoIndex::insert(transaction::Methods*,
+                               LocalDocumentId const& documentId,
+                               VPackSlice const& doc, OperationMode mode) {
   double latitude;
   double longitude;
 
@@ -445,8 +446,9 @@ Result MMFilesGeoIndex::insert(transaction::Methods*, LocalDocumentId const& doc
   return IndexResult();
 }
 
-Result MMFilesGeoIndex::remove(transaction::Methods*, LocalDocumentId const& documentId,
-                               VPackSlice const& doc, bool isRollback) {
+Result MMFilesGeoIndex::remove(transaction::Methods*,
+                               LocalDocumentId const& documentId,
+                               VPackSlice const& doc, OperationMode mode) {
   double latitude = 0.0;
   double longitude = 0.0;
   bool ok = true;

@@ -22,13 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestHandlerFactory.h"
-
 #include "Cluster/ServerState.h"
-#include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Rest/GeneralRequest.h"
+#include "RestHandler/RestBaseHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestVersionHandler.h"
 
@@ -39,13 +38,13 @@ using namespace arangodb::rest;
 static std::string const ROOT_PATH = "/";
 
 namespace {
-class MaintenanceHandler : public RestHandler {
-  bool _redirect;
+class MaintenanceHandler : public RestBaseHandler {
+  ServerState::Mode _mode;
  public:
-  explicit MaintenanceHandler(GeneralRequest* request,
-                              GeneralResponse* response,
-                              bool redirect)
-      : RestHandler(request, response), _redirect(redirect) {};
+  MaintenanceHandler(GeneralRequest* request,
+                     GeneralResponse* response,
+                     ServerState::Mode mode)
+      : RestBaseHandler(request, response), _mode(mode) {}
 
   char const* name() const override final { return "MaintenanceHandler"; }
 
@@ -56,30 +55,50 @@ class MaintenanceHandler : public RestHandler {
 
   RestStatus execute() override {
     // use this to redirect requests
-    if (_redirect) {
-      ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-      if (replication != nullptr && replication->isAutomaticFailoverEnabled()) {
-        GlobalReplicationApplier* applier = replication->globalReplicationApplier();
-        if (applier != nullptr && applier->isRunning()) {
-          std::string endpoint = applier->endpoint();
-          // replace tcp:// with http://, and ssl:// with https://
-          endpoint = fixEndpointProtocol(endpoint);
-          
-          resetResponse(rest::ResponseCode::TEMPORARY_REDIRECT);
-          _response->setHeader("Location", endpoint + _request->requestPath());
-          _response->setHeader("x-arango-endpoint", applier->endpoint());
-          return RestStatus::DONE;
+    switch (_mode) {
+      case ServerState::Mode::REDIRECT: {
+        std::string endpoint;
+        ReplicationFeature* replication = ReplicationFeature::INSTANCE;
+        if (replication != nullptr && replication->isAutomaticFailoverEnabled()) {
+          GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+          if (applier != nullptr) {
+            endpoint = applier->endpoint();
+            // replace tcp:// with http://, and ssl:// with https://
+            endpoint = fixEndpointProtocol(endpoint);
+          }
         }
+        generateError(Result(TRI_ERROR_CLUSTER_NOT_LEADER));
+        // return the endpoint of the actual leader
+        _response->setHeader(StaticStrings::LeaderEndpoint, endpoint);
+        break;
+      }
+
+      case ServerState::Mode::TRYAGAIN: {
+        generateError(Result(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING));
+        // intentionally do not set "Location" header, but use a custom header that 
+        // clients can inspect. if they find an empty endpoint, it means that there
+        // is an ongoing leadership challenge
+        _response->setHeader(StaticStrings::LeaderEndpoint, "");
+        break;
+      }
+
+      case ServerState::Mode::INVALID: {
+        generateError(Result(TRI_ERROR_SHUTTING_DOWN));
+        break;
+      }
+
+      case ServerState::Mode::MAINTENANCE: 
+      default: {
+        resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
+        break;
       }
     }
-    
-    resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
     return RestStatus::DONE;
-  };
+  }
 
   void handleError(const Exception& error) override {
     resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
-  };
+  }
 
   // replace tcp:// with http://, and ssl:// with https://
   std::string fixEndpointProtocol(std::string const& endpoint) const {
@@ -121,7 +140,7 @@ RestHandler* RestHandlerFactory::createHandler(
   
   // In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
-    return new MaintenanceHandler(req.release(), res.release(), false);
+    return new MaintenanceHandler(req.release(), res.release(), ServerState::Mode::INVALID);
   }
 
   // In the bootstrap phase, we would like that coordinators answer the
@@ -134,7 +153,7 @@ RestHandler* RestHandlerFactory::createHandler(
           (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
           path.find("/_api/aql") == std::string::npos)) {
         LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
-        return new MaintenanceHandler(req.release(), res.release(), false);
+        return new MaintenanceHandler(req.release(), res.release(), mode);
       }
       break;
     }
@@ -148,7 +167,7 @@ RestHandler* RestHandlerFactory::createHandler(
           path.find("/_api/version") == std::string::npos &&
           path.find("/_api/wal") == std::string::npos) {
         LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
-        return new MaintenanceHandler(req.release(), res.release(), true);
+        return new MaintenanceHandler(req.release(), res.release(), mode);
       }
       break;
     }

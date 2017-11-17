@@ -167,7 +167,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->specialized();
   }
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }

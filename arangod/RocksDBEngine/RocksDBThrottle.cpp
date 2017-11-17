@@ -110,7 +110,8 @@ RocksDBCompactionListener gCompactionListener;
 // Setup the object, clearing variables, but do no real work
 //
 RocksDBThrottle::RocksDBThrottle()
-  : _internalRocksDB(nullptr), _threadRunning(false), _throttleBps(0), _firstThrottle(true)
+  : _internalRocksDB(nullptr), _threadRunning(false), _replaceIdx(2),
+    _throttleBps(0), _firstThrottle(true)
 {
   memset(&_throttleData, 0, sizeof(_throttleData));
 }
@@ -120,6 +121,14 @@ RocksDBThrottle::RocksDBThrottle()
 // Shutdown the background thread only if it was ever started
 //
 RocksDBThrottle::~RocksDBThrottle() {
+  StopThread();
+}
+
+
+//
+// Shutdown the background thread only if it was ever started
+//
+void RocksDBThrottle::StopThread() {
 
   if (_threadRunning.load()) {
     {
@@ -130,6 +139,16 @@ RocksDBThrottle::~RocksDBThrottle() {
     } // lock
 
     _threadFuture.wait();
+
+    {
+      CONDITION_LOCKER(guard, _threadCondvar);
+
+      _internalRocksDB = nullptr;
+      _delayToken.reset();
+    } // lock
+
+
+
   } // if
 
 }
@@ -177,7 +196,8 @@ void RocksDBThrottle::OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobI
 
   // start throttle after first data is posted
   //  (have seen some odd zero and small size flushes early)
-  if (1024<flush_size) {
+  //  (64<<20) is default size for write_buffer_size in column family options, too hard to read from here
+  if ((64<<19)<flush_size) {
     std::call_once(_initFlag, &RocksDBThrottle::Startup, this, db);
   } // if
 
@@ -381,16 +401,21 @@ void RocksDBThrottle::RecalculateThrottle() {
 void RocksDBThrottle::SetThrottle() {
   // called by routine with _threadMutex held
 
-  // this routine can get called before _internalRocksDB is set
-  if (nullptr != _internalRocksDB) {
-    // inform write_controller_ of our new rate
-    if (1<_throttleBps) {
-      // hard casting away of "const" ...
-      _delayToken=(((WriteController&)_internalRocksDB->write_controller()).GetDelayToken(_throttleBps));
-    } else {
-      _delayToken.reset();
-    } // else
-  } // if
+  // using condition variable's mutex to protect _internalRocksDB race
+  {
+    CONDITION_LOCKER(guard, _threadCondvar);
+
+    // this routine can get called before _internalRocksDB is set
+    if (nullptr != _internalRocksDB) {
+      // inform write_controller_ of our new rate
+      if (1<_throttleBps) {
+        // hard casting away of "const" ...
+        _delayToken=(((WriteController&)_internalRocksDB->write_controller()).GetDelayToken(_throttleBps));
+      } else {
+        _delayToken.reset();
+      } // else
+    } // if
+  } // lock
 } // RocksDBThrottle::SetThrottle
 
 
