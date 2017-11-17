@@ -538,9 +538,10 @@ function synchronizeOneShard (database, shard, planId, leader) {
   var ok = false;
   const rep = require('@arangodb/replication');
 
+  var db = require("internal").db;
   var ep = ArangoClusterInfo.getServerEndpoint(leader);
 
-  if (require("internal").db._collection(shard).count() === 0) {
+  if (db._collection(shard).count() === 0) {
     // We try a short cut:
     console.topic('heartbeat=debug', "synchronizeOneShard: trying short cut to synchronize local shard '%s/%s' for central '%s/%s'", database, shard, database, planId);
     try {
@@ -550,9 +551,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
         let endTime = new Date();
         console.topic('heartbeat=debug', 'synchronizeOneShard: shortcut worked, done, %s/%s, %s/%s, started: %s, ended: %s',
           database, shard, database, planId, startTime.toString(), endTime.toString());
-        var db = require("internal").db;
-        var collection = db._collection(shard);
-        collection.setTheLeader(leader);
+        db._collection(shard).setTheLeader(leader);
         return;
       }
     } catch (dummy) { }
@@ -569,9 +568,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
     // Mark us as follower for this leader such that we begin
     // accepting replication operations, note that this is also
     // used for the initial synchronization:
-    var db = require("internal").db;
-    var collection = db._collection(shard);
-    collection.setTheLeader(leader);
+    db._collection(shard).setTheLeader(leader);
 
     let startTime = new Date();
     sy = rep.syncCollection(shard,
