@@ -278,7 +278,7 @@ function agencyTestSuite () {
       assertEqual(res.bodyParsed, {"results":[0]});
       // check object precondition
       res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":12}}]]);
-      res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":13}},{"a":{"b":{"c":12}}}]]);
+      res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":13}},{"a":{"old":{"b":{"c":12}}}}]]);
       assertEqual(res.statusCode, 200);
       res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":14}},{"/a":{"old":{"b":{"c":12}}}}]]);
       assertEqual(res.statusCode, 412);
@@ -328,15 +328,16 @@ function agencyTestSuite () {
       res = accessAgency("write",[[{"/b":3},{"/a/b/c":{"in":3},"/a/e":{"in":2}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/b"]]), [{b:3}]);
-
       // Permute order of keys and objects within precondition
       var localObj =
           {"foo" : "bar",
            "baz" : {
              "_id": "5a00203e4b660989b2ae5493", "index": 0,
              "guid": "7a709cc2-1479-4079-a0a3-009cbe5674f4",
-             "isActive": true, "balance": "$3,072.23", "picture": "http://placehold.it/32x32",
-             "age": 21, "eyeColor": "green", "name": { "first": "Durham", "last": "Duke" },
+             "isActive": true, "balance": "$3,072.23",
+             "picture": "http://placehold.it/32x32",
+             "age": 21, "eyeColor": "green", "name":
+             { "first": "Durham", "last": "Duke" },
              "tags": ["anim","et","id","do","est",1.0,-1024,1024]
            },
            "qux" : ["3.14159265359",3.14159265359]
@@ -347,17 +348,22 @@ function agencyTestSuite () {
         localKeys.push(i);
       }
       var permuted;
-      
-      res = accessAgency("write", [[localObj, localObj]]);
+      res = accessAgency(
+        "write",
+        [[localObj,
+          {"foo":localObj.bar,
+           "baz":{"old":localObj.baz},
+           "qux":localObj.qux}]]);
       assertEqual(res.statusCode, 412);
+
       res = writeAndCheck([[localObj]]);
-      res = writeAndCheck([[localObj, localObj]]);
+      res = writeAndCheck([[localObj, {"foo":localObj.foo,"baz":{"old":localObj.baz},"qux":localObj.qux}]]);
       res = writeAndCheck(
-        [[localObj, {"baz":localObj.baz,"foo":localObj.foo,"qux":localObj.qux}]]);
+        [[localObj, {"baz":{"old":localObj.baz},"foo":localObj.foo,"qux":localObj.qux}]]);
       res = writeAndCheck(
-        [[localObj, {"baz":localObj.baz,"qux":localObj.qux,"foo":localObj.foo}]]);
+        [[localObj, {"baz":{"old":localObj.baz},"qux":localObj.qux,"foo":localObj.foo}]]);
       res = writeAndCheck(
-        [[localObj, {"qux":localObj.qux,"baz":localObj.baz,"foo":localObj.foo}]]);
+        [[localObj, {"qux":localObj.qux,"baz":{"old":localObj.baz},"foo":localObj.foo}]]);
 
       for (var j in localKeys) {
         permuted = {};      
@@ -366,11 +372,11 @@ function agencyTestSuite () {
           permuted[localKeys[k]] = localObj.baz[localKeys[k]];
         }
         res = writeAndCheck(
-          [[localObj, {"baz":permuted,"foo":localObj.foo,"qux":localObj.qux}]]);
+          [[localObj, {"baz":{"old":permuted},"foo":localObj.foo,"qux":localObj.qux}]]);
         res = writeAndCheck(
-          [[localObj, {"foo":localObj.foo,"qux":localObj.qux,"baz":permuted}]]);
+          [[localObj, {"foo":localObj.foo,"qux":localObj.qux,"baz":{"old":permuted}}]]);
         res = writeAndCheck(
-          [[localObj, {"qux":localObj.qux,"baz":permuted,"foo":localObj.foo}]]);
+          [[localObj, {"qux":localObj.qux,"baz":{"old":permuted},"foo":localObj.foo}]]);
       }
 
       // Permute order of keys and objects within arrays in preconditions

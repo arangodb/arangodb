@@ -156,24 +156,24 @@ std::vector<bool> Store::applyTransactions(query_t const& query) {
       for (auto const& i : VPackArrayIterator(query->slice())) {
         MUTEX_LOCKER(storeLocker, _storeLock);
         switch (i.length()) {
-        case 1:  // No precondition
-          success.push_back(applies(i[0]));
-          break;
-        case 2: // precondition + uuid
-        case 3:
-          if (check(i[1]).successful()) {
+          case 1:  // No precondition
             success.push_back(applies(i[0]));
-          } else {  // precondition failed
-            LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+            break;
+          case 2: // precondition + uuid
+          case 3:
+            if (check(i[1]).successful()) {
+              success.push_back(applies(i[0]));
+            } else {  // precondition failed
+              LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+              success.push_back(false);
+            }
+            break;
+          default:  // Wrong
+            LOG_TOPIC(ERR, Logger::AGENCY)
+              << "We can only handle log entry with or without precondition! "
+              << " however, We received " << i.toJson();
             success.push_back(false);
-          }
-          break;
-        default:  // Wrong
-          LOG_TOPIC(ERR, Logger::AGENCY)
-            << "We can only handle log entry with or without precondition! "
-            << " However, We received " << i.toJson();
-          success.push_back(false);
-          break;
+            break;
         }
       }
 
@@ -183,9 +183,10 @@ std::vector<bool> Store::applyTransactions(query_t const& query) {
         _cv.signal();
       }
 
-    } catch (std::exception const& e) {  // Catch any erorrs
+    } catch (std::exception const& e) {  // Catch any errors
       LOG_TOPIC(ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " "
                                      << e.what();
+      success.push_back(false);
     }
 
   } else {

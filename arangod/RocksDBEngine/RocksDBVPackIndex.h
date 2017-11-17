@@ -56,7 +56,7 @@ namespace transaction {
 class Methods;
 }
 
-/// @brief Iterator structure for RocksDB unique index. 
+/// @brief Iterator structure for RocksDB unique index.
 /// This iterator can be used only for equality lookups that use all
 /// index attributes. It uses a point lookup and no seeks
 class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
@@ -100,7 +100,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                             transaction::Methods* trx,
                             ManagedDocumentResult* mmdr,
                             arangodb::RocksDBVPackIndex const* index,
-                            bool reverse, 
+                            bool reverse,
                             RocksDBKeyBounds&& bounds);
 
   ~RocksDBVPackIndexIterator() = default;
@@ -197,17 +197,20 @@ class RocksDBVPackIndex : public RocksDBIndex {
  protected:
   Result insertInternal(transaction::Methods*, RocksDBMethods*,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&) override;
-  
+                        arangodb::velocypack::Slice const&,
+                        OperationMode mode) override;
+
   Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
                         LocalDocumentId const& oldDocumentId,
                         arangodb::velocypack::Slice const& oldDoc,
                         LocalDocumentId const& newDocumentId,
-                        velocypack::Slice const& newDoc) override;
+                        velocypack::Slice const& newDoc,
+                        OperationMode mode) override;
 
-  Result removeInternal(transaction::Methods*, RocksDBMethods*, 
+  Result removeInternal(transaction::Methods*, RocksDBMethods*,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&) override;
+                        arangodb::velocypack::Slice const&,
+                        OperationMode mode) override;
 
   Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
                            rocksdb::Slice const& value) override;
