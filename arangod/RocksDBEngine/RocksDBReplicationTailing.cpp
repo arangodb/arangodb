@@ -358,7 +358,13 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     if (!shouldHandleKey(column_family_id, false, key) ||
         column_family_id != _documentsCF) {
       if (column_family_id == _documentsCF) {
-        _removeDocumentKey.clear();
+        if (_lastLogType == RocksDBLogType::SingleRemove) {
+          TRI_ASSERT(!_seenBeginTransaction);
+          resetTransientState(); // ignoring the entire op
+        } else {
+          TRI_ASSERT(!_singleOp);
+          _removeDocumentKey.clear(); // just ignoring this key
+        }
       }
       return rocksdb::Status();
     }
@@ -557,6 +563,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   // these parameters are relevant to determine if we can print
   // a specific marker from the WAL
   TRI_vocbase_t* const _vocbase;
+  
   bool const _includeSystem;
   TRI_voc_cid_t const _onlyCollectionId;
   /// result builder

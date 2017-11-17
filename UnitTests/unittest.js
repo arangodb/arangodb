@@ -203,6 +203,11 @@ function main (argv) {
   // create output directory
   fs.makeDirectoryRecursive(testOutputDirectory);
 
+  if (options.hasOwnProperty('cluster') && options.cluster) {
+    // cluster beats resilient single server
+    options.singleresilient = false;
+  }
+
   // run the test and store the result
   let r = {}; // result
   try {

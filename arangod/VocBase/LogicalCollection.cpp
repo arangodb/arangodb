@@ -1385,7 +1385,7 @@ std::string LogicalCollection::generateGloballyUniqueId() const {
   
   std::string result;
   result.reserve(64);
-  
+
   if (ServerState::isCoordinator(role)) {
     TRI_ASSERT(_planId != 0);
     result.append(std::to_string(_planId));
@@ -1397,16 +1397,14 @@ std::string LogicalCollection::generateGloballyUniqueId() const {
     result.push_back('/');
     result.append(_name);
   } else {
-    if (!_vocbase->isSystem()) {
+    if (isSystem()) { // system collection can't be renamed
+      result.append(_name);
+    } else {
       std::string id = ServerState::instance()->getId();
       if (!id.empty()) {
         result.append(id);
         result.push_back('/');
       }
-    }
-    if (isSystem()) {
-      result.append(_name);
-    } else {
       result.append(std::to_string(_cid));
     }
   }

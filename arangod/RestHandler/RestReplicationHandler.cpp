@@ -942,6 +942,16 @@ Result RestReplicationHandler::processRestoreCollection(
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res, std::string("unable to create collection: ") + TRI_errno_string(res));
   }
+  
+  // might be also called on dbservers
+  ExecContext const* exe = ExecContext::CURRENT;
+  if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
+      ServerState::instance()->isSingleServer()) {
+    AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
+    auth->authInfo()->updateUser(exe->user(), [&](AuthUserEntry& entry) {
+      entry.grantCollection(_vocbase->name(), col->name(), AuthLevel::RW);
+    });
+  }
 
   return Result();
 }
@@ -2450,15 +2460,6 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
 
   if (col == nullptr) {
     return TRI_ERROR_INTERNAL;
-  }
-
-  ExecContext const* exe = ExecContext::CURRENT;
-  if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
-      ServerState::instance()->isSingleServer()) {
-    AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
-    auth->authInfo()->updateUser(exe->user(), [&](AuthUserEntry& entry) {
-               entry.grantCollection(_vocbase->name(), col->name(), AuthLevel::RW);
-             });
   }
 
   /* Temporary ASSERTS to prove correctness of new constructor */

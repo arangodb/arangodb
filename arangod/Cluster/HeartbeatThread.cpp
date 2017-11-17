@@ -549,8 +549,7 @@ void HeartbeatThread::runSingleServer() {
           VPackSlice const res = result.slice();
           TRI_ASSERT(res.length() == 1 && res[0].isObject());
           leaderSlice = res[0].get(AgencyCommManager::slicePath(leaderPath));
-          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader, "
-          << "following " << leaderSlice.copyString();
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader";
           TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
           // intentionally falls through to case 3
           
@@ -611,6 +610,7 @@ void HeartbeatThread::runSingleServer() {
           applier->stopAndJoin();
         }
         
+        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
         config._endpoint = endpoint;
         config._autoResync = true;
