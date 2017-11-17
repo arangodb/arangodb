@@ -734,8 +734,13 @@ AgencyCommManager::createNewConnection() {
     return nullptr;
   }
 
-  std::unique_ptr<Endpoint> endpoint(
-    Endpoint::clientFactory(_endpoints.front()));
+  std::string const& spec = _endpoints.front();
+  std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(spec));
+  if (endpoint.get() == nullptr) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "invalid value for "
+      << "--server.endpoint ('" << spec << "')";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
 
   return std::unique_ptr<GeneralClientConnection>(
     GeneralClientConnection::factory(endpoint,
