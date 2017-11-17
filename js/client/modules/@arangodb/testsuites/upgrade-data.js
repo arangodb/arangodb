@@ -26,8 +26,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
+const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
+const toArgv = require('internal').toArgv;
 
 const optionsDocumentation = [
   '   - `upgradeDataPath`: path to directory containing upgrade data archives'
@@ -36,31 +38,29 @@ const optionsDocumentation = [
 ////////////////////////////////////////////////////////////////////////////////
 /// set up the test according to the testcase.
 ////////////////////////////////////////////////////////////////////////////////
-const unpackOldData = (engine, version) => {
-  return (options, serverOptions, customInstanceInfos, startStopHandlers) => {
-    const archiveName = `upgrade-data-${engine}-${version}`;
-    const dataFile = fs.join(options.upgradeDataPath,
-                             'data',
-                             `${archiveName}.tar.gz`);
-    const tarOptions = [
-      '--extract',
-      '--gunzip',
-      `--file=${dataFile}`,
-      `--directory=${serverOptions['database.directory']}`
-    ];
-    let unpack = pu.executeAndWait('tar', tarOptions, {}, '');
+const unpackOldData = (engine, version, options, serverOptions) => {
+  const archiveName = `upgrade-data-${engine}-${version}`;
+  const dataFile = fs.join(options.upgradeDataPath,
+                           'data',
+                           `${archiveName}.tar.gz`);
+  const tarOptions = [
+    '--extract',
+    '--gunzip',
+    `--file=${dataFile}`,
+    `--directory=${serverOptions['database.directory']}`
+  ];
+  let unpack = pu.executeAndWait('tar', tarOptions, {}, '');
 
-    if (unpack.status === false) {
-      unpack.failed = 1;
-      return {
-        state: false,
-        message: unpack.message
-      };
-    }
-
+  if (unpack.status === false) {
+    unpack.failed = 1;
     return {
-      state: true
+      status: false,
+      message: unpack.message
     };
+  }
+
+  return {
+    status: true
   };
 };
 
@@ -109,7 +109,7 @@ const upgradeData = (engine, version) => {
     fs.makeDirectoryRecursive(tmpDataDir);
     pu.cleanupDBDirectoriesAppend(tmpDataDir);
 
-    const appDir = fs.join(tmpDataDir, 'app');
+    const appDir = fs.join(tmpDataDir, 'apps');
     fs.makeDirectoryRecursive(appDir);
 
     const tmpDir = fs.join(tmpDataDir, 'tmp');
@@ -125,17 +125,33 @@ const upgradeData = (engine, version) => {
     args['database.directory'] = dataDir;
     args['database.auto-upgrade'] = true;
 
-    let startStopHandlers = {
-      preStart: unpackOldData(engine, version)
-    };
+    require('internal').print('Unpacking old data...');
+    let result = unpackOldData(engine, version, options, args);
+    if (result.status !== true) {
+      return result;
+    }
 
+    require('internal').print('Running upgrade...');
+    const argv = toArgv(args);
+    result = pu.executeAndWait(pu.ARANGOD_BIN, argv, options, 'upgrade', tmpDataDir);
+    if (result.status !== true) {
+      return {
+        failed: 1,
+        'status': false,
+        'message': 'upgrade result: ' + result.message,
+        'skipped': false
+      };
+    }
+
+    args['database.auto-upgrade'] = false;
+
+    require('internal').print('Checking results...');
     return tu.performTests(
       options,
-      [`js/server/tests/upgrade/upgrade-data-${engine}.js`],
+      [`js/server/tests/upgrade-data/upgrade-data.js`],
       `upgrade_data_${engine}_${version}`,
-      tu.runInArangosh,
-      args,
-      startStopHandlers);
+      tu.runThere,
+      args);
   };
 };
 
@@ -143,7 +159,8 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   const functionsDocumentation = {};
   const engines = ['mmfiles', 'rocksdb'];
   const versions = [
-    '3.2.7'
+    '3.2.7',
+    'devel'
   ];
   for (let i = 0; i < engines.length; i++) {
     const engine = engines[i];
