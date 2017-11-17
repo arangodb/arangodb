@@ -511,10 +511,10 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
       }
       OperationOptions opts;
       OperationResult opRes = trx.truncate(col->name(), opts);
-      if (opRes.failed()) {
-        return Result(opRes.code, opRes.errorMessage);
+      if (opRes.fail()) {
+        return opRes.result;
       }
-      return trx.finish(opRes.code);
+      return trx.finish(opRes.result);
     } else {
       vocbase->dropCollection(col, false, -1.0);
     }
