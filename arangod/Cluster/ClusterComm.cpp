@@ -634,6 +634,7 @@ ClusterCommResult const ClusterComm::wait(
   bool match_good, status_ready;
   ClusterCommTimeout endTime = TRI_microtime() + timeout;
 
+  TRI_ASSERT(timeout >= 0.0);
 
   // tell scheduler that we are waiting:
   JobGuard guard{SchedulerFeature::SCHEDULER};
@@ -678,8 +679,10 @@ ClusterCommResult const ClusterComm::wait(
     if (match_good && !status_ready) {
       // give matching item(s) more time
       ClusterCommTimeout now = TRI_microtime();
-      if (now < endTime) {
-        somethingReceived.wait(endTime - now);
+      if (now < endTime || 0.0 == timeout) {
+        // convert to microseconds, use 10 second safety poll if no timeout
+        uint64_t micros=(0.0 != timeout ? ((endTime - now)*1000000.0) : 10000000);
+        somethingReceived.wait(micros);
       } else {
         // time is up, leave
         return_result.operationID = ticketId;

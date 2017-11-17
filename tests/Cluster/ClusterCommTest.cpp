@@ -165,16 +165,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     REQUIRE(CL_COMM_DROPPED == result.status);
     REQUIRE(0 == result.operationID);
 
-    // no timeout
-    startTime = TRI_microtime();
-    result = testme.wait("", transId, 0, "", 0.0);
-    endTime = TRI_microtime();
-    diff = endTime - startTime;
-    REQUIRE(0.0 <= diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff <= 0.00001);
-    REQUIRE(CL_COMM_DROPPED == result.status);
-    REQUIRE(0 == result.operationID);
-
     // larger timeout
     startTime = TRI_microtime();
     result = testme.wait("", transId, 0, "", 0.1);
@@ -292,6 +282,25 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     REQUIRE(id_first == result.operationID);
     f4.get();
 
+    // infinite wait
+    id_first = testme.addSimpleRequest(transId, CL_COMM_SUBMITTED);
+    std::future<void> f5(std::async(std::launch::async, [&]{
+          timespec ts={0, 500000000};  //0.5 seconds
+          nanosleep(&ts, nullptr);
+          testme.getResponse(0).result->status = CL_COMM_RECEIVED;
+          testme.signalResponse();
+        } // lambda
+        ));
+
+    startTime = TRI_microtime();
+    result = testme.wait("", transId, 0, "", 0.0);
+    endTime = TRI_microtime();
+    diff = endTime - startTime;
+    REQUIRE(0.499 <= diff);      // must write range test in two parts for REQUIRE
+    REQUIRE(diff <= 0.501);
+    REQUIRE(CL_COMM_RECEIVED == result.status);
+    REQUIRE(id_first == result.operationID);
+    f5.get();
 
   } // out of order response
 
