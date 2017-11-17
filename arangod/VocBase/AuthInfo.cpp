@@ -941,7 +941,7 @@ AuthLevel AuthInfo::configuredCollectionAuthLevelInternal(std::string const& use
     // recurse into function, but only one level deep.
     // this allows us to avoid endless recursion without major overhead
     if (depth == 0) {
-      AuthLevel roleLevel = canUseCollectionInternal(role, dbname, coll, depth + 1);
+      AuthLevel roleLevel = configuredCollectionAuthLevelInternal(role, dbname, coll, depth + 1);
 
       if (level == AuthLevel::NONE) {
         // use the permission of the role we just found
