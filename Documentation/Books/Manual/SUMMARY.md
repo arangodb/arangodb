@@ -126,6 +126,7 @@
   * [Single instance](Deployment/Single.md)
   * [Cluster: Mesos, DC/OS](Deployment/Mesos.md)
   * [Cluster: Generic & Docker](Deployment/ArangoDBStarter.md)
+  * [Multiple Datacenters](Deployment/DC2DC.md)
   * [Advanced Topics](Deployment/Advanced.md)
     * [Standalone Agency](Deployment/Agency.md)
     * [Cluster: Local test setups](Deployment/Local.md)
