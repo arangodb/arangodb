@@ -6,7 +6,7 @@ File Systems
 
 (LINUX)
 
-We recommend **not** to use BTRFS on linux, it's known to not work
+We recommend to **not** use BTRFS on linux, it's known to not work
 well in conjunction with ArangoDB.  We experienced that arangodb
 facing latency issues on accessing its database files on BTRFS
 partitions.  In conjunction with BTRFS and AUFS we also saw data loss
@@ -46,11 +46,17 @@ killing ArangoDB too eagerly on Linux.
 
 ### Over-Commit Memory
 
-Execute
+For the MMFiles storage engine, execute
 
     sudo bash -c "echo 0 >/proc/sys/vm/overcommit_memory"
 
 before executing `arangod`.
+
+For the RocksDB storage engine, execute
+    
+    sudo bash -c "echo 2 >/proc/sys/vm/overcommit_memory"
+
+before starting. 
 
 From [www.kernel.org](https://www.kernel.org/doc/Documentation/sysctl/vm.txt):
 
@@ -62,6 +68,17 @@ From [www.kernel.org](https://www.kernel.org/doc/Documentation/sysctl/vm.txt):
 
 - When this flag is 2, the kernel uses a "never overcommit"
   policy that attempts to prevent any overcommit of memory.
+
+
+Note that then using an `overcommit_memory` setting of 2, this will by default allow 
+processes to use all swap space but only half of the available RAM. This can be changed 
+by adjusting the value of `overcommit_ratio` as well.
+
+From [www.kernel.org](https://www.kernel.org/doc/Documentation/sysctl/vm.txt):
+
+- When overcommit_memory is set to 2, the committed address
+  space is not permitted to exceed swap plus this percentage
+  of physical RAM. 
 
 ### Zone Reclaim
 
@@ -93,23 +110,23 @@ Max Memory Mappings
 (LINUX)
 
 Linux kernels by default restrict the maximum number of memory mappings of a
-single process to about 65K mappings. While this value is sufficient for most
+single process to about 64K mappings. While this value is sufficient for most
 workloads, it may be too low for a process that has lots of parallel threads
 that all require their own memory mappings. In this case all the threads' 
 memory mappings will be accounted to the single arangod process, and the 
-maximum number of 65K mappings may be reached. When the maximum number of
+maximum number of 64K mappings may be reached. When the maximum number of
 mappings is reached, calls to mmap will fail, so the process will think no
 more memory is available although there may be plenty of RAM left.
 
 To avoid this scenario, it is recommended to raise the default value for the
 maximum number of memory mappings to a sufficiently high value. As a rule of
-thumb, one could use 8 times the number of available cores times 1,000.
+thumb, one could use 8 times the number of available cores times 8,000.
 
-For a 32 core server, a good rule-of-thumb value thus would be 256000 
-(32 * 8 * 1000). To set the value once, use the following command before
+For a 32 core server, a good rule-of-thumb value thus would be 2,048,000 
+(32 * 8 * 8000). To set the value once, use the following command before
 starting arangod:
 
-    sudo bash -c "sysctl -w 'vm.max_map_count=256000'"
+    sudo bash -c "sysctl -w 'vm.max_map_count=2048000'"
 
 To make the settings durable, it will be necessary to store the adjusted 
 settings in /etc/sysctl.conf or other places that the operating system is
