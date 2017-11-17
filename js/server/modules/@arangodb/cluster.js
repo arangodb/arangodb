@@ -550,6 +550,9 @@ function synchronizeOneShard (database, shard, planId, leader) {
         let endTime = new Date();
         console.topic('heartbeat=debug', 'synchronizeOneShard: shortcut worked, done, %s/%s, %s/%s, started: %s, ended: %s',
           database, shard, database, planId, startTime.toString(), endTime.toString());
+        var db = require("internal").db;
+        var collection = db._collection(shard);
+        collection.setTheLeader(leader);
         return;
       }
     } catch (dummy) { }
