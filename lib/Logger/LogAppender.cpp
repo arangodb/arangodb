@@ -44,6 +44,8 @@ std::map<std::pair<std::string, std::string>, std::shared_ptr<LogAppender>>
 
 std::vector<std::function<void(LogMessage*)>> LogAppender::_loggers;
 
+bool LogAppender::_allowStdLogging = true;
+
 void LogAppender::addLogger(std::function<void(LogMessage*)> func) {
   _loggers.emplace_back(func);
 }
