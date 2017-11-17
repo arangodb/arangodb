@@ -2,6 +2,7 @@
 
 #include "s1interval.h"
 
+#include <cmath>
 #include "base/logging.h"
 
 S1Interval S1Interval::FromPoint(double p) {
@@ -135,7 +136,7 @@ double S1Interval::GetDirectedHausdorffDistance(S1Interval const& y) const {
     double lo_lo = S1Interval(y_complement_center, y.lo()).Contains(lo()) ?
         PositiveDistance(lo(), y.lo()) : 0;
     DCHECK(hi_hi > 0 || lo_lo > 0);
-    return max(hi_hi, lo_lo);
+    return std::max(hi_hi, lo_lo);
   }
 }
 

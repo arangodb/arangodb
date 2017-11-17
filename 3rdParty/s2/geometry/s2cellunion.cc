@@ -12,7 +12,6 @@ using std::reverse;
 using std::vector;
 
 
-#include "base/integral_types.h"
 #include "base/logging.h"
 #include "s2.h"
 #include "s2cap.h"
@@ -36,7 +35,7 @@ void S2CellUnion::Init(vector<S2CellId> const& cell_ids) {
   Normalize();
 }
 
-void S2CellUnion::Init(vector<uint64> const& cell_ids) {
+void S2CellUnion::Init(vector<uint64_t> const& cell_ids) {
   InitRaw(cell_ids);
   Normalize();
 }
@@ -50,7 +49,7 @@ void S2CellUnion::InitRaw(vector<S2CellId> const& cell_ids) {
   cell_ids_ = cell_ids;
 }
 
-void S2CellUnion::InitRaw(vector<uint64> const& cell_ids) {
+void S2CellUnion::InitRaw(vector<uint64_t> const& cell_ids) {
   cell_ids_.resize(cell_ids.size());
   for (int i = 0; i < num_cells(); ++i) {
     cell_ids_[i] = S2CellId(cell_ids[i]);
@@ -117,9 +116,9 @@ bool S2CellUnion::Normalize() {
       // mask that blocks out the two bits that encode the child position of
       // "id" with respect to its parent, then check that the other three
       // children all agree with "mask.
-      uint64 mask = id.lsb() << 1;
+      uint64_t mask = id.lsb() << 1;
       mask = ~(mask + (mask << 1));
-      uint64 id_masked = (id.id() & mask);
+      uint64_t id_masked = (id.id() & mask);
       if ((output.end()[-3].id() & mask) != id_masked ||
           (output.end()[-2].id() & mask) != id_masked ||
           (output.end()[-1].id() & mask) != id_masked ||
@@ -354,7 +353,7 @@ void S2CellUnion::GetDifference(S2CellUnion const* x, S2CellUnion const* y) {
 
 void S2CellUnion::Expand(int level) {
   vector<S2CellId> output;
-  uint64 level_lsb = S2CellId::lsb_for_level(level);
+  uint64_t level_lsb = S2CellId::lsb_for_level(level);
   for (int i = num_cells() - 1; i >= 0; --i) {
     S2CellId id = cell_id(i);
     if (id.lsb() < level_lsb) {
@@ -412,8 +411,8 @@ void S2CellUnion::InitFromRange(S2CellId const& min_id,
   DCHECK(!Normalize());
 }
 
-uint64 S2CellUnion::LeafCellsCovered() const {
-  uint64 num_leaves = 0;
+uint64_t S2CellUnion::LeafCellsCovered() const {
+  uint64_t num_leaves = 0;
   for (int i = 0; i < num_cells(); ++i) {
     const int inverted_level =
         S2CellId::kMaxLevel - cell_id(i).level();

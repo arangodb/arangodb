@@ -26,16 +26,11 @@
 #ifndef UTIL_MATH_VECTOR2_INL_H__
 #define UTIL_MATH_VECTOR2_INL_H__
 
-#include "util/math/vector2.h"
-
-#include <math.h>
-#include "base/basictypes.h"
-#include "base/logging.h"
-#include "base/template_util.h"
-#include "base/type_traits.h"
-#include "util/math/mathutil.h"
-#include "util/math/vector3.h"
-#include "util/math/vector4.h"
+#include <cmath>
+#include "mathutil.h"
+#include "vector2.h"
+#include "vector3.h"
+#include "vector4.h"
 
 template <typename VType>
 Vector2<VType>::Vector2() {

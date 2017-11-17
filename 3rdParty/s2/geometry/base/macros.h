@@ -15,7 +15,7 @@
 // We use our own  local  version of type traits while we're waiting
 // for TR1 type traits to be standardized. Define some macros so that
 // most google3 code doesn't have to work with type traits directly.
-#include "base/type_traits.h"
+#include "type_traits.h"
 
 // The swigged version of an abstract class must be concrete if any methods
 // return objects of the abstract type. We keep it abstract in C++ and

@@ -22,11 +22,11 @@ Encoder::~Encoder() {
   }
 }
 
-int Encoder::varint32_length(uint32 v) {
+int Encoder::varint32_length(uint32_t v) {
   return Varint::Length32(v);
 }
 
-int Encoder::varint64_length(uint64 v) {
+int Encoder::varint64_length(uint64_t v) {
   return Varint::Length64(v);
 }
 
@@ -64,7 +64,7 @@ void Encoder::Resize(int N) {
 }
 
 // Special optimized version: does not use Varint
-bool Decoder::get_varint32(uint32* v) {
+bool Decoder::get_varint32(uint32_t* v) {
   const char* r = Varint::Parse32WithLimit(
                                    reinterpret_cast<const char*>(buf_),
                                    reinterpret_cast<const char*>(limit_), v);
@@ -74,8 +74,8 @@ bool Decoder::get_varint32(uint32* v) {
 }
 
 // Special optimized version: does not use Varint
-bool Decoder::get_varint64(uint64* v) {
-  uint64 result = 0;
+bool Decoder::get_varint64(uint64_t* v) {
+  uint64_t result = 0;
 
   if (buf_ + Varint::kMax64 <= limit_) {
     const char* r = Varint::Parse64(reinterpret_cast<const char*>(buf_), v);
@@ -96,7 +96,7 @@ bool Decoder::get_varint64(uint64* v) {
       
       // Get 7 bits from next byte
       byte = *(buf_++);
-      result |= static_cast<uint64>(byte & 127) << shift;
+      result |= static_cast<uint64_t>(byte & 127) << shift;
       shift += 7;
     } while ((byte & 128) != 0);
     *v = result;

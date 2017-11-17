@@ -5,25 +5,24 @@
 #ifndef _BASICTYPES_H_
 #define _BASICTYPES_H_
 
-#include "base/integral_types.h"
-#include "base/casts.h"
-#include "base/port.h"
+#include "casts.h"
+#include "port.h"
 
 //
 // Google-specific types
 //
 
 // id for odp categories
-typedef uint32 CatId;
+typedef uint32_t CatId;
 const CatId kIllegalCatId = static_cast<CatId>(0);
 
-typedef uint32 TermId;
+typedef uint32_t TermId;
 const TermId kIllegalTermId = static_cast<TermId>(0);
 
-typedef uint32 HostId;
+typedef uint32_t HostId;
 const HostId kIllegalHostId = static_cast<HostId>(0);
 
-typedef uint32 DomainId;
+typedef uint32_t DomainId;
 const DomainId kIllegalDomainId = static_cast<DomainId>(0);
 
 // Pagerank related types.
@@ -33,30 +32,30 @@ const DomainId kIllegalDomainId = static_cast<DomainId>(0);
 // To get a complete picture of all the datatypes used for PageRank
 // and the functions to convert between them, please see google3/
 // pagerank/prtype.h
-typedef uint16 DocumentPageRank;  // value in [0, kNumPageRankValues)
+typedef uint16_t DocumentPageRank;  // value in [0, kNumPageRankValues)
 const int kNumPageRankValues = 1 << (sizeof(DocumentPageRank) * 8);
 const DocumentPageRank kIllegalPagerank = 0;
 
 // Used for fielded search
-typedef int32 FieldValue;
+typedef int32_t FieldValue;
 const FieldValue kIllegalFieldValue = static_cast<FieldValue>(INT_MAX);
 
 // It is expected that we *never* have a collision of Fingerprints for
 // 2 distinct objects.  No object has kIllegalFprint as its Fingerprint.
-typedef uint64 Fprint;
+typedef uint64_t Fprint;
 const Fprint  kIllegalFprint = static_cast<Fprint>(0);
-const Fprint  kMaxFprint = static_cast<Fprint>(kuint64max);
+const Fprint  kMaxFprint = static_cast<Fprint>(UINT64_MAX);//kuint64max
 
 // 64 bit checksum (see common/checksummer.{h,cc})
-typedef uint64 Checksum64;
+typedef uint64_t Checksum64;
 
 const Checksum64 kIllegalChecksum = static_cast<Checksum64>(0);
 
 // In contrast to Fingerprints, we *do* expect Hash<i> values to collide
 // from time to time (although we obviously prefer them not to).  Also
 // note that there is an illegal hash value for each size hash.
-typedef uint32 Hash32;
-typedef uint16 Hash16;
+typedef uint32_t Hash32;
+typedef uint16_t Hash16;
 typedef unsigned char  Hash8;
 
 const Hash32 kIllegalHash32 = static_cast<Hash32>(4294967295UL);    // 2^32-1
@@ -67,7 +66,7 @@ const Hash8  kIllegalHash8 = static_cast<Hash8>(255);               // 2^8-1
 
 // MetatagId refers to metatag-id that we assign to
 // each metatag <name, value> pair..
-typedef uint32 MetatagId;
+typedef uint32_t MetatagId;
 
 // Argument type used in interfaces that can optionally take ownership
 // of a passed in argument.  If TAKE_OWNERSHIP is passed, the called

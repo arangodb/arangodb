@@ -40,6 +40,7 @@ class DaemonFeature final : public application_features::ApplicationFeature {
 
  public:
   void setDaemon(bool value) { _daemon = value; }
+  static void remapStandardFileDescriptors();
 
  private:
   void checkPidFile();

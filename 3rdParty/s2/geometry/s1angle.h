@@ -4,9 +4,8 @@
 #define UTIL_GEOMETRY_S1ANGLE_H_
 
 #include <iosfwd>
-#include <math.h>
+#include <cmath>
 
-#include "base/basictypes.h"
 #include "util/math/mathutil.h"
 #include "s2.h"
 
@@ -29,16 +28,16 @@ class S1Angle {
   // or degrees.
   inline static S1Angle Radians(double radians);
   inline static S1Angle Degrees(double degrees);
-  inline static S1Angle E5(int32 e5);
-  inline static S1Angle E6(int32 e6);
-  inline static S1Angle E7(int32 e7);
+  inline static S1Angle E5(int32_t e5);
+  inline static S1Angle E6(int32_t e6);
+  inline static S1Angle E7(int32_t e7);
 
   // Convenience functions -- to use when args have been fixed32s in protos.
   //
   // The arguments are static_cast into int32, so very large unsigned values
   // are treated as negative numbers.
-  inline static S1Angle UnsignedE6(uint32 e6);
-  inline static S1Angle UnsignedE7(uint32 e7);
+  inline static S1Angle UnsignedE6(uint32_t e6);
+  inline static S1Angle UnsignedE7(uint32_t e7);
 
   // The default constructor yields a zero angle.  This is useful for STL
   // containers and class methods with output arguments.
@@ -56,9 +55,9 @@ class S1Angle {
   double radians() const { return radians_; }
   double degrees() const { return radians_ * (180 / M_PI); }
 
-  int32 e5() const { return MathUtil::FastIntRound(degrees() * 1e5); }
-  int32 e6() const { return MathUtil::FastIntRound(degrees() * 1e6); }
-  int32 e7() const { return MathUtil::FastIntRound(degrees() * 1e7); }
+  int32_t e5() const { return MathUtil::FastIntRound(degrees() * 1e5); }
+  int32_t e6() const { return MathUtil::FastIntRound(degrees() * 1e6); }
+  int32_t e7() const { return MathUtil::FastIntRound(degrees() * 1e7); }
 
   // Return the absolute value of an angle.
   S1Angle abs() const { return S1Angle(fabs(radians_)); }
@@ -176,26 +175,26 @@ inline S1Angle S1Angle::Degrees(double degrees) {
   return S1Angle(degrees * (M_PI / 180));
 }
 
-inline S1Angle S1Angle::E5(int32 e5) {
+inline S1Angle S1Angle::E5(int32_t e5) {
   // Multiplying by 1e-5 isn't quite as accurate as dividing by 1e5,
   // but it's about 10 times faster and more than accurate enough.
   return Degrees(e5 * 1e-5);
 }
 
-inline S1Angle S1Angle::E6(int32 e6) {
+inline S1Angle S1Angle::E6(int32_t e6) {
   return Degrees(e6 * 1e-6);
 }
 
-inline S1Angle S1Angle::E7(int32 e7) {
+inline S1Angle S1Angle::E7(int32_t e7) {
   return Degrees(e7 * 1e-7);
 }
 
-inline S1Angle S1Angle::UnsignedE6(uint32 e6) {
-  return Degrees(static_cast<int32>(e6) * 1e-6);
+inline S1Angle S1Angle::UnsignedE6(uint32_t e6) {
+  return Degrees(static_cast<int32_t>(e6) * 1e-6);
 }
 
-inline S1Angle S1Angle::UnsignedE7(uint32 e7) {
-  return Degrees(static_cast<int32>(e7) * 1e-7);
+inline S1Angle S1Angle::UnsignedE7(uint32_t e7) {
+  return Degrees(static_cast<int32_t>(e7) * 1e-7);
 }
 
 // Writes the angle in degrees with 7 digits of precision after the

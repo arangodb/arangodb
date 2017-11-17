@@ -6,7 +6,6 @@
 #include <cmath>
 #include <iostream>
 
-#include "base/basictypes.h"
 #include "base/logging.h"
 #include "util/math/vector2-inl.h"
 
@@ -118,7 +117,7 @@ class R1Interval {
   double GetDirectedHausdorffDistance(R1Interval const& y) const {
     if (is_empty()) return 0.0;
     if (y.is_empty()) return HUGE_VAL;
-    return max(0.0, max(hi() - y.hi(), y.lo() - lo()));
+    return std::max(0.0, std::max(hi() - y.hi(), y.lo() - lo()));
   }
 
   // Expand the interval so that it contains the given point "p".
@@ -142,13 +141,13 @@ class R1Interval {
   R1Interval Union(R1Interval const& y) const {
     if (is_empty()) return y;
     if (y.is_empty()) return *this;
-    return R1Interval(min(lo(), y.lo()), max(hi(), y.hi()));
+    return R1Interval(std::min(lo(), y.lo()), std::max(hi(), y.hi()));
   }
 
   // Return the intersection of this interval with the given interval.
   // Empty intervals do not need to be special-cased.
   R1Interval Intersection(R1Interval const& y) const {
-    return R1Interval(max(lo(), y.lo()), min(hi(), y.hi()));
+    return R1Interval(std::max(lo(), y.lo()), std::min(hi(), y.hi()));
   }
 
   // Return true if two intervals contain the same set of points.

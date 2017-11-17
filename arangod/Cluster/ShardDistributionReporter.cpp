@@ -295,8 +295,6 @@ void ShardDistributionReporter::getDistributionForDatabase(
     std::unordered_map<ShardID, SyncCountInfo> counters;
     std::vector<ServerID> serversToAsk;
     while (!todoSyncStateCheck.empty()) {
-      double timeleft = endtime - TRI_microtime();
-      serversToAsk.clear();
       counters.clear();
       auto const col = todoSyncStateCheck.front();
 
@@ -304,6 +302,8 @@ void ShardDistributionReporter::getDistributionForDatabase(
       auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
       // Send requests
       for (auto const& s : *(allShards.get())) {
+        double timeleft = endtime - TRI_microtime();
+        serversToAsk.clear();
         uint64_t requestsInFlight = 0;
         OperationID leaderOpId = 0;
         auto curServers = cic->servers(s.first);
@@ -364,14 +364,14 @@ void ShardDistributionReporter::getDistributionForDatabase(
               VPackSlice response = body->slice();
               if (!response.isObject()) {
                 LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-                    << "Recieved invalid response for count. Shard distribution "
+                    << "Received invalid response for count. Shard distribution "
                        "inaccurate";
                 continue;
               }
               response = response.get("count");
               if (!response.isNumber()) {
                 LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-                    << "Recieved invalid response for count. Shard distribution "
+                    << "Received invalid response for count. Shard distribution "
                        "inaccurate";
                 continue;
               }
@@ -394,14 +394,14 @@ void ShardDistributionReporter::getDistributionForDatabase(
                 VPackSlice response = body->slice();
                 if (!response.isObject()) {
                   LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-                      << "Recieved invalid response for count. Shard "
+                      << "Received invalid response for count. Shard "
                          "distribution inaccurate";
                   continue;
                 }
                 response = response.get("count");
                 if (!response.isNumber()) {
                   LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-                      << "Recieved invalid response for count. Shard "
+                      << "Received invalid response for count. Shard "
                          "distribution inaccurate";
                   continue;
                 }

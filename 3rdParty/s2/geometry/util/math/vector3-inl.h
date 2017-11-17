@@ -26,22 +26,13 @@
 #ifndef UTIL_MATH_VECTOR3_INL_H__
 #define UTIL_MATH_VECTOR3_INL_H__
 
-#include "util/math/vector3.h"
-
+#include "vector3.h"
 #include <algorithm>
-using std::min;
-using std::max;
-using std::swap;
-using std::reverse;
+#include <cmath>
 
-#include <math.h>
-#include "base/basictypes.h"
-#include "base/logging.h"
-#include "base/template_util.h"
-#include "base/type_traits.h"
-#include "util/math/mathutil.h"
-#include "util/math/vector2.h"
-#include "util/math/vector4.h"
+#include "mathutil.h"
+#include "vector2.h"
+#include "vector4.h"
 
 template <typename VType>
 Vector3<VType>::Vector3() {
@@ -318,9 +309,9 @@ int Vector3<VType>::LargestAbsComponent() const {
 template <typename VType>
 Vector3<int> Vector3<VType>::ComponentOrder() const {
   Vector3<int> temp(0, 1, 2);
-  if (c_[temp[0]] > c_[temp[1]]) swap(temp[0], temp[1]);
-  if (c_[temp[1]] > c_[temp[2]]) swap(temp[1], temp[2]);
-  if (c_[temp[0]] > c_[temp[1]]) swap(temp[0], temp[1]);
+  if (c_[temp[0]] > c_[temp[1]]) std::swap(temp[0], temp[1]);
+  if (c_[temp[1]] > c_[temp[2]]) std::swap(temp[1], temp[2]);
+  if (c_[temp[0]] > c_[temp[1]]) std::swap(temp[0], temp[1]);
   return temp;
 }
 

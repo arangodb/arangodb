@@ -10,11 +10,7 @@
 #define UTIL_MATH_VECTOR2_H__
 
 #include <iostream>
-using std::ostream;
-using std::cout;
-using std::endl;
-  // NOLINT(readability/streams)
-#include "base/basictypes.h"
+#include <cstdint>
 
 template <typename VType> class Vector2;
 
@@ -35,8 +31,7 @@ class Vector2 {
   // FloatType is the type returned by Norm() and Angle().  These methods are
   // special because they return floating-point values even when VType is an
   // integer.
-  typedef typename base::if_<base::is_integral<VType>::value,
-                             double, VType>::type FloatType;
+ typedef typename std::conditional<std::is_integral<VType>::value, double, VType>::type FloatType;
 
  public:
   typedef Vector2<VType> Self;
@@ -181,7 +176,7 @@ std::ostream &operator <<(std::ostream &out, // NOLINT
                           const Vector2<VType2> &va);
 
 // TODO(user): Declare extern templates for these types.
-typedef Vector2<uint8>  Vector2_b;
+typedef Vector2<uint8_t>  Vector2_b;
 typedef Vector2<int>    Vector2_i;
 typedef Vector2<float>  Vector2_f;
 typedef Vector2<double> Vector2_d;

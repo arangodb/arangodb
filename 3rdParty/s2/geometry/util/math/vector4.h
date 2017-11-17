@@ -9,12 +9,8 @@
 #ifndef UTIL_MATH_VECTOR4_H__
 #define UTIL_MATH_VECTOR4_H__
 
+#include <cstdint>
 #include <iostream>
-using std::ostream;
-using std::cout;
-using std::endl;
-  // NOLINT(readability/streams)
-#include "base/basictypes.h"
 
 template <typename VType> class Vector4;
 // TODO(user): Look into creating conversion operators to remove the
@@ -170,7 +166,7 @@ template <typename VType>
 std::ostream &operator <<(std::ostream &out,  // NOLINT
                           const Vector4<VType> &va);
 
-typedef Vector4<uint8>  Vector4_b;
+typedef Vector4<uint8_t>  Vector4_b;
 typedef Vector4<int>    Vector4_i;
 typedef Vector4<float>  Vector4_f;
 typedef Vector4<double> Vector4_d;

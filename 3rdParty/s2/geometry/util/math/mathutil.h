@@ -7,13 +7,14 @@
 #ifndef UTIL_MATH_MATHUTIL_H__
 #define UTIL_MATH_MATHUTIL_H__
 
-#include <math.h>
+#include <cstdint>
+#include <cmath>
 #include <algorithm>
 #include <vector>
 
-#include "base/basictypes.h"
-#include "base/logging.h"
-#include "util/math/mathlimits.h"
+#include "mathlimits.h"
+#include <geometry/base/logging.h>
+#include <geometry/base/casts.h>
 
 // Returns the sign of x:
 //   -1 if x < 0,
@@ -100,7 +101,7 @@ class MathUtil {
     // Discriminants below kTolerance in absolute value are considered zero
     // because changing the final bit of one of the inputs can change the
     // sign of the discriminant.
-    const double kTolerance = epsilon * max(fabs(2 * b * b), fabs(4 * a * c));
+    const double kTolerance = epsilon * std::max(std::abs(2 * b * b), std::abs(4 * a * c));
     return (fabs(discriminant) <= kTolerance);
   }
 
@@ -257,8 +258,8 @@ class MathUtil {
   // Outputs:
   //   shards_to_read gives the subset of the N input shards to read.
   // --------------------------------------------------------------------
-  static void ShardsToRead(const vector<bool>& shards_to_write,
-                           vector<bool>* shards_to_read);
+  static void ShardsToRead(const std::vector<bool>& shards_to_write,
+                           std::vector<bool>* shards_to_read);
 
   // --------------------------------------------------------------------
   // Round, IntRound
@@ -325,7 +326,7 @@ class MathUtil {
   //   widely adopted yet and these functions are not available by default.
   //   --------------------------------------------------------------------
 
-  static int32 FastIntRound(double x) {
+  static int32_t FastIntRound(double x) {
     // This function is not templatized because gcc doesn't seem to be able
     // to deal with inline assembly code in templatized functions, and there
     // is no advantage to passing an argument type of "float" on Intel
@@ -334,7 +335,7 @@ class MathUtil {
 #if defined __GNUC__ && (defined __i386__ || defined __SSE2__)
 #if defined __SSE2__
     // SSE2.
-    int32 result;
+    int32_t result;
     __asm__ __volatile__
         ("cvtsd2si %1, %0"
          : "=r" (result)    // Output operand is a register
@@ -355,11 +356,11 @@ class MathUtil {
 #endif  // if defined __GNUC__ && ...
   }
 
-  static int64 FastInt64Round(double x) {
+  static int64_t FastInt64Round(double x) {
 #if defined __GNUC__ && (defined __i386__ || defined __x86_64__)
 #if defined __x86_64__
     // SSE2.
-    int64 result;
+    int64_t result;
     __asm__ __volatile__
         ("cvtsd2si %1, %0"
          : "=r" (result)    // Output operand is a register
@@ -393,7 +394,7 @@ class MathUtil {
 
   // Returns an approximation An for the n-th element of the harmonic
   // serices Hn = 1 + ... + 1/n.  Sets error e such that |An-Hn| < e.
-  static double Harmonic(int64 n, double *e);
+  static double Harmonic(int64_t n, double *e);
 
   // Returns Stirling's Approximation for log(n!) which has an error
   // of at worst 1/(1260*n^5).
@@ -415,14 +416,14 @@ class MathUtil {
   // to a constant.
   // Precondition: 1 <= bits <= 23, f != NaN
   static float RoundOffBits(const float f, const int bits) {
-    const int32 f_rep = bit_cast<int32>(f);
+    const int32_t f_rep = bit_cast<int32_t>(f);
 
     // Set low-order "bits" bits to zero.
-    int32 g_rep = f_rep & ~((1 << bits) - 1);
+    int32_t g_rep = f_rep & ~((1 << bits) - 1);
 
     // Round mantissa up if we need to.  Note that we do round-to-even,
     // a.k.a. round-up-if-odd.
-    const int32 lowbits = f_rep & ((1 << bits) - 1);
+    const int32_t lowbits = f_rep & ((1 << bits) - 1);
     if (lowbits > (1 << (bits - 1)) ||
         (lowbits == (1 << (bits - 1)) && (f_rep & (1 << bits)))) {
       g_rep += (1 << bits);
@@ -435,9 +436,9 @@ class MathUtil {
   }
   // Same, but for doubles.  1 <= bits <= 52, error at most 2^(bits - 53).
   static double RoundOffBits(const double f, const int bits) {
-    const int64 f_rep = bit_cast<int64>(f);
-    int64 g_rep = f_rep & ~((1LL << bits) - 1);
-    const int64 lowbits = f_rep & ((1LL << bits) - 1);
+    const int64_t f_rep = bit_cast<int64_t>(f);
+    int64_t g_rep = f_rep & ~((1LL << bits) - 1);
+    const int64_t lowbits = f_rep & ((1LL << bits) - 1);
     if (lowbits > (1LL << (bits - 1)) ||
         (lowbits == (1LL << (bits - 1)) && (f_rep & (1LL << bits)))) {
       g_rep += (1LL << bits);
@@ -647,22 +648,22 @@ class MathUtil {
 // partial specialization of templatized functions.
 
 template<>
-inline int32 MathUtil::Round<int32, double>(double x) {
+inline int32_t MathUtil::Round<int32_t, double>(double x) {
   return FastIntRound(x);
 }
 
 template<>
-inline int32 MathUtil::Round<int32, float>(float x) {
+inline int32_t MathUtil::Round<int32_t, float>(float x) {
   return FastIntRound(x);
 }
 
 template<>
-inline int64 MathUtil::Round<int64, double>(double x) {
+inline int64_t MathUtil::Round<int64_t, double>(double x) {
   return FastInt64Round(x);
 }
 
 template<>
-inline int64 MathUtil::Round<int64, float>(float x) {
+inline int64_t MathUtil::Round<int64_t, float>(float x) {
   return FastInt64Round(x);
 }
 

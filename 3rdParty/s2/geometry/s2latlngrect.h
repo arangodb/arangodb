@@ -5,7 +5,6 @@
 
 #include <iostream>
 
-#include "base/basictypes.h"
 #include "base/logging.h"
 #include "s1angle.h"
 #include "r1interval.h"

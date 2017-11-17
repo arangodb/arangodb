@@ -14,6 +14,17 @@
 #include "base/port.h"
 #include "util/endian/endian.h"
 
+#ifndef SWIG
+//  A type to represent a natural machine word (for e.g. efficiently
+// scanning through memory for checksums or index searching). Don't use
+// this for storing normal integers. Ideally this would be just
+// unsigned int, but our 64-bit architectures use the LP64 model
+// (http://www.opengroup.org/public/tech/aspen/lp64_wp.htm), hence
+// their ints are only 32 bits. We want to use the same fundamental
+// type on all archs if possible to preserve *printf() compatability.
+typedef unsigned long      uword_t;
+#endif /* SWIG */
+
 /* Class for encoding data into a memory buffer */
 class Encoder {
  public:
@@ -29,9 +40,9 @@ class Encoder {
 
   // Encoding routines.  Note that these do not check bounds
   void put8(unsigned char v);
-  void put16(uint16 v);
-  void put32(uint32 v);
-  void put64(uint64 v);
+  void put16(uint16_t v);
+  void put32(uint32_t v);
+  void put64(uint64_t v);
   void putword(uword_t v);
   void putn(const void* mem, int n);
 
@@ -48,16 +59,16 @@ class Encoder {
   static const int kVarintMax32 = Varint::kMax32;
   static const int kVarintMax64 = Varint::kMax64;
 
-  void put_varint32(uint32 v);
-  void put_varint64(uint64 v);
-  static int varint32_length(uint32 v);  // Length of var encoding of "v"
-  static int varint64_length(uint64 v);  // Length of var encoding of "v"
+  void put_varint32(uint32_t v);
+  void put_varint64(uint64_t v);
+  static int varint32_length(uint32_t v);  // Length of var encoding of "v"
+  static int varint64_length(uint64_t v);  // Length of var encoding of "v"
 
   // DEPRECATED
   //
   // For new code use put_varint32(ZigZagEncode(signed_value));
   // ZigZag coding is defined in utils/coding/transforms.h
-  void put_varsigned32(int32 v);
+  void put_varsigned32(int32_t v);
 
   // Return number of bytes encoded so far
   int length() const;
@@ -128,9 +139,9 @@ class Decoder {
 
   // Decoding routines.  Note that these do not check bounds
   unsigned char  get8();
-  uint16 get16();
-  uint32 get32();
-  uint64 get64();
+  uint16_t get16();
+  uint32_t get32();
+  uint64_t get64();
   uword_t getword();
   float  getfloat();
   double getdouble();
@@ -143,8 +154,8 @@ class Decoder {
   unsigned char const* ptr();       // Return ptr to current position in buffer
 
   // "get_varint" actually checks bounds
-  bool get_varint32(uint32* v);
-  bool get_varint64(uint64* v);
+  bool get_varint32(uint32_t* v);
+  bool get_varint64(uint64_t* v);
 
   // DEPRECATED
   //
@@ -152,7 +163,7 @@ class Decoder {
   //   get_varint32(&unsigned_temp);
   //   signed_value = ZigZagDecode(unsigned_temp);
   // ZigZag coding is defined in utils/coding/transforms.h
-  bool get_varsigned32(int32* v);
+  bool get_varsigned32(int32_t* v);
 
   int pos() const;
   // Return number of bytes decoded so far
@@ -227,12 +238,12 @@ inline void Encoder::puts_without_null(const char* mem) {
   }
 }
 
-inline void Encoder::put_varint32(uint32 v) {
+inline void Encoder::put_varint32(uint32_t v) {
   buf_ = reinterpret_cast<unsigned char*>
          (Varint::Encode32(reinterpret_cast<char*>(buf_), v));
 }
 
-inline void Encoder::put_varint64(uint64 v) {
+inline void Encoder::put_varint64(uint64_t v) {
   buf_ = reinterpret_cast<unsigned char*>
          (Varint::Encode64(reinterpret_cast<char*>(buf_), v));
 }
@@ -241,10 +252,10 @@ inline void Encoder::put_varint64(uint64 v) {
 //
 // For new code use put_varint32(ZigZagEncode(signed_value));
 // ZigZag coding is defined in utils/coding/transforms.h
-inline void Encoder::put_varsigned32(int32 n) {
+inline void Encoder::put_varsigned32(int32_t n) {
   // Encode sign in low-bit
   int sign = (n < 0) ? 1 : 0;
-  uint32 mag = (n < 0) ? -n : n;
+  uint32_t mag = (n < 0) ? -n : n;
   put_varint32((mag << 1) | sign);
 }
 
@@ -302,14 +313,14 @@ inline unsigned char const* Decoder::ptr() {
 //   get_varint32(&unsigned_temp);
 //   signed_value = ZigZagDecode(unsigned_temp);
 // ZigZag coding is defined in utils/coding/transforms.h
-inline bool Decoder::get_varsigned32(int32* v) {
-  uint32 coding;
+inline bool Decoder::get_varsigned32(int32_t* v) {
+  uint32_t coding;
   if (get_varint32(&coding)) {
     int sign = coding & 1;
-    int32 mag = coding >> 1;
+    int32_t mag = coding >> 1;
     if (sign) {
       // Special handling for encoding of kint32min
-      *v = (mag == 0) ? kint32min : -mag;
+      *v = (mag == 0) ? INT32_MIN : -mag;
     } else {
       *v = mag;
     }
@@ -325,19 +336,19 @@ inline void Encoder::put8(unsigned char v) {
   buf_ += sizeof(v);
 }
 
-inline void Encoder::put16(uint16 v) {
+inline void Encoder::put16(uint16_t v) {
   DCHECK_GE(avail(), sizeof(v));
   LittleEndian::Store16(buf_, v);
   buf_ += sizeof(v);
 }
 
-inline void Encoder::put32(uint32 v) {
+inline void Encoder::put32(uint32_t v) {
   DCHECK_GE(avail(), sizeof(v));
   LittleEndian::Store32(buf_, v);
   buf_ += sizeof(v);
 }
 
-inline void Encoder::put64(uint64 v) {
+inline void Encoder::put64(uint64_t v) {
   DCHECK_GE(avail(), sizeof(v));
   LittleEndian::Store64(buf_, v);
   buf_ += sizeof(v);
@@ -353,14 +364,14 @@ inline void Encoder::putword(uword_t v) {
 }
 
 inline void Encoder::putfloat(float f) {
-  uint32 v;
+  uint32_t v;
   static_assert(sizeof(f) == sizeof(v), "VerifySizesAreEqual");
   memcpy(&v, &f, sizeof(f));
   put32(v);
 }
 
 inline void Encoder::putdouble(double d) {
-  uint64 v;
+  uint64_t v;
   static_assert(sizeof(d) == sizeof(v), "VerifySizesAreEqual");
   memcpy(&v, &d, sizeof(d));
   put64(v);
@@ -372,20 +383,20 @@ inline unsigned char Decoder::get8() {
   return v;
 }
 
-inline uint16 Decoder::get16() {
-  const uint16 v = LittleEndian::Load16(buf_);
+inline uint16_t Decoder::get16() {
+  const uint16_t v = LittleEndian::Load16(buf_);
   buf_ += sizeof(v);
   return v;
 }
 
-inline uint32 Decoder::get32() {
-  const uint32 v = LittleEndian::Load32(buf_);
+inline uint32_t Decoder::get32() {
+  const uint32_t v = LittleEndian::Load32(buf_);
   buf_ += sizeof(v);
   return v;
 }
 
-inline uint64 Decoder::get64() {
-  const uint64 v = LittleEndian::Load64(buf_);
+inline uint64_t Decoder::get64() {
+  const uint64_t v = LittleEndian::Load64(buf_);
   buf_ += sizeof(v);
   return v;
 }
@@ -401,7 +412,7 @@ inline uword_t Decoder::getword() {
 }
 
 inline float Decoder::getfloat() {
-  uint32 v = get32();
+  uint32_t v = get32();
   float f;
   static_assert(sizeof(f) == sizeof(v), "VerifySizesAreEqual");
   memcpy(&f, &v, sizeof(f));
@@ -409,7 +420,7 @@ inline float Decoder::getfloat() {
 }
 
 inline double Decoder::getdouble() {
-  uint64 v = get64();
+  uint64_t v = get64();
   double d;
   static_assert(sizeof(d) == sizeof(v), "VerifySizesAreEqual");
   memcpy(&d, &v, sizeof(d));

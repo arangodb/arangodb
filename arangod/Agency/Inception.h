@@ -64,9 +64,17 @@ public:
  private:
 
   /// @brief We are a restarting active RAFT agent
+  ///
+  /// Make sure that majority of agents agrees on pool and active list. 
+  /// Subsequently, start agency. The exception to agreement over active agent
+  /// list among peers is if an agent joins with empty active list. This allows
+  /// for a peer with empty list to join nevertheless.
+  /// The formation of an agency is tried for an hour before giving up.
   bool restartingActiveAgent();
   
   /// @brief Gossip your way into the agency
+  /// 
+  /// No persistence: gossip an agency together.
   void gossip();
 
   Agent* _agent;                           //< @brief The agent

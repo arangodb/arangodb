@@ -23,7 +23,6 @@
 #include "util/math/mathutil.h"
 #include "util/math/vector3-inl.h"
 #include "util/math/matrix3x3.h"
-#include "base/basictypes.h"
 #include "base/logging.h"
 
 template <class VType>
@@ -557,7 +556,7 @@ class Matrix3x3 {
       if (i == 2) {
         out << "]";
       } else {
-        out << endl;
+        out << std::endl;
       }
     }
     return out;

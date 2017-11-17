@@ -2,7 +2,6 @@
 
 #include "s2cell.h"
 
-#include "base/integral_types.h"
 #include "base/logging.h"
 #include "s2.h"
 #include "s2cap.h"
@@ -169,7 +168,7 @@ S2LatLngRect S2Cell::GetRectBound() const {
     // also contains the normalized versions of the vertices.  Note that the
     // maximum result magnitude is Pi, with a floating-point exponent of 1.
     // Therefore adding or subtracting 2**-51 will always change the result.
-    static double const kMaxError = 1.0 / (int64(1) << 51);
+    static double const kMaxError = 1.0 / (int64_t(1) << 51);
     R1Interval lat = R1Interval::FromPointPair(GetLatitude(i, j),
                                                GetLatitude(1-i, 1-j));
     lat = lat.Expanded(kMaxError).Intersection(S2LatLngRect::FullLat());

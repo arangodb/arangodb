@@ -3,7 +3,6 @@
 #ifndef UTIL_GEOMETRY_S2CAP_H_
 #define UTIL_GEOMETRY_S2CAP_H_
 
-#include "base/basictypes.h"
 #include "base/logging.h"
 #include "s1angle.h"
 #include "s2region.h"
@@ -61,7 +60,7 @@ class S2Cap : public S2Region {
   // Accessor methods.
   S2Point const& axis() const { return axis_; }
   double height() const { return height_; }
-  double area() const { return 2 * M_PI * max(0.0, height_); }
+  double area() const { return 2 * M_PI * std::max(0.0, height_); }
 
   // Return the cap opening angle in radians, or a negative number for
   // empty caps.
@@ -170,6 +169,6 @@ inline S2Cap S2Cap::FromAxisArea(S2Point const& axis, double area) {
   return S2Cap(axis, area / (2 * M_PI));
 }
 
-ostream& operator<<(ostream& os, S2Cap const& cap);
+std::ostream& operator<<(std::ostream& os, S2Cap const& cap);
 
 #endif  // UTIL_GEOMETRY_S2CAP_H_

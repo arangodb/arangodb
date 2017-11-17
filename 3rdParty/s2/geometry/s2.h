@@ -4,10 +4,7 @@
 #define UTIL_GEOMETRY_S2_H_
 
 // To have template struct hash<T> defined
-#include "base/basictypes.h"
-#include "base/logging.h"
 #include "base/macros.h"
-#include "base/port.h"  // for HASH_NAMESPACE_DECLARATION_START
 #include "util/math/vector3-inl.h"
 #include "util/math/matrix3x3.h"
 
@@ -18,9 +15,9 @@
 // arithmetic expressions (e.g. (1-x)*p1 + x*p2).
 typedef Vector3_d S2Point;
 
-#include <unordered_set>
 #include <algorithm>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace std {
 
@@ -850,7 +847,7 @@ int S2::Metric<dim>::GetMinLevel(double value) const {
   // range [0.5,1) and the corresponding exponent.
   int level;
   frexp(value / deriv_, &level);
-  level = max(0, min(S2::kMaxCellLevel, -((level - 1) >> (dim - 1))));
+  level = std::max(0, std::min(S2::kMaxCellLevel, -((level - 1) >> (dim - 1))));
   DCHECK(level == S2::kMaxCellLevel || GetValue(level) <= value);
   DCHECK(level == 0 || GetValue(level - 1) > value);
   return level;
@@ -864,7 +861,7 @@ int S2::Metric<dim>::GetMaxLevel(double value) const {
   // value and rounding down.
   int level;
   frexp(deriv_ / value, &level);
-  level = max(0, min(S2::kMaxCellLevel, (level - 1) >> (dim - 1)));
+  level = std::max(0, std::min(S2::kMaxCellLevel, (level - 1) >> (dim - 1)));
   DCHECK(level == 0 || GetValue(level) >= value);
   DCHECK(level == S2::kMaxCellLevel || GetValue(level + 1) < value);
   return level;

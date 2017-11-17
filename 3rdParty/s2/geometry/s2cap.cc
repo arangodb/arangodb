@@ -1,7 +1,5 @@
 // Copyright 2005 Google Inc. All Rights Reserved.
 
-#include "base/integral_types.h"
-#include "base/logging.h"
 #include "s2.h"
 #include "s2cap.h"
 #include "s2cell.h"
@@ -12,7 +10,7 @@ namespace {
 // Multiply a positive number by this constant to ensure that the result
 // of a floating point operation is at least as large as the true
 // infinite-precision result.
-double const kRoundUp = 1.0 + 1.0 / (uint64(1) << 52);
+double const kRoundUp = 1.0 + 1.0 / (uint64_t(1) << 52);
 
 // Return the cap height corresponding to the given non-negative cap angle in
 // radians.  Cap angles of Pi radians or larger yield a full cap.

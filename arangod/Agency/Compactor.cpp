@@ -55,8 +55,8 @@ void Compactor::run() {
       if (!_wakeupCompactor) {
         _cv.wait();
       }
+      _wakeupCompactor = false;
     }
-    _wakeupCompactor = false;
     
     if (this->isStopping()) {
       break;
@@ -65,7 +65,7 @@ void Compactor::run() {
     try {
       _agent->compact();
     }
-    catch (std::exception& e) {
+    catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY) << "Expection during compaction, details: "
         << e.what();
     }
@@ -75,12 +75,10 @@ void Compactor::run() {
 
 
 // @brief Wake up compaction
-void Compactor::wakeUp () {
-  {
-    CONDITION_LOCKER(guard, _cv);
-    _wakeupCompactor = true;
-  }
-  _cv.broadcast();
+void Compactor::wakeUp() {
+  CONDITION_LOCKER(guard, _cv);
+  _wakeupCompactor = true;
+  _cv.signal();
 }
 
 

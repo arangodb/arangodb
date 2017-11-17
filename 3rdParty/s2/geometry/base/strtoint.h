@@ -32,26 +32,23 @@
 
 #include <stdlib.h> // For strtol* functions.
 #include <string>
-using std::string;
-
-#include "base/port.h"
-#include "base/basictypes.h"
+#include <cstdint>
 
 // Adapter functions for handling overflow and errno.
-int32 strto32_adapter(const char *nptr, char **endptr, int base);
-uint32 strtou32_adapter(const char *nptr, char **endptr, int base);
+int32_t strto32_adapter(const char *nptr, char **endptr, int base);
+uint32_t strtou32_adapter(const char *nptr, char **endptr, int base);
 
 // Conversions to a 32-bit integer can pass the call to strto[u]l on 32-bit
 // platforms, but need a little extra work on 64-bit platforms.
-inline int32 strto32(const char *nptr, char **endptr, int base) {
-  if (sizeof(int32) == sizeof(long))
+inline int32_t strto32(const char *nptr, char **endptr, int base) {
+  if (sizeof(int32_t) == sizeof(long))
     return strtol(nptr, endptr, base);
   else
     return strto32_adapter(nptr, endptr, base);
 }
 
-inline uint32 strtou32(const char *nptr, char **endptr, int base) {
-  if (sizeof(uint32) == sizeof(unsigned long))
+inline uint32_t strtou32(const char *nptr, char **endptr, int base) {
+  if (sizeof(uint32_t) == sizeof(unsigned long))
     return strtoul(nptr, endptr, base);
   else
     return strtou32_adapter(nptr, endptr, base);
@@ -59,32 +56,32 @@ inline uint32 strtou32(const char *nptr, char **endptr, int base) {
 
 // For now, long long is 64-bit on all the platforms we care about, so these
 // functions can simply pass the call to strto[u]ll.
-inline int64 strto64(const char *nptr, char **endptr, int base) {
-  static_assert(sizeof(int64) == sizeof(long long), "sizeof_int64_is_not_sizeof_long_long");
+inline int64_t strto64(const char *nptr, char **endptr, int base) {
+  static_assert(sizeof(int64_t) == sizeof(long long), "sizeof_int64_is_not_sizeof_long_long");
   return strtoll(nptr, endptr, base);
 }
 
-inline uint64 strtou64(const char *nptr, char **endptr, int base) {
-  static_assert(sizeof(uint64) == sizeof(unsigned long long), "sizeof_uint64_is_not_sizeof_long_long");
+inline uint64_t strtou64(const char *nptr, char **endptr, int base) {
+  static_assert(sizeof(uint64_t) == sizeof(unsigned long long), "sizeof_uint64_is_not_sizeof_long_long");
   return strtoull(nptr, endptr, base);
 }
 
 // Although it returns an int, atoi() is implemented in terms of strtol, and
 // so has differing overflow and underflow behavior.  atol is the same.
-inline int32 atoi32(const char *nptr) {
+inline int32_t atoi32(const char *nptr) {
   return strto32(nptr, NULL, 10);
 }
 
-inline int64 atoi64(const char *nptr) {
+inline int64_t atoi64(const char *nptr) {
   return strto64(nptr, NULL, 10);
 }
 
 // Convenience versions of the above that take a string argument.
-inline int32 atoi32(const string &s) {
+inline int32_t atoi32(const std::string &s) {
   return atoi32(s.c_str());
 }
 
-inline int64 atoi64(const string &s) {
+inline int64_t atoi64(const std::string &s) {
   return atoi64(s.c_str());
 }
 

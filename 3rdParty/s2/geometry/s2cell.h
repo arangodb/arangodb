@@ -3,8 +3,6 @@
 #ifndef UTIL_GEOMETRY_S2CELL_H_
 #define UTIL_GEOMETRY_S2CELL_H_
 
-#include "base/basictypes.h"
-#include "base/logging.h"
 #include "s2.h"
 #include "s2cellid.h"
 #include "s2region.h"
@@ -27,7 +25,7 @@ class S2Cell : public S2Region {
   // constructors are just convenience methods.
   explicit S2Cell(S2CellId const& id) { Init(id); }
 
-  static S2Cell FromFacePosLevel(int face, uint64 pos, int level) {
+  static S2Cell FromFacePosLevel(int face, uint64_t pos, int level) {
     // This is a static method in order to provide named parameters.
     return S2Cell(S2CellId::FromFacePosLevel(face, pos, level));
   }
@@ -125,9 +123,9 @@ class S2Cell : public S2Region {
   inline double GetLongitude(int i, int j) const;
 
   // This structure occupies 44 bytes plus one pointer for the vtable.
-  int8 face_;
-  int8 level_;
-  int8 orientation_;
+  int8_t face_;
+  int8_t level_;
+  int8_t orientation_;
   S2CellId id_;
   double uv_[2][2];
 };

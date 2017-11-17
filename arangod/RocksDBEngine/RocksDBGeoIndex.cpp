@@ -413,7 +413,8 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
                                        RocksDBMethods* mthd,
                                        LocalDocumentId const& documentId,
-                                       velocypack::Slice const& doc) {
+                                       velocypack::Slice const& doc,
+                                       OperationMode mode) {
   // GeoIndex is always exclusively write-locked with rocksdb
   double latitude;
   double longitude;
@@ -483,7 +484,8 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
 Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
                                        RocksDBMethods* mthd,
                                        LocalDocumentId const& documentId,
-                                       arangodb::velocypack::Slice const& doc) {
+                                       arangodb::velocypack::Slice const& doc,
+                                       OperationMode mode) {
   // GeoIndex is always exclusively write-locked with rocksdb
   double latitude = 0.0;
   double longitude = 0.0;

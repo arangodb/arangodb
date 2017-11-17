@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <iostream>
 
-#include "base/macros.h"
+#include "macros.h"
 
 // Always-on checking
 #define CHECK(x)	if(x){}else LogMessageFatal(__FILE__, __LINE__).stream() << "Check failed: " #x

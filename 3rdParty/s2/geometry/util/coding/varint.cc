@@ -1,5 +1,6 @@
 // Copyright 2001 and onwards Google Inc.
 
+#include <cassert>
 #include <string>
 using std::string;
 
@@ -10,18 +11,18 @@ const int Varint::kMax32;
 const int Varint::kMax64;
 #endif
 
-char* Varint::Encode32(char* sptr, uint32 v) {
+char* Varint::Encode32(char* sptr, uint32_t v) {
   return Encode32Inline(sptr, v);
 }
 
-char* Varint::Encode64(char* sptr, uint64 v) {
+char* Varint::Encode64(char* sptr, uint64_t v) {
   if (v < (1u << 28)) {
     return Varint::Encode32(sptr, v);
   } else {
     // Operate on characters as unsigneds
     unsigned char* ptr = reinterpret_cast<unsigned char*>(sptr);
     static const int B = 128;
-    uint32 v32 = v;
+    uint32_t v32 = v;
     *(ptr++) = v32 | B;
     *(ptr++) = (v32 >> 7) | B;
     *(ptr++) = (v32 >> 14) | B;
@@ -36,18 +37,18 @@ char* Varint::Encode64(char* sptr, uint64 v) {
   }
 }
 
-const char* Varint::Parse32Fallback(const char* ptr, uint32* OUTPUT) {
+const char* Varint::Parse32Fallback(const char* ptr, uint32_t* OUTPUT) {
   return Parse32FallbackInline(ptr, OUTPUT);
 }
 
-const char* Varint::Parse64Fallback(const char* p, uint64* OUTPUT) {
+const char* Varint::Parse64Fallback(const char* p, uint64_t* OUTPUT) {
   const unsigned char* ptr = reinterpret_cast<const unsigned char*>(p);
   // Fast path: need to accumulate data in upto three result fragments
   //    res1    bits 0..27
   //    res2    bits 28..55
   //    res3    bits 56..63
 
-  uint32 byte, res1, res2=0, res3=0;
+  uint32_t byte, res1, res2=0, res3=0;
   byte = *(ptr++); res1 = byte & 127;
   byte = *(ptr++); res1 |= (byte & 127) <<  7; if (byte < 128) goto done1;
   byte = *(ptr++); res1 |= (byte & 127) << 14; if (byte < 128) goto done1;
@@ -71,16 +72,16 @@ const char* Varint::Parse64Fallback(const char* p, uint64* OUTPUT) {
 
 done2:
   assert(res3 == 0);
-  *OUTPUT = res1 | (uint64(res2) << 28);
+  *OUTPUT = res1 | (uint64_t(res2) << 28);
   return reinterpret_cast<const char*>(ptr);
 
 done3:
-  *OUTPUT = res1 | (uint64(res2) << 28) | (uint64(res3) << 56);
+  *OUTPUT = res1 | (uint64_t(res2) << 28) | (uint64_t(res3) << 56);
   return reinterpret_cast<const char*>(ptr);
 }
 
 const char* Varint::Parse32BackwardSlow(const char* ptr, const char* base,
-                                        uint32* OUTPUT) {
+                                        uint32_t* OUTPUT) {
   // Since this method is rarely called, for simplicity, we just skip backward
   // and then parse forward.
   const char* prev = Skip32BackwardSlow(ptr, base);
@@ -92,7 +93,7 @@ const char* Varint::Parse32BackwardSlow(const char* ptr, const char* base,
 }
 
 const char* Varint::Parse64BackwardSlow(const char* ptr, const char* base,
-                                        uint64* OUTPUT) {
+                                        uint64_t* OUTPUT) {
   // Since this method is rarely called, for simplicity, we just skip backward
   // and then parse forward.
   const char* prev = Skip64BackwardSlow(ptr, base);
@@ -105,13 +106,13 @@ const char* Varint::Parse64BackwardSlow(const char* ptr, const char* base,
 
 const char* Varint::Parse64WithLimit(const char* p,
                                      const char* l,
-                                     uint64* OUTPUT) {
+                                     uint64_t* OUTPUT) {
   if (p + kMax64 <= l) {
     return Parse64(p, OUTPUT);
   } else {
     const unsigned char* ptr = reinterpret_cast<const unsigned char*>(p);
     const unsigned char* limit = reinterpret_cast<const unsigned char*>(l);
-    uint64 b, result;
+    uint64_t b, result;
     if (ptr >= limit) return NULL;
     b = *(ptr++); result = b & 127;          if (b < 128) goto done;
     if (ptr >= limit) return NULL;
@@ -175,24 +176,24 @@ const char* Varint::Skip64BackwardSlow(const char* p, const char* b) {
   return NULL; // value is too long to be a varint64
 }
 
-void Varint::Append32Slow(string* s, uint32 value) {
+void Varint::Append32Slow(string* s, uint32_t value) {
   char buf[Varint::kMax32];
   const char* p = Varint::Encode32(buf, value);
   s->append(buf, p - buf);
 }
 
-void Varint::Append64Slow(string* s, uint64 value) {
+void Varint::Append64Slow(string* s, uint64_t value) {
   char buf[Varint::kMax64];
   const char* p = Varint::Encode64(buf, value);
   s->append(buf, p - buf);
 }
 
-void Varint::EncodeTwo32Values(string* s, uint32 a, uint32 b) {
-  uint64 v = 0;
+void Varint::EncodeTwo32Values(string* s, uint32_t a, uint32_t b) {
+  uint64_t v = 0;
   int shift = 0;
   while ((a > 0) || (b > 0)) {
-    uint8 one_byte = (a & 0xf) | ((b & 0xf) << 4);
-    v |= ((static_cast<uint64>(one_byte)) << shift);
+    uint8_t one_byte = (a & 0xf) | ((b & 0xf) << 4);
+    v |= ((static_cast<uint64_t>(one_byte)) << shift);
     shift += 8;
     a >>= 4;
     b >>= 4;
@@ -201,8 +202,8 @@ void Varint::EncodeTwo32Values(string* s, uint32 a, uint32 b) {
 }
 
 const char* Varint::DecodeTwo32ValuesSlow(const char* ptr,
-                                          uint32* a, uint32* b) {
-  uint64 v = 0;
+                                          uint32_t* a, uint32_t* b) {
+  uint64_t v = 0;
   const char* result = Varint::Parse64(ptr, &v);
   *a = 0;
   *b = 0;
@@ -216,7 +217,7 @@ const char* Varint::DecodeTwo32ValuesSlow(const char* ptr,
   return result;
 }
 
-inline int FastLength32(uint32 v) {
+inline int FastLength32(uint32_t v) {
   if (v < (1u << 14)) {
     if (v < (1u << 7)) {
       return 1;
@@ -246,12 +247,12 @@ const char Varint::length32_bytes_required[33] =
   5,5,5,5
 };
 
-int Varint::Length32NonInline(uint32 v) {
+int Varint::Length32NonInline(uint32_t v) {
   return FastLength32(v);
 }
 
-int Varint::Length64(uint64 v) {
-  uint32 tmp;
+int Varint::Length64(uint64_t v) {
+  uint32_t tmp;
   int nb;       // Number of bytes we've determined from our tests
   if (v < (1u << 28)) {
     tmp = v;

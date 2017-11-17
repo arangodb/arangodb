@@ -239,7 +239,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-int flushWalOnAllDBServers(bool, bool);
+int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWaitTime = -1.0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the active journals for the collection on all DBservers

@@ -783,16 +783,16 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   OperationOptions opts;
   OperationResult result = trx.insert("_queues", doc.slice(), opts);
-  if (!result.successful() &&
-      result.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+  if (result.fail() &&
+      result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
     result = trx.replace("_queues", doc.slice(), opts);
   }
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
   
-  TRI_V8_RETURN(v8::Boolean::New(isolate, result.successful()));
+  TRI_V8_RETURN(v8::Boolean::New(isolate, result.ok()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -830,12 +830,12 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   OperationOptions opts;
   OperationResult result = trx.remove("_queues", doc.slice(), opts);
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
   
-  TRI_V8_RETURN(v8::Boolean::New(isolate, result.successful()));
+  TRI_V8_RETURN(v8::Boolean::New(isolate, result.ok()));
   TRI_V8_TRY_CATCH_END
 }
 

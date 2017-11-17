@@ -4,7 +4,6 @@
 using std::numeric_limits;
 
 
-#include "base/integral_types.h"
 #include "base/logging.h"
 #include "base/macros.h"
 #include "base/strtoint.h"
@@ -12,8 +11,8 @@ using std::numeric_limits;
 #include "strutil.h"
 #include "util/hash/hash_jenkins_lookup2.h"
 
-static const uint32 MIX32 = 0x12b9b0a1UL;           // pi; an arbitrary number
-static const uint64 MIX64 = GG_ULONGLONG(0x2b992ddfa23249d6);  // more of pi
+static const uint32_t MIX32 = 0x12b9b0a1UL;           // pi; an arbitrary number
+static const uint64_t MIX64 = 0x2b992ddfa23249d6ULL;  // more of pi
 
 // ----------------------------------------------------------------------
 // Hash32StringWithSeed()
@@ -32,20 +31,20 @@ static const uint64 MIX64 = GG_ULONGLONG(0x2b992ddfa23249d6);  // more of pi
 // ----------------------------------------------------------------------
 
 // These slow down a lot if inlined, so do not inline them  --Sanjay
-//extern uint32 Hash32StringWithSeed(const char *s, uint32 len, uint32 c);
+//extern uint32_t Hash32StringWithSeed(const char *s, uint32_t len, uint32_t c);
 // Once again, not included, but copied from:
 // http://szl.googlecode.com/svn-history/r40/trunk/src/utilities/hashutils.cc
 // This is an Apache license...make sure this is ok
-const uint32 kPrimes32[16] ={
+const uint32_t kPrimes32[16] ={
   65537, 65539, 65543, 65551, 65557, 65563, 65579, 65581,
   65587, 65599, 65609, 65617, 65629, 65633, 65647, 65651,
 };
-uint32 Hash32StringWithSeed(const char *s, uint32 len, uint32 seed) {
-  uint32 n = seed;
+uint32_t Hash32StringWithSeed(const char *s, uint32_t len, uint32_t seed) {
+  uint32_t n = seed;
   size_t prime1 = 0, prime2 = 8;  // Indices into kPrimes32
   union {
-    uint16 n;
-    char bytes[sizeof(uint16)];
+    uint16_t n;
+    char bytes[sizeof(uint16_t)];
   } chunk;
   for (const char *i = s, *const end = s + len; i != end; ) {
     chunk.bytes[0] = *i++;
@@ -56,9 +55,9 @@ uint32 Hash32StringWithSeed(const char *s, uint32 len, uint32 seed) {
   }
   return n;
 }
-extern uint64 Hash64StringWithSeed(const char *s, uint32 len, uint64 c);
-extern uint32 Hash32StringWithSeedReferenceImplementation(const char *s,
-                                                          uint32 len, uint32 c);
+extern uint64_t Hash64StringWithSeed(const char *s, uint32_t len, uint64_t c);
+extern uint32_t Hash32StringWithSeedReferenceImplementation(const char *s,
+                                                          uint32_t len, uint32_t c);
 // ----------------------------------------------------------------------
 // HashTo32()
 // HashTo16()
@@ -66,7 +65,7 @@ extern uint32 Hash32StringWithSeedReferenceImplementation(const char *s,
 //    These functions take various types of input (through operator
 //    overloading) and return 32, 16, and 8 bit quantities, respectively.
 //    The basic rule of our hashing is: always mix().  Thus, even for
-//    char outputs we cast to a uint32 and mix with two arbitrary numbers.
+//    char outputs we cast to a uint32_t and mix with two arbitrary numbers.
 //       As indicated in basictypes.h, there are a few illegal hash
 //    values to watch out for.
 //
@@ -79,30 +78,30 @@ extern uint32 Hash32StringWithSeedReferenceImplementation(const char *s,
 // (For 16 and 8, we just mod retval before returning it.)  Example:
 //    HASH_TO((char c), Hash32NumWithSeed(c, MIX32_1))
 // evaluates to
-//    uint32 retval;
+//    uint32_t retval;
 //    retval = Hash32NumWithSeed(c, MIX32_1);
 //    return retval == kIllegalHash32 ? retval-1 : retval;
 //
 
-inline uint32 Hash32NumWithSeed(uint32 num, uint32 c) {
-  uint32 b = 0x9e3779b9UL;            // the golden ratio; an arbitrary value
+inline uint32_t Hash32NumWithSeed(uint32_t num, uint32_t c) {
+  uint32_t b = 0x9e3779b9UL;            // the golden ratio; an arbitrary value
   mix(num, b, c);
   return c;
 }
 
-inline uint64 Hash64NumWithSeed(uint64 num, uint64 c) {
-  uint64 b = GG_ULONGLONG(0xe08c1d668b756f82);   // more of the golden ratio
+inline uint64_t Hash64NumWithSeed(uint64_t num, uint64_t c) {
+  uint64_t b = 0xe08c1d668b756f82ULL;   // more of the golden ratio
   mix(num, b, c);
   return c;
 }
 
 #define HASH_TO(arglist, command)                              \
-inline uint32 HashTo32 arglist {                               \
-  uint32 retval = command;                                     \
+inline uint32_t HashTo32 arglist {                               \
+  uint32_t retval = command;                                     \
   return retval == kIllegalHash32 ? retval-1 : retval;         \
 }                                                              \
-inline uint16 HashTo16 arglist {                               \
-  uint16 retval16 = command >> 16;    /* take upper 16 bits */ \
+inline uint16_t HashTo16 arglist {                               \
+  uint16_t retval16 = command >> 16;    /* take upper 16 bits */ \
   return retval16 == kIllegalHash16 ? retval16-1 : retval16;   \
 }                                                              \
 inline unsigned char HashTo8 arglist {                         \
@@ -115,19 +114,19 @@ inline unsigned char HashTo8 arglist {                         \
 // HashToXX(char c);
 // etc
 
-HASH_TO((const char *s, uint32 slen), Hash32StringWithSeed(s, slen, MIX32))
-HASH_TO((const wchar_t *s, uint32 slen),
+HASH_TO((const char *s, uint32_t slen), Hash32StringWithSeed(s, slen, MIX32))
+HASH_TO((const wchar_t *s, uint32_t slen),
         Hash32StringWithSeed(reinterpret_cast<const char*>(s),
                              sizeof(wchar_t) * slen,
                              MIX32))
-HASH_TO((char c),  Hash32NumWithSeed(static_cast<uint32>(c), MIX32))
-HASH_TO((schar c),  Hash32NumWithSeed(static_cast<uint32>(c), MIX32))
-HASH_TO((uint16 c), Hash32NumWithSeed(static_cast<uint32>(c), MIX32))
-HASH_TO((int16 c),  Hash32NumWithSeed(static_cast<uint32>(c), MIX32))
-HASH_TO((uint32 c), Hash32NumWithSeed(static_cast<uint32>(c), MIX32))
-HASH_TO((int32 c),  Hash32NumWithSeed(static_cast<uint32>(c), MIX32))
-HASH_TO((uint64 c), static_cast<uint32>(Hash64NumWithSeed(c, MIX64) >> 32))
-HASH_TO((int64 c),  static_cast<uint32>(Hash64NumWithSeed(c, MIX64) >> 32))
+HASH_TO((char c),  Hash32NumWithSeed(static_cast<uint32_t>(c), MIX32))
+HASH_TO((signed char c),  Hash32NumWithSeed(static_cast<uint32_t>(c), MIX32))
+HASH_TO((uint16_t c), Hash32NumWithSeed(static_cast<uint32_t>(c), MIX32))
+HASH_TO((int16_t c),  Hash32NumWithSeed(static_cast<uint32_t>(c), MIX32))
+HASH_TO((uint32_t c), Hash32NumWithSeed(static_cast<uint32_t>(c), MIX32))
+HASH_TO((int32_t c),  Hash32NumWithSeed(static_cast<uint32_t>(c), MIX32))
+HASH_TO((uint64_t c), static_cast<uint32_t>(Hash64NumWithSeed(c, MIX64) >> 32))
+HASH_TO((int64_t c),  static_cast<uint32_t>(Hash64NumWithSeed(c, MIX64) >> 32))
 
 #undef HASH_TO        // clean up the macro space
 
@@ -391,21 +390,21 @@ static inline long strto32_0(const char * source, char ** end) {
   return strto32(source, end, 0); }
 static inline unsigned long strtou32_0(const char * source, char ** end) {
   return strtou32(source, end, 0); }
-static inline int64 strto64_0(const char * source, char ** end) {
+static inline int64_t strto64_0(const char * source, char ** end) {
   return strto64(source, end, 0); }
-static inline uint64 strtou64_0(const char * source, char ** end) {
+static inline uint64_t strtou64_0(const char * source, char ** end) {
   return strtou64(source, end, 0); }
 static inline long strto32_10(const char * source, char ** end) {
   return strto32(source, end, 10); }
 static inline unsigned long strtou32_10(const char * source, char ** end) {
   return strtou32(source, end, 10); }
-static inline int64 strto64_10(const char * source, char ** end) {
+static inline int64_t strto64_10(const char * source, char ** end) {
   return strto64(source, end, 10); }
-static inline uint64 strtou64_10(const char * source, char ** end) {
+static inline uint64_t strtou64_10(const char * source, char ** end) {
   return strtou64(source, end, 10); }
-static inline uint32 strtou32_16(const char * source, char ** end) {
+static inline uint32_t strtou32_16(const char * source, char ** end) {
   return strtou32(source, end, 16); }
-static inline uint64 strtou64_16(const char * source, char ** end) {
+static inline uint64_t strtou64_16(const char * source, char ** end) {
   return strtou64(source, end, 16); }
 
 #define DEFINE_SPLIT_ONE_NUMBER_TOKEN(name, type, function) \
@@ -432,10 +431,10 @@ bool SplitOne##name##Token(const char ** source, const char * delim, \
 }
 
 DEFINE_SPLIT_ONE_NUMBER_TOKEN(Int, int, strto32_0)
-DEFINE_SPLIT_ONE_NUMBER_TOKEN(Int32, int32, strto32_0)
-DEFINE_SPLIT_ONE_NUMBER_TOKEN(Uint32, uint32, strtou32_0)
-DEFINE_SPLIT_ONE_NUMBER_TOKEN(Int64, int64, strto64_0)
-DEFINE_SPLIT_ONE_NUMBER_TOKEN(Uint64, uint64, strtou64_0)
+DEFINE_SPLIT_ONE_NUMBER_TOKEN(Int32, int32_t, strto32_0)
+DEFINE_SPLIT_ONE_NUMBER_TOKEN(Uint32, uint32_t, strtou32_0)
+DEFINE_SPLIT_ONE_NUMBER_TOKEN(Int64, int64_t, strto64_0)
+DEFINE_SPLIT_ONE_NUMBER_TOKEN(Uint64, uint64_t, strtou64_0)
 DEFINE_SPLIT_ONE_NUMBER_TOKEN(Double, double, strtod)
 #ifdef _WIN32 // has no strtof()
 // Note: does an implicit cast to float.
@@ -444,9 +443,9 @@ DEFINE_SPLIT_ONE_NUMBER_TOKEN(Float, float, strtod)
 DEFINE_SPLIT_ONE_NUMBER_TOKEN(Float, float, strtof)
 #endif
 DEFINE_SPLIT_ONE_NUMBER_TOKEN(DecimalInt, int, strto32_10)
-DEFINE_SPLIT_ONE_NUMBER_TOKEN(DecimalInt32, int32, strto32_10)
-DEFINE_SPLIT_ONE_NUMBER_TOKEN(DecimalUint32, uint32, strtou32_10)
-DEFINE_SPLIT_ONE_NUMBER_TOKEN(DecimalInt64, int64, strto64_10)
-DEFINE_SPLIT_ONE_NUMBER_TOKEN(DecimalUint64, uint64, strtou64_10)
-DEFINE_SPLIT_ONE_NUMBER_TOKEN(HexUint32, uint32, strtou32_16)
-DEFINE_SPLIT_ONE_NUMBER_TOKEN(HexUint64, uint64, strtou64_16)
+DEFINE_SPLIT_ONE_NUMBER_TOKEN(DecimalInt32, int32_t, strto32_10)
+DEFINE_SPLIT_ONE_NUMBER_TOKEN(DecimalUint32, uint32_t, strtou32_10)
+DEFINE_SPLIT_ONE_NUMBER_TOKEN(DecimalInt64, int64_t, strto64_10)
+DEFINE_SPLIT_ONE_NUMBER_TOKEN(DecimalUint64, uint64_t, strtou64_10)
+DEFINE_SPLIT_ONE_NUMBER_TOKEN(HexUint32, uint32_t, strtou32_16)
+DEFINE_SPLIT_ONE_NUMBER_TOKEN(HexUint64, uint64_t, strtou64_16)

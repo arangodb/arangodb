@@ -440,7 +440,6 @@ include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/s2)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/s2/geometry)
 
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
@@ -919,7 +918,7 @@ if (USE_MAINTAINER_MODE)
   endforeach ()
 
   add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
- 
+
   set(EXIT_CODE_FILES
     lib/Basics/exitcodes.h
     lib/Basics/exitcodes.cpp
@@ -1063,7 +1062,7 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 
 # if (VERBOSE)
 #   get_cmake_property(_variableNames VARIABLES)
-# 
+#
 #   foreach (_variableName ${_variableNames})
 #     message(STATUS "${_variableName}=${${_variableName}}")
 #   endforeach ()

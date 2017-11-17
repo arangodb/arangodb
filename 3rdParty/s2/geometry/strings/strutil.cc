@@ -3,11 +3,12 @@
 //
 
 #include "strutil.h"
+#include "base/integral_types.h"
 
 #include <ctype.h>
 #include <errno.h>
-#include <float.h>          // for DBL_DIG and FLT_DIG
-#include <math.h>           // for HUGE_VAL
+#include <cfloat>          // for DBL_DIG and FLT_DIG
+#include <cmath>           // for HUGE_VAL
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -77,13 +78,13 @@ string IntToString(int i, const char* format) {
   return string(buf);
 }
 
-string Int64ToString(int64 i64, const char* format) {
+string Int64ToString(int64_t i64, const char* format) {
   char buf[80];
   snprintf(buf, sizeof(buf), format, i64);
   return string(buf);
 }
 
-string UInt64ToString(uint64 ui64, const char* format) {
+string UInt64ToString(uint64_t ui64, const char* format) {
   char buf[80];
   snprintf(buf, sizeof(buf), format, ui64);
   return string(buf);
@@ -92,10 +93,10 @@ string UInt64ToString(uint64 ui64, const char* format) {
 // Default arguments
 string FloatToString(float f)   { return FloatToString(f, "%7f"); }
 string IntToString(int i)       { return IntToString(i, "%7d"); }
-string Int64ToString(int64 i64) {
+string Int64ToString(int64_t i64) {
   return Int64ToString(i64, "%7" GG_LL_FORMAT "d");
 }
-string UInt64ToString(uint64 ui64) {
+string UInt64ToString(uint64_t ui64) {
   return UInt64ToString(ui64, "%7" GG_LL_FORMAT "u");
 }
 
@@ -124,7 +125,7 @@ string UInt64ToString(uint64 ui64) {
 //    for FastTimeToBuffer(), we guarantee that it is.)
 // ----------------------------------------------------------------------
 
-char *FastInt64ToBuffer(int64 i, char* buffer) {
+char *FastInt64ToBuffer(int64_t i, char* buffer) {
   FastInt64ToBufferLeft(i, buffer);
   return buffer;
 }
@@ -155,7 +156,7 @@ static const char two_ASCII_digits[100][2] = {
   {'9','5'}, {'9','6'}, {'9','7'}, {'9','8'}, {'9','9'}
 };
 
-char* FastUInt32ToBufferLeft(uint32 u, char* buffer) {
+char* FastUInt32ToBufferLeft(uint32_t u, char* buffer) {
   int digits;
   const char *ASCII_digits = NULL;
   // The idea of this implementation is to trim the number of divides to as few
@@ -236,14 +237,14 @@ done:
   *buffer++ = '0' + digits;
   goto sublt100_000_000;
 }
-char* FastUInt64ToBufferLeft(uint64 u64, char* buffer) {
+char* FastUInt64ToBufferLeft(uint64_t u64, char* buffer) {
   int digits;
   const char *ASCII_digits = NULL;
 
-  uint32 u = static_cast<uint32>(u64);
+  uint32_t u = static_cast<uint32_t>(u64);
   if (u == u64) return FastUInt32ToBufferLeft(u, buffer);
 
-  uint64 top_11_digits = u64 / 1000000000;
+  uint64_t top_11_digits = u64 / 1000000000;
   buffer = FastUInt64ToBufferLeft(top_11_digits, buffer);
   u = u64 - (top_11_digits * 1000000000);
 
@@ -278,8 +279,8 @@ char* FastUInt64ToBufferLeft(uint64 u64, char* buffer) {
   return buffer;
 }
 
-char* FastInt64ToBufferLeft(int64 i, char* buffer) {
-  uint64 u = i;
+char* FastInt64ToBufferLeft(int64_t i, char* buffer) {
+  uint64_t u = i;
   if (i < 0) {
     *buffer++ = '-';
     u = -i;
@@ -293,7 +294,7 @@ static const int kFastInt32ToBufferOffset = 11;
 
 // This used to call out to FastInt32ToBufferLeft but that wasn't defined.
 // Copied from http://gears.googlecode.com/svn-history/r395/trunk/gears/base/common/string16.cc
-char *FastInt32ToBuffer(int32 i, char* buffer) {
+char *FastInt32ToBuffer(int32_t i, char* buffer) {
   // We could collapse the positive and negative sections, but that
   // would be slightly slower for positive numbers...
   // 12 bytes is enough to store -2**32, -4294967296.
@@ -344,21 +345,21 @@ char *FastHexToBuffer(int i, char* buffer) {
   return p + 1;
 }
 
-char *InternalFastHexToBuffer(uint64 value, char* buffer, int num_byte) {
+char *InternalFastHexToBuffer(uint64_t value, char* buffer, int num_byte) {
   static const char *hexdigits = "0123456789abcdef";
   buffer[num_byte] = '\0';
   for (int i = num_byte - 1; i >= 0; i--) {
-    buffer[i] = hexdigits[uint32(value) & 0xf];
+    buffer[i] = hexdigits[uint32_t(value) & 0xf];
     value >>= 4;
   }
   return buffer;
 }
 
-char *FastHex64ToBuffer(uint64 value, char* buffer) {
+char *FastHex64ToBuffer(uint64_t value, char* buffer) {
   return InternalFastHexToBuffer(value, buffer, 16);
 }
 
-char *FastHex32ToBuffer(uint32 value, char* buffer) {
+char *FastHex32ToBuffer(uint32_t value, char* buffer) {
   return InternalFastHexToBuffer(value, buffer, 8);
 }
 
@@ -427,7 +428,7 @@ char* FastTimeToBuffer(time_t s, char* buffer) {
   memcpy(buffer+8, month_name, 3);
   buffer[11] = ' ';
 
-  int32 year = tm.tm_year + 1900;
+  int32_t year = tm.tm_year + 1900;
   PutTwoDigits(year/100, buffer+12);
   PutTwoDigits(year%100, buffer+14);
   buffer[16] = ' ';
@@ -454,21 +455,21 @@ char* FastTimeToBuffer(time_t s, char* buffer) {
 //    valid integer is found; else returns deflt
 //    UInt64 and Int64 cannot handle decimal numbers with leading 0s.
 // --------------------------------------------------------------------
-uint64 ParseLeadingUInt64Value(const char *str, uint64 deflt) {
+uint64_t ParseLeadingUInt64Value(const char *str, uint64_t deflt) {
   char *error = NULL;
-  const uint64 value = strtoull(str, &error, 0);
+  const uint64_t value = strtoull(str, &error, 0);
   return (error == str) ? deflt : value;
 }
 
-int64 ParseLeadingInt64Value(const char *str, int64 deflt) {
+int64_t ParseLeadingInt64Value(const char *str, int64_t deflt) {
   char *error = NULL;
-  const int64 value = strtoll(str, &error, 0);
+  const int64_t value = strtoll(str, &error, 0);
   return (error == str) ? deflt : value;
 }
 
-uint64 ParseLeadingHex64Value(const char *str, uint64 deflt) {
+uint64_t ParseLeadingHex64Value(const char *str, uint64_t deflt) {
   char *error = NULL;
-  const uint64 value = strtoull(str, &error, 16);
+  const uint64_t value = strtoull(str, &error, 16);
   return (error == str) ? deflt : value;
 }
 
@@ -481,15 +482,15 @@ uint64 ParseLeadingHex64Value(const char *str, uint64 deflt) {
 //    This can handle strings with leading 0s.
 // --------------------------------------------------------------------
 
-int64 ParseLeadingDec64Value(const char *str, int64 deflt) {
+int64_t ParseLeadingDec64Value(const char *str, int64_t deflt) {
   char *error = NULL;
-  const int64 value = strtoll(str, &error, 10);
+  const int64_t value = strtoll(str, &error, 10);
   return (error == str) ? deflt : value;
 }
 
-uint64 ParseLeadingUDec64Value(const char *str, uint64 deflt) {
+uint64_t ParseLeadingUDec64Value(const char *str, uint64_t deflt) {
   char *error = NULL;
-  const uint64 value = strtoull(str, &error, 10);
+  const uint64_t value = strtoull(str, &error, 10);
   return (error == str) ? deflt : value;
 }
 

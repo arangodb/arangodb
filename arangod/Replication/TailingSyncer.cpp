@@ -560,11 +560,17 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
   arangodb::LogicalCollection* col = nullptr;
   if (slice.hasKey("cuid")) {
     col = resolveCollection(vocbase, slice);
+    if (col == nullptr) {
+      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown cuid");
+    }
   } else if (collection.hasKey("oldName")) {
     col = vocbase->lookupCollection(collection.get("oldName").copyString());
+    if (col == nullptr) {
+      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown old collection name");
+    }
   }
-  if (col == nullptr) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  if (col->isSystem()) {
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "Renaming system collection " << col->name();
   }
   return Result(vocbase->renameCollection(col, name, true));
 }
@@ -627,7 +633,15 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
   TRI_replication_operation_e type = (TRI_replication_operation_e)typeValue;
   if (type == REPLICATION_MARKER_DOCUMENT ||
       type == REPLICATION_MARKER_REMOVE) {
-    return processDocument(type, slice);
+    try {
+      return processDocument(type, slice);
+    } catch (basics::Exception const& ex) {
+      return Result(ex.code(), ex.what());
+    } catch (std::exception const& ex) {
+      return Result(TRI_ERROR_INTERNAL, ex.what());
+    } catch (...) {
+      return Result(TRI_ERROR_INTERNAL, "unknown exception in processDocument");
+    }
   }
 
   else if (type == REPLICATION_TRANSACTION_START) {

@@ -1299,7 +1299,7 @@ function SimpleQueryByExampleSuite () {
       deleted = collection.removeByExample({ peter: 'meow' });
       assertEqual(0, deleted);
 
-      collection.truncate();
+      collection.truncate({ compact: false });
       deleted = collection.removeByExample({ value: 4 });
       assertEqual(0, deleted);
     },
@@ -1339,7 +1339,7 @@ function SimpleQueryByExampleSuite () {
       deleted = collection.removeByExample({ peter: 'meow' });
       assertEqual(0, deleted);
 
-      collection.truncate();
+      collection.truncate({ compact: false });
       deleted = collection.removeByExample({ value: 4 });
       assertEqual(0, deleted);
     },
@@ -1382,7 +1382,7 @@ function SimpleQueryByExampleSuite () {
       deleted = collection.removeByExample({ meow: 'peter' });
       assertEqual(0, deleted);
 
-      collection.truncate();
+      collection.truncate({ compact: false });
       deleted = collection.removeByExample({ value1: 3 });
       assertEqual(0, deleted);
     },
@@ -1451,7 +1451,7 @@ function SimpleQueryByExampleSuite () {
       replaced = collection.replaceByExample({ value: 'peng!' }, { });
       assertEqual(0, replaced);
 
-      collection.truncate();
+      collection.truncate({ compact: false });
       replaced = collection.replaceByExample({ value: 6 }, { });
       assertEqual(0, replaced);
     },
@@ -1491,7 +1491,7 @@ function SimpleQueryByExampleSuite () {
       replaced = collection.replaceByExample({ value: 'peng!' }, { });
       assertEqual(0, replaced);
 
-      collection.truncate();
+      collection.truncate({ compact: false });
       replaced = collection.replaceByExample({ value: 6 }, { });
       assertEqual(0, replaced);
     },
@@ -1547,7 +1547,7 @@ function SimpleQueryByExampleSuite () {
       docs = collection.byExample({ value: 1 }).toArray();
       assertEqual(25, docs.length);
 
-      collection.truncate();
+      collection.truncate({ compact: false });
       replaced = collection.replaceByExample({ value: 1 }, { }, false);
       assertEqual(0, replaced);
     },
@@ -1602,7 +1602,7 @@ function SimpleQueryByExampleSuite () {
       updated = collection.updateByExample({ value: 'peng!' }, { });
       assertEqual(0, updated);
 
-      collection.truncate();
+      collection.truncate({ compact: false });
       updated = collection.updateByExample({ value: 6 }, { });
       assertEqual(0, updated);
     },
@@ -1670,7 +1670,7 @@ function SimpleQueryByExampleSuite () {
       updated = collection.updateByExample({ nonExistentValue: 'foo' }, { });
       assertEqual(0, updated);
 
-      collection.truncate();
+      collection.truncate({ compact: false });
       updated = collection.updateByExample({ value: 6 }, { });
       assertEqual(0, updated);
 
@@ -1757,7 +1757,7 @@ function SimpleQueryByExampleSuite () {
       updated = collection.updateByExample({ value: 'peng!' }, { }, false, false, 99);
       assertEqual(0, updated);
 
-      collection.truncate();
+      collection.truncate({ compact: false });
       updated = collection.updateByExample({ value: 1 }, { });
       assertEqual(0, updated);
     },

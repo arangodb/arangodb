@@ -5,9 +5,6 @@
 
 #include <vector>
 
-#include "base/integral_types.h"
-#include "base/logging.h"
-#include "base/macros.h"
 #include "s2region.h"
 #include "s2cellid.h"
 
@@ -30,7 +27,7 @@ class S2CellUnion : public S2Region {
   // vector data without copying and clears the given vector.  These methods
   // may be called multiple times.
   void Init(std::vector<S2CellId> const& cell_ids);
-  void Init(std::vector<uint64> const& cell_ids);
+  void Init(std::vector<uint64_t> const& cell_ids);
   void InitSwap(std::vector<S2CellId>* cell_ids);
 
   // Like Init(), but does not call Normalize().  The cell union *must* be
@@ -39,7 +36,7 @@ class S2CellUnion : public S2Region {
   // useful when converting cell unions to another representation and back.
   // These methods may be called multiple times.
   void InitRaw(std::vector<S2CellId> const& cell_ids);
-  void InitRaw(std::vector<uint64> const& cell_ids);
+  void InitRaw(std::vector<uint64_t> const& cell_ids);
   void InitRawSwap(std::vector<S2CellId>* cell_ids);
 
   // Adds the given S2CellIds to the covered region and calls Normalize()
@@ -149,7 +146,7 @@ class S2CellUnion : public S2Region {
 
   // The number of leaf cells covered by the union.
   // This will be no more than 6*2^60 for the whole sphere.
-  uint64 LeafCellsCovered() const;
+  uint64_t LeafCellsCovered() const;
 
   // Approximate this cell union's area by summing the average area of
   // each contained cell's average area, using the AverageArea method

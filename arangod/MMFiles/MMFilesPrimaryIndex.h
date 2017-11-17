@@ -201,10 +201,12 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
+                arangodb::velocypack::Slice const&,
+                OperationMode mode) override;
 
   Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
+                arangodb::velocypack::Slice const&,
+                OperationMode mode) override;
 
   void load() override {}
   void unload() override;
@@ -248,14 +250,16 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
       transaction::Methods*, arangodb::basics::BucketPosition& position);
 
   Result insertKey(transaction::Methods*, LocalDocumentId const& documentId,
-                   arangodb::velocypack::Slice const&);
+                   arangodb::velocypack::Slice const&, OperationMode mode);
   Result insertKey(transaction::Methods*, LocalDocumentId const& documentId,
-                   arangodb::velocypack::Slice const&, ManagedDocumentResult&);
+                   arangodb::velocypack::Slice const&, ManagedDocumentResult&,
+                   OperationMode mode);
 
   Result removeKey(transaction::Methods*, LocalDocumentId const& documentId,
-                   arangodb::velocypack::Slice const&);
+                   arangodb::velocypack::Slice const&, OperationMode mode);
   Result removeKey(transaction::Methods*, LocalDocumentId const& documentId,
-                   arangodb::velocypack::Slice const&, ManagedDocumentResult&);
+                   arangodb::velocypack::Slice const&, ManagedDocumentResult&,
+                   OperationMode mode);
 
   int resize(transaction::Methods*, size_t);
 

@@ -16,10 +16,8 @@
 #ifndef _VARINT_H
 #define _VARINT_H
 
+#include <cassert>
 #include <string>
-using std::string;
-
-#include "base/basictypes.h"
 
 // Just a namespace, not a real class
 class Varint {
@@ -32,12 +30,12 @@ class Varint {
   // EFFECTS    Scan next varint from "ptr" and store in OUTPUT.
   //            Returns pointer just past last read byte.  Returns
   //            NULL if a valid varint value was not found.
-  static const char* Parse32(const char* ptr, uint32* OUTPUT);
-  static const char* Parse64(const char* ptr, uint64* OUTPUT);
+  static const char* Parse32(const char* ptr, uint32_t* OUTPUT);
+  static const char* Parse64(const char* ptr, uint64_t* OUTPUT);
 
   // A fully inlined version of Parse32: useful in the most time critical
   // routines, but its code size is large
-  static const char* Parse32Inline(const char* ptr, uint32* OUTPUT);
+  static const char* Parse32Inline(const char* ptr, uint32_t* OUTPUT);
 
   // REQUIRES   "ptr" points just past the last byte of a varint-encoded value.
   // REQUIRES   A second varint must be encoded just before the one we parse,
@@ -49,9 +47,9 @@ class Varint {
   //            first. Returns pointer to the first byte of the decoded varint
   //            NULL if a valid varint value was not found.
   static const char* Parse32Backward(const char* ptr, const char* base,
-                                     uint32* OUTPUT);
+                                     uint32_t* OUTPUT);
   static const char* Parse64Backward(const char* ptr, const char* base,
-                                     uint64* OUTPUT);
+                                     uint64_t* OUTPUT);
 
   // Attempts to parse a varint32 from a prefix of the bytes in [ptr,limit-1].
   // Never reads a character at or beyond limit.  If a valid/terminated varint32
@@ -59,9 +57,9 @@ class Varint {
   // past the last byte of the varint32. Else returns NULL.  On success,
   // "result <= limit".
   static const char* Parse32WithLimit(const char* ptr, const char* limit,
-                                      uint32* OUTPUT);
+                                      uint32_t* OUTPUT);
   static const char* Parse64WithLimit(const char* ptr, const char* limit,
-                                      uint64* OUTPUT);
+                                      uint64_t* OUTPUT);
 
   // REQUIRES   "ptr" points to the first byte of a varint-encoded value.
   // EFFECTS     Scans until the end of the varint and returns a pointer just
@@ -85,22 +83,22 @@ class Varint {
   // REQUIRES   "ptr" points to a buffer of length sufficient to hold "v".
   // EFFECTS    Encodes "v" into "ptr" and returns a pointer to the
   //            byte just past the last encoded byte.
-  static char* Encode32(char* ptr, uint32 v);
-  static char* Encode64(char* ptr, uint64 v);
+  static char* Encode32(char* ptr, uint32_t v);
+  static char* Encode64(char* ptr, uint64_t v);
 
   // A fully inlined version of Encode32: useful in the most time critical
   // routines, but its code size is large
-  static char* Encode32Inline(char* ptr, uint32 v);
+  static char* Encode32Inline(char* ptr, uint32_t v);
 
   // EFFECTS    Returns the encoding length of the specified value.
-  static int Length32(uint32 v);
-  static int Length64(uint64 v);
+  static int Length32(uint32_t v);
+  static int Length64(uint64_t v);
 
-  static int Length32NonInline(uint32 v);
+  static int Length32NonInline(uint32_t v);
 
   // EFFECTS    Appends the varint representation of "value" to "*s".
-  static void Append32(string* s, uint32 value);
-  static void Append64(string* s, uint64 value);
+  static void Append32(std::string* s, uint32_t value);
+  static void Append64(std::string* s, uint64_t value);
 
   // EFFECTS    Encodes a pair of values to "*s".  The encoding
   //            is done by weaving together 4 bit groups of
@@ -108,8 +106,8 @@ class Varint {
   //            encoding this value as a Varint64 value.  This means
   //            that if both a and b are small, both values can be
   //            encoded in a single byte.
-  static void EncodeTwo32Values(string* s, uint32 a, uint32 b);
-  static const char* DecodeTwo32Values(const char* ptr, uint32* a, uint32* b);
+  static void EncodeTwo32Values(std::string* s, uint32_t a, uint32_t b);
+  static const char* DecodeTwo32Values(const char* ptr, uint32_t* a, uint32_t* b);
 
   // Decode and sum up a sequence of deltas until the sum >= goal.
   // It is significantly faster than calling ParseXXInline in a loop.
@@ -124,25 +122,25 @@ class Varint {
   //            goal is positive and fit into a signed int64.
   // EFFECTS    Returns a pointer just past last read byte.
   //            "out" stores the actual sum.
-  static const char* FastDecodeDeltas(const char* ptr, int64 goal, int64* out);
+  static const char* FastDecodeDeltas(const char* ptr, int64_t goal, int64_t* out);
 
  private:
-  static const char* Parse32FallbackInline(const char* p, uint32* val);
-  static const char* Parse32Fallback(const char* p, uint32* val);
-  static const char* Parse64Fallback(const char* p, uint64* val);
+  static const char* Parse32FallbackInline(const char* p, uint32_t* val);
+  static const char* Parse32Fallback(const char* p, uint32_t* val);
+  static const char* Parse64Fallback(const char* p, uint64_t* val);
 
-  static char* Encode32Fallback(char* ptr, uint32 v);
+  static char* Encode32Fallback(char* ptr, uint32_t v);
 
-  static const char* DecodeTwo32ValuesSlow(const char* p, uint32* a, uint32* b);
+  static const char* DecodeTwo32ValuesSlow(const char* p, uint32_t* a, uint32_t* b);
   static const char* Parse32BackwardSlow(const char* ptr, const char* base,
-                                         uint32* OUTPUT);
+                                         uint32_t* OUTPUT);
   static const char* Parse64BackwardSlow(const char* ptr, const char* base,
-                                         uint64* OUTPUT);
+                                         uint64_t* OUTPUT);
   static const char* Skip32BackwardSlow(const char* ptr, const char* base);
   static const char* Skip64BackwardSlow(const char* ptr, const char* base);
 
-  static void Append32Slow(string* s, uint32 value);
-  static void Append64Slow(string* s, uint64 value);
+  static void Append32Slow(std::string* s, uint32_t value);
+  static void Append64Slow(std::string* s, uint64_t value);
 
   // Mapping from rightmost bit set to the number of bytes required
   static const char length32_bytes_required[33];
@@ -151,10 +149,10 @@ class Varint {
 /***** Implementation details; clients should ignore *****/
 
 inline const char* Varint::Parse32FallbackInline(const char* p,
-                                                 uint32* OUTPUT) {
+                                                 uint32_t* OUTPUT) {
   // Fast path
   const unsigned char* ptr = reinterpret_cast<const unsigned char*>(p);
-  uint32 byte, result;
+  uint32_t byte, result;
   byte = *(ptr++); result = byte & 127;
   assert(byte >= 128);   // Already checked in inlined prelude
   byte = *(ptr++); result |= (byte & 127) <<  7; if (byte < 128) goto done;
@@ -167,10 +165,10 @@ inline const char* Varint::Parse32FallbackInline(const char* p,
   return reinterpret_cast<const char*>(ptr);
 }
 
-inline const char* Varint::Parse32(const char* p, uint32* OUTPUT) {
+inline const char* Varint::Parse32(const char* p, uint32_t* OUTPUT) {
   // Fast path for inlining
   const unsigned char* ptr = reinterpret_cast<const unsigned char*>(p);
-  uint32 byte = *ptr;
+  uint32_t byte = *ptr;
   if (byte < 128) {
     *OUTPUT = byte;
     return reinterpret_cast<const char*>(ptr) + 1;
@@ -179,10 +177,10 @@ inline const char* Varint::Parse32(const char* p, uint32* OUTPUT) {
   }
 }
 
-inline const char* Varint::Parse32Inline(const char* p, uint32* OUTPUT) {
+inline const char* Varint::Parse32Inline(const char* p, uint32_t* OUTPUT) {
   // Fast path for inlining
   const unsigned char* ptr = reinterpret_cast<const unsigned char*>(p);
-  uint32 byte = *ptr;
+  uint32_t byte = *ptr;
   if (byte < 128) {
     *OUTPUT = byte;
     return reinterpret_cast<const char*>(ptr) + 1;
@@ -202,11 +200,11 @@ inline const char* Varint::Skip32(const char* p) {
 }
 
 inline const char* Varint::Parse32Backward(const char* p, const char* base,
-                                           uint32* OUTPUT) {
+                                           uint32_t* OUTPUT) {
   if (p > base + kMax32) {
     // Fast path
     const unsigned char* ptr = reinterpret_cast<const unsigned char*>(p);
-    uint32 byte, result;
+    uint32_t byte, result;
     byte = *(--ptr); if (byte > 127) return NULL;
     result = byte;
     byte = *(--ptr); if (byte < 128) goto done;
@@ -244,14 +242,14 @@ inline const char* Varint::Skip32Backward(const char* p, const char* base) {
 
 inline const char* Varint::Parse32WithLimit(const char* p,
                                             const char* l,
-                                            uint32* OUTPUT) {
+                                            uint32_t* OUTPUT) {
   if (p + kMax32 <= l) {
     return Parse32(p, OUTPUT);
   } else {
     // Slow version with bounds checks
     const unsigned char* ptr = reinterpret_cast<const unsigned char*>(p);
     const unsigned char* limit = reinterpret_cast<const unsigned char*>(l);
-    uint32 b, result;
+    uint32_t b, result;
     if (ptr >= limit) return NULL;
     b = *(ptr++); result = b & 127;          if (b < 128) goto done;
     if (ptr >= limit) return NULL;
@@ -270,9 +268,9 @@ inline const char* Varint::Parse32WithLimit(const char* p,
 
 }
 
-inline const char* Varint::Parse64(const char* p, uint64* OUTPUT) {
+inline const char* Varint::Parse64(const char* p, uint64_t* OUTPUT) {
   const unsigned char* ptr = reinterpret_cast<const unsigned char*>(p);
-  uint32 byte = *ptr;
+  uint32_t byte = *ptr;
   if (byte < 128) {
     *OUTPUT = byte;
     return reinterpret_cast<const char*>(ptr) + 1;
@@ -297,12 +295,12 @@ inline const char* Varint::Skip64(const char* p) {
 }
 
 inline const char* Varint::Parse64Backward(const char* p, const char* b,
-                                           uint64* OUTPUT) {
+                                           uint64_t* OUTPUT) {
   if (p > b + kMax64) {
     // Fast path
     const unsigned char* ptr = reinterpret_cast<const unsigned char*>(p);
-    uint32 byte;
-    uint64 res;
+    uint32_t byte;
+    uint64_t res;
 
     byte = *(--ptr); if (byte > 127) return NULL;
 
@@ -359,7 +357,7 @@ inline const char* Varint::Skip64Backward(const char* p, const char* b) {
 }
 
 inline const char* Varint::DecodeTwo32Values(const char* p,
-                                             uint32* a, uint32* b) {
+                                             uint32_t* a, uint32_t* b) {
   const unsigned char* ptr = reinterpret_cast<const unsigned char*>(p);
   if (*ptr < 128) {
     // Special case for small values
@@ -372,7 +370,7 @@ inline const char* Varint::DecodeTwo32Values(const char* p,
 }
 
 #if (defined __i386__ || defined __x86_64__) && defined __GNUC__
-inline int Varint::Length32(uint32 v) {
+inline int Varint::Length32(uint32_t v) {
   // Find the rightmost bit set, and index into a small table
 
   // "ro" for the input spec means the input can come from either a
@@ -395,7 +393,7 @@ inline int Varint::Length32(uint32 v) {
 }
 
 #else
-inline int Varint::Length32(uint32 v) {
+inline int Varint::Length32(uint32_t v) {
   /*
     The following version is about 1.5X the code size, but is faster than
     the loop below.
@@ -429,7 +427,7 @@ inline int Varint::Length32(uint32 v) {
 }
 #endif
 
-inline void Varint::Append32(string* s, uint32 value) {
+inline void Varint::Append32(std::string* s, uint32_t value) {
   // Inline the fast-path for single-character output, but fall back to the .cc
   // file for the full version. The size<capacity check is so the compiler can
   // optimize out the string resize code.
@@ -440,7 +438,7 @@ inline void Varint::Append32(string* s, uint32 value) {
   }
 }
 
-inline void Varint::Append64(string* s, uint64 value) {
+inline void Varint::Append64(std::string* s, uint64_t value) {
   // Inline the fast-path for single-character output, but fall back to the .cc
   // file for the full version. The size<capacity check is so the compiler can
   // optimize out the string resize code.
@@ -451,7 +449,7 @@ inline void Varint::Append64(string* s, uint64 value) {
   }
 }
 
-inline char* Varint::Encode32Inline(char* sptr, uint32 v) {
+inline char* Varint::Encode32Inline(char* sptr, uint32_t v) {
   // Operate on characters as unsigneds
   unsigned char* ptr = reinterpret_cast<unsigned char*>(sptr);
   static const int B = 128;
@@ -483,14 +481,14 @@ inline char* Varint::Encode32Inline(char* sptr, uint32 v) {
 #error FastDecodeDeltas() needs right-shift to sign-extend.
 #endif
 inline const char* Varint::FastDecodeDeltas(const char* ptr,
-                                            int64 goal,
-                                            int64* out) {
-  int64 value;
-  int64 sum = - goal;
-  int64 shift = 0;
+                                            int64_t goal,
+                                            int64_t* out) {
+  int64_t value;
+  int64_t sum = - goal;
+  int64_t shift = 0;
   // Make decoding faster by eliminating unpredictable branching.
   do {
-    value = static_cast<int8>(*ptr++);  // sign extend one byte of data
+    value = static_cast<int8_t>(*ptr++);  // sign extend one byte of data
     sum += (value & 0x7F) << shift;
     shift += 7;
     // (value >> 7) is either -1(continuation byte) or 0 (stop byte)

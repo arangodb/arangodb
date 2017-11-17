@@ -99,8 +99,8 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
       FeatureCacheFeature::instance()->authenticationFeature();
   Result r = authentication->authInfo()->storeUser(replace, username, pass,
                                                    active);
-  if (!r.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  if (r.fail()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
   if (!extras.isEmpty()) {
     authentication->authInfo()->setUserData(username, extras.slice());
@@ -176,7 +176,7 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
       FeatureCacheFeature::instance()->authenticationFeature();
   Result r = authentication->authInfo()->removeUser(username);
   if (!r.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   TRI_V8_RETURN_TRUE();
@@ -249,7 +249,7 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   Result r = authentication->authInfo()->updateUser(
       username, [&](AuthUserEntry& entry) { entry.grantDatabase(db, lvl); });
   if (!r.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -274,7 +274,7 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       username,
       [&](AuthUserEntry& entry) { entry.removeDatabase(db); });
   if (!r.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -308,7 +308,7 @@ static void JS_GrantCollection(
       username,
       [&](AuthUserEntry& entry) { entry.grantCollection(db, coll, lvl); });
   if (!r.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -338,7 +338,7 @@ static void JS_RevokeCollection(
         entry.removeCollection(db, coll);
       });
   if (!r.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   TRI_V8_RETURN_UNDEFINED();

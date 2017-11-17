@@ -82,6 +82,8 @@ class Endpoint {
   virtual int port() const = 0;
   virtual std::string host() const = 0;
   virtual std::string hostAndPort() const = 0;
+  
+  int listenBacklog() const { return _listenBacklog; }
 
  public:
   std::string _errorMessage;

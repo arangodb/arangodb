@@ -9,12 +9,8 @@
 #ifndef UTIL_MATH_VECTOR3_H__
 #define UTIL_MATH_VECTOR3_H__
 
+#include <cstdint>
 #include <iostream>
-using std::ostream;
-using std::cout;
-using std::endl;
-  // NOLINT(readability/streams)
-#include "base/basictypes.h"
 
 template <typename VType> class Vector3;
 // TODO(user): Look into creating conversion operators to remove the
@@ -181,7 +177,7 @@ std::ostream &operator <<(std::ostream &out,  // NOLINT
                           const Vector3<VType> &va);
 
 // TODO(user): Declare extern templates for these types.
-typedef Vector3<uint8>  Vector3_b;
+typedef Vector3<uint8_t>  Vector3_b;
 typedef Vector3<int>    Vector3_i;
 typedef Vector3<float>  Vector3_f;
 typedef Vector3<double> Vector3_d;

@@ -5,23 +5,23 @@
 #ifndef BASE_INT128_H_
 #define BASE_INT128_H_
 
+#include <cstdint>
 #include <iostream>
-#include "base/integral_types.h"
-#include "base/logging.h"
+#include "logging.h"
 
 // An unsigned 128-bit integer type. Thread-compatible.
 class uint128 {
 public:
   uint128();  // Sets to 0, but don't trust on this behavior.
-  uint128(uint64 top, uint64 bottom);
+  uint128(uint64_t top, uint64_t bottom);
 #ifndef SWIG
   uint128(int bottom);
-  uint128(uint32 bottom);   // Top 96 bits = 0
+  uint128(uint32_t bottom);   // Top 96 bits = 0
 #endif
-  uint128(uint64 bottom);   // hi_ = 0
+  uint128(uint64_t bottom);   // hi_ = 0
   uint128(const uint128 &val);
 
-  void Initialize(uint64 top, uint64 bottom);
+  void Initialize(uint64_t top, uint64_t bottom);
 
   bool operator==(const uint128& b) const;
   bool operator!=(const uint128& b) const;
@@ -53,8 +53,8 @@ public:
   uint128 operator++();
   uint128 operator--();
 
-  friend uint64 Uint128Low64(const uint128& v);
-  friend uint64 Uint128High64(const uint128& v);
+  friend uint64_t Uint128Low64(const uint128& v);
+  friend uint64_t Uint128High64(const uint128& v);
 
   friend std::ostream& operator<<(std::ostream& o, const uint128& b);
 
@@ -62,12 +62,12 @@ private:
   // Little-endian memory order optimizations can benefit from
   // having lo_ first, hi_ last.
   // See util/endian/endian.h and Load128/Store128 for storing a uint128.
-  uint64        lo_;
-  uint64        hi_;
+  uint64_t        lo_;
+  uint64_t        hi_;
 
   // Not implemented, just declared for catching automatic type conversions.
-  uint128(uint8);
-  uint128(uint16);
+  uint128(uint8_t);
+  uint128(uint16_t);
   uint128(float v);
   uint128(double v);
 };
@@ -80,8 +80,8 @@ extern std::ostream& operator<<(std::ostream& o, const uint128& b);
 // Methods to access low and high pieces of 128-bit value.
 // Defined externally from uint128 to facilitate conversion
 // to native 128-bit types when compilers support them.
-inline uint64 Uint128Low64(const uint128& v) { return v.lo_; }
-inline uint64 Uint128High64(const uint128& v) { return v.hi_; }
+inline uint64_t Uint128Low64(const uint128& v) { return v.lo_; }
+inline uint64_t Uint128High64(const uint128& v) { return v.hi_; }
 
 // TODO: perhaps it would be nice to have int128, a signed 128-bit type?
 
@@ -101,18 +101,18 @@ inline uint128& uint128::operator=(const uint128& b) {
 }
 
 inline uint128::uint128(): lo_(0), hi_(0) { }
-inline uint128::uint128(uint64 top, uint64 bottom) : lo_(bottom), hi_(top) { }
+inline uint128::uint128(uint64_t top, uint64_t bottom) : lo_(bottom), hi_(top) { }
 inline uint128::uint128(const uint128 &v) : lo_(v.lo_), hi_(v.hi_) { }
-inline uint128::uint128(uint64 bottom) : lo_(bottom), hi_(0) { }
+inline uint128::uint128(uint64_t bottom) : lo_(bottom), hi_(0) { }
 #ifndef SWIG
-inline uint128::uint128(uint32 bottom) : lo_(bottom), hi_(0) { }
+inline uint128::uint128(uint32_t bottom) : lo_(bottom), hi_(0) { }
 inline uint128::uint128(int bottom) : lo_(bottom), hi_(0) {
   if (bottom < 0) {
     --hi_;
   }
 }
 #endif
-inline void uint128::Initialize(uint64 top, uint64 bottom) {
+inline void uint128::Initialize(uint64_t top, uint64_t bottom) {
   hi_ = top;
   lo_ = bottom;
 }
@@ -158,8 +158,8 @@ inline uint128 uint128::operator<<(int amount) const {
     if (amount == 0) {
       return *this;
     }
-    uint64 new_hi = (hi_ << amount) | (lo_ >> (64 - amount));
-    uint64 new_lo = lo_ << amount;
+    uint64_t new_hi = (hi_ << amount) | (lo_ >> (64 - amount));
+    uint64_t new_lo = lo_ << amount;
     return uint128(new_hi, new_lo);
   } else if (amount < 128) {
     return uint128(lo_ << (amount - 64), 0);
@@ -176,8 +176,8 @@ inline uint128 uint128::operator>>(int amount) const {
     if (amount == 0) {
       return *this;
     }
-    uint64 new_hi = hi_ >> amount;
-    uint64 new_lo = (lo_ >> amount) | (hi_ << (64 - amount));
+    uint64_t new_hi = hi_ >> amount;
+    uint64_t new_lo = (lo_ >> amount) | (hi_ << (64 - amount));
     return uint128(new_hi, new_lo);
   } else if (amount < 128) {
     return uint128(0, hi_ >> (amount - 64));

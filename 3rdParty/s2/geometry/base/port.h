@@ -8,19 +8,18 @@
 #ifndef BASE_PORT_H_
 #define BASE_PORT_H_
 
-#include "base/definer.h"
+#include "definer.h"
 
 #include <limits.h>         // So we can set the bounds of our types
 #include <string.h>         // for memcpy()
 #include <stdlib.h>         // for free()
+#include <cstdint>
 
 #if defined(OS_MACOSX)
 #include <unistd.h>         // for getpagesize() on mac
 #elif defined(OS_CYGWIN)
 #include <malloc.h>         // for memalign()
 #endif
-
-#include "integral_types.h"
 
 // Must happens before inttypes.h inclusion */
 #if defined(OS_MACOSX)
@@ -1020,33 +1019,33 @@ struct PortableHashBase { };
 // These functions are provided for architectures that don't support
 // unaligned loads and stores.
 
-inline uint16 UNALIGNED_LOAD16(const void *p) {
-  uint16 t;
+inline uint16_t UNALIGNED_LOAD16(const void *p) {
+  uint16_t t;
   memcpy(&t, p, sizeof t);
   return t;
 }
 
-inline uint32 UNALIGNED_LOAD32(const void *p) {
-  uint32 t;
+inline uint32_t UNALIGNED_LOAD32(const void *p) {
+  uint32_t t;
   memcpy(&t, p, sizeof t);
   return t;
 }
 
-inline uint64 UNALIGNED_LOAD64(const void *p) {
-  uint64 t;
+inline uint64_t UNALIGNED_LOAD64(const void *p) {
+  uint64_t t;
   memcpy(&t, p, sizeof t);
   return t;
 }
 
-inline void UNALIGNED_STORE16(void *p, uint16 v) {
+inline void UNALIGNED_STORE16(void *p, uint16_t v) {
   memcpy(p, &v, sizeof v);
 }
 
-inline void UNALIGNED_STORE32(void *p, uint32 v) {
+inline void UNALIGNED_STORE32(void *p, uint32_t v) {
   memcpy(p, &v, sizeof v);
 }
 
-inline void UNALIGNED_STORE64(void *p, uint64 v) {
+inline void UNALIGNED_STORE64(void *p, uint64_t v) {
   memcpy(p, &v, sizeof v);
 }
 

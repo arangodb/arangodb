@@ -1,13 +1,15 @@
 // Copyright 2005 Google Inc. All Rights Reserved.
 
-#include "base/logging.h"
-#include "strings/stringprintf.h"
 #include "s2latlng.h"
+
+#include <algorithm>
+#include "base/logging.h"
+#include "base/stringprintf.h"
 
 S2LatLng S2LatLng::Normalized() const {
   // remainder(x, 2 * M_PI) reduces its argument to the range [-M_PI, M_PI]
   // inclusive, which is what we want here.
-  return S2LatLng(max(-M_PI_2, min(M_PI_2, lat().radians())),
+  return S2LatLng(std::max(-M_PI_2, std::min(M_PI_2, lat().radians())),
                   remainder(lng().radians(), 2 * M_PI));
 }
 
@@ -54,18 +56,18 @@ S1Angle S2LatLng::GetDistance(S2LatLng const& o) const {
   double dlat = sin(0.5 * (lat2 - lat1));
   double dlng = sin(0.5 * (lng2 - lng1));
   double x = dlat * dlat + dlng * dlng * cos(lat1) * cos(lat2);
-  return S1Angle::Radians(2 * atan2(sqrt(x), sqrt(max(0.0, 1.0 - x))));
+  return S1Angle::Radians(2 * atan2(sqrt(x), sqrt(std::max(0.0, 1.0 - x))));
 }
 
-string S2LatLng::ToStringInDegrees() const {
+std::string S2LatLng::ToStringInDegrees() const {
   S2LatLng pt = Normalized();
   return StringPrintf("%f,%f", pt.lat().degrees(), pt.lng().degrees());
 }
 
-void S2LatLng::ToStringInDegrees(string* s) const {
+void S2LatLng::ToStringInDegrees(std::string* s) const {
   *s = ToStringInDegrees();
 }
 
-ostream& operator<<(ostream& os, S2LatLng const& ll) {
+std::ostream& operator<<(std::ostream& os, S2LatLng const& ll) {
   return os << "[" << ll.lat() << ", " << ll.lng() << "]";
 }

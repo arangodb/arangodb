@@ -139,13 +139,13 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   transaction::BuilderLeaser builder(trx);
   FulltextQuery parsedQuery;
   Result res = fulltextIndex->parseQueryString(queryString, parsedQuery);
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
   res = fulltextIndex->executeQuery(trx, parsedQuery, maxResults,
                                     *(builder.get()));
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
   return AqlValue(builder.get());
 }
@@ -161,8 +161,8 @@ static arangodb::RocksDBGeoIndex* getGeoIndex(
   // It can only be used until trx is finished.
   trx->addCollectionAtRuntime(cid, collectionName);
   Result res = trx->state()->ensureCollections();
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   auto document = trx->documentCollection(cid);

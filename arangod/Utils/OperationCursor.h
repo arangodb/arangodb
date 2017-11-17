@@ -79,12 +79,12 @@ struct OperationCursor {
     return _hasMore;
   }
 
-  bool successful() const {
+  bool ok() const {
     return code == TRI_ERROR_NO_ERROR;
   }
   
-  bool failed() const {
-    return !successful();
+  bool fail() const {
+    return !ok();
   }
 
   bool hasExtra() const;

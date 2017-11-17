@@ -29,11 +29,8 @@
 #ifndef BASE_TYPE_TRAITS_H_
 #define BASE_TYPE_TRAITS_H_
 
-#include "base/template_util.h"     // For true_type and false_type
+#include "template_util.h"     // For true_type and false_type
 #include <utility>
-using std::pair;
-using std::make_pair;
-                  // For pair
 
 namespace base {
 

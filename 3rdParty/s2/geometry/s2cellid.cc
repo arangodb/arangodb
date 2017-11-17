@@ -9,9 +9,9 @@ using std::max;
 #include <thread>
 #include <vector>
 
-
 #include "base/integral_types.h"
 #include "base/logging.h"
+#include "base/stringprintf.h"
 #include "strings/strutil.h"
 #include "s2.h"
 #include "s2latlng.h"
@@ -50,8 +50,8 @@ static int const kLookupBits = 4;
 static int const kSwapMask = 0x01;
 static int const kInvertMask = 0x02;
 
-static uint16 lookup_pos[1 << (2 * kLookupBits + 2)];
-static uint16 lookup_ij[1 << (2 * kLookupBits + 2)];
+static uint16_t lookup_pos[1 << (2 * kLookupBits + 2)];
+static uint16_t lookup_ij[1 << (2 * kLookupBits + 2)];
 
 static void InitLookupCell(int level, int i, int j, int orig_orientation,
                            int pos, int orientation) {
@@ -117,12 +117,12 @@ int S2CellId::level() const {
   // Fast path for leaf cells.
   if (is_leaf()) return kMaxLevel;
 
-  uint32 x = static_cast<uint32>(id_);
+  uint32_t x = static_cast<uint32_t>(id_);
   int level = -1;
   if (x != 0) {
     level += 16;
   } else {
-    x = static_cast<uint32>(id_ >> 32);
+    x = static_cast<uint32_t>(id_ >> 32);
   }
   // We only need to look at even-numbered bits to determine the
   // level of a valid cell id.
@@ -136,7 +136,7 @@ int S2CellId::level() const {
   return level;
 }
 
-S2CellId S2CellId::advance(int64 steps) const {
+S2CellId S2CellId::advance(int64_t steps) const {
   if (steps == 0) return *this;
 
   // We clamp the number of steps if necessary to ensure that we do not
@@ -145,32 +145,32 @@ S2CellId S2CellId::advance(int64 steps) const {
 
   int step_shift = 2 * (kMaxLevel - level()) + 1;
   if (steps < 0) {
-    int64 min_steps = -static_cast<int64>(id_ >> step_shift);
+    int64_t min_steps = -static_cast<int64_t>(id_ >> step_shift);
     if (steps < min_steps) steps = min_steps;
   } else {
-    int64 max_steps = (kWrapOffset + lsb() - id_) >> step_shift;
+    int64_t max_steps = (kWrapOffset + lsb() - id_) >> step_shift;
     if (steps > max_steps) steps = max_steps;
   }
   return S2CellId(id_ + (steps << step_shift));
 }
 
-S2CellId S2CellId::advance_wrap(int64 steps) const {
+S2CellId S2CellId::advance_wrap(int64_t steps) const {
   DCHECK(is_valid());
   if (steps == 0) return *this;
 
   int step_shift = 2 * (kMaxLevel - level()) + 1;
   if (steps < 0) {
-    int64 min_steps = -static_cast<int64>(id_ >> step_shift);
+    int64_t min_steps = -static_cast<int64_t>(id_ >> step_shift);
     if (steps < min_steps) {
-      int64 step_wrap = kWrapOffset >> step_shift;
+      int64_t step_wrap = kWrapOffset >> step_shift;
       steps %= step_wrap;
       if (steps < min_steps) steps += step_wrap;
     }
   } else {
     // Unlike advance(), we don't want to return End(level).
-    int64 max_steps = (kWrapOffset - id_) >> step_shift;
+    int64_t max_steps = (kWrapOffset - id_) >> step_shift;
     if (steps > max_steps) {
-      int64 step_wrap = kWrapOffset >> step_shift;
+      int64_t step_wrap = kWrapOffset >> step_shift;
       steps %= step_wrap;
       if (steps > max_steps) steps -= step_wrap;
     }
@@ -178,8 +178,8 @@ S2CellId S2CellId::advance_wrap(int64 steps) const {
   return S2CellId(id_ + (steps << step_shift));
 }
 
-S2CellId S2CellId::FromFacePosLevel(int face, uint64 pos, int level) {
-  S2CellId cell((static_cast<uint64>(face) << kPosBits) + (pos | 1));
+S2CellId S2CellId::FromFacePosLevel(int face, uint64_t pos, int level) {
+  S2CellId cell((static_cast<uint64_t>(face) << kPosBits) + (pos | 1));
   return cell.parent(level);
 }
 
@@ -234,7 +234,7 @@ S2CellId S2CellId::FromFaceIJ(int face, int i, int j) {
   // rather than local variables helps the compiler to do a better job
   // of register allocation as well.  Note that the two 32-bits halves
   // get shifted one bit to the left when they are combined.
-  uint32 n[2] = { 0, static_cast<uint32>(face << (kPosBits - 33)) };
+  uint32_t n[2] = { 0, static_cast<uint32_t>(face << (kPosBits - 33)) };
 
   // Alternating faces have opposite Hilbert curve orientations; this
   // is necessary in order for all faces to have a right-handed
@@ -265,7 +265,7 @@ S2CellId S2CellId::FromFaceIJ(int face, int i, int j) {
   GET_BITS(0);
 #undef GET_BITS
 
-  return S2CellId(((static_cast<uint64>(n[1]) << 32) + n[0]) * 2 + 1);
+  return S2CellId(((static_cast<uint64_t>(n[1]) << 32) + n[0]) * 2 + 1);
 }
 
 S2CellId S2CellId::FromPoint(S2Point const& p) {
@@ -526,6 +526,7 @@ void S2CellId::AppendAllNeighbors(int nbr_level,
 
 string S2CellId::ToString() const {
   if (!is_valid()) {
+      
     return StringPrintf("Invalid: %016llx", id());
   }
   string out = IntToString(face(), "%d/");

@@ -27,11 +27,11 @@
 //    If "full" is the empty string, yields an empty string as the only value.
 // ----------------------------------------------------------------------
 void SplitStringAllowEmpty(const std::string& full, const char* delim,
-                           std::vector<string>* res);
+                           std::vector<std::string>* res);
 void SplitStringToHashsetAllowEmpty(const std::string& full, const char* delim,
-                                    std::unordered_set<string>* res);
+                                    std::unordered_set<std::string>* res);
 void SplitStringToSetAllowEmpty(const std::string& full, const char* delim,
-                                std::set<string>* res);
+                                std::set<std::string>* res);
 // The even-positioned (0-based) components become the keys for the
 // odd-positioned components that follow them. When there is an odd
 // number of components, the value for the last key will be unchanged
@@ -52,11 +52,11 @@ void SplitStringToHashmapAllowEmpty(const std::string& full, const char* delim,
 //    all of them.
 // ----------------------------------------------------------------------
 void SplitStringUsing(const std::string& full, const char* delim,
-                      std::vector<string>* res);
+                      std::vector<std::string>* res);
 void SplitStringToHashsetUsing(const std::string& full, const char* delim,
-                               std::unordered_set<string>* res);
+                               std::unordered_set<std::string>* res);
 void SplitStringToSetUsing(const std::string& full, const char* delim,
-                           std::set<string>* res);
+                           std::set<std::string>* res);
 // The even-positioned (0-based) components become the keys for the
 // odd-positioned components that follow them. When there is an odd
 // number of components, the value for the last key will be unchanged
@@ -88,13 +88,13 @@ void SplitStringToHashmapUsing(const std::string& full, const char* delim,
 bool SplitOneIntToken(const char** source, const char* delim,
                       int* value);
 bool SplitOneInt32Token(const char** source, const char* delim,
-                        int32* value);
+                        int32_t* value);
 bool SplitOneUint32Token(const char** source, const char* delim,
-                         uint32* value);
+                         uint32_t* value);
 bool SplitOneInt64Token(const char** source, const char* delim,
-                        int64* value);
+                        int64_t* value);
 bool SplitOneUint64Token(const char** source, const char* delim,
-                         uint64* value);
+                         uint64_t* value);
 bool SplitOneDoubleToken(const char** source, const char* delim,
                          double* value);
 bool SplitOneFloatToken(const char** source, const char* delim,
@@ -105,12 +105,12 @@ bool SplitOneFloatToken(const char** source, const char* delim,
 // certain macros with reflection when creating custom text formats for protos.
 
 inline bool SplitOneUInt32Token(const char** source, const char* delim,
-                         uint32* value) {
+                         uint32_t* value) {
   return SplitOneUint32Token(source, delim, value);
 }
 
 inline bool SplitOneUInt64Token(const char** source, const char* delim,
-                         uint64* value) {
+                         uint64_t* value) {
   return SplitOneUint64Token(source, delim, value);
 }
 
@@ -126,22 +126,22 @@ inline bool SplitOneUInt64Token(const char** source, const char* delim,
 bool SplitOneDecimalIntToken(const char** source, const char* delim,
                              int* value);
 bool SplitOneDecimalInt32Token(const char** source, const char* delim,
-                               int32* value);
+                               int32_t* value);
 bool SplitOneDecimalUint32Token(const char** source, const char* delim,
-                                uint32* value);
+                                uint32_t* value);
 bool SplitOneDecimalInt64Token(const char** source, const char* delim,
-                               int64* value);
+                               int64_t* value);
 bool SplitOneDecimalUint64Token(const char** source, const char* delim,
-                                uint64* value);
+                                uint64_t* value);
 
 // ----------------------------------------------------------------------
 // SplitOneHexUint32Token()
 // SplitOneHexUint64Token()
 // Once more, for hexadecimal numbers (unsigned only).
 bool SplitOneHexUint32Token(const char** source, const char* delim,
-                            uint32* value);
+                            uint32_t* value);
 bool SplitOneHexUint64Token(const char** source, const char* delim,
-                            uint64* value);
+                            uint64_t* value);
 
 
 #endif  // STRINGS_SPLIT_H_

@@ -3,7 +3,6 @@
 #include "s2.h"
 
 #include "base/commandlineflags.h"
-#include "base/integral_types.h"
 #include "base/logging.h"
 #include "util/math/matrix3x3-inl.h"
 #include "util/math/vector2-inl.h"
@@ -30,7 +29,7 @@ namespace std {
 
 // The hash function due to Bob Jenkins (see
 // http://burtleburtle.net/bob/hash/index.html).
-static inline void mix(uint32& a, uint32& b, uint32& c) {     // 32bit version
+static inline void mix(uint32_t& a, uint32_t& b, uint32_t& c) {     // 32bit version
   a -= b; a -= c; a ^= (c>>13);
   b -= c; b -= a; b ^= (a<<8);
   c -= a; c -= b; c ^= (b>>13);
@@ -42,7 +41,7 @@ static inline void mix(uint32& a, uint32& b, uint32& c) {     // 32bit version
   c -= a; c -= b; c ^= (b>>15);
 }
 
-inline uint32 CollapseZero(uint32 bits) {
+inline uint32_t CollapseZero(uint32_t bits) {
   // IEEE 754 has two representations for zero, positive zero and negative
   // zero.  These two values compare as equal, and therefore we need them to
   // hash to the same value.
@@ -69,14 +68,14 @@ inline uint32 CollapseZero(uint32 bits) {
 
 size_t hash<S2Point>::operator()(S2Point const& p) const {
   // This function is significantly faster than calling HashTo32().
-  uint32 const* data = reinterpret_cast<uint32 const*>(p.Data());
+  uint32_t const* data = reinterpret_cast<uint32_t const*>(p.Data());
   DCHECK_EQ((6 * sizeof(*data)), sizeof(p));
 
   // We call CollapseZero() on every 32-bit chunk to avoid having endian
   // dependencies.
-  uint32 a = CollapseZero(data[0]);
-  uint32 b = CollapseZero(data[1]);
-  uint32 c = CollapseZero(data[2]) + 0x12b9b0a1UL;  // An arbitrary number
+  uint32_t a = CollapseZero(data[0]);
+  uint32_t b = CollapseZero(data[1]);
+  uint32_t c = CollapseZero(data[2]) + 0x12b9b0a1UL;  // An arbitrary number
   mix(a, b, c);
   a += CollapseZero(data[3]);
   b += CollapseZero(data[4]);
@@ -322,9 +321,9 @@ int S2::ExpensiveCCW(S2Point const& a, S2Point const& b, S2Point const& c) {
   // of the permutation.  (Each exchange inverts the sign of the determinant.)
   int perm_sign = 1;
   S2Point pa = a, pb = b, pc = c;
-  if (pa > pb) { swap(pa, pb); perm_sign = -perm_sign; }
-  if (pb > pc) { swap(pb, pc); perm_sign = -perm_sign; }
-  if (pa > pb) { swap(pa, pb); perm_sign = -perm_sign; }
+  if (pa > pb) { std::swap(pa, pb); perm_sign = -perm_sign; }
+if (pb > pc) { std::swap(pb, pc); perm_sign = -perm_sign; }
+  if (pa > pb) { std::swap(pa, pb); perm_sign = -perm_sign; }
   DCHECK(pa < pb && pb < pc);
 
   // Construct multiple-precision versions of the sorted points and compute
@@ -529,7 +528,7 @@ double S2::Area(S2Point const& a, S2Point const& b, S2Point const& c) {
   if (s >= 3e-4) {
     // Consider whether Girard's formula might be more accurate.
     double s2 = s * s;
-    double dmin = s - max(sa, max(sb, sc));
+    double dmin = s - std::max(sa, std::max(sb, sc));
     if (dmin < 1e-2 * s * s2 * s2) {
       // This triangle is skinny enough to consider Girard's formula.
       double area = GirardArea(a, b, c);
@@ -537,7 +536,7 @@ double S2::Area(S2Point const& a, S2Point const& b, S2Point const& c) {
     }
   }
   // Use l'Huilier's formula.
-  return 4 * atan(sqrt(max(0.0, tan(0.5 * s) * tan(0.5 * (s - sa)) *
+  return 4 * atan(sqrt(std::max(0.0, tan(0.5 * s) * tan(0.5 * (s - sa)) *
                            tan(0.5 * (s - sb)) * tan(0.5 * (s - sc)))));
 }
 
@@ -550,7 +549,7 @@ double S2::GirardArea(S2Point const& a, S2Point const& b, S2Point const& c) {
   S2Point ab = RobustCrossProd(a, b);
   S2Point bc = RobustCrossProd(b, c);
   S2Point ac = RobustCrossProd(a, c);
-  return max(0.0, ab.Angle(ac) - ab.Angle(bc) + bc.Angle(ac));
+  return std::max(0.0, ab.Angle(ac) - ab.Angle(bc) + bc.Angle(ac));
 }
 
 double S2::SignedArea(S2Point const& a, S2Point const& b, S2Point const& c) {

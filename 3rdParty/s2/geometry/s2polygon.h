@@ -6,7 +6,6 @@
 #include <map>
 #include <vector>
 
-#include "base/basictypes.h"
 #include "base/macros.h"
 #include "s2.h"
 #include "s2region.h"

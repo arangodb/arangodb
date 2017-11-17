@@ -115,7 +115,7 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = new RemoveNode(plan, _id, _vocbase, _collection, _options,
                           inVariable, outVariableOld);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -154,7 +154,7 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = new InsertNode(plan, _id, _vocbase, _collection, _options,
                           inVariable, outVariableNew);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -210,7 +210,7 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
       new UpdateNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
                      inKeyVariable, outVariableOld, outVariableNew);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -267,7 +267,7 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
       new ReplaceNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
                       inKeyVariable, outVariableOld, outVariableNew);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -320,7 +320,7 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
                           inDocVariable, insertVariable, updateVariable,
                           outVariableNew, _isReplace);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }

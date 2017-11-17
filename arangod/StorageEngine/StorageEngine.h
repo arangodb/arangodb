@@ -161,7 +161,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   /// @brief opens a database
   virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) = 0;
-  TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade){
+  TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade) {
     int status;
     TRI_vocbase_t* rv = openDatabase(args, isUpgrade, status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);

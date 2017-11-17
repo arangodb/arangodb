@@ -45,6 +45,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminRoutingHandler.h"
+#include "RestHandler/RestAdminServerHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
@@ -540,6 +541,10 @@ void GeneralServerFeature::defineHandlers() {
         "/_open/auth",
         RestHandlerCreator<arangodb::RestAuthHandler>::createNoData);
   }
+
+  _handlerFactory->addPrefixHandler(
+    "/_admin/server",
+    RestHandlerCreator<arangodb::RestAdminServerHandler>::createNoData);
 
   // ...........................................................................
   // actions defined in v8

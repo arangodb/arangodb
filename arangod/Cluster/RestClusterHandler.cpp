@@ -100,7 +100,12 @@ void RestClusterHandler::handleCommandEndpoints() {
     VPackSlice healthMap = result.slice()[0].get(path);
     
     if (leaderId.empty()) {
-      generateError(Result(TRI_ERROR_FAILED, "Leadership challenge is ongoing"));
+      generateError(Result(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, "Leadership challenge is ongoing"));
+      // intentionally use an empty endpoint here. clients can check for the returned
+      // endpoint value, and can tell the following two cases apart:
+      // - endpoint value is not empty: there is a leader, and it is known
+      // - endpoint value is empty: leadership challenge is ongoing, current leader is unknown
+      _response->setHeader(StaticStrings::LeaderEndpoint, "");
       return;
     }
       
@@ -133,8 +138,11 @@ void RestClusterHandler::handleCommandEndpoints() {
   builder.add("code", VPackValue(200));
   {
     VPackArrayBuilder array(&builder, "endpoints", true);
+
     for (ServerID const& sid : endpoints) {
-      array->add(VPackValue(ci->getServerEndpoint(sid)));
+      VPackObjectBuilder obj(&builder);
+      builder.add(VPackValue("endpoint"));
+      builder.add(VPackValue(ci->getServerEndpoint(sid)));
     }
   }
   builder.close();

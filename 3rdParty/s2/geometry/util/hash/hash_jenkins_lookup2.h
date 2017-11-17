@@ -24,7 +24,7 @@
 //    if you're lucky.
 // ----------------------------------------------------------------------
 
-static inline void mix(uint32& a, uint32& b, uint32& c) {     // 32bit version
+static inline void mix(uint32_t& a, uint32_t& b, uint32_t& c) {     // 32bit version
   a -= b; a -= c; a ^= (c>>13);
   b -= c; b -= a; b ^= (a<<8);
   c -= a; c -= b; c ^= (b>>13);
@@ -36,7 +36,7 @@ static inline void mix(uint32& a, uint32& b, uint32& c) {     // 32bit version
   c -= a; c -= b; c ^= (b>>15);
 }
 
-static inline void mix(uint64& a, uint64& b, uint64& c) {     // 64bit version
+static inline void mix(uint64_t& a, uint64_t& b, uint64_t& c) {     // 64bit version
   a -= b; a -= c; a ^= (c>>43);
   b -= c; b -= a; b ^= (a<<9);
   c -= a; c -= b; c ^= (b>>8);
@@ -114,30 +114,30 @@ static inline uint32 Google1At(const char *ptr) {
 
 // NOTE:  This code is not normally used or tested.
 
-static inline uint64 Word64At(const char *ptr) {
-    return (static_cast<uint64>(ptr[0]) +
-            (static_cast<uint64>(ptr[1]) << 8) +
-            (static_cast<uint64>(ptr[2]) << 16) +
-            (static_cast<uint64>(ptr[3]) << 24) +
-            (static_cast<uint64>(ptr[4]) << 32) +
-            (static_cast<uint64>(ptr[5]) << 40) +
-            (static_cast<uint64>(ptr[6]) << 48) +
-            (static_cast<uint64>(ptr[7]) << 56));
+static inline uint64_t Word64At(const char *ptr) {
+    return (static_cast<uint64_t>(ptr[0]) +
+            (static_cast<uint64_t>(ptr[1]) << 8) +
+            (static_cast<uint64_t>(ptr[2]) << 16) +
+            (static_cast<uint64_t>(ptr[3]) << 24) +
+            (static_cast<uint64_t>(ptr[4]) << 32) +
+            (static_cast<uint64_t>(ptr[5]) << 40) +
+            (static_cast<uint64_t>(ptr[6]) << 48) +
+            (static_cast<uint64_t>(ptr[7]) << 56));
 }
 
-static inline uint32 Word32At(const char *ptr) {
-    return (static_cast<uint32>(ptr[0]) +
-            (static_cast<uint32>(ptr[1]) << 8) +
-            (static_cast<uint32>(ptr[2]) << 16) +
-            (static_cast<uint32>(ptr[3]) << 24));
+static inline uint32_t Word32At(const char *ptr) {
+    return (static_cast<uint32_t>(ptr[0]) +
+            (static_cast<uint32_t>(ptr[1]) << 8) +
+            (static_cast<uint32_t>(ptr[2]) << 16) +
+            (static_cast<uint32_t>(ptr[3]) << 24));
 }
 
-static inline uint32 Google1At(const char *ptr2) {
-  const schar * ptr = reinterpret_cast<const schar *>(ptr2);
-  return (static_cast<schar>(ptr[0]) +
-	  (static_cast<uint32>(ptr[1]) << 8) +
-	  (static_cast<uint32>(ptr[2]) << 16) +
-	  (static_cast<uint32>(ptr[3]) << 24));
+static inline uint32_t Google1At(const char *ptr2) {
+  const signed char * ptr = reinterpret_cast<const signed char *>(ptr2);
+  return (static_cast<signed char>(ptr[0]) +
+	  (static_cast<uint32_t>(ptr[1]) << 8) +
+	  (static_cast<uint32_t>(ptr[2]) << 16) +
+	  (static_cast<uint32_t>(ptr[3]) << 24));
 }
 
 #endif /* !NEED_ALIGNED_LOADS && IS_LITTLE_ENDIAN */

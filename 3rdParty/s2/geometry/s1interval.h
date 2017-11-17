@@ -4,8 +4,6 @@
 #define UTIL_GEOMETRY_S1INTERVAL_H_
 
 #include <cmath>
-#include "base/basictypes.h"
-#include "base/logging.h"
 #include "util/math/vector2-inl.h"
 
 // An S1Interval represents a closed interval on a unit circle (also known
