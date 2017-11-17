@@ -93,7 +93,7 @@ struct MMFilesHashIndexHelper {
     return true;
   }
 
-  inline bool IsEqualElementElementByKey(void* userData, 
+  inline bool IsEqualElementElementByKey(void* userData,
                                          MMFilesHashIndexElement const* left,
                                          MMFilesHashIndexElement const* right) const {
     TRI_ASSERT(left->isSet());
@@ -119,14 +119,14 @@ struct MMFilesHashIndexHelper {
 
     return true;
   }
-  
+
   size_t const _numFields;
   bool const _allowExpansion;
 };
 
 struct MMFilesUniqueHashIndexHelper : public MMFilesHashIndexHelper {
   MMFilesUniqueHashIndexHelper(size_t n, bool allowExpansion) : MMFilesHashIndexHelper(n, allowExpansion) {}
-  
+
   /// @brief determines if two elements are equal
   inline bool IsEqualElementElement(void*,
                                     MMFilesHashIndexElement const* left,
@@ -171,7 +171,7 @@ struct MMFilesMultiHashIndexHelper : public MMFilesHashIndexHelper {
     return true;
   }
 };
-   
+
 /// @brief Class to build Slice lookups out of AST Conditions
 class MMFilesHashIndexLookupBuilder {
  private:
@@ -287,10 +287,12 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
   bool matchesDefinition(VPackSlice const& info) const override;
 
   Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
+                arangodb::velocypack::Slice const&,
+                OperationMode mode) override;
 
   Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
+                arangodb::velocypack::Slice const&,
+                OperationMode mode) override;
 
   void batchInsert(
       transaction::Methods*,
@@ -321,8 +323,8 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
   int lookup(transaction::Methods*, arangodb::velocypack::Slice,
              std::vector<MMFilesHashIndexElement*>&) const;
 
-  int insertUnique(transaction::Methods*, LocalDocumentId const& documentId,
-                   arangodb::velocypack::Slice const&, bool isRollback);
+  Result insertUnique(transaction::Methods*, LocalDocumentId const& documentId,
+                      arangodb::velocypack::Slice const&, OperationMode mode);
 
   void batchInsertUnique(
       transaction::Methods*,
@@ -330,7 +332,7 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
 
   int insertMulti(transaction::Methods*, LocalDocumentId const& documentId,
-                  arangodb::velocypack::Slice const&, bool isRollback);
+                  arangodb::velocypack::Slice const&, OperationMode mode);
 
   void batchInsertMulti(
       transaction::Methods*,
@@ -338,9 +340,10 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
 
   int removeUniqueElement(transaction::Methods*, MMFilesHashIndexElement*,
-                          bool);
+                          OperationMode mode);
 
-  int removeMultiElement(transaction::Methods*, MMFilesHashIndexElement*, bool);
+  int removeMultiElement(transaction::Methods*, MMFilesHashIndexElement*,
+                         OperationMode mode);
 
   bool accessFitsIndex(arangodb::aql::AstNode const* access,
                        arangodb::aql::AstNode const* other,

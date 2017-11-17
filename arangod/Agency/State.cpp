@@ -122,7 +122,7 @@ bool State::persist(index_t index, term_t term,
     return false;
   }
 
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "persist done index=" << index
     << " term=" << term << " entry: " << entry.toJson() << " ok:" << res.ok();
@@ -144,7 +144,11 @@ std::vector<index_t> State::logLeaderMulti(
       30000, "Agency syntax requires array of transactions [[<queries>]]");
   }
 
-  TRI_ASSERT(slice.length() == applicable.size());
+  if (slice.length() != applicable.size()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      30000, "Invalid transaction syntax");
+  }
+
   MUTEX_LOCKER(mutexLocker, _logLock); 
   
   TRI_ASSERT(!_log.empty()); // log must never be empty
@@ -159,8 +163,8 @@ std::vector<index_t> State::logLeaderMulti(
     }
     
     if (applicable[j]) {
-      std::string clientId((i.length()==3) ? i[2].copyString() : "");
-      idx[j] = logNonBlocking(_log.back().index+1, i[0], term, clientId, true);
+      std::string clientId((i.length() == 3) ? i[2].copyString() : "");
+      idx[j] = logNonBlocking(_log.back().index + 1, i[0], term, clientId, true);
     }
     ++j;
   }
@@ -860,7 +864,7 @@ bool State::loadOrPersistConfiguration() {
       FATAL_ERROR_EXIT();
     }
 
-    res = trx.finish(result.code);
+    res = trx.finish(result.result);
 
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Persisted configuration: " << doc.slice().toJson();
 
@@ -1125,7 +1129,7 @@ bool State::persistCompactionSnapshot(index_t cind,
     }
 
     auto result = trx.insert("compact", store.slice(), _options);
-    res = trx.finish(result.code);
+    res = trx.finish(result.result);
 
     return res.ok();
   }
@@ -1182,9 +1186,9 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
     }
   }
 
-  MUTEX_LOCKER(guard, _configurationWriteLock);
-
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  
+  MUTEX_LOCKER(guard, _configurationWriteLock);
   SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
 
   Result res = trx.begin();
@@ -1193,12 +1197,12 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
   }
 
   auto result = trx.update("configuration", builder.slice(), _options);
-  if (!result.successful()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(result.code, result.errorMessage);
+  if (result.fail()) {
+    THROW_ARANGO_EXCEPTION(result.result);
   }
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
   if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    THROW_ARANGO_EXCEPTION(res);
   }
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Updated persisted agency configuration: "
     << builder.slice().toJson();

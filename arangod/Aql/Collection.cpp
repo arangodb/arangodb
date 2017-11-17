@@ -65,8 +65,8 @@ TRI_voc_cid_t Collection::cid() const {
 size_t Collection::count(transaction::Methods* trx) const {
   if (numDocuments == UNINITIALIZED) {
     OperationResult res = trx->count(name, true);
-    if (res.failed()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.code, res.errorMessage);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res.result);
     }
     numDocuments = res.slice().getInt();
   }
