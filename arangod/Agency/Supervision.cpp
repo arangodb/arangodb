@@ -76,24 +76,24 @@ struct HealthRecord {
       endpoint = node("Endpoint").getString();
     }
     if (node.has("Status")) {
-      status = node("Status").toJson();
+      status = node("Status").getString();
       if (node.has("SyncStatus")) { // New format
         version = 2;
-        syncStatus = node("SyncStatus").toJson();
+        syncStatus = node("SyncStatus").getString();
         if (node.has("SyncTime")) {
-          lastAcked = node("LastAcked").toJson();
-          syncTime = node("SyncTime").toJson();
+          lastAcked = node("LastAcked").getString();
+          syncTime = node("SyncTime").getString();
         }
       } else if (node.has("LastHeartbeatStatus")) {
         version = 1;
-        syncStatus = node("LastHeartbeatStatus").toJson();
+        syncStatus = node("LastHeartbeatStatus").getString();
         if (node.has("LastHeartbeatSent")) {
-          lastAcked = node("LastHeartbeatAcked").toJson();
-          syncTime = node("LastHeartbeatSent").toJson();
+          lastAcked = node("LastHeartbeatAcked").getString();
+          syncTime = node("LastHeartbeatSent").getString();
         }
       }
       if (node.has("Host")) {
-        hostId = node("Host").toJson();
+        hostId = node("Host").getString();
       }
     }
     return *this;
@@ -401,18 +401,18 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   for (auto const& machine : machinesPlanned) {
     std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
       lastStatus, serverID(machine.first),
-      shortName(_snapshot(targetShortID + serverID + "/ShortName").toJson());
+      shortName(_snapshot(targetShortID + serverID + "/ShortName").getString());
     
     // Endpoint
     std::string endpoint;
     std::string epPath = serverID + "/endpoint";
     if (serversRegistered.has(epPath)) {
-      endpoint = serversRegistered(epPath).toJson();
+      endpoint = serversRegistered(epPath).getString();
     }
     std::string hostId;
     std::string hoPath = serverID + "/host";
     if (serversRegistered.has(hoPath)) {
-      hostId = serversRegistered(hoPath).toJson();
+      hostId = serversRegistered(hoPath).getString();
     }
 
     // Health records from persistence, from transience and a new one
@@ -431,10 +431,10 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     // Sync.time is copied to Health.syncTime
     // Sync.status is copied to Health.syncStatus
     std::string syncTime = _transient.has(syncPrefix + serverID) ?
-      _transient(syncPrefix + serverID + "/time").toJson() :
+      _transient(syncPrefix + serverID + "/time").getString() :
       timepointToString(std::chrono::system_clock::time_point());
     std::string syncStatus = _transient.has(syncPrefix + serverID) ?
-      _transient(syncPrefix + serverID + "/status").toJson() : "UNKNOWN";
+      _transient(syncPrefix + serverID + "/status").getString() : "UNKNOWN";
 
     // Last change registered in sync (transient != sync)
     // Either now or value in transient

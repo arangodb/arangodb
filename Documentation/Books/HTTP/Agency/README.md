@@ -214,7 +214,7 @@ Examples:
 { "/a/b/c": { "old": [1,2,3] }}
 ```
 
-is a precondition specifying that the previous value of the key `"/a/b/c"` key must be `[1,2,3]`. The same could be achieved by using
+is a precondition specifying that the previous value of the key `"/a/b/c"` key must be `[1,2,3]`. If and only if the value of the precondition is not an object we provide a notation, where the keywork `old` may be omitted. Thus, the above check may be shortcut as 
 
 ```js
 { "/a/b/c": [1, 2, 3] }
