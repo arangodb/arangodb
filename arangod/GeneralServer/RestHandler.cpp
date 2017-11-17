@@ -80,10 +80,8 @@ RestHandler::~RestHandler() {
 // -----------------------------------------------------------------------------
 
 int RestHandler::prepareEngine() {
-  RequestStatistics::SET_REQUEST_START(_statistics);
-
   // set end immediately so we do not get netative statistics
-  RequestStatistics::SET_REQUEST_END(_statistics);
+  RequestStatistics::SET_REQUEST_START_END(_statistics);
 
   if (_canceled) {
     _engine.setState(RestEngine::State::DONE);

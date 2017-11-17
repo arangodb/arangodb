@@ -121,7 +121,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  public:
   void initEngine(EventLoop loop,
-                  std::function<void(RestHandler*)> storeResult) {
+                  std::function<void(RestHandler*)> const& storeResult) {
     _storeResult = storeResult;
     _engine.init(loop);
   }
