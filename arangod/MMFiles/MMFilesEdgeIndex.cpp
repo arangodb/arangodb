@@ -152,8 +152,8 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid,
 
   auto context = [this]() -> std::string { return this->context(); };
 
-  _edgesFrom.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), indexBuckets, initialSize, context));
-  _edgesTo.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), indexBuckets, initialSize, context));
+  _edgesFrom.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), indexBuckets, static_cast<uint32_t>(initialSize), context));
+  _edgesTo.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), indexBuckets, static_cast<uint32_t>(initialSize), context));
 }
 
 /// @brief return a selectivity estimate for the index

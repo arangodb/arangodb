@@ -29,7 +29,6 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
-#include "Cluster/ClusterComm.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"

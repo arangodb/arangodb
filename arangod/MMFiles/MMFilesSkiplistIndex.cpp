@@ -740,7 +740,7 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
   // by the index
   size_t const count = elements.size();
 
-  int badIndex = 0;
+  size_t badIndex = 0;
   for (size_t i = 0; i < count; ++i) {
     res = _skiplistIndex->insert(&context, elements[i]);
 
