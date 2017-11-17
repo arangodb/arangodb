@@ -434,7 +434,8 @@ Result RocksDBSphericalIndex::parse(VPackSlice const& doc,
 Result RocksDBSphericalIndex::insertInternal(transaction::Methods* trx,
                                              RocksDBMethods* mthd,
                                              LocalDocumentId const& documentId,
-                                             velocypack::Slice const& doc) {
+                                             velocypack::Slice const& doc,
+                                             OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
   geo::Coordinate centroid(-1, -1);
@@ -468,7 +469,8 @@ Result RocksDBSphericalIndex::insertInternal(transaction::Methods* trx,
 Result RocksDBSphericalIndex::removeInternal(transaction::Methods* trx,
                                              RocksDBMethods* mthd,
                                              LocalDocumentId const& documentId,
-                                             VPackSlice const& doc) {
+                                             VPackSlice const& doc,
+                                             OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
   geo::Coordinate centroid(-1, -1);

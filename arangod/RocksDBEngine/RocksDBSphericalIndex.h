@@ -132,12 +132,14 @@ class RocksDBSphericalIndex final : public arangodb::RocksDBIndex {
   /// insert index elements into the specified write batch.
   Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&) override;
+                        arangodb::velocypack::Slice const&,
+                        OperationMode mode) override;
 
   /// remove index elements and put it in the specified write batch.
   Result removeInternal(transaction::Methods*, RocksDBMethods*,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&) override;
+                        arangodb::velocypack::Slice const&,
+                        OperationMode mode) override;
 
   IndexVariant variant() const { return _variant; }
 
