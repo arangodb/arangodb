@@ -26,6 +26,7 @@
 #include <iostream>
 
 #include "Basics/FileUtils.h"
+#include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -221,6 +222,9 @@ int DaemonFeature::forkProcess() {
                                       << pid;
     return pid;
   }
+  
+  // child    
+  LogAppender::allowStdLogging(false);
 
   // change the file mode mask
   umask(0);
@@ -260,6 +264,12 @@ int DaemonFeature::forkProcess() {
     }
   }
 
+  remapStandardFileDescriptors();
+
+  return 0;
+}
+
+void DaemonFeature::remapStandardFileDescriptors() {
   // we're a daemon so there won't be a terminal attached
   // close the standard file descriptors and re-open them mapped to /dev/null
   int fd = open("/dev/null", O_RDWR | O_CREAT, 0644);
@@ -288,8 +298,6 @@ int DaemonFeature::forkProcess() {
   }
 
   close(fd);
-
-  return 0;
 }
 
 void DaemonFeature::writePidFile(int pid) {
