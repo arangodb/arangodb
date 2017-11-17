@@ -621,6 +621,8 @@ ClusterCommResult const ClusterComm::enquire(communicator::Ticket const ticketId
 /// matches. If `timeout` is given, the result can be a result structure
 /// with status CL_COMM_TIMEOUT indicating that no matching answer was
 /// available until the timeout was hit.
+///
+/// If timeout parameter is 0.0, code waits forever for a response (or error)
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterCommResult const ClusterComm::wait(
