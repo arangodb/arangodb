@@ -3,6 +3,7 @@ VERSION eolf=lf
 scripts/unittest eol=lf
 *.csv binary
 *.json eol=lf
+Documentation/Books/SummaryBlacklist.txt eol=lf
 Documentation/Examples/*.generated merge=ours
 VERSION merge=ours
 STARTER_REV merge=ours

@@ -215,14 +215,14 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::unique_ptr<OperationCursor> opCursor =
       trx.indexScan(collectionName, transaction::Methods::CursorType::ALL, nullptr, false);
 
-  if (opCursor->failed()) {
+  if (opCursor->fail()) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);
   }
 
   OperationResult countResult = trx.count(collectionName, true);
 
-  if (countResult.failed()) {
-    TRI_V8_THROW_EXCEPTION(countResult.code);
+  if (countResult.fail()) {
+    TRI_V8_THROW_EXCEPTION(countResult.result);
   }
 
   VPackSlice count = countResult.slice();
@@ -247,7 +247,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   resultBuilder.close();
   
-  res = trx.finish(countResult.code);
+  res = trx.finish(countResult.result);
+  
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -303,10 +304,10 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   OperationResult cursor = trx.any(collectionName);
 
-  res = trx.finish(cursor.code);
+  res = trx.finish(cursor.result);
 
-  if (cursor.failed()) {
-    TRI_V8_THROW_EXCEPTION(cursor.code);
+  if (cursor.fail()) {
+    TRI_V8_THROW_EXCEPTION(cursor.result);
   }
 
   if (!res.ok()) {

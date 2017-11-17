@@ -62,7 +62,7 @@ describe('Foxx service', () => {
     // the job will create documents
     let cc = db._collection('foxx_queue_test');
     if (cc) {
-      cc.truncate();
+      cc.truncate({ compact: false });
     }
   });
 

@@ -338,7 +338,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
     OperationResult result =
         replace ? trx.replace(TRI_COL_NAME_USERS, data.slice(), ops)
                 : trx.insert(TRI_COL_NAME_USERS, data.slice(), ops);
-    res = trx.finish(result.code);
+    res = trx.finish(result.result);
     if (res.ok()) {
       VPackSlice userDoc = result.slice();
       TRI_ASSERT(userDoc.isObject() && userDoc.hasKey("new"));
@@ -497,7 +497,7 @@ static Result UpdateUser(VPackSlice const& user) {
   if (res.ok()) {
     OperationResult result =
         trx.update(TRI_COL_NAME_USERS, user, OperationOptions());
-    res = trx.finish(result.code);
+    res = trx.finish(result.result);
   }
   return res;
 }
@@ -629,7 +629,7 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
 
     OperationResult result =
         trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
-    res = trx.finish(result.code);
+    res = trx.finish(result.result);
   }
 
   return res;
