@@ -121,7 +121,7 @@ start() {
         --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --cluster.my-role $ROLE \
-	--replication.automatic-failover true \
+	      --replication.automatic-failover true \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
         --server.statistics true \

@@ -61,6 +61,7 @@ add_executable(
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TypeConversionTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
+  VocBase/AuthInfoTest.cpp
   main.cpp
 )
 

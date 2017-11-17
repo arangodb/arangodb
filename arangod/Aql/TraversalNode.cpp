@@ -32,7 +32,6 @@
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
-#include "Cluster/ClusterComm.h"
 #include "Graph/BaseOptions.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"

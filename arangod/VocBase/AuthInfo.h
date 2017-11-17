@@ -68,7 +68,10 @@ class AuthJwtResult : public AuthResult {
 
 class AuthenticationHandler;
 
+typedef std::unordered_map<std::string, AuthUserEntry> AuthUserEntryMap;
+
 class AuthInfo {
+
  public:
   explicit AuthInfo(std::unique_ptr<AuthenticationHandler>&&);
   ~AuthInfo();
@@ -112,7 +115,11 @@ class AuthInfo {
 
   AuthResult checkAuthentication(arangodb::rest::AuthenticationMethod authType,
                                  std::string const& secret);
-
+  AuthLevel configuredDatabaseAuthLevel(std::string const& username,
+                                        std::string const& dbname);
+  AuthLevel configuredCollectionAuthLevel(std::string const& username,
+                                          std::string const& dbname,
+                                          std::string coll);
   AuthLevel canUseDatabase(std::string const& username,
                            std::string const& dbname);
   AuthLevel canUseCollection(std::string const& username,
@@ -124,18 +131,21 @@ class AuthInfo {
   std::string generateJwt(VPackBuilder const&);
   std::string generateRawJwt(VPackBuilder const&);
 
+  void setAuthInfo(AuthUserEntryMap const& userEntryMap);
+
  private:
   // worker function for canUseDatabase
   // must only be called with the read-lock on _authInfoLock being held
-  AuthLevel canUseDatabaseInternal(std::string const& username,
+  AuthLevel configuredDatabaseAuthLevelInternal(std::string const& username,
                                    std::string const& dbname, size_t depth) const;
 
   // internal method called by canUseCollection
   // asserts that collection name is non-empty and already translated
   // from collection id to name
-  AuthLevel canUseCollectionInternal(std::string const& username,
-                                     std::string const& dbname,
-                                     std::string const& coll);
+  AuthLevel configuredCollectionAuthLevelInternal(std::string const& username,
+                                                  std::string const& dbname,
+                                                  std::string const& coll,
+                                                  size_t depth) const;
   void loadFromDB();
   bool parseUsers(velocypack::Slice const& slice);
   Result storeUserInternal(AuthUserEntry const& user, bool replace);
@@ -154,7 +164,7 @@ class AuthInfo {
   Mutex _loadFromDBLock;
   std::atomic<bool> _outdated;
 
-  std::unordered_map<std::string, AuthUserEntry> _authInfo;
+  AuthUserEntryMap _authInfo;
   std::unordered_map<std::string, arangodb::AuthResult> _authBasicCache;
   arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult>
       _authJwtCache;

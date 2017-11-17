@@ -58,7 +58,7 @@ class DatabaseManagerThread : public Thread {
   }
 };
 
-class DatabaseFeature final : public application_features::ApplicationFeature {
+class DatabaseFeature : public application_features::ApplicationFeature {
  friend class DatabaseManagerThread;
 
  public:
