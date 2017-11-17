@@ -63,13 +63,13 @@ arangodb::aql::Graph* arangodb::lookupGraphByName(std::shared_ptr<transaction::C
   OperationResult result = trx.document(GRAPHS, b.slice(), options);
 
   // Commit or abort.
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
 
-  if (!result.successful()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(result.code, "while looking up graph '%s'",
+  if (result.fail()) {
+    THROW_ARANGO_EXCEPTION_FORMAT(result.errorNumber(), "while looking up graph '%s'",
                                   name.c_str());
   }
-  if (!res.ok()) {
+  if (res.fail()) {
     std::stringstream ss;
     ss <<  "while looking up graph '" << name << "': " << res.errorMessage();
     res.reset(res.errorNumber(), ss.str());

@@ -32,6 +32,7 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/db.h>
 
@@ -271,34 +272,41 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
         "RocksDBGeoIndex can only be created with one or two fields.");
   }
 
-  // cheap trick to get the last inserted pot and slot number
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  rocksdb::ReadOptions opts;
-  std::unique_ptr<rocksdb::Iterator> iter(
-      db->NewIterator(opts, RocksDBColumnFamily::geo()));
-
-  rocksdb::Comparator const* cmp = this->comparator();
   int numPots = 0;
-  RocksDBKeyBounds b1 = RocksDBKeyBounds::GeoIndex(_objectId, false);
-  iter->SeekForPrev(b1.end());
-  if (iter->Valid() && cmp->Compare(b1.start(), iter->key()) < 0 &&
-      cmp->Compare(iter->key(), b1.end()) < 0) {
-    // found a key smaller than bounds end
-    std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
-    TRI_ASSERT(pair.first == false);
-    numPots = pair.second;
-  }
-
   int numSlots = 0;
-  RocksDBKeyBounds b2 = RocksDBKeyBounds::GeoIndex(_objectId, true);
-  iter->SeekForPrev(b2.end());
-  if (iter->Valid() && cmp->Compare(b2.start(), iter->key()) < 0 &&
-      cmp->Compare(iter->key(), b2.end()) < 0) {
-    // found a key smaller than bounds end
-    std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
-    TRI_ASSERT(pair.first);
-    numSlots = pair.second;
+
+  if (!collection->isAStub()) {
+    // get the highest inserted pot and slot numbers
+    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+    rocksdb::ReadOptions opts;
+    std::unique_ptr<rocksdb::Iterator> iter(
+        db->NewIterator(opts, RocksDBColumnFamily::geo()));
+    rocksdb::Comparator const* cmp = this->comparator();
+    RocksDBKeyBounds b1 = RocksDBKeyBounds::GeoIndex(_objectId, false);
+    iter->Seek(b1.start());
+    while (iter->Valid() && cmp->Compare(iter->key(), b1.end()) < 0) {
+      std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
+      TRI_ASSERT(pair.first == false);
+      if (numPots < pair.second) {
+        numPots = pair.second;
+      }
+      iter->Next();
+    }
+
+    RocksDBKeyBounds b2 = RocksDBKeyBounds::GeoIndex(_objectId, true);
+    iter->Seek(b2.start());
+    while (iter->Valid() && cmp->Compare(iter->key(), b2.end()) < 0) {
+      // found a key smaller than bounds end
+      std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
+      TRI_ASSERT(pair.first);
+      if (numSlots < pair.second) {
+        numSlots = pair.second;
+      }
+      iter->Next();
+    }
   }
+ 
+  LOG_TOPIC(TRACE, Logger::FIXME) << "using numpots: " << numPots << ", numslots: " << numSlots << " for geo index with objectId " << _objectId;
 
   _geoIndex = GeoIndex_new(nullptr, _objectId, numPots, numSlots);
   if (_geoIndex == nullptr) {
@@ -405,7 +413,8 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
                                        RocksDBMethods* mthd,
                                        LocalDocumentId const& documentId,
-                                       velocypack::Slice const& doc) {
+                                       velocypack::Slice const& doc,
+                                       OperationMode mode) {
   // GeoIndex is always exclusively write-locked with rocksdb
   double latitude;
   double longitude;
@@ -475,7 +484,8 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
 Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
                                        RocksDBMethods* mthd,
                                        LocalDocumentId const& documentId,
-                                       arangodb::velocypack::Slice const& doc) {
+                                       arangodb::velocypack::Slice const& doc,
+                                       OperationMode mode) {
   // GeoIndex is always exclusively write-locked with rocksdb
   double latitude = 0.0;
   double longitude = 0.0;

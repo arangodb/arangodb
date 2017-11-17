@@ -1,6 +1,51 @@
 #!/bin/bash
+params=("$@")
 
-. `dirname $0`/cluster-run-common.sh
+rm -rf cluster
+if [ -d cluster-init ];then
+  echo "== creating cluster directory from existing cluster-init directory"
+  cp -a cluster-init cluster
+else
+  echo "== creating fresh directory"
+  mkdir -p cluster || { echo "failed to create cluster directory"; exit 1; }
+  #if we want to restart we should probably store the parameters line wise
+fi
+
+case $OSTYPE in
+ darwin*)
+   lib="$PWD/scripts/cluster-run-common.sh"
+ ;;
+ *)
+   lib="$(dirname $(readlink -f ${BASH_SOURCE[0]}))/cluster-run-common.sh"
+ ;;
+esac
+
+if [[ -f "$lib" ]]; then
+    . "$lib"
+else
+    echo "could not source $lib"
+    exit 1
+fi
+
+if [[ -f cluster/startup_parameters ]];then
+    string="$(< cluster/startup_parameters)"
+    if [[ -z "${params[@]}" ]]; then
+        params=( $string )
+    else
+        if ! [[ "$*" == "$string" ]]; then
+            echo "stored and given params do not match:"
+            echo "given: ${params[@]}"
+            echo "stored: $string"
+        fi
+    fi
+else
+  #store parmeters
+  if [[ -n "${params[@]}" ]]; then
+    echo "${params[@]}" > cluster/startup_parameters 
+  fi
+fi
+
+parse_args "${params[@]}"
 
 if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
@@ -13,14 +58,18 @@ else
 fi
 DEFAULT_REPLICATION=""
 
+if [[ $NRAGENTS -le 0 ]]; then
+    echo "you need as least one agent currently you have $NRAGENTS"
+    exit 1
+fi
 
-printf "Starting agency ... \n"
-printf "  # agents: %s," "$NRAGENTS"
+printf "== Starting agency ... \n"
+printf " # agents: %s," "$NRAGENTS"
 printf " # db servers: %s," "$NRDBSERVERS"
 printf " # coordinators: %s," "$NRCOORDINATORS"
 printf " transport: %s\n" "$TRANSPORT"
 
-if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
+if (( $NRAGENTS % 2 == 0)) ; then
   echo "**ERROR: Number of agents must be odd! Bailing out."
   exit 1
 fi
@@ -42,12 +91,6 @@ fi
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 ENDPOINT=[::]
 ADDRESS=${ADDRESS:-[::1]}
-
-rm -rf cluster
-if [ -d cluster-init ];then
-  cp -a cluster-init cluster
-fi
-mkdir -p cluster
 
 if [ -z "$JWT_SECRET" ];then
   AUTHENTICATION="--server.authentication false"
@@ -80,7 +123,7 @@ else
     CO_ARANGOD=$ARANGOD
 fi
 
-echo Starting agency ... 
+echo == Starting agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     port=$(( $AG_BASE + $aid ))
     AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$port "
@@ -131,7 +174,7 @@ start() {
     TYPE=$1
     PORT=$2
     mkdir cluster/data$PORT cluster/apps$PORT 
-    echo Starting $TYPE on port $PORT
+    echo == Starting $TYPE on port $PORT
     $CMD \
         -c none \
         --database.directory cluster/data$PORT \
@@ -142,7 +185,6 @@ start() {
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
         --server.statistics true \
-        --server.threads 5 \
         --javascript.startup-directory $SRC_DIR/js \
         --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path cluster/apps$PORT \
@@ -189,7 +231,7 @@ for p in `seq $CO_BASE $PORTTOPCO` ; do
     testServer $p
 done
 
-echo Done, your cluster is ready at
+echo == Done, your cluster is ready at
 for p in `seq $CO_BASE $PORTTOPCO` ; do
     echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p"
 done

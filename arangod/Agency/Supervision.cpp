@@ -51,6 +51,9 @@ struct HealthRecord {
   std::string endpoint;
   std::string lastAcked;
   std::string hostId;
+  size_t version;
+
+  HealthRecord() : version(0) {}
 
   HealthRecord(
     std::string const& sn, std::string const& ep, std::string const& ho) :
@@ -65,15 +68,32 @@ struct HealthRecord {
   }
 
   HealthRecord& operator=(Node const& node) {
+    version = 0;
+    if (shortName.empty()) {
+      shortName = node("ShortName").getString();
+    }
+    if (endpoint.empty()) {
+      endpoint = node("Endpoint").getString();
+    }
     if (node.has("Status")) {
-      syncStatus = node("SyncStatus").toJson();
-      status = node("Status").toJson();
-      if (node.has("SyncTime")) {
-        lastAcked = node("LastAcked").toJson();
-        syncTime = node("SyncTime").toJson();
+      status = node("Status").getString();
+      if (node.has("SyncStatus")) { // New format
+        version = 2;
+        syncStatus = node("SyncStatus").getString();
+        if (node.has("SyncTime")) {
+          lastAcked = node("LastAcked").getString();
+          syncTime = node("SyncTime").getString();
+        }
+      } else if (node.has("LastHeartbeatStatus")) {
+        version = 1;
+        syncStatus = node("LastHeartbeatStatus").getString();
+        if (node.has("LastHeartbeatSent")) {
+          lastAcked = node("LastHeartbeatAcked").getString();
+          syncTime = node("LastHeartbeatSent").getString();
+        }
       }
       if (node.has("Host")) {
-        hostId = node("Host").toJson();
+        hostId = node("Host").getString();
       }
     }
     return *this;
@@ -187,10 +207,44 @@ void Supervision::upgradeZero(Builder& builder) {
               { VPackObjectBuilder ooo(&builder); }
             }
           }
+        }}} // trx
+  }
+}
+
+void Supervision::upgradeHealthRecords(Builder& builder) {
+  _lock.assertLockedByCurrentThread();
+  // "/arango/Supervision/health" is in old format
+  Builder b;
+  size_t n = 0;
+  
+  if (_snapshot.has(healthPrefix)) {
+    HealthRecord hr;
+    { VPackObjectBuilder oo(&b);
+      for (auto recPair : _snapshot(healthPrefix).children()) {
+        if (recPair.second->has("ShortName") &&
+            recPair.second->has("Endpoint")) {
+          hr = *recPair.second;
+          if (hr.version == 1) {
+            ++n;
+            b.add(VPackValue(recPair.first));
+            { VPackObjectBuilder ooo(&b);
+              hr.toVelocyPack(b);
+              
+            }
+          }
         }
       }
     }
   }
+  
+  if (n>0) {
+    { VPackArrayBuilder trx(&builder);
+      { VPackObjectBuilder o(&builder);
+        b.add(healthPrefix, b.slice());
+      }
+    }
+  }
+  
 }
 
 // Upgrade agency, guarded by wakeUp
@@ -203,7 +257,11 @@ void Supervision::upgradeAgency() {
     upgradeZero(builder);
     fixPrototypeChain(builder);
     upgradeOne(builder);
+    upgradeHealthRecords(builder);
   }
+
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Upgrading the agency:" << builder.toJson();
 
   if (builder.slice().length() > 0) {
     generalTransaction(_agent, builder);
@@ -343,18 +401,18 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   for (auto const& machine : machinesPlanned) {
     std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
       lastStatus, serverID(machine.first),
-      shortName(_snapshot(targetShortID + serverID + "/ShortName").toJson());
+      shortName(_snapshot(targetShortID + serverID + "/ShortName").getString());
     
     // Endpoint
     std::string endpoint;
     std::string epPath = serverID + "/endpoint";
     if (serversRegistered.has(epPath)) {
-      endpoint = serversRegistered(epPath).toJson();
+      endpoint = serversRegistered(epPath).getString();
     }
     std::string hostId;
     std::string hoPath = serverID + "/host";
     if (serversRegistered.has(hoPath)) {
-      hostId = serversRegistered(hoPath).toJson();
+      hostId = serversRegistered(hoPath).getString();
     }
 
     // Health records from persistence, from transience and a new one
@@ -373,10 +431,10 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     // Sync.time is copied to Health.syncTime
     // Sync.status is copied to Health.syncStatus
     std::string syncTime = _transient.has(syncPrefix + serverID) ?
-      _transient(syncPrefix + serverID + "/time").toJson() :
+      _transient(syncPrefix + serverID + "/time").getString() :
       timepointToString(std::chrono::system_clock::time_point());
     std::string syncStatus = _transient.has(syncPrefix + serverID) ?
-      _transient(syncPrefix + serverID + "/status").toJson() : "UNKNOWN";
+      _transient(syncPrefix + serverID + "/status").getString() : "UNKNOWN";
 
     // Last change registered in sync (transient != sync)
     // Either now or value in transient

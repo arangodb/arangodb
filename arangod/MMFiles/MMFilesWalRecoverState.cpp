@@ -527,12 +527,12 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
               TRI_ASSERT(VPackSlice(ptr).isObject());
               OperationResult opRes =
                   trx->insert(collectionName, VPackSlice(ptr), options);
-              int res = opRes.code;
+              int res = opRes.errorNumber();
 
-              if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+              if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
                 // document/edge already exists, now make it a replace
                 opRes = trx->replace(collectionName, VPackSlice(ptr), options);
-                res = opRes.code;
+                res = opRes.errorNumber();
               }
 
               return res;
@@ -602,12 +602,12 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
               try {
                 OperationResult opRes =
                     trx->remove(collectionName, VPackSlice(ptr), options);
-                if (opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+                if (opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
                   // document to delete is not present. this error can be
                   // ignored
                   return TRI_ERROR_NO_ERROR;
                 }
-                return opRes.code;
+                return opRes.errorNumber();
               } catch (arangodb::basics::Exception const& ex) {
                 if (ex.code() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
                   // document to delete is not present. this error can be
@@ -1190,10 +1190,6 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         MMFilesPersistentIndexFeature::dropDatabase(databaseId);
 
         vocbase = nullptr;
-        /* TODO: check what TRI_ERROR_ARANGO_DATABASE_NOT_FOUND means here
-        WaitForDeletion(state->server, databaseId,
-                        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-        */
         int res = state->databaseFeature->createDatabase(databaseId, nameString,
                                                          vocbase);
 

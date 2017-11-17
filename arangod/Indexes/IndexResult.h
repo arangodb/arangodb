@@ -59,6 +59,15 @@ class IndexResult : public Result {
       }
     }
   }
+
+  IndexResult(int errorNumber, Index const* index, std::string const& key) 
+      : IndexResult(errorNumber, index) {
+    // provide conflicting key
+    if (!key.empty()) {
+      _errorMessage.append("; conflicting key: ");
+      _errorMessage.append(key);
+    }
+  }
 };
 }  // namespace arangodb
 

@@ -239,7 +239,7 @@ actions.defineHttp({
     } catch (e) {
     }
 
-    if (typeof serverId !== 'string') {
+    if (typeof serverId !== 'string' || serverId.length === 0) {
       actions.resultError(req, res, actions.HTTP_BAD,
         'required parameter ServerID was not given');
       return;
@@ -1064,108 +1064,6 @@ actions.defineHttp({
     }
 
     var result = require('@arangodb/cluster').shardDistribution();
-    var dbsToCheck = []; var diff;
-
-    var getDifference = function (a, b) {
-      return a.filter(function (i) {
-        return b.indexOf(i) < 0;
-      });
-    };
-
-    _.each(result.results, function (info, collection) {
-      _.each(info.Plan, function (shard, shardkey) {
-        // check if shard is out of sync
-        if (!_.isEqual(shard.followers, info.Current[shardkey].followers)) {
-          // if not in sync, get document counts of leader and compare with follower
-          diff = getDifference(shard.followers, info.Current[shardkey].followers);
-
-          dbsToCheck.push({
-            shard: shardkey,
-            toCheck: diff,
-            leader: info.Plan[shardkey].leader,
-            collection: collection
-          });
-        }
-      });
-    });
-
-    var leaderOP, leaderR, followerR, leaderBody, followerBody;
-    var options = { timeout: 10 };
-
-    _.each(dbsToCheck, function (shard) {
-      if (shard.leader.charAt(0) === '_') {
-        shard.leader = shard.leader.substr(1, shard.leader.length - 1);
-      }
-      if (typeof shard.toCheck === 'object') {
-        if (shard.toCheck.length === 0) {
-          return;
-        }
-      }
-
-      // get counts of leader and follower shard
-      leaderOP = null;
-      try {
-        leaderOP = ArangoClusterComm.asyncRequest('GET', 'server:' + shard.leader, req.database,
-        '/_api/collection/' + shard.shard + '/count', '', {}, options);
-      } catch (e) {
-      }
-
-      // IMHO these try...catch things should at least log something but I don't want to
-      // introduce last minute log spam before the release (this was not logging either before restructuring it)
-      let followerOps = shard.toCheck.map(follower => {
-        try {
-          return ArangoClusterComm.asyncRequest('GET', 'server:' + follower, req.database, '/_api/collection/' + shard.shard + '/count', '', {}, options);
-        } catch (e) {
-          return null;
-        }
-      });
-
-      let [minFollowerCount, maxFollowerCount] = followerOps.reduce((result, followerOp) => {
-        if (!followerOp) {
-          return result;
-        }
-
-        let followerCount = 0;
-        try {
-          followerR = ArangoClusterComm.wait(followerOp);
-          if (followerR.status !== 'BACKEND_UNAVAILABLE') {
-            try {
-              followerBody = JSON.parse(followerR.body);
-              followerCount = followerBody.count;
-            } catch (e) {
-            }
-          }
-        } catch (e) {
-        }
-        if (result === null) {
-          return [followerCount, followerCount];
-        } else {
-          return [Math.min(followerCount, result[0]), Math.max(followerCount, result[1])];
-        }
-      }, null);
-
-      let leaderCount = null;
-      if (leaderOP) {
-        leaderR = ArangoClusterComm.wait(leaderOP);
-        try {
-          leaderBody = JSON.parse(leaderR.body);
-          leaderCount = leaderBody.count;
-        } catch (e) {
-        }
-      }
-
-      let followerCount;
-      if (minFollowerCount < leaderCount) {
-        followerCount = minFollowerCount;
-      } else {
-        followerCount = maxFollowerCount;
-      }
-      result.results[shard.collection].Plan[shard.shard].progress = {
-        total: leaderCount,
-        current: followerCount
-      };
-    });
-
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
 });

@@ -367,101 +367,54 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
 
 // Creates an index object.
 // It does not modify anything and does not insert things into
-// the index.
-// Is also save to use in cluster case.
+// the index. It's also safe to use in cluster case.
 std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
     VPackSlice info, bool generateKey, LogicalCollection* col,
     bool isClusterConstructor) const {
-  if (!info.isObject()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
-
+  TRI_idx_iid_t iid = IndexFactory::validateSlice(info, generateKey, isClusterConstructor);
+  
   // extract type
   VPackSlice value = info.get("type");
 
   if (!value.isString()) {
-    // Compatibility with old v8-vocindex.
-    if (generateKey) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid index type definition");
+  }
+
+  std::string const typeString = value.copyString();
+  if (typeString == "primary") {
+    if (!isClusterConstructor) {
+      // this indexes cannot be created directly
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid index type definition");
+                                      "cannot create primary index");
     }
+    return std::make_shared<MMFilesPrimaryIndex>(col);
+  }
+  if (typeString == "edge") {
+    if (!isClusterConstructor) {
+      // this indexes cannot be created directly
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                      "cannot create edge index");
+    }
+    return std::make_shared<MMFilesEdgeIndex>(iid, col);
+  }
+  if (typeString == "geo1" || typeString == "geo2") {
+    return std::make_shared<MMFilesGeoIndex>(iid, col, info);
+  }
+  if (typeString == "hash") {
+    return std::make_shared<MMFilesHashIndex>(iid, col, info);
+  }
+  if (typeString == "skiplist") {
+    return std::make_shared<MMFilesSkiplistIndex>(iid, col, info);
+  }
+  if (typeString == "persistent") {
+    return std::make_shared<MMFilesPersistentIndex>(iid, col, info);
+  }
+  if (typeString == "fulltext") {
+    return std::make_shared<MMFilesFulltextIndex>(iid, col, info);
   }
 
-  std::string tmp = value.copyString();
-  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
-
-  std::shared_ptr<Index> newIdx;
-
-  TRI_idx_iid_t iid = 0;
-  value = info.get("id");
-  if (value.isString()) {
-    iid = basics::StringUtils::uint64(value.copyString());
-  } else if (value.isNumber()) {
-    iid =
-        basics::VelocyPackHelper::getNumericValue<TRI_idx_iid_t>(info, "id", 0);
-  } else if (!generateKey) {
-    // In the restore case it is forbidden to NOT have id
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "cannot restore index without index identifier");
-  }
-
-  if (iid == 0 && !isClusterConstructor) {
-    // Restore is not allowed to generate in id
-    TRI_ASSERT(generateKey);
-    iid = arangodb::Index::generateId();
-  }
-
-  switch (type) {
-    case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
-      if (!isClusterConstructor) {
-        // this indexes cannot be created directly
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "cannot create primary index");
-      }
-      newIdx.reset(new arangodb::MMFilesPrimaryIndex(col));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
-      if (!isClusterConstructor) {
-        // this indexes cannot be created directly
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "cannot create edge index");
-      }
-      newIdx.reset(new arangodb::MMFilesEdgeIndex(iid, col));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
-      newIdx.reset(new arangodb::MMFilesGeoIndex(iid, col, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
-      newIdx.reset(new arangodb::MMFilesHashIndex(iid, col, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
-      newIdx.reset(new arangodb::MMFilesSkiplistIndex(iid, col, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
-      newIdx.reset(new arangodb::MMFilesPersistentIndex(iid, col, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
-      newIdx.reset(new arangodb::MMFilesFulltextIndex(iid, col, info));
-      break;
-    }
-    
-    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: 
-    default: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type");
-    }
-  }
-
-  TRI_ASSERT(newIdx != nullptr);
-  return newIdx;
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, std::string("invalid or unsupported index type '") + typeString + "'");
 }
 
 void MMFilesIndexFactory::fillSystemIndexes(

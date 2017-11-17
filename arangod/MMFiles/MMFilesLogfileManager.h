@@ -281,19 +281,13 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // finalize and seal the currently open logfile
   /// this is useful to ensure that any open writes up to this point have made
   /// it into a logfile
-  int flush(bool, bool, bool);
+  int flush(bool waitForSync, bool waitForCollector, bool writeShutdownFile, double maxWaitTime = -1.0);
 
   /// wait until all changes to the current logfile are synced
   bool waitForSync(double);
 
   // re-inserts a logfile back into the inventory only
   void relinkLogfile(MMFilesWalLogfile*);
-
-  // remove a logfile from the inventory only
-  bool unlinkLogfile(MMFilesWalLogfile*);
-
-  // remove a logfile from the inventory only
-  MMFilesWalLogfile* unlinkLogfile(MMFilesWalLogfile::IdType);
 
   // removes logfiles that are allowed to be removed
   bool removeLogfiles();

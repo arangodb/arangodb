@@ -660,16 +660,15 @@ struct AstNode {
   /// @brief Steals the computed value and frees it.
   void stealComputedValue();
 
-
   /// @brief Removes all members from the current node that are also
-  ///        members of the other node (ignoring ording)
+  ///        members of the other node (ignoring ordering)
   ///        Can only be applied if this and other are of type
   ///        n-ary-and
   void removeMembersInOtherAndNode(AstNode const* other);
 
  public:
   /// @brief the node type
-  AstNodeType const type;
+  AstNodeType type;
 
   /// @brief flags for the node
   AstNodeFlagsType mutable flags;

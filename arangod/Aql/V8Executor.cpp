@@ -42,14 +42,12 @@ using namespace arangodb::aql;
 
 /// @brief creates an executor
 V8Executor::V8Executor(int64_t literalSizeThreshold)
-    : _buffer(nullptr),
-      _constantRegisters(),
+    : _constantRegisters(),
       _literalSizeThreshold(literalSizeThreshold >= 0
                                 ? static_cast<size_t>(literalSizeThreshold)
                                 : defaultLiteralSizeThreshold) {}
 
-/// @brief destroys an executor
-V8Executor::~V8Executor() { delete _buffer; }
+V8Executor::~V8Executor() {}
 
 /// @brief generates an expression execution object
 V8Expression* V8Executor::generateExpression(AstNode const* node) {
@@ -84,7 +82,7 @@ V8Expression* V8Executor::generateExpression(AstNode const* node) {
     v8::Handle<v8::Value> func(compiled->Run());
 
     // exit early if an error occurred
-    HandleV8Error(tryCatch, func,  _buffer, false);
+    HandleV8Error(tryCatch, func, _buffer.get(), false);
 
     // a "simple" expression here is any expression that will only return
     // non-cyclic
@@ -101,7 +99,8 @@ V8Expression* V8Executor::generateExpression(AstNode const* node) {
   }
   else {
     v8::Handle<v8::Value> empty;
-    HandleV8Error(tryCatch, empty,  _buffer, true);
+    TRI_ASSERT(_buffer != nullptr);
+    HandleV8Error(tryCatch, empty, _buffer.get(), true);
     
     // well we're almost sure we never reach this since the above call should throw:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile AQL script code");
@@ -133,7 +132,7 @@ int V8Executor::executeExpression(Query* query, AstNode const* node,
     v8::Handle<v8::Value> func(compiled->Run());
 
     // exit early if an error occurred
-    HandleV8Error(tryCatch, func,  _buffer, false);
+    HandleV8Error(tryCatch, func, _buffer.get(), false);
 
     TRI_ASSERT(query != nullptr);
 
@@ -153,7 +152,7 @@ int V8Executor::executeExpression(Query* query, AstNode const* node,
       v8g->_query = old;
 
       // exit if execution raised an error
-      HandleV8Error(tryCatch, result,  _buffer, false);
+      HandleV8Error(tryCatch, result, _buffer.get(), false);
     } catch (...) {
       v8g->_query = old;
       throw;
@@ -167,7 +166,7 @@ int V8Executor::executeExpression(Query* query, AstNode const* node,
   }
   else {
     v8::Handle<v8::Value> empty;
-    HandleV8Error(tryCatch, empty, _buffer, true);
+    HandleV8Error(tryCatch, empty, _buffer.get(), true);
 
     // well we're almost sure we never reach this since the above call should throw:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile AQL script code");
@@ -290,6 +289,8 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
                              bool duringCompile) {
   ISOLATE;
 
+  bool failed = false;
+
   if (tryCatch.HasCaught()) {
     // caught a V8 exception
     if (!tryCatch.CanContinue()) {
@@ -337,8 +338,8 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       std::string details(TRI_ObjectToString(tryCatch.Exception()));
 
       if (buffer) {
-        std::string script(buffer->c_str(), buffer->length());
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << details << " " << script;
+        //std::string script(buffer->c_str(), buffer->length());
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << details << " " << Logger::CHARS(buffer->c_str(), buffer->length());
         details += "\nSee log for more details";
       }
       if (*stacktrace && stacktrace.length() > 0) {
@@ -349,33 +350,27 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, details);
     }
 
+    failed = true;
+  }
+
+  if (result.IsEmpty()) {
+    failed = true;
+  }
+
+  if (failed) {
     std::string msg("unknown error in scripting");
     if (duringCompile) {
       msg += " (during compilation)";
     }
     if (buffer) {
-      std::string script(buffer->c_str(), buffer->length());
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << script;
+      //std::string script(buffer->c_str(), buffer->length());
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << Logger::CHARS(buffer->c_str(), buffer->length());
       msg += " See log for details";
     }
     // we can't figure out what kind of error occurred and throw a generic error
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, msg);
   }
-
-  if (result.IsEmpty()) {
-    std::string msg("unknown error in scripting");
-    if (duringCompile) {
-      msg += " (during compilation)";
-    }
-    if (buffer) {
-      std::string script(buffer->c_str(), buffer->length());
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << script;
-      msg += " See log for details";
-    }
-
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, msg);
-  }
-
+  
   // if we get here, no exception has been raised
 }
 
@@ -908,7 +903,7 @@ void V8Executor::generateCodeNode(AstNode const* node) {
 
   switch (node->type) {
     case NODE_TYPE_VALUE:
-      node->appendValue(_buffer);
+      node->appendValue(_buffer.get());
       break;
 
     case NODE_TYPE_ARRAY:
@@ -1017,11 +1012,12 @@ void V8Executor::generateCodeNode(AstNode const* node) {
 }
 
 /// @brief create the string buffer
-arangodb::basics::StringBuffer* V8Executor::initializeBuffer() {
+void V8Executor::initializeBuffer() {
   if (_buffer == nullptr) {
-    _buffer = new arangodb::basics::StringBuffer(512, false);
+    _buffer.reset(new arangodb::basics::StringBuffer(1024, false));
 
     if (_buffer->stringBuffer()->_buffer == nullptr) {
+      _buffer.reset();
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   } else {
@@ -1029,6 +1025,4 @@ arangodb::basics::StringBuffer* V8Executor::initializeBuffer() {
   }
 
   TRI_ASSERT(_buffer != nullptr);
-
-  return _buffer;
 }

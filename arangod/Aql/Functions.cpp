@@ -1101,7 +1101,7 @@ AqlValue Functions::Substring(arangodb::aql::Query* query,
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   AppendAsString(trx, adapter, value);
-  UnicodeString s(buffer->c_str(), buffer->length());
+  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
   int32_t offset = static_cast<int32_t>(ExtractFunctionParameterValue(trx, parameters, 1).toInt64(trx));
 
@@ -1137,7 +1137,7 @@ AqlValue Functions::Left(arangodb::aql::Query* query,
 
   AppendAsString(trx, adapter, value);
 
-  UnicodeString s(buffer->c_str(), buffer->length());
+  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   UnicodeString left = s.tempSubString(0, s.moveIndex32(0, length));
 
   left.toUTF8String(utf8);
@@ -1159,8 +1159,8 @@ AqlValue Functions::Right(arangodb::aql::Query* query,
 
   AppendAsString(trx, adapter, value);
 
-  UnicodeString s(buffer->c_str(), buffer->length());
-  UnicodeString right = s.tempSubString(s.moveIndex32(s.length(), -length));
+  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  UnicodeString right = s.tempSubString(s.moveIndex32(s.length(), -static_cast<int32_t>(length)));
 
   right.toUTF8String(utf8);
   return AqlValue(utf8);
@@ -1176,7 +1176,7 @@ AqlValue Functions::Trim(arangodb::aql::Query* query,
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
   AppendAsString(trx, adapter, value);
-  UnicodeString s(buffer->c_str(), buffer->length());
+  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
   int64_t howToTrim = 0;
   UnicodeString whitespace("\r\n\t ");
@@ -1193,7 +1193,7 @@ AqlValue Functions::Trim(arangodb::aql::Query* query,
     } else if(optional.isString()) {
       buffer->clear();
       AppendAsString(trx, adapter, optional);
-      whitespace = UnicodeString(buffer->c_str(), buffer->length());
+      whitespace = UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
     }
   }
 
@@ -2677,8 +2677,8 @@ AqlValue Functions::Matches(arangodb::aql::Query* query,
     idx++;
 
     if (!example.isObject()) {
-      LOG_TOPIC(WARN, arangodb::Logger::QUERIES) << arangodb::basics::Exception::FillFormatExceptionString(
-        TRI_errno_string(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH), "MATCHES");
+      RegisterWarning(query, "MATCHES",
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       continue;
     }
 
@@ -3429,8 +3429,8 @@ AqlValue Functions::CollectionCount(
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
   std::string const collectionName = element.slice().copyString();
   OperationResult res = trx->count(collectionName, true);
-  if (res.failed()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.code, res.errorMessage);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res.result);
   }
 
   return AqlValue(res.slice());

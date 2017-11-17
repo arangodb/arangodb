@@ -523,7 +523,7 @@ void ClusterInfo::loadPlan() {
               std::shared_ptr<LogicalCollection> newCollection;
 #ifndef USE_ENTERPRISE
               newCollection = std::make_shared<LogicalCollection>(
-                  vocbase, collectionSlice);
+                  vocbase, collectionSlice, true);
 #else
               VPackSlice isSmart = collectionSlice.get("isSmart");
               if (isSmart.isTrue()) {
@@ -537,7 +537,7 @@ void ClusterInfo::loadPlan() {
                 }
               } else {
                 newCollection = std::make_shared<LogicalCollection>(
-                    vocbase, collectionSlice);
+                    vocbase, collectionSlice, true);
               }
 #endif
               newCollection->setPlanVersion(newPlanVersion);
@@ -2187,11 +2187,11 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
     if (!indexes.isArray()) {
       try {
-        LOG_TOPIC(WARN, Logger::CLUSTER)
+        LOG_TOPIC(DEBUG, Logger::CLUSTER)
           << "Failed to find index " << databaseName << "/" << collectionID
           << "/" << iid << " - " << indexes.toJson();
       } catch (std::exception const& e) {
-        LOG_TOPIC(WARN, Logger::CLUSTER)
+        LOG_TOPIC(DEBUG, Logger::CLUSTER)
           << "Failed to find index " << databaseName << "/" << collectionID
           << "/" << iid << " - " << e.what();
       }
@@ -2230,11 +2230,14 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   }
   if (!found) {
     try {
-      LOG_TOPIC(WARN, Logger::CLUSTER)
+      // it is not necessarily an error that the index is not found,
+      // for example if one tries to drop a non-existing index. so we
+      // do not log any warnings but just in debug mode
+      LOG_TOPIC(DEBUG, Logger::CLUSTER)
         << "Failed to find index " << databaseName << "/" << collectionID
         << "/" << iid << " - " << indexes.toJson();
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::CLUSTER)
+      LOG_TOPIC(DEBUG, Logger::CLUSTER)
         << "Failed to find index " << databaseName << "/" << collectionID
         << "/" << iid << " - " << e.what();
     }

@@ -538,9 +538,10 @@ function synchronizeOneShard (database, shard, planId, leader) {
   var ok = false;
   const rep = require('@arangodb/replication');
 
+  var db = require("internal").db;
   var ep = ArangoClusterInfo.getServerEndpoint(leader);
 
-  if (require("internal").db._collection(shard).count() === 0) {
+  if (db._collection(shard).count() === 0) {
     // We try a short cut:
     console.topic('heartbeat=debug', "synchronizeOneShard: trying short cut to synchronize local shard '%s/%s' for central '%s/%s'", database, shard, database, planId);
     try {
@@ -550,6 +551,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
         let endTime = new Date();
         console.topic('heartbeat=debug', 'synchronizeOneShard: shortcut worked, done, %s/%s, %s/%s, started: %s, ended: %s',
           database, shard, database, planId, startTime.toString(), endTime.toString());
+        db._collection(shard).setTheLeader(leader);
         return;
       }
     } catch (dummy) { }
@@ -566,9 +568,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
     // Mark us as follower for this leader such that we begin
     // accepting replication operations, note that this is also
     // used for the initial synchronization:
-    var db = require("internal").db;
-    var collection = db._collection(shard);
-    collection.setTheLeader(leader);
+    db._collection(shard).setTheLeader(leader);
 
     let startTime = new Date();
     sy = rep.syncCollection(shard,
@@ -1865,27 +1865,8 @@ function format (x) {
 }
 
 function shardDistribution () {
-  var db = require('internal').db;
-  var dbName = db._name();
-  var colls = db._collections();
-  var result = {};
-  for (var i = 0; i < colls.length; ++i) {
-    var collName = colls[i].name();
-    var collInfo = global.ArangoClusterInfo.getCollectionInfo(dbName, collName);
-    var shards = collInfo.shards;
-    var collInfoCurrent = {};
-    var shardNames = Object.keys(shards);
-    for (var j = 0; j < shardNames.length; ++j) {
-      collInfoCurrent[shardNames[j]] =
-        global.ArangoClusterInfo.getCollectionInfoCurrent(
-          dbName, collName, shardNames[j]).shorts;
-    }
-    result[collName] = {Plan: format(collInfo.shardShorts),
-    Current: format(collInfoCurrent)};
-  }
-
   return {
-    results: result
+    results: require('internal').getShardDistribution()
   };
 }
 
@@ -2144,7 +2125,7 @@ function waitForSyncRepl (dbName, collList) {
     if (allOk) {
       return true;
     }
-    require('internal').wait(1);
+    require('internal').wait(1, false);
   }
   console.topic('heartbeat=warn', 'waitForSyncRepl: timeout:', dbName, collList);
   return false;

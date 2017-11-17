@@ -351,20 +351,24 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
                                                        VPackSlice const& slice) {
   TRI_ASSERT(vocbase != nullptr);
-  VPackSlice uuid;
-  if ((uuid = slice.get("cuid")).isString()) {
-    return vocbase->lookupCollectionByUuid(uuid.copyString());
-  } else if ((uuid = slice.get("globallyUniqueId")).isString()) {
-    return vocbase->lookupCollectionByUuid(uuid.copyString());
-  } else {
-    // extract "cid"
-    TRI_voc_cid_t cid = getCid(slice);
-    if (cid == 0) {
-      return nullptr;
+  // extract "cid"
+  TRI_voc_cid_t cid = getCid(slice);
+  if (!simulate32Client() || cid == 0) {
+    VPackSlice uuid;
+    if ((uuid = slice.get("cuid")).isString()) {
+      return vocbase->lookupCollectionByUuid(uuid.copyString());
+    } else if ((uuid = slice.get("globallyUniqueId")).isString()) {
+      return vocbase->lookupCollectionByUuid(uuid.copyString());
     }
-    // extract optional "cname"
-    return getCollectionByIdOrName(vocbase, cid, getCName(slice));
   }
+  
+  if (cid == 0) {
+    LOG_TOPIC(ERR, Logger::REPLICATION) <<
+      TRI_errno_string(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
+    return nullptr;
+  }
+  // extract optional "cname"
+  return getCollectionByIdOrName(vocbase, cid, getCName(slice));
 }
 
 Result Syncer::applyCollectionDumpMarker(
@@ -417,15 +421,12 @@ Result Syncer::applyCollectionDumpMarkerInternal(
       // try insert first
       OperationResult opRes = trx.insert(collectionName, slice, options); 
 
-      if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+      if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
         // perform an update
         opRes = trx.replace(collectionName, slice, options); 
       }
    
-      if (opRes.code != TRI_ERROR_NO_ERROR && opRes.errorMessage.empty()) {
-        opRes.errorMessage = TRI_errno_string(opRes.code);
-      } 
-      return Result(opRes.code, opRes.errorMessage);
+      return Result(opRes.result);
     } catch (arangodb::basics::Exception const& ex) {
       return Result(ex.code(), std::string("document insert/replace operation failed: ") + ex.what());
     } catch (std::exception const& ex) {
@@ -447,17 +448,13 @@ Result Syncer::applyCollectionDumpMarkerInternal(
       }
       OperationResult opRes = trx.remove(collectionName, old, options);
 
-      if (opRes.successful() ||
-          opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      if (opRes.ok() ||
+          opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // ignore document not found errors
         return Result();
       }
       
-      if (opRes.code != TRI_ERROR_NO_ERROR && opRes.errorMessage.empty()) {
-        opRes.errorMessage = TRI_errno_string(opRes.code);
-      } 
-
-      return Result(opRes.code, opRes.errorMessage);
+      return Result(opRes.result);
     } catch (arangodb::basics::Exception const& ex) {
       return Result(ex.code(), std::string("document remove operation failed: ") + ex.what());
     } catch (std::exception const& ex) {
@@ -490,19 +487,46 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   TRI_col_type_e const type = static_cast<TRI_col_type_e>(VelocyPackHelper::getNumericValue<int>(
       slice, "type", TRI_COL_TYPE_DOCUMENT));
 
+  // resolve collection by uuid, name, cid (in that order of preference)
   arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col != nullptr && col->type() == type) {
     // collection already exists. TODO: compare attributes
     return Result();
   }
+  // conflicting collections need to be dropped from 3.3 onwards
+  col = vocbase->lookupCollection(name);
+  if (col != nullptr) {
+    TRI_ASSERT(!simulate32Client()); // < 3.3 should never get here
+    if (col->isSystem()) {
+      TRI_ASSERT(col->globallyUniqueId() == col->name());
+      CollectionGuard guard(vocbase, col);
+      if (guard.collection() == nullptr) {
+        return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      }
+      SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
+                                      guard.collection()->cid(), AccessMode::Type::WRITE);
+      Result res = trx.begin();
+      if (!res.ok()) {
+        return res;
+      }
+      OperationOptions opts;
+      OperationResult opRes = trx.truncate(col->name(), opts);
+      if (opRes.fail()) {
+        return opRes.result;
+      }
+      return trx.finish(opRes.result);
+    } else {
+      vocbase->dropCollection(col, false, -1.0);
+    }
+  }
   
   VPackSlice uuid = slice.get("globallyUniqueId");
-
   // merge in "isSystem" attribute, doesn't matter if name does not start with '_'
   VPackBuilder s;
   s.openObject();
   s.add("isSystem", VPackValue(true));
-  if (uuid.isString()) {
+  s.add("objectId", VPackSlice::nullSlice());
+  if (uuid.isString() && !simulate32Client()) { // need to use cid for 3.2 master
     // if we received a globallyUniqueId from the remote, then we will always use this id
     // so we can discard the "cid" and "id" values for the collection
     s.add("id", VPackSlice::nullSlice());
@@ -512,7 +536,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
 
   VPackBuilder merged = VPackCollection::merge(slice, s.slice(),
                                                /*mergeValues*/true, /*nullMeansRemove*/true);
-
+  
   try {
     col = vocbase->createCollection(merged.slice());
   } catch (basics::Exception const& ex) {
@@ -557,7 +581,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
   if (!indexSlice.isObject()) {
     indexSlice = slice.get("data");
   }
-
+  
   if (!indexSlice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "index slice is not an object");
   }
@@ -568,12 +592,12 @@ Result Syncer::createIndex(VPackSlice const& slice) {
   }
   arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col == nullptr) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  "did not find collection for index");
   }
 
   try {
     CollectionGuard guard(vocbase, col);
-
     if (guard.collection() == nullptr) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
@@ -805,4 +829,17 @@ Result Syncer::buildHttpError(SimpleHttpResult* response, std::string const& url
   return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
                 _masterInfo._endpoint + " for URL " + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                 response->getHttpReturnMessage() + " - " + response->getBody().toString());
+}
+
+bool Syncer::simulate32Client() const {
+  TRI_ASSERT(!_masterInfo._endpoint.empty() && _masterInfo._serverId != 0 &&
+             _masterInfo._majorVersion != 0);
+  bool is33 = _masterInfo._majorVersion >= 3 &&
+              _masterInfo._minorVersion >= 3;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // allows us to test the old replication API
+  return !is33 || _configuration._force32mode;
+#else
+  return !is33;
+#endif
 }

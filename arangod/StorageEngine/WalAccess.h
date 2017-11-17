@@ -149,8 +149,11 @@ struct WalAccessContext {
 
   ~WalAccessContext() {}
 
+  
+  bool shouldHandleDB(TRI_voc_tick_t dbid) const;
+
   /// @brief Check if collection is in filter
-  bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
+  bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) const;
 
   /// @brief try to get collection, may return null
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbid);

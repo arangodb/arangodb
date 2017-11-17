@@ -40,8 +40,8 @@ using namespace arangodb::transaction;
 using namespace arangodb::traverser;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
 
-TraverserOptions::TraverserOptions(transaction::Methods* trx)
-    : BaseOptions(trx),
+TraverserOptions::TraverserOptions(aql::Query* query)
+    : BaseOptions(query),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
       minDepth(1),
@@ -50,9 +50,9 @@ TraverserOptions::TraverserOptions(transaction::Methods* trx)
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH) {}
 
-TraverserOptions::TraverserOptions(transaction::Methods* trx,
+TraverserOptions::TraverserOptions(aql::Query* query,
                                    VPackSlice const& obj)
-    : BaseOptions(trx),
+    : BaseOptions(query),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
       minDepth(1),
@@ -238,7 +238,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
 
 arangodb::traverser::TraverserOptions::TraverserOptions(
     TraverserOptions const& other)
-    : BaseOptions(other.trx()),
+    : BaseOptions(other._query),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
       minDepth(other.minDepth),

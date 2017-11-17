@@ -64,8 +64,8 @@
 typedef enum {
   REPLICATION_INVALID = 0,
 
-  REPLICATION_STOP = 1000,   // not used in ArangoDB 2.2 and higher
-  REPLICATION_START = 1001,  // not used in ArangoDB 2.2 and higher
+  //REPLICATION_STOP = 1000,   // not used in ArangoDB 2.2 and higher
+  //REPLICATION_START = 1001,  // not used in ArangoDB 2.2 and higher
   
   REPLICATION_DATABASE_CREATE = 1100,
   REPLICATION_DATABASE_DROP = 1101,
@@ -87,7 +87,7 @@ typedef enum {
   REPLICATION_TRANSACTION_ABORT = 2202,
 
   REPLICATION_MARKER_DOCUMENT = 2300,
-  // REPLICATION_MARKER_EDGE = 2301, // not used anymore
+  // REPLICATION_MARKER_EDGE = 2301, // not used anymore since 3.0
   REPLICATION_MARKER_REMOVE = 2302,
 
   REPLICATION_MAX

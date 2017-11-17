@@ -57,8 +57,7 @@ class RocksDBCollection final : public PhysicalCollection {
  public:
  public:
   explicit RocksDBCollection(LogicalCollection*, VPackSlice const& info);
-  explicit RocksDBCollection(LogicalCollection*,
-                             PhysicalCollection*);  // use in cluster only!!!!!
+  RocksDBCollection(LogicalCollection*, PhysicalCollection const*);  // use in cluster only!!!!!
 
   ~RocksDBCollection();
 
@@ -69,7 +68,7 @@ class RocksDBCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*) override;
+  virtual PhysicalCollection* clone(LogicalCollection*) const override;
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
@@ -125,10 +124,6 @@ class RocksDBCollection final : public PhysicalCollection {
   ///////////////////////////////////
 
   void truncate(transaction::Methods* trx, OperationOptions& options) override;
-  /// non transactional truncate, will continoiusly commit the deletes
-  /// and no fully rollback on failure. Uses trx snapshots to isolate
-  /// against newer PUTs
-  // void truncateNoTrx(transaction::Methods* trx);
 
   LocalDocumentId lookupKey(
       transaction::Methods* trx,
@@ -234,12 +229,13 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBOperationResult insertDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-      arangodb::velocypack::Slice const& doc, bool& waitForSync) const;
+      arangodb::velocypack::Slice const& doc, OperationOptions& options,
+      bool& waitForSync) const;
 
   arangodb::RocksDBOperationResult removeDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-      arangodb::velocypack::Slice const& doc, bool isUpdate,
-      bool& waitForSync) const;
+      arangodb::velocypack::Slice const& doc, OperationOptions& options,
+      bool isUpdate, bool& waitForSync) const;
 
   arangodb::RocksDBOperationResult lookupDocument(
       transaction::Methods* trx, arangodb::velocypack::Slice const& key,
@@ -247,10 +243,12 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBOperationResult updateDocument(
       transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
-      arangodb::velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
-      arangodb::velocypack::Slice const& newDoc, bool& waitForSync) const;
+      arangodb::velocypack::Slice const& oldDoc,
+      LocalDocumentId const& newDocumentId,
+      arangodb::velocypack::Slice const& newDoc, OperationOptions& options,
+      bool& waitForSync) const;
 
-  arangodb::Result lookupDocumentVPack(LocalDocumentId const& documentId, 
+  arangodb::Result lookupDocumentVPack(LocalDocumentId const& documentId,
                                        transaction::Methods*,
                                        arangodb::ManagedDocumentResult&,
                                        bool withCache) const;

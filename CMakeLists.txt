@@ -358,9 +358,9 @@ endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.4")
-    message(FATAL_ERROR "ArangoDB requires GCC 5.4 or newer.")
-  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "6.9.9")
-    message(FATAL_ERROR "ArangoDB doesn't support GCC 7.0 yet.")
+    message(FATAL_ERROR "ArangoDB requires g++ 5.4 or newer.")
+  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "7.9.9")
+    message(FATAL_ERROR "ArangoDB doesn't support g++ 8.0 yet.")
   endif()
   set(BASE_C_FLAGS "${BASE_C_FLAGS} -std=gnu89")
 endif ()
@@ -439,6 +439,7 @@ include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X)
 
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
@@ -917,7 +918,7 @@ if (USE_MAINTAINER_MODE)
   endforeach ()
 
   add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
- 
+
   set(EXIT_CODE_FILES
     lib/Basics/exitcodes.h
     lib/Basics/exitcodes.cpp
@@ -1061,7 +1062,7 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 
 # if (VERBOSE)
 #   get_cmake_property(_variableNames VARIABLES)
-# 
+#
 #   foreach (_variableName ${_variableNames})
 #     message(STATUS "${_variableName}=${${_variableName}}")
 #   endforeach ()

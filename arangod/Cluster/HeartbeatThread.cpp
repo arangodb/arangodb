@@ -198,7 +198,7 @@ void HeartbeatThread::run() {
       usleep(100000);
     }
   }
-  
+
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "starting heartbeat thread (" << role << ")";
 
@@ -295,9 +295,10 @@ void HeartbeatThread::runDBServer() {
         AgencyReadTransaction trx(
           std::vector<std::string>({
               AgencyCommManager::path("Shutdown"),
-                AgencyCommManager::path("Current/Version"),
-                AgencyCommManager::path("Sync/Commands", _myId),
-                "/.agency"}));
+              AgencyCommManager::path("Readonly"),
+              AgencyCommManager::path("Current/Version"),
+              AgencyCommManager::path("Sync/Commands", _myId),
+              "/.agency"}));
         
         AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
         if (!result.successful()) {
@@ -349,6 +350,10 @@ void HeartbeatThread::runDBServer() {
               syncDBServerStatusQuo();
             }
           }
+
+          auto readOnlySlice = result.slice()[0].get(std::vector<std::string>(
+            {AgencyCommManager::path(), "Readonly"}));
+          updateServerMode(readOnlySlice);
         }
       }
 
@@ -544,10 +549,9 @@ void HeartbeatThread::runSingleServer() {
           VPackSlice const res = result.slice();
           TRI_ASSERT(res.length() == 1 && res[0].isObject());
           leaderSlice = res[0].get(AgencyCommManager::slicePath(leaderPath));
-          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader, "
-          << "following " << leaderSlice.copyString();
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader";
           TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
-          // intentional fallthrough to case 3
+          // intentionally falls through to case 3
           
         } else {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "got an unexpected agency error "
@@ -586,8 +590,8 @@ void HeartbeatThread::runSingleServer() {
       auto prv = ServerState::setServerMode(ServerState::Mode::REDIRECT);
       if (prv == ServerState::Mode::DEFAULT) {
         // we were leader previously, now we need to ensure no ongoing operations
-        // on this server may prevent us from beeing a proper follower. We wait for
-        // all ongoing ops to stop, and make sure nothing is committet:
+        // on this server may prevent us from being a proper follower. We wait for
+        // all ongoing ops to stop, and make sure nothing is committed:
         // setting server mode to REDIRECT stops DDL ops and write transactions
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Detected leader to secondary change"
                                            << " this might take a few seconds";
@@ -606,6 +610,7 @@ void HeartbeatThread::runSingleServer() {
           applier->stopAndJoin();
         }
         
+        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
         config._endpoint = endpoint;
         config._autoResync = true;
@@ -669,6 +674,21 @@ void HeartbeatThread::runSingleServer() {
   }
 }
 
+void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
+  bool readOnly = false;
+  if (readOnlySlice.isBoolean()) {
+    readOnly = readOnlySlice.getBool();
+  }
+  
+  auto currentMode = ServerState::serverMode();
+  // do not switch from maintenance or any other non expected mode
+  if (currentMode == ServerState::Mode::DEFAULT && readOnly == true) {
+    ServerState::setServerMode(ServerState::Mode::READ_ONLY);
+  } else if (currentMode == ServerState::Mode::READ_ONLY && readOnly == false) {
+    ServerState::setServerMode(ServerState::Mode::DEFAULT);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop, coordinator version
 ////////////////////////////////////////////////////////////////////////////////
@@ -710,6 +730,7 @@ void HeartbeatThread::runCoordinator() {
            AgencyCommManager::path("Current/Foxxmaster"),
            AgencyCommManager::path("Current/FoxxmasterQueueupdate"),
            AgencyCommManager::path("Plan/Version"),
+           AgencyCommManager::path("Readonly"),
            AgencyCommManager::path("Shutdown"),
            AgencyCommManager::path("Sync/Commands", _myId),
            AgencyCommManager::path("Sync/UserVersion"),
@@ -871,6 +892,10 @@ void HeartbeatThread::runCoordinator() {
           LOG_TOPIC(WARN, Logger::HEARTBEAT)
               << "FailedServers is not an object. ignoring for now";
         }
+
+        auto readOnlySlice = result.slice()[0].get(std::vector<std::string>(
+          {AgencyCommManager::path(), "Readonly"}));
+        updateServerMode(readOnlySlice);
       }
 
       // the foxx stuff needs an updated list of coordinators

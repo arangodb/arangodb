@@ -138,11 +138,9 @@ void IndexBlock::executeExpressions() {
                               _inRegs[posInExpressions], mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
-    AstNode* evaluatedNode = nullptr;
-
     AqlValueMaterializer materializer(_trx);
     VPackSlice slice = materializer.slice(a, false);
-    evaluatedNode = ast->nodeFromVPack(slice, true);
+    AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 
     _condition->getMember(toReplace->orMember)
         ->getMember(toReplace->andMember)
@@ -314,7 +312,7 @@ bool IndexBlock::initIndexes() {
   }
 
   createCursor();
-  if (_cursor->failed()) {
+  if (_cursor->fail()) {
     THROW_ARANGO_EXCEPTION(_cursor->code);
   }
 
@@ -327,7 +325,7 @@ bool IndexBlock::initIndexes() {
     if (_currentIndex < _indexes.size()) {
       // This check will work as long as _indexes.size() < MAX_SIZE_T
       createCursor();
-      if (_cursor->failed()) {
+      if (_cursor->fail()) {
         THROW_ARANGO_EXCEPTION(_cursor->code);
       }
     } else {

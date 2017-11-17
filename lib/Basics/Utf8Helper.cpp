@@ -798,7 +798,7 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16,
         mustFree = true;
         continue;
       }
-      // fall-through intentional
+      // intentionally falls through
     }
 
     if (mustFree) {

@@ -32,6 +32,7 @@
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -178,7 +179,7 @@ MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
           } else {
             _includeUpper = false;
           }
-        // Fall through intentional
+          // intentionally falls through
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
           if (isReverseOrder) {
             value->toVelocyPackValue(*(_lowerBuilder.get()));
@@ -192,7 +193,7 @@ MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
           } else {
             _includeLower = false;
           }
-        // Fall through intentional
+          // intentionally falls through
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
           if (isReverseOrder) {
             value->toVelocyPackValue(*(_upperBuilder.get()));
@@ -332,7 +333,7 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
         } else {
           _includeUpper = false;
         }
-      // Fall through intentional
+        // intentionally falls through
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
         if (isReverseOrder) {
           TRI_ASSERT(lower == nullptr);
@@ -348,7 +349,7 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
         } else {
           _includeLower = false;
         }
-      // Fall through intentional
+        // intentionally falls through
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
         if (isReverseOrder) {
           TRI_ASSERT(upper == nullptr);
@@ -710,7 +711,7 @@ void MMFilesSkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 /// @brief inserts a document into a skiplist index
 Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
                                     LocalDocumentId const& documentId,
-                                    VPackSlice const& doc, bool isRollback) {
+                                    VPackSlice const& doc, OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
@@ -739,10 +740,13 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
   // by the index
   size_t const count = elements.size();
 
+  size_t badIndex = 0;
   for (size_t i = 0; i < count; ++i) {
     res = _skiplistIndex->insert(&context, elements[i]);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      badIndex = i;
+
       // Note: this element is freed already
       for (size_t j = i; j < count; ++j) {
         _allocator->deallocate(elements[j]);
@@ -753,11 +757,54 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
       }
 
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
-        // We ignore unique_constraint violated if we are not unique
-        res = TRI_ERROR_NO_ERROR;
+          // We ignore unique_constraint violated if we are not unique
+          res = TRI_ERROR_NO_ERROR;
       }
+
       break;
     }
+  }
+
+  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+    elements.clear();
+
+    // need to rebuild elements, find conflicting key to return error,
+    // and then free elements again
+    int innerRes = TRI_ERROR_NO_ERROR;
+    try {
+      innerRes = fillElement<MMFilesSkiplistIndexElement>(elements, documentId, doc);
+    } catch (basics::Exception const& ex) {
+      innerRes = ex.code();
+    } catch (std::bad_alloc const&) {
+      innerRes = TRI_ERROR_OUT_OF_MEMORY;
+    } catch (...) {
+      innerRes = TRI_ERROR_INTERNAL;
+    }
+
+    auto cleanup = [this, &elements] {
+      for (auto& element : elements) {
+        // free all elements to prevent leak
+        _allocator->deallocate(element);
+      }
+    };
+    TRI_DEFER(cleanup());
+
+    if (innerRes != TRI_ERROR_NO_ERROR) {
+      return IndexResult(innerRes, this);
+    }
+
+    auto found = _skiplistIndex->rightLookup(&context, elements[badIndex]);
+    TRI_ASSERT(found);
+    LocalDocumentId rev(found->document()->localDocumentId());
+    ManagedDocumentResult mmdr;
+    _collection->getPhysical()->readDocument(trx, rev, mmdr);
+    std::string existingId(VPackSlice(mmdr.vpack())
+                            .get(StaticStrings::KeyString)
+                            .copyString());
+    if (mode == OperationMode::internal) {
+      return IndexResult(res, std::move(existingId));
+    }
+    return IndexResult(res, this, existingId);
   }
 
   return IndexResult(res, this);
@@ -766,7 +813,7 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
 /// @brief removes a document from a skiplist index
 Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
                                     LocalDocumentId const& documentId,
-                                    VPackSlice const& doc, bool isRollback) {
+                                    VPackSlice const& doc, OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
@@ -1202,7 +1249,7 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
         if (first->getMember(1)->isArray()) {
           usesIn = true;
         }
-      // Fall through intentional
+        // intentionally falls through
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
         TRI_ASSERT(conditions.size() == 1);
         break;

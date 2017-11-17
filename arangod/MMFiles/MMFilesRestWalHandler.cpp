@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesRestWalHandler.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -75,9 +76,17 @@ RestStatus MMFilesRestWalHandler::execute() {
 }
 
 void MMFilesRestWalHandler::properties() {
+  
   auto l = MMFilesLogfileManager::instance();
 
   if (_request->requestType() == rest::RequestType::PUT) {
+    if (ExecContext::CURRENT != nullptr &&
+        !ExecContext::CURRENT->isAdminUser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to modify WAL properties");
+      return;
+    }
+    
     std::shared_ptr<VPackBuilder> parsedRequest;
     VPackSlice slice;
     try {
@@ -155,6 +164,7 @@ void MMFilesRestWalHandler::flush() {
   
   bool waitForSync = false;
   bool waitForCollector = false;
+  double maxWaitTime = 60.0;
 
   if (slice.isObject()) {
     // got a request body
@@ -171,6 +181,11 @@ void MMFilesRestWalHandler::flush() {
     } else if (value.isBoolean()) {
       waitForCollector = value.getBoolean();
     }
+
+    value = slice.get("maxWaitTime");
+    if (value.isNumber()) {
+      maxWaitTime = value.getNumericValue<double>();
+    }
   } else {
     // no request body
     bool found;
@@ -186,14 +201,20 @@ void MMFilesRestWalHandler::flush() {
         waitForCollector = (v == "1" || v == "true");
       }
     }
+    {
+      std::string const& v = _request->value("maxWaitTime", found);
+      if (found) {
+        maxWaitTime =  basics::StringUtils::doubleDecimal(v);
+      }
+    }
   }
   
   int res;
   if (ServerState::instance()->isCoordinator()) {
-    res = flushWalOnAllDBServers(waitForSync, waitForCollector);
+    res = flushWalOnAllDBServers(waitForSync, waitForCollector, maxWaitTime);
   } else {
     res = MMFilesLogfileManager::instance()->flush(
-        waitForSync, waitForCollector, false);
+        waitForSync, waitForCollector, false, maxWaitTime);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {

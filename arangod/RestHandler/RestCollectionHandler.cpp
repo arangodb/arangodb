@@ -72,7 +72,7 @@ RestStatus RestCollectionHandler::execute() {
 }
 
 void RestCollectionHandler::handleCommandGet() {
-  std::vector<std::string> suffixes = _request->decodedSuffixes();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   VPackBuilder builder;
 
   // /_api/collection
@@ -96,7 +96,7 @@ void RestCollectionHandler::handleCommandGet() {
     return;
   }
 
-  std::string const name = suffixes[0];
+  std::string const& name = suffixes[0];
   // /_api/collection/<name>
   if (suffixes.size() == 1) {
     try {
@@ -116,7 +116,7 @@ void RestCollectionHandler::handleCommandGet() {
     return;
   }
 
-  std::string const sub = suffixes[1];
+  std::string const& sub = suffixes[1];
   bool skipGenerate = false;
   Result found = methods::Collections::lookup(
       _vocbase, name, [&](LogicalCollection* coll) {
@@ -276,7 +276,7 @@ void RestCollectionHandler::handleCommandPost() {
 }
 
 void RestCollectionHandler::handleCommandPut() {
-  std::vector<std::string> suffixes = _request->decodedSuffixes();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected PUT /_api/collection/<collection-name>/<action>");
@@ -293,8 +293,8 @@ void RestCollectionHandler::handleCommandPut() {
     body = VPackSlice::emptyObjectSlice();
   }
 
-  std::string const name = suffixes[0];
-  std::string const sub = suffixes[1];
+  std::string const& name = suffixes[0];
+  std::string const& sub = suffixes[1];
   Result res;
   VPackBuilder builder;
   Result found = methods::Collections::lookup(
@@ -330,10 +330,16 @@ void RestCollectionHandler::handleCommandPut() {
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
           SingleCollectionTransaction trx(ctx, coll->cid(),
                                           AccessMode::Type::EXCLUSIVE);
+
+          // we must read our own writes in this transaction for the deletion
+          // checks that are executed at the end of truncate in maintainer mode
+          trx.addHint(transaction::Hints::Hint::READ_OWN_WRITES);
+
           res = trx.begin();
+
           if (res.ok()) {
             OperationResult result = trx.truncate(coll->name(), opts);
-            res = trx.finish(result.code);
+            res = trx.finish(result.result);
           }
           if (res.ok()) {
             if (!coll->isLocal()) { // ClusterInfo::loadPlan eventually updates status
@@ -374,11 +380,12 @@ void RestCollectionHandler::handleCommandPut() {
         } else if (sub == "rotate") {
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
           SingleCollectionTransaction trx(ctx, coll->cid(),
-                                          AccessMode::Type::READ);
+                                          AccessMode::Type::WRITE);
           res = trx.begin();
 
           if (res.ok()) {
-            res.reset(coll->getPhysical()->rotateActiveJournal());
+            OperationResult result = trx.rotateActiveJournal(coll->name(), OperationOptions());
+            res = trx.finish(result.result);
           }
 
           builder.openObject();
@@ -406,14 +413,14 @@ void RestCollectionHandler::handleCommandPut() {
 }
 
 void RestCollectionHandler::handleCommandDelete() {
-  std::vector<std::string> suffixes = _request->decodedSuffixes();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected DELETE /_api/collection/<collection-name>");
     return;
   }
 
-  std::string const name = suffixes[0];
+  std::string const& name = suffixes[0];
   bool allowDropSystem = _request->parsedValue("isSystem", false);
 
   VPackBuilder builder;
@@ -489,9 +496,9 @@ void RestCollectionHandler::collectionRepresentation(
       THROW_ARANGO_EXCEPTION(res);
     }
     OperationResult opRes = trx.count(coll->name(), aggregateCount);
-    trx.finish(opRes.code);
-    if (!opRes.successful()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(opRes.code, opRes.errorMessage);
+    trx.finish(opRes.result);
+    if (opRes.fail()) {
+      THROW_ARANGO_EXCEPTION(opRes.result);
     }
     builder.add("count", opRes.slice());
   }

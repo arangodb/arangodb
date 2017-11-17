@@ -117,7 +117,10 @@ function setupBinaries (builddir, buildType, configDir) {
     BIN_DIR = fs.join(TOP_DIR, BIN_DIR);
   }
 
-  UNITTESTS_DIR = fs.join(TOP_DIR, fs.join(builddir, 'tests'));
+  UNITTESTS_DIR = fs.join(fs.join(builddir, 'tests'));
+  if (!fs.exists(UNITTESTS_DIR)) {
+    UNITTESTS_DIR = fs.join(TOP_DIR, UNITTESTS_DIR);
+  }
 
   if (buildType !== '') {
     BIN_DIR = fs.join(BIN_DIR, buildType);
@@ -904,6 +907,11 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
 
 function startInstanceCluster (instanceInfo, protocol, options,
   addArgs, rootDir) {
+  if (options.cluster && options.singleresilient ||
+     !options.cluster && !options.singleresilient) {
+    throw "invalid call to startInstanceCluster";
+  }
+
   let makeArgs = function (name, role, args) {
     args = args || {};
 
@@ -930,30 +938,47 @@ function startInstanceCluster (instanceInfo, protocol, options,
   }
 
   let i;
-  for (i = 0; i < options.dbServers; i++) {
-    let port = findFreePort(options.minPort, options.maxPort, usedPorts);
-    usedPorts.push(port);
-    let endpoint = protocol + '://127.0.0.1:' + port;
-    let primaryArgs = _.clone(options.extraArgs);
-    primaryArgs['server.endpoint'] = endpoint;
-    primaryArgs['cluster.my-address'] = endpoint;
-    primaryArgs['cluster.my-role'] = 'PRIMARY';
-    primaryArgs['cluster.agency-endpoint'] = agencyEndpoint;
+  if (options.cluster) {
+    for (i = 0; i < options.dbServers; i++) {
+      let port = findFreePort(options.minPort, options.maxPort, usedPorts);
+      usedPorts.push(port);
+      let endpoint = protocol + '://127.0.0.1:' + port;
+      let primaryArgs = _.clone(options.extraArgs);
+      primaryArgs['server.endpoint'] = endpoint;
+      primaryArgs['cluster.my-address'] = endpoint;
+      primaryArgs['cluster.my-role'] = 'PRIMARY';
+      primaryArgs['cluster.agency-endpoint'] = agencyEndpoint;
 
-    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, 'dbserver', primaryArgs), 'dbserver');
-  }
+      startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, 'dbserver', primaryArgs), 'dbserver');
+    }
 
-  for (i = 0; i < options.coordinators; i++) {
-    let port = findFreePort(options.minPort, options.maxPort, usedPorts);
-    usedPorts.push(port);
-    let endpoint = protocol + '://127.0.0.1:' + port;
-    let coordinatorArgs = _.clone(options.extraArgs);
-    coordinatorArgs['server.endpoint'] = endpoint;
-    coordinatorArgs['cluster.my-address'] = endpoint;
-    coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
-    coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
+    for (i = 0; i < options.coordinators; i++) {
+      let port = findFreePort(options.minPort, options.maxPort, usedPorts);
+      usedPorts.push(port);
+      let endpoint = protocol + '://127.0.0.1:' + port;
+      let coordinatorArgs = _.clone(options.extraArgs);
+      coordinatorArgs['server.endpoint'] = endpoint;
+      coordinatorArgs['cluster.my-address'] = endpoint;
+      coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
+      coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
 
-    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, 'coordinator', coordinatorArgs), 'coordinator');
+      startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, 'coordinator', coordinatorArgs), 'coordinator');
+    }
+  } else if (options.singleresilient) {
+    // for now start just two (TODO config parameter)
+    for (i = 0; i < 2; i++) {      
+      let port = findFreePort(options.minPort, options.maxPort, usedPorts);
+      usedPorts.push(port);
+      let endpoint = protocol + '://127.0.0.1:' + port;
+      let singleArgs = _.clone(options.extraArgs);
+      singleArgs['server.endpoint'] = endpoint;
+      singleArgs['cluster.my-address'] = endpoint;
+      singleArgs['cluster.my-role'] = 'SINGLE';
+      singleArgs['cluster.agency-endpoint'] = agencyEndpoint;
+      singleArgs['replication.automatic-failover'] = true;
+      startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('single' + i, 'single', singleArgs), 'single');
+      sleep(1.0);
+    }
   }
 
   // disabled because not in use (jslint)
@@ -1011,6 +1036,23 @@ function startInstanceCluster (instanceInfo, protocol, options,
       throw new Error('cluster startup timed out after 10 minutes!');
     }
   }
+
+  // we need to find the leading server
+  if (options.singleresilient) {
+    const internal = require('internal');
+    const reply = download(instanceInfo.url + '/_api/cluster/endpoints', '', makeAuthorizationHeaders(authOpts));
+    if (!reply.error && reply.code === 200) {
+      let res = JSON.parse(reply.body);
+      internal.print("Response ====> " + reply.body);      
+      let leader = res.endpoints[0].endpoint;
+      instanceInfo.arangods.forEach(d => {
+        if (d.endpoint === leader) {
+          instanceInfo.endpoint = d.endpoint;
+          instanceInfo.url = d.url;
+        }
+      });
+    }
+  }   
 
   arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
   return true;
@@ -1193,7 +1235,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
                };
       arango.reconnect(rc.endpoint, '_system', 'root', '');
       return rc;
-    } else if (options.cluster) {
+    } else if (options.cluster || options.singleresilient) {
       startInstanceCluster(instanceInfo, protocol, options,
                            addArgs, rootDir);
     } else if (options.agency) {

@@ -46,6 +46,17 @@ function guid() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief shuffle array elements
+////////////////////////////////////////////////////////////////////////////////
+
+function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -267,7 +278,7 @@ function agencyTestSuite () {
       assertEqual(res.bodyParsed, {"results":[0]});
       // check object precondition
       res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":12}}]]);
-      res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":13}},{"a":{"b":{"c":12}}}]]);
+      res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":13}},{"a":{"old":{"b":{"c":12}}}}]]);
       assertEqual(res.statusCode, 200);
       res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":14}},{"/a":{"old":{"b":{"c":12}}}}]]);
       assertEqual(res.statusCode, 412);
@@ -317,12 +328,90 @@ function agencyTestSuite () {
       res = accessAgency("write",[[{"/b":3},{"/a/b/c":{"in":3},"/a/e":{"in":2}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/b"]]), [{b:3}]);
+      // Permute order of keys and objects within precondition
+      var localObj =
+          {"foo" : "bar",
+           "baz" : {
+             "_id": "5a00203e4b660989b2ae5493", "index": 0,
+             "guid": "7a709cc2-1479-4079-a0a3-009cbe5674f4",
+             "isActive": true, "balance": "$3,072.23",
+             "picture": "http://placehold.it/32x32",
+             "age": 21, "eyeColor": "green", "name":
+             { "first": "Durham", "last": "Duke" },
+             "tags": ["anim","et","id","do","est",1.0,-1024,1024]
+           },
+           "qux" : ["3.14159265359",3.14159265359]
+          };
+      var test;
+      var localKeys = [];
+      for (var i in localObj.baz) {
+        localKeys.push(i);
+      }
+      var permuted;
+      res = accessAgency(
+        "write",
+        [[localObj,
+          {"foo":localObj.bar,
+           "baz":{"old":localObj.baz},
+           "qux":localObj.qux}]]);
+      assertEqual(res.statusCode, 412);
+
+      res = writeAndCheck([[localObj]]);
+      res = writeAndCheck([[localObj, {"foo":localObj.foo,"baz":{"old":localObj.baz},"qux":localObj.qux}]]);
+      res = writeAndCheck(
+        [[localObj, {"baz":{"old":localObj.baz},"foo":localObj.foo,"qux":localObj.qux}]]);
+      res = writeAndCheck(
+        [[localObj, {"baz":{"old":localObj.baz},"qux":localObj.qux,"foo":localObj.foo}]]);
+      res = writeAndCheck(
+        [[localObj, {"qux":localObj.qux,"baz":{"old":localObj.baz},"foo":localObj.foo}]]);
+
+      for (var j in localKeys) {
+        permuted = {};      
+        shuffle(localKeys);
+        for (var k in localKeys) {
+          permuted[localKeys[k]] = localObj.baz[localKeys[k]];
+        }
+        res = writeAndCheck(
+          [[localObj, {"baz":{"old":permuted},"foo":localObj.foo,"qux":localObj.qux}]]);
+        res = writeAndCheck(
+          [[localObj, {"foo":localObj.foo,"qux":localObj.qux,"baz":{"old":permuted}}]]);
+        res = writeAndCheck(
+          [[localObj, {"qux":localObj.qux,"baz":{"old":permuted},"foo":localObj.foo}]]);
+      }
+
+      // Permute order of keys and objects within arrays in preconditions
+      writeAndCheck([[{"a":[{"b":12,"c":13}]}]]);
+      writeAndCheck([[{"a":[{"b":12,"c":13}]},{"a":[{"b":12,"c":13}]}]]);
+      writeAndCheck([[{"a":[{"b":12,"c":13}]},{"a":[{"c":13,"b":12}]}]]);
+
+      localObj = {"b":"Hello world!", "c":3.14159265359, "d":314159265359, "e": -3};
+      var localObk = {"b":1, "c":1.0, "d": 100000000001, "e": -1};
+      localKeys  = [];
+      for (var l in localObj) {
+        localKeys.push(l);
+      }
+      permuted = {};
+      var per2 = {};
+      writeAndCheck([[ { "a" : [localObj,localObk] } ]]);
+      writeAndCheck([[ { "a" : [localObj,localObk] }, {"a" : [localObj,localObk] }]]);
+      for (var m = 0; m < 7; m++) {
+        permuted = {};
+        shuffle(localKeys);
+        for (k in localKeys) {
+          permuted[localKeys[k]] = localObj[localKeys[k]];
+          per2 [localKeys[k]] = localObk[localKeys[k]];
+        }
+        writeAndCheck([[ { "a" : [localObj,localObk] }, {"a" : [permuted,per2] }]]);
+        res = accessAgency("write",
+                           [[ { "a" : [localObj,localObk] }, {"a" : [per2,permuted] }]]);
+        assertEqual(res.statusCode, 412);        
+      }
+      
     },
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test clientIds
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief test clientIds
+  ////////////////////////////////////////////////////////////////////////////////
 
     testClientIds : function () {
       var res;
@@ -494,7 +583,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
                   [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
-      writeAndCheck(  [[{"a":{"_id":"576d1b7becb6374e24ed5a04","index":0,"guid":"60ffa50e-0211-4c60-a305-dcc8063ae2a5","isActive":true,"balance":"$1,050.96","picture":"http://placehold.it/32x32","age":30,"eyeColor":"green","name":{"first":"Maura","last":"Rogers"},"company":"GENESYNK","email":"maura.rogers@genesynk.net","phone":"+1(804)424-2766","address":"501RiverStreet,Wollochet,Vermont,6410","about":"Temporsintofficiaipsumidnullalaboreminimlaborisinlaborumincididuntexcepteurdolore.Sunteumagnadolaborumsunteaquisipsumaliquaaliquamagnaminim.Cupidatatadproidentullamconisietofficianisivelitculpaexcepteurqui.Suntautemollitconsecteturnulla.Commodoquisidmagnaestsitelitconsequatdoloreupariaturaliquaetid.","registered":"Friday,November28,20148:01AM","latitude":"-30.093679","longitude":"10.469577","tags":["laborum","proident","est","veniam","sunt"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CarverDurham"},{"id":1,"name":"DanielleMalone"},{"id":2,"name":"ViolaBell"}],"greeting":"Hello,Maura!Youhave9unreadmessages.","favoriteFruit":"banana"}}],[{"!!@#$%^&*)":{"_id":"576d1b7bb2c1af32dd964c22","index":1,"guid":"e6bda5a9-54e3-48ea-afd7-54915fec48c2","isActive":false,"balance":"$2,631.75","picture":"http://placehold.it/32x32","age":40,"eyeColor":"blue","name":{"first":"Jolene","last":"Todd"},"company":"QUANTASIS","email":"jolene.todd@quantasis.us","phone":"+1(954)418-2311","address":"818ButlerStreet,Berwind,Colorado,2490","about":"Commodoesseveniamadestirureutaliquipduistempor.Auteeuametsuntessenisidolorfugiatcupidatatsintnulla.Sitanimincididuntelitculpasunt.","registered":"Thursday,June12,201412:08AM","latitude":"-7.101063","longitude":"4.105685","tags":["ea","est","sunt","proident","pariatur"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SwansonMcpherson"},{"id":1,"name":"YoungTyson"},{"id":2,"name":"HinesSandoval"}],"greeting":"Hello,Jolene!Youhave5unreadmessages.","favoriteFruit":"strawberry"}}],[{"1234567890":{"_id":"576d1b7b79527b6201ed160c","index":2,"guid":"2d2d7a45-f931-4202-853d-563af252ca13","isActive":true,"balance":"$1,446.93","picture":"http://placehold.it/32x32","age":28,"eyeColor":"blue","name":{"first":"Pickett","last":"York"},"company":"ECSTASIA","email":"pickett.york@ecstasia.me","phone":"+1(901)571-3225","address":"556GrovePlace,Stouchsburg,Florida,9119","about":"Idnulladolorincididuntirurepariaturlaborumutmolliteavelitnonveniaminaliquip.Adametirureesseanimindoloreduisproidentdeserunteaconsecteturincididuntconsecteturminim.Ullamcoessedolorelitextemporexcepteurexcepteurlaboreipsumestquispariaturmagna.ExcepteurpariaturexcepteuradlaborissitquieiusmodmagnalaborisincididuntLoremLoremoccaecat.","registered":"Thursday,January28,20165:20PM","latitude":"-56.18036","longitude":"-39.088125","tags":["ad","velit","fugiat","deserunt","sint"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"BarryCleveland"},{"id":1,"name":"KiddWare"},{"id":2,"name":"LangBrooks"}],"greeting":"Hello,Pickett!Youhave10unreadmessages.","favoriteFruit":"strawberry"}}],[{"":{"_id":"576d1b7bc674d071a2bccc05","index":3,"guid":"14b44274-45c2-4fd4-8c86-476a286cb7a2","isActive":true,"balance":"$1,861.79","picture":"http://placehold.it/32x32","age":27,"eyeColor":"brown","name":{"first":"Felecia","last":"Baird"},"company":"SYBIXTEX","email":"felecia.baird@sybixtex.name","phone":"+1(821)498-2971","address":"571HarrisonAvenue,Roulette,Missouri,9284","about":"Adesseofficianisiexercitationexcepteurametconsecteturessequialiquaquicupidatatincididunt.Nostrudullamcoutlaboreipsumduis.ConsequatsuntlaborumadLoremeaametveniamesseoccaecat.","registered":"Monday,December21,20156:50AM","latitude":"0.046813","longitude":"-13.86172","tags":["velit","qui","ut","aliquip","eiusmod"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CeliaLucas"},{"id":1,"name":"HensonKline"},{"id":2,"name":"ElliottWalker"}],"greeting":"Hello,Felecia!Youhave9unreadmessages.","favoriteFruit":"apple"}}],[{"|}{[]αв¢∂єƒgαв¢∂єƒg":{"_id":"576d1b7be4096344db437417","index":4,"guid":"f789235d-b786-459f-9288-0d2f53058d02","isActive":false,"balance":"$2,011.07","picture":"http://placehold.it/32x32","age":28,"eyeColor":"brown","name":{"first":"Haney","last":"Burks"},"company":"SPACEWAX","email":"haney.burks@spacewax.info","phone":"+1(986)587-2735","address":"197OtsegoStreet,Chesterfield,Delaware,5551","about":"Quisirurenostrudcupidatatconsequatfugiatvoluptateproidentvoluptate.Duisnullaadipisicingofficiacillumsuntlaborisdeseruntirure.Laborumconsecteturelitreprehenderitestcillumlaboresintestnisiet.Suntdeseruntexercitationutauteduisaliquaametetquisvelitconsecteturirure.Auteipsumminimoccaecatincididuntaute.Irureenimcupidatatexercitationutad.Minimconsecteturadipisicingcommodoanim.","registered":"Friday,January16,20155:29AM","latitude":"86.036358","longitude":"-1.645066","tags":["occaecat","laboris","ipsum","culpa","est"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SusannePacheco"},{"id":1,"name":"SpearsBerry"},{"id":2,"name":"VelazquezBoyle"}],"greeting":"Hello,Haney!Youhave10unreadmessages.","favoriteFruit":"apple"}}]]);
+      writeAndCheck([[{"a":{"_id":"576d1b7becb6374e24ed5a04","index":0,"guid":"60ffa50e-0211-4c60-a305-dcc8063ae2a5","isActive":true,"balance":"$1,050.96","picture":"http://placehold.it/32x32","age":30,"eyeColor":"green","name":{"first":"Maura","last":"Rogers"},"company":"GENESYNK","email":"maura.rogers@genesynk.net","phone":"+1(804)424-2766","address":"501RiverStreet,Wollochet,Vermont,6410","about":"Temporsintofficiaipsumidnullalaboreminimlaborisinlaborumincididuntexcepteurdolore.Sunteumagnadolaborumsunteaquisipsumaliquaaliquamagnaminim.Cupidatatadproidentullamconisietofficianisivelitculpaexcepteurqui.Suntautemollitconsecteturnulla.Commodoquisidmagnaestsitelitconsequatdoloreupariaturaliquaetid.","registered":"Friday,November28,20148:01AM","latitude":"-30.093679","longitude":"10.469577","tags":["laborum","proident","est","veniam","sunt"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CarverDurham"},{"id":1,"name":"DanielleMalone"},{"id":2,"name":"ViolaBell"}],"greeting":"Hello,Maura!Youhave9unreadmessages.","favoriteFruit":"banana"}}],[{"!!@#$%^&*)":{"_id":"576d1b7bb2c1af32dd964c22","index":1,"guid":"e6bda5a9-54e3-48ea-afd7-54915fec48c2","isActive":false,"balance":"$2,631.75","picture":"http://placehold.it/32x32","age":40,"eyeColor":"blue","name":{"first":"Jolene","last":"Todd"},"company":"QUANTASIS","email":"jolene.todd@quantasis.us","phone":"+1(954)418-2311","address":"818ButlerStreet,Berwind,Colorado,2490","about":"Commodoesseveniamadestirureutaliquipduistempor.Auteeuametsuntessenisidolorfugiatcupidatatsintnulla.Sitanimincididuntelitculpasunt.","registered":"Thursday,June12,201412:08AM","latitude":"-7.101063","longitude":"4.105685","tags":["ea","est","sunt","proident","pariatur"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SwansonMcpherson"},{"id":1,"name":"YoungTyson"},{"id":2,"name":"HinesSandoval"}],"greeting":"Hello,Jolene!Youhave5unreadmessages.","favoriteFruit":"strawberry"}}],[{"1234567890":{"_id":"576d1b7b79527b6201ed160c","index":2,"guid":"2d2d7a45-f931-4202-853d-563af252ca13","isActive":true,"balance":"$1,446.93","picture":"http://placehold.it/32x32","age":28,"eyeColor":"blue","name":{"first":"Pickett","last":"York"},"company":"ECSTASIA","email":"pickett.york@ecstasia.me","phone":"+1(901)571-3225","address":"556GrovePlace,Stouchsburg,Florida,9119","about":"Idnulladolorincididuntirurepariaturlaborumutmolliteavelitnonveniaminaliquip.Adametirureesseanimindoloreduisproidentdeserunteaconsecteturincididuntconsecteturminim.Ullamcoessedolorelitextemporexcepteurexcepteurlaboreipsumestquispariaturmagna.ExcepteurpariaturexcepteuradlaborissitquieiusmodmagnalaborisincididuntLoremLoremoccaecat.","registered":"Thursday,January28,20165:20PM","latitude":"-56.18036","longitude":"-39.088125","tags":["ad","velit","fugiat","deserunt","sint"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"BarryCleveland"},{"id":1,"name":"KiddWare"},{"id":2,"name":"LangBrooks"}],"greeting":"Hello,Pickett!Youhave10unreadmessages.","favoriteFruit":"strawberry"}}],[{"@":{"_id":"576d1b7bc674d071a2bccc05","index":3,"guid":"14b44274-45c2-4fd4-8c86-476a286cb7a2","isActive":true,"balance":"$1,861.79","picture":"http://placehold.it/32x32","age":27,"eyeColor":"brown","name":{"first":"Felecia","last":"Baird"},"company":"SYBIXTEX","email":"felecia.baird@sybixtex.name","phone":"+1(821)498-2971","address":"571HarrisonAvenue,Roulette,Missouri,9284","about":"Adesseofficianisiexercitationexcepteurametconsecteturessequialiquaquicupidatatincididunt.Nostrudullamcoutlaboreipsumduis.ConsequatsuntlaborumadLoremeaametveniamesseoccaecat.","registered":"Monday,December21,20156:50AM","latitude":"0.046813","longitude":"-13.86172","tags":["velit","qui","ut","aliquip","eiusmod"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CeliaLucas"},{"id":1,"name":"HensonKline"},{"id":2,"name":"ElliottWalker"}],"greeting":"Hello,Felecia!Youhave9unreadmessages.","favoriteFruit":"apple"}}],[{"|}{[]αв¢∂єƒgαв¢∂єƒg":{"_id":"576d1b7be4096344db437417","index":4,"guid":"f789235d-b786-459f-9288-0d2f53058d02","isActive":false,"balance":"$2,011.07","picture":"http://placehold.it/32x32","age":28,"eyeColor":"brown","name":{"first":"Haney","last":"Burks"},"company":"SPACEWAX","email":"haney.burks@spacewax.info","phone":"+1(986)587-2735","address":"197OtsegoStreet,Chesterfield,Delaware,5551","about":"Quisirurenostrudcupidatatconsequatfugiatvoluptateproidentvoluptate.Duisnullaadipisicingofficiacillumsuntlaborisdeseruntirure.Laborumconsecteturelitreprehenderitestcillumlaboresintestnisiet.Suntdeseruntexercitationutauteduisaliquaametetquisvelitconsecteturirure.Auteipsumminimoccaecatincididuntaute.Irureenimcupidatatexercitationutad.Minimconsecteturadipisicingcommodoanim.","registered":"Friday,January16,20155:29AM","latitude":"86.036358","longitude":"-1.645066","tags":["occaecat","laboris","ipsum","culpa","est"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SusannePacheco"},{"id":1,"name":"SpearsBerry"},{"id":2,"name":"VelazquezBoyle"}],"greeting":"Hello,Haney!Youhave10unreadmessages.","favoriteFruit":"apple"}}]]);
       assertEqual(readAndCheck([["/!!@#$%^&*)/address"]]),[{"!!@#$%^&*)":{"address": "818ButlerStreet,Berwind,Colorado,2490"}}]);
     },
 
@@ -535,7 +624,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,4]},"e":12},"d":false}],
                      [{"a":{"b":{"c":[1,2,3]}}}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+                  [{a:{}},{a:{b:{c:[1,2,3]},d:false}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

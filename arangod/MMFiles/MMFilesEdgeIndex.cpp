@@ -109,6 +109,7 @@ bool MMFilesEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
     } else {
       _lastElement = _buffer.back();
       // found something
+      TRI_ASSERT(_posInBuffer < _buffer.size());
       cb(LocalDocumentId{_buffer[_posInBuffer++].localDocumentId()});
       limit--;
     }
@@ -131,22 +132,28 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid,
                                                   false)},
                  {arangodb::basics::AttributeName(StaticStrings::ToString,
                                                   false)}}),
-            false, false),
-      _numBuckets(1) {
+            false, false) {
   TRI_ASSERT(iid != 0);
+  size_t indexBuckets = 1;
+  size_t initialSize = 64;
 
   if (collection != nullptr) {
     // collection is a nullptr in the coordinator case
     auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
     TRI_ASSERT(physical != nullptr);
-    _numBuckets = static_cast<size_t>(physical->indexBuckets());
+    indexBuckets = static_cast<size_t>(physical->indexBuckets());
+
+    if (collection->isAStub()) {
+      // in order to reduce memory usage
+      indexBuckets = 1;
+      initialSize = 4;
+    }
   }
 
   auto context = [this]() -> std::string { return this->context(); };
 
-  _edgesFrom.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), _numBuckets, 64, context));
-
-  _edgesTo.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), _numBuckets, 64, context));
+  _edgesFrom.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), indexBuckets, static_cast<uint32_t>(initialSize), context));
+  _edgesTo.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), indexBuckets, static_cast<uint32_t>(initialSize), context));
 }
 
 /// @brief return a selectivity estimate for the index
@@ -211,17 +218,20 @@ void MMFilesEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 Result MMFilesEdgeIndex::insert(transaction::Methods* trx,
-                                LocalDocumentId const& documentId, VPackSlice const& doc,
-                                bool isRollback) {
+                                LocalDocumentId const& documentId,
+                                VPackSlice const& doc,
+                                OperationMode mode) {
   MMFilesSimpleIndexElement fromElement(buildFromElement(documentId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(documentId, doc));
 
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, 1);
-  _edgesFrom->insert(&context, fromElement, true, isRollback);
+  _edgesFrom->insert(&context, fromElement, true,
+                     mode == OperationMode::rollback);
 
   try {
-    _edgesTo->insert(&context, toElement, true, isRollback);
+    _edgesTo->insert(&context, toElement, true,
+                    mode == OperationMode::rollback);
   } catch (std::bad_alloc const&) {
     // roll back partial insert
     _edgesFrom->remove(&context, fromElement);
@@ -236,8 +246,9 @@ Result MMFilesEdgeIndex::insert(transaction::Methods* trx,
 }
 
 Result MMFilesEdgeIndex::remove(transaction::Methods* trx,
-                                LocalDocumentId const& documentId, VPackSlice const& doc,
-                                bool isRollback) {
+                                LocalDocumentId const& documentId,
+                                VPackSlice const& doc,
+                                OperationMode mode) {
   MMFilesSimpleIndexElement fromElement(buildFromElement(documentId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(documentId, doc));
 
@@ -249,7 +260,7 @@ Result MMFilesEdgeIndex::remove(transaction::Methods* trx,
     _edgesTo->remove(&context, toElement);
     return Result(TRI_ERROR_NO_ERROR);
   } catch (...) {
-    if (isRollback) {
+    if (mode == OperationMode::rollback) {
       return Result(TRI_ERROR_NO_ERROR);
     }
     return IndexResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, this);

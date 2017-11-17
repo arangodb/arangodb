@@ -26,7 +26,7 @@
 #define ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/Result.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "VocBase/replication-common.h"
 
@@ -237,29 +237,28 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the structure of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreCollection(VPackSlice const&, bool, bool, bool,
-                               std::string&);
+  Result processRestoreCollection(VPackSlice const&, bool overwrite, bool force);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection, coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreCollectionCoordinator(VPackSlice const&, bool, bool, bool,
-                                          uint64_t, std::string&, uint64_t,
-                                          bool);
+  Result processRestoreCollectionCoordinator(VPackSlice const&, bool overwrite, bool force,
+                                             uint64_t numberOfShards, uint64_t replicationFactor,
+                                             bool ignoreDistributeShardsLikeErrors);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _users collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreUsersBatch(std::string const& colName, bool useRevision);
+  Result processRestoreUsersBatch(std::string const& colName);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of a collection
   //////////////////////////////////////////////////////////////////////////////
 
   Result processRestoreDataBatch(transaction::Methods& trx,
-                                 std::string const& colName, bool useRevision);
+                                 std::string const& colName);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the indexes of a collection
@@ -277,13 +276,13 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreData(std::string const& colName, bool useRevision);
+  Result processRestoreData(std::string const& colName);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parse an input batch
   //////////////////////////////////////////////////////////////////////////////
 
-  Result parseBatch(std::string const& collectionName, bool useRevision,
+  Result parseBatch(std::string const& collectionName,
                     std::unordered_map<std::string, VPackValueLength>& latest,
                     VPackBuilder& allMarkers);
 
@@ -291,7 +290,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief creates a collection, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int createCollection(VPackSlice, arangodb::LogicalCollection**, bool);
+  int createCollection(VPackSlice, arangodb::LogicalCollection**);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

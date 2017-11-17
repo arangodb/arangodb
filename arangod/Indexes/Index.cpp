@@ -73,24 +73,6 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
             Index::allowExpansion(Index::type(slice.get("type").copyString())));
 }
 
-/// TODO: can we remove this?
-/// @brief create an index stub with a hard-coded selectivity estimate
-/// this is used in the cluster coordinator case
-Index::Index(VPackSlice const& slice)
-    : _iid(arangodb::basics::StringUtils::uint64(
-          arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice,
-                                                                     "id"))),
-      _collection(nullptr),
-      _fields(),
-      _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, "unique", false)),
-      _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, "sparse", false)) {
-  VPackSlice const fields = slice.get("fields");
-  setFields(fields,
-            Index::allowExpansion(Index::type(slice.get("type").copyString())));
-}
-
 Index::~Index() {}
 
 size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
@@ -545,7 +527,7 @@ void Index::batchInsert(
     std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   for (auto const& it : documents) {
-    Result status = insert(trx, it.first, it.second, false);
+    Result status = insert(trx, it.first, it.second, OperationMode::normal);
     if (status.errorNumber() != TRI_ERROR_NO_ERROR) {
       queue->setStatus(status.errorNumber());
       break;
@@ -556,6 +538,11 @@ void Index::batchInsert(
 /// @brief default implementation for drop
 int Index::drop() {
   // do nothing
+  return TRI_ERROR_NO_ERROR;
+}
+
+// called after the collection was truncated
+int Index::afterTruncate() {
   return TRI_ERROR_NO_ERROR;
 }
 
