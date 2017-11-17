@@ -232,6 +232,9 @@ struct TestSetup {
 
     arangodb::tests::init(true);
 
+    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+
     // setup required application features
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
@@ -306,6 +309,7 @@ struct TestSetup {
     }
 
     arangodb::FeatureCacheFeature::reset();
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 }; // TestSetup
 

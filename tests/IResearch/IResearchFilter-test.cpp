@@ -279,6 +279,9 @@ struct IResearchFilterSetup {
 
     arangodb::tests::init();
 
+    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
     features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for FeatureCacheFeature
@@ -348,6 +351,7 @@ struct IResearchFilterSetup {
     }
 
     arangodb::FeatureCacheFeature::reset();
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 }; // IResearchFilterSetup
 
