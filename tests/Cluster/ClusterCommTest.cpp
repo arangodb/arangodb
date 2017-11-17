@@ -162,7 +162,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     diff = endTime - startTime;
     REQUIRE(0.0049 < diff);      // must write range test in two parts for REQUIRE
     REQUIRE(diff < 0.0051);
-    REQUIRE(CL_COMM_DROPPED == result.status);
+    REQUIRE(CL_COMM_TIMEOUT == result.status);
     REQUIRE(0 == result.operationID);
 
     // larger timeout
@@ -172,7 +172,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     diff = endTime - startTime;
     REQUIRE(0.09 <= diff);      // must write range test in two parts for REQUIRE
     REQUIRE(diff <= 0.11);
-    REQUIRE(CL_COMM_DROPPED == result.status);
+    REQUIRE(CL_COMM_TIMEOUT == result.status);
     REQUIRE(0 == result.operationID);
   } // simple function time out
 

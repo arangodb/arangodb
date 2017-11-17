@@ -689,7 +689,7 @@ ClusterCommResult const ClusterComm::wait(
         // time is up, leave
         return_result.operationID = ticketId;
         // does res.coordTransactionID need to be set here too?
-        return_result.status = CL_COMM_DROPPED;
+        return_result.status = CL_COMM_TIMEOUT;
         match_good=false;
       } // else
     } // if
