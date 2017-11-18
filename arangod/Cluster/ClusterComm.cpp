@@ -630,7 +630,7 @@ ClusterCommResult const ClusterComm::wait(
     CoordTransactionID const coordTransactionID, communicator::Ticket const ticketId,
     ShardID const& shardID, ClusterCommTimeout timeout) {
 
-  ResponseIterator i;
+  ResponseIterator i, i_erase;
   AsyncResponse response;
   ClusterCommResult return_result;
   bool match_good, status_ready;
@@ -648,16 +648,22 @@ ClusterCommResult const ClusterComm::wait(
     status_ready=false;
 
     if (ticketId == 0) {
+      i_erase = responses.end();
       for (i = responses.begin(); i != responses.end() && !status_ready; i++) {
         if (match(clientTransactionID, coordTransactionID, shardID, i->second.result.get())) {
           match_good=true;
           return_result = *i->second.result.get();
           status_ready = (CL_COMM_SUBMITTED != return_result.status);
           if (status_ready) {
-            responses.erase(i);
+            i_erase = i;
           } // if
-        }
-      }
+        } // if
+      } // for
+
+      // only delete from list after leaving loop
+      if (responses.end() != i_erase) {
+        responses.erase(i_erase);
+      } // if
     } else {
       i = responses.find(ticketId);
 
