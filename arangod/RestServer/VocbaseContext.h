@@ -40,7 +40,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class VocbaseContext final : public arangodb::RequestContext {
+class VocbaseContext : public arangodb::RequestContext {
  public:
   static double ServerSessionTtl;
 
@@ -49,10 +49,10 @@ class VocbaseContext final : public arangodb::RequestContext {
   VocbaseContext& operator=(VocbaseContext const&) = delete;
 
   VocbaseContext(GeneralRequest*, TRI_vocbase_t*);
-  ~VocbaseContext();
+  TEST_VIRTUAL ~VocbaseContext();
 
  public:
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
+  TEST_VIRTUAL TRI_vocbase_t* vocbase() const { return _vocbase; }
 
  private: 
   //////////////////////////////////////////////////////////////////////////////

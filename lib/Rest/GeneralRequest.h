@@ -102,7 +102,7 @@ class GeneralRequest {
   uint64_t clientTaskId() const { return _clientTaskId; }
   void setClientTaskId(uint64_t clientTaskId) { _clientTaskId = clientTaskId; }
 
-  std::string const& databaseName() const { return _databaseName; }
+  TEST_VIRTUAL std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& databaseName) {
     _databaseName = databaseName;
   }
@@ -110,17 +110,17 @@ class GeneralRequest {
   // the authenticated user
   bool authorized() const { return _authorized; }
   void setAuthorized(bool a) { _authorized = a; }
-  std::string const& user() const { return _user; }
+  TEST_VIRTUAL std::string const& user() const { return _user; }
   void setUser(std::string const& user) { _user = user; }
   void setUser(std::string&& user) { _user = std::move(user); }
 
-  RequestContext* requestContext() const { return _requestContext; }
+  TEST_VIRTUAL RequestContext* requestContext() const { return _requestContext; }
   void setRequestContext(RequestContext*, bool);
 
   ExecContext* execContext() const { return _execContext; }
   void setExecContext(ExecContext*);
 
-  RequestType requestType() const { return _type; }
+  TEST_VIRTUAL RequestType requestType() const { return _type; }
   void setRequestType(RequestType type) { _type = type; }
 
   std::string const& fullUrl() const { return _fullUrl; }
@@ -147,7 +147,7 @@ class GeneralRequest {
   void setPrefix(std::string&& prefix) { _prefix = std::move(prefix); }
 
   // Returns the request path suffixes in non-URL-decoded form
-  std::vector<std::string> const& suffixes() const { return _suffixes; }
+  TEST_VIRTUAL std::vector<std::string> const& suffixes() const { return _suffixes; }
   
   // Returns the request path suffixes in URL-decoded form. Note: this will
   // re-compute the suffix list on every call!
@@ -181,7 +181,7 @@ class GeneralRequest {
   virtual VPackSlice payload(arangodb::velocypack::Options const* options =
                              &VPackOptions::Defaults) = 0;
 
-  std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr() {
+  TEST_VIRTUAL std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr() {
     VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
     optionsWithUniquenessCheck.checkAttributeUniqueness = true;
     return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck), &optionsWithUniquenessCheck);

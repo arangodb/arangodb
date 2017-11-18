@@ -138,7 +138,7 @@ struct TRI_vocbase_t {
 
   TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
                 std::string const& name);
-  ~TRI_vocbase_t();
+  TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
   /// @brief sleep interval used when polling for a loading collection's status
