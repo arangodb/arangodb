@@ -67,6 +67,9 @@ class LogAppender {
     return _filter.empty() || (message.find(_filter) != std::string::npos);
   }
 
+  static bool allowStdLogging() { return _allowStdLogging; }
+  static void allowStdLogging(bool value) { _allowStdLogging = value; }
+
  protected:
   std::string const _filter;  // an optional content filter for log messages
 
@@ -78,6 +81,7 @@ class LogAppender {
                   std::shared_ptr<LogAppender>>
       _definition2appenders;
   static std::vector<std::function<void(LogMessage*)>> _loggers;
+  static bool _allowStdLogging;
 };
 }
 
