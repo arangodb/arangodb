@@ -4,7 +4,7 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"first"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/17455"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/17448"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"persistent"</span>, 
@@ -13,31 +13,31 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17458"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17458"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V5cvftS---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17451"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17451"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V65Cioe---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17462"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17462"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V5cvftW---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17455"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17455"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V65Cioq---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"John"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17465"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17465"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V5cvftW--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17458"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17458"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V65Cioq--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17468"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17468"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V5cvfta---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17461"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17461"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V65Ciou---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17471"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17471"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V5cvfta--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17464"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17464"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V65Ciou--_"</span> 
 }

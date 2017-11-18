@@ -1,3 +1,11 @@
+v3.2.8 (2017-11-18)
+-------------------
+
+* fixed a race condition occuring when upgrading via linux package manager
+
+* fixed authentication issue during replication
+
+
 v3.2.7 (2017-11-13)
 -------------------
 
