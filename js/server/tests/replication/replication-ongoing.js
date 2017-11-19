@@ -836,6 +836,8 @@ function ReplicationOtherDBSuite() {
     // Flush wal to trigger replication
     internal.wal.flush(true, true);
 
+    const lastLogTick = replication.logger.state().state.lastLogTick;    
+
     // Section - Slave
     connectToSlave();
 
