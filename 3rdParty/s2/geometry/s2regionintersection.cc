@@ -8,7 +8,7 @@
 
 S2RegionIntersection::S2RegionIntersection() { }
 
-S2RegionIntersection::S2RegionIntersection(vector<S2Region*>* regions) {
+S2RegionIntersection::S2RegionIntersection(std::vector<S2Region*>* regions) {
   Init(regions);
 }
 
@@ -19,7 +19,7 @@ S2RegionIntersection::~S2RegionIntersection() {
   regions_.clear();
 }
 
-void S2RegionIntersection::Init(vector<S2Region*>* regions) {
+void S2RegionIntersection::Init(std::vector<S2Region*>* regions) {
   DCHECK(regions_.empty());
   // We copy the vector rather than calling swap() to optimize storage.
   regions_ = *regions;
@@ -33,7 +33,7 @@ S2RegionIntersection::S2RegionIntersection(S2RegionIntersection const* src)
   }
 }
 
-void S2RegionIntersection::Release(vector<S2Region*>* regions) {
+void S2RegionIntersection::Release(std::vector<S2Region*>* regions) {
   if (regions != NULL) {
     regions->insert(regions->end(), regions_.begin(), regions_.end());
   }

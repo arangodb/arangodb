@@ -167,7 +167,7 @@ void S2PolygonBuilder::EraseLoop(S2Point const* v, int n) {
 void S2PolygonBuilder::RejectLoop(S2Point const* v, int n,
                                   EdgeList* unused_edges) {
   for (int i = n - 1, j = 0; j < n; i = j++) {
-    unused_edges->push_back(make_pair(v[i], v[j]));
+    unused_edges->push_back(std::make_pair(v[i], v[j]));
   }
 }
 
@@ -201,11 +201,11 @@ S2Loop* S2PolygonBuilder::AssembleLoop(S2Point const& v0, S2Point const& v1,
     }
     if (!v2_found) {
       // We've hit a dead end.  Remove this edge and backtrack.
-      unused_edges->push_back(make_pair(v0, v1));
+      unused_edges->push_back(std::make_pair(v0, v1));
       EraseEdge(v0, v1);
       index.erase(v1);
       path.pop_back();
-    } else if (index.insert(make_pair(v2, path.size())).second) {
+    } else if (index.insert(std::make_pair(v2, path.size())).second) {
       // This is the first time we've visited this vertex.
       path.push_back(v2);
     } else {
@@ -270,13 +270,13 @@ class S2PolygonBuilder::PointIndex {
       level_(min(S2::kMinWidth.GetMaxLevel(2 * vertex_radius),
                  S2CellId::kMaxLevel - 1)) {
     // We insert a sentinel so that we don't need to test for map_.end().
-    map_.insert(make_pair(S2CellId::Sentinel(), S2Point()));
+    map_.insert(std::make_pair(S2CellId::Sentinel(), S2Point()));
   }
 
   void Insert(S2Point const& p) {
     S2CellId::FromPoint(p).AppendVertexNeighbors(level_, &ids_);
     for (int i = ids_.size(); --i >= 0; ) {
-      map_.insert(make_pair(ids_[i], p));
+      map_.insert(std::make_pair(ids_[i], p));
     }
     ids_.clear();
   }
@@ -412,7 +412,7 @@ void S2PolygonBuilder::MoveVertices(MergeMap const& merge_map) {
 
   // We need to copy the set of edges affected by the move, since
   // edges_ could be reallocated when we start modifying it.
-  vector<pair<S2Point, S2Point> > edges;
+  std::vector<std::pair<S2Point, S2Point> > edges;
   for (EdgeSet::const_iterator i = edges_->begin(); i != edges_->end(); ++i) {
     S2Point const& v0 = i->first;
     VertexSet const& vset = i->second;
@@ -422,7 +422,7 @@ void S2PolygonBuilder::MoveVertices(MergeMap const& merge_map) {
           merge_map.find(v1) != merge_map.end()) {
         // We only need to modify one copy of each undirected edge.
         if (!options_.undirected_edges() || v0 < v1) {
-          edges.push_back(make_pair(v0, v1));
+          edges.push_back(std::make_pair(v0, v1));
         }
       }
     }
@@ -446,7 +446,7 @@ void S2PolygonBuilder::MoveVertices(MergeMap const& merge_map) {
 void S2PolygonBuilder::SpliceEdges(PointIndex* index) {
   // We keep a stack of unprocessed edges.  Initially all edges are
   // pushed onto the stack.
-  vector<pair<S2Point, S2Point> > edges;
+  std::vector<std::pair<S2Point, S2Point> > edges;
   for (EdgeSet::const_iterator i = edges_->begin(); i != edges_->end(); ++i) {
     S2Point const& v0 = i->first;
     VertexSet const& vset = i->second;
@@ -454,7 +454,7 @@ void S2PolygonBuilder::SpliceEdges(PointIndex* index) {
       S2Point const& v1 = *j;
       // We only need to modify one copy of each undirected edge.
       if (!options_.undirected_edges() || v0 < v1) {
-        edges.push_back(make_pair(v0, v1));
+        edges.emplace_back(v0, v1);
       }
     }
   }
@@ -474,8 +474,8 @@ void S2PolygonBuilder::SpliceEdges(PointIndex* index) {
     if (!index->FindNearbyPoint(v0, v1, &vmid)) continue;
 
     EraseEdge(v0, v1);
-    if (AddEdge(v0, vmid)) edges.push_back(make_pair(v0, vmid));
-    if (AddEdge(vmid, v1)) edges.push_back(make_pair(vmid, v1));
+    if (AddEdge(v0, vmid)) edges.emplace_back(v0, vmid);
+    if (AddEdge(vmid, v1)) edges.emplace_back(vmid, v1);
   }
 }
 

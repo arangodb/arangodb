@@ -536,6 +536,6 @@ string S2CellId::ToString() const {
   return out;
 }
 
-ostream& operator<<(ostream& os, S2CellId const& id) {
+std::ostream& operator<<(std::ostream& os, S2CellId const& id) {
   return os << id.ToString();
 }

@@ -268,7 +268,7 @@ int S2Loop::FindVertex(S2Point const& p) const {
     }
   }
 
-  map<S2Point, int>::const_iterator it;
+  std::map<S2Point, int>::const_iterator it;
   it = vertex_to_index_.find(p);
   if (it == vertex_to_index_.end()) return -1;
   return it->second;

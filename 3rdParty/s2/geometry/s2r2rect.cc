@@ -147,6 +147,6 @@ bool S2R2Rect::MayIntersect(S2Cell const& cell) const {
   return Intersects(S2R2Rect::FromCell(cell));
 }
 
-ostream& operator<<(ostream& os, S2R2Rect const& r) {
+std::ostream& operator<<(std::ostream& os, S2R2Rect const& r) {
   return os << "[Lo" << r.lo() << ", Hi" << r.hi() << "]";
 }

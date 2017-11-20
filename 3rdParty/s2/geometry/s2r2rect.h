@@ -200,6 +200,6 @@ inline bool S2R2Rect::operator==(S2R2Rect const& other) const {
   return x_ == other.x_ && y_ == other.y_;
 }
 
-ostream& operator<<(ostream& os, S2R2Rect const& r);
+std::ostream& operator<<(std::ostream& os, S2R2Rect const& r);
 
 #endif  // UTIL_GEOMETRY_S2R2RECT_H_

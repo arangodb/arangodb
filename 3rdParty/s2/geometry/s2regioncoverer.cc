@@ -202,7 +202,7 @@ void S2RegionCoverer::AddCandidate(Candidate* candidate) {
     int priority = -((((candidate->cell.level() << max_children_shift())
                        + candidate->num_children) << max_children_shift())
                      + num_terminals);
-    pq_->push(make_pair(priority, candidate));
+    pq_->push(std::make_pair(priority, candidate));
     VLOG(2) << "Push: " << candidate->cell.id() << " (" << priority << ") ";
   }
 }

@@ -102,7 +102,7 @@ double S2Cell::ApproxArea() const {
   // to be 2 / (1 + sqrt(1 - r*r)) where "r" is the radius of the disc.
   // For example, when r=0 the ratio is 1, and when r=1 the ratio is 2.
   // Here we set Pi*r*r == flat_area to find the equivalent disc.
-  return flat_area * 2 / (1 + sqrt(1 - min(M_1_PI * flat_area, 1.0)));
+  return flat_area * 2 / (1 + sqrt(1 - std::min(M_1_PI * flat_area, 1.0)));
 }
 
 double S2Cell::ExactArea() const {

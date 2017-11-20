@@ -9,11 +9,17 @@
 
 #include "base/integral_types.h"
 #include "base/logging.h"
-#include "base/port.h"  // for HASH_NAMESPACE_DECLARATION_START
 #include "s2.h"
 #include "util/math/vector2.h"
 
 class S2LatLng;
+
+// Allow packing of the struct
+#if defined(__GNUC__) || defined(__clang__) || defined(COMPILER_ICC)
+#define PACKED __attribute__ ((packed))
+#else
+#define PACKED
+#endif
 
 // An S2CellId is a 64-bit unsigned integer that uniquely identifies a
 // cell in the S2 cell decomposition.  It has the following format:

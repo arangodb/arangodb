@@ -586,6 +586,6 @@ bool S2LatLngRect::ApproxEquals(S2LatLngRect const& other,
           lng_.ApproxEquals(other.lng_, max_error));
 }
 
-ostream& operator<<(ostream& os, S2LatLngRect const& r) {
+std::ostream& operator<<(std::ostream& os, S2LatLngRect const& r) {
   return os << "[Lo" << r.lo() << ", Hi" << r.hi() << "]";
 }

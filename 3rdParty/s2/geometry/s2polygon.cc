@@ -34,7 +34,7 @@ DECLARE_bool(s2debug);  // defined in s2.cc
 
 static const unsigned char kCurrentEncodingVersionNumber = 1;
 
-typedef pair<S2Point, S2Point> S2Edge;
+typedef std::pair<S2Point, S2Point> S2Edge;
 
 S2Polygon::S2Polygon()
   : loops_(),
@@ -105,7 +105,7 @@ S2Polygon::~S2Polygon() {
   if (owns_loops_) DeleteLoopsInVector(&loops_);
 }
 
-typedef pair<S2Point, S2Point> S2PointPair;
+typedef std::pair<S2Point, S2Point> S2PointPair;
 
 #include <unordered_set>
 namespace std {
@@ -123,17 +123,17 @@ template<> struct hash<S2PointPair> {
 bool S2Polygon::IsValid(const vector<S2Loop*>& loops) {
   // If a loop contains an edge AB, then no other loop may contain AB or BA.
   if (loops.size() > 1) {
-    unordered_map<S2PointPair, pair<int, int> > edges;
+    std::unordered_map<S2PointPair, std::pair<int, int> > edges;
     for (size_t i = 0; i < loops.size(); ++i) {
       S2Loop* lp = loops[i];
       for (int j = 0; j < lp->num_vertices(); ++j) {
-        S2PointPair key = make_pair(lp->vertex(j), lp->vertex(j + 1));
-        if (edges.insert(make_pair(key, make_pair(i, j))).second) {
-          key = make_pair(lp->vertex(j + 1), lp->vertex(j));
-          if (edges.insert(make_pair(key, make_pair(i, j))).second)
+        S2PointPair key = std::make_pair(lp->vertex(j), lp->vertex(j + 1));
+        if (edges.insert(make_pair(key, std::make_pair(i, j))).second) {
+          key = std::make_pair(lp->vertex(j + 1), lp->vertex(j));
+          if (edges.insert(make_pair(key, std::make_pair(i, j))).second)
             continue;
         }
-        pair<int, int> other = edges[key];
+        std::pair<int, int> other = edges[key];
         VLOG(2) << "Duplicate edge: loop " << i << ", edge " << j
                  << " and loop " << other.first << ", edge " << other.second;
         return false;
@@ -663,7 +663,7 @@ class S2LoopsAsVectorsIndex: public S2LoopSequenceIndex {
   S2LoopsAsVectorsIndex() {}
   ~S2LoopsAsVectorsIndex() {}
 
-  void AddVector(vector<S2Point> const* v) {
+  void AddVector(std::vector<S2Point> const* v) {
     loops_.push_back(v);
     AddLoop(v->size());
   }
@@ -673,7 +673,7 @@ class S2LoopsAsVectorsIndex: public S2LoopSequenceIndex {
     int loop_index;
     int vertex_in_loop;
     DecodeIndex(index, &loop_index, &vertex_in_loop);
-    vector<S2Point> const* loop = loops_[loop_index];
+    std::vector<S2Point> const* loop = loops_[loop_index];
     *from = &loop->at(vertex_in_loop);
     *to = &loop->at((size_t)vertex_in_loop == loop->size() - 1
                       ? 0
@@ -681,10 +681,10 @@ class S2LoopsAsVectorsIndex: public S2LoopSequenceIndex {
   }
 
  private:
-  vector< vector<S2Point> const* > loops_;
+  std::vector<std::vector<S2Point> const* > loops_;
 };
 
-typedef vector<pair<double, S2Point> > IntersectionSet;
+typedef std::vector<std::pair<double, S2Point> > IntersectionSet;
 
 static void AddIntersection(S2Point const& a0, S2Point const& a1,
                             S2Point const& b0, S2Point const& b1,
@@ -694,7 +694,7 @@ static void AddIntersection(S2Point const& a0, S2Point const& a1,
     // There is a proper edge crossing.
     S2Point x = S2EdgeUtil::GetIntersection(a0, a1, b0, b1);
     double t = S2EdgeUtil::GetDistanceFraction(x, a0, a1);
-    intersections->push_back(make_pair(t, x));
+    intersections->emplace_back(t, x);
 
   } else if (S2EdgeUtil::VertexCrossing(a0, a1, b0, b1)) {
     // There is a crossing at one of the vertices.  The basic rule is simple:
@@ -710,7 +710,7 @@ static void AddIntersection(S2Point const& a0, S2Point const& a1,
 
     double t = (a0 == b0 || a0 == b1) ? 0 : 1;
     if (!add_shared_edges && a1 == b1) t = 1;
-    intersections->push_back(make_pair(t, t == 0 ? a0 : a1));
+    intersections->emplace_back(t, t == 0 ? a0 : a1);
   }
 }
 
@@ -764,10 +764,10 @@ static void ClipBoundary(S2Polygon const* a, bool reverse_a,
       intersections.clear();
       ClipEdge(a0, a1, &b_index, add_shared_edges, &intersections);
 
-      if (inside) intersections.push_back(make_pair(0, a0));
+      if (inside) intersections.emplace_back(0, a0);
       inside = (intersections.size() & 1);
       DCHECK_EQ((b->Contains(a1) ^ invert_b), inside);
-      if (inside) intersections.push_back(make_pair(1, a1));
+      if (inside) intersections.emplace_back(1, a1);
       sort(intersections.begin(), intersections.end());
       for (size_t k = 0; k < intersections.size(); k += 2) {
         if (intersections[k] == intersections[k+1]) continue;
@@ -878,11 +878,11 @@ void BreakEdgesAndAddToBuilder(S2LoopsAsVectorsIndex* edge_index,
     edge_index->EdgeFromTo(i, &from, &to);
 
     IntersectionSet intersections;
-    intersections.push_back(make_pair(0, *from));
+    intersections.push_back(std::make_pair(0, *from));
     // add_shared_edges can be false or true: it makes no difference
     // due to the way we call ClipEdge.
     ClipEdge(*from, *to, edge_index, false, &intersections);
-    intersections.push_back(make_pair(1, *to));
+    intersections.push_back(std::make_pair(1, *to));
     sort(intersections.begin(), intersections.end());
     for (size_t k = 0; k + 1 < intersections.size(); ++k) {
       if (intersections[k] == intersections[k+1]) continue;
@@ -964,10 +964,10 @@ void S2Polygon::InternalClipPolyline(bool invert,
     S2Point const& a0 = a->vertex(j);
     S2Point const& a1 = a->vertex(j + 1);
     ClipEdge(a0, a1, &poly_index, true, &intersections);
-    if (inside) intersections.push_back(make_pair(0, a0));
+    if (inside) intersections.emplace_back(0, a0);
     inside = (intersections.size() & 1);
     DCHECK_EQ((Contains(a1) ^ invert), inside);
-    if (inside) intersections.push_back(make_pair(1, a1));
+    if (inside) intersections.emplace_back(1, a1);
     sort(intersections.begin(), intersections.end());
     // At this point we have a sorted array of vertex pairs representing
     // the edge(s) obtained after clipping (a0,a1) against the polygon.
@@ -1032,10 +1032,10 @@ S2Polygon* S2Polygon::DestructiveUnionSloppy(vector<S2Polygon*>* polygons,
   // Effectively create a priority queue of polygons in order of number of
   // vertices.  Repeatedly union the two smallest polygons and add the result
   // to the queue until we have a single polygon to return.
-  typedef multimap<int, S2Polygon*> QueueType;
+  typedef std::multimap<int, S2Polygon*> QueueType;
   QueueType queue;  // Map from # of vertices to polygon.
   for (size_t i = 0; i < polygons->size(); ++i)
-    queue.insert(make_pair((*polygons)[i]->num_vertices(), (*polygons)[i]));
+    queue.insert(std::make_pair((*polygons)[i]->num_vertices(), (*polygons)[i]));
   polygons->clear();
 
   while (queue.size() > 1) {
@@ -1054,7 +1054,7 @@ S2Polygon* S2Polygon::DestructiveUnionSloppy(vector<S2Polygon*>* polygons,
     union_polygon->InitToUnionSloppy(a_polygon, b_polygon, vertex_merge_radius);
     delete a_polygon;
     delete b_polygon;
-    queue.insert(make_pair(a_size + b_size, union_polygon));
+    queue.emplace(a_size + b_size, union_polygon);
     // We assume that the number of vertices in the union polygon is the
     // sum of the number of vertices in the original polygons, which is not
     // always true, but will almost always be a decent approximation, and

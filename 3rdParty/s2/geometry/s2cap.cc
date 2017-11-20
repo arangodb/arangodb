@@ -46,7 +46,7 @@ S1Angle S2Cap::angle() const {
 S2Cap S2Cap::Complement() const {
   // The complement of a full cap is an empty cap, not a singleton.
   // Also make sure that the complement of an empty cap has height 2.
-  double height = is_full() ? -1 : 2 - max(height_, 0.0);
+  double height = is_full() ? -1 : 2 - std::max(height_, 0.0);
   return S2Cap::FromAxisHeight(-axis_, height);
 }
 
@@ -82,7 +82,7 @@ void S2Cap::AddPoint(S2Point const& p) {
     // we need to round up the distance calculation.  That is, after
     // calling cap.AddPoint(p), cap.Contains(p) should be true.
     double dist2 = (axis_ - p).Norm2();
-    height_ = max(height_, kRoundUp * 0.5 * dist2);
+    height_ = std::max(height_, kRoundUp * 0.5 * dist2);
   }
 }
 
@@ -93,7 +93,7 @@ void S2Cap::AddCap(S2Cap const& other) {
     // See comments for AddPoint().  This could be optimized by doing the
     // calculation in terms of cap heights rather than cap opening angles.
     double radians = axis_.Angle(other.axis_) + other.angle().radians();
-    height_ = max(height_, kRoundUp * GetHeightForAngle(radians));
+    height_ = std::max(height_, kRoundUp * GetHeightForAngle(radians));
   }
 }
 
@@ -255,6 +255,6 @@ bool S2Cap::ApproxEquals(S2Cap const& other, double max_error) {
          (other.is_full() && height_ >= 2 - max_error);
 }
 
-ostream& operator<<(ostream& os, S2Cap const& cap) {
+std::ostream& operator<<(std::ostream& os, S2Cap const& cap) {
   return os << "[Axis=" << cap.axis() << ", Angle=" << cap.angle() << "]";
 }

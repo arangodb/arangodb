@@ -287,8 +287,6 @@ inline size_t strnlen(const char *s, size_t maxlen) {
   return maxlen;
 }
 
-using namespace std;  // just like VC++, we need a using here
-
 // Doesn't exist on OSX; used in google.cc for send() to mean "no flags".
 #define MSG_NOSIGNAL 0
 
@@ -356,11 +354,6 @@ inline void* memrchr(const void* bytes, int find_char, size_t len) {
     __attribute__((__format__ (__printf__, string_index, first_to_check)))
 #define SCANF_ATTRIBUTE(string_index, first_to_check) \
     __attribute__((__format__ (__scanf__, string_index, first_to_check)))
-
-//
-// Prevent the compiler from padding a structure to natural alignment
-//
-#define PACKED __attribute__ ((packed))
 
 // Cache line alignment
 #if defined(__i386__) || defined(__x86_64__)
@@ -648,7 +641,6 @@ inline void aligned_free(void *aligned_memory) {
 
 #define PRINTF_ATTRIBUTE(string_index, first_to_check)
 #define SCANF_ATTRIBUTE(string_index, first_to_check)
-#define PACKED
 #define CACHELINE_ALIGNED
 #define ATTRIBUTE_UNUSED
 #define ATTRIBUTE_ALWAYS_INLINE
@@ -683,26 +675,6 @@ extern inline void prefetch(const char *x) {}
 #define ATTRIBUTE_SECTION_STOP(name) (reinterpret_cast<void*>(0))
 
 #endif  // !HAVE_ATTRIBUTE_SECTION
-
-// MongoDB modification: All of our target platforms define the C99 remainder function.
-#if 0
-inline double remainder(double x, double y) {
-    double quot = x/y;
-    int iquot;
-    // If quot is slightly less than 0.5, we round down explicitly.  We have to
-    // do this explicitly because (0.5 + quot) when quot=(0.5-epsilon) gives you 1
-    // and that's rounding the wrong way.  Oh, floating point!
-    if (quot < 0.5 && quot > -0.5) {
-        iquot = 0;
-    } else if (quot > 0) {
-        iquot = quot + 0.5;
-    } else {
-        iquot = quot - 0.5;
-    }
-    double ret = x - iquot * y;
-    return ret;
-}
-#endif
 
 // HK's fun windows fixer-upper defines go here!  Woo.
 #ifdef _WIN32
@@ -756,8 +728,6 @@ inline double remainder(double x, double y) {
 #define HUGE_VALF (static_cast<float>(HUGE_VAL))
 #endif
 
-using namespace std;
-
 // VC++ doesn't understand "uint"
 #ifndef HAVE_UINT
 #define HAVE_UINT 1
@@ -769,19 +739,6 @@ typedef unsigned int uint;
 #define strtoll  _strtoi64
 #define strtoull _strtoui64
 #define atoll    _atoi64
-
-
-// VC++ 6 and before ship without an ostream << operator for 64-bit ints
-#if (_MSC_VER <= 1200)
-#include <iosfwd>
-using std::ostream;
-
-inline ostream& operator<< (ostream& os, const unsigned __int64& num ) {
-  // Fake operator; doesn't actually do anything.
-  LOG(FATAL) << "64-bit ostream operator << not supported in VC++ 6";
-  return os;
-}
-#endif
 
 // You say tomato, I say atotom
 #define PATH_MAX MAX_PATH
@@ -907,14 +864,10 @@ typedef void (*sig_t)(int);
 
 
 #include <utility>
-using std::pair;
-using std::make_pair;
-
 #include <vector>
-using std::vector;
 
 
-typedef vector<pair<const char*, const char*> > KeyValVec;
+typedef std::vector<std::pair<const char*, const char*> > KeyValVec;
 
 //
 // Really from <string.h>
@@ -1004,13 +957,13 @@ struct PortableHashBase { };
 // modern PowerPC hardware can also do unaligned integer loads and stores;
 // but note: the FPU still sends unaligned loads and stores to a trap handler!
 
-#define UNALIGNED_LOAD16(_p) (*reinterpret_cast<const uint16 *>(_p))
-#define UNALIGNED_LOAD32(_p) (*reinterpret_cast<const uint32 *>(_p))
-#define UNALIGNED_LOAD64(_p) (*reinterpret_cast<const uint64 *>(_p))
+#define UNALIGNED_LOAD16(_p) (*reinterpret_cast<const uint16_t *>(_p))
+#define UNALIGNED_LOAD32(_p) (*reinterpret_cast<const uint32_t *>(_p))
+#define UNALIGNED_LOAD64(_p) (*reinterpret_cast<const uint64_t *>(_p))
 
-#define UNALIGNED_STORE16(_p, _val) (*reinterpret_cast<uint16 *>(_p) = (_val))
-#define UNALIGNED_STORE32(_p, _val) (*reinterpret_cast<uint32 *>(_p) = (_val))
-#define UNALIGNED_STORE64(_p, _val) (*reinterpret_cast<uint64 *>(_p) = (_val))
+#define UNALIGNED_STORE16(_p, _val) (*reinterpret_cast<uint16_t *>(_p) = (_val))
+#define UNALIGNED_STORE32(_p, _val) (*reinterpret_cast<uint32_t *>(_p) = (_val))
+#define UNALIGNED_STORE64(_p, _val) (*reinterpret_cast<uint64_t *>(_p) = (_val))
 
 #else
 
@@ -1091,14 +1044,5 @@ inline void UNALIGNED_STORE64(void *p, uint64_t v) {
   (reinterpret_cast<char*>(           \
      &reinterpret_cast<t*>(16)->f) -  \
    reinterpret_cast<char*>(16))
-
-#ifdef PTHREADS_REDHAT_WIN32
-#include <iosfwd>
-using std::ostream;
-
-#include <pthread.h>
-// pthread_t is not a simple integer or pointer on Win32
-std::ostream& operator << (std::ostream& out, const pthread_t& thread_id);
-#endif
 
 #endif  // BASE_PORT_H_

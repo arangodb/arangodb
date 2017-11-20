@@ -177,7 +177,7 @@ double S2Polyline::UnInterpolate(S2Point const& point, int next_vertex) const {
   }
   // The ratio can be greater than 1.0 due to rounding errors or because the
   // point is not exactly on the polyline.
-  return min(1.0, length_to_point / length_sum);
+  return std::min(1.0, length_to_point / length_sum);
 }
 
 S2Point S2Polyline::Project(S2Point const& point, int* next_vertex) const {
@@ -263,7 +263,7 @@ bool S2Polyline::Intersects(S2Polyline const* line) const {
 }
 
 void S2Polyline::Reverse() {
-  reverse(vertices_, vertices_ + num_vertices_);
+  std::reverse(vertices_, vertices_ + num_vertices_);
 }
 
 S2LatLngRect S2Polyline::GetRectBound() const {
@@ -419,7 +419,7 @@ void S2Polyline::SubsampleVertices(S1Angle const& tolerance,
   if (num_vertices() == 0) return;
 
   indices->push_back(0);
-  S1Angle clamped_tolerance = max(tolerance, S1Angle::Radians(0));
+  S1Angle clamped_tolerance = std::max(tolerance, S1Angle::Radians(0));
   for (int index = 0; index + 1 < num_vertices(); ) {
     int next_index = FindEndVertex(*this, clamped_tolerance, index);
     // Don't create duplicate adjacent vertices.

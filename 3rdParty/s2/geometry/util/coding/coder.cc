@@ -37,7 +37,7 @@ void Encoder::EnsureSlowPath(int N) {
 
   // Double buffer size, but make sure we always have at least N extra bytes
   int current_len = length();
-  int new_capacity = max(current_len + N, 2 * current_len);
+  int new_capacity = std::max(current_len + N, 2 * current_len);
 
   unsigned char* new_buffer = new unsigned char[new_capacity];
   memcpy(new_buffer, underlying_buffer_, current_len);

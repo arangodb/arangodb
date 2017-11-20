@@ -59,12 +59,12 @@ using std::vector;
 //    Convert various types to their string representation.  These
 //    all do the obvious, trivial thing.
 // ----------------------------------------------------------------------
-
+/*
 string FpToString(Fprint fp) {
   char buf[17];
   snprintf(buf, sizeof(buf), "%016llx", fp);
   return string(buf);
-}
+}*/
 
 string FloatToString(float f, const char* format) {
   char buf[80];
@@ -495,7 +495,7 @@ uint64_t ParseLeadingUDec64Value(const char *str, uint64_t deflt) {
 }
 
 bool DictionaryParse(const string& encoded_str,
-                      vector<pair<string, string> >* items) {
+                     std::vector<std::pair<std::string, std::string> >* items) {
   vector<string> entries;
   SplitStringUsing(encoded_str, ",", &entries);
   for (size_t i = 0; i < entries.size(); ++i) {

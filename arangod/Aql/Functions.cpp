@@ -36,6 +36,7 @@
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Geo/GeoJsonParser.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Random/UniformCharacter.h"
@@ -2265,6 +2266,65 @@ AqlValue Functions::Distance(arangodb::aql::Query* query,
   double const EARTHRADIAN = 6371000.0; // metres
 
   return NumberValue(trx, EARTHRADIAN * c, true);
+}
+
+/// @brief function IS_IN_POLYGON
+AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "IS_IN_POLYGON", 2, 3);
+  
+  AqlValue polygon = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue p2 = ExtractFunctionParameterValue(trx, parameters, 1);
+  AqlValue p3 = ExtractFunctionParameterValue(trx, parameters, 2);
+
+  LOG_TOPIC(WARN, Logger::QUERIES) << "IS_IN_POLYGON is deprecated use GEO_CONTAINS";
+  if (!polygon.isArray()) {
+    RegisterWarning(query, "IS_IN_POLYGON", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  double latitude, longitude;
+  if (p2.isArray()) {
+    if (p2.length() < 2) {
+      RegisterInvalidArgumentWarning(query, "IS_IN_POLYGON");
+      return AqlValue(AqlValueHintNull());
+    }
+    VPackSlice lat, lon;
+    if (p3.isBoolean() && p3.slice().getBool()) { // geoJson == true
+      lat = p2.slice()[1];
+      lon = p2.slice()[0];
+    } else {
+      lat = p2.slice()[0];
+      lon = p2.slice()[1];
+    }
+    if (!lat.isNumber() || !lon.isNumber()) {
+      RegisterInvalidArgumentWarning(query, "IS_IN_POLYGON");
+      return AqlValue(AqlValueHintNull());
+    }
+    latitude = lat.getNumber<double>();
+    longitude = lat.getNumber<double>();
+  } else if (p2.isNumber() && p3.isNumber()) {
+    bool failed1 = false, failed2 = false;
+    latitude = p2.toDouble(trx, failed1);
+    longitude = p3.toDouble(trx, failed2);
+    if (failed1 || failed2) {
+      RegisterInvalidArgumentWarning(query, "IS_IN_POLYGON");
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+  
+  geo::GeoJsonParser p;
+  S2Polygon poly;
+  Result res = p.parseLegacyAQLPolygon(polygon.slice(), poly);
+  if (res.fail() || !poly.IsValid()) {
+    RegisterWarning(query, "IS_IN_POLYGON", res.errorNumber());
+    return AqlValue(AqlValueHintNull());
+  }
+
+  S2LatLng latLng = S2LatLng::FromDegrees(latitude, longitude);
+  bool contains = poly.VirtualContainsPoint(latLng.ToPoint());
+  return AqlValue(AqlValueHintBool(contains));
 }
 
 /// @brief function FLATTEN

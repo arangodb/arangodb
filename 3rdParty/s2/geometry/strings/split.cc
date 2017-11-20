@@ -10,6 +10,11 @@ using std::numeric_limits;
 #include "split.h"
 #include "strutil.h"
 #include "util/hash/hash_jenkins_lookup2.h"
+#include "../base/basictypes.h"
+
+using std::string;
+using std::vector;
+using std::unordered_map;
 
 static const uint32_t MIX32 = 0x12b9b0a1UL;           // pi; an arbitrary number
 static const uint64_t MIX64 = 0x2b992ddfa23249d6ULL;  // more of pi
@@ -225,7 +230,7 @@ void SplitStringIntoNPiecesAllowEmpty(const string& full,
                                       const char* delim,
                                       int pieces,
                                       vector<string>* result) {
-  back_insert_iterator<vector<string> > it(*result);
+  std::back_insert_iterator<vector<string> > it(*result);
   SplitStringToIteratorAllowEmpty(full, delim, pieces, it);
 }
 
@@ -240,19 +245,19 @@ void SplitStringIntoNPiecesAllowEmpty(const string& full,
 // ----------------------------------------------------------------------
 void SplitStringAllowEmpty(const string& full, const char* delim,
                            vector<string>* result) {
-  back_insert_iterator<vector<string> > it(*result);
+  std::back_insert_iterator<vector<string> > it(*result);
   SplitStringToIteratorAllowEmpty(full, delim, 0, it);
 }
 
 void SplitStringToHashsetAllowEmpty(const string& full, const char* delim,
-                                    unordered_set<string>* result) {
-  simple_insert_iterator<unordered_set<string> > it(result);
+                                    std::unordered_set<string>* result) {
+  simple_insert_iterator<std::unordered_set<string> > it(result);
   SplitStringToIteratorAllowEmpty(full, delim, 0, it);
 }
 
 void SplitStringToSetAllowEmpty(const string& full, const char* delim,
-                                set<string>* result) {
-  simple_insert_iterator<set<string> > it(result);
+                                std::set<string>* result) {
+  simple_insert_iterator<std::set<std::string> > it(result);
   SplitStringToIteratorAllowEmpty(full, delim, 0, it);
 }
 
@@ -342,23 +347,23 @@ void SplitStringToIteratorUsing(const StringType& full,
   }
 }
 
-void SplitStringUsing(const string& full,
+void SplitStringUsing(const std::string& full,
                       const char* delim,
-                      vector<string>* result) {
+                      vector<std::string>* result) {
   result->reserve(result->size() + CalculateReserveForVector(full, delim));
-  back_insert_iterator< vector<string> > it(*result);
+  std::back_insert_iterator<std::vector<std::string> > it(*result);
   SplitStringToIteratorUsing(full, delim, it);
 }
 
-void SplitStringToHashsetUsing(const string& full, const char* delim,
-                               unordered_set<string>* result) {
-  simple_insert_iterator<unordered_set<string> > it(result);
+void SplitStringToHashsetUsing(const std::string& full, const char* delim,
+                               std::unordered_set<std::string>* result) {
+  simple_insert_iterator<std::unordered_set<std::string> > it(result);
   SplitStringToIteratorUsing(full, delim, it);
 }
 
-void SplitStringToSetUsing(const string& full, const char* delim,
-                           set<string>* result) {
-  simple_insert_iterator<set<string> > it(result);
+void SplitStringToSetUsing(const std::string& full, const char* delim,
+                           std::set<std::string>* result) {
+  simple_insert_iterator<std::set<std::string> > it(result);
   SplitStringToIteratorUsing(full, delim, it);
 }
 

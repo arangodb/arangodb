@@ -20,7 +20,6 @@
 
 #include <string.h>
 #include <stdlib.h>
-#include "../base/basictypes.h"
 
 // for strcasecmp (check SuSv3 -- this is the only header it's in!)
 // MSVC doesn't have <strings.h>. Luckily, it defines equivalent
@@ -50,7 +49,7 @@ static const int kFastToBufferSize =       32;
 //    represented in 16 hex digits.
 // ----------------------------------------------------------------------
 
-std::string FpToString(Fprint fp);
+//std::string FpToString(Fprint fp);
 std::string FloatToString(float f, const char* format);
 std::string IntToString(int i, const char* format);
 std::string Int64ToString(int64_t i64, const char* format);
@@ -276,6 +275,6 @@ inline uint64_t ParseLeadingUDec64Value(const std::string& str, uint64_t deflt) 
 //    otherwise.
 // -------------------------------------------------------------------------
 bool DictionaryParse(const std::string& encoded_str,
-                      vector<pair<string, string> >* items);
+                     std::vector<std::pair<std::string, std::string> >* items);
 
 #endif   /* #ifndef STRINGS_STRUTIL_H_ */

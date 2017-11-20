@@ -324,7 +324,7 @@ class S2Loop : public S2Region {
   // Map for speeding up FindVertex: We will compute a map from vertex to
   // index in the vertex array as soon as there has been enough calls.
   mutable int num_find_vertex_calls_;
-  mutable map<S2Point, int> vertex_to_index_;
+  mutable std::map<S2Point, int> vertex_to_index_;
 
   DISALLOW_EVIL_CONSTRUCTORS(S2Loop);
 };

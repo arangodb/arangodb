@@ -207,6 +207,8 @@ struct Functions {
                                 VPackFunctionParameters const&);
    static AqlValue Distance(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
+   static AqlValue IsInPolygon(arangodb::aql::Query*, transaction::Methods*,
+                               VPackFunctionParameters const&);
    static AqlValue Flatten(arangodb::aql::Query*, transaction::Methods*,
                            VPackFunctionParameters const&);
    static AqlValue Zip(arangodb::aql::Query*, transaction::Methods*,

@@ -19,10 +19,11 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Heiko Kernbach
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_GEO_GEOPARSER_H
-#define ARANGOD_GEO_GEOPARSER_H 1
+#ifndef ARANGOD_GEO_GEOJSONPARSER_H
+#define ARANGOD_GEO_GEOJSONPARSER_H 1
 
 #include "Basics/Result.h"
 
@@ -56,15 +57,26 @@ class GeoJsonParser {
 
   GeoJSONType parseGeoJSONType(velocypack::Slice const& geoJSON) const;
   
+  /// @brief Convenience function to build
   Result parseGeoJsonRegion(velocypack::Slice const& geoJSON,
                             std::unique_ptr<S2Region>& region) const;
   
+  /// @brief Expects an GeoJson point or an array [lon, lat]
   Result parsePoint(velocypack::Slice const& geoJSON, S2LatLng& latLng) const;
+    
+  /// @brief parse geoJson polygon or array of loops.
+  /// Each loop consists of array of coordinates. [[[lon, lat], [lon, lat], ...],...]
   Result parsePolygon(velocypack::Slice const& geoJSON, S2Polygon& poly) const;
+    
   Result parseLinestring(velocypack::Slice const& geoJSON, S2Polyline& ll) const;
+  /// @brief parse geoJson multi linestring
   Result parseMultiLinestring(velocypack::Slice const& geoJSON,
                               std::vector<S2Polyline>& ll) const;
 
+  /// @brief Parse a polygon for IS_IN_POLYGON
+  /// @param loop an array of arrays with 2 elements each,
+  /// representing the points of the polygon in the format [lat, lon]
+  Result parseLegacyAQLPolygon(velocypack::Slice const& loop, S2Polygon& poly) const;
   
   bool isGeoJsonWithArea(arangodb::velocypack::Slice const& geoJson);
 };
