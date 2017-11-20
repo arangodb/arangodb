@@ -183,6 +183,7 @@ SCENARIO("Successful query setup", "[aql][restaqlhandler]") {
 
     THEN("It should succeed") {
       REQUIRE(!status.isFailed());
+      REQUIRE(res->responseCode() == rest::ResponseCode::OK);
     }
   }
 
