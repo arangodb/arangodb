@@ -24,6 +24,8 @@ v3.3.rc2 (2017-11-22)
 * added options `--encryption.keyfile` and `--encryption.key-generator` to arangodump
   and arangorestore
 
+* UI: using default user database api during database creation now
+
 * removed `--recycle-ids` option for arangorestore
 
   using that option could have led to problems on the restore, with potential
