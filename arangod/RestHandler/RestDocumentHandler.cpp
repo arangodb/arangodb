@@ -146,9 +146,9 @@ bool RestDocumentHandler::createDocument() {
   // Will commit if no error occured.
   // or abort if an error occured.
   // result stays valid!
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
 
-  if (result.failed()) {
+  if (result.fail()) {
     generateTransactionError(result);
     return false;
   }
@@ -248,13 +248,13 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   OperationResult result = trx.document(collection, search, options);
 
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
 
-  if (!result.successful()) {
-    if (result.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+  if (!result.ok()) {
+    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       generateDocumentNotFound(collection, key);
       return false;
-    } else if (ifRid != 0 && result.code == TRI_ERROR_ARANGO_CONFLICT) {
+    } else if (ifRid != 0 && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
       generatePreconditionFailed(result.slice());
     } else {
       generateTransactionError(collection, res, key);
@@ -450,13 +450,13 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     result = trx.replace(collectionName, body, opOptions);
   }
 
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
 
   // ...........................................................................
   // outside write transaction
   // ...........................................................................
 
-  if (result.failed()) {
+  if (result.fail()) {
     generateTransactionError(result);
     return false;
   }
@@ -566,9 +566,9 @@ bool RestDocumentHandler::deleteDocument() {
 
   OperationResult result = trx.remove(collectionName, search, opOptions);
 
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
 
-  if (!result.successful()) {
+  if (result.fail()) {
     generateTransactionError(result);
     return false;
   }
@@ -624,9 +624,9 @@ bool RestDocumentHandler::readManyDocuments() {
 
   OperationResult result = trx.document(collectionName, search, opOptions);
 
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
 
-  if (!result.successful()) {
+  if (result.fail()) {
     generateTransactionError(result);
     return false;
   }

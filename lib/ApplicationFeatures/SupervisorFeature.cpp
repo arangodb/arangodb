@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -318,6 +319,9 @@ void SupervisorFeature::daemonize() {
     // child - run the normal boot sequence
     else {
       Logger::shutdown();
+
+      LogAppender::allowStdLogging(false);
+      DaemonFeature::remapStandardFileDescriptors();
 
       LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: within child";
       TRI_SetProcessTitle("arangodb [server]");

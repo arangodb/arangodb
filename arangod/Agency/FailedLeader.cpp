@@ -385,8 +385,8 @@ JOB_STATUS FailedLeader::status() {
   }
 
   Node const& job = _snapshot(pendingPrefix + _jobId);
-  std::string database = job("database").toJson(),
-    shard = job("shard").toJson();
+  std::string database = job("database").getString(),
+    shard = job("shard").getString();
   
   bool done = false;
   for (auto const& clone : clones(_snapshot, _database, _collection, _shard)) {

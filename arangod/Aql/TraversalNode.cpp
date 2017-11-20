@@ -32,7 +32,6 @@
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
-#include "Cluster/ClusterComm.h"
 #include "Graph/BaseOptions.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
@@ -463,7 +462,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->checkConditionsDefined();
 #endif
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }

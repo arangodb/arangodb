@@ -25,14 +25,16 @@
 #define ARANGOD_UTILS_OPERATION_OPTIONS_H 1
 
 #include "Basics/Common.h"
+#include "Indexes/Index.h"
 
 namespace arangodb {
 // a struct for keeping document modification operations in transactions
 struct OperationOptions {
-  OperationOptions() 
+  OperationOptions()
       : recoveryData(nullptr), waitForSync(false), keepNull(true),
         mergeObjects(true), silent(false), ignoreRevs(true),
-        returnOld(false), returnNew(false), isRestore(false) {}
+        returnOld(false), returnNew(false), isRestore(false),
+        indexOperationMode(Index::OperationMode::normal) {}
 
   // original marker, set by an engine's recovery procedure only!
   void* recoveryData;
@@ -67,6 +69,8 @@ struct OperationOptions {
   // operation if we are merely a follower. Finally, we must deny replications
   // from the wrong leader.
   std::string isSynchronousReplicationFrom;
+
+  Index::OperationMode indexOperationMode;
 };
 
 }

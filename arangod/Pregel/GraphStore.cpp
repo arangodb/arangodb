@@ -102,7 +102,7 @@ std::unordered_map<ShardID, uint64_t> GraphStore<V, E>::_preallocateMemory() {
   uint64_t vCount = 0;
   for (auto const& shard : _config->localVertexShardIDs()) {
     OperationResult opResult = countTrx->count(shard, true);
-    if (opResult.failed() || _destroyed) {
+    if (opResult.fail() || _destroyed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
     shardSizes[shard] = opResult.slice().getUInt();
@@ -113,7 +113,7 @@ std::unordered_map<ShardID, uint64_t> GraphStore<V, E>::_preallocateMemory() {
   uint64_t eCount = 0;
   for (auto const& shard : _config->localEdgeShardIDs()) {
     OperationResult opResult = countTrx->count(shard, true);
-    if (opResult.failed() || _destroyed) {
+    if (opResult.fail() || _destroyed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
     shardSizes[shard] = opResult.slice().getUInt();
@@ -362,7 +362,7 @@ void GraphStore<V, E>::_loadVertices(size_t i,
   std::unique_ptr<OperationCursor> cursor =
       trx->indexScan(vertexShard, transaction::Methods::CursorType::ALL, &mmdr, false);
 
-  if (cursor->failed()) {
+  if (cursor->fail()) {
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",
                                   vertexShard.c_str());
   }
@@ -424,7 +424,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods* trx,
                                      StaticStrings::FromString, 0);
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor = info.getEdges(documentID, &mmdr);
-  if (cursor->failed()) {
+  if (cursor->fail()) {
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code,
                                   "while looking up edges '%s' from %s",
                                   documentID.c_str(), edgeShard.c_str());
@@ -552,8 +552,8 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     ShardID const& shard = globalShards[currentShard];
     OperationOptions options;
     OperationResult result = trx->update(shard, b->slice(), options);
-    if (result.code != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(result.code);
+    if (result.fail()) {
+      THROW_ARANGO_EXCEPTION(result.result);
     }
   }
 

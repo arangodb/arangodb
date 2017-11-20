@@ -831,7 +831,7 @@ int MMFilesLogfileManager::waitForCollectorQueue(TRI_voc_cid_t cid, double timeo
 // this is useful to ensure that any open writes up to this point have made
 // it into a logfile
 int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
-                                 bool writeShutdownFile) {
+                                 bool writeShutdownFile, double maxWaitTime) {
   TRI_IF_FAILURE("LogfileManagerFlush") {
     return TRI_ERROR_NO_ERROR;
   }
@@ -864,8 +864,12 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
   }
 
   if (waitForCollector) {
-    double maxWaitTime = 0.0;  // this means wait forever
+    if (maxWaitTime < 0.0) {
+      // this means wait forever
+      maxWaitTime = 0.0;
+    }
     if (_shutdown == 1) {
+      // limit wait time on shutdown somewhat
       maxWaitTime = 120.0;
     }
 
