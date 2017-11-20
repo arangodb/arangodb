@@ -136,7 +136,7 @@ INSERT {
 ```
 
 Note: AQL does not permit multiple `INSERT` operations that target the same
-collectionin in a single query. <!-- explain why? -->
+collection in in a single query. <!-- explain why? -->
 It is allowed as body of a `FOR` loop however, inserting multiple documents
 like we did with above query.
 
