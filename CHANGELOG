@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #3741: attempt to fix terminal color output in Windows 
+
 * removed `--recycle-ids` option for arangorestore
 
   using that option could have led to problems on the restore, with potential
