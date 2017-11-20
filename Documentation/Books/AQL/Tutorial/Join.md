@@ -63,6 +63,8 @@ trait in another collection, it is as easy as updating a single document.
 
 <!-- What if Trait doc is deleted? DOCUMENT() skips null -->
 
+![Data model comparison](Comparison_DataModels.png)
+
 Importing traits
 ----------------
 
