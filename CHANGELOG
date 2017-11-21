@@ -1,6 +1,10 @@
 devel
 -----
 
+* UI: the graph viewer now displays updated label values correctly.
+  Additionally the included node/edge editor now closes automatically
+	after a successful node/edge update.
+
 * removed `--recycle-ids` option for arangorestore
 
   using that option could have led to problems on the restore, with potential
