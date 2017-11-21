@@ -78,8 +78,8 @@ void Collections::enumerate(
 }
 
 Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
-                                  std::string const& name,
-                                  FuncCallback func) {
+                                    std::string const& name,
+                                    FuncCallback func) {
   if (name.empty()) {
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   } 
