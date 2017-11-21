@@ -1135,9 +1135,11 @@ void DumpFeature::start() {
               << std::endl;
   }
 
+#ifdef USE_ENTERPRISE
   if (_encryption != nullptr) {
     _encryption->writeEncryptionFile(_outputDirectory);
   }
+#endif
 
   std::string errorMsg = "";
 
@@ -1203,7 +1205,7 @@ bool DumpFeature::writeData(int fd, char const* data, size_t len) {
     return TRI_WritePointer(fd, data, len);
   }
 #else
-  return = TRI_WritePointer(fd, data, len);
+  return TRI_WritePointer(fd, data, len);
 #endif
 }
 
