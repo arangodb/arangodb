@@ -1,6 +1,9 @@
 devel
 -----
 
+* UI: added a delay within the graph viewer while changing the colors of the
+  graph. Necessary due different browser behaviour.
+
 * removed `--recycle-ids` option for arangorestore
 
   using that option could have led to problems on the restore, with potential
