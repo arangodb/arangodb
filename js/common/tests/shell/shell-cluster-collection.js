@@ -375,9 +375,19 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateInsufficientDBServers : function () {
+      // should not throw (just a warning)
+      db._create("bigreplication", {replicationFactor: 8});
+      db._drop('bigreplication');
+    },
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test create
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateInsufficientDBServersEnforceReplicationFactor : function () {
       try {
-        db._create("bigreplication", {replicationFactor: 8});
+        db._create("bigreplication", {replicationFactor: 8}, {enforceReplicationFactor: true});
         fail();
       }
       catch (err) {
