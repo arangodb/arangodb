@@ -22,6 +22,11 @@
 
 #include "DumpFeature.h"
 
+#include <iostream>
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/OpenFilesTracker.h"
@@ -39,10 +44,9 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include <iostream>
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -68,11 +72,16 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _result(result),
       _batchId(0),
       _clusterMode(false),
+      _encryption(nullptr),
       _stats{0, 0, 0} {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Client");
   startsAfter("Logger");
+
+#ifdef USE_ENTERPRISE
+  startsAfter("Encryption");
+#endif
 
   _outputDirectory =
       FileUtils::buildFilename(FileUtils::currentDirectory().result(), "dump");
@@ -100,10 +109,10 @@ void DumpFeature::collectOptions(
       "--force", "continue dumping even in the face of some server-side errors",
       new BooleanParameter(&_force));
 
-  options->addOption(
-      "--ignore-distribute-shards-like-errors",
-      "continue dump even if sharding prototype collection is not backed up along",
-      new BooleanParameter(&_ignoreDistributeShardsLikeErrors));
+  options->addOption("--ignore-distribute-shards-like-errors",
+                     "continue dump even if sharding prototype collection is "
+                     "not backed up along",
+                     new BooleanParameter(&_ignoreDistributeShardsLikeErrors));
 
   options->addOption("--include-system-collections",
                      "include system collections",
@@ -297,16 +306,15 @@ void DumpFeature::endBatch(std::string DBserver) {
   // ignore any return value
 }
 
-/// @brief dump a single collection
+// dump a single collection
 int DumpFeature::dumpCollection(int fd, std::string const& cid,
                                 std::string const& name, uint64_t maxTick,
                                 std::string& errorMsg) {
   uint64_t chunkSize = _chunkSize;
 
-  std::string const baseUrl =
-      "/_api/replication/dump?collection=" + cid +
-      "&batchId=" + StringUtils::itoa(_batchId) +
-      "&ticks=false&flush=false";
+  std::string const baseUrl = "/_api/replication/dump?collection=" + cid +
+                              "&batchId=" + StringUtils::itoa(_batchId) +
+                              "&ticks=false&flush=false";
 
   uint64_t fromTick = _tickStart;
 
@@ -317,7 +325,7 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
     }
-    
+
     _stats._totalBatches++;
 
     std::unique_ptr<SimpleHttpResult> response(
@@ -373,8 +381,9 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
 
     if (res == TRI_ERROR_NO_ERROR) {
       StringBuffer const& body = response->getBody();
+      bool result = writeData(fd, body.c_str(), body.length());
 
-      if (!TRI_WritePointer(fd, body.c_str(), body.length())) {
+      if (!result) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
       } else {
         _stats._totalWritten += (uint64_t)body.length();
@@ -492,6 +501,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
     meta.openObject();
     meta.add("database", VPackValue(dbName));
     meta.add("lastTickAtDumpStart", VPackValue(tickString));
+    meta.close();
 
     // save last tick in file
     std::string fileName =
@@ -513,16 +523,21 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
 
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
-    meta.close();
+
+    beginEncryption(fd);
 
     std::string const metaString = meta.slice().toJson();
-    if (!TRI_WritePointer(fd, metaString.c_str(), metaString.size())) {
+    bool result = writeData(fd, metaString.c_str(), metaString.size());
+
+    if (!result) {
+      endEncryption(fd);
       TRI_TRACKED_CLOSE_FILE(fd);
       errorMsg = "cannot write to file '" + fileName + "'";
 
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
 
+    endEncryption(fd);
     TRI_TRACKED_CLOSE_FILE(fd);
   } catch (...) {
     errorMsg = "out of memory";
@@ -615,16 +630,21 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
-      std::string const collectionInfo = collection.toJson();
+      beginEncryption(fd);
 
-      if (!TRI_WritePointer(fd, collectionInfo.c_str(),
-                            collectionInfo.size())) {
+      std::string const collectionInfo = collection.toJson();
+      bool result =
+          writeData(fd, collectionInfo.c_str(), collectionInfo.size());
+
+      if (!result) {
+        endEncryption(fd);
         TRI_TRACKED_CLOSE_FILE(fd);
         errorMsg = "cannot write to file '" + fileName + "'";
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
+      endEncryption(fd);
       TRI_TRACKED_CLOSE_FILE(fd);
     }
 
@@ -634,16 +654,14 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       fileName = _outputDirectory + TRI_DIR_SEPARATOR_STR + name + "_" +
                  hexString + ".data.json";
 
-      int fd;
-
       // remove an existing file first
       if (TRI_ExistsFile(fileName.c_str())) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                                   O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                                   S_IRUSR | S_IWUSR);
+      int fd = TRI_TRACKED_CREATE_FILE(
+          fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+          S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
@@ -651,10 +669,13 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
+      beginEncryption(fd);
+
       extendBatch("");
       int res =
           dumpCollection(fd, std::to_string(cid), name, maxTick, errorMsg);
 
+      endEncryption(fd);
       TRI_TRACKED_CLOSE_FILE(fd);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -745,8 +766,9 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
 
     if (res == TRI_ERROR_NO_ERROR) {
       StringBuffer const& body = response->getBody();
+      bool result = writeData(fd, body.c_str(), body.length());
 
-      if (!TRI_WritePointer(fd, body.c_str(), body.length())) {
+      if (!result) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
       } else {
         _stats._totalWritten += (uint64_t)body.length();
@@ -876,18 +898,20 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 
     if (!_ignoreDistributeShardsLikeErrors) {
       std::string prototypeCollection =
-        arangodb::basics::VelocyPackHelper::getStringValue(
-          parameters, "distributeShardsLike", "");
+          arangodb::basics::VelocyPackHelper::getStringValue(
+              parameters, "distributeShardsLike", "");
 
       if (!prototypeCollection.empty() && !restrictList.empty()) {
-        if (std::find(
-              _collections.begin(), _collections.end(), prototypeCollection) ==
-            _collections.end()) {
-          errorMsg = std::string("Collection ") + name
-            + "'s shard distribution is based on a that of collection " +
-            prototypeCollection + ", which is not dumped along. You may "
-            "dump the collection regardless of the missing prototype collection "
-            "by using the --ignore-distribute-shards-like-errors parameter.";
+        if (std::find(_collections.begin(), _collections.end(),
+                      prototypeCollection) == _collections.end()) {
+          errorMsg =
+              std::string("Collection ") + name +
+              "'s shard distribution is based on a that of collection " +
+              prototypeCollection +
+              ", which is not dumped along. You may "
+              "dump the collection regardless of the missing prototype "
+              "collection "
+              "by using the --ignore-distribute-shards-like-errors parameter.";
           return TRI_ERROR_INTERNAL;
         }
       }
@@ -921,16 +945,21 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
-      std::string const collectionInfo = collection.toJson();
+      beginEncryption(fd);
 
-      if (!TRI_WritePointer(fd, collectionInfo.c_str(),
-                            collectionInfo.size())) {
+      std::string const collectionInfo = collection.toJson();
+      bool result =
+          writeData(fd, collectionInfo.c_str(), collectionInfo.size());
+
+      if (!result) {
+        endEncryption(fd);
         TRI_TRACKED_CLOSE_FILE(fd);
         errorMsg = "cannot write to file '" + fileName + "'";
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
+      endEncryption(fd);
       TRI_TRACKED_CLOSE_FILE(fd);
     }
 
@@ -957,6 +986,8 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
+      beginEncryption(fd);
+
       // First we have to go through all the shards, what are they?
       VPackSlice const shards = parameters.get("shards");
 
@@ -968,6 +999,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 
         if (!it.value.isArray() || it.value.length() == 0 ||
             !it.value[0].isString()) {
+          endEncryption(fd);
           TRI_TRACKED_CLOSE_FILE(fd);
           errorMsg = "unexpected value for 'shards' attribute";
 
@@ -980,19 +1012,27 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
           std::cout << "# Dumping shard '" << shardName << "' from DBserver '"
                     << DBserver << "' ..." << std::endl;
         }
+
         res = startBatch(DBserver, errorMsg);
+
         if (res != TRI_ERROR_NO_ERROR) {
+          endEncryption(fd);
           TRI_TRACKED_CLOSE_FILE(fd);
           return res;
         }
+
         res = dumpShard(fd, DBserver, shardName, errorMsg);
+
         if (res != TRI_ERROR_NO_ERROR) {
+          endEncryption(fd);
           TRI_TRACKED_CLOSE_FILE(fd);
           return res;
         }
+
         endBatch(DBserver);
       }
 
+      endEncryption(fd);
       res = TRI_TRACKED_CLOSE_FILE(fd);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -1009,6 +1049,12 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 }
 
 void DumpFeature::start() {
+#ifdef USE_ENTERPRISE
+  _encryption =
+      application_features::ApplicationServer::getFeature<EncryptionFeature>(
+          "Encryption");
+#endif
+
   ClientFeature* client =
       application_features::ApplicationServer::getFeature<ClientFeature>(
           "Client");
@@ -1027,8 +1073,9 @@ void DumpFeature::start() {
   std::string dbName = client->databaseName();
 
   _httpClient->params().setLocationRewriter(static_cast<void*>(client),
-                                   &rewriteLocation);
-  _httpClient->params().setUserNamePassword("/", client->username(), client->password());
+                                            &rewriteLocation);
+  _httpClient->params().setUserNamePassword("/", client->username(),
+                                            client->password());
 
   std::string const versionString = _httpClient->getServerVersion();
 
@@ -1088,6 +1135,10 @@ void DumpFeature::start() {
               << std::endl;
   }
 
+  if (_encryption != nullptr) {
+    _encryption->writeEncryptionFile(_outputDirectory);
+  }
+
   std::string errorMsg = "";
 
   int res;
@@ -1142,4 +1193,38 @@ void DumpFeature::start() {
   }
 
   *_result = ret;
+}
+
+bool DumpFeature::writeData(int fd, char const* data, size_t len) {
+#ifdef USE_ENTERPRISE
+  if (_encryption != nullptr) {
+    return _encryption->writeData(fd, data, len);
+  } else {
+    return TRI_WritePointer(fd, data, len);
+  }
+#else
+  return = TRI_WritePointer(fd, data, len);
+#endif
+}
+
+void DumpFeature::beginEncryption(int fd) {
+#ifdef USE_ENTERPRISE
+  if (_encryption != nullptr) {
+    bool result = _encryption->beginEncryption(fd);
+
+    if (!result) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "cannot write prefix, giving up!";
+      FATAL_ERROR_EXIT();
+    }
+  }
+#endif
+}
+
+void DumpFeature::endEncryption(int fd) {
+#ifdef USE_ENTERPRISE
+  if (_encryption != nullptr) {
+    _encryption->endEncryption(fd);
+  }
+#endif
 }
