@@ -41,6 +41,7 @@
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
 
@@ -218,7 +219,7 @@ void RocksDBThrottle::Startup(rocksdb::DB* db) {
   _threadFuture = std::async(std::launch::async, &RocksDBThrottle::ThreadLoop, this);
 
   while(!_threadRunning.load()) {
-    _threadCondvar.wait(10);
+    _threadCondvar.wait(10000);
   } // while
 
 } // RocksDBThrottle::Startup
@@ -266,7 +267,12 @@ void RocksDBThrottle::ThreadLoop() {
     //
     // start actual throttle work
     //
-    RecalculateThrottle();
+    try {
+      RecalculateThrottle();
+    } catch (...) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "RecalculateThrottle() sent a throw. RocksDB?";
+      _threadRunning.store(false);
+    } // try/catchxs
 
     ++_replaceIdx;
     if (THROTTLE_INTERVALS==_replaceIdx)
@@ -320,10 +326,10 @@ void RocksDBThrottle::RecalculateThrottle() {
       tot_bytes+=_throttleData[loop]._bytes;
       tot_compact+=_throttleData[loop]._compactions;
     }   // for
-  } // unique_lock
 
     // flag to skip throttle changes if zero data available
-  no_data = (0 == tot_bytes && 0 == _throttleData[0]._bytes);
+    no_data = (0 == tot_bytes && 0 == _throttleData[0]._bytes);
+  } // unique_lock
 
   // reduce bytes by 10% for each excess level_0 files and/or excess write buffers
   adjustment_bytes = (tot_bytes*compaction_backlog)/10;
