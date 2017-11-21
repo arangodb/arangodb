@@ -51,10 +51,10 @@ function UpgradeData () {
       // verify documents and contents
       for (let i = 0; i < 10000; i++) {
         const doc = c.document( { _key: `key${i}` } );
-        assertEqual(doc.even, ( ( i % 2 ) === 0 ))
-        assertEqual(doc.name, `Name ${i}`)
-        assertEqual(doc.num, i)
-        assertEqual(doc.num100, i % 100)
+        assertEqual(doc.even, ( ( i % 2 ) === 0 ));
+        assertEqual(doc.name, `Name ${i}`);
+        assertEqual(doc.num, i);
+        assertEqual(doc.num100, i % 100);
       }
 
       // verify indexes

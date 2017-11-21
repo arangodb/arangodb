@@ -35,6 +35,56 @@ const optionsDocumentation = [
   '   - `upgradeDataPath`: path to directory containing upgrade data archives'
 ];
 
+const compareSemVer = (a, b) => {
+  if (a === b) {
+    return 0;
+  }
+  let lex = false;
+  const partsA = a.split('.');
+  const partsB = b.split('.');
+  if (partsA.length < 2 ||
+      partsA.length > 4 ||
+      partsB.length < 2 ||
+      partsB.length > 4 ||
+      !partsA.every( p => isNaN(Number(p))) ||
+      !partsB.every( p => isNaN(Number(b))) ) {
+    return (a < b) ? -1 : 1;
+  }
+
+  for (let i = partsA.length; i < 4; i++) {
+    partsA.push_back("0");
+  }
+  for (let i = partsB.length; i < 4; i++) {
+    partsB.push_back("0");
+  }
+
+  for (let i = 0; i < 4; i++) {
+    const numA = Number(partsA[i]);
+    const numB = Number(partsB[i]);
+    if (numA < numB) {
+      return -1;
+    }
+    if (numB < numA) {
+      return 1;
+    }
+  }
+};
+
+const byMinimumSuportedVersion = (version) => {
+  return ( testCase ) => {
+    let supported = true;
+    testCase.substring(0, testCase.length - 3).split('-').map( ( s ) => {
+      if (s.startsWith("msv")) {
+        const msv = s.substring(3);
+        if (compareSemVer(msv, version) > 0) {
+          supported = false;
+        }
+      }
+    } );
+    return supported;
+  };
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// set up the test according to the testcase.
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,10 +195,12 @@ const upgradeData = (engine, version) => {
 
     args['database.auto-upgrade'] = false;
 
+    const testCases = tu.scanTestPath('js/server/tests/upgrade-data')
+                        .filter( byMinimumSuportedVersion(version) );
     require('internal').print('Checking results...');
     return tu.performTests(
       options,
-      [`js/server/tests/upgrade-data/upgrade-data.js`],
+      testCases,
       `upgrade_data_${engine}_${version}`,
       tu.runThere,
       args);
@@ -157,19 +209,24 @@ const upgradeData = (engine, version) => {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   const functionsDocumentation = {};
-  const engines = ['mmfiles', 'rocksdb'];
-  const versions = [
-    '3.2.1', '3.2.2', '3.2.3', '3.2.4', '3.2.5', '3.2.6', '3.2.7'
-  ];
-  for (let i = 0; i < engines.length; i++) {
-    const engine = engines[i];
-    for (let j = 0; j < versions.length; j++) {
-      const version = versions[j];
-      const testName = `upgrade_data_${engine}_${version}`;
-      testFns[testName] = upgradeData(engine, version);
-      defaultFns.push(testName);
-      functionsDocumentation[testName] = `test upgrade from version ${version} using ${engine} engine`;
+  const configurations = fs.list('upgrade-data-tests/data').map(
+    (filename) => {
+      const re = /upgrade-data-(mmfiles|rocksdb)-(\d(?:\.\d)*)\.tar\.gz/;
+      const matches =  re.exec(filename);
+      return { engine: matches[1], version: matches[2] };
     }
+  ).sort( ( a, b ) => {
+    if (a.engine < b.engine) return -1;
+    if (a.engine > b.engine) return 1;
+    return compareSemVer(a.version, b.version);
+  } );
+  
+  for (let i = 0; i < configurations.length; i++) {
+    const {engine, version} = configurations[i];
+    const testName = `upgrade_data_${engine}_${version}`;
+    testFns[testName] = upgradeData(engine, version);
+    defaultFns.push(testName);
+    functionsDocumentation[testName] = `test upgrade from version ${version} using ${engine} engine`;
   }
 
   opts['upgradeDataPath'] = 'upgrade-data-tests';
