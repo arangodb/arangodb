@@ -232,7 +232,7 @@ void RestCollectionHandler::handleCommandPost() {
     cluster->createWaitsForSyncReplication());
 
   bool enforceReplicationFactor = _request->parsedValue("enforceReplicationFactor",
-    false);
+    true);
 
   TRI_col_type_e type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
   VPackSlice typeSlice = body.get("type");
