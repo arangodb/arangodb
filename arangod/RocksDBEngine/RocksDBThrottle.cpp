@@ -146,12 +146,8 @@ void RocksDBThrottle::StopThread() {
       _internalRocksDB = nullptr;
       _delayToken.reset();
     } // lock
-
-
-
   } // if
-
-}
+} // RocksDBThrottle::StopThread
 
 
 ///
@@ -234,17 +230,21 @@ void RocksDBThrottle::SetThrottleWriteRate(std::chrono::microseconds Micros,
   MUTEX_LOCKER(mutexLocker, _threadMutex);
   unsigned target_idx;
 
-  // index 0 for level 0 compactions, index 1 for all others
-  target_idx = (IsLevel0 ? 0 : 1);
+  // throw out anything smaller than 32Mbytes ... be better if this
+  //  was calculated against write_buffer_size, but that varies by column family
+  if ((64<<19)<Bytes) {
+    // index 0 for level 0 compactions, index 1 for all others
+    target_idx = (IsLevel0 ? 0 : 1);
 
-  _throttleData[target_idx]._micros+=Micros;
-  _throttleData[target_idx]._keys+=Keys;
-  _throttleData[target_idx]._bytes+=Bytes;
-  _throttleData[target_idx]._compactions+=1;
+    _throttleData[target_idx]._micros+=Micros;
+    _throttleData[target_idx]._keys+=Keys;
+    _throttleData[target_idx]._bytes+=Bytes;
+    _throttleData[target_idx]._compactions+=1;
 
-  // attempt to override throttle changes by rocksdb ... hammer this often
-  //  (note that _threadMutex IS HELD)
-  SetThrottle();
+    // attempt to override throttle changes by rocksdb ... hammer this often
+    //  (note that _threadMutex IS HELD)
+    SetThrottle();
+  } // if
 
   return;
 } // RocksDBThrottle::SetThrottleWriteRate
@@ -344,7 +344,6 @@ void RocksDBThrottle::RecalculateThrottle() {
       //  (adjust bytes upward by 1000000 since dividing by microseconds,
       //   yields integer bytes per second)
       new_throttle=((tot_bytes*1000000) / tot_micros.count());
-
     }   // if
 
     // attempt to most recent level0
@@ -410,6 +409,9 @@ void RocksDBThrottle::SetThrottle() {
       // inform write_controller_ of our new rate
       if (1<_throttleBps) {
         // hard casting away of "const" ...
+        if (((WriteController&)_internalRocksDB->write_controller()).max_delayed_write_rate() < _throttleBps) {
+          ((WriteController&)_internalRocksDB->write_controller()).set_max_delayed_write_rate(_throttleBps);
+        } //if
         _delayToken=(((WriteController&)_internalRocksDB->write_controller()).GetDelayToken(_throttleBps));
       } else {
         _delayToken.reset();
