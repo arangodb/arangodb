@@ -25,6 +25,12 @@
 
 #include <string>
 
+class S2Region;
+class S2LatLngRect;
+class S2Cap;
+class S2Polyline;
+class S2Polygon;
+
 namespace arangodb {
 namespace geo {
   
@@ -42,14 +48,44 @@ namespace geo {
     
     //arangodb::LoggerStream& operator<<(arangodb::LoggerStream& os, arangodb::geo::Coordinate const& cc);
   };
-  
-  /// ring on a sphere
-  struct SphereRing {
-    SphereRing(Coordinate const& c, double mr, double xr)
-      : centroid(c), minRadius(mr), maxRadius(xr) {}
-    Coordinate centroid;
-    double minRadius;
-    double maxRadius;
+
+  /// Thin wrapper around S2Region combined with
+  /// a type and helper methods for all special cases
+  struct GeometryContainer {
+    enum class Type {
+      UNDEFINED = 0,
+      S2_POINT,
+      S2_LATLNGRECT,
+      S2_CAP,
+      S2_POLYLINE,
+      S2_POLYGON
+      // TODO MULTIPOLYGON
+      // TODO MULTIP
+    };
+    
+    GeometryContainer(std::unique_ptr<S2Region>&& ptr,
+                      Type tt) : _data(ptr.release()),
+                                 _type(tt) {}
+    
+    ~GeometryContainer();
+    
+    bool contains(Coordinate const*) const;
+    //bool contains(S2LatLngRect const&) const;
+    //bool contains(S2Cap const&) const;
+    bool contains(S2Polyline const*) const;
+    bool contains(S2Polygon const*) const;
+    bool contains(GeometryContainer const*) const;
+    
+    bool intersects(Coordinate const*) const;
+    //bool intersects(S2LatLngRect const&) const;
+    //bool intersects(S2Cap const&) const;
+    bool intersects(S2Polyline const*) const;
+    bool intersects(S2Polygon const*) const;
+    bool intersects(GeometryContainer const*) const;
+    
+  private:
+    S2Region const* _data;
+    Type const _type;
   };
 }  // namespace geo
 }  // namespace arangodb

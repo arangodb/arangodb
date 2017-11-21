@@ -23,7 +23,7 @@
 #ifndef ARANGOD_GEO_NEAR_QUERY_H
 #define ARANGOD_GEO_NEAR_QUERY_H 1
 
-#include "Geo/GeoCover.h"
+#include "Geo/GeoUtils.h"
 #include "Geo/GeoParams.h"
 #include "Geo/Shapes.h"
 

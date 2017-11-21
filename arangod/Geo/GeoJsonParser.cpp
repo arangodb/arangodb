@@ -30,7 +30,10 @@
 
 #include <geometry/s2.h>
 #include <geometry/s2loop.h>
+#include <geometry/s2pointregion.h>
 #include <geometry/s2polygon.h>
+#include <geometry/s2polyline.h>
+#include <geometry/s2regionunion.h>
 #include <geometry/strings/split.h>
 #include <geometry/strings/strutil.h>
 
@@ -55,16 +58,16 @@ static const std::string FIELD_COORDINATES = "coordinates";
 
 /// @brief parse GeoJSON Type
 GeoJsonParser::GeoJSONType GeoJsonParser::parseGeoJSONType(
-    VPackSlice const& geoJSON) const {
+    VPackSlice const& geoJSON) {
   if (!geoJSON.isObject()) {
-    return GeoJsonParser::GEOJSON_UNKNOWN;
+    return GeoJSONType::UNKNOWN;
   }
 
   VPackSlice type = geoJSON.get("type");
   VPackSlice coordinates = geoJSON.get("coordinates");
 
   if (!type.isString()) {
-    return GeoJsonParser::GEOJSON_UNKNOWN;
+    return GeoJSONType::UNKNOWN;
   }
 
   if (!coordinates.isArray()) {
@@ -74,38 +77,53 @@ GeoJsonParser::GeoJSONType GeoJsonParser::parseGeoJSONType(
 
   const std::string& typeString = type.copyString();
   if (GEOJSON_TYPE_POINT == typeString) {
-    return GeoJsonParser::GEOJSON_POINT;
+    return GeoJSONType::POINT;
   } else if (GEOJSON_TYPE_LINESTRING == typeString) {
-    return GeoJsonParser::GEOJSON_LINESTRING;
+    return GeoJSONType::LINESTRING;
   } else if (GEOJSON_TYPE_POLYGON == typeString) {
-    return GeoJsonParser::GEOJSON_POLYGON;
+    return GeoJSONType::POLYGON;
   } else if (GEOJSON_TYPE_MULTI_POINT == typeString) {
-    return GeoJsonParser::GEOJSON_MULTI_POINT;
+    return GeoJSONType::MULTI_POINT;
   } else if (GEOJSON_TYPE_MULTI_LINESTRING == typeString) {
-    return GeoJsonParser::GEOJSON_MULTI_LINESTRING;
+    return GeoJSONType::MULTI_LINESTRING;
   } else if (GEOJSON_TYPE_MULTI_POLYGON == typeString) {
-    return GeoJsonParser::GEOJSON_MULTI_POLYGON;
+    return GeoJSONType::MULTI_POLYGON;
   } else if (GEOJSON_TYPE_GEOMETRY_COLLECTION == typeString) {
-    return GeoJsonParser::GEOJSON_GEOMETRY_COLLECTION;
+    return GeoJSONType::GEOMETRY_COLLECTION;
   }
-  return GeoJsonParser::GEOJSON_UNKNOWN;
+  return GeoJSONType::UNKNOWN;
 };
 
 Result GeoJsonParser::parseGeoJsonRegion(VPackSlice const& geoJSON,
-                                         std::unique_ptr<S2Region>& region) const {
+                                         std::unique_ptr<S2Region>& region) {
 
   GeoJsonParser::GeoJSONType t = parseGeoJSONType(geoJSON);
   switch (t) {
-     case GeoJsonParser::GEOJSON_POINT: {
-       S2LatLng ll;
-       Result res = parsePoint(geoJSON, ll);
-       if (res.ok()) {
-         region = std::make_unique<S2LatLngRect>(ll, ll);
-       }
-       return res;
+    case GeoJSONType::POINT: {
+      S2LatLng ll;
+      Result res = parsePoint(geoJSON, ll);
+      if (res.ok()) {
+        region = std::make_unique<S2PointRegion>(ll.ToPoint());
+      }
+      return res;
     }
       
-    case GeoJsonParser::GEOJSON_LINESTRING: {
+    case GeoJSONType::MULTI_POINT: {
+      std::vector<S2Point> vertices;
+      Result res = parsePoints(geoJSON, true, vertices);
+      if (res.ok()) {
+        auto regionUnion = std::make_unique<S2RegionUnion>();
+        for (S2Point const& v : vertices) {
+          auto pr = std::make_unique<S2PointRegion>(v);
+          regionUnion->Add(pr.get());
+          region.release();
+        }
+        region = std::move(regionUnion);
+      }
+      return res;
+    }
+      
+    case GeoJSONType::LINESTRING: {
       auto line = std::make_unique<S2Polyline>();
       Result res = parseLinestring(geoJSON, *line.get());
       if (res.ok()) {
@@ -114,7 +132,20 @@ Result GeoJsonParser::parseGeoJsonRegion(VPackSlice const& geoJSON,
       return res;
     }
       
-    case GeoJsonParser::GEOJSON_POLYGON: {
+    case GeoJSONType::MULTI_LINESTRING: {
+      std::vector<S2Polyline*> polylines;
+      Result res = parseMultiLinestring(geoJSON, polylines);
+      if (res.ok()) {
+        auto un = std::make_unique<S2RegionUnion>();
+        for (S2Polyline* ll : polylines) {
+          un->Add(ll);
+        }
+        region = std::move(un);
+      }
+      return res;
+    }
+      
+    case GeoJSONType::POLYGON: {
       auto poly = std::make_unique<S2Polygon>();
       Result res = parsePolygon(geoJSON, *poly.get());
       if (res.ok()) {
@@ -122,28 +153,29 @@ Result GeoJsonParser::parseGeoJsonRegion(VPackSlice const& geoJSON,
       }
       return res;
     }
-    case GeoJsonParser::GEOJSON_MULTI_POINT:
-    case GeoJsonParser::GEOJSON_MULTI_LINESTRING:
-    case GeoJsonParser::GEOJSON_MULTI_POLYGON:
-    case GeoJsonParser::GEOJSON_GEOMETRY_COLLECTION:
-    case GeoJsonParser::GEOJSON_UNKNOWN: {
+    
+    
+    case GeoJSONType::MULTI_POLYGON:
+    case GeoJSONType::GEOMETRY_COLLECTION:
+      
+    case GeoJSONType::UNKNOWN: {
       return TRI_ERROR_NOT_IMPLEMENTED;  // TODO
     }
   }
 }
 
 // parse geojson coordinates into s2 points
-static Result ParsePoints(VPackSlice const& geoJSON, bool geoJson,
-                          std::vector<S2Point>& vertices) {
+Result GeoJsonParser::parsePoints(VPackSlice const& geoJSON, bool geoJson,
+                                  std::vector<S2Point>& vertices) {
   vertices.clear();
-  VPackSlice coordinates;
+  VPackSlice coordinates = geoJSON;
   if (geoJSON.isObject()) {
     coordinates = geoJSON.get("coordinates");
   }
-  
   if (!coordinates.isArray()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "coordinates missing");
   }
+  
   for (VPackSlice pt : VPackArrayIterator(coordinates)) {
     if (!pt.isArray() || pt.length() < 2) {
       return Result(TRI_ERROR_BAD_PARAMETER,
@@ -167,7 +199,7 @@ static Result ParsePoints(VPackSlice const& geoJSON, bool geoJson,
 /*
 static Result MakeLoop(VPackSlice const& geoJSON, S2Loop& loop) {
   std::vector<S2Point> vertices;
-  Result res = ParsePoints(geoJSON, vertices);
+  Result res = parsePoints(geoJSON, vertices);
   if (res.ok()) {
     loop.Init(vertices);
     loop.Normalize();
@@ -255,7 +287,7 @@ std::vector<S2Polygon*> GeoParser::parseMultiPolygon(const AqlValue geoJSON) {
 };*/
 
 /// @brief create s2 latlng
-Result GeoJsonParser::parsePoint(VPackSlice const& geoJSON, S2LatLng& latLng) const {
+Result GeoJsonParser::parsePoint(VPackSlice const& geoJSON, S2LatLng& latLng) {
   VPackSlice coordinates = geoJSON.get(FIELD_COORDINATES);
   
   if (coordinates.isArray() && coordinates.length() == 2) {
@@ -269,16 +301,16 @@ Result GeoJsonParser::parsePoint(VPackSlice const& geoJSON, S2LatLng& latLng) co
 /// https://tools.ietf.org/html/rfc7946#section-3.1.6
 /// First Loop represent the outer bound, subsequent loops must be holes
 /// { "type": "Polygon",
-/// "coordinates": [
-///   [ [100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0] ],
-///   [ [100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2] ]
-/// ]
+///   "coordinates": [
+///    [ [100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0] ],
+///    [ [100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2] ]
+///   ]
 /// }
-Result GeoJsonParser::parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) const {
+Result GeoJsonParser::parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) {
   VPackSlice coordinates = geoJSON;
   if (geoJSON.isObject()) {
     coordinates = geoJSON.get(FIELD_COORDINATES);
-    TRI_ASSERT(parseGeoJSONType(geoJSON) == GeoJSONType::GEOJSON_POLYGON);
+    TRI_ASSERT(parseGeoJSONType(geoJSON) == GeoJSONType::POLYGON);
   }
   if (!coordinates.isArray()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "coordinates missing");
@@ -293,7 +325,7 @@ Result GeoJsonParser::parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) c
   std::vector<std::unique_ptr<S2Loop>> loops;
   for (VPackSlice loopPts : VPackArrayIterator(coordinates)) {
     std::vector<S2Point> vertices;
-    Result res = ParsePoints(loopPts, /*geoJson*/true, vertices);
+    Result res = parsePoints(loopPts, /*geoJson*/true, vertices);
     if (res.fail()) {
       return res;
     }
@@ -336,16 +368,15 @@ Result GeoJsonParser::parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) c
 // https://tools.ietf.org/html/rfc7946#section-3.1.4
 /// from the rfc {"type":"LineString","coordinates":[[100.0, 0.0],[101.0,1.0]]}
 Result GeoJsonParser::parseLinestring(VPackSlice const& geoJson,
-                                      S2Polyline& linestring) const {
+                                      S2Polyline& linestring) {
   // verify polygon values
   if (!geoJson.isObject() && !geoJson.isArray()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "invalid linestring inpuz");
   }
-  TRI_ASSERT(!geoJson.isObject() ||
-             parseGeoJSONType(geoJson) == GeoJSONType::GEOJSON_LINESTRING);
+  TRI_ASSERT(!geoJson.isObject() || parseGeoJSONType(geoJson) == GeoJSONType::LINESTRING);
 
   std::vector<S2Point> vertices;
-  Result res = ParsePoints(geoJson, /*geoJson*/true, vertices);
+  Result res = parsePoints(geoJson, /*geoJson*/true, vertices);
   if (res.ok()) {
     removeAdjacentDuplicates(vertices);
     if (vertices.size() < 2 || !S2Polyline::IsValid(vertices)) {
@@ -360,21 +391,22 @@ Result GeoJsonParser::parseLinestring(VPackSlice const& geoJson,
 
 /// Coordinates of a MultiLineString are an array of LineString coordinate arrays:
 Result GeoJsonParser::parseMultiLinestring(VPackSlice const& geoJSON,
-                                           std::vector<S2Polyline>& ll) const {
-  TRI_ASSERT(parseGeoJSONType(geoJSON) == GeoJSONType::GEOJSON_LINESTRING);
+                                           std::vector<S2Polyline*>& ll) {
+  TRI_ASSERT(parseGeoJSONType(geoJSON) == GeoJSONType::LINESTRING);
   VPackSlice coordinates = geoJSON.get(FIELD_COORDINATES);
   if (!coordinates.isArray()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "coordinates missing");
   }
   
   for (VPackSlice linestring : VPackArrayIterator(coordinates)) {
-    S2Polyline polyline;
+    auto polyline = std::make_unique<S2Polyline>();
     // can handle lineatring array
-    Result res = parseLinestring(linestring, polyline);
+    Result res = parseLinestring(linestring, *polyline.get());
     if (res.fail()) {
       return res;
     }
-    ll.emplace_back(std::move(polyline));
+    ll.emplace_back(polyline.get());
+    polyline.release();
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -382,14 +414,14 @@ Result GeoJsonParser::parseMultiLinestring(VPackSlice const& geoJSON,
 /// @brief Parse a polygon for IS_IN_POLYGON
 /// @param loop an array of arrays with 2 elements each,
 /// representing the points of the polygon in the format [lat, lon]
-Result GeoJsonParser::parseLegacyAQLPolygon(velocypack::Slice const& coords, S2Polygon& poly) const {
+Result GeoJsonParser::parseLegacyAQLPolygon(VPackSlice const& coords, S2Polygon& poly) {
   if (!coords.isArray()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "coordinates missing");
   }
 
   std::unique_ptr<S2Loop> loop;
   std::vector<S2Point> vertices;
-  Result res = ParsePoints(coords, /*geoJson*/false, vertices);
+  Result res = parsePoints(coords, /*geoJson*/false, vertices);
   if (res.fail()) {
     return res;
   }
@@ -423,19 +455,19 @@ bool GeoJsonParser::isGeoJsonWithArea(VPackSlice const& data) {
   GeoJsonParser parser;
   GeoJsonParser::GeoJSONType t = parser.parseGeoJSONType(data);
   switch (t) {
-    case GeoJsonParser::GEOJSON_POINT:
-    case GeoJsonParser::GEOJSON_LINESTRING:
-    case GeoJsonParser::GEOJSON_MULTI_POINT:
-    case GeoJsonParser::GEOJSON_MULTI_LINESTRING:
+    case GeoJSONType::POINT:
+    case GeoJSONType::LINESTRING:
+    case GeoJSONType::MULTI_POINT:
+    case GeoJSONType::MULTI_LINESTRING:
       return false;
       
-    case GeoJsonParser::GEOJSON_POLYGON:
-    case GeoJsonParser::GEOJSON_MULTI_POLYGON: {
+    case GeoJSONType::POLYGON:
+    case GeoJSONType::MULTI_POLYGON: {
       return true;  // TODO we need to perform actual checking
     }
       
-    case GeoJsonParser::GEOJSON_GEOMETRY_COLLECTION:
-    case GeoJsonParser::GEOJSON_UNKNOWN: {
+    case GeoJSONType::GEOMETRY_COLLECTION: // TODO
+    case GeoJSONType::UNKNOWN: {
       return false;
     }
   }

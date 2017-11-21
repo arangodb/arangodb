@@ -50,23 +50,25 @@ struct Interval {
  }
 };
 
-/// helper class to deal with S2RegionCoverer and S2CellId
+/// Utilitiy methods to construct S2Region objects from various definitions,
+/// construct coverings for regions with S2RegionCoverer and generate
+/// search intervals for use in an iterator
 class GeoUtils {
  private:
   GeoUtils() {}
 
  public:
 
-  /// Parse
-  /*static Result parseCover(velocypack::Slice const& geoJSON,
-                           std::unique_ptr<S2Region>& region);*/
+  /// Parse region from box, circle or geoJson definition
+  static Result parseRegionForFilter(velocypack::Slice const& geoJSON,
+                                     std::unique_ptr<S2Region>& region);
     
   /// parses geojson or and turns them into
   /// a minimal set of cellIds ready for indexing
   static Result indexCellsGeoJson(S2RegionCoverer* coverer,
-                                          velocypack::Slice const& geoJson,
-                                          std::vector<S2CellId>& cells,
-                                          geo::Coordinate& centroid);
+                                  velocypack::Slice const& geoJson,
+                                  std::vector<S2CellId>& cells,
+                                  geo::Coordinate& centroid);
   
   /// Generate a cover cell from an array [lat, lng] or [lng, lat]
   static Result indexCellsLatLng(velocypack::Slice const& data, bool isGeoJson,

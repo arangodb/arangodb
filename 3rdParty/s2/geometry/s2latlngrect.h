@@ -12,6 +12,8 @@
 #include "s2region.h"
 #include "s2latlng.h"
 
+class S2Polyline;
+
 // An S2LatLngRect represents a closed latitude-longitude rectangle.  It is
 // capable of representing the empty and full rectangles as well as
 // single points.
@@ -70,6 +72,13 @@ class S2LatLngRect : public S2Region {
   S1Interval *mutable_lng() { return &lng_; }
   S2LatLng lo() const { return S2LatLng(lat_lo(), lng_lo()); }
   S2LatLng hi() const { return S2LatLng(lat_hi(), lng_hi()); }
+  
+  std::vector<S2Point> vertices() const {
+    return {S2LatLng(lat_lo(), lng_lo()).ToPoint(),
+            S2LatLng(lat_lo(), lng_hi()).ToPoint(),
+            S2LatLng(lat_hi(), lng_lo()).ToPoint(),
+            S2LatLng(lat_hi(), lng_hi()).ToPoint()};
+  }
 
   // The canonical empty and full rectangles.
   static inline S2LatLngRect Empty();
@@ -115,6 +124,9 @@ class S2LatLngRect : public S2Region {
   // More efficient version of Contains() that accepts a S2LatLng rather than
   // an S2Point.  The argument must be normalized.
   bool Contains(S2LatLng const& ll) const;
+  
+  /// Check whether all vertices are contained
+  bool Contains(S2Polyline const& ll) const;
 
   // Return true if and only if the given point is contained in the interior
   // of the region (i.e. the region excluding its boundary).  The point 'p'
@@ -136,6 +148,10 @@ class S2LatLngRect : public S2Region {
   // Return true if this rectangle and the given other rectangle have any
   // points in common.
   bool Intersects(S2LatLngRect const& other) const;
+  
+  // Return true if this rectangle and the given polyline have any
+  // points in common.
+  bool Intersects(S2Polyline const& ll) const;
 
   // Returns true if this rectangle intersects the given cell.  (This is an
   // exact test and may be fairly expensive, see also MayIntersect below.)

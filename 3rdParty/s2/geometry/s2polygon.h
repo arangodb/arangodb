@@ -285,6 +285,7 @@ class S2Polygon : public S2Region {
 
   int ContainsOrCrosses(S2Loop const* b) const;
   bool AnyLoopContains(S2Loop const* b) const;
+  bool AnyLoopContains(S2LatLngRect const* rect) const;
   bool ContainsAllShells(S2Polygon const* b) const;
   bool ExcludesAllHoles(S2Polygon const* b) const;
   bool IntersectsAnyShell(S2Polygon const* b) const;

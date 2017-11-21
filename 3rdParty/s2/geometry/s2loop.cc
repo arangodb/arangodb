@@ -510,6 +510,37 @@ bool S2Loop::AreBoundariesCrossing(
   return false;
 }
 
+bool S2Loop::AreBoundariesCrossing(S2LatLngRect const* rect,
+                                   WedgeProcessor* wedge_processor) const {
+  // See the header file for a description of what this method does.
+  index_.PredictAdditionalCalls(4);
+  S2EdgeIndex::Iterator it(&index_);
+  std::vector<S2Point> vertices = rect->vertices();
+
+  for (int j = 0; j < 4; ++j) {
+    int m = j+1 % 4;
+    S2EdgeUtil::EdgeCrosser crosser(&vertices[j], &vertices[m],
+                                    &vertices[0]);
+    int previous_index = -2;
+    for (it.GetCandidates(vertices[j], vertices[m]); !it.Done(); it.Next()) {
+      int ai = it.Index();
+      if (previous_index != ai - 1) crosser.RestartAt(&vertex(ai));
+      previous_index = ai;
+      int crossing = crosser.RobustCrossing(&vertex(ai + 1));
+      if (crossing < 0) continue;
+      if (crossing > 0) return true;
+      // We only need to check each shared vertex once, so we only
+      // consider the case where vertex(i+1) == b->vertex(j+1).
+      if (vertex(ai+1) == vertices[m] &&
+        wedge_processor->ProcessWedge(vertex(ai), vertex(ai+1), vertex(ai+2),
+                                    vertices[j], vertices[j+2 % 4])) {
+        return false;
+      }
+    }
+  }
+  return false;
+}
+
 // WedgeProcessor to be used to check if loop A contains loop B.
 // DoesntContain() then returns true if there is a wedge of B not
 // contained in the associated wedge of A (and hence loop B is not
@@ -573,6 +604,35 @@ bool S2Loop::Contains(S2Loop const* b) const {
   return true;
 }
 
+bool S2Loop::Contains(S2LatLngRect const* b) const {
+  if (!bound_.Contains(*b)) return false;
+
+  // Unless there are shared vertices, we need to check whether A contains a
+  // vertex of B.  Since shared vertices are rare, it is more efficient to do
+  // this test up front as a quick rejection test.
+  S2Point v = b->lo().ToPoint();
+  if (!Contains(v) && FindVertex(v) < 0)
+    return false;
+
+  // Now check whether there are any edge crossings, and also check the loop
+  // relationship at any shared vertices.
+  ContainsWedgeProcessor p_wedge;
+  if (AreBoundariesCrossing(b, &p_wedge) || p_wedge.DoesntContain()) {
+    return false;
+  }
+  
+  // At this point we know that the boundaries of A and B do not intersect,
+  // and that A contains a vertex of B.  However we still need to check for
+  // the case mentioned above, where (A union B) is the entire sphere.
+  // Normally this check is very cheap due to the bounding box precondition.
+  if (bound_.Union(*b).is_full()) {
+    std::vector<S2Point> vs = b->vertices();
+    if (b->Contains(vertex(0)) &&
+        std::find(vs.begin(), vs.end(), vertex(0)) == vs.end()) return false;
+  }
+  return true;
+}
+
 // WedgeProcessor to be used to check if loop A intersects loop B.
 // Intersects() then returns true when A and B have at least one pair
 // of associated wedges that intersect.
@@ -625,6 +685,31 @@ bool S2Loop::Intersects(S2Loop const* b) const {
     if (b->Contains(vertex(0)) && b->FindVertex(vertex(0)) < 0) return true;
   }
   return false;
+}
+
+bool S2Loop::Intersects(S2LatLngRect const* b) const {
+  // a->Intersects(b) if and only if !a->Complement()->Contains(b).
+  // This code is similar to Contains(), but is optimized for the case
+  // where both loops enclose less than half of the sphere.
+  
+  if (!bound_.Intersects(*b)) return false;
+  
+  // Unless there are shared vertices, we need to check whether A contains a
+  // vertex of B.  Since shared vertices are rare, it is more efficient to do
+  // this test up front as a quick acceptance test.
+  S2Point v = b->lo().ToPoint();
+  if (Contains(v) && FindVertex(v) < 0) {
+    return true;
+  }
+  
+  // Now check whether there are any edge crossings, and also check the loop
+  // relationship at any shared vertices.
+  IntersectsWedgeProcessor p_wedge;
+  if (AreBoundariesCrossing(b, &p_wedge) || p_wedge.Intersects()) {
+    return true;
+  }
+  
+  return b->Contains(bound_);
 }
 
 // WedgeProcessor to be used to check if the interior of loop A

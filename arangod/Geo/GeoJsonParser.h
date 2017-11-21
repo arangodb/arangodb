@@ -33,52 +33,58 @@
 
 #include <geometry/s2latlng.h>
 #include <geometry/s2polygon.h>
-#include <geometry/s2polyline.h>
+
+class S2Polyline;
 
 namespace arangodb {
 namespace geo {
 
 // should try to comply with https://tools.ietf.org/html/rfc7946
 class GeoJsonParser {
- public:
+ private:
   GeoJsonParser() {}
 
  public:
-  enum GeoJSONType : uint8_t {
-    GEOJSON_UNKNOWN = 0,
-    GEOJSON_POINT,
-    GEOJSON_LINESTRING,
-    GEOJSON_POLYGON,
-    GEOJSON_MULTI_POINT,
-    GEOJSON_MULTI_LINESTRING,
-    GEOJSON_MULTI_POLYGON,  // todo
-    GEOJSON_GEOMETRY_COLLECTION
+  enum class GeoJSONType : uint8_t {
+    UNKNOWN = 0,
+    POINT,
+    LINESTRING,
+    POLYGON,
+    MULTI_POINT,
+    MULTI_LINESTRING,
+    MULTI_POLYGON,  // todo
+    GEOMETRY_COLLECTION
   };
 
-  GeoJSONType parseGeoJSONType(velocypack::Slice const& geoJSON) const;
+  static GeoJSONType parseGeoJSONType(velocypack::Slice const& geoJSON);
   
-  /// @brief Convenience function to build
-  Result parseGeoJsonRegion(velocypack::Slice const& geoJSON,
-                            std::unique_ptr<S2Region>& region) const;
+  /// @brief Convenience function to build a region from a geoJson type.
+  static Result parseGeoJsonRegion(velocypack::Slice const& geoJSON,
+                                   std::unique_ptr<S2Region>& region);
   
   /// @brief Expects an GeoJson point or an array [lon, lat]
-  Result parsePoint(velocypack::Slice const& geoJSON, S2LatLng& latLng) const;
+  static Result parsePoint(velocypack::Slice const& geoJSON, S2LatLng& latLng);
     
-  /// @brief parse geoJson polygon or array of loops.
-  /// Each loop consists of array of coordinates. [[[lon, lat], [lon, lat], ...],...]
-  Result parsePolygon(velocypack::Slice const& geoJSON, S2Polygon& poly) const;
+  /// @brief parse geoJson polygon or array of loops. Each loop consists of
+  /// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...]
+  static Result parsePolygon(velocypack::Slice const& geoJSON, S2Polygon& poly);
     
-  Result parseLinestring(velocypack::Slice const& geoJSON, S2Polyline& ll) const;
+  static Result parseLinestring(velocypack::Slice const& geoJSON, S2Polyline& ll);
   /// @brief parse geoJson multi linestring
-  Result parseMultiLinestring(velocypack::Slice const& geoJSON,
-                              std::vector<S2Polyline>& ll) const;
+  static Result parseMultiLinestring(velocypack::Slice const& geoJSON,
+                              std::vector<S2Polyline*>& ll);
+  
+  // ============= Helpers ============
+  
+  static Result parsePoints(velocypack::Slice const& geoJSON, bool geoJson,
+                            std::vector<S2Point>& vertices);
 
   /// @brief Parse a polygon for IS_IN_POLYGON
   /// @param loop an array of arrays with 2 elements each,
   /// representing the points of the polygon in the format [lat, lon]
-  Result parseLegacyAQLPolygon(velocypack::Slice const& loop, S2Polygon& poly) const;
+  static Result parseLegacyAQLPolygon(velocypack::Slice const& loop, S2Polygon& poly);
   
-  bool isGeoJsonWithArea(arangodb::velocypack::Slice const& geoJson);
+  static bool isGeoJsonWithArea(arangodb::velocypack::Slice const& geoJson);
 };
 
 }  // namespace geo

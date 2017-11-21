@@ -24,7 +24,7 @@
 #define ARANGOD_ROCKSDB_SPHERICAL_INDEX_H 1
 
 #include "Basics/Result.h"
-#include "Geo/GeoCover.h"
+#include "Geo/GeoUtils.h"
 #include "Geo/GeoParams.h"
 #include "Geo/Near.h"
 #include "Indexes/IndexIterator.h"

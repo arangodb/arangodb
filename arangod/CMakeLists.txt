@@ -223,10 +223,11 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/RestStatus.cpp
   GeneralServer/VstCommTask.cpp
-  Geo/GeoCover.cpp
+  Geo/GeoUtils.cpp
   Geo/GeoJsonParser.cpp
   Geo/GeoParams.cpp
   Geo/Near.cpp
+  Geo/Shapes.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp

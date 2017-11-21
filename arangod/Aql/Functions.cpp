@@ -36,6 +36,7 @@
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Geo/GeoUtils.h"
 #include "Geo/GeoJsonParser.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
@@ -152,7 +153,8 @@ std::string Functions::ExtractCollectionName(
 
 /// @brief register warning
 static void RegisterWarning(arangodb::aql::Query* query,
-                            char const* functionName, int code) {
+                            char const* functionName,
+                            int code, std::string const& errMsg) {
   std::string msg;
 
   if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
@@ -161,10 +163,22 @@ static void RegisterWarning(arangodb::aql::Query* query,
     msg.append("in function '");
     msg.append(functionName);
     msg.append("()': ");
-    msg.append(TRI_errno_string(code));
+    msg.append(errMsg.empty() ? TRI_errno_string(code) : errMsg);
   }
 
   query->registerWarning(code, msg.c_str());
+}
+
+/// @brief register warning
+static void RegisterWarning(arangodb::aql::Query* query,
+                            char const* functionName, int code) {
+  RegisterWarning(query, functionName, code, StaticStrings::Empty);
+}
+
+/// @brief register warning
+static void RegisterWarning(arangodb::aql::Query* query,
+                            char const* functionName, Result rr) {
+  RegisterWarning(query, functionName, rr.errorNumber(), rr.errorMessage());
 }
 
 /// @brief register usage of an invalid function argument
@@ -2215,9 +2229,9 @@ AqlValue Functions::Outersection(arangodb::aql::Query* query,
 }
 
 /// @brief function DISTANCE
-AqlValue Functions::Distance(arangodb::aql::Query* query,
-                             transaction::Methods* trx,
-                             VPackFunctionParameters const& parameters) {
+AqlValue Functions::GeoDistance(arangodb::aql::Query* query,
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "DISTANCE", 4, 4);
 
   AqlValue lat1 = ExtractFunctionParameterValue(trx, parameters, 0);
@@ -2268,18 +2282,93 @@ AqlValue Functions::Distance(arangodb::aql::Query* query,
   return NumberValue(trx, EARTHRADIAN * c, true);
 }
 
+
+/// @brief function GEO_CONTAINS
+AqlValue Functions::GeoContains(arangodb::aql::Query* query,
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "GEO_CONTAINS", 2, 2);
+  
+  AqlValue p1 = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue p2 = ExtractFunctionParameterValue(trx, parameters, 1);
+  
+  // non-numeric input...
+  if (!p1.isObject() || !p2.isObject()) {
+    RegisterWarning(query, "GEO_CONTAINS",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  std::unique_ptr<S2Region> container;
+  Result res = geo::GeoUtils::parseRegionForFilter(p1.slice(), container);
+  if (res.fail()) {
+    RegisterWarning(query, "GEO_CONTAINS", res);
+    return AqlValue(AqlValueHintNull());
+  }
+  S2LatLngRect bounds = container->GetRectBound();
+  if (bounds.is_empty()) {
+    RegisterWarning(query, "GEO_CONTAINS", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                    "Specified area is empty");
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  std::unique_ptr<S2Region> pt;
+  res = geo::GeoUtils::parseRegionForFilter(p1.slice(), pt);
+  if (res.fail()) {
+    RegisterWarning(query, "GEO_CONTAINS", res);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+
+  
+  /*bool failed;
+  bool error = false;
+  double lat1Value = lat1.toDouble(trx, failed);
+  error |= failed;
+  double lon1Value = lon1.toDouble(trx, failed);
+  error |= failed;
+  double lat2Value = lat2.toDouble(trx, failed);
+  error |= failed;
+  double lon2Value = lon2.toDouble(trx, failed);
+  error |= failed;
+  
+  if (error) {
+    RegisterWarning(query, "DISTANCE",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  auto toRadians = [](double degrees) -> double {
+    return degrees * (std::acos(-1.0) / 180.0);
+  };
+  
+  double p1 = toRadians(lat1Value);
+  double p2 = toRadians(lat2Value);
+  double d1 = toRadians(lat2Value - lat1Value);
+  double d2 = toRadians(lon2Value - lon1Value);
+  
+  double a = std::sin(d1 / 2.0) * std::sin(d1 / 2.0) +
+  std::cos(p1) * std::cos(p2) *
+  std::sin(d2 / 2.0) * std::sin(d2 / 2.0);
+  
+  double c = 2.0 * std::atan2(std::sqrt(a), std::sqrt(1.0 - a));
+  double const EARTHRADIAN = 6371000.0; // metres*/
+  
+  return NumberValue(trx, 888 * 5, true);
+}
+
 /// @brief function IS_IN_POLYGON
 AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
                                 transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "IS_IN_POLYGON", 2, 3);
   
-  AqlValue polygon = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue coords = ExtractFunctionParameterValue(trx, parameters, 0);
   AqlValue p2 = ExtractFunctionParameterValue(trx, parameters, 1);
   AqlValue p3 = ExtractFunctionParameterValue(trx, parameters, 2);
 
   LOG_TOPIC(WARN, Logger::QUERIES) << "IS_IN_POLYGON is deprecated use GEO_CONTAINS";
-  if (!polygon.isArray()) {
+  if (!coords.isArray()) {
     RegisterWarning(query, "IS_IN_POLYGON", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
@@ -2290,14 +2379,11 @@ AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
       RegisterInvalidArgumentWarning(query, "IS_IN_POLYGON");
       return AqlValue(AqlValueHintNull());
     }
-    VPackSlice lat, lon;
-    if (p3.isBoolean() && p3.slice().getBool()) { // geoJson == true
-      lat = p2.slice()[1];
-      lon = p2.slice()[0];
-    } else {
-      lat = p2.slice()[0];
-      lon = p2.slice()[1];
-    }
+    AqlValueMaterializer materializer(trx);
+    VPackSlice arr = materializer.slice(p2, false);
+    bool geoJson = p3.isBoolean() && p3.toBoolean();
+    VPackSlice lat = geoJson ? arr[1] : arr[0];
+    VPackSlice lon = geoJson ? arr[0] : arr[1];
     if (!lat.isNumber() || !lon.isNumber()) {
       RegisterInvalidArgumentWarning(query, "IS_IN_POLYGON");
       return AqlValue(AqlValueHintNull());
@@ -2312,18 +2398,20 @@ AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
       RegisterInvalidArgumentWarning(query, "IS_IN_POLYGON");
       return AqlValue(AqlValueHintNull());
     }
+  } else {
+    RegisterInvalidArgumentWarning(query, "IS_IN_POLYGON");
+    return AqlValue(AqlValueHintNull());
   }
   
-  geo::GeoJsonParser p;
-  S2Polygon poly;
-  Result res = p.parseLegacyAQLPolygon(polygon.slice(), poly);
-  if (res.fail() || !poly.IsValid()) {
+  S2Polygon polygon;
+  Result res = geo::GeoJsonParser::parseLegacyAQLPolygon(coords.slice(), polygon);
+  if (res.fail() || !polygon.IsValid()) {
     RegisterWarning(query, "IS_IN_POLYGON", res.errorNumber());
     return AqlValue(AqlValueHintNull());
   }
 
   S2LatLng latLng = S2LatLng::FromDegrees(latitude, longitude);
-  bool contains = poly.VirtualContainsPoint(latLng.ToPoint());
+  bool contains = polygon.VirtualContainsPoint(latLng.ToPoint());
   return AqlValue(AqlValueHintBool(contains));
 }
 

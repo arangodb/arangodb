@@ -159,10 +159,18 @@ class S2Loop : public S2Region {
   // Return true if the region contained by this loop is a superset of the
   // region contained by the given other loop.
   bool Contains(S2Loop const* b) const;
+  
+  // Return true if the region contained by this loop is a superset of the
+  // region contained by the given rect.
+  bool Contains(S2LatLngRect const* rect) const;
 
   // Return true if the region contained by this loop intersects the region
   // contained by the given other loop.
   bool Intersects(S2Loop const* b) const;
+  
+  // Return true if the region contained by this loop intersects the
+  // region contained by the given rect.
+  bool Intersects(S2LatLngRect const* rect) const;
 
   // Given two loops of a polygon (see s2polygon.h for requirements), return
   // true if A contains B.  This version of Contains() is much cheaper since
@@ -299,6 +307,9 @@ class S2Loop : public S2Region {
   // three uses of this function.
   bool AreBoundariesCrossing(
       S2Loop const* b, WedgeProcessor* wedge_processor) const;
+  
+  bool AreBoundariesCrossing(S2LatLngRect const* rect,
+                             WedgeProcessor* wedge_processor) const;
 
   // When the loop is modified (the only cae being Invert() at this time),
   // the indexing structures need to be deleted as they become invalid.

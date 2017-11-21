@@ -319,6 +319,14 @@ bool S2Polygon::AnyLoopContains(S2Loop const* b) const {
   return false;
 }
 
+bool S2Polygon::AnyLoopContains(S2LatLngRect const* rect) const {
+  // Return true if any loop contains the given loop.
+  for (int i = 0; i < num_loops(); ++i) {
+    if (loop(i)->Contains(rect)) return true;
+  }
+  return false;
+}
+
 bool S2Polygon::ContainsAllShells(S2Polygon const* b) const {
   // Return true if this polygon (A) contains all the shells of B.
   for (int j = 0; j < b->num_loops(); ++j) {

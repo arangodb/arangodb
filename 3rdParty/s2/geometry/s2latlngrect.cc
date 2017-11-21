@@ -14,6 +14,7 @@ using std::reverse;
 #include "s2cap.h"
 #include "s2cell.h"
 #include "s2edgeutil.h"
+#include "s2polyline.h"
 #include "util/math/mathutil.h"
 
 static const unsigned char kCurrentEncodingVersionNumber = 1;
@@ -69,6 +70,15 @@ bool S2LatLngRect::Contains(S2LatLng const& ll) const {
           lng_.Contains(ll.lng().radians()));
 }
 
+bool S2LatLngRect::Contains(S2Polyline const& ll) const {
+  for (int k = 0; k < ll.num_vertices(); k++) {
+    if (!Contains(ll.vertex(k))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool S2LatLngRect::InteriorContains(S2Point const& p) const {
   return InteriorContains(S2LatLng(p));
 }
@@ -90,6 +100,17 @@ bool S2LatLngRect::InteriorContains(S2LatLngRect const& other) const {
 
 bool S2LatLngRect::Intersects(S2LatLngRect const& other) const {
   return lat_.Intersects(other.lat_) && lng_.Intersects(other.lng_);
+}
+
+// Return true if this rectangle and the given polyline have any
+// points in common.
+bool S2LatLngRect::Intersects(S2Polyline const& ll) const {
+  for (int k = 0; k < ll.num_vertices(); k++) {
+    if (Contains(ll.vertex(k))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool S2LatLngRect::InteriorIntersects(S2LatLngRect const& other) const {

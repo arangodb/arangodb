@@ -22,7 +22,7 @@
 
 #include "Near.h"
 #include "Basics/Common.h"
-#include "Geo/GeoCover.h"
+#include "Geo/GeoUtils.h"
 #include "Geo/GeoParams.h"
 #include "Logger/Logger.h"
 

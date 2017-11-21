@@ -3,8 +3,6 @@
 #ifndef UTIL_GEOMETRY_S2R2RECT_H_
 #define UTIL_GEOMETRY_S2R2RECT_H_
 
-#include "base/basictypes.h"
-#include "base/logging.h"
 #include "r1interval.h"
 #include "s2region.h"
 #include "util/math/vector2-inl.h"

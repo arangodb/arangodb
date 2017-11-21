@@ -27,7 +27,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Geo/GeoCover.h"
+#include "Geo/GeoUtils.h"
 #include "Geo/GeoJsonParser.h"
 #include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
