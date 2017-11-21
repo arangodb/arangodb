@@ -72,7 +72,7 @@ actions.defineHttp({
       return;
     }
 
-    if (serverId.substr(0, 4) != 'CRDN' && serverId.substr(0, 4) != 'PRMR') {
+    if (serverId.substr(0, 4) !== 'CRDN' && serverId.substr(0, 4) !== 'PRMR') {
       actions.resultError(req, res, actions.HTTP_BAD,
         'couldn\'t determine role for serverid ' + serverId);
       return;
