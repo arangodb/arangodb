@@ -44,9 +44,11 @@
 
 using namespace arangodb;
 
+namespace {
 /// @brief return the logfile manager
 static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
   return MMFilesLogfileManager::instance();
+}
 }
 
 /// @brief transaction type
