@@ -1,3 +1,10 @@
+v3.2.9 (2017-XX-XX)
+-------------------
+
+* UI: added a delay within the graph viewer while changing the colors of the
+  graph. Necessary due different browser behaviour.
+
+
 v3.2.8 (2017-11-18)
 -------------------
 
