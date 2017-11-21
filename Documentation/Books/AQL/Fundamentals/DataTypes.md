@@ -51,7 +51,7 @@ a backslash.
 
 'yikes!'
 'don\'t know'
-'this is a longer string."
+'this is a longer string.'
 'the path separator on Windows is \\'
 ```
 
