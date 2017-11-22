@@ -208,8 +208,9 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
   if (doc.isExternal()) {
     doc = doc.resolveExternals();
   }
-
-  return VPackBuilder(doc);
+  VPackBuilder result;
+  result.add(doc);
+  return result;
 }
 
 static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
@@ -680,6 +681,7 @@ Result AuthInfo::removeAllUsers() {
   Result res;
 
   {
+    MUTEX_LOCKER(locker, _loadFromDBLock);
     WRITE_LOCKER(guard, _authInfoLock);
 
     for (auto const& pair : _authInfo) {
@@ -698,7 +700,6 @@ Result AuthInfo::removeAllUsers() {
 
     // do not get into race conditions with loadFromDB
     {
-      MUTEX_LOCKER(locker, _loadFromDBLock);
       _authInfo.clear();
       _authBasicCache.clear();
       _outdated = true;
@@ -912,6 +913,17 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
   return level;
 }
 
+AuthLevel AuthInfo::canUseDatabaseNoLock(std::string const& username,
+                                         std::string const& dbname) {
+  AuthLevel level = configuredDatabaseAuthLevelInternal(username, dbname, 0);
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    return AuthLevel::RO;
+  }
+  return level;
+}
+
+
 // internal method called by configuredCollectionAuthLevel
 // asserts that collection name is non-empty and already translated
 // from collection id to name
@@ -979,6 +991,29 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
   }
 
   AuthLevel level = configuredCollectionAuthLevel(username, dbname, coll);
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    return AuthLevel::RO;
+  }
+  return level;
+}
+
+AuthLevel AuthInfo::canUseCollectionNoLock(std::string const& username,
+                                           std::string const& dbname,
+                                           std::string const& coll) {
+  if (coll.empty()) {
+    // no collection name given
+    return AuthLevel::NONE;
+  }
+
+  AuthLevel level;
+  if (coll[0] >= '0' && coll[0] <= '9') {
+    std::string tmpColl = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
+    level = configuredCollectionAuthLevelInternal(username, dbname, tmpColl, 0);
+  } else {
+    level = configuredCollectionAuthLevelInternal(username, dbname, coll, 0);
+  }
+
   static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
   if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
     return AuthLevel::RO;
