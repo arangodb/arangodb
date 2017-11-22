@@ -819,7 +819,7 @@ bool TRI_ReadPointer(int fd, void* buffer, size_t length) {
   char* ptr = static_cast<char*>(buffer);
 
   while (0 < length) {
-    ssize_t n = TRI_READ(fd, ptr, (unsigned int)length);
+    ssize_t n = TRI_READ(fd, ptr, static_cast<TRI_read_t>(length));
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1150,7 +1150,7 @@ int TRI_VerifyLockFile(char const* filename) {
   char buffer[128];
   memset(buffer, 0,
          sizeof(buffer));  // not really necessary, but this shuts up valgrind
-  ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
+  ssize_t n = TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
 
   if (n < 0) {
     TRI_TRACKED_CLOSE_FILE(fd);
@@ -1671,7 +1671,7 @@ static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize,
         break;
       }
 
-      if ((TRI_read_t)TRI_WRITE(dstFD, buf, nRead) != nRead) {
+      if (static_cast<int64_t>(TRI_WRITE(dstFD, buf, static_cast<TRI_write_t>(nRead))) != static_cast<int64_t>(nRead)) {
         rc = false;
         break;
       }
