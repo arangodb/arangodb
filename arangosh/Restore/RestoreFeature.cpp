@@ -386,6 +386,29 @@ static bool SortCollections(VPackBuilder const& l, VPackBuilder const& r) {
 }
 
 int RestoreFeature::processInputDirectory(std::string& errorMsg) {
+  std::string encryptionType;
+  try {
+    std::string const encryptionFilename = FileUtils::buildFilename(_inputDirectory, "ENCRYPTION");
+    if (FileUtils::exists(encryptionFilename)) {
+      encryptionType = StringUtils::trim(FileUtils::slurp(encryptionFilename));
+    } else {
+      encryptionType = "none";
+    }
+  } catch (...) {
+    // file not found etc.
+  }
+
+  if (encryptionType != "none") {
+#ifdef USE_ENTERPRISE
+    if (!_encryption->keyOptionSpecified()) {
+      std::cerr << "the dump data seems to be encrypted with " << encryptionType << ", but no key information was specified to decrypt the dump" << std::endl;
+      std::cerr << "it is recommended to specify either `--encryption.key-file` or `--encryption.key-generator` when invoking arangorestore with an encrypted dump" << std::endl;
+    } else {
+      std::cout << "# using encryption type " << encryptionType << " for reading dump" << std::endl;
+    }
+#endif
+  }
+
   // create a lookup table for collections
   std::map<std::string, bool> restrictList;
   for (size_t i = 0; i < _collections.size(); ++i) {
