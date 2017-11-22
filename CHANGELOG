@@ -1,11 +1,18 @@
-v3.3.rc1 (2017-11-17)
+v3.3.rc2 (2017-11-22)
 ---------------------
+
+* added options `--encryption.keyfile` and `--encryption.key-generator` to arangodump
+  and arangorestore
 
 * removed `--recycle-ids` option for arangorestore
 
   using that option could have led to problems on the restore, with potential
-  id conflicts between the originating server (the source dump server) and the 
+  id conflicts between the originating server (the source dump server) and the
   target server (the restore server)
+
+
+v3.3.rc1 (2017-11-17)
+---------------------
 
 * add readonly mode REST API
 
@@ -34,6 +41,10 @@ v3.3.beta1 (2017-11-07)
 * introduce `enforceReplicationFactor`: An optional parameter controlling
   if the server should bail out during collection creation if there are not
   enough DBServers available for the desired `replicationFactor`.
+
+* introduce `enforceReplicationFactor` attribute for creating collections:
+  this optional parameter controls if the coordinator should bail out during collection
+  creation if there are not enough DBServers available for the desired `replicationFactor`.
 
 * fixed issue #3516: Show execution time in arangosh
 
@@ -142,7 +153,7 @@ v3.3.milestone1 (2017-10-11)
 
 * removed `--compat28` parameter from arangodump and replication API
 
-  old Arango versions will no longer be supported by these tools.
+  older ArangoDB versions will no longer be supported by these tools.
 
 * increase the recommended value for `/proc/sys/vm/max_map_count` to a value
   eight times as high as the previous recommended value. Increasing the
