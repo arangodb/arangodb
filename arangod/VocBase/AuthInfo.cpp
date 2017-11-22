@@ -612,6 +612,7 @@ Result AuthInfo::removeAllUsers() {
   loadFromDB();
   Result res;
   {
+    MUTEX_LOCKER(locker, _loadFromDBLock);
     WRITE_LOCKER(guard, _authInfoLock);
     for (auto const& pair : _authInfo) {
       res = RemoveUserInternal(pair.second);
@@ -620,7 +621,6 @@ Result AuthInfo::removeAllUsers() {
       }
     }
     {  // do not get into race conditions with loadFromDB
-      MUTEX_LOCKER(locker, _loadFromDBLock);
       _authInfo.clear();
       _authBasicCache.clear();
       _outdated = true;
