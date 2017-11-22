@@ -258,14 +258,17 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     // Update last acknowledged answer
     auto t = system_clock::now();
     std::chrono::duration<double> d = t - _lastAcked[peerId];
-    if (peerId != id() && d.count() > _config.minPing() * _config.timeoutMult()) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Last confirmation from peer "
-        << peerId << " was received more than minPing ago: " << d.count();
+    auto secsSince = d.count();
+    if (secsSince < 1.5e9 && peerId != id()
+        && secsSince > _config.minPing() * _config.timeoutMult()) {
+      LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Last confirmation from peer " << peerId
+        << " was received more than minPing ago: " << secsSince;
     }
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Setting _lastAcked["
-      << peerId << "] to time "
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Setting _lastAcked[" << peerId << "] to time "
       << std::chrono::duration_cast<std::chrono::microseconds>(
-          t.time_since_epoch()).count();
+        t.time_since_epoch()).count();
     _lastAcked[peerId] = t;
 
     if (index > _confirmed[peerId]) {  // progress this follower?
@@ -277,7 +280,6 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
       wakeupMainLoop();   // only necessary for non-empty callbacks
     }
   }
-
 
   duration<double> reportInTime = system_clock::now() - startTime;
   if (reportInTime.count() > 0.1) {
