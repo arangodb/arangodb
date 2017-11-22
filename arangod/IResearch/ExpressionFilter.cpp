@@ -35,7 +35,7 @@ NS_LOCAL
 struct ArangoExpressionContext {
   arangodb::aql::ExecutionPlan* plan;
   arangodb::aql::Ast* ast;
-  arangodb::aql::AstNode* node;
+  std::shared_ptr<arangodb::aql::AstNode> node;
   arangodb::transaction::Methods* trx;
   arangodb::aql::ExpressionContext* ctx;
 }; // ArangoExpressionContext
@@ -50,7 +50,7 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator_base {
       ArangoExpressionContext const& ctx)
     : doc_iterator_base(order),
       max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)),
-      expr_(ctx.plan, ctx.ast, ctx.node),
+      expr_(ctx.plan, ctx.ast, ctx.node.get()),
       ctx_(ctx.ctx),
       trx_(ctx.trx) {
     TRI_ASSERT(ctx_ && trx_);
@@ -185,7 +185,7 @@ size_t ByExpression::hash() const {
     hash_combine(
       hash_combine(
         1610612741,
-        arangodb::aql::AstNodeValueHash()(_node)
+        arangodb::aql::AstNodeValueHash()(_node.get())
       ),
       _plan
     ),
@@ -219,7 +219,7 @@ irs::filter::prepared::ptr ByExpression::prepare(
     );
   }
 
-  arangodb::aql::Expression expr(_plan, _ast, _node);
+  arangodb::aql::Expression expr(_plan, _ast, _node.get());
   bool mustDestroy = false;
   auto value = expr.execute(_trx, _ctx, mustDestroy);
   arangodb::aql::AqlValueGuard guard(value, mustDestroy);

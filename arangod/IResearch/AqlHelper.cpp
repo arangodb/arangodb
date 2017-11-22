@@ -70,22 +70,18 @@ namespace iresearch {
 // --SECTION--                                    AqlValueTraits implementation
 // ----------------------------------------------------------------------------
 
-arangodb::aql::AstNodeValueType const AqlValueTraits::TYPE_MAP[] {
-  AqlValueTraits::invalid_type(),
-  arangodb::aql::VALUE_TYPE_NULL,
-  arangodb::aql::VALUE_TYPE_BOOL,
-  arangodb::aql::VALUE_TYPE_DOUBLE,
-  arangodb::aql::VALUE_TYPE_STRING
-};
-
-arangodb::aql::AstNode const ScopedAqlValue::INVALID_NODE(arangodb::aql::NODE_TYPE_ROOT);
+arangodb::aql::AstNode const ScopedAqlValue::INVALID_NODE(
+  arangodb::aql::NODE_TYPE_ROOT
+);
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                    ScopedAqlValue implementation
 // ----------------------------------------------------------------------------
 
-bool ScopedAqlValue::execute(arangodb::iresearch::QueryContext const& ctx) {
-  if (_node->isConstant()) {
+bool ScopedAqlValue::execute(
+    arangodb::iresearch::QueryContext const& ctx
+) {
+  if (_executed && _node->isDeterministic()) {
     // constant expression, nothing to do
     return true;
   }
@@ -121,6 +117,7 @@ bool ScopedAqlValue::execute(arangodb::iresearch::QueryContext const& ctx) {
   }
 
   _type = AqlValueTraits::type(_value);
+  _executed = true;
   return true;
 }
 
@@ -134,6 +131,11 @@ bool normalizeCmpNode(
     arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE, arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ>(),
     "Values are not adjacent"
   );
+
+  if (!in.isDeterministic()) {
+    // unable normalize nondeterministic node
+    return false;
+  }
 
   auto cmp = in.type;
 
@@ -151,7 +153,6 @@ bool normalizeCmpNode(
 
   if (!arangodb::iresearch::checkAttributeAccess(attribute, ref)) {
     if (!arangodb::iresearch::checkAttributeAccess(value, ref)) {
-      // FIXME check if value is NODE_TYPE_REFERENCE same as 'ref'
       // no suitable attribute access node found
       return false;     
     }
@@ -231,13 +232,12 @@ bool attributeAccessEqual(
           }
 
           switch (aqlValue.type()) {
-            case arangodb::aql::VALUE_TYPE_INT:
-            case arangodb::aql::VALUE_TYPE_DOUBLE:
+            case arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE:
               this->iVal = aqlValue.getInt64();
               this->type = Type::ACCESS;
               this->root = root;
               return true;
-            case arangodb::aql::VALUE_TYPE_STRING:
+            case arangodb::iresearch::SCOPED_VALUE_TYPE_STRING:
               if (!aqlValue.getString(this->strVal)) {
                 // failed to parse value as string
                 return false;
@@ -341,11 +341,10 @@ bool nameFromAttributeAccess(
       }
 
       switch (value_.type()) {
-        case arangodb::aql::VALUE_TYPE_INT:
-        case arangodb::aql::VALUE_TYPE_DOUBLE:
+        case arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE:
           append(value_.getInt64());
           return true;
-        case arangodb::aql::VALUE_TYPE_STRING: {
+        case arangodb::iresearch::SCOPED_VALUE_TYPE_STRING: {
           irs::string_ref strValue;
 
           if (!value_.getString(strValue)) {
@@ -417,18 +416,6 @@ arangodb::aql::AstNode const* checkAttributeAccess(
       && head && arangodb::aql::NODE_TYPE_REFERENCE == head->type
       && reinterpret_cast<void const*>(&ref) == head->getData() // same variable
     ? node : nullptr;
-}
-
-bool findReference(
-    arangodb::aql::AstNode const& root,
-    arangodb::aql::Variable const& ref
-) noexcept {
-  auto visitor = [&ref](arangodb::aql::AstNode const& node) noexcept {
-    return arangodb::aql::NODE_TYPE_REFERENCE != node.type
-      || reinterpret_cast<void const*>(&ref) != node.getData();
-  };
-
-  return !visit<true>(root, visitor);
 }
 
 } // iresearch

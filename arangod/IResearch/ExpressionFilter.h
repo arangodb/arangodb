@@ -48,13 +48,27 @@ class ByExpression final : public irs::filter {
   void init(
       aql::ExecutionPlan& plan,
       aql::Ast& ast,
-      aql::AstNode& node,
+      arangodb::aql::AstNode& node,
       transaction::Methods& trx,
       aql::ExpressionContext& ctx
   ) noexcept {
     _plan = &plan;
     _ast = &ast;
-    _node = &node;
+    _node.reset(&node, [](arangodb::aql::AstNode*){});
+    _trx = &trx;
+    _ctx = &ctx;
+  }
+
+  void init(
+      aql::ExecutionPlan& plan,
+      aql::Ast& ast,
+      std::shared_ptr<arangodb::aql::AstNode>&& node,
+      transaction::Methods& trx,
+      aql::ExpressionContext& ctx
+  ) noexcept {
+    _plan = &plan;
+    _ast = &ast;
+    _node = std::move(node);
     _trx = &trx;
     _ctx = &ctx;
   }
@@ -70,7 +84,7 @@ class ByExpression final : public irs::filter {
   virtual size_t hash() const override;
 
   explicit operator bool() const noexcept {
-    return _node;
+    return bool(_node);
   }
 
  protected:
@@ -79,7 +93,7 @@ class ByExpression final : public irs::filter {
  private:
   aql::ExecutionPlan* _plan{};
   aql::Ast* _ast{};
-  aql::AstNode* _node{};
+  std::shared_ptr<arangodb::aql::AstNode> _node;
   transaction::Methods* _trx{}; // FIXME: do not store it here, pass to prepared::execute
   aql::ExpressionContext* _ctx{}; // // FIXME: do not store it here, pass to prepared::execute
 }; // ByExpression
