@@ -44,7 +44,7 @@
       "token": "UA-81053435-2"
     },
     "edit-link": {
-      "base": "https://github.com/arangodb/Cookbook/edit/master/recipes",
+      "base": "https://github.com/arangodb/arangodb/edit/3.2/Documentation/Books/Cookbook",
       "label": "Edit Page"
     },
     "localized-footer": {
