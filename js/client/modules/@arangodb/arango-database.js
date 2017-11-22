@@ -356,6 +356,11 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
       }
     });
   }
+
+  if (typeof type === 'object') {
+    options = type;
+    type = undefined;
+  }
   
   let urlAddons = [];
   if (typeof options === "object" && options !== null) {

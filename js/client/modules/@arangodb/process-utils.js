@@ -580,12 +580,12 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
     'server.database': database,
-    'include-system-collections': includeSystem ? 'true' : 'false'
+    'include-system-collections': includeSystem ? 'true' : 'false',
   };
 
   let exe;
   rootDir = rootDir || instanceInfo.rootDir;
-
+  
   if (which === 'dump') {
     args['output-directory'] = fs.join(rootDir, dumpDir);
     exe = ARANGODUMP_BIN;
@@ -593,6 +593,10 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
     args['create-database'] = 'true';
     args['input-directory'] = fs.join(rootDir, dumpDir);
     exe = ARANGORESTORE_BIN;
+  }
+  
+  if (options.encrypted) {
+    args['encryption.keyfile'] = fs.join(rootDir, 'secret-key'); 
   }
 
   if (options.extremeVerbosity === true) {
