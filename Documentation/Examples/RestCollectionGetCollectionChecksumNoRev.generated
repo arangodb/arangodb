@@ -15,5 +15,5 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/checksum
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"checksum"</span> : <span class="hljs-string">"6727597389562635820"</span>, 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"10052"</span>, 
-  <span class="hljs-string">"revision"</span> : <span class="hljs-string">"_V6uxZ22--_"</span> 
+  <span class="hljs-string">"revision"</span> : <span class="hljs-string">"_V8R1B-2--_"</span> 
 }
