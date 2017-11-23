@@ -243,9 +243,7 @@ void AgencyWriteTransaction::toVelocyPack(VPackBuilder& builder) const {
 }
 
 bool AgencyWriteTransaction::validate(AgencyCommResult const& result) const {
-  return (result.slice().isObject() &&
-          result.slice().hasKey("results") &&
-          result.slice().get("results").isArray());
+  return (result.slice().isArray() && result.slice().length() > 0);
 }
 
 // -----------------------------------------------------------------------------
@@ -322,7 +320,7 @@ void AgencyGeneralTransaction::push_back(
 
 bool AgencyGeneralTransaction::validate(AgencyCommResult const& result) const {
   return (result.slice().isArray() &&
-          result.slice().length() >= 1); // >= transactions.size()
+          result.slice().length() > 0); // >= transactions.size()
 }
 
 // -----------------------------------------------------------------------------
