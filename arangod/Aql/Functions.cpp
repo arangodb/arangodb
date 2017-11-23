@@ -2285,25 +2285,24 @@ AqlValue Functions::GeoDistance(arangodb::aql::Query* query,
   return NumberValue(trx, EARTHRADIAN * c, true);
 }
 
-
-/// @brief function GEO_CONTAINS
-AqlValue Functions::GeoContains(arangodb::aql::Query* query,
-                                transaction::Methods* trx,
-                                VPackFunctionParameters const& parameters) {
-  ValidateParameters(parameters, "GEO_CONTAINS", 2, 2);
+AqlValue Functions::GeoContainsIntersect(arangodb::aql::Query* query,
+                                         transaction::Methods* trx,
+                                         VPackFunctionParameters const& parameters,
+                                         char const* func, bool contains) {
+  ValidateParameters(parameters, func, 2, 2);
   
   AqlValue p1 = ExtractFunctionParameterValue(trx, parameters, 0);
   AqlValue p2 = ExtractFunctionParameterValue(trx, parameters, 1);
   
   // non-numeric input...
   if (!p1.isObject()) {
-    RegisterWarning(query, "GEO_CONTAINS", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+    RegisterWarning(query, func, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                     "Expecting {geoJson:...} | {circle:...} | {rect:...} as filter");
     return AqlValue(AqlValueHintNull());
     
   } else if (!p2.isObject() && (!p2.isArray() || p2.length() < 2)) {
-    RegisterWarning(query, "GEO_CONTAINS", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                    "Only GeoJSON and coordinate pairs are supported");
+    RegisterWarning(query, func, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                    "Only GeoJSON and coordinate pairs are supported in second parameter");
     return AqlValue(AqlValueHintNull());
   }
   
@@ -2311,69 +2310,47 @@ AqlValue Functions::GeoContains(arangodb::aql::Query* query,
   geo::ShapeContainer filter;
   Result res = filter.parse(materializer.slice(p1, true));
   if (res.fail()) {
-    RegisterWarning(query, "GEO_CONTAINS", res);
+    RegisterWarning(query, func, res);
     return AqlValue(AqlValueHintNull());
   }
   /*S2LatLngRect bounds = container->GetRectBound();
-  if (bounds.is_empty()) {
-    RegisterWarning(query, "GEO_CONTAINS", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                    "Specified area is empty");
-    return AqlValue(AqlValueHintNull());
-  }*/
+   if (bounds.is_empty()) {
+   RegisterWarning(query, "GEO_CONTAINS", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+   "Specified area is empty");
+   return AqlValue(AqlValueHintNull());
+   }*/
   
   if (!filter.isAreaType()) {
-    RegisterWarning(query, "GEO_CONTAINS", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+    RegisterWarning(query, func, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                     "Only polygons, circle and rect are supported as filter geometry");
     return AqlValue(AqlValueHintNull());
   }
   
-  geo::ShapeContainer tested;
-  
-  if (p2.isObject()) {
-    res = geo::GeoJsonParser::parseGeoJson(materializer.slice(p2, true), tested);
-  } else if (p2.isArray())
+  geo::ShapeContainer doc;
+  res = geo::GeoJsonParser::parseGeoJson(materializer.slice(p2, true), doc);
   if (res.fail()) {
-    RegisterWarning(query, "GEO_CONTAINS", res);
+    RegisterWarning(query, func, res);
     return AqlValue(AqlValueHintNull());
   }
   
-  
-  
-  /*bool failed;
-  bool error = false;
-  double lat1Value = lat1.toDouble(trx, failed);
-  error |= failed;
-  double lon1Value = lon1.toDouble(trx, failed);
-  error |= failed;
-  double lat2Value = lat2.toDouble(trx, failed);
-  error |= failed;
-  double lon2Value = lon2.toDouble(trx, failed);
-  error |= failed;1
-  
-  if (error) {
-    RegisterWarning(query, "DISTANCE",
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(AqlValueHintNull());
-  }
-  
-  auto toRadians = [](double degrees) -> double {
-    return degrees * (std::acos(-1.0) / 180.0);
-  };
-  
-  double p1 = toRadians(lat1Value);
-  double p2 = toRadians(lat2Value);
-  double d1 = toRadians(lat2Value - lat1Value);
-  double d2 = toRadians(lon2Value - lon1Value);
-  
-  double a = std::sin(d1 / 2.0) * std::sin(d1 / 2.0) +
-  std::cos(p1) * std::cos(p2) *
-  std::sin(d2 / 2.0) * std::sin(d2 / 2.0);
-  
-  double c = 2.0 * std::atan2(std::sqrt(a), std::sqrt(1.0 - a));
-  double const EARTHRADIAN = 6371000.0; // metres*/
-  
-  return NumberValue(trx, 888 * 5, true);
+  bool ret = contains ? filter.contains(&doc) : filter.intersects(&doc);
+  return AqlValue(AqlValueHintBool(ret));
 }
+
+/// @brief function GEO_CONTAINS
+AqlValue Functions::GeoContains(arangodb::aql::Query* query,
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
+  return GeoContainsIntersect(query, trx, parameters, "GEO_CONTAINS", true);
+}
+
+/// @brief function GEO_INTERSECTS
+AqlValue Functions::GeoIntersects(arangodb::aql::Query* query,
+                                  transaction::Methods* trx,
+                                  VPackFunctionParameters const& parameters) {
+  return GeoContainsIntersect(query, trx, parameters, "GEO_INTERSECTS", false);
+}
+
 
 /// @brief function IS_IN_POLYGON
 AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,

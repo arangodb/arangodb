@@ -41,7 +41,23 @@ using namespace arangodb;
 using namespace arangodb::geo;
 
 Result ShapeContainer::parse(VPackSlice const& json) {
-  if (!json.isObject()) {
+  
+  if (json.isArray()) {
+    if (json.length() < 2) {
+      return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
+    }
+    VPackSlice lat, lng;
+    if (!(lat = json.at(0)).isNumber() || !(lng = json.at(1)).isNumber()) {
+      return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
+    }
+    
+    S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
+                                        lng.getNumericValue<double>());
+    _data = new S2PointRegion(ll.ToPoint());
+    _type = Type::S2_POINT;
+    return TRI_ERROR_NO_ERROR;
+    
+  } else if (!json.isObject()) {
     return TRI_ERROR_BAD_PARAMETER;
   }
 
@@ -88,7 +104,7 @@ Result ShapeContainer::parse(VPackSlice const& json) {
     }
   }
 
-  return Result(TRI_ERROR_BAD_PARAMETER, "unknown geo query syntax");
+  return Result(TRI_ERROR_BAD_PARAMETER, "unknown geo filter syntax");
 }
 
 ShapeContainer::~ShapeContainer() { delete _data; }

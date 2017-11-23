@@ -420,6 +420,8 @@ void AqlFunctionFeature::addGeoFunctions() {
       true, &Functions::IsInPolygon});
   add({"GEO_CONTAINS", ".,.", true, true, true,
     true, &Functions::GeoContains});
+  add({"GEO_INTERSECTS", ".,.", true, true, true,
+    true, &Functions::GeoIntersects});
 }
 
 void AqlFunctionFeature::addDateFunctions() {
