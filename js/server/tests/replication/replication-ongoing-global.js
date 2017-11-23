@@ -900,7 +900,10 @@ function ReplicationOtherDBSuite() {
     // Now test if the Slave did replicate the new database...
     db._useDatabase(dbName);
     // wait for collection to appear
-    waitUntil(function() { return (db._collection(cn) !== null); });
+    waitUntil(function() {
+      let cc = db._collection(cn);
+      return cc !== null && cc.count() >= 50; 
+    });
     assertEqual(50, collectionCount(cn), "The slave inserted the new collection data into the old one, it skipped the drop.");
     
     assertTrue(replication.globalApplier.state().state.running);

@@ -531,12 +531,19 @@ class ClusterComm {
   void addAuthorization(std::unordered_map<std::string, std::string>* headers);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief abort and disable all communication 
+  /// @brief abort and disable all communication
   //////////////////////////////////////////////////////////////////////////////
 
   void disable();
-  
- private:
+
+ protected:  // protected members are for unit test purposes
+
+  /// @brief Constructor for test cases.
+  ClusterComm(bool);
+
+  // code below this point used to be "private".  now "protected" to
+  //  enable unit test wrapper class
+
   size_t performSingleRequest(std::vector<ClusterCommRequest>& requests,
                               ClusterCommTimeout timeout, size_t& nrDone,
                               arangodb::LogTopic const& logTopic);
