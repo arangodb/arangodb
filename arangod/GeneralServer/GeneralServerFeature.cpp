@@ -31,7 +31,6 @@
 #include "Aql/RestAqlHandler.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/AgencyCallbackRegistry.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
