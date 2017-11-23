@@ -11,10 +11,12 @@ namespace {
 // of a floating point operation is at least as large as the true
 // infinite-precision result.
 double const kRoundUp = 1.0 + 1.0 / (uint64_t(1) << 52);
+  
+}  // namespace
 
 // Return the cap height corresponding to the given non-negative cap angle in
 // radians.  Cap angles of Pi radians or larger yield a full cap.
-double GetHeightForAngle(double radians) {
+double S2Cap::GetHeightForAngle(double radians) {
   DCHECK_GE(radians, 0);
 
   // Caps of Pi radians or more are full.
@@ -27,12 +29,10 @@ double GetHeightForAngle(double radians) {
   return 2 * d * d;
 }
 
-}  // namespace
-
 S2Cap S2Cap::FromAxisAngle(S2Point const& axis, S1Angle const& angle) {
   DCHECK(S2::IsUnitLength(axis));
   DCHECK_GE(angle.radians(), 0);
-  return S2Cap(axis, GetHeightForAngle(angle.radians()));
+  return S2Cap(axis, S2Cap::GetHeightForAngle(angle.radians()));
 }
 
 S1Angle S2Cap::angle() const {

@@ -36,18 +36,18 @@ class S2RegionCoverer;
 
 namespace arangodb {
 namespace geo {
-    
+
 /// interval to scan over for near / within /intersect queries.
 /// Bounds are INCLUSIVE! It may hold true that min === max,
 /// in that case a lookup is completely valid. Do not use these
 /// bounds for any kind of arithmetics
 struct Interval {
- Interval(S2CellId mn, S2CellId mx) : min(mn), max(mx) {}
- S2CellId min;
- S2CellId max;
- static bool compare(const Interval& a, const Interval& b) {
-   return a.min < b.min;
- }
+  Interval(S2CellId mn, S2CellId mx) : min(mn), max(mx) {}
+  S2CellId min;
+  S2CellId max;
+  static bool compare(const Interval& a, const Interval& b) {
+    return a.min < b.min;
+  }
 };
 
 /// Utilitiy methods to construct S2Region objects from various definitions,
@@ -58,26 +58,21 @@ class GeoUtils {
   GeoUtils() {}
 
  public:
-
-  /// Parse region from box, circle or geoJson definition
-  static Result parseRegionForFilter(velocypack::Slice const& geoJSON,
-                                     std::unique_ptr<S2Region>& region);
-    
   /// parses geojson or and turns them into
   /// a minimal set of cellIds ready for indexing
   static Result indexCellsGeoJson(S2RegionCoverer* coverer,
                                   velocypack::Slice const& geoJson,
                                   std::vector<S2CellId>& cells,
                                   geo::Coordinate& centroid);
-  
+
   /// Generate a cover cell from an array [lat, lng] or [lng, lat]
   static Result indexCellsLatLng(velocypack::Slice const& data, bool isGeoJson,
-                                         std::vector<S2CellId>& cells,
-                                         geo::Coordinate& centroid);
+                                 std::vector<S2CellId>& cells,
+                                 geo::Coordinate& centroid);
 
   /// convert lat, lng pair into cell id. Always uses max level
   static Result indexCells(geo::Coordinate const& c,
-                                   std::vector<S2CellId>& cells);
+                           std::vector<S2CellId>& cells);
 
   /// parse geoJson (has to be an area) and generate list of intervals to scan
   /*static Result scanIntervals(S2RegionCoverer* coverer,

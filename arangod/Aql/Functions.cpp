@@ -38,6 +38,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Geo/GeoUtils.h"
 #include "Geo/GeoJsonParser.h"
+#include "Geo/Shapes.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Random/UniformCharacter.h"
@@ -54,6 +55,8 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "V8Server/v8-collection.h"
 
+#include <geometry/s2latlngrect.h>
+#include <geometry/s2loop.h>
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
 #include <velocypack/Collection.h>
@@ -2293,33 +2296,48 @@ AqlValue Functions::GeoContains(arangodb::aql::Query* query,
   AqlValue p2 = ExtractFunctionParameterValue(trx, parameters, 1);
   
   // non-numeric input...
-  if (!p1.isObject() || !p2.isObject()) {
-    RegisterWarning(query, "GEO_CONTAINS",
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  if (!p1.isObject()) {
+    RegisterWarning(query, "GEO_CONTAINS", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                    "Expecting {geoJson:...} | {circle:...} | {rect:...} as filter");
+    return AqlValue(AqlValueHintNull());
+    
+  } else if (!p2.isObject() && (!p2.isArray() || p2.length() < 2)) {
+    RegisterWarning(query, "GEO_CONTAINS", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                    "Only GeoJSON and coordinate pairs are supported");
     return AqlValue(AqlValueHintNull());
   }
   
-  std::unique_ptr<S2Region> container;
-  Result res = geo::GeoUtils::parseRegionForFilter(p1.slice(), container);
+  AqlValueMaterializer materializer(trx);
+  geo::ShapeContainer filter;
+  Result res = filter.parse(materializer.slice(p1, true));
   if (res.fail()) {
     RegisterWarning(query, "GEO_CONTAINS", res);
     return AqlValue(AqlValueHintNull());
   }
-  S2LatLngRect bounds = container->GetRectBound();
+  /*S2LatLngRect bounds = container->GetRectBound();
   if (bounds.is_empty()) {
     RegisterWarning(query, "GEO_CONTAINS", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                     "Specified area is empty");
     return AqlValue(AqlValueHintNull());
+  }*/
+  
+  if (!filter.isAreaType()) {
+    RegisterWarning(query, "GEO_CONTAINS", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                    "Only polygons, circle and rect are supported as filter geometry");
+    return AqlValue(AqlValueHintNull());
   }
   
-  std::unique_ptr<S2Region> pt;
-  res = geo::GeoUtils::parseRegionForFilter(p1.slice(), pt);
+  geo::ShapeContainer tested;
+  
+  if (p2.isObject()) {
+    res = geo::GeoJsonParser::parseGeoJson(materializer.slice(p2, true), tested);
+  } else if (p2.isArray())
   if (res.fail()) {
     RegisterWarning(query, "GEO_CONTAINS", res);
     return AqlValue(AqlValueHintNull());
   }
   
-
+  
   
   /*bool failed;
   bool error = false;
@@ -2330,7 +2348,7 @@ AqlValue Functions::GeoContains(arangodb::aql::Query* query,
   double lat2Value = lat2.toDouble(trx, failed);
   error |= failed;
   double lon2Value = lon2.toDouble(trx, failed);
-  error |= failed;
+  error |= failed;1
   
   if (error) {
     RegisterWarning(query, "DISTANCE",
@@ -2403,16 +2421,15 @@ AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintNull());
   }
   
-  S2Polygon polygon;
-  Result res = geo::GeoJsonParser::parseLegacyAQLPolygon(coords.slice(), polygon);
-  if (res.fail() || !polygon.IsValid()) {
-    RegisterWarning(query, "IS_IN_POLYGON", res.errorNumber());
+  S2Loop loop;
+  Result res = geo::GeoJsonParser::parseLegacyAQLPolygon(coords.slice(), loop);
+  if (res.fail() || !loop.IsValid()) {
+    RegisterWarning(query, "IS_IN_POLYGON", res);
     return AqlValue(AqlValueHintNull());
   }
 
   S2LatLng latLng = S2LatLng::FromDegrees(latitude, longitude);
-  bool contains = polygon.VirtualContainsPoint(latLng.ToPoint());
-  return AqlValue(AqlValueHintBool(contains));
+  return AqlValue(AqlValueHintBool(loop.Contains(latLng.ToPoint())));
 }
 
 /// @brief function FLATTEN

@@ -33,6 +33,8 @@ class S2Cap : public S2Region {
  public:
   // The default constructor returns an empty S2Cap.
   S2Cap() : axis_(1, 0, 0), height_(-1) {}
+  
+  static double GetHeightForAngle(double radians);
 
   // Create a cap given its axis and the cap height, i.e. the maximum
   // projected distance along the cap axis from the cap center.

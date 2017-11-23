@@ -31,13 +31,17 @@
 #include <cstdint>
 #include <vector>
 
-#include <geometry/s2latlng.h>
-#include <geometry/s2polygon.h>
+#include <geometry/s2.h>
 
+class S2LatLng;
+class S2Loop;
 class S2Polyline;
+class S2Polygon;
 
 namespace arangodb {
 namespace geo {
+
+class ShapeContainer;
 
 // should try to comply with https://tools.ietf.org/html/rfc7946
 class GeoJsonParser {
@@ -57,34 +61,34 @@ class GeoJsonParser {
   };
 
   static GeoJSONType parseGeoJSONType(velocypack::Slice const& geoJSON);
-  
+
   /// @brief Convenience function to build a region from a geoJson type.
-  static Result parseGeoJsonRegion(velocypack::Slice const& geoJSON,
-                                   std::unique_ptr<S2Region>& region);
-  
+  static Result parseGeoJson(velocypack::Slice const& geoJSON,
+                             ShapeContainer& region);
+
   /// @brief Expects an GeoJson point or an array [lon, lat]
   static Result parsePoint(velocypack::Slice const& geoJSON, S2LatLng& latLng);
-    
+
   /// @brief parse geoJson polygon or array of loops. Each loop consists of
   /// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...]
   static Result parsePolygon(velocypack::Slice const& geoJSON, S2Polygon& poly);
-    
-  static Result parseLinestring(velocypack::Slice const& geoJSON, S2Polyline& ll);
+
+  static Result parseLinestring(velocypack::Slice const& geoJSON,
+                                S2Polyline& ll);
   /// @brief parse geoJson multi linestring
   static Result parseMultiLinestring(velocypack::Slice const& geoJSON,
-                              std::vector<S2Polyline*>& ll);
-  
+                                     std::vector<S2Polyline>& ll);
+
   // ============= Helpers ============
-  
+
   static Result parsePoints(velocypack::Slice const& geoJSON, bool geoJson,
                             std::vector<S2Point>& vertices);
 
   /// @brief Parse a polygon for IS_IN_POLYGON
   /// @param loop an array of arrays with 2 elements each,
   /// representing the points of the polygon in the format [lat, lon]
-  static Result parseLegacyAQLPolygon(velocypack::Slice const& loop, S2Polygon& poly);
-  
-  static bool isGeoJsonWithArea(arangodb::velocypack::Slice const& geoJson);
+  static Result parseLegacyAQLPolygon(velocypack::Slice const& loop,
+                                      S2Loop& poly);
 };
 
 }  // namespace geo
