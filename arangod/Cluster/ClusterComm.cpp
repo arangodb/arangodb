@@ -229,6 +229,7 @@ ClusterComm::ClusterComm()
   TRI_ASSERT(authentication != nullptr);
   if (authentication->isActive()) {
     _authenticationEnabled = true;
+
     VPackBuilder bodyBuilder;
     {
       VPackObjectBuilder p(&bodyBuilder);
@@ -238,8 +239,19 @@ ClusterComm::ClusterComm()
     _jwtAuthorization = "bearer " + _jwt;
   }
 
-  _communicator = std::make_shared<communicator::Communicator>();    
+  _communicator = std::make_shared<communicator::Communicator>();
 }
+
+/// @brief Unit test constructor
+ClusterComm::ClusterComm(bool ignored)
+    : _backgroundThread(nullptr),
+      _logConnectionErrors(false),
+      _authenticationEnabled(false),
+      _jwtAuthorization("") {
+
+  //_communicator = std::make_shared<communicator::Communicator>();
+
+} // ClusterComm::ClusterComm(bool)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm destructor
@@ -270,7 +282,7 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
     }
     // Now state is either 0 (in which case we have changed _theInstanceInit
     // to 1, or is 1, in which case somebody else has set it to 1 and is working
-    // to initialize the singleton, or is 2, in which case somebody else has 
+    // to initialize the singleton, or is 2, in which case somebody else has
     // done all the work and we are done:
     if (state == 0) {
       // we must initialize (cannot use std::make_shared here because
@@ -599,7 +611,7 @@ ClusterCommResult const ClusterComm::enquire(communicator::Ticket const ticketId
 
   ClusterCommResult res;
   res.operationID = ticketId;
-  // does res.coordTransactionID need to be set here too? 
+  // does res.coordTransactionID need to be set here too?
   res.status = CL_COMM_DROPPED;
   return res;
 }
@@ -616,6 +628,8 @@ ClusterCommResult const ClusterComm::enquire(communicator::Ticket const ticketId
 /// matches. If `timeout` is given, the result can be a result structure
 /// with status CL_COMM_TIMEOUT indicating that no matching answer was
 /// available until the timeout was hit.
+///
+/// If timeout parameter is 0.0, code waits forever for a response (or error)
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterCommResult const ClusterComm::wait(
@@ -625,40 +639,72 @@ ClusterCommResult const ClusterComm::wait(
 
   ResponseIterator i;
   AsyncResponse response;
+  ClusterCommResult return_result;
+  bool match_good, status_ready;
+  ClusterCommTimeout endTime = TRI_microtime() + timeout;
+
+  TRI_ASSERT(timeout >= 0.0);
 
   // tell scheduler that we are waiting:
   JobGuard guard{SchedulerFeature::SCHEDULER};
   guard.block();
 
-  CONDITION_LOCKER(locker, somethingReceived);
-  if (ticketId == 0) {
-    for (i = responses.begin(); i != responses.end(); i++) {
-      if (match(clientTransactionID, coordTransactionID, shardID, i->second.result.get())) {
-        break;
+  do {
+    CONDITION_LOCKER(locker, somethingReceived);
+    match_good=false;
+    status_ready=false;
+
+    if (ticketId == 0) {
+      for (i = responses.begin(); i != responses.end() && !status_ready; i++) {
+        if (match(clientTransactionID, coordTransactionID, shardID, i->second.result.get())) {
+          match_good=true;
+          return_result = *i->second.result.get();
+          status_ready = (CL_COMM_SUBMITTED != return_result.status);
+          if (status_ready) {
+            responses.erase(i);
+          } // if
+        }
       }
-    }
-  } else {
-    i = responses.find(ticketId);
-  }
-  if (i == responses.end()) {
-    // Nothing known about this operation, return with failure:
-    ClusterCommResult res;
-    res.operationID = ticketId;
-    // does res.coordTransactionID need to be set here too? 
-    res.status = CL_COMM_DROPPED;
-    // tell Dispatcher that we are back in business
-    return res;
-  }
-  response = i->second;
+    } else {
+      i = responses.find(ticketId);
 
-  ClusterCommOpStatus status = response.result->status;
+      if (i != responses.end()) {
+        return_result = *i->second.result.get();
+        status_ready = (CL_COMM_SUBMITTED != return_result.status);
+        match_good = true;
+        if (status_ready) {
+          responses.erase(i);
+        } // if
+      } else {
+        // Nothing known about this operation, return with failure:
+        return_result.operationID = ticketId;
+        // does res.coordTransactionID need to be set here too?
+        return_result.status = CL_COMM_DROPPED;
+        // tell Dispatcher that we are back in business
+      } // else
+    } // else
 
-  while (status == CL_COMM_SUBMITTED) {
-    somethingReceived.wait(100000);
-    status = response.result->status;
-  }
-  responses.erase(i);
-  return *response.result.get();
+    // at least one match, but no one ready
+    if (match_good && !status_ready) {
+      // give matching item(s) more time
+      ClusterCommTimeout now = TRI_microtime();
+      if (now < endTime || 0.0 == timeout) {
+        // convert to microseconds, use 10 second safety poll if no timeout
+        uint64_t micros=(0.0 != timeout ? ((endTime - now)*1000000.0) : 10000000);
+        somethingReceived.wait(micros);
+      } else {
+        // time is up, leave
+        return_result.operationID = ticketId;
+        // does res.coordTransactionID need to be set here too?
+        return_result.status = CL_COMM_TIMEOUT;
+        match_good=false;
+      } // else
+    } // if
+
+  } while(!status_ready && match_good);
+
+  return return_result;
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -810,8 +856,8 @@ ClusterCommThread::~ClusterCommThread() { shutdown(); }
 void ClusterCommThread::beginShutdown() {
   // Note that this is called from the destructor of the ClusterComm singleton
   // object. This means that our pointer _cc is still valid and the condition
-  // variable in it is still OK. However, this method is called from a 
-  // different thread than the ClusterCommThread. Therefore we can still 
+  // variable in it is still OK. However, this method is called from a
+  // different thread than the ClusterCommThread. Therefore we can still
   // use the condition variable to wake up the ClusterCommThread.
   Thread::beginShutdown();
 
