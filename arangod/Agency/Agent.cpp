@@ -947,8 +947,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
 }
 
 
-inquire_ret_t Agent::inquire(query_t const& query) {
-  inquire_ret_t ret;
+write_ret_t Agent::inquire(query_t const& query) {
 
   // Note that we are leading (_constituent.leading()) if and only
   // if _constituent.leaderId == our own ID. Therefore, we do not have
@@ -956,45 +955,27 @@ inquire_ret_t Agent::inquire(query_t const& query) {
   // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
-    return inquire_ret_t(false, leader);
+    return write_ret_t(false, leader);
   }
+
+  write_ret_t ret;
   
   _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(ioLocker, _ioLock);
 
-  auto si = _state.inquire(query);
-
-  bool found = false;
-  auto builder = std::make_shared<VPackBuilder>();
-  {
-    VPackArrayBuilder b(builder.get());
-    for (auto const& i : si) {
-      VPackArrayBuilder bb(builder.get());
-      for (auto const& j : i) {
-        found = true;
-        VPackObjectBuilder bbb(builder.get());
-        builder->add("index", VPackValue(j.index));
-        builder->add("term", VPackValue(j.term));
-        builder->add("query", VPackSlice(j.entry->data()));
-      }
-    }
-  }
-  
-  ret = inquire_ret_t(true, id(), builder);
-
-  if (!found) {
-    return ret;
-  }
+  ret.indices = _state.inquire(query);
 
   // Check ongoing ones:
   for (auto const& s : VPackArrayIterator(query->slice())) {
     std::string ss = s.copyString();
     if (isTrxOngoing(ss)) {
-      ret.result->clear();
-      ret.result->add(VPackValue("ongoing"));
+      ret.indices.clear();
+      break;
     }
   }
 
+  ret.accepted = true;
+  
   return ret;
 }
 

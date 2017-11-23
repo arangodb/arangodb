@@ -508,7 +508,7 @@ RestStatus RestAgencyHandler::handleInquire() {
     return RestStatus::DONE;
   }
   
-  inquire_ret_t ret;
+  write_ret_t ret;
   try {
     ret = _agent->inquire(query);
   } catch (std::exception const& e) {
@@ -519,7 +519,18 @@ RestStatus RestAgencyHandler::handleInquire() {
   
   if (ret.accepted) {  // I am leading
 
-    generateResult(rest::ResponseCode::OK, ret.result->slice());
+    
+    Builder body;
+    bool failed = false;
+    { VPackObjectBuilder b(&body);
+      body.add(VPackValue("results"));
+      { VPackArrayBuilder bb(&body);
+        for (auto const& index : ret.indices) {
+          body.add(VPackValue(index));
+          failed = (failed || index == 0);
+        }}}
+    generateResult(failed ? rest::ResponseCode::PRECONDITION_FAILED :
+                   rest::ResponseCode::OK, body.slice());
     
   } else {  // Redirect to leader
     
