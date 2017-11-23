@@ -1,6 +1,9 @@
 devel
 -----
 
+* UI: optimized error messages for invalid graph definitions. Also fixed a
+  graph renderer cleanrenderer cleanup error.
+
 * removed `--recycle-ids` option for arangorestore
 
   using that option could have led to problems on the restore, with potential
