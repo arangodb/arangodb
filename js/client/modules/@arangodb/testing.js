@@ -407,10 +407,7 @@ function loadTestSuites () {
   let testSuites = _.filter(fs.list(fs.join(__dirname, 'testsuites')),
                             function (p) {
                               return (p.substr(-3) === '.js');
-                            })
-      .map(function (x) {
-        return x;
-      }).sort();
+                            }).sort();
 
   for (let j = 0; j < testSuites.length; j++) {
     try {
