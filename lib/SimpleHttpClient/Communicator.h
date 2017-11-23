@@ -50,7 +50,7 @@ struct RequestInProgress {
         _ticketId(ticketId),
         _requestHeaders(nullptr),
         _startTime(0.0),
-        _responseBody(new basics::StringBuffer(false)),
+        _responseBody(new basics::StringBuffer(1024, false)),
         _options(options),
         _aborted(false) {
     _errorBuffer[0] = '\0';
