@@ -1,6 +1,9 @@
 v3.2.9 (xxxx-xx-xx)
 -------------------
 
+* UI: optimized error messages for invalid graph definitions. Also fixed a
+  graph renderer cleanrenderer cleanup error.
+
 * fix removal of failed nodes
 
 v3.2.8 (2017-11-18)
