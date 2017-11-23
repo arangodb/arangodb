@@ -76,8 +76,8 @@ namespace {
 class MMFilesIndexFillerTask : public basics::LocalTask {
  public:
   MMFilesIndexFillerTask(
-      std::shared_ptr<basics::LocalTaskQueue> queue, transaction::Methods* trx, Index* idx,
-      std::shared_ptr<std::vector<std::pair<LocalDocumentId, VPackSlice>>> documents)
+      std::shared_ptr<basics::LocalTaskQueue> const& queue, transaction::Methods* trx, Index* idx,
+      std::shared_ptr<std::vector<std::pair<LocalDocumentId, VPackSlice>>> const& documents)
       : LocalTask(queue), _trx(trx), _idx(idx), _documents(documents) {}
 
   void run() {
