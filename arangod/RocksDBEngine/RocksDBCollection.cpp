@@ -1108,8 +1108,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   LocalDocumentId const documentId = LocalDocumentId::create();
   prevRev = 0;
 
-  transaction::BuilderLeaser builder(trx);
-  newObjectForRemove(trx, slice, documentId, *builder.get(), options.isRestore, revisionId);
+  revisionId = newRevisionId();
 
   VPackSlice key;
   if (slice.isString()) {

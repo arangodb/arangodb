@@ -205,6 +205,8 @@ class PhysicalCollection {
 
   // SECTION: Document pre commit preperation
 
+  TRI_voc_rid_t newRevisionId() const;
+
   /// @brief new object for insert, value must have _key set correctly.
   int newObjectForInsert(transaction::Methods* trx,
                          velocypack::Slice const& value,
