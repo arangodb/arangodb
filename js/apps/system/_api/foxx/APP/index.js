@@ -228,68 +228,74 @@ instanceRouter.use('/configuration', configRouter)
 .response(200, schemas.configs);
 
 configRouter.get((req, res) => {
-  res.json(req.service.getConfiguration());
-});
+  res.json(req.service.getConfiguration(req.queryParams.minimal));
+})
+.queryParam('minimal', joi.boolean().default(false));
 
 configRouter.patch((req, res) => {
   const warnings = FoxxManager.setConfiguration(req.service.mount, {
     configuration: req.body,
     replace: false
   });
-  const values = req.service.getConfiguration(true);
+  const values = req.service.getConfiguration(req.queryParams.minimal);
   res.json({
     values,
     warnings
   });
 })
-.body(joi.object().required());
+.body(joi.object().required())
+.queryParam('minimal', joi.boolean().default(true));
 
 configRouter.put((req, res) => {
   const warnings = FoxxManager.setConfiguration(req.service.mount, {
     configuration: req.body,
     replace: true
   });
-  const values = req.service.getConfiguration(true);
+  const values = req.service.getConfiguration(req.queryParams.minimal);
   res.json({
     values,
     warnings
   });
 })
-.body(joi.object().required());
+.body(joi.object().required())
+.queryParam('minimal', joi.boolean().default(true));
 
 const depsRouter = createRouter();
 instanceRouter.use('/dependencies', depsRouter)
 .response(200, schemas.deps);
 
 depsRouter.get((req, res) => {
-  res.json(req.service.getDependencies());
-});
+  res.json(req.service.getDependencies(req.queryParams.minimal));
+})
+.queryParam('minimal', joi.boolean().default(false));
 
 depsRouter.patch((req, res) => {
   const warnings = FoxxManager.setDependencies(req.service.mount, {
     dependencies: req.body,
     replace: true
   });
-  const values = req.service.getDependencies(true);
+  const values = req.service.getDependencies(req.queryParams.minimal);
   res.json({
     values,
     warnings
   });
 })
-.body(joi.object().required());
+.body(joi.object().required())
+.queryParam('minimal', joi.boolean().default(true));
 
 depsRouter.put((req, res) => {
   const warnings = FoxxManager.setDependencies(req.service.mount, {
     dependencies: req.body,
     replace: true
   });
-  const values = req.service.getDependencies(true);
+  const values = req.service.getDependencies(req.queryParams.minimal);
   res.json({
     values,
     warnings
   });
 })
-.body(joi.object().required());
+.body(joi.object().required())
+.queryParam('minimal', joi.boolean().default(true));
 
 const devRouter = createRouter();
 instanceRouter.use('/development', devRouter)
