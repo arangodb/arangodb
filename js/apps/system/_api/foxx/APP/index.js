@@ -238,10 +238,16 @@ configRouter.patch((req, res) => {
     replace: false
   });
   const values = req.service.getConfiguration(req.queryParams.minimal);
-  res.json({
-    values,
-    warnings
-  });
+  if (req.queryParams.minimal) {
+    res.json({values, warnings});
+  } else {
+    if (warnings) {
+      for (const key of Object.keys(warnings)) {
+        values[key].warning = warnings[key];
+      }
+    }
+    res.json(values);
+  }
 })
 .body(joi.object().required())
 .queryParam('minimal', joi.boolean().default(true));
@@ -252,10 +258,16 @@ configRouter.put((req, res) => {
     replace: true
   });
   const values = req.service.getConfiguration(req.queryParams.minimal);
-  res.json({
-    values,
-    warnings
-  });
+  if (req.queryParams.minimal) {
+    res.json({values, warnings});
+  } else {
+    if (warnings) {
+      for (const key of Object.keys(warnings)) {
+        values[key].warning = warnings[key];
+      }
+    }
+    res.json(values);
+  }
 })
 .body(joi.object().required())
 .queryParam('minimal', joi.boolean().default(true));
@@ -275,10 +287,16 @@ depsRouter.patch((req, res) => {
     replace: true
   });
   const values = req.service.getDependencies(req.queryParams.minimal);
-  res.json({
-    values,
-    warnings
-  });
+  if (req.queryParams.minimal) {
+    res.json({values, warnings});
+  } else {
+    if (warnings) {
+      for (const key of Object.keys(warnings)) {
+        values[key].warning = warnings[key];
+      }
+    }
+    res.json(values);
+  }
 })
 .body(joi.object().required())
 .queryParam('minimal', joi.boolean().default(true));
@@ -289,10 +307,16 @@ depsRouter.put((req, res) => {
     replace: true
   });
   const values = req.service.getDependencies(req.queryParams.minimal);
-  res.json({
-    values,
-    warnings
-  });
+  if (req.queryParams.minimal) {
+    res.json({values, warnings});
+  } else {
+    if (warnings) {
+      for (const key of Object.keys(warnings)) {
+        values[key].warning = warnings[key];
+      }
+    }
+    res.json(values);
+  }
 })
 .body(joi.object().required())
 .queryParam('minimal', joi.boolean().default(true));
