@@ -247,14 +247,6 @@ class ScopedAqlValue : private irs::util::noncopyable {
     return _node->isConstant();
   }
 
-  bool isDeterministic() const noexcept {
-    return _node->isDeterministic();
-  }
-
-  arangodb::aql::AstNode const& node() noexcept {
-    return *_node;
-  }
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief executes expression specified in the given `node`
   /// @returns true if expression has been executed, false otherwise

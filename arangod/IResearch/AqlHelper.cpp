@@ -142,7 +142,7 @@ bool normalizeCmpNode(
   if (cmp < arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ
       || cmp > arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE
       || in.numMembers() != 2) {
-    // wrong 'in' type
+    // wrong `in` type
     return false;
   }
 
@@ -159,6 +159,11 @@ bool normalizeCmpNode(
 
     std::swap(attribute, value);
     cmp = CmpMap[cmp - arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ];
+  }
+
+  if (arangodb::iresearch::findReference(*value, ref)) {
+    // value contains referenced variable
+    return false;
   }
 
   out.attribute = attribute;

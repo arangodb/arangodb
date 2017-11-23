@@ -506,6 +506,46 @@ bool byRange(
 bool fromExpression(
     irs::boolean_filter* filter,
     arangodb::iresearch::QueryContext const& ctx,
+    std::shared_ptr<arangodb::aql::AstNode> && node
+) {
+  if (!filter) {
+    return true;
+  }
+
+  // non-deterministic condition or self-referenced variable
+  if (!node->isDeterministic() || arangodb::iresearch::findReference(*node, *ctx.ref)) {
+    // not supported by IResearch, but could be handled by ArangoDB
+    appendExpression(*filter, std::move(node), ctx);
+    return true;
+  }
+
+  bool result;
+
+  if (node->isConstant()) {
+    result = node->isTrue();
+  } else { // deterministic expression
+    arangodb::iresearch::ScopedAqlValue value(*node);
+
+    if (!value.execute(ctx)) {
+      // can't execute expression
+      return false;
+    }
+
+    result = value.getBoolean();
+  }
+
+  if (result) {
+    filter->add<irs::all>();
+  } else {
+    filter->add<irs::empty>();
+  }
+
+  return true;
+}
+
+bool fromExpression(
+    irs::boolean_filter* filter,
+    arangodb::iresearch::QueryContext const& ctx,
     arangodb::aql::AstNode const& node
 ) {
   if (!filter) {
@@ -618,6 +658,113 @@ bool fromRange(
   return true;
 }
 
+bool fromInArray(
+    irs::boolean_filter* filter,
+    arangodb::iresearch::QueryContext const& ctx,
+    arangodb::aql::AstNode const& node
+) {
+  TRI_ASSERT(
+    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN == node.type
+    || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type
+  );
+
+  // `attributeNode` IN `valueNode`
+  auto const* attributeNode = node.getMemberUnchecked(0);
+  TRI_ASSERT(attributeNode);
+  auto const* valueNode = node.getMemberUnchecked(1);
+  TRI_ASSERT(valueNode && arangodb::aql::NODE_TYPE_ARRAY == valueNode->type);
+
+  if (!attributeNode->isDeterministic()) {
+    // not supported by IResearch, but could be handled by ArangoDB
+    return fromExpression(filter, ctx, node);
+  }
+
+  size_t const n = valueNode->numMembers();
+
+  if (!arangodb::iresearch::checkAttributeAccess(attributeNode, *ctx.ref)) {
+    // no attribute access specified in attribute node, try to
+    // find it in value node
+
+    bool attributeAccessFound = false;
+    for (size_t i = 0; i < n; ++i) {
+      attributeAccessFound |= bool(arangodb::iresearch::checkAttributeAccess(
+        valueNode->getMemberUnchecked(i), *ctx.ref
+      ));
+    }
+
+    if (!attributeAccessFound) {
+      return fromExpression(filter, ctx, node);
+    }
+  }
+
+  if (!n) {
+    if (filter) {
+      if (arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
+        filter->add<irs::all>(); // not in [] means 'all'
+      } else {
+        filter->add<irs::empty>();
+      }
+    }
+
+    // nothing to do more
+    return true;
+  }
+
+  if (filter) {
+    filter = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type
+        ? &static_cast<irs::boolean_filter&>(filter->add<irs::Not>().filter<irs::And>())
+        : &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
+  }
+
+  arangodb::iresearch::NormalizedCmpNode normalized;
+  arangodb::aql::AstNode toNormalize(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+  toNormalize.reserve(2);
+
+  // FIXME better to rewrite expression the following way but there is no place to
+  // store created `AstNode`
+  // d.a IN [1,RAND(),'3'+RAND()] -> (d.a == 1) OR d.a IN [RAND(),'3'+RAND()]
+
+  for (size_t i = 0; i < n; ++i) {
+    auto const* member = valueNode->getMemberUnchecked(i);
+    TRI_ASSERT(member);
+
+    toNormalize.clearMembers();
+    toNormalize.addMember(attributeNode);
+    toNormalize.addMember(member);
+    toNormalize.flags = member->flags; // attributeNode is deterministic here
+
+    if (!arangodb::iresearch::normalizeCmpNode(toNormalize, *ctx.ref, normalized)) {
+      if (!filter) {
+        // can't evaluate non constant filter before the execution
+        return true;
+      }
+
+      // use std::shared_ptr since AstNode is not copyable/moveable
+      auto exprNode = std::make_shared<arangodb::aql::AstNode>(
+        arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ
+      );
+      exprNode->reserve(2);
+      exprNode->addMember(attributeNode);
+      exprNode->addMember(member);
+
+      // not supported by IResearch, but could be handled by ArangoDB
+      if (!fromExpression(filter, ctx, std::move(exprNode))) {
+        return false;
+      }
+    } else {
+      auto* termFilter = filter
+          ? &filter->add<irs::by_term>()
+          : nullptr;
+
+      if (!byTerm(termFilter, normalized, ctx)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 bool fromIn(
     irs::boolean_filter* filter,
     arangodb::iresearch::QueryContext const& ctx,
@@ -633,100 +780,90 @@ bool fromIn(
     return false; // wrong number of members
   }
 
-  auto const* attributeNode = arangodb::iresearch::checkAttributeAccess(
-    node.getMemberUnchecked(0), *ctx.ref
-  );
-
-  if (!attributeNode || !attributeNode->isDeterministic()) {
-    // not supported by IResearch, but could be handled by ArangoDB
-    return fromExpression(filter, ctx, node);
-  }
-
   auto const* valueNode = node.getMemberUnchecked(1);
   TRI_ASSERT(valueNode);
 
-  switch (valueNode->type) {
-    case arangodb::aql::NODE_TYPE_ARRAY: {
-      size_t const n = valueNode->numMembers();
+  if (arangodb::aql::NODE_TYPE_ARRAY == valueNode->type) {
+    return fromInArray(filter, ctx, node);
+  }
+
+  auto* attributeNode = node.getMemberUnchecked(0);
+  TRI_ASSERT(attributeNode);
+
+  if (!node.isDeterministic()
+      || !arangodb::iresearch::checkAttributeAccess(attributeNode, *ctx.ref)
+      || arangodb::iresearch::findReference(*valueNode, *ctx.ref)) {
+    return fromExpression(filter, ctx, node);
+  }
+
+  if (!filter) {
+    // can't evaluate non constant filter before the execution
+    return true;
+  }
+
+  if (arangodb::aql::NODE_TYPE_RANGE == valueNode->type) {
+    arangodb::iresearch::ScopedAqlValue value(*valueNode);
+
+    if (!value.execute(ctx)) {
+      // con't execute expression
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "Unable to extract value from 'IN' operator";
+      return false;
+    }
+
+    // range
+    auto const* range = value.getRange();
+
+    if (!range) {
+      return false;
+    }
+
+    if (arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
+      // handle negation
+      filter = &filter->add<irs::Not>().filter<irs::Or>();
+    }
+
+    return byRange(filter, *attributeNode, *range, ctx);
+  }
+
+  arangodb::iresearch::ScopedAqlValue value(*valueNode);
+
+  if (!value.execute(ctx)) {
+    // con't execute expression
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "Unable to extract value from 'IN' operator";
+    return false;
+  }
+
+  switch (value.type()) {
+    case arangodb::iresearch::SCOPED_VALUE_TYPE_ARRAY: {
+      size_t const n = value.size();
 
       if (!n) {
-        if (filter) {
-          if (arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
-            filter->add<irs::all>(); // not in [] means 'all'
-          } else {
-            filter->add<irs::empty>();
-          }
+        if (arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
+          filter->add<irs::all>(); // not in [] means 'all'
+        } else {
+          filter->add<irs::empty>();
         }
 
         // nothing to do more
         return true;
       }
 
-      if (filter) {
-        filter = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type
+      filter = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type
           ? &static_cast<irs::boolean_filter&>(filter->add<irs::Not>().filter<irs::And>())
           : &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
-      }
-
-      arangodb::iresearch::NormalizedCmpNode normalized {
-        attributeNode, nullptr, arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ
-      };
 
       for (size_t i = 0; i < n; ++i) {
-        TRI_ASSERT(valueNode->getMemberUnchecked(i));
-        normalized.value = valueNode->getMemberUnchecked(i);
-
-        if (!normalized.value->isDeterministic()
-            || arangodb::iresearch::findReference(*normalized.value, *ctx.ref)) {
-          if (!filter) {
-            // can't evaluate non constant filter before the execution
-            return true;
-          }
-
-          // use std::shared_ptr since AstNode is not copyable/moveable
-          auto exprNode = std::make_shared<arangodb::aql::AstNode>(
-            arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ
-          );
-          exprNode->reserve(2);
-          exprNode->addMember(attributeNode);
-          exprNode->addMember(normalized.value);
-          exprNode->setFlag(arangodb::aql::DETERMINED_NONDETERMINISTIC);
-
-          // not supported by IResearch, but could be handled by ArangoDB
-          appendExpression(*filter, std::move(exprNode), ctx);
-        } else {
-          auto* termFilter = filter
-              ? &filter->add<irs::by_term>()
-              : nullptr;
-
-          if (!byTerm(termFilter, normalized, ctx)) {
-            return false;
-          }
+        if (!byTerm(&filter->add<irs::by_term>(), *attributeNode, value.at(i), ctx)) {
+          // failed to create a filter
+          return false;
         }
       }
 
       return true;
     }
-    case arangodb::aql::NODE_TYPE_RANGE: {
-      if (!filter) {
-        // can't evaluate non constant filter before the execution
-        return true;
-      }
-
-      if (!valueNode->isDeterministic() || arangodb::iresearch::findReference(*valueNode, *ctx.ref)) {
-        // not supported by IResearch, but could be handled by ArangoDB
-        return fromExpression(filter, ctx, node);
-      }
-
-      arangodb::iresearch::ScopedAqlValue value(*valueNode);
-
-      if (!value.execute(ctx)) {
-        // con't execute expression
-        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-          << "Unable to extract value from 'IN' operator";
-        return false;
-      }
-
+    case arangodb::iresearch::SCOPED_VALUE_TYPE_RANGE: {
       // range
       auto const* range = value.getRange();
 
@@ -741,68 +878,8 @@ bool fromIn(
 
       return byRange(filter, *attributeNode, *range, ctx);
     }
-    default: {
-      if (!filter) {
-        // can't evaluate non constant filter before the execution
-        return true;
-      }
-
-      arangodb::iresearch::ScopedAqlValue value(*valueNode);
-
-      if (!value.execute(ctx)) {
-        // con't execute expression
-        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-          << "Unable to extract value from 'IN' operator";
-        return false;
-      }
-
-      switch (value.type()) {
-        case arangodb::iresearch::SCOPED_VALUE_TYPE_ARRAY: {
-          size_t const n = value.size();
-
-          if (!n) {
-            if (arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
-              filter->add<irs::all>(); // not in [] means 'all'
-            } else {
-              filter->add<irs::empty>();
-            }
-
-            // nothing to do more
-            return true;
-          }
-
-          filter = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type
-            ? &static_cast<irs::boolean_filter&>(filter->add<irs::Not>().filter<irs::And>())
-            : &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
-
-          for (size_t i = 0; i < n; ++i) {
-            if (!byTerm(&filter->add<irs::by_term>(), *attributeNode, value.at(i), ctx)) {
-              // failed to create a filter
-              return false;
-            }
-          }
-
-          return true;
-        }
-        case arangodb::iresearch::SCOPED_VALUE_TYPE_RANGE: {
-          // range
-          auto const* range = value.getRange();
-
-          if (!range) {
-            return false;
-          }
-
-          if (arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
-            // handle negation
-            filter = &filter->add<irs::Not>().filter<irs::Or>();
-          }
-
-          return byRange(filter, *attributeNode, *range, ctx);
-        }
-        default:
-          break;
-      }
-    }
+    default:
+      break;
   }
 
   // wrong value node type
