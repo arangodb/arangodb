@@ -771,6 +771,7 @@ uint8_t* Builder::set(Value const& item) {
       }
       ValueLength v = s->size();
       appendUInt(v, 0xbf);
+      reserveSpace(v);
       memcpy(_start + _pos, s->c_str(), checkOverflow(v));
       _pos += v;
       break;
