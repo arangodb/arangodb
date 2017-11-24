@@ -188,9 +188,22 @@ struct IResearchQuerySetup {
 
     // register fake non-deterministic function in order to suppress optimizations
     functions->add(arangodb::aql::Function{
-      "_REFERENCE_",
+      "_NONDETERM_",
       ".",
       false, // fake non-deterministic
+      false, // fake can throw
+      true,
+      false,
+      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+        TRI_ASSERT(!params.empty());
+        return params[0];
+    }});
+
+    // register fake non-deterministic function in order to suppress optimizations
+    functions->add(arangodb::aql::Function{
+      "_FORWARD_",
+      ".",
+      true, // fake deterministic
       false, // fake can throw
       true,
       false,
@@ -663,8 +676,9 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
   {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "LET x = RAND() "
-      "FOR d IN VIEW testView FILTER d.name == (x + (RAND() + 1)) RETURN d"
+      "LET x = RAND()"
+      "LET z = {} "
+      "FOR d IN VIEW testView FILTER z.name == (x + (RAND() + 1)) RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -680,6 +694,28 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
     }
   }
 
+// FIXME support expression with self-reference
+//  // expression  (invalid value)
+//  {
+//    auto queryResult = arangodb::tests::executeQuery(
+//      vocbase,
+//      "LET x = RAND()"
+//      "FOR d IN VIEW testView FILTER d.name == (x + (RAND() + 1)) RETURN d"
+//    );
+//    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+//
+//    auto result = queryResult.result->slice();
+//    CHECK(result.isArray());
+//
+//    arangodb::velocypack::ArrayIterator resultIt(result);
+//    CHECK(0 == resultIt.size());
+//
+//    for (auto const actualDoc : resultIt) {
+//      UNUSED(actualDoc);
+//      CHECK(false);
+//    }
+//  }
+
   // expression, d.duplicated == 'abcd', unordered
   {
     std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
@@ -693,7 +729,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "LET x = _REFERENCE_('abcd') "
+      "LET x = _NONDETERM_('abcd') "
       "FOR d IN VIEW testView FILTER d.duplicated == x RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
@@ -730,7 +766,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "LET x = _REFERENCE_('abc') "
+      "LET x = _NONDETERM_('abc') "
       "FOR d IN VIEW testView FILTER d.duplicated == CONCAT(x, 'd') RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
@@ -763,7 +799,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "LET x = _REFERENCE_('abc') "
+      "LET x = _NONDETERM_('abc') "
       "FOR d IN VIEW testView FILTER d.duplicated == CONCAT(x, 'd') LIMIT 2 RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
@@ -800,7 +836,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER d.duplicated == CONCAT(_REFERENCE_('abc'), 'd') RETURN d"
+      "FOR d IN VIEW testView FILTER d.duplicated == CONCAT(_FORWARD_('abc'), 'd') RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -1209,7 +1245,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "LET x = _REFERENCE_(0) "
+      "LET x = _NONDETERM_(0) "
       "FOR d IN VIEW testView FILTER d.name != x RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
@@ -1256,7 +1292,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "LET x = _REFERENCE_('abc') "
+      "LET x = _NONDETERM_('abc') "
       "FOR d IN VIEW testView FILTER d.duplicated != CONCAT(x,'d') SORT TFIDF(d) ASC, BM25(d) ASC, d.seq DESC LIMIT 5 RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
@@ -2578,18 +2614,8 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
   // -----------------------------------------------------------------------------
 
   // d.name >= 'H' AND d.name <= 'S' , unordered
+  // (will be converted to d.name >= 0 AND d.name <= 0)
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
-    for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
-      auto const keySlice = docSlice.get("name");
-      auto const key = arangodb::iresearch::getStringRef(keySlice);
-      if (key < "H" || key > "S") {
-        continue;
-      }
-      expectedDocs.emplace(key, &doc);
-    }
-
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name IN 'H'..'S' RETURN d"
@@ -2600,22 +2626,35 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    CHECK(expectedDocs.size() == resultIt.size());
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
 
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      auto const keySlice = resolved.get("name");
-      auto const key = arangodb::iresearch::getStringRef(keySlice);
+  // d.seq >= 'H' AND d.seq <= 'S' , unordered
+  // (will be converted to d.seq >= 0 AND d.seq <= 0)
+  {
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq IN 'H'..'S' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
-      auto expectedDoc = expectedDocs.find(key);
-      REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
-      expectedDocs.erase(expectedDoc);
-    }
-    CHECK(expectedDocs.empty());
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(1 == resultIt.size());
+    CHECK(resultIt.valid());
+
+    auto const resolved = resultIt.value().resolveExternals();
+    CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(insertedDocs[0].vpack()), resolved, true));
+
+    resultIt.next();
+    CHECK(!resultIt.valid());
   }
 
   // d.name >= 'S' AND d.name <= 'N' , unordered
+  // (will be converted to d.name >= 0 AND d.name <= 0)
   {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
@@ -2631,11 +2670,12 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
     CHECK(!resultIt.valid());
   }
 
-  // d.name >= 'H' AND d.name <= 'H' , unordered
+  // d.seq >= 'S' AND d.seq <= 'N' , unordered
+  // (will be converted to d.seq >= 0 AND d.seq <= 0)
   {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER d.name IN 'H'..'H' RETURN d"
+      "FOR d IN VIEW testView FILTER d.seq IN 'S'..'N' RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -2647,27 +2687,56 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
     CHECK(resultIt.valid());
 
     auto const resolved = resultIt.value().resolveExternals();
-    CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(insertedDocs[7].vpack()), resolved, true));
+    CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(insertedDocs[0].vpack()), resolved, true));
 
     resultIt.next();
     CHECK(!resultIt.valid());
   }
 
-  // d.name > '!' AND d.name <= '~' , TFIDF() ASC, BM25() ASC, d.sec DESC
+  // d.name >= 'H' AND d.name <= 'H' , unordered
+  // (will be converted to d.name >= 0 AND d.name <= 0)
   {
-    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
-    for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
-      auto const keySlice = docSlice.get("seq");
-      auto const key = keySlice.getNumber<size_t>();
-      auto const nameSlice = docSlice.get("name");
-      auto const name = arangodb::iresearch::getStringRef(nameSlice);
-      if (name < "!" || name > "~") {
-        continue;
-      }
-      expectedDocs.emplace(key, &doc);
-    }
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name IN 'H'..'H' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+  }
+
+  // d.seq >= 'H' AND d.seq <= 'N' , unordered
+  // (will be converted to d.seq >= 0 AND d.seq <= 0)
+  {
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq IN 'H'..'N' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(1 == resultIt.size());
+    CHECK(resultIt.valid());
+
+    auto const resolved = resultIt.value().resolveExternals();
+    CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(insertedDocs[0].vpack()), resolved, true));
+
+    resultIt.next();
+    CHECK(!resultIt.valid());
+  }
+
+  // d.name >= '!' AND d.name <= '~' , TFIDF() ASC, BM25() ASC, d.sec DESC
+  // (will be converted to d.name >= 0 AND d.name <= 0)
+  {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name IN '!'..'~' SORT tfidf(d), BM25(d), d.seq DESC RETURN d"
@@ -2678,15 +2747,9 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    CHECK(expectedDocs.size() == resultIt.size());
-
-    auto expectedDoc = expectedDocs.rbegin();
-    for (auto const actualDoc : resultIt) {
-      auto const resolved = actualDoc.resolveExternals();
-      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
-      ++expectedDoc;
-    }
-    CHECK(expectedDoc == expectedDocs.rend());
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
   }
 }
 

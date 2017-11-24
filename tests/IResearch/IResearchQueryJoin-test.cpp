@@ -190,9 +190,22 @@ struct IResearchQuerySetup {
 
     // register fake non-deterministic function in order to suppress optimizations
     functions->add(arangodb::aql::Function{
-      "_REFERENCE_",
+      "_NONDETERM_",
       ".",
       false, // fake non-deterministic
+      false, // fake can throw
+      true,
+      false,
+      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+        TRI_ASSERT(!params.empty());
+        return params[0];
+    }});
+
+    // register fake non-deterministic function in order to suppress optimizations
+    functions->add(arangodb::aql::Function{
+      "_FORWARD_",
+      ".",
+      true, // fake deterministic
       false, // fake can throw
       true,
       false,
@@ -424,10 +437,10 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   //
   // FOR x IN 1..7
   //   FOR d IN VIEW testView
-  //   FILTER _REFERENCE_(5) == x.seq
+  //   FILTER _FORWARD_(5) == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR x IN 1..7 FOR d IN VIEW testView FILTER _REFERENCE_(5) == d.seq RETURN d";
+    std::string const query = "FOR x IN 1..7 FOR d IN VIEW testView FILTER _FORWARD_(5) == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -466,16 +479,63 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(expectedDoc == expectedDocs.end());
   }
 
+//  // non deterministic filter condition in a loop
+//  // (must recreate view iterator each loop iteration)
+//  //
+//  // FOR x IN 1..7
+//  //   FOR d IN VIEW testView
+//  //   FILTER _NONDETERM_(5) == x.seq
+//  // RETURN d;
+//  {
+//    std::string const query = "FOR x IN 1..7 FOR d IN VIEW testView FILTER _NONDETERM_(5) == d.seq RETURN d";
+//
+//    CHECK(arangodb::tests::assertRules(
+//      vocbase, query,
+//      {
+//        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+//      }
+//    ));
+//
+//    std::vector<arangodb::velocypack::Slice> expectedDocs {
+//      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+//      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+//      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+//      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+//      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+//      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+//      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+//    };
+//
+//    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+//    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+//
+//    auto result = queryResult.result->slice();
+//    CHECK(result.isArray());
+//
+//    arangodb::velocypack::ArrayIterator resultIt(result);
+//    REQUIRE(expectedDocs.size() == resultIt.size());
+//
+//    // Check documents
+//    auto expectedDoc = expectedDocs.begin();
+//    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+//      auto const actualDoc = resultIt.value();
+//      auto const resolved = actualDoc.resolveExternals();
+//
+//      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+//    }
+//    CHECK(expectedDoc == expectedDocs.end());
+//  }
+
   // nondeterministic filter condition in a loop
   // (must recreate view iterator each loop iteration)
   //
-  // LET c=_REFERENCE_(4)
+  // LET c=_NONDETERM_(4)
   // FOR x IN 1..7
   //   FOR d IN VIEW testView
   //   FILTER c == x.seq
   // RETURN d;
   {
-    std::string const query = "LET c=_REFERENCE_(4) FOR x IN 1..7 FOR d IN VIEW testView FILTER c == d.seq RETURN d";
+    std::string const query = "LET c=_NONDETERM_(4) FOR x IN 1..7 FOR d IN VIEW testView FILTER c == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -517,13 +577,13 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // nondeterministic range
   // (must recreate view iterator each loop iteration)
   //
-  // LET range=_REFERENCE_(0).._REFERENCE_(7)
+  // LET range=_NONDETERM_(0).._NONDETERM_(7)
   // FOR x IN range
   //   FOR d IN VIEW testView
   //   FILTER d.seq == x.seq
   // RETURN d;
   {
-    std::string const query = " FOR x IN _REFERENCE_(0).._REFERENCE_(7) FOR d IN VIEW testView FILTER x == d.seq RETURN d";
+    std::string const query = " FOR x IN _NONDETERM_(0).._NONDETERM_(7) FOR d IN VIEW testView FILTER x == d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,

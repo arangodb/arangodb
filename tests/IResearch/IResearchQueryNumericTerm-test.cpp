@@ -2995,13 +2995,14 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
   }
 
   // d.seq >= 7.1 AND d.seq <= 17.9, unordered
+  // (will be converted to d.seq >= 7 AND d.seq <= 17)
   {
     std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice(doc.vpack());
       auto const keySlice = docSlice.get("seq");
       auto const key = keySlice.getNumber<size_t>();
-      if (key <= 7 || key >= 18) {
+      if (key <= 6 || key >= 18) {
         continue;
       }
       expectedDocs.emplace(key, &doc);
@@ -3017,7 +3018,7 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    CHECK(expectedDocs.size() == resultIt.size());
+    REQUIRE(expectedDocs.size() == resultIt.size());
 
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
@@ -3143,6 +3144,7 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
   }
 
   // d.value >= -32.5 AND d.value <= 50, BM25() ASC, TFIDF() ASC seq DESC
+  // (will be converted to d.value >= -32 AND d.value <= 50)
   {
     std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
     for (auto const& doc : insertedDocs) {
@@ -3152,7 +3154,7 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
         continue;
       }
       auto const value = valueSlice.getNumber<double>();
-      if (value < -32.5 || value > 50) {
+      if (value < -32 || value > 50) {
         continue;
       }
       auto const keySlice = docSlice.get("seq");
@@ -3170,7 +3172,7 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    CHECK(expectedDocs.size() == resultIt.size());
+    REQUIRE(expectedDocs.size() == resultIt.size());
 
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {

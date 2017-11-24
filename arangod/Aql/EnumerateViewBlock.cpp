@@ -44,63 +44,49 @@ inline T const& getPlanNode(arangodb::aql::ExecutionBlock const& block) noexcept
 #endif
 }
 
-class ViewExpressionContext final : public arangodb::aql::ExpressionContext {
- public:
-  ViewExpressionContext(
-      arangodb::aql::ExecutionBlock* block,
-      arangodb::aql::AqlItemBlock const* data,
-      size_t pos) noexcept
-    : _data(data), _block(block), _pos(pos) {
-    TRI_ASSERT(block && data);
-  }
-
-  virtual size_t numRegisters() const override {
-    return _data->getNrRegs();
-  }
-
-  virtual arangodb::aql::AqlValue const& getRegisterValue(size_t i) const {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  virtual arangodb::aql::Variable const* getVariable(size_t i) const {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  virtual arangodb::aql::AqlValue getVariableValue(
-      arangodb::aql::Variable const* variable,
-      bool doCopy,
-      bool& mustDestroy) const {
-    mustDestroy = false;
-    auto const reg = _block->getRegister(variable);
-
-    if (reg == arangodb::aql::ExecutionNode::MaxRegisterId) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-
-    auto& value = _data->getValueReference(_pos, reg);
-
-    if (doCopy) {
-      mustDestroy = true;
-      return value.clone();
-    }
-
-    return value;
-  }
-
-  arangodb::aql::AqlItemBlock const* _data;
-  arangodb::aql::ExecutionBlock* _block;
-  size_t _pos{};
-}; // ViewExecutionContext
-
 }
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                              ViewExpressionContext implementation
+// -----------------------------------------------------------------------------
+
+size_t ViewExpressionContext::numRegisters() const {
+  return _data->getNrRegs();
+}
+
+AqlValue ViewExpressionContext::getVariableValue(
+    Variable const* variable,
+    bool doCopy,
+    bool& mustDestroy) const {
+  mustDestroy = false;
+  auto const reg = _block->getRegister(variable);
+
+  if (reg == arangodb::aql::ExecutionNode::MaxRegisterId) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  auto& value = _data->getValueReference(_pos, reg);
+
+  if (doCopy) {
+    mustDestroy = true;
+    return value.clone();
+  }
+
+  return value;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                 EnumerateViewBlock implementation
+// -----------------------------------------------------------------------------
+
 EnumerateViewBlock::EnumerateViewBlock(
     ExecutionEngine* engine,
     EnumerateViewNode const* en)
   : ExecutionBlock(engine, en),
+    _ctx(this),
     _iter(nullptr),
     _hasMore(true), // has more data initially
     _volatileState(en->volatile_state()) {
@@ -123,14 +109,15 @@ int EnumerateViewBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 void EnumerateViewBlock::refreshIterator() {
   TRI_ASSERT(!_buffer.empty());
 
-  ViewExpressionContext ctx(this, _buffer.front(), _pos);
+  _ctx._data = _buffer.front();
+  _ctx._pos = _pos;
 
   if (!_iter) {
     // initialize `_iter` in lazy fashion
-    _iter = ::getPlanNode<EnumerateViewNode>(*this).iterator(*_trx, ctx);
+    _iter = ::getPlanNode<EnumerateViewNode>(*this).iterator(*_trx, _ctx);
   }
 
-  if (!_iter || !_iter->reset(_volatileState ? &ctx : nullptr)) {
+  if (!_iter || !_iter->reset(_volatileState ? &_ctx : nullptr)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 }

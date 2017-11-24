@@ -26,6 +26,7 @@
 
 #include "ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExpressionContext.h"
 #include "Views/ViewIterator.h"
 #include "VocBase/LogicalView.h"
 
@@ -33,10 +34,43 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-
 class ExecutionEngine;
 
-class EnumerateViewBlock : public ExecutionBlock {
+///////////////////////////////////////////////////////////////////////////////
+/// @class ViewExpressionContext
+///////////////////////////////////////////////////////////////////////////////
+class ViewExpressionContext final : public arangodb::aql::ExpressionContext {
+ public:
+  explicit ViewExpressionContext(ExecutionBlock* block)
+    : _block(block) {
+    TRI_ASSERT(_block);
+  }
+
+  virtual size_t numRegisters() const override;
+
+  virtual arangodb::aql::AqlValue const& getRegisterValue(size_t i) const override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  virtual arangodb::aql::Variable const* getVariable(size_t i) const override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  virtual arangodb::aql::AqlValue getVariableValue(
+    Variable const* variable,
+    bool doCopy,
+    bool& mustDestroy
+  ) const override;
+
+  arangodb::aql::AqlItemBlock const* _data{};
+  arangodb::aql::ExecutionBlock* _block;
+  size_t _pos{};
+}; // ViewExpressionContext
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class EnumerateViewBlock
+///////////////////////////////////////////////////////////////////////////////
+class EnumerateViewBlock final : public ExecutionBlock {
  public:
   EnumerateViewBlock(ExecutionEngine*, EnumerateViewNode const*);
 
@@ -53,13 +87,14 @@ class EnumerateViewBlock : public ExecutionBlock {
  private:
   void refreshIterator();
 
+  ViewExpressionContext _ctx;
   std::unique_ptr<ViewIterator> _iter;
   ManagedDocumentResult _mmdr;
   bool _hasMore;
   bool _volatileState; // we have to recreate cached iterator when `reset` requested
-};
+}; // EnumerateViewBlock
 
-}
-}
+} // aql
+} // arangodb
 
 #endif
