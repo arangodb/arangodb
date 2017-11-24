@@ -380,7 +380,13 @@ Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
                                           size_t maxResults,
                                           VPackBuilder& builder) {
   std::set<LocalDocumentId> resultSet;
-  for (FulltextQueryToken const& token : query) {
+  for (size_t i = 0; i < query.size(); i++) {
+    FulltextQueryToken const& token = query[i];
+    if (i > 0 && token.operation != FulltextQueryToken::OR
+        && resultSet.empty()) {
+      // skip tokens which won't do anything
+      continue;
+    }
     applyQueryToken(trx, token, resultSet);
   }
 
