@@ -523,12 +523,16 @@ RestStatus RestAgencyHandler::handleInquire() {
     Builder body;
     bool failed = false;
     { VPackObjectBuilder b(&body);
-      body.add(VPackValue("results"));
-      { VPackArrayBuilder bb(&body);
-        for (auto const& index : ret.indices) {
-          body.add(VPackValue(index));
-          failed = (failed || index == 0);
-        }}}
+      if (ret.indices.empty()) {
+        body.add("ongoing", VPackValue(true));
+      } else {
+        body.add(VPackValue("results"));
+        { VPackArrayBuilder bb(&body);
+          for (auto const& index : ret.indices) {
+            body.add(VPackValue(index));
+            failed = (failed || index == 0);
+          }}}
+    }
     generateResult(failed ? rest::ResponseCode::PRECONDITION_FAILED :
                    rest::ResponseCode::OK, body.slice());
     
