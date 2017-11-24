@@ -29,9 +29,13 @@
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #define ARANGO_ENABLE_DEADLOCK_DETECTION
-#if defined(__SANITIZE_THREAD__) || (defined(__has_feature) && __has_feature(thread_sanitizer))
+#if defined(__SANITIZE_THREAD__)
 // Avoid fals positives with ThreadSanitizer
-#undef ARANGO_ENABLE_DEADLOCK_DETECTION
+#  undef ARANGO_ENABLE_DEADLOCK_DETECTION
+#elif defined(__has_feature)
+#  if __has_feature(thread_sanitizer)
+#    undef ARANGO_ENABLE_DEADLOCK_DETECTION
+#  endif
 #endif
 #endif
 
