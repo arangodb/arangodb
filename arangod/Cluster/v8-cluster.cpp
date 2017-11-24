@@ -275,7 +275,7 @@ static void JS_APIAgency(std::string const& envelope,
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("read([[...]])");
+    TRI_V8_THROW_EXCEPTION_USAGE(std::string(envelope) + "([[...]])");
   }
 
   VPackBuilder builder;

@@ -1334,13 +1334,31 @@ void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
 
 AgencyCommResult AgencyComm::sendWithFailover(
     arangodb::rest::RequestType method, double const timeout,
-    std::string const& initialUrl, VPackSlice body,
-    std::string const& clientId) {
+    std::string const& initialUrl, VPackSlice inBody,
+    std::string clientId) {
 
   std::string endpoint;
   std::unique_ptr<GeneralClientConnection> connection =
     AgencyCommManager::MANAGER->acquire(endpoint);
 
+  std::vector<std::string> clientIds;
+  clientId = "";
+  VPackSlice body = inBody.resolveExternals();
+
+  if (body.isArray()) {
+    for (auto const& query : VPackArrayIterator(body)) {
+      if (query.length() == 3 && query[0].isObject() && query[2].isString()) {
+        auto const id = query[2].copyString();
+        if (!id.empty()) {
+          if (!clientIds.empty()) {
+            clientId += " ";
+          }
+          clientIds.push_back(id);
+          clientId +=id;
+        }
+      }
+    }
+  }
   AgencyCommResult result;
   std::string url;
 
@@ -1430,6 +1448,15 @@ AgencyCommResult AgencyComm::sendWithFailover(
         url = initialUrl;  // Attention: overwritten by redirect below!
         result = send(connection.get(), method, conTimeout, url, bodyString,
                       clientId);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        if (!clientIds.empty()) {
+          if (clientIds[0] == "INTEGRATION_TEST_INQUIRY_ERROR_0") {
+            result._statusCode = 0;
+          } else if (clientIds[0] == "INTEGRATION_TEST_INQUIRY_ERROR_503") {
+            result._statusCode = 503;
+          }
+        }
+#endif
       } catch (...) {
         // Rotate to new agent endpoint:
         AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
@@ -1456,7 +1483,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
       // the operation. If it actually was done, we are good. If not, we
       // can retry. If in doubt, we have to retry inquire until the global
       // timeout is reached.
-      if (!clientId.empty() && result._sent &&
+      if (!clientIds.empty() && result._sent &&
           (result._statusCode == 0 || result._statusCode == 503)) {
         isInquiry = true;
       }
@@ -1468,14 +1495,14 @@ AgencyCommResult AgencyComm::sendWithFailover(
       // the transaction lead to isInquiry == true because we got a timeout
       // or a 503.
       VPackBuilder b;
-      {
-        VPackArrayBuilder ab(&b);
-        b.add(VPackValue(clientId));
-      }
+      { VPackArrayBuilder ab(&b);
+        for (auto const& i : clientIds) {
+          b.add(VPackValue(i));
+        }}
 
       LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) <<
         "Failed agency comm (" << result._statusCode << ")! " <<
-        "Inquiring about clientId " << clientId << ".";
+        "Inquiring about clientIds " << clientId << ".";
 
       url = "/_api/agency/inquire";  // attention: overwritten by redirect!
       result = send(
@@ -1499,7 +1526,11 @@ AgencyCommResult AgencyComm::sendWithFailover(
         if (outer.isObject() && outer.hasKey("results")) {
           VPackSlice results = outer.get("results");
           if (results.length() > 0) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+            LOG_TOPIC(WARN, Logger::AGENCYCOMM)
+#else
             LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
+#endif
               << "Inquired " << resultBody->toJson();
             AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
             break;
