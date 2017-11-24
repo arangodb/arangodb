@@ -612,6 +612,7 @@ Result AuthInfo::removeAllUsers() {
   loadFromDB();
   Result res;
   {
+    MUTEX_LOCKER(locker, _loadFromDBLock);
     WRITE_LOCKER(guard, _authInfoLock);
     for (auto const& pair : _authInfo) {
       res = RemoveUserInternal(pair.second);
@@ -620,7 +621,6 @@ Result AuthInfo::removeAllUsers() {
       }
     }
     {  // do not get into race conditions with loadFromDB
-      MUTEX_LOCKER(locker, _loadFromDBLock);
       _authInfo.clear();
       _authBasicCache.clear();
       _outdated = true;
@@ -746,6 +746,16 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
   return AuthLevel::NONE;
 }
 
+AuthLevel AuthInfo::canUseDatabaseNoLock(std::string const& username,
+                                         std::string const& dbname) {
+  auto it = _authInfo.find(username);
+  if (it != _authInfo.end()) {
+    return it->second.databaseAuthLevel(dbname);
+  }
+  return AuthLevel::NONE;
+}
+
+
 AuthLevel AuthInfo::canUseCollection(std::string const& username,
                                      std::string const& dbname,
                                      std::string const& coll) {
@@ -757,12 +767,47 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
   if (coll[0] >= '0' && coll[0] <= '9') {
     // lookup by collection id
     // translate numeric collection id into collection name
-    return canUseCollectionInternal(username, dbname, DatabaseFeature::DATABASE->translateCollectionName(dbname, coll));
+    std::string tmpCol = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
+    if (tmpCol.empty()) {
+      // no collection name given
+      return AuthLevel::NONE;
+    }
+ 
+    loadFromDB();
+    READ_LOCKER(guard, _authInfoLock);
+    return canUseCollectionInternal(username, dbname, tmpCol);
+  }
+
+  loadFromDB();
+  READ_LOCKER(guard, _authInfoLock);
+  // lookup by collection name
+  return canUseCollectionInternal(username, dbname, coll);
+}
+
+AuthLevel AuthInfo::canUseCollectionNoLock(std::string const& username,
+                                           std::string const& dbname,
+                                           std::string const& coll) {
+  if (coll.empty()) {
+    // no collection name given
+    return AuthLevel::NONE;
+  }
+
+  if (coll[0] >= '0' && coll[0] <= '9') {
+    // lookup by collection id
+    // translate numeric collection id into collection name
+    std::string tmpCol = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
+    if (tmpCol.empty()) {
+      // no collection name given
+      return AuthLevel::NONE;
+    }
+ 
+    return canUseCollectionInternal(username, dbname, tmpCol);
   }
 
   // lookup by collection name
   return canUseCollectionInternal(username, dbname, coll);
 }
+
 
 // internal method called by canUseCollection
 // asserts that collection name is non-empty and already translated
@@ -770,15 +815,9 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
 AuthLevel AuthInfo::canUseCollectionInternal(std::string const& username,
                                              std::string const& dbname,
                                              std::string const& coll) {
-  if (coll.empty()) {
-    // no collection name given
-    return AuthLevel::NONE;
-  }
-  // we must have got a non-empty collection name when we get here
+ // we must have got a non-empty collection name when we get here
   TRI_ASSERT(coll[0] < '0' || coll[0] > '9');
 
-  loadFromDB();
-  READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(username);
   if (it != _authInfo.end()) {
     return it->second.collectionAuthLevel(dbname, coll);
