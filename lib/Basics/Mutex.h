@@ -28,12 +28,10 @@
 #include "Basics/Common.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define ARANGO_ENABLE_DEADLOCK_DETECTION
-#if defined(__has_feature)
-#  if __has_feature(thread_sanitizer)
+#define ARANGO_ENABLE_DEADLOCK_DETECTION 1
+#if defined(__has_feature) && __has_feature(thread_sanitizer)
 // Avoid fals positives with ThreadSanitizer
 #undef ARANGO_ENABLE_DEADLOCK_DETECTION
-#  endif
 #endif
 #endif
 
