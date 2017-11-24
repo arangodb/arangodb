@@ -101,7 +101,14 @@ class NearIterator final : public RocksDBSphericalIndexIterator {
   geo::FilterType filterType() const override { return _near.filterType(); }
   
   /*bool nextDocument(DocumentCallback const& cb, size_t limit) override {
-    
+   ....
+   if (_collection->readDocument(_trx, token, *_mmdr)) {
+   VPackSlice doc(_mmdr->vpack());
+   if (_near.filterType() != geo::FilterType::NONE) {
+   TRI_ASSERT(_near.region() != nullptr);
+   // TODO
+   }
+   }
   }*/
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
@@ -113,20 +120,12 @@ class NearIterator final : public RocksDBSphericalIndexIterator {
     
     while (limit > 0 && !_near.isDone()) {
       while (limit > 0 && _near.hasNearest()) {
-        
-        LOG_TOPIC(WARN, Logger::FIXME) << "[RETURN] " << _near.nearest().rid
-          << "  d: " << ( _near.nearest().radians * geo::kEarthRadiusInMeters);
+        /*LOG_TOPIC(WARN, Logger::FIXME) << "[RETURN] " << _near.nearest().rid
+          << "  d: " << ( _near.nearest().radians * geo::kEarthRadiusInMeters);*/
         
         LocalDocumentId token(_near.nearest().rid);
         cb(token);
 
-        /*if (_collection->readDocument(_trx, token, *_mmdr)) {
-          VPackSlice doc(_mmdr->vpack());
-          if (_near.filterType() != geo::FilterType::NONE) {
-            TRI_ASSERT(_near.region() != nullptr);
-            // TODO
-          }
-        }*/
         _near.popNearest();
         limit--;
       }
@@ -159,23 +158,31 @@ class NearIterator final : public RocksDBSphericalIndexIterator {
                                                               it.min.id(), it.max.id());
 
       // intervals are sorted and likely consecutive, try to avoid seeks
+      // by checking whether we are in the range already
       bool seek = true;
-      if (i > 0) {  // we might somewhere in the range already
-        // don't bother to seek if we're already past the interval
+      if (i > 0) {
         TRI_ASSERT(scan[i - 1].max < it.min);
         if (!_iter->Valid()) { // no more valid keys after this
           LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] reached end of index at: " << it.min;
           break;
         } else if (cmp->Compare(_iter->key(), bds.end()) > 0) {
-          continue;
+          continue; // beyond range already
         } else if (cmp->Compare(bds.start(), _iter->key()) <= 0) {
-          seek = false;  // already in range!!
-        }                // TODO next() instead of seek sometimes?
+          seek = false; // already in range: min <= key <= max
+          TRI_ASSERT(cmp->Compare(_iter->key(), bds.end()) <= 0);
+        } else { // cursor is positioned below min range key
+          TRI_ASSERT(cmp->Compare(_iter->key(), bds.start()) < 0);
+          int k = 10, cc = -1; // try to skip ahead a bit and catch the range
+          do {
+            _iter->Next();
+            cc = cmp->Compare(_iter->key(), bds.start());
+          } while (--k > 0 && _iter->Valid() && cc < 0);
+          seek = !_iter->Valid() || cc < 0;
+        }
       }
 
-      // try to avoid seeking at all cost
-      if (seek) {
-        LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] seeking:" << it.min;
+      if (seek) { // try to avoid seeking at all cost
+        //LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] seeking:" << it.min;
         _iter->Seek(bds.start());
         seeks++;
       }
@@ -183,23 +190,16 @@ class NearIterator final : public RocksDBSphericalIndexIterator {
       uint64_t cellId = it.min.id();
       while (_iter->Valid() && cmp->Compare(_iter->key(), bds.end()) <= 0) {
         cellId = RocksDBKey::sphericalValue(_iter->key());
-
         TRI_voc_rid_t rid = RocksDBKey::revisionId(
             RocksDBEntryType::SphericalIndexValue, _iter->key());
         geo::Coordinate cntrd = RocksDBValue::centroid(_iter->value());
         _near.reportFound(rid, cntrd);
-
-        // LOG_TOPIC(ERR, Logger::FIXME) << "[Found] " << S2CellId(cellId)
-        //  << " | rid: " << rid << " at " << cntrd.latitude << ", " <<
-        //  cntrd.longitude;
         _iter->Next();
       }
-      
-      if (cellId != it.min.id()) {
+      /*if (cellId != it.min.id()) {
         TRI_ASSERT(cellId <= it.max.id());
         LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] ending:" << it.max;
-      }
-      
+      }*/
     }
     
     LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;

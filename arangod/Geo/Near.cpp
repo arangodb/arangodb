@@ -58,12 +58,12 @@ NearUtils::NearUtils(NearParams const& qp)
   qp.cover.configureS2RegionCoverer(&_coverer);
   reset();
 
-  LOG_TOPIC(ERR, Logger::FIXME)
+  /*LOG_TOPIC(ERR, Logger::FIXME)
       << "--------------------------------------------------------";
   LOG_TOPIC(INFO, Logger::FIXME) << "[Near] centroid target: "
                                  << _params.centroid.toString();
   LOG_TOPIC(INFO, Logger::FIXME) << "[Near] minBounds: " << _params.minDistance
-                                 << "  maxBounds:" << _params.maxDistance;
+                                 << "  maxBounds:" << _params.maxDistance;*/
 }
 
 void NearUtils::reset() {
@@ -106,10 +106,10 @@ std::vector<geo::Interval> NearUtils::intervals() {
   _outerBound = std::min(_outerBound + _boundDelta, _maxBounds);
   TRI_ASSERT(_innerBound <= _outerBound && _outerBound <= _maxBounds);
 
-  LOG_TOPIC(INFO, Logger::FIXME)
+  /*LOG_TOPIC(INFO, Logger::FIXME)
       << "[Near] inner: " << _innerBound * kEarthRadiusInMeters
       << "  outerBounds: " << _outerBound * kEarthRadiusInMeters
-      << " delta: " << _boundDelta;
+      << " delta: " << _boundDelta;*/
 
   std::vector<S2CellId> cover;
   if (0.0 < _innerBound && _outerBound < _maxBounds) {
@@ -187,9 +187,9 @@ void NearUtils::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
   S2Point pp = cords.ToPoint();
   double rad = _centroid.Angle(pp);
 
-  LOG_TOPIC(INFO, Logger::FIXME)
+  /*LOG_TOPIC(INFO, Logger::FIXME)
       << "[Found] " << rid << " at " << (center.toString())
-      << " distance: " << (rad * kEarthRadiusInMeters);
+      << " distance: " << (rad * kEarthRadiusInMeters);*/
 
   // cheap rejections based on distance to target
   if (rad < _innerBound || _maxBounds <= rad) {
