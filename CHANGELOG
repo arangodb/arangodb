@@ -7,6 +7,9 @@ v3.3.rc3 (2017-11-24)
 v3.3.rc2 (2017-11-22)
 ---------------------
 
+* UI: added a delay within the graph viewer while changing the colors of the
+  graph. Necessary due different browser behaviour.
+
 * added options `--encryption.keyfile` and `--encryption.key-generator` to arangodump
   and arangorestore
 
