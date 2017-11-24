@@ -243,6 +243,7 @@ void assertFilter(
     std::string const& queryString,
     irs::filter const& expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
@@ -250,7 +251,7 @@ void assertFilter(
 
   arangodb::aql::Query query(
      false, &vocbase, arangodb::aql::QueryString(queryString),
-     nullptr, options,
+     bindVars, options,
      arangodb::aql::PART_MAIN
   );
 
@@ -313,32 +314,37 @@ void assertFilterSuccess(
     std::string const& queryString,
     irs::filter const& expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
-  return assertFilter(true, true, queryString, expected, exprCtx, refName);
+  return assertFilter(true, true, queryString, expected, exprCtx, bindVars, refName);
 }
 
 void assertFilterExecutionFail(
     std::string const& queryString,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
   irs::Or expected;
-  return assertFilter(true, false, queryString, expected, exprCtx, refName);
+  return assertFilter(true, false, queryString, expected, exprCtx, bindVars, refName);
 }
 
 void assertFilterFail(
     std::string const& queryString,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
   irs::Or expected;
-  return assertFilter(false, false, queryString, expected, exprCtx, refName);
+  return assertFilter(false, false, queryString, expected, exprCtx, bindVars, refName);
 }
 
-void assertFilterParseFail(std::string const& queryString) {
+void assertFilterParseFail(
+    std::string const& queryString,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
   arangodb::aql::Query query(
      false, &vocbase, arangodb::aql::QueryString(queryString),
-     nullptr, nullptr,
+     bindVars, nullptr,
      arangodb::aql::PART_MAIN
   );
 

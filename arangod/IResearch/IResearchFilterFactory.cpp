@@ -1704,6 +1704,7 @@ NS_BEGIN(iresearch)
     case arangodb::aql::NODE_TYPE_ARRAY:  // array
     case arangodb::aql::NODE_TYPE_OBJECT: // object
     case arangodb::aql::NODE_TYPE_REFERENCE: // reference
+    case arangodb::aql::NODE_TYPE_PARAMETER: // bind parameter
       return fromExpression(filter, ctx, node);
     case arangodb::aql::NODE_TYPE_FCALL: // function call
       return fromFCall(filter, ctx, node);

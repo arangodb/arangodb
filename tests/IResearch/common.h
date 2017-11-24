@@ -54,22 +54,20 @@ v8::Isolate* v8Isolate();
 bool assertRules(
   TRI_vocbase_t& vocbase,
   std::string const& queryString,
-  std::vector<int> expectedRulesIds
-);
-
-std::unique_ptr<arangodb::aql::AstNode> parseQuery(
-  TRI_vocbase_t& vocbase,
-  std::string const& queryString
+  std::vector<int> expectedRulesIds,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
 );
 
 arangodb::aql::QueryResult executeQuery(
   TRI_vocbase_t& vocbase,
-  std::string const& queryString
+  std::string const& queryString,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
 );
 
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   TRI_vocbase_t& vocbase,
-  std::string const& queryString
+  std::string const& queryString,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
 );
 
 }
