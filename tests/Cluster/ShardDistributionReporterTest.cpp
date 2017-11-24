@@ -38,6 +38,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <thread>
 #include <queue>
 
 using namespace arangodb;
@@ -1186,7 +1187,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                           ClusterCommTimeout timeout) {
               if (operationID != 0) {
                 // Let us sleep 2 seconds here
-                usleep(2000000);
+                std::this_thread::sleep_for(std::chrono::seconds(2));
                 return leaderRes;
               }
               if (returnedFirstFollower) {
