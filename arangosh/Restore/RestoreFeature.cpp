@@ -22,6 +22,11 @@
 
 #include "RestoreFeature.h"
 
+#include <iostream>
+
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/OpenFilesTracker.h"
@@ -40,10 +45,9 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
 
-#include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include <iostream>
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -69,11 +73,16 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _defaultNumberOfShards(1),
       _defaultReplicationFactor(1),
       _result(result),
+      _encryption(nullptr),
       _stats{0, 0, 0} {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Client");
   startsAfter("Logger");
+
+#ifdef USE_ENTERPRISE
+  startsAfter("Encryption");
+#endif
 
   _inputDirectory =
       FileUtils::buildFilename(FileUtils::currentDirectory().result(), "dump");
@@ -86,8 +95,8 @@ void RestoreFeature::collectOptions(
       "restrict to collection name (can be specified multiple times)",
       new VectorParameter<StringParameter>(&_collections));
 
-  options->addObsoleteOption("--recycle-ids", 
-                             "collection ids are now handled automatically", false);
+  options->addObsoleteOption(
+      "--recycle-ids", "collection ids are now handled automatically", false);
 
   options->addOption("--batch-size",
                      "maximum size for individual data batches (in bytes)",
@@ -130,8 +139,8 @@ void RestoreFeature::collectOptions(
       new BooleanParameter(&_ignoreDistributeShardsLikeErrors));
 
   options->addOption(
-    "--force", "continue restore even in the face of some server-side errors",
-    new BooleanParameter(&_force));
+      "--force", "continue restore even in the face of some server-side errors",
+      new BooleanParameter(&_force));
 }
 
 void RestoreFeature::validateOptions(
@@ -227,12 +236,12 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
                                           std::string const& name,
                                           std::string& errorMsg) {
   std::string url =
-    "/_api/replication/restore-collection"
-    "?overwrite=" +
-    std::string(_overwrite ? "true" : "false") + "&force=" +
-    std::string(_force ? "true" : "false") +
-    "&ignoreDistributeShardsLikeErrors=" +
-    std::string(_ignoreDistributeShardsLikeErrors ? "true":"false");
+      "/_api/replication/restore-collection"
+      "?overwrite=" +
+      std::string(_overwrite ? "true" : "false") + "&force=" +
+      std::string(_force ? "true" : "false") +
+      "&ignoreDistributeShardsLikeErrors=" +
+      std::string(_ignoreDistributeShardsLikeErrors ? "true" : "false");
 
   if (_clusterMode) {
     if (!slice.hasKey(std::vector<std::string>({"parameters", "shards"})) &&
@@ -377,6 +386,29 @@ static bool SortCollections(VPackBuilder const& l, VPackBuilder const& r) {
 }
 
 int RestoreFeature::processInputDirectory(std::string& errorMsg) {
+  std::string encryptionType;
+  try {
+    std::string const encryptionFilename = FileUtils::buildFilename(_inputDirectory, "ENCRYPTION");
+    if (FileUtils::exists(encryptionFilename)) {
+      encryptionType = StringUtils::trim(FileUtils::slurp(encryptionFilename));
+    } else {
+      encryptionType = "none";
+    }
+  } catch (...) {
+    // file not found etc.
+  }
+
+  if (encryptionType != "none") {
+#ifdef USE_ENTERPRISE
+    if (!_encryption->keyOptionSpecified()) {
+      std::cerr << "the dump data seems to be encrypted with " << encryptionType << ", but no key information was specified to decrypt the dump" << std::endl;
+      std::cerr << "it is recommended to specify either `--encryption.key-file` or `--encryption.key-generator` when invoking arangorestore with an encrypted dump" << std::endl;
+    } else {
+      std::cout << "# using encryption type " << encryptionType << " for reading dump" << std::endl;
+    }
+#endif
+  }
+
   // create a lookup table for collections
   std::map<std::string, bool> restrictList;
   for (size_t i = 0; i < _collections.size(); ++i) {
@@ -409,7 +441,15 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         }
 
         std::string const fqn = _inputDirectory + TRI_DIR_SEPARATOR_STR + file;
-        VPackBuilder fileContentBuilder = basics::VelocyPackHelper::velocyPackFromFile(fqn);
+#ifdef USE_ENTERPRISE
+        VPackBuilder fileContentBuilder =
+            (_encryption != nullptr)
+                ? _encryption->velocyPackFromFile(fqn)
+                : basics::VelocyPackHelper::velocyPackFromFile(fqn);
+#else
+        VPackBuilder fileContentBuilder =
+            basics::VelocyPackHelper::velocyPackFromFile(fqn);
+#endif
         VPackSlice const fileContent = fileContentBuilder.slice();
 
         if (!fileContent.isObject()) {
@@ -467,7 +507,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
       }
     }
     std::sort(collections.begin(), collections.end(), SortCollections);
-    
+
     StringBuffer buffer(true);
     // step2: run the actual import
     for (VPackBuilder const& b : collections) {
@@ -524,7 +564,8 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
                       << " collection '" << cname << "'..." << std::endl;
           }
 
-          int fd = TRI_TRACKED_OPEN_FILE(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+          int fd =
+              TRI_TRACKED_OPEN_FILE(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
           if (fd < 0) {
             errorMsg = "cannot open collection data file '" + datafile + "'";
@@ -532,20 +573,24 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
             return TRI_ERROR_INTERNAL;
           }
 
+          beginDecryption(fd);
+
           buffer.clear();
 
           while (true) {
             if (buffer.reserve(16384) != TRI_ERROR_NO_ERROR) {
+              endDecryption(fd);
               TRI_TRACKED_CLOSE_FILE(fd);
               errorMsg = "out of memory";
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
-            ssize_t numRead = TRI_READ(fd, buffer.end(), 16384);
+            ssize_t numRead = readData(fd, buffer.end(), 16384);
 
             if (numRead < 0) {
               // error while reading
               int res = TRI_errno();
+              endDecryption(fd);
               TRI_TRACKED_CLOSE_FILE(fd);
               errorMsg = std::string(TRI_errno_string(res));
 
@@ -600,6 +645,8 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
                   std::cerr << errorMsg << std::endl;
                   continue;
                 }
+
+                endDecryption(fd);
                 TRI_TRACKED_CLOSE_FILE(fd);
 
                 return res;
@@ -614,6 +661,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
             }
           }
 
+          endDecryption(fd);
           TRI_TRACKED_CLOSE_FILE(fd);
         }
       }
@@ -651,6 +699,12 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 }
 
 void RestoreFeature::start() {
+#ifdef USE_ENTERPRISE
+  _encryption =
+      application_features::ApplicationServer::getFeature<EncryptionFeature>(
+          "Encryption");
+#endif
+
   ClientFeature* client =
       application_features::ApplicationServer::getFeature<ClientFeature>(
           "Client");
@@ -669,8 +723,9 @@ void RestoreFeature::start() {
   std::string dbName = client->databaseName();
 
   _httpClient->params().setLocationRewriter(static_cast<void*>(client),
-                                   &rewriteLocation);
-  _httpClient->params().setUserNamePassword("/", client->username(), client->password());
+                                            &rewriteLocation);
+  _httpClient->params().setUserNamePassword("/", client->username(),
+                                            client->password());
 
   int err = TRI_ERROR_NO_ERROR;
   std::string versionString = _httpClient->getServerVersion(&err);
@@ -768,4 +823,38 @@ void RestoreFeature::start() {
   }
 
   *_result = ret;
+}
+
+ssize_t RestoreFeature::readData(int fd, char* data, size_t len) {
+#ifdef USE_ENTERPRISE
+  if (_encryption != nullptr) {
+    return _encryption->readData(fd, data, len);
+  } else {
+    return TRI_READ(fd, data, len);
+  }
+#else
+  return TRI_READ(fd, data, len);
+#endif
+}
+
+void RestoreFeature::beginDecryption(int fd) {
+#ifdef USE_ENTERPRISE
+  if (_encryption != nullptr) {
+    bool result = _encryption->beginDecryption(fd);
+
+    if (!result) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "cannot write prefix, giving up!";
+      FATAL_ERROR_EXIT();
+    }
+  }
+#endif
+}
+
+void RestoreFeature::endDecryption(int fd) {
+#ifdef USE_ENTERPRISE
+  if (_encryption != nullptr) {
+    _encryption->endDecryption(fd);
+  }
+#endif
 }
