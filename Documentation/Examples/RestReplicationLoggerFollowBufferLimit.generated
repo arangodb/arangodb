@@ -1,12 +1,12 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=12049&chunkSize=400
+shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=12037&chunkSize=400
 
 HTTP/1.1 200 OK
-x-arango-replication-lastincluded: 12051
+x-arango-replication-lastincluded: 12039
 content-type: application/x-arango-dump; charset=utf-8
-x-arango-replication-lasttick: 12069
+x-arango-replication-lasttick: 12057
 x-arango-replication-checkmore: true
 x-arango-replication-frompresent: true
 x-content-type-options: nosniff
 x-arango-replication-active: true
 
-"{\"tick\":\"12051\",\"type\":2000,\"database\":\"1\",\"cid\":\"12050\",\"cname\":\"products\",\"data\":{\"allowUserKeys\":true,\"cid\":\"12050\",\"count\":0,\"deleted\":false,\"doCompact\":true,\"globallyUniqueId\":\"12050\",\"id\":\"12050\",\"indexBuckets\":8,\"indexes\":[{\"fields\":[\"_key\"],\"id\":\"0\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"primary\",\"unique\":true}],\"isSmart\":false,\"isSystem\":false,\"isVolatile\":false,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"lastValue\":0,\"type\":\"traditional\"},\"name\":\"products\",\"numberOfShards\":1,\"planId\":\"12050\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"],\"shards\":{},\"status\":3,\"type\":2,\"version\":6,\"waitForSync\":false}}\n"
+"{\"tick\":\"12039\",\"type\":2000,\"database\":\"1\",\"cid\":\"12038\",\"cname\":\"products\",\"data\":{\"allowUserKeys\":true,\"cid\":\"12038\",\"count\":0,\"deleted\":false,\"doCompact\":true,\"globallyUniqueId\":\"12038\",\"id\":\"12038\",\"indexBuckets\":8,\"indexes\":[{\"fields\":[\"_key\"],\"id\":\"0\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"primary\",\"unique\":true}],\"isSmart\":false,\"isSystem\":false,\"isVolatile\":false,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"lastValue\":0,\"type\":\"traditional\"},\"name\":\"products\",\"numberOfShards\":1,\"planId\":\"12038\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"],\"shards\":{},\"status\":3,\"type\":2,\"version\":6,\"waitForSync\":false}}\n"

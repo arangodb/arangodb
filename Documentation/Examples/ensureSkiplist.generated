@@ -4,7 +4,7 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"first"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/17958"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/17952"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
@@ -13,31 +13,31 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17961"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17961"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1T5O--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17955"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17955"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82NsGa--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17965"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17965"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1T5O--B"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17959"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17959"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82NsGa--B"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"John"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17968"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17968"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1T5O--D"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17962"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17962"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82NsGe--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17971"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17971"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1T5O--F"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17965"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17965"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82NsGi--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17974"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17974"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1T5O--H"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17968"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17968"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82NsGi--B"</span> 
 }

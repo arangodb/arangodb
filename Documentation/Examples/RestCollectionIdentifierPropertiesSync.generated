@@ -20,7 +20,7 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/properties
   }, 
   <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10442"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10440"</span>, 
   <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">33554432</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">true</span>, 
@@ -28,5 +28,5 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/properties
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"statusString"</span> : <span class="hljs-string">"loaded"</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"10442"</span> 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"10440"</span> 
 }

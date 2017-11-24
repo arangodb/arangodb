@@ -14,7 +14,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanHighway/25239"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dze--D"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IG--D"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">500</span> 
       } 
     ], 
@@ -31,7 +31,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanHighway/25232"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dze--_"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IG--_"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">850</span> 
       } 
     ], 
@@ -48,7 +48,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/25259"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dzm--B"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IK--H"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">700</span> 
       } 
     ], 
@@ -65,7 +65,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/25262"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dzm--D"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IK--J"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">550</span> 
       } 
     ], 
@@ -82,7 +82,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanHighway/25239"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dze--D"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IG--D"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">500</span> 
       } 
     ], 
@@ -99,7 +99,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanHighway/25236"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dze--B"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IG--B"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">400</span> 
       } 
     ], 
@@ -116,7 +116,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/25256"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dzm--_"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IK--F"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">1300</span> 
       } 
     ], 
@@ -133,7 +133,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/25253"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dzi--F"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IK--D"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">900</span> 
       } 
     ], 
@@ -150,7 +150,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanHighway/25232"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dze--_"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IG--_"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">850</span> 
       } 
     ], 
@@ -167,7 +167,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanHighway/25236"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dze--B"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IG--B"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">400</span> 
       } 
     ], 
@@ -184,7 +184,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/25246"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dzi--B"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IK--_"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">1100</span> 
       } 
     ], 
@@ -201,7 +201,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/25250"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dzi--D"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IK--B"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">1200</span> 
       } 
     ], 
@@ -218,7 +218,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/25259"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dzm--B"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IK--H"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">700</span> 
       } 
     ], 
@@ -235,7 +235,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/25256"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dzm--_"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IK--F"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">1300</span> 
       } 
     ], 
@@ -252,7 +252,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/25246"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dzi--B"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IK--_"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">1100</span> 
       } 
     ], 
@@ -269,7 +269,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchHighway/25242"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dzi--_"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IG--F"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">550</span> 
       } 
     ], 
@@ -286,7 +286,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/25262"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dzm--D"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IK--J"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">550</span> 
       } 
     ], 
@@ -303,7 +303,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/25253"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dzi--F"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IK--D"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">900</span> 
       } 
     ], 
@@ -320,7 +320,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/25250"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dzi--D"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IK--B"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">1200</span> 
       } 
     ], 
@@ -337,7 +337,7 @@ arangosh&gt; g._shortestPath({}, {}, {<span class="hljs-attr">weight</span> : <s
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchHighway/25242"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V8R1dzi--_"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V82N1IG--F"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">550</span> 
       } 
     ], 
