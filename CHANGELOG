@@ -1,3 +1,9 @@
+v3.3.rc3 (2017-11-24)
+---------------------
+
+* bug-fixes
+
+
 v3.3.rc2 (2017-11-22)
 ---------------------
 
@@ -16,7 +22,10 @@ v3.3.rc1 (2017-11-17)
 
 * add readonly mode REST API
 
-* allow compilation of ArangoDB source code with g++7
+* allow compilation of ArangoDB source code with g++ 7
+
+* upgrade minimum required g++ compiler version to g++ 5.4
+  That means ArangoDB source code will not compile with g++ 4.x or g++ < 5.4 anymore.
 
 * AQL: during a traversal if a vertex is not found. It will not print an ERROR to the log and continue
   with a NULL value, but will register a warning at the query and continue with a NULL value.
