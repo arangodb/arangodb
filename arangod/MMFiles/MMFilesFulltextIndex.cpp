@@ -226,6 +226,14 @@ void MMFilesFulltextIndex::unload() {
   TRI_TruncateMMFilesFulltextIndex(_fulltextIndex);
 }
 
+IndexIterator* MMFilesFulltextIndex::iteratorForCondition(transaction::Methods* trx,
+                                    ManagedDocumentResult* mdr,
+                                    aql::AstNode const* node,
+                                    aql::Variable const* var,
+                                                          bool reverse) {
+  return nullptr;
+}
+
 /// @brief callback function called by the fulltext index to determine the
 /// words to index for a specific document
 std::set<std::string> MMFilesFulltextIndex::wordlist(VPackSlice const& doc) {

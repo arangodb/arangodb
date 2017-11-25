@@ -322,6 +322,13 @@ struct Functions {
                                     transaction::Methods*,
                                     VPackFunctionParameters const&);
 };
+  
+/// @brief register warning
+void RegisterWarning(arangodb::aql::Query* query,
+                     char const* functionName, int code);
+/// @brief register usage of an invalid function argument
+void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
+                                    char const* functionName);
 }
 }
 

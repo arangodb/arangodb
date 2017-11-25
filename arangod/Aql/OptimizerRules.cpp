@@ -4436,6 +4436,145 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+static bool isValueTypeString(AstNode* node) {
+  return (node->type == NODE_TYPE_VALUE && node->value.type == VALUE_TYPE_STRING) ||
+  node->type == NODE_TYPE_REFERENCE;
+}
+
+static bool isValueTypeInt(AstNode* node) {
+  return (node->type == NODE_TYPE_VALUE && node->value.type == VALUE_TYPE_INT) ||
+         node->type == NODE_TYPE_REFERENCE;
+}
+
+static bool applyFulltextOptimization(EnumerateListNode* elnode, ExecutionPlan* plan) {
+  std::vector<Variable const*> varsUsedHere = elnode->getVariablesUsedHere();
+  TRI_ASSERT(varsUsedHere.size() == 1);
+  // now check who introduced our variable
+  ExecutionNode* node = plan->getVarSetBy(varsUsedHere[0]->id);
+  if (node->getType() != EN::CALCULATION || elnode->isInInnerLoop()) {
+    return false;
+  }
+  
+  CalculationNode* calcNode = static_cast<CalculationNode*>(node);
+  Expression* expr = calcNode->expression();
+  // the expression must exist and it must have an astNode
+  if (expr->node() == nullptr) {
+    return false;// not the right type of node
+  }
+  AstNode* flltxtNode = expr->nodeForModification();
+  if (flltxtNode->type != NODE_TYPE_FCALL) {
+    return false;
+  }
+  
+  // get the ast node of the expression
+  auto func = static_cast<Function const*>(flltxtNode->getData());
+  // we're looking for "FULLTEXT()", which is a function call
+  // with an empty parameters array
+  if (func->name != "FULLTEXT" || flltxtNode->numMembers() != 1) {
+    return false;
+  }
+  AstNode* fargs = flltxtNode->getMember(0);
+  if (fargs->numMembers() != 3 && fargs->numMembers() != 4) {
+    return false;
+  }
+  
+  AstNode* collNode = fargs->getMember(0);
+  AstNode* attrNode = fargs->getMember(1);
+  AstNode* queryNode = fargs->getMember(2);
+  AstNode* limitNode = fargs->numMembers() == 4 ? limitNode = fargs->getMember(3) : nullptr;
+  if ((collNode->type != NODE_TYPE_COLLECTION && collNode->type != NODE_TYPE_VALUE) ||
+      !isValueTypeString(attrNode) || !isValueTypeString(queryNode) ||
+      (limitNode != nullptr && !isValueTypeInt(limitNode))) {
+    return false;
+  }
+  
+  
+  std::string name = collNode->getString();
+  std::string attr = attrNode->getString();
+  TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
+  aql::Collections* colls = plan->getAst()->query()->collections();
+  aql::Collection const* coll = colls->add(name, AccessMode::Type::READ);
+  
+  std::shared_ptr<LogicalCollection> logical = coll->getCollection();
+  
+  //check for suitiable indexes
+  std::shared_ptr<arangodb::Index> index;
+  for (auto idx : logical->getIndexes()) {
+    if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      std::vector<basics::AttributeName> fields = idx->fields()[0];
+      TRI_ASSERT(!fields.empty());
+      if (fields[0].name == attr) {
+        index = idx;
+        break;
+      }
+    }
+  }
+  if (!index) { // no index found
+    return false;
+  }
+  
+  //std::unique_ptr<Condition> condition(buildGeoCondition(plan, first));
+  Ast* ast = plan->getAst();
+  //AstNode* varAstNode = ast->createNodeReference(elnode->outVariable());
+  
+  auto args = ast->createNodeArray(2);
+  args->addMember(ast->clone(collNode));  // only so createNodeFunctionCall doesn't throw
+  args->addMember(attrNode);
+  args->addMember(queryNode);
+  if (limitNode != nullptr) {
+    args->addMember(limitNode);
+  }
+  AstNode* cond = ast->createNodeFunctionCall("FULLTEXT", args);
+  TRI_ASSERT(cond != nullptr);
+  auto condition = std::make_unique<Condition>(ast);
+  condition->andCombine(cond);
+  condition->normalize(plan);
+  
+  auto inode = new IndexNode(plan, plan->nextId(), vocbase,
+                             coll, elnode->outVariable(),
+                             std::vector<transaction::Methods::IndexHandle>{
+                               transaction::Methods::IndexHandle{index}},
+                             condition.get(), false);
+  plan->registerNode(inode);
+  condition.release();
+  
+  if (limitNode != nullptr) {
+    LimitNode* lnode = new LimitNode(plan, plan->nextId(), 0,
+                                     static_cast<size_t>(limitNode->getIntValue()));
+    plan->registerNode(lnode);
+    lnode->addDependency(inode);
+    plan->replaceNode(elnode, lnode);
+  } else {
+    plan->replaceNode(elnode, inode);
+  }
+  
+  return true;
+}
+
+void arangodb::aql::fulltextIndexRule(Optimizer* opt,
+                                      std::unique_ptr<ExecutionPlan> plan,
+                                      OptimizerRule const* rule) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  bool modified = false;
+  // inspect each return node and work upwards to SingletonNode
+  plan->findEndNodes(nodes, true);
+  
+  for (ExecutionNode* node : nodes) {
+    ExecutionNode* current = node;
+    while (current) {
+      if (current->getType() == EN::ENUMERATE_LIST) {
+        EnumerateListNode* elnode = static_cast<EnumerateListNode*>(current);
+        modified = modified || applyFulltextOptimization(elnode, plan.get());
+      }
+      current = current->getFirstDependency();  // inspect next node
+    }
+  }
+  
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+
 struct GeoIndexInfo {
   operator bool() const { return distanceNode && valid; }
   void invalidate() { valid = false; }
@@ -4478,10 +4617,6 @@ struct GeoIndexInfo {
 
 // candidate checking
 
-AstNode* isValueOrRefNode(AstNode* node) {
-  // TODO - implement me
-  return node;
-}
 
 // contains the AstNode* distanceNode a distance function?
 // if so return a valid GeoIndexInfo object
@@ -4551,11 +4686,11 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent) {
 
   rv = eval_stuff(dist_first, lessEqual,
                   isDistanceFunction(first, expressionParent),
-                  isValueOrRefNode(second));
+                  second);
   if (!rv) {
     rv = eval_stuff(dist_first, lessEqual,
                     isDistanceFunction(second, expressionParent),
-                    isValueOrRefNode(first));
+                    first);
   }
 
   if (rv) {

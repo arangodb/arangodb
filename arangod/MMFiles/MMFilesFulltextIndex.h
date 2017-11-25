@@ -35,6 +35,12 @@
 
 namespace arangodb {
 class LocalDocumentId;
+  
+/*class MMFilesFulltextIndexIterator : public IndexIterator {
+  
+private:
+  std::vector<LocalDocumentId> _docs;
+}*/
 
 class MMFilesFulltextIndex final : public MMFilesIndex {
  public:
@@ -75,6 +81,13 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
 
   void load() override {}
   void unload() override;
+  
+  IndexIterator* iteratorForCondition(transaction::Methods*,
+                                      ManagedDocumentResult*,
+                                      arangodb::aql::AstNode const*,
+                                      arangodb::aql::Variable const*,
+                                      bool) override final;
+
 
   bool isSame(std::string const& field, int minWordLength) const {
     std::string fieldString;

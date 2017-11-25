@@ -150,15 +150,15 @@ std::string Functions::ExtractCollectionName(
 }
 
 /// @brief register warning
-static void RegisterWarning(arangodb::aql::Query* query,
-                            char const* functionName, int code) {
+void arangodb::aql::RegisterWarning(arangodb::aql::Query* query,
+                                    char const* fName, int code) {
   std::string msg;
 
   if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
-    msg = arangodb::basics::Exception::FillExceptionString(code, functionName);
+    msg = arangodb::basics::Exception::FillExceptionString(code, fName);
   } else {
     msg.append("in function '");
-    msg.append(functionName);
+    msg.append(fName);
     msg.append("()': ");
     msg.append(TRI_errno_string(code));
   }
@@ -167,8 +167,8 @@ static void RegisterWarning(arangodb::aql::Query* query,
 }
 
 /// @brief register usage of an invalid function argument
-static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
-                                           char const* functionName) {
+void arangodb::aql::RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
+                                                   char const* functionName) {
   RegisterWarning(query, functionName,
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }

@@ -136,7 +136,11 @@ struct OptimizerRule {
     // remove redundant OR conditions
     removeRedundantOrRule_pass6,
     
-    applyGeoIndexRule,
+    // remove FILTER and SORT if there are geoindexes
+    applyGeoIndexRule_pass6,
+    
+    // replace FULLTEXT with index
+    applyFulltextIndexRule_pass6,
 
     useIndexesRule_pass6,
 
