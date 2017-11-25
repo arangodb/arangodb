@@ -205,6 +205,9 @@ class RocksDBCollection final : public PhysicalCollection {
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
  private:
+  /// @brief track the usage of waitForSync option in an operation
+  void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
+
   /// @brief return engine-specific figures
   void figuresSpecific(
       std::shared_ptr<arangodb::velocypack::Builder>&) override;
@@ -229,13 +232,11 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBOperationResult insertDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-      arangodb::velocypack::Slice const& doc, OperationOptions& options,
-      bool& waitForSync) const;
+      arangodb::velocypack::Slice const& doc, OperationOptions& options) const;
 
   arangodb::RocksDBOperationResult removeDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-      arangodb::velocypack::Slice const& doc, OperationOptions& options,
-      bool isUpdate, bool& waitForSync) const;
+      arangodb::velocypack::Slice const& doc, OperationOptions& options) const;
 
   arangodb::RocksDBOperationResult lookupDocument(
       transaction::Methods* trx, arangodb::velocypack::Slice const& key,
@@ -245,8 +246,7 @@ class RocksDBCollection final : public PhysicalCollection {
       transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
       arangodb::velocypack::Slice const& oldDoc,
       LocalDocumentId const& newDocumentId,
-      arangodb::velocypack::Slice const& newDoc, OperationOptions& options,
-      bool& waitForSync) const;
+      arangodb::velocypack::Slice const& newDoc, OperationOptions& options) const;
 
   arangodb::Result lookupDocumentVPack(LocalDocumentId const& documentId,
                                        transaction::Methods*,
