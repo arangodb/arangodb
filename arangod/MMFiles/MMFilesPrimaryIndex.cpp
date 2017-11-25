@@ -92,9 +92,9 @@ void MMFilesPrimaryIndexIterator::reset() { _iterator.reset(); }
 
 MMFilesAllIndexIterator::MMFilesAllIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, MMFilesPrimaryIndex const* index,
+    MMFilesPrimaryIndex const* index,
     MMFilesPrimaryIndexImpl const* indexImpl, bool reverse)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _index(indexImpl),
       _reverse(reverse),
       _total(0) {}
@@ -103,9 +103,9 @@ bool MMFilesAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
   while (limit > 0) {
     MMFilesSimpleIndexElement element;
     if (_reverse) {
-      element = _index->findSequentialReverse(&_context, _position);
+      element = _index->findSequentialReverse(nullptr, _position);
     } else {
-      element = _index->findSequential(&_context, _position, _total);
+      element = _index->findSequential(nullptr, _position, _total);
     }
     if (element) {
       cb(LocalDocumentId{element.localDocumentId()});
@@ -125,9 +125,9 @@ bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t li
   while (limit > 0) {
     MMFilesSimpleIndexElement element;
     if (_reverse) {
-      element = _index->findSequentialReverse(&_context, _position);
+      element = _index->findSequentialReverse(nullptr, _position);
     } else {
-      element = _index->findSequential(&_context, _position, _total);
+      element = _index->findSequential(nullptr, _position, _total);
     }
     if (element) {
       _documentIds.emplace_back(std::make_pair(element.localDocumentId(), nullptr));
@@ -148,9 +148,9 @@ void MMFilesAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
   while (count > 0) {
     MMFilesSimpleIndexElement element;
     if (_reverse) {
-      element = _index->findSequentialReverse(&_context, _position);
+      element = _index->findSequentialReverse(nullptr, _position);
     } else {
-      element = _index->findSequential(&_context, _position, _total);
+      element = _index->findSequential(nullptr, _position, _total);
     }
     if (element) {
       ++skipped;
@@ -165,9 +165,9 @@ void MMFilesAllIndexIterator::reset() { _position.reset(); }
 
 MMFilesAnyIndexIterator::MMFilesAnyIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, MMFilesPrimaryIndex const* index,
+    MMFilesPrimaryIndex const* index,
     MMFilesPrimaryIndexImpl const* indexImpl)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _index(indexImpl),
       _step(0),
       _total(0) {}
@@ -175,7 +175,7 @@ MMFilesAnyIndexIterator::MMFilesAnyIndexIterator(
 bool MMFilesAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   while (limit > 0) {
     MMFilesSimpleIndexElement element =
-        _index->findRandom(&_context, _initial, _position, _step, _total);
+        _index->findRandom(nullptr, _initial, _position, _step, _total);
     if (element) {
       cb(LocalDocumentId{element.localDocumentId()});
       --limit;
@@ -337,19 +337,15 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequential(
 /// @brief request an iterator over all elements in the index in
 ///        a sequential order.
 IndexIterator* MMFilesPrimaryIndex::allIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mmdr,
                                                 bool reverse) const {
-  return new MMFilesAllIndexIterator(_collection, trx, mmdr, this,
-                                     _primaryIndex.get(), reverse);
+  return new MMFilesAllIndexIterator(_collection, trx, this, _primaryIndex.get(), reverse);
 }
 
 /// @brief request an iterator over all elements in the index in
 ///        a random order. It is guaranteed that each element is found
 ///        exactly once unless the collection is modified.
-IndexIterator* MMFilesPrimaryIndex::anyIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr) const {
-  return new MMFilesAnyIndexIterator(_collection, trx, mmdr, this,
-                                     _primaryIndex.get());
+IndexIterator* MMFilesPrimaryIndex::anyIterator(transaction::Methods* trx) const {
+  return new MMFilesAnyIndexIterator(_collection, trx, this, _primaryIndex.get());
 }
 
 /// @brief a method to iterate over all elements in the index in

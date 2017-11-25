@@ -74,6 +74,7 @@ class IndexIterator {
   IndexIterator() = delete;
 
   IndexIterator(LogicalCollection*, transaction::Methods*, ManagedDocumentResult*, arangodb::Index const*);
+  IndexIterator(LogicalCollection*, transaction::Methods*, arangodb::Index const*);
 
   virtual ~IndexIterator();
 

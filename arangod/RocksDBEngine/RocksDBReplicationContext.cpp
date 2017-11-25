@@ -141,8 +141,7 @@ int RocksDBReplicationContext::bindCollection(
 
     _trx->addCollectionAtRuntime(collectionName);
     _iter = static_cast<RocksDBCollection*>(_collection->getPhysical())
-                ->getSortedAllIterator(_trx.get(),
-                                       &_mdr);  //_mdr is not used nor updated
+                ->getSortedAllIterator(_trx.get());
     _currentTick = 1;
     _hasMore = true;
   }

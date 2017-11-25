@@ -2429,14 +2429,13 @@ bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
 }
 
 std::unique_ptr<IndexIterator> MMFilesCollection::getAllIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) const {
-  return std::unique_ptr<IndexIterator>(
-      primaryIndex()->allIterator(trx, mdr, reverse));
+    transaction::Methods* trx, bool reverse) const {
+  return std::unique_ptr<IndexIterator>(primaryIndex()->allIterator(trx, reverse));
 }
 
 std::unique_ptr<IndexIterator> MMFilesCollection::getAnyIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr) const {
-  return std::unique_ptr<IndexIterator>(primaryIndex()->anyIterator(trx, mdr));
+    transaction::Methods* trx) const {
+  return std::unique_ptr<IndexIterator>(primaryIndex()->anyIterator(trx));
 }
 
 void MMFilesCollection::invokeOnAllElements(

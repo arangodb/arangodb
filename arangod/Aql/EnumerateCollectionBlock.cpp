@@ -34,7 +34,6 @@
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::aql;
@@ -44,12 +43,11 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     : ExecutionBlock(engine, ep), 
       DocumentProducingBlock(ep, _trx),
       _collection(ep->_collection),
-      _mmdr(new ManagedDocumentResult),
       _cursor(
           _trx->indexScan(_collection->getName(),
                           (ep->_random ? transaction::Methods::CursorType::ANY
                                        : transaction::Methods::CursorType::ALL),
-                          _mmdr.get(), false)) {
+                          false)) {
   TRI_ASSERT(_cursor->ok());
 }
 

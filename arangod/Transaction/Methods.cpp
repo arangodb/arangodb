@@ -836,9 +836,8 @@ OperationResult transaction::Methods::anyLocal(
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
-  ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr, false);
+      indexScan(collectionName, transaction::Methods::CursorType::ANY, false);
 
   cursor->allDocuments([&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
@@ -2243,9 +2242,8 @@ OperationResult transaction::Methods::allLocal(
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
-  ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, transaction::Methods::CursorType::ALL, &mmdr, false);
+      indexScan(collectionName, transaction::Methods::CursorType::ALL, false);
 
   if (cursor->fail()) {
     return OperationResult(cursor->code);
@@ -2706,7 +2704,6 @@ OperationCursor* transaction::Methods::indexScanForCondition(
 /// calling this method
 std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
     std::string const& collectionName, CursorType cursorType,
-    ManagedDocumentResult* mmdr,
     bool reverse) {
   // For now we assume indexId is the iid part of the index.
 
@@ -2730,11 +2727,11 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
   std::unique_ptr<IndexIterator> iterator = nullptr;
   switch (cursorType) {
     case CursorType::ANY: {
-      iterator = logical->getAnyIterator(this, mmdr);
+      iterator = logical->getAnyIterator(this);
       break;
     }
     case CursorType::ALL: {
-      iterator = logical->getAllIterator(this, mmdr, reverse);
+      iterator = logical->getAllIterator(this, reverse);
       break;
     }
   }

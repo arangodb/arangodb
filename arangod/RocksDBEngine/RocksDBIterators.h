@@ -50,7 +50,6 @@ class RocksDBAllIndexIterator final : public IndexIterator {
       TokenKeyCallback;
   RocksDBAllIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           RocksDBPrimaryIndex const* index, bool reverse);
 
   ~RocksDBAllIndexIterator() {}
@@ -76,7 +75,6 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
   RocksDBAnyIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           RocksDBPrimaryIndex const* index);
 
   ~RocksDBAnyIndexIterator() {}
@@ -109,7 +107,6 @@ class RocksDBSortedAllIterator final : public IndexIterator {
       TokenKeyCallback;
   RocksDBSortedAllIterator(LogicalCollection* collection,
                            transaction::Methods* trx,
-                           ManagedDocumentResult* mmdr,
                            RocksDBPrimaryIndex const* index);
 
   ~RocksDBSortedAllIterator() {}

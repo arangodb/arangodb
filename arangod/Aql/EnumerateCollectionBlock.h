@@ -34,7 +34,6 @@
 namespace arangodb {
 
 class LocalDocumentId;
-class ManagedDocumentResult;
 struct OperationCursor;
 
 namespace aql {
@@ -67,8 +66,6 @@ class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentPro
   /// @brief collection
   Collection* _collection;
   
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
-
   /// @brief cursor
   std::unique_ptr<OperationCursor> _cursor;
 };

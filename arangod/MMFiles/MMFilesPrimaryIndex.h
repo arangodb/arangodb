@@ -119,7 +119,6 @@ class MMFilesAllIndexIterator final : public IndexIterator {
  public:
   MMFilesAllIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           MMFilesPrimaryIndex const* index,
                           MMFilesPrimaryIndexImpl const* indexImpl,
                           bool reverse);
@@ -147,7 +146,6 @@ class MMFilesAnyIndexIterator final : public IndexIterator {
  public:
   MMFilesAnyIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           MMFilesPrimaryIndex const* index,
                           MMFilesPrimaryIndexImpl const* indexImpl);
 
@@ -232,14 +230,12 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   /// @brief request an iterator over all elements in the index in
   ///        a sequential order.
-  IndexIterator* allIterator(transaction::Methods*, ManagedDocumentResult*,
-                             bool reverse) const;
+  IndexIterator* allIterator(transaction::Methods*, bool reverse) const;
 
   /// @brief request an iterator over all elements in the index in
   ///        a random order. It is guaranteed that each element is found
   ///        exactly once unless the collection is modified.
-  IndexIterator* anyIterator(transaction::Methods*,
-                             ManagedDocumentResult*) const;
+  IndexIterator* anyIterator(transaction::Methods*) const;
 
   /// @brief a method to iterate over all elements in the index in
   ///        reversed sequential order.

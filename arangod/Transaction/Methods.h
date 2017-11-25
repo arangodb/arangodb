@@ -363,7 +363,6 @@ class Methods {
   ENTERPRISE_VIRT
   std::unique_ptr<OperationCursor> indexScan(std::string const& collectionName,
                                              CursorType cursorType,
-                                             ManagedDocumentResult*,
                                              bool reverse);
 
   /// @brief test if a collection is already locked
