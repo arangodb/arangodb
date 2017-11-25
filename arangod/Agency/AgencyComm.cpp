@@ -1481,43 +1481,27 @@ AgencyCommResult AgencyComm::sendWithFailover(
       result = send(
           connection.get(), method, conTimeout, url, b.toJson(), "");
 
-      if (result.successful()) {
-        std::shared_ptr<VPackBuilder> bodyBuilder
-            = VPackParser::fromJson(result._body);
-        VPackSlice outer = bodyBuilder->slice();
+      // Inquire returns a body like write or if the write is still ongoing
+      // We check, if the operation is still ongoing then body is {"ongoing:true"}
+      // _statusCode can be 200 or 412
+      if (result.successful() || result._statusCode == 412) {
+        std::shared_ptr<VPackBuilder> resultBody
+          = VPackParser::fromJson(result._body);
+        VPackSlice outer = resultBody->slice();
         // If the operation is still ongoing, simply ask again later:
-        if (outer.isString() && outer.copyString() == "ongoing") {
+        if (outer.isObject() && outer.hasKey("ongoing")) {
           continue;
         }
-
-        // If we get an answer, we have to look at it, the condition is
-        // that we get that our transaction has been logged with a certain
-        // positive log index:
-        if (outer.isArray() && outer.length() > 0) {
-          uint64_t index = 0;
-          for (auto const& inner : VPackArrayIterator(outer)) {
-            if (inner.isArray() && inner.length() > 0) {
-              for (auto const& i : VPackArrayIterator(inner)) {
-                if (i.isObject()) {
-                  VPackSlice indexSlice = i.get("index");
-                  if (indexSlice.isInteger()) {
-                    index = indexSlice.getUInt();
-                    break;
-                  }
-                }
-              }
-            }
-          }
-          if (index > 0) {
+        
+        // If we get an answer, and it contains a "results" key,
+        // we release the connection and break out of the loop letting the
+        // inquiry result go to the client. Otherwise try again.
+        if (outer.isObject() && outer.hasKey("results")) {
+          VPackSlice results = outer.get("results");
+          if (results.length() > 0) {
             LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
-              << body << " succeeded (" << outer.toJson() << ")";
-            bodyBuilder->clear();
-            {
-              VPackArrayBuilder guard(bodyBuilder.get());
-              bodyBuilder->add(VPackValue(index));
-            }
-            result.set(200, "200 OK", clientId);
-            result._body = bodyBuilder->toJson();
+              << "Inquired " << resultBody->toJson();
+            AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
             break;
           } else {
             // Nothing known, so do a retry of the original operation:
