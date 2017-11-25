@@ -4488,16 +4488,14 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode, ExecutionPlan* 
     return false;
   }
   
-  
   std::string name = collNode->getString();
   std::string attr = attrNode->getString();
   TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
   aql::Collections* colls = plan->getAst()->query()->collections();
   aql::Collection const* coll = colls->add(name, AccessMode::Type::READ);
   
-  std::shared_ptr<LogicalCollection> logical = coll->getCollection();
-  
   //check for suitiable indexes
+  std::shared_ptr<LogicalCollection> logical = coll->getCollection();
   std::shared_ptr<arangodb::Index> index;
   for (auto idx : logical->getIndexes()) {
     if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
@@ -4537,16 +4535,15 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode, ExecutionPlan* 
                              condition.get(), false);
   plan->registerNode(inode);
   condition.release();
-  
-  if (limitNode != nullptr) {
+  plan->replaceNode(elnode, inode);
+
+  // FIXME: how to add a LimitNode
+  /*if (limitNode != nullptr) {
     LimitNode* lnode = new LimitNode(plan, plan->nextId(), 0,
                                      static_cast<size_t>(limitNode->getIntValue()));
     plan->registerNode(lnode);
     lnode->addDependency(inode);
-    plan->replaceNode(elnode, lnode);
-  } else {
-    plan->replaceNode(elnode, inode);
-  }
+  }*/
   
   return true;
 }

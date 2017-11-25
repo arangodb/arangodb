@@ -150,7 +150,7 @@ std::string Functions::ExtractCollectionName(
 }
 
 /// @brief register warning
-void arangodb::aql::RegisterWarning(arangodb::aql::Query* query,
+void Functions::RegisterWarning(arangodb::aql::Query* query,
                                     char const* fName, int code) {
   std::string msg;
 
@@ -167,7 +167,7 @@ void arangodb::aql::RegisterWarning(arangodb::aql::Query* query,
 }
 
 /// @brief register usage of an invalid function argument
-void arangodb::aql::RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
+void Functions::RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
                                                    char const* functionName) {
   RegisterWarning(query, functionName,
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
