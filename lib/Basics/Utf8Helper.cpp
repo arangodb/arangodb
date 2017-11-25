@@ -60,26 +60,6 @@ Utf8Helper::~Utf8Helper() {
   }
 }
 
-int Utf8Helper::compareUtf8(char const* left, char const* right) const {
-  TRI_ASSERT(left != nullptr);
-  TRI_ASSERT(right != nullptr);
-
-  if (!_coll) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "no Collator in Utf8Helper::compareUtf8()!";
-    return (strcmp(left, right));
-  }
-
-  UErrorCode status = U_ZERO_ERROR;
-  int result =
-      _coll->compareUTF8(StringPiece(left), StringPiece(right), status);
-  if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in Collator::compareUTF8(...): " << u_errorName(status);
-    return (strcmp(left, right));
-  }
-
-  return result;
-}
-
 int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
                             char const* right, size_t rightLength) const {
   TRI_ASSERT(left != nullptr);

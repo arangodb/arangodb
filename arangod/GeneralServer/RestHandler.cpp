@@ -79,6 +79,22 @@ RestHandler::~RestHandler() {
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
+uint64_t RestHandler::messageId() const {
+  uint64_t messageId = 0UL;
+  auto req = _request.get();
+  auto res = _response.get();
+  if (req) {
+    messageId = req->messageId();
+  } else if (res) {
+    messageId = res->messageId();
+  } else {
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+        << "could not find corresponding request/response";
+  }
+
+  return messageId;
+}
+
 int RestHandler::prepareEngine() {
   // set end immediately so we do not get netative statistics
   RequestStatistics::SET_REQUEST_START_END(_statistics);
