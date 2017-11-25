@@ -480,7 +480,7 @@ ExecutionPlan* Query::prepare() {
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
     opt.createPlans(plan.release(), _queryOptions.optimizerRules,
-                    _queryOptions.inspectSimplePlans);
+                    _queryOptions.inspectSimplePlans, false);
     // Now plan and all derived plans belong to the optimizer
     plan.reset(opt.stealBest());  // Now we own the best one again
   } else {  // no queryString, we are instantiating from _queryBuilder
@@ -984,7 +984,7 @@ QueryResult Query::explain() {
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
-    opt.createPlans(plan, _queryOptions.optimizerRules, _queryOptions.inspectSimplePlans);
+    opt.createPlans(plan, _queryOptions.optimizerRules, _queryOptions.inspectSimplePlans, true);
 
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 

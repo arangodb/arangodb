@@ -384,6 +384,10 @@ class ExecutionNode {
   /// @brief invalidate the cost estimation for the node and its dependencies
   void invalidateCost();
 
+  /// @brief this actually estimates the costs as well as the number of items
+  /// coming out of the node
+  virtual double estimateCost(size_t& nrItems) const = 0;
+
   /// @brief estimate the cost of the node . . .
   double getCost(size_t& nrItems) const {
     if (!_estimatedCostSet) {
@@ -396,11 +400,7 @@ class ExecutionNode {
     }
     return _estimatedCost;
   }
-
-  /// @brief this actually estimates the costs as well as the number of items
-  /// coming out of the node
-  virtual double estimateCost(size_t& nrItems) const = 0;
-
+  
   /// @brief walk a complete execution plan recursively
   bool walk(WalkerWorker<ExecutionNode>* worker);
 
@@ -432,8 +432,6 @@ class ExecutionNode {
     auto v(getVariablesUsedHere());
 
     std::unordered_set<VariableId> ids;
-    ids.reserve(v.size());
-
     for (auto& it : v) {
       ids.emplace(it->id);
     }
