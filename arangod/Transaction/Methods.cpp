@@ -824,18 +824,18 @@ OperationResult transaction::Methods::anyLocal(
   if (cid == 0) {
     throwCollectionNotFound(collectionName.c_str());
   }
-
+  
   pinData(cid);  // will throw when it fails
+  
+  VPackBuilder resultBuilder;
+  resultBuilder.openArray();
 
   Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
 
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-
-  VPackBuilder resultBuilder;
-  resultBuilder.openArray();
-
+  
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr, false);
@@ -844,8 +844,6 @@ OperationResult transaction::Methods::anyLocal(
     resultBuilder.add(slice);
   });
 
-  resultBuilder.close();
-
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     Result res = unlockRecursive(cid, AccessMode::Type::READ);
 
@@ -853,6 +851,8 @@ OperationResult transaction::Methods::anyLocal(
       return OperationResult(res);
     }
   }
+  
+  resultBuilder.close();
 
   return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
 }
@@ -941,16 +941,18 @@ void transaction::Methods::invokeOnAllElements(
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   TransactionCollection* trxCol = trxCollection(cid, AccessMode::Type::READ);
-  LogicalCollection* logical = documentCollection(trxCol);
-  TRI_ASSERT(logical != nullptr);
-  _transactionContextPtr->pinData(logical);
+  LogicalCollection* collection = documentCollection(trxCol);
+  TRI_ASSERT(collection != nullptr);
+  _transactionContextPtr->pinData(collection);
 
   Result lockResult = trxCol->lockRecursive(AccessMode::Type::READ, _state->nestingLevel());
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     THROW_ARANGO_EXCEPTION(lockResult);
   }
+  
+  TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
-  logical->invokeOnAllElements(this, callback);
+  collection->invokeOnAllElements(this, callback);
 
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     Result res = trxCol->unlockRecursive(AccessMode::Type::READ, _state->nestingLevel());
@@ -1722,6 +1724,8 @@ OperationResult transaction::Methods::modifyLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
+  
+  TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
   VPackBuilder resultBuilder;  // building the complete result
   TRI_voc_tick_t maxTick = 0;
@@ -2238,15 +2242,15 @@ OperationResult transaction::Methods::allLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
 
   pinData(cid);  // will throw when it fails
+  
+  VPackBuilder resultBuilder;
+  resultBuilder.openArray();
 
   Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
 
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-
-  VPackBuilder resultBuilder;
-  resultBuilder.openArray();
 
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
@@ -2261,8 +2265,6 @@ OperationResult transaction::Methods::allLocal(
   };
   cursor->allDocuments(cb);
 
-  resultBuilder.close();
-
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     Result res = unlockRecursive(cid, AccessMode::Type::READ);
 
@@ -2270,6 +2272,8 @@ OperationResult transaction::Methods::allLocal(
       return OperationResult(res);
     }
   }
+  
+  resultBuilder.close();
 
   return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
 }
@@ -2334,6 +2338,8 @@ OperationResult transaction::Methods::truncateLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
+  
+  TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
   try {
     collection->truncate(this, options);
@@ -2504,6 +2510,8 @@ OperationResult transaction::Methods::countLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
+  
+  TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
   uint64_t num = collection->numberDocuments(this);
 
