@@ -56,8 +56,8 @@ QueryResources::~QueryResources() {
   _resourceMonitor->decreaseMemoryUsage(_nodes.size() * sizeof(AstNode) + _nodes.capacity() * sizeof(AstNode*));
 }
 
-// TODO: FIXME
 void QueryResources::steal() {
+  // we are not responsible for freeing any data, so we delete our inventory
   _strings.clear();
   _nodes.clear();
 }
@@ -103,7 +103,7 @@ char* QueryResources::registerString(char const* p, size_t length) {
     return const_cast<char*>(EmptyString);
   }
 
-  if (length < ShortStringStorage::MaxStringLength) {
+  if (length < ShortStringStorage::maxStringLength()) {
     return _shortStringStorage.registerString(p, length);
   }
 
@@ -148,10 +148,15 @@ char* QueryResources::registerLongString(char* copy, size_t length) {
     TRI_ASSERT(capacity >= _strings.capacity());
     
     // reserve space
-    _resourceMonitor->increaseMemoryUsage((capacity - _strings.size()) * sizeof(char*));
-    _strings.reserve(capacity);
+    _resourceMonitor->increaseMemoryUsage(((capacity - _strings.size()) * sizeof(char*)) + length);
+    try {
+      _strings.reserve(capacity);
+    } catch (...) {
+      // revert change in memory increase
+      _resourceMonitor->decreaseMemoryUsage(((capacity - _strings.size()) * sizeof(char*)) + length);
+      throw;
+    }
     
-    _resourceMonitor->increaseMemoryUsage(length);
     // will not fail 
     _strings.emplace_back(copy);
     _stringsLength += length;
