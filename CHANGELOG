@@ -1,6 +1,9 @@
 devel
 -----
 
+* UI: optimized error messages for invalid graph definitions. Also fixed a
+  graph renderer cleanrenderer cleanup error.
+
 * UI: added a delay within the graph viewer while changing the colors of the
   graph. Necessary due different browser behaviour.
 
