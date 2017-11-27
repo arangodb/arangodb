@@ -270,6 +270,8 @@ SET(ARANGOD_SOURCES
   Pregel/Recovery.cpp
   Pregel/Utils.cpp
   Pregel/Worker.cpp
+  Pregel/Worker-templates-native-types.cpp
+  Pregel/Worker-templates-algorithms.cpp
   Pregel/WorkerConfig.cpp
   Replication/DatabaseReplicationApplier.cpp
   Replication/GlobalReplicationApplier.cpp
