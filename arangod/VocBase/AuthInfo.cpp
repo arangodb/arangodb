@@ -384,29 +384,16 @@ void AuthInfo::reloadAllUsers() {
 
   // tell other coordinators to reload as well
   AgencyComm agency;
+
+  AgencyWriteTransaction incrementVersion({
+    AgencyOperation("Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)
+  });
+
   int maxTries = 10;
   while (maxTries-- > 0) {
-    AgencyCommResult commRes = agency.getValues("Sync/UserVersion");
-    if (!commRes.successful()) {
-      // Error in communication, note that value not found is not an error
-      LOG_TOPIC(TRACE, Logger::AUTHENTICATION)
-          << "AuthInfo: no agency communication";
-      break;
-    }
-    VPackSlice oldVal = commRes.slice()[0].get(
-        {AgencyCommManager::path(), "Sync", "UserVersion"});
-    if (!oldVal.isInteger()) {
-      LOG_TOPIC(ERR, Logger::AUTHENTICATION)
-          << "Sync/UserVersion is not a number";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-    }
 
-    VPackBuilder newVal;
-    newVal.add(VPackValue(oldVal.getUInt() + 1));
-    commRes =
-        agency.casValue("Sync/UserVersion", oldVal, newVal.slice(), 0.0,
-                        AgencyCommManager::CONNECTION_OPTIONS._requestTimeout);
-    if (commRes.successful()) {
+    AgencyCommResult result = agency.sendTransactionWithFailover(incrementVersion);
+    if (result.successful()) {
       return;
     }
   }
