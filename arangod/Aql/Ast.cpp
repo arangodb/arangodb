@@ -122,7 +122,7 @@ std::shared_ptr<VPackBuilder> Ast::toVelocyPack(bool verbose) const {
   return builder;
 }
 
-/// @brief destroy the AST
+/// @brief add an operation to the AST
 void Ast::addOperation(AstNode* node) {
   TRI_ASSERT(_root != nullptr);
 
