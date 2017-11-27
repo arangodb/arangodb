@@ -231,9 +231,9 @@ int TransactionState::unuseCollections(int nestingLevel) {
 
 int TransactionState::lockCollections() {
   for (auto& trxCollection : _collections) {
-    int res = trxCollection->lock();
+    int res = trxCollection->lockRecursive();
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_LOCKED) {
       return res;
     }
   }
