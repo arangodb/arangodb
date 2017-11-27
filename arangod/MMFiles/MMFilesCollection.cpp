@@ -2879,7 +2879,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  VPackSlice doc(marker->vpack());
+  VPackSlice const doc(marker->vpack());
   operation.setDocumentIds(MMFilesDocumentDescriptor(),
                            MMFilesDocumentDescriptor(documentId, doc.begin()));
 
@@ -2935,11 +2935,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
   }
   
   if (res.ok()) {
-    uint8_t const* vpack = lookupDocumentVPack(documentId);
-    if (vpack != nullptr) {
-      result.setUnmanaged(vpack, documentId);
-    }
-
+    result.setManaged(doc.begin(), documentId);
     // store the tick that was used for writing the document
     resultMarkerTick = operation.tick();
   }
@@ -3358,10 +3354,8 @@ Result MMFilesCollection::update(
   if (res.fail()) {
     operation.revert(trx);
   } else {
-    uint8_t const* vpack = lookupDocumentVPack(documentId);
-    if (vpack != nullptr) {
-      result.setUnmanaged(vpack, documentId);
-    }
+    result.setManaged(newDoc.begin(), documentId);
+    
     if (options.waitForSync) {
       // store the tick that was used for writing the new document
       resultMarkerTick = operation.tick();
