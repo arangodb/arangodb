@@ -40,6 +40,7 @@
 #include "IResearchFilterFactory.h"
 #include "IResearchFeature.h"
 #include "IResearchLink.h"
+#include "ExpressionFilter.h"
 #include "AqlHelper.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -280,7 +281,8 @@ class ViewIteratorBase : public arangodb::ViewIterator {
       return false;
     }
 
-    _filter = root.prepare(_reader, ord);
+    _execCtx.ctx = &exprCtx; // set provided expression context
+    _filter = root.prepare(_reader, ord, irs::boost::no_boost(), _filterCtx);
 
     return true;
   }
@@ -297,7 +299,9 @@ class ViewIteratorBase : public arangodb::ViewIterator {
  protected:
   CompoundReader _reader;
   irs::filter::prepared::ptr _filter; // compiled iresearch query
+  irs::attribute_view _filterCtx; // filter context
  private:
+  arangodb::iresearch::ExpressionExecutionContext _execCtx; // expression execution context
   arangodb::aql::AstNode const* _filterCondition;
   arangodb::aql::ExecutionPlan* _plan;
   arangodb::aql::Variable const* _ref;
@@ -317,6 +321,8 @@ ViewIteratorBase::ViewIteratorBase(
 ): ViewIterator(&view, &trx),
    _reader(std::move(reader)),
    _filter(irs::filter::prepared::empty()),
+   _filterCtx(1), // arangodb::iresearch::ExpressionExecutionContext
+   _execCtx(trx),
    _filterCondition(&filterCondition),
    _plan(&plan),
    _ref(&ref),
@@ -326,6 +332,9 @@ ViewIteratorBase::ViewIteratorBase(
                 ? irs::math::math_traits<doc_id_t>::clz(_reader.size())
                 : irs::bits_required<doc_id_t>(); // not really a usable scenario (no data)
   _subDocIdMask = (size_t(1) <<_subDocIdBits) - 1;
+
+  // add expression execution context
+  _filterCtx.emplace(_execCtx);
 }
 
 bool ViewIteratorBase::hasExtra() const {
@@ -499,7 +508,7 @@ bool OrderedViewIterator::next(LocalDocumentIdCallback const& callback, size_t l
 
   for (size_t i = 0, count = _reader.size(); i < count; ++i) {
     auto& segmentReader = _reader[i];
-    auto itr = segmentReader.mask(_filter->execute(segmentReader, _order));
+    auto itr = segmentReader.mask(_filter->execute(segmentReader, _order, _filterCtx));
     const irs::score* score = itr->attributes().get<irs::score>().get();
 
     if (!score) {
@@ -590,7 +599,9 @@ void OrderedViewIterator::skip(uint64_t count, uint64_t& skipped) {
 
   for (size_t i = 0, readerCount = _reader.size(); i < readerCount; ++i) {
     auto& segmentReader = _reader[i];
-    auto itr = segmentReader.mask(_filter->execute(segmentReader));
+    auto itr = segmentReader.mask(_filter->execute(
+      segmentReader, irs::order::prepared::unordered(), _filterCtx
+    ));
 
     while (count > skipped && itr->next()) {
       if (!loadToken(tmpToken, i, itr->value())) {
@@ -669,7 +680,9 @@ bool UnorderedViewIterator::next(LocalDocumentIdCallback const& callback, size_t
     auto done = false;
 
     if (!_state._itr) {
-      _state._itr = segmentReader.mask(_filter->execute(segmentReader));
+      _state._itr = segmentReader.mask(_filter->execute(
+        segmentReader, irs::order::prepared::unordered(), _filterCtx
+      ));
     }
 
     while (limit && _state._itr->next()) {

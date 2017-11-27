@@ -225,9 +225,7 @@ void assertExpressionFilter(
     expected.add<arangodb::iresearch::ByExpression>().init(
       *dummyPlan,
       *ast,
-      *filterNode->getMember(0), // 'd.a.b[_REFERENCE_('c')]
-      trx,
-      ExpressionContextMock::EMPTY
+      *filterNode->getMember(0) // 'd.a.b[_REFERENCE_('c')]
     );
 
     irs::Or actual;
@@ -6859,9 +6857,7 @@ SECTION("UnaryNot") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] == '1'
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] == '1'
       );
 
       irs::Or actual;
@@ -6936,9 +6932,7 @@ SECTION("UnaryNot") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // '1' < d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // '1' < d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]
       );
 
       irs::Or actual;
@@ -7013,9 +7007,7 @@ SECTION("UnaryNot") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d.a < _NONDETERM_('1')
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d.a < _NONDETERM_('1')
       );
 
       irs::Or actual;
@@ -7090,9 +7082,7 @@ SECTION("UnaryNot") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // k.a < _NONDETERM_('1')
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // k.a < _NONDETERM_('1')
       );
 
       irs::Or actual;
@@ -7167,9 +7157,7 @@ SECTION("UnaryNot") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d.a < 1+d.b
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d.a < 1+d.b
       );
 
       irs::Or actual;
@@ -7505,9 +7493,7 @@ SECTION("BinaryOr") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d.a.b.c > _NONDETERM_(15)
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d.a.b.c > _NONDETERM_(15)
       );
       root.add<irs::by_range>()
           .field(mangleStringIdentity("a.b.c"))
@@ -7646,9 +7632,7 @@ SECTION("BinaryAnd") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(1), // not d.c.b.a == '2'
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(1) // not d.c.b.a == '2'
       );
 
       irs::Or actual;
@@ -7771,16 +7755,12 @@ SECTION("BinaryAnd") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d.a[*].b > 15
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d.a[*].b > 15
       );
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(1), // d.a[*].b < 40
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(1) // d.a[*].b < 40
       );
 
       irs::Or actual;
@@ -7935,16 +7915,12 @@ SECTION("BinaryAnd") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d.a[*].b >= 15
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d.a[*].b >= 15
       );
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(1), // d.a[*].b <= 40
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(1) // d.a[*].b <= 40
       );
 
       irs::Or actual;
@@ -8047,16 +8023,12 @@ SECTION("BinaryAnd") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d.a[*].b >= 15
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d.a[*].b >= 15
       );
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(1), // d.a[*].b <= 40
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(1) // d.a[*].b <= 40
       );
 
       irs::Or actual;
@@ -8730,9 +8702,7 @@ SECTION("BinaryAnd") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d.a.b.c > _NONDETERM_(15)
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d.a.b.c > _NONDETERM_(15)
       );
       root.add<irs::by_range>()
           .field(mangleStringIdentity("a.b.c"))
