@@ -1725,8 +1725,6 @@ OperationResult transaction::Methods::modifyLocal(
     return OperationResult(lockResult);
   }
   
-  TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
-
   VPackBuilder resultBuilder;  // building the complete result
   TRI_voc_tick_t maxTick = 0;
 
