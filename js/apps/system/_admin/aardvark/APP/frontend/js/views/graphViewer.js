@@ -276,12 +276,14 @@
     },
 
     killCurrentGraph: function () {
-      for (var i in this.currentGraph.renderers) {
-        try {
-          this.currentGraph.renderers[i].clear();
-          this.currentGraph.kill(i);
-        } catch (ignore) {
-          // no need to cleanup
+      if (this.currentGraph && this.currentGraph.renderers) {
+        for (var i in this.currentGraph.renderers) {
+          try {
+            this.currentGraph.renderers[i].clear();
+            this.currentGraph.kill(i);
+          } catch (ignore) {
+            // no need to cleanup
+          }
         }
       }
     },
