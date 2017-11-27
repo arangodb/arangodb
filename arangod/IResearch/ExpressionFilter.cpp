@@ -28,18 +28,46 @@
 
 #include "search/score_doc_iterators.hpp"
 #include "search/all_filter.hpp"
+#include "search/all_iterator.hpp"
 #include "formats/empty_term_reader.hpp"
+
+#include <type_traits>
 
 NS_LOCAL
 
-struct ArangoExpressionContext {
-  arangodb::aql::ExecutionPlan* plan;
-  arangodb::aql::Ast* ast;
-  std::shared_ptr<arangodb::aql::AstNode> node;
-  arangodb::transaction::Methods* trx;
-  arangodb::aql::ExpressionContext* ctx;
-}; // ArangoExpressionContext
+FORCE_INLINE size_t hash_combine(size_t seed, size_t v) {
+  return seed ^ (v + 0x9e3779b9 + (seed<<6) + (seed>>2));
+}
 
+template<typename T>
+FORCE_INLINE size_t hash_combine(size_t seed, T const& v) {
+  return hash_combine(seed, std::hash<T>()(v));
+}
+
+template<typename T>
+inline irs::filter::prepared::ptr compileQuery(
+   arangodb::iresearch::ExpressionCompilationContext const &ctx,
+   irs::index_reader const& index,
+   irs::order::prepared const& order,
+   irs::boost::boost_t boost) {
+  typedef typename std::enable_if<
+    std::is_base_of<irs::filter::prepared, T>::value, T
+  >::type type_t;
+
+  irs::attribute_store attrs;
+
+  // skip filed-level/term-level statistics because there are no fields/terms
+  order.prepare_stats().finish(attrs, index);
+
+  // apply boost
+  irs::boost::apply(attrs, boost);
+
+  return irs::filter::prepared::make<type_t>(ctx, std::move(attrs));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class NondeterministicExpressionIterator
+///////////////////////////////////////////////////////////////////////////////
 class NondeterministicExpressionIterator final : public irs::doc_iterator_base {
  public:
   NondeterministicExpressionIterator(
@@ -47,13 +75,13 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator_base {
       irs::attribute_store const& prepared_filter_attrs,
       irs::order::prepared const& order,
       uint64_t docs_count,
-      ArangoExpressionContext const& ctx)
+      arangodb::iresearch::ExpressionCompilationContext const& cctx,
+      arangodb::iresearch::ExpressionExecutionContext const& ectx)
     : doc_iterator_base(order),
       max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)),
-      expr_(ctx.plan, ctx.ast, ctx.node.get()),
-      ctx_(ctx.ctx),
-      trx_(ctx.trx) {
-    TRI_ASSERT(ctx_ && trx_);
+      expr_(cctx.plan, cctx.ast, cctx.node.get()),
+      ctx_(ectx) {
+    TRI_ASSERT(ctx_.ctx && ctx_.trx);
 
     // make doc_id accessible via attribute
     attrs_.emplace(doc_);
@@ -87,7 +115,7 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator_base {
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
     while (target <= max_doc_) {
       destroy(); // destroy old value before assignment
-      val_ = expr_.execute(trx_, ctx_, destroy_);
+      val_ = expr_.execute(ctx_.trx, ctx_.ctx, destroy_);
 
       if (val_.toBoolean()) {
         break;
@@ -119,15 +147,17 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator_base {
   irs::order::prepared::scorers scorers_;
   arangodb::aql::Expression expr_;
   arangodb::aql::AqlValue val_;
-  arangodb::aql::ExpressionContext* ctx_;
-  arangodb::transaction::Methods* trx_;
+  arangodb::iresearch::ExpressionExecutionContext ctx_;
   bool destroy_{false};
 }; // NondeterministicExpressionIterator
 
+///////////////////////////////////////////////////////////////////////////////
+/// @class NondeterministicExpressionQuery
+///////////////////////////////////////////////////////////////////////////////
 class NondeterministicExpressionQuery final : public irs::filter::prepared {
  public:
   explicit NondeterministicExpressionQuery(
-      ArangoExpressionContext const& ctx,
+      arangodb::iresearch::ExpressionCompilationContext const& ctx,
       irs::attribute_store&& attrs
   ) noexcept
     : irs::filter::prepared(std::move(attrs)),
@@ -136,34 +166,104 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
 
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
-      const irs::order::prepared& order
+      const irs::order::prepared& order,
+      const irs::attribute_view& ctx
   ) const override {
+    auto const& execCtx = ctx.get<arangodb::iresearch::ExpressionExecutionContext>();
+
+    if (!execCtx || !static_cast<bool>(*execCtx)) {
+      // no execution context provided
+      return irs::doc_iterator::empty();
+    }
+
     return irs::doc_iterator::make<NondeterministicExpressionIterator>(
       rdr,
       attributes(), // prepared_filter attributes
       order,
       rdr.docs_count(),
-      _ctx
+      _ctx,
+      *execCtx
     );
   }
 
  private:
-  ArangoExpressionContext _ctx;
+  arangodb::iresearch::ExpressionCompilationContext _ctx;
 }; // NondeterministicExpressionQuery
 
-FORCE_INLINE size_t hash_combine(size_t seed, size_t v) {
-  return seed ^ (v + 0x9e3779b9 + (seed<<6) + (seed>>2));
-}
+///////////////////////////////////////////////////////////////////////////////
+/// @class DeterministicExpressionQuery
+///////////////////////////////////////////////////////////////////////////////
+class DeterministicExpressionQuery final : public irs::filter::prepared {
+ public:
+  explicit DeterministicExpressionQuery(
+      arangodb::iresearch::ExpressionCompilationContext const& ctx,
+      irs::attribute_store&& attrs
+  ) noexcept
+    : irs::filter::prepared(std::move(attrs)),
+      _ctx(ctx) {
+  }
 
-template<typename T>
-FORCE_INLINE size_t hash_combine(size_t seed, T const& v) {
-  return hash_combine(seed, std::hash<T>()(v));
-}
+  virtual irs::doc_iterator::ptr execute(
+      const irs::sub_reader& segment,
+      const irs::order::prepared& order,
+      const irs::attribute_view& ctx
+  ) const override {
+    auto const& execCtx = ctx.get<arangodb::iresearch::ExpressionExecutionContext>();
+
+    if (!execCtx || !static_cast<bool>(*execCtx)) {
+      // no execution context provided
+      return irs::doc_iterator::empty();
+    }
+
+    arangodb::aql::Expression expr(_ctx.plan, _ctx.ast, _ctx.node.get());
+    bool mustDestroy = false;
+    auto value = expr.execute(execCtx->trx, execCtx->ctx, mustDestroy);
+    arangodb::aql::AqlValueGuard guard(value, mustDestroy);
+
+    if (value.toBoolean()) {
+      return irs::doc_iterator::make<irs::all_iterator>(
+        segment, attributes(), order, segment.docs_count()
+      );
+    }
+
+    return irs::doc_iterator::empty();
+  }
+
+ private:
+  arangodb::iresearch::ExpressionCompilationContext _ctx;
+}; // DeterministicExpressionQuery
 
 NS_END // LOCAL
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
+
+///////////////////////////////////////////////////////////////////////////////
+/// --SECTION--                     ExpressionCompilationContext implementation
+///////////////////////////////////////////////////////////////////////////////
+
+size_t ExpressionCompilationContext::hash() const noexcept {
+  return hash_combine(
+    hash_combine(
+      hash_combine(
+        1610612741,
+        arangodb::aql::AstNodeValueHash()(node.get())
+      ),
+      plan
+    ),
+    ast
+  );
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// --SECTION--                       ExpressionExecutionContext implementation
+///////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ATTRIBUTE_TYPE(ExpressionExecutionContext);
+
+///////////////////////////////////////////////////////////////////////////////
+/// --SECTION--                                     ByExpression implementation
+///////////////////////////////////////////////////////////////////////////////
 
 DEFINE_FILTER_TYPE(ByExpression);
 DEFINE_FACTORY_DEFAULT(ByExpression);
@@ -174,29 +274,18 @@ ByExpression::ByExpression() noexcept
 
 bool ByExpression::equals(irs::filter const& rhs) const {
   auto const& typed = static_cast<ByExpression const&>(rhs);
-  return irs::filter::equals(rhs)
-    && _node == typed._node
-    && _plan == typed._plan
-    && _ast == typed._ast;
+  return irs::filter::equals(rhs) && _ctx == typed._ctx;
 }
 
 size_t ByExpression::hash() const {
-  return hash_combine(
-    hash_combine(
-      hash_combine(
-        1610612741,
-        arangodb::aql::AstNodeValueHash()(_node.get())
-      ),
-      _plan
-    ),
-    _ast
-  );
+  return _ctx.hash();
 }
 
 irs::filter::prepared::ptr ByExpression::prepare(
     irs::index_reader const& index,
     irs::order::prepared const& order,
-    irs::boost::boost_t filter_boost) const {
+    irs::boost::boost_t filter_boost,
+    irs::attribute_view const& ctx) const {
   if (!bool(*this)) {
     // uninitialized filter
     return irs::filter::prepared::empty();
@@ -204,24 +293,26 @@ irs::filter::prepared::ptr ByExpression::prepare(
 
   filter_boost *= this->boost();
 
-  if (!_node->isDeterministic()) {
-    irs::attribute_store attrs;
-
-    // skip filed-level/term-level statistics because there are no fields/terms
-    order.prepare_stats().finish(attrs, index);
-
-    // apply boost
-    irs::boost::apply(attrs, filter_boost);
-
-    return irs::filter::prepared::make<NondeterministicExpressionQuery>(
-      ArangoExpressionContext{ _plan, _ast, _node, _trx, _ctx },
-      std::move(attrs)
+  if (!_ctx.node->isDeterministic()) {
+    // non-deterministic expression, make non-deterministic query
+    return compileQuery<NondeterministicExpressionQuery>(
+      _ctx, index, order, filter_boost
     );
   }
 
-  arangodb::aql::Expression expr(_plan, _ast, _node.get());
+  auto const* execCtx = ctx.get<arangodb::iresearch::ExpressionExecutionContext>().get();
+
+  if (!execCtx || !static_cast<bool>(*execCtx)) {
+    // no execution context provided, make deterministic query
+    return compileQuery<DeterministicExpressionQuery>(
+      _ctx, index, order, filter_boost
+    );
+  }
+
+  // evaluate expression
   bool mustDestroy = false;
-  auto value = expr.execute(_trx, _ctx, mustDestroy);
+  arangodb::aql::Expression expr(_ctx.plan, _ctx.ast, _ctx.node.get());
+  auto value = expr.execute(execCtx->trx, execCtx->ctx, mustDestroy);
   arangodb::aql::AqlValueGuard guard(value, mustDestroy);
 
   return value.toBoolean()

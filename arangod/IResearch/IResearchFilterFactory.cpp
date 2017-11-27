@@ -102,7 +102,7 @@ FORCE_INLINE void appendExpression(
     arangodb::iresearch::QueryContext const& ctx
 ) {
   filter.add<arangodb::iresearch::ByExpression>().init(
-    *ctx.plan, *ctx.ast, const_cast<arangodb::aql::AstNode&>(node), *ctx.trx, *ctx.ctx
+    *ctx.plan, *ctx.ast, const_cast<arangodb::aql::AstNode&>(node)
   );
 }
 
@@ -112,7 +112,7 @@ FORCE_INLINE void appendExpression(
     arangodb::iresearch::QueryContext const& ctx
 ) {
   filter.add<arangodb::iresearch::ByExpression>().init(
-    *ctx.plan, *ctx.ast, std::move(node), *ctx.trx, *ctx.ctx
+    *ctx.plan, *ctx.ast, std::move(node)
   );
 }
 

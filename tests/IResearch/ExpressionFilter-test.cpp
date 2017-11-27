@@ -464,11 +464,17 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     arangodb::iresearch::ByExpression filter;
     CHECK(!filter);
-    filter.init(*plan, *ast, *expression, trx, ctx);
+    filter.init(*plan, *ast, *expression);
     CHECK(filter);
 
-    auto prepared = filter.prepare(*reader);
-    auto docs = prepared->execute(segment);
+    arangodb::iresearch::ExpressionExecutionContext execCtx;
+    execCtx.trx = &trx;
+    execCtx.ctx = &ctx;
+    irs::attribute_view queryCtx;
+    queryCtx.emplace(execCtx);
+
+    auto prepared = filter.prepare(*reader, irs::order::prepared::unordered(), queryCtx);
+    auto docs = prepared->execute(segment, irs::order::prepared::unordered(), queryCtx);
     CHECK(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
     CHECK(!docs->next());
     CHECK(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
@@ -534,17 +540,23 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     arangodb::iresearch::ByExpression filter;
     CHECK(!filter);
-    filter.init(*plan, *ast, *expression, trx, ctx);
+    filter.init(*plan, *ast, *expression);
     CHECK(filter);
 
-    auto prepared = filter.prepare(*reader);
+    arangodb::iresearch::ExpressionExecutionContext execCtx;
+    execCtx.trx = &trx;
+    execCtx.ctx = &ctx;
+    irs::attribute_view queryCtx;
+    queryCtx.emplace(execCtx);
+
+    auto prepared = filter.prepare(*reader, irs::order::prepared::unordered(), queryCtx);
     CHECK(!prepared->attributes().get<irs::boost>()); // no boost set
     CHECK(typeid(prepared.get()) == typeid(irs::all().prepare(*reader).get())); // should be same type
     auto column = segment.column_reader("name");
     REQUIRE(column);
     auto columnValues = column->values();
     REQUIRE(columnValues);
-    auto docs = prepared->execute(segment);
+    auto docs = prepared->execute(segment, irs::order::prepared::unordered(), queryCtx);
     CHECK(irs::type_limits<irs::type_t::doc_id_t>::invalid() == docs->value());
     auto& cost = docs->attributes().get<irs::cost>();
     REQUIRE(cost);
@@ -615,15 +627,21 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     arangodb::iresearch::ByExpression filter;
     CHECK(!filter);
-    filter.init(*plan, *ast, *expression, trx, ctx);
+    filter.init(*plan, *ast, *expression);
     CHECK(filter);
 
-    auto prepared = filter.prepare(*reader);
+    arangodb::iresearch::ExpressionExecutionContext execCtx;
+    execCtx.trx = &trx;
+    execCtx.ctx = &ctx;
+    irs::attribute_view queryCtx;
+    queryCtx.emplace(execCtx);
+
+    auto prepared = filter.prepare(*reader, irs::order::prepared::unordered(), queryCtx);
     auto column = segment.column_reader("name");
     REQUIRE(column);
     auto columnValues = column->values();
     REQUIRE(columnValues);
-    auto docs = prepared->execute(segment);
+    auto docs = prepared->execute(segment, irs::order::prepared::unordered(), queryCtx);
     CHECK(irs::type_limits<irs::type_t::doc_id_t>::invalid() == docs->value());
     CHECK(!docs->attributes().get<irs::score>());
 
@@ -737,13 +755,19 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     arangodb::iresearch::ByExpression filter;
     CHECK(!filter);
-    filter.init(*plan, *ast, *expression, trx, ctx);
+    filter.init(*plan, *ast, *expression);
     CHECK(filter);
+
+    arangodb::iresearch::ExpressionExecutionContext execCtx;
+    execCtx.trx = &trx;
+    execCtx.ctx = &ctx;
+    irs::attribute_view queryCtx;
+    queryCtx.emplace(execCtx);
 
     filter.boost(1.5f);
     CHECK(1.5f == filter.boost());
 
-    auto prepared = filter.prepare(*reader, preparedOrder);
+    auto prepared = filter.prepare(*reader, preparedOrder, queryCtx);
     auto const& boost = prepared->attributes().get<irs::boost>();
     CHECK(boost);
     CHECK(1.5f == boost->get()->value);
@@ -752,7 +776,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     REQUIRE(column);
     auto columnValues = column->values();
     REQUIRE(columnValues);
-    auto docs = prepared->execute(segment, preparedOrder);
+    auto docs = prepared->execute(segment, preparedOrder, queryCtx);
     CHECK(irs::type_limits<irs::type_t::doc_id_t>::invalid() == docs->value());
     auto& score = docs->attributes().get<irs::score>();
     CHECK(score);
@@ -854,15 +878,21 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     arangodb::iresearch::ByExpression filter;
     CHECK(!filter);
-    filter.init(*plan, *ast, *expression, trx, ctx);
+    filter.init(*plan, *ast, *expression);
     CHECK(filter);
 
-    auto prepared = filter.prepare(*reader);
+    arangodb::iresearch::ExpressionExecutionContext execCtx;
+    execCtx.trx = &trx;
+    execCtx.ctx = &ctx;
+    irs::attribute_view queryCtx;
+    queryCtx.emplace(execCtx);
+
+    auto prepared = filter.prepare(*reader, irs::order::prepared::unordered(), queryCtx);
     auto column = segment.column_reader("name");
     REQUIRE(column);
     auto columnValues = column->values();
     REQUIRE(columnValues);
-    auto docs = prepared->execute(segment);
+    auto docs = prepared->execute(segment, irs::order::prepared::unordered(), queryCtx);
     CHECK(irs::type_limits<irs::type_t::doc_id_t>::invalid() == docs->value());
     CHECK(!docs->attributes().get<irs::score>());
     auto& cost = docs->attributes().get<irs::cost>();
