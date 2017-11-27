@@ -21,16 +21,14 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/WriteLocker.h"
-#include "Basics/ReadLocker.h"
 #include "RestTransactionHandler.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "VocBase/Methods/Transactions.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Rest/HttpRequest.h"
-#include "Basics/voc-errors.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/Methods/Transactions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -42,13 +40,12 @@ using namespace arangodb::rest;
 RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralResponse* response)
   : RestVocbaseBaseHandler(request, response)
   , _v8Context(nullptr)
-  , _lock()
-{}
+  , _lock() {}
 
-void RestTransactionHandler::returnContext(){
-    WRITE_LOCKER(writeLock, _lock);
-    V8DealerFeature::DEALER->exitContext(_v8Context);
-    _v8Context = nullptr;
+void RestTransactionHandler::returnContext() {
+  WRITE_LOCKER(writeLock, _lock);
+  V8DealerFeature::DEALER->exitContext(_v8Context);
+  _v8Context = nullptr;
 }
 
 RestStatus RestTransactionHandler::execute() {
@@ -58,7 +55,7 @@ RestStatus RestTransactionHandler::execute() {
   }
 
   auto slice = _request->payload();
-  if(!slice.isObject()){
+  if (!slice.isObject()) {
     generateError(Result(TRI_ERROR_BAD_PARAMETER, "could not acquire v8 context"));
     return RestStatus::DONE;
   }
@@ -77,14 +74,14 @@ RestStatus RestTransactionHandler::execute() {
   try {
     {
       WRITE_LOCKER(lock, _lock);
-      if(_canceled){
+      if (_canceled) {
         generateCanceled();
         return RestStatus::DONE;
       }
     }
 
     Result res = executeTransaction(_v8Context->_isolate, _lock, _canceled, slice , portType, result);
-    if (res.ok()){
+    if (res.ok()) {
       VPackSlice slice = result.slice();
       if (slice.isNone()) {
         generateOk(rest::ResponseCode::OK, VPackSlice::nullSlice());
@@ -111,7 +108,7 @@ bool RestTransactionHandler::cancel() {
   _canceled.store(true);
   auto isolate = _v8Context->_isolate;
   if (!v8::V8::IsExecutionTerminating(isolate)) {
-      v8::V8::TerminateExecution(isolate);
+    v8::V8::TerminateExecution(isolate);
   }
   return true;
 }
