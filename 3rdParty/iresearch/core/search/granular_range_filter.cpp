@@ -524,10 +524,10 @@ size_t by_granular_range::hash() const {
 }
 
 filter::prepared::ptr by_granular_range::prepare(
-  const index_reader& rdr,
-  const order::prepared& ord,
-  boost_t boost
-) const {
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost,
+    const attribute_view& ctx) const {
   if (!rng_.min.empty() && !rng_.max.empty()) {
     const auto& min = rng_.min.begin()->second;
     const auto& max = rng_.max.begin()->second;
@@ -636,7 +636,13 @@ filter::prepared::ptr by_granular_range::prepare(
     range_query::ptr query_;
     range_filter_proxy(): filter(by_range::type()) {}
     static ptr make() { return memory::make_unique<range_filter_proxy>(); }
-    virtual filter::prepared::ptr prepare(const index_reader&, const order::prepared&, boost_t) const override { return query_; }
+    virtual filter::prepared::ptr prepare(
+      const index_reader&,
+      const order::prepared&,
+      boost_t,
+      const attribute_view&) const override {
+      return query_;
+    }
   };
 
   Or multirange_filter;

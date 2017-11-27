@@ -66,9 +66,11 @@ class IRESEARCH_API by_term : public filter {
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr,
-      const order::prepared& ord,
-      boost_t boost) const override;
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost,
+    const attribute_view& ctx
+  ) const override;
 
   const bstring& term() const { 
     return term_;

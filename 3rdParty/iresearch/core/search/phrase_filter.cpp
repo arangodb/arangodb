@@ -97,7 +97,8 @@ class phrase_query : public filter::prepared {
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord) const override {
+      const order::prepared& ord,
+      const attribute_view& /*ctx*/) const override {
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
     if (!phrase_state) {
@@ -193,7 +194,8 @@ size_t by_phrase::hash() const {
 filter::prepared::ptr by_phrase::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost) const {
+    boost_t boost,
+    const attribute_view& /*ctx*/) const {
   if (fld_.empty() || phrase_.empty()) {
     // empty field or phrase
     return filter::prepared::empty();

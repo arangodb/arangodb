@@ -232,7 +232,8 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     iresearch::filter::prepared::ptr prepare(
         const iresearch::index_reader&,
         const iresearch::order::prepared&,
-        boost_t) const {
+        boost_t,
+        const iresearch::attribute_view&) const {
       iresearch::filter::prepared::ptr result; // null-ptr result
       return result;
     }

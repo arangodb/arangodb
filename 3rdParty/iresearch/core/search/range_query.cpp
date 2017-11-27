@@ -160,7 +160,8 @@ range_query::range_query(states_t&& states)
 
 doc_iterator::ptr range_query::execute(
     const sub_reader& rdr,
-    const order::prepared& ord) const {
+    const order::prepared& ord,
+    const attribute_view& /*ctx*/) const {
   /* get term state for the specified reader */
   auto state = states_.find(rdr);
   if (!state) {
@@ -185,9 +186,12 @@ doc_iterator::ptr range_query::execute(
 
   // add an iterator for the unscored docs
   if (state->unscored_docs.any()) {
-    itrs.emplace_back(
-      doc_iterator::make<bitset_doc_iterator>(state->unscored_docs)
-    );
+    itrs.emplace_back(doc_iterator::make<bitset_doc_iterator>(
+      rdr,
+      attribute_store::empty_instance(), // no attributes for this filter
+      state->unscored_docs,
+      ord
+    ));
   }
 
   size_t last_offset = 0;

@@ -65,6 +65,10 @@ class IRESEARCH_API doc_iterator_base : public doc_iterator {
   const order::prepared* ord_;
 }; // doc_iterator_base
 
+class no_term_iterator : public doc_iterator_base {
+
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class basic_doc_iterator
 /// @brief basic implementation of scoring iterator for single term queries

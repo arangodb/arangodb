@@ -480,6 +480,27 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
     }
   }
 
+  // invalid type
+  {
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name == @name RETURN d",
+      arangodb::velocypack::Parser::fromJson("{ \"name\" : true }")
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
   // d.name == 'A', unordered
   {
     std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
@@ -523,6 +544,41 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.same == 'xyz' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // d.same == 'same', unordered
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto const keySlice = docSlice.get("name");
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+    }
+
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.same == CONCAT('xy', @param) RETURN d",
+      arangodb::velocypack::Parser::fromJson("{ \"param\" : \"z\" }")
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 

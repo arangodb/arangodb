@@ -41,18 +41,20 @@ class IRESEARCH_API by_same_position : public filter {
 
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY_DEFAULT();
-  
+
   // returns set of features required for filter 
   static const flags& features();
 
   by_same_position();
 
   using filter::prepare;
-  
+
   virtual filter::prepared::ptr prepare(
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost) const override;
+    boost_t boost,
+    const attribute_view& ctx
+  ) const override;
 
   virtual size_t hash() const override;
 

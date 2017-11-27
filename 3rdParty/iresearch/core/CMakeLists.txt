@@ -92,6 +92,7 @@ set(IResearch_core_sources
   ./iql/parser_context.cpp
   ./iql/query_builder.cpp
   ./search/all_filter.cpp
+  ./search/all_iterator.cpp
   ./search/granular_range_filter.cpp
   ./search/scorers.cpp
   ./search/sort.cpp
@@ -167,6 +168,7 @@ set(IResearch_core_headers
   ./iql/parser_context.hpp
   ./iql/query_builder.hpp
   ./search/all_filter.hpp
+  ./search/all_iterator.hpp
   ./search/granular_range_filter.hpp
   ./search/scorers.hpp
   ./search/sort.hpp

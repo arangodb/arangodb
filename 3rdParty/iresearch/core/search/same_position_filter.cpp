@@ -119,7 +119,8 @@ class same_position_query final : public filter::prepared {
 
   virtual doc_iterator::ptr execute(
       const sub_reader& segment,
-      const order::prepared& ord) const override {
+      const order::prepared& ord,
+      const attribute_view& /*ctx*/) const override {
     // get query state for the specified reader
     auto query_state = states_.find(segment);
     if (!query_state) {
@@ -238,7 +239,8 @@ by_same_position& by_same_position::push_back(
 filter::prepared::ptr by_same_position::prepare(
     const index_reader& index,
     const order::prepared& ord,
-    boost_t boost) const {
+    boost_t boost,
+    const attribute_view& /*ctx*/) const {
   if (terms_.empty()) {
     // empty field or phrase
     return filter::prepared::empty();

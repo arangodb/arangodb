@@ -49,7 +49,9 @@ class IRESEARCH_API by_prefix final : public by_term { /* public multiterm_filte
   virtual filter::prepared::ptr prepare(
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost) const override;
+    boost_t boost,
+    const attribute_view& ctx
+  ) const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring

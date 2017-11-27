@@ -36,9 +36,10 @@ NS_ROOT
 filter::prepared::ptr by_prefix::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost) const {
+    boost_t boost,
+    const attribute_view& /*ctx*/) const {
   limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit_); // object for collecting order stats
-  range_query::states_t states(rdr.size());  
+  range_query::states_t states(rdr.size());
 
   auto& prefix = term();
 

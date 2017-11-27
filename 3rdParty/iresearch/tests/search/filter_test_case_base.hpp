@@ -303,7 +303,11 @@ struct frequency_sort: public iresearch::sort {
       virtual void score(irs::byte_type* score_buf) override {
         auto& buf = score_cast(score_buf);
         buf.id = doc_id_t_attr->value;
-        buf.value = 1. / *docs_count;
+
+        // docs_count may be nullptr if no collector called, e.g. by range_query for bitset_doc_iterator
+        if (docs_count) {
+          buf.value = 1. / *docs_count;
+        }
       }
 
      private:

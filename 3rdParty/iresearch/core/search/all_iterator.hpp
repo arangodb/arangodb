@@ -21,37 +21,46 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BITSET_DOC_ITERATOR_H
-#define IRESEARCH_BITSET_DOC_ITERATOR_H
+#ifndef IRESEARCH_ALL_ITERATOR_H
+#define IRESEARCH_ALL_ITERATOR_H
 
-#include "cost.hpp"
 #include "search/score_doc_iterators.hpp"
-#include "utils/type_limits.hpp"
-#include "utils/bitset.hpp"
 
 NS_ROOT
 
-class bitset_doc_iterator final: public doc_iterator_base, util::noncopyable {
+class all_iterator final : public irs::doc_iterator_base {
  public:
-  bitset_doc_iterator(
-    const sub_reader& reader,
-    const attribute_store& prepared_filter_attrs,
-    const bitset& set,
-    const order::prepared& order
+  all_iterator(
+    const irs::sub_reader& reader,
+    const irs::attribute_store& prepared_filter_attrs,
+    const irs::order::prepared& order,
+    uint64_t docs_count
   );
 
-  virtual bool next() NOEXCEPT override;
-  virtual doc_id_t seek(doc_id_t target) NOEXCEPT override;
-  virtual doc_id_t value() const NOEXCEPT override { return doc_.value; }
+  virtual bool next() override {
+    return !irs::type_limits<irs::type_t::doc_id_t>::eof(
+      seek(doc_.value + 1)
+    );
+  }
+
+  virtual irs::doc_id_t seek(irs::doc_id_t target) override {
+    doc_.value = target <= max_doc_
+      ? target
+      : irs::type_limits<irs::type_t::doc_id_t>::eof();
+
+    return doc_.value;
+  }
+
+  virtual irs::doc_id_t value() const NOEXCEPT override {
+    return doc_.value;
+  }
 
  private:
-  document doc_;
-  const bitset::word_t* begin_;
-  const bitset::word_t* end_;
-  order::prepared::scorers scorers_;
-  size_t size_;
-}; // bitset_doc_iterator
+  irs::document doc_;
+  irs::doc_id_t max_doc_; // largest valid doc_id
+  irs::order::prepared::scorers scorers_;
+}; // all_iterator
 
 NS_END // ROOT
 
-#endif // IRESEARCH_BITSET_DOC_ITERATOR_H
+#endif // IRESEARCH_ALL_ITERATOR_H

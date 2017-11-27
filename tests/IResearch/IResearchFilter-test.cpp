@@ -225,9 +225,7 @@ void assertExpressionFilter(
     expected.add<arangodb::iresearch::ByExpression>().init(
       *dummyPlan,
       *ast,
-      *filterNode->getMember(0), // 'd.a.b[_REFERENCE_('c')]
-      trx,
-      ExpressionContextMock::EMPTY
+      *filterNode->getMember(0) // 'd.a.b[_REFERENCE_('c')]
     );
 
     irs::Or actual;
@@ -243,6 +241,7 @@ void assertFilter(
     std::string const& queryString,
     irs::filter const& expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
@@ -250,7 +249,7 @@ void assertFilter(
 
   arangodb::aql::Query query(
      false, &vocbase, arangodb::aql::QueryString(queryString),
-     nullptr, options,
+     bindVars, options,
      arangodb::aql::PART_MAIN
   );
 
@@ -313,32 +312,37 @@ void assertFilterSuccess(
     std::string const& queryString,
     irs::filter const& expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
-  return assertFilter(true, true, queryString, expected, exprCtx, refName);
+  return assertFilter(true, true, queryString, expected, exprCtx, bindVars, refName);
 }
 
 void assertFilterExecutionFail(
     std::string const& queryString,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
   irs::Or expected;
-  return assertFilter(true, false, queryString, expected, exprCtx, refName);
+  return assertFilter(true, false, queryString, expected, exprCtx, bindVars, refName);
 }
 
 void assertFilterFail(
     std::string const& queryString,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
   irs::Or expected;
-  return assertFilter(false, false, queryString, expected, exprCtx, refName);
+  return assertFilter(false, false, queryString, expected, exprCtx, bindVars, refName);
 }
 
-void assertFilterParseFail(std::string const& queryString) {
+void assertFilterParseFail(
+    std::string const& queryString,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
   arangodb::aql::Query query(
      false, &vocbase, arangodb::aql::QueryString(queryString),
-     nullptr, nullptr,
+     bindVars, nullptr,
      arangodb::aql::PART_MAIN
   );
 
@@ -6853,9 +6857,7 @@ SECTION("UnaryNot") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] == '1'
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] == '1'
       );
 
       irs::Or actual;
@@ -6930,9 +6932,7 @@ SECTION("UnaryNot") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // '1' < d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // '1' < d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]
       );
 
       irs::Or actual;
@@ -7007,9 +7007,7 @@ SECTION("UnaryNot") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d.a < _NONDETERM_('1')
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d.a < _NONDETERM_('1')
       );
 
       irs::Or actual;
@@ -7084,9 +7082,7 @@ SECTION("UnaryNot") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // k.a < _NONDETERM_('1')
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // k.a < _NONDETERM_('1')
       );
 
       irs::Or actual;
@@ -7161,9 +7157,7 @@ SECTION("UnaryNot") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d.a < 1+d.b
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d.a < 1+d.b
       );
 
       irs::Or actual;
@@ -7499,9 +7493,7 @@ SECTION("BinaryOr") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d.a.b.c > _NONDETERM_(15)
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d.a.b.c > _NONDETERM_(15)
       );
       root.add<irs::by_range>()
           .field(mangleStringIdentity("a.b.c"))
@@ -7640,9 +7632,7 @@ SECTION("BinaryAnd") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(1), // not d.c.b.a == '2'
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(1) // not d.c.b.a == '2'
       );
 
       irs::Or actual;
@@ -7765,16 +7755,12 @@ SECTION("BinaryAnd") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d.a[*].b > 15
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d.a[*].b > 15
       );
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(1), // d.a[*].b < 40
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(1) // d.a[*].b < 40
       );
 
       irs::Or actual;
@@ -7929,16 +7915,12 @@ SECTION("BinaryAnd") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d.a[*].b >= 15
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d.a[*].b >= 15
       );
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(1), // d.a[*].b <= 40
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(1) // d.a[*].b <= 40
       );
 
       irs::Or actual;
@@ -8041,16 +8023,12 @@ SECTION("BinaryAnd") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d.a[*].b >= 15
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d.a[*].b >= 15
       );
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(1), // d.a[*].b <= 40
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(1) // d.a[*].b <= 40
       );
 
       irs::Or actual;
@@ -8724,9 +8702,7 @@ SECTION("BinaryAnd") {
       root.add<arangodb::iresearch::ByExpression>().init(
         *dummyPlan,
         *ast,
-        *filterNode->getMember(0)->getMember(0), // d.a.b.c > _NONDETERM_(15)
-        trx,
-        ExpressionContextMock::EMPTY
+        *filterNode->getMember(0)->getMember(0) // d.a.b.c > _NONDETERM_(15)
       );
       root.add<irs::by_range>()
           .field(mangleStringIdentity("a.b.c"))

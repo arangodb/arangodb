@@ -85,14 +85,13 @@ v8::Isolate* v8Isolate() {
 bool assertRules(
     TRI_vocbase_t& vocbase,
     std::string const& queryString,
-    std::vector<int> expectedRulesIds
+    std::vector<int> expectedRulesIds,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */
 ) {
   std::unordered_set<std::string> expectedRules;
   for (auto ruleId : expectedRulesIds) {
     expectedRules.emplace(arangodb::aql::OptimizerRulesFeature::translateRule(ruleId));
   }
-
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
 
   auto options = arangodb::velocypack::Parser::fromJson(
 //    "{ \"tracing\" : 1 }"
@@ -120,10 +119,9 @@ bool assertRules(
 
 arangodb::aql::QueryResult executeQuery(
     TRI_vocbase_t& vocbase,
-    std::string const& queryString
+    std::string const& queryString,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */
 ) {
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-
   auto options = arangodb::velocypack::Parser::fromJson(
 //    "{ \"tracing\" : 1 }"
     "{ }"
@@ -140,7 +138,8 @@ arangodb::aql::QueryResult executeQuery(
 
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   TRI_vocbase_t& vocbase,
-  std::string const& queryString
+  std::string const& queryString,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */
 ) {
   auto options = arangodb::velocypack::Parser::fromJson(
 //    "{ \"tracing\" : 1 }"

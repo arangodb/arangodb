@@ -62,7 +62,8 @@ size_t by_term::hash() const {
 filter::prepared::ptr by_term::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost) const {
+    boost_t boost,
+    const attribute_view& /*ctx*/) const {
   return term_query::make(rdr, ord, boost*this->boost(), fld_, term_);
 }
 

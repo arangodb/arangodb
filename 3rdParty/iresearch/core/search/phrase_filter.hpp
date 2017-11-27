@@ -41,7 +41,7 @@ class IRESEARCH_API by_phrase : public filter {
   typedef terms_t::const_iterator const_iterator;
   typedef terms_t::iterator iterator;
   typedef terms_t::value_type term_t;
- 
+
   // returns set of features required for filter 
   static const flags& required();
 
@@ -49,7 +49,7 @@ class IRESEARCH_API by_phrase : public filter {
   DECLARE_FACTORY_DEFAULT();
 
   by_phrase();
-  
+
   by_phrase& field(std::string fld) {
     fld_ = std::move(fld); 
     return *this;
@@ -62,11 +62,11 @@ class IRESEARCH_API by_phrase : public filter {
     phrase_[pos] = term; 
     return *this;
   }
-  
+
   by_phrase& insert(size_t pos, const string_ref& term) {
     return insert(pos, ref_cast<byte_type>(term));
   }
-  
+
   by_phrase& insert(size_t pos, bstring&& term) {
     phrase_[pos] = std::move(term);
     return *this;
@@ -77,11 +77,11 @@ class IRESEARCH_API by_phrase : public filter {
   by_phrase& push_back(const bytes_ref& term, size_t offs = 0) {
     return insert(next_pos() + offs, term);
   }
-  
+
   by_phrase& push_back(const string_ref& term, size_t offs = 0) {
     return push_back(ref_cast<byte_type>(term), offs);
   }
-  
+
   by_phrase& push_back(bstring&& term, size_t offs = 0) {
     return insert(next_pos() + offs, std::move(term));
   }
@@ -96,17 +96,19 @@ class IRESEARCH_API by_phrase : public filter {
 
   const_iterator begin() const { return phrase_.begin(); }
   const_iterator end() const { return phrase_.end(); }
-  
+
   iterator begin() { return phrase_.begin(); }
   iterator end() { return phrase_.end(); }
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr,
-      const order::prepared& ord,
-      boost_t boost) const override;
-  
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost,
+    const attribute_view& ctx
+  ) const override;
+
   virtual size_t hash() const override;
 
  protected:

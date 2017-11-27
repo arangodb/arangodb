@@ -184,7 +184,8 @@ struct boosted: public iresearch::filter {
 
     virtual iresearch::doc_iterator::ptr execute(
       const iresearch::sub_reader& rdr,
-      const iresearch::order::prepared& ord
+      const iresearch::order::prepared& ord,
+      const iresearch::attribute_view& /*ctx*/
     ) const override {
       return iresearch::doc_iterator::make<basic_doc_iterator>(
         docs.begin(), docs.end(), this->attributes(), ord
@@ -199,7 +200,8 @@ struct boosted: public iresearch::filter {
   virtual iresearch::filter::prepared::ptr prepare(
       const iresearch::index_reader&,
       const iresearch::order::prepared&,
-      boost_t boost) const override {
+      boost_t boost,
+      const iresearch::attribute_view& /*ctx*/) const override {
     return filter::prepared::make<boosted::prepared>(docs, this->boost()*boost);
   }
 
@@ -1096,8 +1098,9 @@ struct unestimated: public iresearch::filter {
 
   struct prepared: public iresearch::filter::prepared {
     virtual iresearch::doc_iterator::ptr execute(
-      const iresearch::sub_reader&, 
-      const iresearch::order::prepared&
+      const iresearch::sub_reader&,
+      const iresearch::order::prepared&,
+      const iresearch::attribute_view&
     ) const override {
       return iresearch::doc_iterator::make<unestimated::doc_iterator>();
     }
@@ -1106,7 +1109,8 @@ struct unestimated: public iresearch::filter {
   virtual filter::prepared::ptr prepare(
       const iresearch::index_reader&,
       const iresearch::order::prepared&,
-      boost_t ) const override {
+      boost_t,
+      const irs::attribute_view& ) const override {
     return filter::prepared::make<unestimated::prepared>();
   }
 
@@ -1152,7 +1156,8 @@ struct estimated: public iresearch::filter {
 
     virtual iresearch::doc_iterator::ptr execute(
       const iresearch::sub_reader&,
-      const iresearch::order::prepared&
+      const iresearch::order::prepared&,
+      const iresearch::attribute_view&
     ) const override {
       return iresearch::doc_iterator::make<estimated::doc_iterator>(
         est, evaluated
@@ -1166,7 +1171,8 @@ struct estimated: public iresearch::filter {
   virtual filter::prepared::ptr prepare(
       const iresearch::index_reader&,
       const iresearch::order::prepared&,
-      boost_t ) const override {
+      boost_t,
+      const irs::attribute_view&) const override {
     return filter::prepared::make<estimated::prepared>(est,&evaluated);
   }
 
