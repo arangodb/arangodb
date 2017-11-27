@@ -1526,7 +1526,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
             continue;
           }
         } else {
-          // How odd, we are supposed to get at least [[]], let's retry...
+          // How odd, we are supposed to get at least {results=[...]}, let's retry...
           isInquiry = false;
           continue;
         }
