@@ -1079,11 +1079,11 @@ static void JS_ExecuteGlobalContextFunction(
   // extract the action name
   v8::String::Utf8Value utf8def(args[0]);
 
-  if (*utf8def == 0) {
+  if (*utf8def == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<definition> must be a UTF-8 function definition");
   }
 
-  std::string const def = *utf8def;
+  std::string const def = std::string(*utf8def, utf8def.length());
 
   // and pass it to the V8 contexts
   if (!V8DealerFeature::DEALER->addGlobalContextMethod(def)) {
