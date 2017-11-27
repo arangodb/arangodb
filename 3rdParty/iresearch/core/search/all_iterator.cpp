@@ -21,37 +21,36 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BITSET_DOC_ITERATOR_H
-#define IRESEARCH_BITSET_DOC_ITERATOR_H
-
-#include "cost.hpp"
+#include "all_iterator.hpp"
 #include "search/score_doc_iterators.hpp"
-#include "utils/type_limits.hpp"
-#include "utils/bitset.hpp"
+#include "formats/empty_term_reader.hpp"
 
 NS_ROOT
 
-class bitset_doc_iterator final: public doc_iterator_base, util::noncopyable {
- public:
-  bitset_doc_iterator(
-    const sub_reader& reader,
-    const attribute_store& prepared_filter_attrs,
-    const bitset& set,
-    const order::prepared& order
+all_iterator::all_iterator(
+    const irs::sub_reader& reader,
+    const irs::attribute_store& prepared_filter_attrs,
+    const irs::order::prepared& order,
+    uint64_t docs_count)
+  : doc_iterator_base(order),
+    max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)) {
+  // make doc_id accessible via attribute
+  attrs_.emplace(doc_);
+
+  // set estimation value
+  estimate(max_doc_);
+
+  // set scorers
+  scorers_ = ord_->prepare_scorers(
+    reader,
+    irs::empty_term_reader(docs_count),
+    prepared_filter_attrs,
+    attributes() // doc_iterator attributes
   );
 
-  virtual bool next() NOEXCEPT override;
-  virtual doc_id_t seek(doc_id_t target) NOEXCEPT override;
-  virtual doc_id_t value() const NOEXCEPT override { return doc_.value; }
-
- private:
-  document doc_;
-  const bitset::word_t* begin_;
-  const bitset::word_t* end_;
-  order::prepared::scorers scorers_;
-  size_t size_;
-}; // bitset_doc_iterator
+  prepare_score([this](irs::byte_type* score) {
+    scorers_.score(*ord_, score);
+  });
+}
 
 NS_END // ROOT
-
-#endif // IRESEARCH_BITSET_DOC_ITERATOR_H

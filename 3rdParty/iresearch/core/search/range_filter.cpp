@@ -106,7 +106,8 @@ size_t by_range::hash() const {
 filter::prepared::ptr by_range::prepare(
     const index_reader& index,
     const order::prepared& ord,
-    boost_t boost) const {
+    boost_t boost,
+    const attribute_view& /*ctx*/) const {
   //TODO: optimize unordered case
   // - seek to min
   // - get ordinal position of the term

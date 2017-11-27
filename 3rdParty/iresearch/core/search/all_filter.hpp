@@ -44,7 +44,8 @@ class IRESEARCH_API all: public filter {
   virtual filter::prepared::ptr prepare(
     const index_reader& reader,
     const order::prepared& order,
-    boost_t filter_boost
+    boost_t filter_boost,
+    const attribute_view& ctx
   ) const override;
 }; // all
 

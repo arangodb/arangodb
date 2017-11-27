@@ -54,9 +54,10 @@ namespace iresearch {
       virtual iresearch::filter::prepared::ptr prepare(
         const index_reader& rdr,
         const order::prepared& ord,
-        boost_t boost
+        boost_t boost,
+        const attribute_view& ctx
       ) const override {
-        return filter_->prepare(rdr, ord, boost);
+        return filter_->prepare(rdr, ord, boost, ctx);
       };
 
      protected:

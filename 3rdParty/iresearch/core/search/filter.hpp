@@ -96,18 +96,27 @@ class IRESEARCH_API filter {
     explicit prepared(attribute_store&& attrs);
     virtual ~prepared();
 
-    doc_iterator::ptr execute(const sub_reader& rdr) const {
-      return execute(rdr, order::prepared::unordered());
-    }
-
     using util::attribute_store_provider::attributes;
     virtual attribute_store& attributes() NOEXCEPT override final {
       return attrs_;
     }
 
+    doc_iterator::ptr execute(
+        const sub_reader& rdr) const {
+      return execute(rdr, order::prepared::unordered());
+    }
+
+    doc_iterator::ptr execute(
+        const sub_reader& rdr,
+        const order::prepared& ord) const {
+      return execute(rdr, ord, attribute_view::empty_instance());
+    }
+
     virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord) const = 0;
+      const order::prepared& ord,
+      const attribute_view& ctx
+    ) const = 0;
 
    protected:
     friend class filter;
@@ -134,16 +143,32 @@ class IRESEARCH_API filter {
     return !( *this == rhs );
   }
 
-  /* boost::hash_combile support */
+  // boost::hash_combile support
   friend size_t hash_value( const filter& q ) {
     return q.hash();
   }
 
-  /* boost - external boost */
+  // boost - external boost
   virtual filter::prepared::ptr prepare(
       const index_reader& rdr,
       const order::prepared& ord,
-      boost_t boost) const = 0;
+      boost_t boost,
+      const attribute_view& ctx
+  ) const = 0;
+
+  filter::prepared::ptr prepare(
+      const index_reader& rdr,
+      const order::prepared& ord,
+      const attribute_view& ctx) {
+    return prepare(rdr, ord, irs::boost::no_boost(), ctx);
+  }
+
+  filter::prepared::ptr prepare(
+      const index_reader& rdr,
+      const order::prepared& ord,
+      boost_t boost) const {
+    return prepare(rdr, ord, boost, attribute_view::empty_instance());
+  }
 
   filter::prepared::ptr prepare(
       const index_reader& rdr,
@@ -193,7 +218,8 @@ class IRESEARCH_API empty: public filter {
   virtual filter::prepared::ptr prepare(
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t
+    boost_t boost,
+    const attribute_view& ctx
   ) const override;
 };
 

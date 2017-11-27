@@ -21,64 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "formats/empty_term_reader.hpp"
-#include "search/score_doc_iterators.hpp"
-
 #include "all_filter.hpp"
-
-NS_LOCAL
-
-class all_iterator final : public irs::doc_iterator_base {
- public:
-  all_iterator(
-      const irs::sub_reader& reader,
-      const irs::attribute_store& prepared_filter_attrs,
-      const irs::order::prepared& order,
-      uint64_t docs_count)
-    : doc_iterator_base(order),
-      max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)) {
-    // make doc_id accessible via attribute
-    attrs_.emplace(doc_);
-
-    // set estimation value
-    estimate(max_doc_);
-
-    // set scorers
-    scorers_ = ord_->prepare_scorers(
-      reader,
-      irs::empty_term_reader(docs_count),
-      prepared_filter_attrs,
-      attributes() // doc_iterator attributes
-    );
-
-    prepare_score([this](irs::byte_type* score) {
-      scorers_.score(*ord_, score);
-    });
-  }
-
-  virtual bool next() override {
-    return !irs::type_limits<irs::type_t::doc_id_t>::eof(seek(doc_.value + 1));
-  }
-
-  virtual irs::doc_id_t seek(irs::doc_id_t target) override {
-    doc_.value = target <= max_doc_
-      ? target
-      : irs::type_limits<irs::type_t::doc_id_t>::eof();
-
-    return doc_.value;
-  }
-
-  virtual irs::doc_id_t value() const NOEXCEPT override {
-    return doc_.value;
-  }
-
- private:
-  irs::document doc_;
-  irs::doc_id_t max_doc_; // largest valid doc_id
-  irs::order::prepared::scorers scorers_;
-};
-
-NS_END
+#include "all_iterator.hpp"
 
 NS_ROOT
 
@@ -98,7 +42,8 @@ class all_query: public filter::prepared {
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& order
+      const order::prepared& order,
+      const attribute_view& /*ctx*/
   ) const override {
     return doc_iterator::make<all_iterator>(
       rdr,
@@ -119,7 +64,8 @@ all::all() NOEXCEPT
 filter::prepared::ptr all::prepare(
     const index_reader& reader,
     const order::prepared& order,
-    boost_t filter_boost
+    boost_t filter_boost,
+    const attribute_view& /*ctx*/
 ) const {
   attribute_store attrs;
 

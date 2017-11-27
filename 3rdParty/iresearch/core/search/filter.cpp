@@ -33,7 +33,8 @@ class empty_query final : public irs::filter::prepared {
  public:
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader&,
-      const irs::order::prepared&) const override {
+      const irs::order::prepared&,
+      const irs::attribute_view&) const override {
     return irs::doc_iterator::empty();
   }
 }; // empty_query
@@ -75,7 +76,8 @@ empty::empty(): filter(empty::type()) {
 filter::prepared::ptr empty::prepare(
     const index_reader&,
     const order::prepared&,
-    boost_t
+    boost_t,
+    const attribute_view&
 ) const {
   static filter::prepared::ptr instance = std::make_shared<empty_query>();
   return instance;

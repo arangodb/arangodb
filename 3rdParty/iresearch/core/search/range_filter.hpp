@@ -76,7 +76,9 @@ class IRESEARCH_API by_range : public filter {
   virtual filter::prepared::ptr prepare(
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost) const override;
+    boost_t boost,
+    const attribute_view& ctx
+  ) const override;
 
   by_range& field(std::string fld) {
     fld_ = std::move(fld); 

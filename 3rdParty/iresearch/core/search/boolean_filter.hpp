@@ -66,7 +66,8 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
   virtual filter::prepared::ptr prepare(
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost
+    boost_t boost,
+    const attribute_view& ctx
   ) const final;
 
  protected:
@@ -78,7 +79,8 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
     const std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost
+    boost_t boost,
+    const attribute_view& ctx
   ) const = 0;
 
  private:
@@ -110,7 +112,8 @@ class IRESEARCH_API And: public boolean_filter {
     const std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost
+    boost_t boost,
+    const attribute_view& ctx
   ) const override;
 }; // And
 
@@ -145,7 +148,8 @@ class IRESEARCH_API Or : public boolean_filter {
     const std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t boost
+    boost_t boost,
+    const attribute_view& ctx
   ) const override;
 
  private:
@@ -193,7 +197,8 @@ class IRESEARCH_API Not: public filter {
   virtual filter::prepared::ptr prepare( 
     const index_reader& rdr,
     const order::prepared& ord,
-    boost_t
+    boost_t boost,
+    const attribute_view& ctx
   ) const override;
 
   virtual size_t hash() const override;
