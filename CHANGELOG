@@ -8,6 +8,7 @@ v3.2.9 (2017-XX-XX)
   graph. Necessary due different browser behaviour.
 
 * fix removal of failed nodes
+* back port of ClusterComm::wait fix in devel
 
 
 v3.2.8 (2017-11-18)
