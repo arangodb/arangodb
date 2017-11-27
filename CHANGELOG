@@ -5,6 +5,8 @@ devel
   Additionally the included node/edge editor now closes automatically
 	after a successful node/edge update.
 
+* UI: document/edge editor now remembering their modes (e.g. code or tree)
+
 * UI: optimized error messages for invalid graph definitions. Also fixed a
   graph renderer cleanrenderer cleanup error.
 
