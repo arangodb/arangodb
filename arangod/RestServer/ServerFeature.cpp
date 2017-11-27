@@ -203,7 +203,7 @@ void ServerFeature::waitForHeartbeat() {
     if (HeartbeatThread::hasRunOnce()) {
       break;
     }
-    usleep(100 * 1000);
+    std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
   }
 }
 

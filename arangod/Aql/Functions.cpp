@@ -1760,7 +1760,7 @@ AqlValue Functions::Sleep(arangodb::aql::Query* query,
   double const until = TRI_microtime() + value.toDouble(trx);
 
   while (TRI_microtime() < until) {
-    usleep(30000);
+    std::this_thread::sleep_for(std::chrono::microseconds(30000));
 
     if (query->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);

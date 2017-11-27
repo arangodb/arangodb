@@ -392,7 +392,7 @@ Result Syncer::applyCollectionDumpMarker(
         return res;
       }
      
-      usleep(50000); 
+      std::this_thread::sleep_for(std::chrono::microseconds(50000)); 
       // retry
     }
   } else {

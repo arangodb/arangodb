@@ -723,7 +723,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
       }
 
       LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "waiting for V8 context #" << id << " to become available";
-      usleep(50 * 1000);
+      std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
     }
 
     if (context == nullptr) {
@@ -1106,7 +1106,7 @@ void V8DealerFeature::shutdownContexts() {
 
     // wait until garbage collector thread is done
     while (!_gcFinished) {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
     LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "commanding GC Thread to terminate";

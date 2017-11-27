@@ -2687,7 +2687,7 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
           }
         }
       }
-      usleep(500000);
+      std::this_thread::sleep_for(std::chrono::microseconds(500000));
     }
 
     if (++tries >= 2) {

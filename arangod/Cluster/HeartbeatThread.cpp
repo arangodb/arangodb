@@ -195,7 +195,7 @@ void HeartbeatThread::run() {
         // startup aborted
         return;
       } 
-      usleep(100000);
+      std::this_thread::sleep_for(std::chrono::microseconds(100000));
     }
   }
 
@@ -264,7 +264,7 @@ void HeartbeatThread::runDBServer() {
     if (!registered) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Couldn't register plan change in agency!";
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   }
 
@@ -457,10 +457,10 @@ void HeartbeatThread::runSingleServer() {
     // like arguments greater than 1000000
     while (remain > 0.0) {
       if (remain >= 0.5) {
-        usleep(500000);
+        std::this_thread::sleep_for(std::chrono::microseconds(500000));
         remain -= 0.5;
       } else {
-        usleep(static_cast<TRI_usleep_t>(remain * 1000.0 * 1000.0));
+        std::this_thread::sleep_for(std::chrono::microseconds(uint64_t(remain * 1000.0 * 1000.0)));
         remain = 0.0;
       }
     }
@@ -601,7 +601,7 @@ void HeartbeatThread::runSingleServer() {
             << res.errorMessage();
         }
         // wait for everything to calm down for good measure
-        sleep(10);
+        std::this_thread::sleep_for(std::chrono::seconds(10));
       }
       
       if (applier->endpoint() != endpoint) {
@@ -911,10 +911,10 @@ void HeartbeatThread::runCoordinator() {
       // like arguments greater than 1000000
       while (remain > 0.0) {
         if (remain >= 0.5) {
-          usleep(500000);
+          std::this_thread::sleep_for(std::chrono::microseconds(500000));
           remain -= 0.5;
         } else {
-          usleep((TRI_usleep_t)(remain * 1000.0 * 1000.0));
+          std::this_thread::sleep_for(std::chrono::microseconds(uint64_t(remain * 1000.0 * 1000.0)));
           remain = 0.0;
         }
       }
@@ -965,8 +965,8 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
   if (doSleep) {
     // Sleep a little longer, since this might be due to some synchronisation
     // of shards going on in the background
-    usleep(500000);
-    usleep(500000);
+    std::this_thread::sleep_for(std::chrono::microseconds(500000));
+    std::this_thread::sleep_for(std::chrono::microseconds(500000));
   }
   CONDITION_LOCKER(guard, _condition);
   _wasNotified = true;

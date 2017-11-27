@@ -40,6 +40,9 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-dispatcher.h"
 
+#include <thread>
+#include <chrono>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -176,7 +179,7 @@ void SchedulerFeature::stop() {
   for (size_t count = 0; count < MAX_TRIES && _scheduler->isRunning();
        ++count) {
     LOG_TOPIC(TRACE, Logger::STARTUP) << "waiting for scheduler to stop";
-    usleep(100000);
+    std::this_thread::sleep_for(std::chrono::microseconds(100000));
   }
   
   // shutdown user jobs again, in case new ones appear

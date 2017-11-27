@@ -104,7 +104,7 @@ void CheckVersionFeature::start() {
   // and force shutdown
   server()->beginShutdown();
   
-  usleep(1 * 1000 * 1000);  
+  std::this_thread::sleep_for(std::chrono::microseconds(1 * 1000 * 1000));  
   TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
 }
 

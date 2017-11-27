@@ -797,7 +797,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
         while (cc->isBusy()) {
           // We should wait here, the cache will reject
           // any inserts anyways.
-          usleep(10000);
+          std::this_thread::sleep_for(std::chrono::microseconds(10000));
         }
 
         auto entry = cache::CachedValue::construct(

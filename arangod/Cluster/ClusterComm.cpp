@@ -960,9 +960,9 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         // a retry later than now and simply wait till then
         if (now < actionNeeded) {
 #ifdef _WIN32
-          usleep((unsigned long) ((actionNeeded - now) * 1000000));
+          std::this_thread::sleep_for(std::chrono::microseconds((unsigned long) ((actionNeeded - now) * 1000000)));
 #else
-          usleep((useconds_t) ((actionNeeded - now) * 1000000));
+          std::this_thread::sleep_for(std::chrono::microseconds((useconds_t) ((actionNeeded - now) * 1000000)));
 #endif
         }
         continue;
@@ -1259,7 +1259,7 @@ void ClusterCommThread::run() {
   _cc->communicator()->abortRequests();
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "waiting for curl to stop remaining handles";
   while (_cc->communicator()->work_once() > 0) {
-    usleep(10);
+    std::this_thread::sleep_for(std::chrono::microseconds(10));
   }
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "stopped ClusterComm thread";

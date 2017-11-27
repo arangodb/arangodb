@@ -880,7 +880,7 @@ void ImportHelper::waitForSenders() {
     if (numIdle == _senderThreads.size()) {
       return;
     }
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 }
 }
