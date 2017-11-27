@@ -685,7 +685,7 @@ class AgencyComm {
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
                                     std::string const&, VPackSlice,
-                                    std::string const& clientId = std::string());
+                                    std::string clientId = std::string());
 
  private:
   bool lock(std::string const&, double, double,
