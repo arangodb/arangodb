@@ -133,7 +133,7 @@ void RestCollectionHandler::handleCommandGet() {
             VPackObjectBuilder obj(&builder, true);
             obj->add("checksum", result.slice().get("checksum"));
             obj->add("revision", result.slice().get("revision"));
-            collectionRepresentation(builder, name, /*showProperties*/ false,
+            collectionRepresentation(builder, coll, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ false,
                                      /*aggregateCount*/ false);
           } else {
@@ -142,18 +142,18 @@ void RestCollectionHandler::handleCommandGet() {
           }
         } else if (sub == "figures") {
           // /_api/collection/<identifier>/figures
-          collectionRepresentation(builder, name, /*showProperties*/ true,
+          collectionRepresentation(builder, coll, /*showProperties*/ true,
                                    /*showFigures*/ true, /*showCount*/ true,
                                    /*aggregateCount*/ true);
         } else if (sub == "count") {
           // /_api/collection/<identifier>/count
           bool details = _request->parsedValue("details", false);
-          collectionRepresentation(builder, name, /*showProperties*/ true,
+          collectionRepresentation(builder, coll, /*showProperties*/ true,
                                    /*showFigures*/ false, /*showCount*/ true,
                                    /*aggregateCount*/ !details);
         } else if (sub == "properties") {
           // /_api/collection/<identifier>/properties
-          collectionRepresentation(builder, name, /*showProperties*/ true,
+          collectionRepresentation(builder, coll, /*showProperties*/ true,
                                    /*showFigures*/ false, /*showCount*/ false,
                                    /*aggregateCount*/ false);
         } else if (sub == "revision") {
@@ -166,7 +166,7 @@ void RestCollectionHandler::handleCommandGet() {
           }
           VPackObjectBuilder obj(&builder, true);
           obj->add("revision", VPackValue(StringUtils::itoa(revisionId)));
-          collectionRepresentation(builder, name, /*showProperties*/ true,
+          collectionRepresentation(builder, coll, /*showProperties*/ true,
                                    /*showFigures*/ false, /*showCount*/ false,
                                    /*aggregateCount*/ false);
 
@@ -179,7 +179,7 @@ void RestCollectionHandler::handleCommandGet() {
           }
 
           VPackObjectBuilder obj(&builder, true);  // need to open object
-          collectionRepresentation(builder, name, /*showProperties*/ true,
+          collectionRepresentation(builder, coll, /*showProperties*/ true,
                                    /*showFigures*/ false, /*showCount*/ false,
                                    /*aggregateCount*/ false);
           auto shards =

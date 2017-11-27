@@ -43,6 +43,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -248,7 +249,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(collection->vocbase()),
+      transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
       collection->cid(),
       create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ);
 
@@ -260,17 +261,12 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   bool created = false;
   std::shared_ptr<arangodb::Index> idx;
   if (create) {
-    // TODO Encapsulate in try{}catch(){} instead of errno()
     try {
       idx = collection->createIndex(&trx, definition, created);
     } catch (arangodb::basics::Exception const& e) {
-      return Result(e.code());
+      return Result(e.code(), e.what());
     }
-    if (idx == nullptr) {
-      // something went wrong during creation
-      int res = TRI_errno();
-      return Result(res);
-    }
+    TRI_ASSERT(idx != nullptr);
   } else {
     idx = collection->lookupIndex(definition);
     if (idx == nullptr) {
@@ -278,6 +274,8 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
       return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     }
   }
+    
+  TRI_ASSERT(idx != nullptr);
 
   VPackBuilder tmp;
   try {
@@ -541,7 +539,7 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
     READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(collection->vocbase()),
+        transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
         collection->cid(), AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
