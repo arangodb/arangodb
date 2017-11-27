@@ -107,10 +107,10 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
     if (isSparse) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
-      return ast->createNodeFunctionCall("SORTED_UNIQUE", array);
+      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), array);
     }
     // a regular UNIQUE will do
-    return ast->createNodeFunctionCall("UNIQUE", array);
+    return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("UNIQUE"), array);
   }
 
   // presumably an array with no or a single member
