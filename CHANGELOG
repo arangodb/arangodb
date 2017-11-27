@@ -1,8 +1,15 @@
-v3.2.9 (xxxx-xx-xx)
+v3.2.9 (2017-XX-XX)
 -------------------
+
+* UI: optimized error messages for invalid graph definitions. Also fixed a
+  graph renderer cleanrenderer cleanup error.
+
+* UI: added a delay within the graph viewer while changing the colors of the
+  graph. Necessary due different browser behaviour.
 
 * fix removal of failed nodes
 * back port of ClusterComm::wait fix in devel
+
 
 v3.2.8 (2017-11-18)
 -------------------
