@@ -211,14 +211,14 @@ void RestUsersHandler::generateDatabaseResult(AuthInfo* authInfo,
                 data.add(c->name(), VPackValue("undefined"));
               }
             });
-        lvl = authInfo->canUseCollection(user, vocbase->name(), "*");
+        lvl = authInfo->canUseCollectionNoLock(user, vocbase->name(), "*");
         data.add("*", VPackValue(convertFromAuthLevel(lvl)));
       } else if (lvl != AuthLevel::NONE) {  // hide db's without access
         data.add(vocbase->name(), VPackValue(str));
       }
     });
     if (full) {
-      AuthLevel lvl = authInfo->canUseDatabase(user, "*");
+      AuthLevel lvl = authInfo->canUseDatabaseNoLock(user, "*");
       data("*", VPackValue(VPackValueType::Object))(
           "permission", VPackValue(convertFromAuthLevel(lvl)))();
     }
