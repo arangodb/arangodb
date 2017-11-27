@@ -84,7 +84,6 @@
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Transactions.h"
 
@@ -938,7 +937,7 @@ static void JS_QueriesPropertiesAql(
           obj->Get(TRI_V8_ASCII_STRING(isolate, "maxQueryStringLength")))));
     }
 
-    // fall-through intentional
+    // intentionally falls through
   }
 
   // return current settings
@@ -1751,10 +1750,6 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_ASSERT(!vocbase->isDangling());
 
-  if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
-  }
-
   if (!vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
@@ -1779,8 +1774,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     
   std::string const dbName = TRI_ObjectToString(args[0]);
   Result res = methods::Databases::create( dbName, users.slice(), options.slice());
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_V8_RETURN_TRUE();
@@ -1814,8 +1809,8 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const name = TRI_ObjectToString(args[0]);
   Result res = methods::Databases::drop(vocbase, name);
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
   
   TRI_V8_RETURN_TRUE();

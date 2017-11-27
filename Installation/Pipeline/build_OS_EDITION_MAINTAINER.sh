@@ -72,7 +72,9 @@ echo "BUILD_TYPE: $CMAKE_BUILD_TYPE"
 
 function configureBuild {
     echo "`date +%T` configuring..."
-    CXXFLAGS=-fno-omit-frame-pointer \
+    rm -f cmake.run
+
+    (CXXFLAGS=-fno-omit-frame-pointer \
         cmake \
             -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
             -DCMAKE_INSTALL_PREFIX=/ \
@@ -81,11 +83,20 @@ function configureBuild {
             $ENTERPRISE \
             $MAINTAINER \
             $PACKAGING \
-            ..
+            .. 2>&1 || echo "FAILED") | tee cmake.run
+
+
+    if test ! -e cmake.run; then
+        exit 1
+    elif fgrep -q "does not match the source" cmake.run; then
+        rm -rf *
+        configureBuild
+    elif fgrep -q "FAILED" cmake.run; then
+        exit 1
+    fi
 }
 
 (
-    set -eo pipefail
     cd build
 
     configureBuild
@@ -93,5 +104,8 @@ function configureBuild {
     echo "`date +%T` building..."
     make -j $concurrency -l $load 2>&1
 ) || exit 1
+
+# the file is huge and taking lots of space and is totally useless on jenkins afterwards
+rm build/arangod/libarangoserver.a || exit 2
 
 echo "`date +%T` done..."

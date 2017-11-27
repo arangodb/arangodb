@@ -1675,7 +1675,7 @@ SECTION("test_query") {
         arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, options);
 
         CHECK((trx.begin().ok()));
-        CHECK((trx.insert(logicalCollection->name(), doc->slice(), arangodb::OperationOptions()).successful()));
+        CHECK((trx.insert(logicalCollection->name(), doc->slice(), arangodb::OperationOptions()).ok()));
         CHECK((trx.commit().ok()));
       }
 
@@ -2331,7 +2331,7 @@ SECTION("test_update_partial") {
       arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
       CHECK((trx.begin().ok()));
-      CHECK((trx.insert(logicalCollection->name(), doc->slice(), arangodb::OperationOptions()).successful()));
+      CHECK((trx.insert(logicalCollection->name(), doc->slice(), arangodb::OperationOptions()).ok()));
       CHECK((trx.commit().ok()));
     }
 

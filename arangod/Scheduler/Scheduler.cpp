@@ -175,6 +175,12 @@ Scheduler::Scheduler(uint64_t nrMinimum, uint64_t /*nrDesired*/,
 
 Scheduler::~Scheduler() {
   stopRebalancer();
+  
+  _managerGuard.reset();
+  _managerService.reset();
+
+  _serviceGuard.reset();
+  _ioService.reset();
 }
 
 void Scheduler::post(std::function<void()> callback) {
@@ -190,7 +196,7 @@ void Scheduler::post(std::function<void()> callback) {
   });
 }
 
-bool Scheduler::start(ConditionVariable* cv) {
+bool Scheduler::start() {
   // start the I/O
   startIoService();
 
@@ -240,7 +246,12 @@ void Scheduler::startRebalancer() {
       return;
     }
 
-    rebalanceThreads();
+    try {
+      rebalanceThreads();
+    } catch (...) {
+      // continue if this fails.
+      // we can try rebalancing again in the next round
+    }
 
     if (_threadManager != nullptr) {
       _threadManager->expires_from_now(interval);
@@ -263,12 +274,16 @@ void Scheduler::stopRebalancer() noexcept {
 
 void Scheduler::startManagerThread() {
   auto thread = new SchedulerManagerThread(this, _managerService.get());
-  thread->start();
+  if (!thread->start()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "unable to start rebalancer thread");
+  }
 }
 
 void Scheduler::startNewThread() {
   auto thread = new SchedulerThread(this, _ioService.get());
-  thread->start();
+  if (!thread->start()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "unable to start scheduler thread");
+  }
 }
     
 void Scheduler::stopThread() {
@@ -344,10 +359,9 @@ bool Scheduler::hasQueueCapacity() const {
 }
 
 bool Scheduler::queue(std::unique_ptr<Job> job) {
-  auto jobQueue = _jobQueue.get();
-  auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
+  TRI_ASSERT(_jobQueue);
+  auto queueSize = _jobQueue->queueSize();
   RequestStatistics::SET_QUEUE_START(job->_handler->statistics(), queueSize);
-
   return _jobQueue->queue(std::move(job));
 }
 
@@ -390,7 +404,7 @@ void Scheduler::rebalanceThreads() {
       uint64_t const nrWorking = numWorking(counters);
       uint64_t const nrBlocked = numBlocked(counters);
 
-      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrQueued)) { // + std::min(nrBlocked, uint64_t(8)))) {
+      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrQueued)) { 
         // all threads are working, and none are blocked. so there is no
         // need to start a new thread now
         if (nrWorking == nrRunning) {
@@ -423,10 +437,15 @@ void Scheduler::rebalanceThreads() {
       // actually start the new thread
       startNewThread();
     } catch (...) {
-      // if it fails, we have to rollback the increase of nrRunning again
-      MUTEX_LOCKER(locker, _threadCreateLock);
-      decRunning();
-      throw;
+      // cannot create new thread or start new thread
+      // if this happens, we have to rollback the increase of nrRunning again
+      {
+        MUTEX_LOCKER(locker, _threadCreateLock);
+        decRunning();
+      }
+      // add an extra sleep so the system has a chance to recover and provide
+      // the needed resources
+      usleep(20000);
     }
 
     usleep(5000);
@@ -462,6 +481,10 @@ void Scheduler::shutdown() {
     }
 
     std::this_thread::yield();
+    // we can be quite generous here with waiting...
+    // as we are in the shutdown already, we do not care if we need to wait for a
+    // bit longer
+    usleep(20000); 
   }
 
   // remove all queued work descriptions in the work monitor first

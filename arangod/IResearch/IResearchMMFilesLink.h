@@ -70,9 +70,9 @@ class IResearchMMFilesLink final
     transaction::Methods* trx,
     LocalDocumentId const& documentId,
     VPackSlice const& doc,
-    bool isRollback
+    OperationMode mode
   ) override {
-    return IResearchLink::insert(trx, documentId, doc, isRollback);
+    return IResearchLink::insert(trx, documentId, doc, mode);
   }
 
   virtual bool isPersistent() const override {
@@ -111,9 +111,9 @@ class IResearchMMFilesLink final
     transaction::Methods* trx,
     LocalDocumentId const& documentId,
     VPackSlice const& doc,
-    bool isRollback
+    OperationMode mode
   ) override {
-    return IResearchLink::remove(trx, documentId, doc, isRollback);
+    return IResearchLink::remove(trx, documentId, doc, mode);
   }
 
   ////////////////////////////////////////////////////////////////////////////////

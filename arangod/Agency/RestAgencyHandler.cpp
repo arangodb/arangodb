@@ -79,10 +79,13 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
     _response->setHeaderNC(StaticStrings::Location, url);
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << ":"
-                                    << __LINE__;
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  e.what());
+    Builder body;
+    body.openObject();
+    body.add("message", VPackValue("No leader"));
+    body.close();
+    generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is, "
+      "caught exception in redirectRequest: " << e.what();
   }
 }
 
@@ -505,7 +508,7 @@ RestStatus RestAgencyHandler::handleInquire() {
     return RestStatus::DONE;
   }
   
-  inquire_ret_t ret;
+  write_ret_t ret;
   try {
     ret = _agent->inquire(query);
   } catch (std::exception const& e) {
@@ -516,7 +519,22 @@ RestStatus RestAgencyHandler::handleInquire() {
   
   if (ret.accepted) {  // I am leading
 
-    generateResult(rest::ResponseCode::OK, ret.result->slice());
+    
+    Builder body;
+    bool failed = false;
+    { VPackObjectBuilder b(&body);
+      if (ret.indices.empty()) {
+        body.add("ongoing", VPackValue(true));
+      } else {
+        body.add(VPackValue("results"));
+        { VPackArrayBuilder bb(&body);
+          for (auto const& index : ret.indices) {
+            body.add(VPackValue(index));
+            failed = (failed || index == 0);
+          }}}
+    }
+    generateResult(failed ? rest::ResponseCode::PRECONDITION_FAILED :
+                   rest::ResponseCode::OK, body.slice());
     
   } else {  // Redirect to leader
     

@@ -71,9 +71,6 @@ class Index {
 
   Index(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&);
 
-  /// TODO: can we remove this?
-  explicit Index(arangodb::velocypack::Slice const&);
-
   virtual ~Index();
 
  public:
@@ -92,6 +89,13 @@ class Index {
     TRI_IDX_TYPE_IRESEARCH_LINK,
 #endif
     TRI_IDX_TYPE_NO_ACCESS_INDEX
+  };
+
+  // mode to signal how operation should behave
+  enum OperationMode {
+    normal,
+    internal,
+    rollback
   };
 
  public:
@@ -233,7 +237,7 @@ class Index {
   /// attribute attribute, a Slice would be more flexible.
   double selectivityEstimate(
       arangodb::StringRef const* extra = nullptr) const;
-  
+
   virtual double selectivityEstimateLocal(
       arangodb::StringRef const* extra) const;
 
@@ -250,10 +254,14 @@ class Index {
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
-  virtual Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                     arangodb::velocypack::Slice const&, bool isRollback) = 0;
-  virtual Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                     arangodb::velocypack::Slice const&, bool isRollback) = 0;
+  virtual Result insert(transaction::Methods*,
+                        LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const&,
+                        OperationMode mode) = 0;
+  virtual Result remove(transaction::Methods*,
+                        LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const&,
+                        OperationMode mode) = 0;
 
   virtual void batchInsert(
       transaction::Methods*,
@@ -265,6 +273,9 @@ class Index {
 
   // called when the index is dropped
   virtual int drop();
+
+  // called after the collection was truncated
+  virtual int afterTruncate(); 
 
   // give index a hint about the expected size
   virtual int sizeHint(transaction::Methods*, size_t);
@@ -327,7 +338,7 @@ class Index {
   mutable bool _unique;
 
   mutable bool _sparse;
-  
+
   double _clusterSelectivity;
 };
 }

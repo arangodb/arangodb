@@ -38,30 +38,6 @@ var _ = require('lodash');
 
 var fetchKey = cluster.fetchKey;
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_cluster_test_GET
-// //////////////////////////////////////////////////////////////////////////////
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_cluster_test_POST
-// //////////////////////////////////////////////////////////////////////////////
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_cluster_test_PUT
-// //////////////////////////////////////////////////////////////////////////////
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_cluster_test_DELETE
-// //////////////////////////////////////////////////////////////////////////////
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_cluster_test_PATCH
-// //////////////////////////////////////////////////////////////////////////////
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_cluster_test_HEAD
-// //////////////////////////////////////////////////////////////////////////////
-
 actions.defineHttp({
   url: '_admin/cluster/removeServer',
   allowUseDatabase: true,
@@ -96,9 +72,9 @@ actions.defineHttp({
       return;
     }
 
-    if (node.Role !== 'Coordinator' && node.Role !== 'DBServer') {
+    if (serverId.substr(0, 4) !== 'CRDN' && serverId.substr(0, 4) !== 'PRMR') {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'unhandled role ' + node.role);
+        'couldn\'t determine role for serverid ' + serverId);
       return;
     }
 
@@ -130,11 +106,11 @@ actions.defineHttp({
     }
 
     let operations = {};
-    operations['/arango/Coordinators/' + serverId] = {'op': 'delete'};
-    operations['/arango/DBServers/' + serverId] = {'op': 'delete'};
+    operations['/arango/Plan/Coordinators/' + serverId] = {'op': 'delete'};
+    operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
     operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
     operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
-    operations['/arango/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
+    operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
 
     try {
       global.ArangoAgency.write([[operations, preconditions]]);
@@ -263,7 +239,7 @@ actions.defineHttp({
     } catch (e) {
     }
 
-    if (typeof serverId !== 'string') {
+    if (typeof serverId !== 'string' || serverId.length === 0) {
       actions.resultError(req, res, actions.HTTP_BAD,
         'required parameter ServerID was not given');
       return;
@@ -652,205 +628,6 @@ actions.defineHttp({
   }
 });
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @start Docu Block JSF_getSecondary
-// / (intentionally not in manual)
-// / @brief gets the secondary of a primary DBserver
-// /
-// / @ RESTHEADER{GET /_admin/cluster/getSecondary, Get secondary of a primary DBServer}
-// /
-// / @ RESTQUERYPARAMETERS
-// /
-// / @ RESTDESCRIPTION Gets the configuration in the agency of the secondary
-// / replicating a primary.
-// /
-// / @ RESTQUERYPARAMETERS
-// /
-// / @ RESTQUERYPARAM{primary,string,required}
-// / is the ID of the primary whose secondary we would like to get.
-// /
-// / @ RESTQUERYPARAM{timeout,number,optional}
-// / the timeout to use in HTTP requests to the agency, default is 60.
-// /
-// / @ RESTRETURNCODES
-// /
-// / @ RESTRETURNCODE{200} is returned when everything went well.
-// /
-// / @ RESTRETURNCODE{400} the primary was not given as query parameter.
-// /
-// / @ RESTRETURNCODE{403} server is not a coordinator or method was not GET.
-// /
-// / @ RESTRETURNCODE{404} the given primary name is not configured in Agency.
-// /
-// / @ RESTRETURNCODE{408} there was a timeout in the Agency communication.
-// /
-// / @ RESTRETURNCODE{500} the get operation did not work.
-// /
-// / @end Docu Block
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/cluster/getSecondary',
-  allowUseDatabase: true,
-  prefix: false,
-
-  callback: function (req, res) {
-    if (req.requestType !== actions.GET ||
-      !require('@arangodb/cluster').isCoordinator()) {
-      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed and only to coordinators');
-      return;
-    }
-    if (!req.parameters.hasOwnProperty('primary')) {
-      actions.resultError(req, res, actions.HTTP_BAD, 0,
-        '"primary" is not given as parameter');
-      return;
-    }
-    var primary = req.parameters.primary;
-
-    var agency = ArangoAgency.get('Plan/DBServers/' + primary);
-    let secondary = fetchKey(agency, 'arango', 'Plan', 'DBServers', primary);
-    if (secondary === undefined) {
-      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
-        'Primary with the given ID is not configured in Agency.');
-    }
-
-    actions.resultOk(req, res, actions.HTTP_OK, { primary: primary,
-      secondary: secondary });
-  }
-});
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @start Docu Block JSF_replaceSecondary
-// / (intentionally not in manual)
-// / @brief exchanges the secondary of a primary DBserver
-// /
-// / @ RESTHEADER{PUT /_admin/cluster/replaceSecondary, Replace secondary of a primary DBServer}
-// /
-// / @ RESTDESCRIPTION Replaces the configuration in the agency of the secondary
-// / replicating a primary. Use with care, because the old secondary will
-// / relatively quickly delete its data. For security reasons and to avoid
-// / races, the ID of the old secondary must be given as well.
-// /
-// / @ RESTBODYPARAM{primary,string,required,string}
-// / is the ID of the primary whose secondary is to be changed.
-// /
-// / @ RESTBODYPARAM{oldSecondary,string,required,string}
-// / is the old ID of the secondary.
-// /
-// / @ RESTBODYPARAM{newSecondary,string,required,string}
-// / is the new ID of the secondary.
-// /
-// / @ RESTBODYPARAM{ttl,number,optional,number}
-// / the time to live in seconds for the write lock, default is 60.
-// /
-// / @ RESTBODYPARAM{timeout,number,optional,number}
-// / the timeout to use in HTTP requests to the agency, default is 60.
-// /
-// / @ RESTRETURNCODES
-// /
-// / @ RESTRETURNCODE{200} is returned when everything went well.
-// /
-// / @ RESTRETURNCODE{400} either one of the required body parameters was
-// / not given or no server with this ID exists.
-// /
-// / @ RESTRETURNCODE{403} server is not a coordinator or method was not PUT.
-// /
-// / @ RESTRETURNCODE{404} the given primary name is not configured in Agency.
-// /
-// / @ RESTRETURNCODE{408} there was a timeout in the Agency communication.
-// /
-// / @ RESTRETURNCODE{412} the given oldSecondary was not the current secondary
-// / of the given primary.
-// /
-// / @ RESTRETURNCODE{500} the change operation did not work.
-// /
-// / @end Docu Block
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/cluster/replaceSecondary',
-  allowUseDatabase: true,
-  prefix: false,
-
-  callback: function (req, res) {
-    if (req.requestType !== actions.PUT ||
-      !require('@arangodb/cluster').isCoordinator()) {
-      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only PUT requests are allowed and only to coordinators');
-      return;
-    }
-    var body = actions.getJsonBody(req, res);
-    if (body === undefined) {
-      return;
-    }
-    if (!body.hasOwnProperty('primary') ||
-      typeof (body.primary) !== 'string' ||
-      !body.hasOwnProperty('oldSecondary') ||
-      typeof (body.oldSecondary) !== 'string' ||
-      !body.hasOwnProperty('newSecondary') ||
-      typeof (body.newSecondary) !== 'string') {
-      actions.resultError(req, res, actions.HTTP_BAD, 0,
-        'not all three of "primary", "oldSecondary" and ' +
-        '"newSecondary" are given in body and are strings');
-      return;
-    }
-    let dbservers = ArangoAgency.get('Plan/DBServers/' + body.primary).arango.Plan.DBservers;
-    let sID = ArangoAgency.get('Target/MapUniqueToShortID').arango.Target.MapUniqueToShortID;
-
-    let id = body.primary;
-    let nid = body.newSecondary;
-
-    if (fetchKey(dbservers, id) === undefined) {
-      for (var sid in sID) {
-        if (sID[sid].ShortName === id) {
-          id = sid;
-          break;
-        }
-      }
-      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
-        'Primary with the given ID is not configured in Agency.');
-      return;
-    }
-
-    if (fetchKey(dbservers, nid) === undefined) {
-      for (sid in sID) {
-        if (sID[sid].ShortName === nid) {
-          nid = sid;
-          break;
-        }
-      }
-      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
-        'Primary with the given ID is not configured in Agency.');
-      return;
-    }
-
-    let operations = {};
-    operations['/arango/Plan/DBServers/' + id] = nid;
-    operations['/arango/Plan/Version'] = {'op': 'increment'};
-
-    let preconditions = {};
-    preconditions['/arango/Plan/DBServers/' + id] = {'old': body.oldSecondary};
-
-    try {
-      require('internal').print([[operations, preconditions]]);
-      global.ArangoAgency.write([[operations, preconditions]]);
-    } catch (e) {
-      if (e.code === 412) {
-        let oldValue = ArangoAgency.get('Plan/DBServers/' + id);
-        actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
-          'Primary does not have the given oldSecondary as ' +
-          'its secondary, current value: ' +
-          JSON.stringify(
-            fetchKey(oldValue, 'arango', 'Plan', 'DBServers', id)
-          ));
-        return;
-      }
-      throw e;
-    }
-  }
-});
-
 function reducePlanServers (reducer, data) {
   var databases = ArangoAgency.get('Plan/Collections');
   databases = databases.arango.Plan.Collections;
@@ -914,110 +691,6 @@ function changeAllShardReponsibilities (oldServer, newServer) {
     preconditions: {}
   });
 }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @start Docu Block JSF_swapPrimaryAndSecondary
-// / (intentionally not in manual)
-// / @brief swaps the roles of a primary and secondary pair
-// /
-// / @ RESTHEADER{PUT /_admin/cluster/swapPrimaryAndSecondary, Swaps the roles of a primary and secondary pair.}
-// /
-// / @RESTDESCRIPTION Swaps the roles of a primary and replicating secondary
-// / pair. This includes changing the entry for all shards for which the
-// / primary was responsible to the name of the secondary. All changes happen
-// / in a single write transaction (using a write lock) and the Plan/Version
-// / is increased. Use with care, because currently replication in the cluster
-// / is asynchronous and the old secondary might not yet have all the data.
-// / For security reasons and to avoid races, the ID of the old secondary
-// / must be given as well.
-// /
-// / @ RESTBODYPARAM{primary,string,required,string}
-// / is the ID of the primary whose secondary is to be changed.
-// /
-// / @ RESTBODYPARAM{secondary,string,required,string}
-// / is the ID of the secondary, which must be the secondary of this primay.
-// /
-// / @ RESTBODYPARAM{ttl,number,optional,number}
-// / the time to live in seconds for the write lock, default is 60.
-// /
-// / @ RESTBODYPARAM{timeout,number,optional,number}
-// / the timeout to use in HTTP requests to the agency, default is 60.
-// /
-// / @ RESTRETURNCODES
-// /
-// / @ RESTRETURNCODE{200} is returned when everything went well.
-// /
-// / @ RESTRETURNCODE{400} either one of the required body parameters was
-// / not given or no server with this ID exists.
-// /
-// / @ RESTRETURNCODE{403} server is not a coordinator or method was not PUT.
-// /
-// / @ RESTRETURNCODE{404} the given primary name is not configured in Agency.
-// /
-// / @ RESTRETURNCODE{408} there was a timeout in the Agency communication.
-// /
-// / @ RESTRETURNCODE{412} the given secondary was not the current secondary
-// / of the given primary.
-// /
-// / @ RESTRETURNCODE{500} the change operation did not work.
-// /
-// / @end Docu Block
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/cluster/swapPrimaryAndSecondary',
-  allowUseDatabase: true,
-  prefix: false,
-
-  callback: function (req, res) {
-    if (req.requestType !== actions.PUT ||
-      !require('@arangodb/cluster').isCoordinator()) {
-      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only PUT requests are allowed and only to coordinators');
-      return;
-    }
-    var body = actions.getJsonBody(req, res);
-    if (body === undefined) {
-      return;
-    }
-    if (!body.hasOwnProperty('primary') ||
-      typeof (body.primary) !== 'string' ||
-      !body.hasOwnProperty('secondary') ||
-      typeof (body.secondary) !== 'string') {
-      actions.resultError(req, res, actions.HTTP_BAD, 0,
-        'not both "primary" and "secondary" ' +
-        'are given in body and are strings');
-      return;
-    }
-
-    let operations = {};
-    operations['/arango/Plan/DBServers/' + body.secondary] = body.primary;
-    operations['/arango/Plan/DBServers/' + body.primary] = {'op': 'delete'};
-    operations['/arango/Plan/Version'] = {'op': 'increment'};
-
-    let preconditions = {};
-    preconditions['/arango/Plan/DBServers/' + body.primary] = {'old': body.secondary};
-
-    let shardChanges = changeAllShardReponsibilities(body.primary, body.secondary);
-    operations = Object.assign(operations, shardChanges.operations);
-    preconditions = Object.assign(preconditions, shardChanges.preconditions);
-
-    try {
-      global.ArangoAgency.write([[operations, preconditions]]);
-    } catch (e) {
-      if (e.code === 412) {
-        // unused: let oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary);
-        actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
-          'Could not change primary to secondary.');
-        return;
-      }
-      throw e;
-    }
-
-    actions.resultOk(req, res, actions.HTTP_OK, {primary: body.secondary,
-      secondary: body.primary});
-  }
-});
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @start Docu Block JSF_getNumberOfServers
@@ -1391,108 +1064,6 @@ actions.defineHttp({
     }
 
     var result = require('@arangodb/cluster').shardDistribution();
-    var dbsToCheck = []; var diff;
-
-    var getDifference = function (a, b) {
-      return a.filter(function (i) {
-        return b.indexOf(i) < 0;
-      });
-    };
-
-    _.each(result.results, function (info, collection) {
-      _.each(info.Plan, function (shard, shardkey) {
-        // check if shard is out of sync
-        if (!_.isEqual(shard.followers, info.Current[shardkey].followers)) {
-          // if not in sync, get document counts of leader and compare with follower
-          diff = getDifference(shard.followers, info.Current[shardkey].followers);
-
-          dbsToCheck.push({
-            shard: shardkey,
-            toCheck: diff,
-            leader: info.Plan[shardkey].leader,
-            collection: collection
-          });
-        }
-      });
-    });
-
-    var leaderOP, leaderR, followerR, leaderBody, followerBody;
-    var options = { timeout: 10 };
-
-    _.each(dbsToCheck, function (shard) {
-      if (shard.leader.charAt(0) === '_') {
-        shard.leader = shard.leader.substr(1, shard.leader.length - 1);
-      }
-      if (typeof shard.toCheck === 'object') {
-        if (shard.toCheck.length === 0) {
-          return;
-        }
-      }
-
-      // get counts of leader and follower shard
-      leaderOP = null;
-      try {
-        leaderOP = ArangoClusterComm.asyncRequest('GET', 'server:' + shard.leader, req.database,
-        '/_api/collection/' + shard.shard + '/count', '', {}, options);
-      } catch (e) {
-      }
-
-      // IMHO these try...catch things should at least log something but I don't want to
-      // introduce last minute log spam before the release (this was not logging either before restructuring it)
-      let followerOps = shard.toCheck.map(follower => {
-        try {
-          return ArangoClusterComm.asyncRequest('GET', 'server:' + follower, req.database, '/_api/collection/' + shard.shard + '/count', '', {}, options);
-        } catch (e) {
-          return null;
-        }
-      });
-
-      let [minFollowerCount, maxFollowerCount] = followerOps.reduce((result, followerOp) => {
-        if (!followerOp) {
-          return result;
-        }
-
-        let followerCount = 0;
-        try {
-          followerR = ArangoClusterComm.wait(followerOp);
-          if (followerR.status !== 'BACKEND_UNAVAILABLE') {
-            try {
-              followerBody = JSON.parse(followerR.body);
-              followerCount = followerBody.count;
-            } catch (e) {
-            }
-          }
-        } catch (e) {
-        }
-        if (result === null) {
-          return [followerCount, followerCount];
-        } else {
-          return [Math.min(followerCount, result[0]), Math.max(followerCount, result[1])];
-        }
-      }, null);
-
-      let leaderCount = null;
-      if (leaderOP) {
-        leaderR = ArangoClusterComm.wait(leaderOP);
-        try {
-          leaderBody = JSON.parse(leaderR.body);
-          leaderCount = leaderBody.count;
-        } catch (e) {
-        }
-      }
-
-      let followerCount;
-      if (minFollowerCount < leaderCount) {
-        followerCount = minFollowerCount;
-      } else {
-        followerCount = maxFollowerCount;
-      }
-      result.results[shard.collection].Plan[shard.shard].progress = {
-        total: leaderCount,
-        current: followerCount
-      };
-    });
-
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
 });

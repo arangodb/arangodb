@@ -41,15 +41,14 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req,
   TRI_ASSERT(!vocbase->isDangling());
 
   AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-  
   if (auth == nullptr) {
     return nullptr;
   }
 
   if (!auth->isActive()) {
-    return new VocbaseContext(req, vocbase, /*isInternal*/ true,
+    return new VocbaseContext(req, vocbase, /*isInternal*/ false,
                               /*sysLevel*/ AuthLevel::RW,
-                              /*sysLevel*/ AuthLevel::RW);
+                              /*dbLevel*/ AuthLevel::RW);
   }
 
   if (req->authorized()) {
@@ -96,19 +95,16 @@ VocbaseContext::~VocbaseContext() {
   _vocbase->release();
 }
 
-/// FIXME: workaround to enable Foxx apps with superuser rights
-void VocbaseContext::upgradeSuperuser() {
-  TRI_ASSERT(!_isInternal);
-  TRI_ASSERT(_user.empty());
-  _isInternal = true;
+void VocbaseContext::forceSuperuser() {
+  TRI_ASSERT(!_internal || _user.empty());
+  _internal = true;
   _systemDbAuthLevel = AuthLevel::RW;
   _databaseAuthLevel = AuthLevel::RW;
 }
 
-void VocbaseContext::upgradeReadOnly() {
-  TRI_ASSERT(!_isInternal);
-  TRI_ASSERT(_user.empty());
-  _isInternal = true;
+void VocbaseContext::forceReadOnly() {
+  TRI_ASSERT(!_internal || _user.empty());
+  _internal = true;
   _systemDbAuthLevel = AuthLevel::RO;
   _databaseAuthLevel = AuthLevel::RO;
 }

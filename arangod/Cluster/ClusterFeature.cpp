@@ -276,7 +276,8 @@ void ClusterFeature::prepare() {
 
   // register the prefix with the communicator
   AgencyCommManager::initialize(_agencyPrefix);
-
+  TRI_ASSERT(AgencyCommManager::MANAGER != nullptr);
+  
   for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
     std::string const unified = Endpoint::unifiedForm(_agencyEndpoints[i]);
 

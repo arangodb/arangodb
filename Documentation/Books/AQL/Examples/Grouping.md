@@ -187,7 +187,7 @@ FOR u IN users
 ]
 ```
 
-We have used the aggregate functions *LENGTH* here (it returns the length of a array).
+We have used the aggregate functions *LENGTH* here (it returns the length of an array).
 This is the equivalent to SQL's `SELECT g, COUNT(*) FROM ... GROUP BY g`. In addition to
 *LENGTH* AQL also provides *MAX*, *MIN*, *SUM* and *AVERAGE*, *VARIANCE_POPULATION*,
 *VARIANCE_SAMPLE*, *STDDEV_POPULATION* and *STDDEV_SAMPLE* as basic aggregation functions.

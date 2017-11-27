@@ -219,14 +219,22 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
                                            RocksDBMethods* mthd,
                                            LocalDocumentId const& documentId,
-                                           VPackSlice const& slice) {
+                                           VPackSlice const& slice,
+                                           OperationMode mode) {
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
   auto value = RocksDBValue::PrimaryIndexValue(documentId.id());
 
   if (mthd->Exists(_cf, key.ref())) {
-    return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, this);
+    std::string existingId(slice.get(StaticStrings::KeyString).copyString());
+
+    if (mode == OperationMode::internal) {
+      return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,
+                         std::move(existingId));
+    }
+    return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, this,
+                       existingId);
   }
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
@@ -240,7 +248,8 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
                                            LocalDocumentId const& oldDocumentId,
                                            arangodb::velocypack::Slice const& oldDoc,
                                            LocalDocumentId const& newDocumentId,
-                                           velocypack::Slice const& newDoc) {
+                                           velocypack::Slice const& newDoc,
+                                           OperationMode mode) {
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
   RocksDBKeyLeaser key(trx);
@@ -257,7 +266,8 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
 Result RocksDBPrimaryIndex::removeInternal(transaction::Methods* trx,
                                            RocksDBMethods* mthd,
                                            LocalDocumentId const& documentId,
-                                           VPackSlice const& slice) {
+                                           VPackSlice const& slice,
+                                           OperationMode mode) {
   // TODO: deal with matching revisions?
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(
@@ -333,7 +343,7 @@ Result RocksDBPrimaryIndex::postprocessRemove(transaction::Methods* trx,
                                               rocksdb::Slice const& key,
                                               rocksdb::Slice const& value) {
   blackListKey(key.data(), key.size());
-  return {TRI_ERROR_NO_ERROR};
+  return Result();
 }
 
 /// @brief create the iterator, for a single attribute, IN operator

@@ -145,6 +145,7 @@ static std::string const ReadStringValue(VPackSlice info,
 ///        Can only be given to V8, cannot be used for functionality.
 LogicalCollection::LogicalCollection(LogicalCollection const& other)
     : _internalVersion(0),
+      _isAStub(other._isAStub),
       _cid(other.cid()),
       _planId(other.planId()),
       _type(other.type()),
@@ -183,8 +184,10 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
 // The Slice contains the part of the plan that
 // is relevant for this collection.
 LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
-                                     VPackSlice const& info)
+                                     VPackSlice const& info,
+                                     bool isAStub)
     : _internalVersion(0),
+      _isAStub(isAStub),
       _cid(ReadCid(info)),
       _planId(ReadPlanId(info, _cid)),
       _type(Helper::readNumericValue<TRI_col_type_e, int>(
@@ -215,30 +218,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _clusterEstimateTTL(0),
       _planVersion(0) {
   
-  if (_globallyUniqueId.empty()) {
-    // no id found. generate a new one
-    _globallyUniqueId = generateGloballyUniqueId();
-  }
-  
-  TRI_ASSERT(!_globallyUniqueId.empty());
- 
-  // add keyOptions from slice
   TRI_ASSERT(info.isObject());
-  VPackSlice keyOpts = info.get("keyOptions");
-  _keyGenerator.reset(KeyGenerator::factory(keyOpts));
-  if (!keyOpts.isNone()) {
-    _keyOptions = VPackBuilder::clone(keyOpts).steal();
-  }
 
-  TRI_ASSERT(_physical != nullptr);
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
-
-  // This has to be called AFTER _phyiscal and _logical are properly linked
-  // together.
-  prepareIndexes(info.get("indexes"));
-
+  
   if (_version < minimumVersion()) {
     // collection is too "old"
     std::string errorMsg(std::string("collection '") + _name +
@@ -247,11 +232,23 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
   }
+  
+  if (_globallyUniqueId.empty()) {
+    // no id found. generate a new one
+    _globallyUniqueId = generateGloballyUniqueId();
+  }
+  
+  TRI_ASSERT(!_globallyUniqueId.empty());
+ 
+  // add keyOptions from slice
+  VPackSlice keyOpts = info.get("keyOptions");
+  _keyGenerator.reset(KeyGenerator::factory(keyOpts));
+  if (!keyOpts.isNone()) {
+    _keyOptions = VPackBuilder::clone(keyOpts).steal();
+  }
 
   VPackSlice shardKeysSlice = info.get("shardKeys");
 
-  // TODO: decide whether we will still need this
-  // bool const isCluster = ServerState::instance()->isRunningInCluster();
   // Cluster only tests
   if (ServerState::instance()->isCoordinator()) {
     if ((_numberOfShards == 0 && !_isSmart) || _numberOfShards > 1000) {
@@ -385,6 +382,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
   // update server's tick value
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(_cid));
+  
+  TRI_ASSERT(_physical != nullptr);
+  // This has to be called AFTER _phyiscal and _logical are properly linked
+  // together.
+  prepareIndexes(info.get("indexes"));
 }
 
 LogicalCollection::~LogicalCollection() {}
@@ -598,6 +600,7 @@ std::string LogicalCollection::statusString() const {
 // SECTION: Properties
 TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
   // TODO CoordinatorCase
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   return _physical->revision(trx);
 }
 
@@ -659,8 +662,8 @@ LogicalCollection::getIndexes() const {
 }
 
 void LogicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures,
-                                        bool forPersistence) const {
-  getPhysical()->getIndexesVPack(result, withFigures, forPersistence);
+                                        bool forPersistence, std::function<bool(arangodb::Index const*)> const& filter) const {
+  getPhysical()->getIndexesVPack(result, withFigures, forPersistence, filter);
 }
 
 // SECTION: Replication
@@ -952,6 +955,14 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids,
   // We leave the object open
 }
 
+void LogicalCollection::toVelocyPackIgnore(VPackBuilder& result,
+    std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
+    bool forPersistence) const {
+  TRI_ASSERT(result.isOpenObject());
+  VPackBuilder b = toVelocyPackIgnore(ignoreKeys, translateCids, forPersistence);
+  result.add(VPackObjectIterator(b.slice())); 
+} 
+
 VPackBuilder LogicalCollection::toVelocyPackIgnore(
     std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
     bool forPersistence) const {
@@ -981,16 +992,67 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   // ... probably a few others missing here ...
 
   WRITE_LOCKER(writeLocker, _infoLock);
+  
+  size_t rf = _replicationFactor;
+  VPackSlice rfSl = slice.get("replicationFactor");
+  if (!rfSl.isNone()) {
+    if (rfSl.isInteger()) {
+      int64_t rfTest = rfSl.getNumber<int64_t>();
+      if (rfTest < 0) {
+        // negative value for replication factor... not good
+        return Result(TRI_ERROR_BAD_PARAMETER, "bad value replicationFactor");
+      }
+
+      rf = rfSl.getNumber<size_t>();
+      if ((!isSatellite() && rf == 0) || rf > 10) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "bad value replicationFactor");
+      }
+      
+      if (!_isLocal && rf != _replicationFactor) { // sanity checks
+        if (!_distributeShardsLike.empty()) {
+          return Result(TRI_ERROR_FORBIDDEN, "Cannot change replicationFactor, "
+                        "please change " + _distributeShardsLike);
+        } else if (_type == TRI_COL_TYPE_EDGE && _isSmart) {
+          return Result(TRI_ERROR_NOT_IMPLEMENTED, "Changing replicationFactor "
+                        "not supported for smart edge collections");
+        } else if (isSatellite()) {
+          return Result(TRI_ERROR_FORBIDDEN, "Satellite collection, "
+                        "cannot change replicationFactor");
+        }
+      }
+    }
+    else if (rfSl.isString()) {
+      if (rfSl.compareString("satellite") != 0) {
+        // only the string "satellite" is allowed here
+        return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
+      }
+      // we got the string "satellite"...
+#ifdef USE_ENTERPRISE
+      if (!isSatellite()) {
+        // but the collection is not a satellite collection!
+        return Result(TRI_ERROR_FORBIDDEN, "cannot change satellite collection status");
+      }
+#else
+      return Result(TRI_ERROR_FORBIDDEN, "cannot use satellite collection status");
+#endif
+      // fallthrough here if we set the string "satellite" for a satellite collection
+      TRI_ASSERT(isSatellite() && _replicationFactor == 0 && rf == 0);
+    }
+    else {
+      return Result(TRI_ERROR_BAD_PARAMETER, "bad value for replicationFactor");
+    }
+  }
 
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
   Result res = getPhysical()->updateProperties(slice, doSync);
-
   if (!res.ok()) {
     return res;
   }
 
+  TRI_ASSERT(!isSatellite() || rf == 0);
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
+  _replicationFactor = rf;
 
   if (!_isLocal) {
     // We need to inform the cluster as well
@@ -1009,7 +1071,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 }
 
 /// @brief return the figures for a collection
-std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
+std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() const {
   if (ServerState::instance()->isCoordinator()) {
     auto builder = std::make_shared<VPackBuilder>();
     builder->openObject();
@@ -1321,39 +1383,28 @@ Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string
 std::string LogicalCollection::generateGloballyUniqueId() const {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   
-  
   std::string result;
-  /*if (_vocbase->isSystem()) {
-    result.reserve(32);
-    result.append(StaticStrings::SystemDatabase);
-  } else {*/
   result.reserve(64);
 
-    //result.append(_vocbase->name());
-  //}
-  //result.push_back('/');
-  
   if (ServerState::isCoordinator(role)) {
     TRI_ASSERT(_planId != 0);
     result.append(std::to_string(_planId));
   } else if (ServerState::isDBServer(role)) {
     TRI_ASSERT(_planId != 0);
-    // we add the shard name to the collection. If we every
-    // replicate shards, we identify them clusterwide
+    // we add the shard name to the collection. If we ever
+    // replicate shards, we can identify them cluster-wide
     result.append(std::to_string(_planId));
     result.push_back('/');
     result.append(_name);
   } else {
-    if (!_vocbase->isSystem()) {
+    if (isSystem()) { // system collection can't be renamed
+      result.append(_name);
+    } else {
       std::string id = ServerState::instance()->getId();
       if (!id.empty()) {
         result.append(id);
         result.push_back('/');
       }
-    }
-    if (isSystem()) {
-      result.append(_name);
-    } else {
       result.append(std::to_string(_cid));
     }
   }

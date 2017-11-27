@@ -70,6 +70,13 @@ typedef std::chrono::system_clock::time_point TimePoint;
 class Store;
 
 /// @brief Simple tree implementation
+
+/// Any node may either be a branch or a leaf.
+/// Any leaf either represents an array or an element (_isArray variable).
+/// Nodes are are always constructed as element and can become an array through
+/// assignment operator.
+/// toBuilder(Builder&) will create a _vecBuf, when needed as a means to
+/// optimisation by avoiding to build it before necessary.
 class Node {
  public:
   // @brief Slash-segmented path
@@ -215,7 +222,7 @@ class Node {
   bool has(std::string const&) const;
 
   /// @brief Get integer value (throws if type NODE or if conversion fails)
-  int getInt() const;
+  int64_t getInt() const;
 
   /// @brief Is UInt
   bool isInt() const;

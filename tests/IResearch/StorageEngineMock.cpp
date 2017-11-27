@@ -54,7 +54,7 @@ class IndexMock final : public arangodb::Index {
       arangodb::transaction::Methods*,
       arangodb::LocalDocumentId const&,
       arangodb::velocypack::Slice const&,
-      bool) {
+      OperationMode mode) {
     TRI_ASSERT(false);
     return arangodb::Result();
   }
@@ -62,7 +62,7 @@ class IndexMock final : public arangodb::Index {
       arangodb::transaction::Methods*,
       arangodb::LocalDocumentId const&,
       arangodb::velocypack::Slice const&,
-      bool) {
+      OperationMode mode) {
     TRI_ASSERT(false);
     return arangodb::Result();
   }
@@ -154,7 +154,7 @@ PhysicalCollectionMock::PhysicalCollectionMock(arangodb::LogicalCollection* coll
   : PhysicalCollection(collection, info), lastId(0) {
 }
 
-arangodb::PhysicalCollection* PhysicalCollectionMock::clone(arangodb::LogicalCollection*) {
+arangodb::PhysicalCollection* PhysicalCollectionMock::clone(arangodb::LogicalCollection*) const {
   before();
   TRI_ASSERT(false);
   return nullptr;
@@ -296,7 +296,7 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
   result.setUnmanaged(documents.back().first.data(), docId);
 
   for (auto& index : _indexes) {
-    if (!index->insert(trx, docId, newSlice, false).ok()) {
+    if (!index->insert(trx, docId, newSlice, arangodb::Index::OperationMode::normal).ok()) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
     }
   }
@@ -582,7 +582,7 @@ StorageEngineMock::StorageEngineMock()
   : StorageEngine(nullptr, "", "", nullptr),
     _releasedTick(0) {
 }
-  
+
 arangodb::WalAccess const* StorageEngineMock::walAccess() const {
   TRI_ASSERT(false);
   return nullptr;
@@ -859,6 +859,10 @@ void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
 }
 
 void StorageEngineMock::waitForSyncTimeout(double timeout) {
+  TRI_ASSERT(false);
+}
+
+arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) {
   TRI_ASSERT(false);
 }
 

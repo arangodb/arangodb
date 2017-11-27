@@ -239,7 +239,14 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-int flushWalOnAllDBServers(bool, bool);
+int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWaitTime = -1.0);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rotate the active journals for the collection on all DBservers
+////////////////////////////////////////////////////////////////////////////////
+
+int rotateActiveJournalOnAllDBServers(std::string const& dbname,
+                                      std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a shard distribution for a new collection, the list
@@ -252,7 +259,8 @@ int flushWalOnAllDBServers(bool, bool);
 std::unordered_map<std::string, std::vector<std::string>> distributeShards(
     uint64_t numberOfShards,
     uint64_t replicationFactor,
-    std::vector<std::string>& dbServers);
+    std::vector<std::string>& dbServers,
+    bool warnAboutReplicationFactor);
 
 class ClusterMethods {
  public:
@@ -269,7 +277,9 @@ class ClusterMethods {
       TRI_col_type_e collectionType, TRI_vocbase_t* vocbase,
       arangodb::velocypack::Slice parameters,
       bool ignoreDistributeShardsLikeErrors,
-      bool waitForSyncReplication);
+      bool waitForSyncReplication,
+      bool enforceReplicationFactor
+    );
 
  private:
 
@@ -279,7 +289,8 @@ class ClusterMethods {
 
   static std::unique_ptr<LogicalCollection> persistCollectionInAgency(
     LogicalCollection* col, bool ignoreDistributeShardsLikeErrors,
-    bool waitForSyncReplication, arangodb::velocypack::Slice parameters);
+    bool waitForSyncReplication, bool enforceReplicationFactor,
+    arangodb::velocypack::Slice parameters);
 };
 
 }  // namespace arangodb

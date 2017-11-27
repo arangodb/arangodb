@@ -52,12 +52,12 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "V8Server/v8-collection.h"
 
+#include <unicode/uchar.h>
+#include <unicode/unistr.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "unicode/unistr.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -1101,7 +1101,7 @@ AqlValue Functions::Substring(arangodb::aql::Query* query,
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   AppendAsString(trx, adapter, value);
-  UnicodeString s(buffer->c_str(), buffer->length());
+  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
   int32_t offset = static_cast<int32_t>(ExtractFunctionParameterValue(trx, parameters, 1).toInt64(trx));
 
@@ -1119,6 +1119,132 @@ AqlValue Functions::Substring(arangodb::aql::Query* query,
   s.tempSubString(offset, s.moveIndex32(offset, length) - offset)
   .toUTF8String(utf8);
 
+  return AqlValue(utf8);
+}
+
+/// @brief function LEFT str, length
+AqlValue Functions::Left(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "LEFT", 2, 2);
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  uint32_t length = static_cast<int32_t>(ExtractFunctionParameterValue(trx, parameters, 1).toInt64(trx));
+
+  std::string utf8;
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+
+  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  UnicodeString left = s.tempSubString(0, s.moveIndex32(0, length));
+
+  left.toUTF8String(utf8);
+  return AqlValue(utf8);
+}
+
+/// @brief function RIGHT
+AqlValue Functions::Right(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "RIGHT", 2, 2);
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  uint32_t length = static_cast<int32_t>(ExtractFunctionParameterValue(trx, parameters, 1).toInt64(trx));
+
+  std::string utf8;
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+
+  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  UnicodeString right = s.tempSubString(s.moveIndex32(s.length(), -static_cast<int32_t>(length)));
+
+  right.toUTF8String(utf8);
+  return AqlValue(utf8);
+}
+
+/// @brief function TRIM
+AqlValue Functions::Trim(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "TRIM", 1, 2);
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  AppendAsString(trx, adapter, value);
+  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+
+  int64_t howToTrim = 0;
+  UnicodeString whitespace("\r\n\t ");
+
+  if (parameters.size() == 2) {
+    AqlValue optional  = ExtractFunctionParameterValue(trx, parameters, 1);
+
+    if (optional.isNumber()) {
+      howToTrim = optional.toInt64(trx);
+
+      if (howToTrim < 0 || 2 < howToTrim) {
+        howToTrim = 0;
+      }
+    } else if(optional.isString()) {
+      buffer->clear();
+      AppendAsString(trx, adapter, optional);
+      whitespace = UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+    }
+  }
+
+  uint32_t numWhitespaces = whitespace.countChar32();
+  UErrorCode errorCode = U_ZERO_ERROR;
+  UChar32 *spaceChars = new UChar32[numWhitespaces];
+
+  whitespace.toUTF32(spaceChars, numWhitespaces, errorCode);
+
+  uint32_t startOffset = 0, endOffset = s.length();
+
+  if (howToTrim <= 1) {
+    for (; startOffset < endOffset; startOffset = s.moveIndex32(startOffset, 1)) {
+      bool found = false;
+
+      for (uint32_t pos = 0; pos < numWhitespaces; pos++) {
+        if (s.char32At(startOffset) == spaceChars[pos]) {
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        break;
+      }
+    } // for
+  }
+
+  if (howToTrim == 2 || howToTrim == 0) {
+    for (uint32_t codeUnitPos = s.moveIndex32(s.length(),-1); startOffset < codeUnitPos; codeUnitPos = s.moveIndex32(codeUnitPos, -1)) {
+      bool found = false;
+
+      for (uint32_t pos = 0; pos < numWhitespaces; pos++) {
+        if (s.char32At(codeUnitPos) == spaceChars[pos]) {
+          found = true;
+          break;
+        }
+      }
+
+      endOffset = s.moveIndex32(codeUnitPos, 1);
+      if (!found) {
+        break;
+      }
+    } // for
+  }
+
+  delete[] spaceChars;
+
+  UnicodeString result = s.tempSubString(startOffset, endOffset - startOffset);
+  std::string utf8;
+  result.toUTF8String(utf8);
   return AqlValue(utf8);
 }
 
@@ -2551,8 +2677,8 @@ AqlValue Functions::Matches(arangodb::aql::Query* query,
     idx++;
 
     if (!example.isObject()) {
-      LOG_TOPIC(WARN, arangodb::Logger::QUERIES) << arangodb::basics::Exception::FillFormatExceptionString(
-        TRI_errno_string(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH), "MATCHES");
+      RegisterWarning(query, "MATCHES",
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       continue;
     }
 
@@ -3303,8 +3429,8 @@ AqlValue Functions::CollectionCount(
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
   std::string const collectionName = element.slice().copyString();
   OperationResult res = trx->count(collectionName, true);
-  if (res.failed()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.code, res.errorMessage);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res.result);
   }
 
   return AqlValue(res.slice());

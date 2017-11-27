@@ -41,6 +41,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -121,7 +122,7 @@ bool State::persist(index_t index, term_t term,
     return false;
   }
 
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "persist done index=" << index
     << " term=" << term << " entry: " << entry.toJson() << " ok:" << res.ok();
@@ -143,7 +144,11 @@ std::vector<index_t> State::logLeaderMulti(
       30000, "Agency syntax requires array of transactions [[<queries>]]");
   }
 
-  TRI_ASSERT(slice.length() == applicable.size());
+  if (slice.length() != applicable.size()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      30000, "Invalid transaction syntax");
+  }
+
   MUTEX_LOCKER(mutexLocker, _logLock); 
   
   TRI_ASSERT(!_log.empty()); // log must never be empty
@@ -158,8 +163,8 @@ std::vector<index_t> State::logLeaderMulti(
     }
     
     if (applicable[j]) {
-      std::string clientId((i.length()==3) ? i[2].copyString() : "");
-      idx[j] = logNonBlocking(_log.back().index+1, i[0], term, clientId, true);
+      std::string clientId((i.length() == 3) ? i[2].copyString() : "");
+      idx[j] = logNonBlocking(_log.back().index + 1, i[0], term, clientId, true);
     }
     ++j;
   }
@@ -785,10 +790,22 @@ bool State::loadOrPersistConfiguration() {
   if (result.isArray() &&
       result.length()) {  // We already have a persisted conf
 
+    auto resolved = result[0].resolveExternals();
+
+    TRI_ASSERT(resolved.hasKey("id"));
+    auto id = resolved.get("id");
+
+    TRI_ASSERT(id.isString());
+    if (ServerState::instance()->hasPersistedId()) {
+      TRI_ASSERT(id.copyString() == ServerState::instance()->getPersistedId());
+    } else {
+      ServerState::instance()->writePersistedId(id.copyString());
+    }
+
     try {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << "Merging configuration " << result[0].resolveExternals().toJson();
-      _agent->mergeConfiguration(result[0].resolveExternals());
+        << "Merging configuration " << resolved.toJson();
+      _agent->mergeConfiguration(resolved);
       
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY)
@@ -798,14 +815,31 @@ bool State::loadOrPersistConfiguration() {
       FATAL_ERROR_EXIT();
     }
 
-  } else {  // Fresh start
+  } else {  // Fresh start or disaster recovery
 
     MUTEX_LOCKER(guard, _configurationWriteLock);
 
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "New agency!";
 
     TRI_ASSERT(_agent != nullptr);
-    _agent->id(to_string(boost::uuids::random_generator()()));
+
+    // If we have persisted id, we use that. Otherwise we check, if we were
+    // given a disaster recovery id that wins then before a new one is generated
+    // and that choice persisted.
+    std::string uuid;
+    if (ServerState::instance()->hasPersistedId()) {
+      uuid = ServerState::instance()->getPersistedId();
+    } else {
+      std::string recoveryId = _agent->config().recoveryId();
+      if (recoveryId.empty()) { 
+        uuid =
+          ServerState::instance()->generatePersistedId(ServerState::ROLE_AGENT);
+      } else {
+        uuid = recoveryId;
+        ServerState::instance()->writePersistedId(recoveryId);
+      }
+    }
+    _agent->id(uuid);
 
     auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
     SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
@@ -830,7 +864,9 @@ bool State::loadOrPersistConfiguration() {
       FATAL_ERROR_EXIT();
     }
 
-    res = trx.finish(result.code);
+    res = trx.finish(result.result);
+
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Persisted configuration: " << doc.slice().toJson();
 
     return res.ok();
   }
@@ -1093,7 +1129,7 @@ bool State::persistCompactionSnapshot(index_t cind,
     }
 
     auto result = trx.insert("compact", store.slice(), _options);
-    res = trx.finish(result.code);
+    res = trx.finish(result.result);
 
     return res.ok();
   }
@@ -1150,9 +1186,9 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
     }
   }
 
-  MUTEX_LOCKER(guard, _configurationWriteLock);
-
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  
+  MUTEX_LOCKER(guard, _configurationWriteLock);
   SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
 
   Result res = trx.begin();
@@ -1161,13 +1197,15 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
   }
 
   auto result = trx.update("configuration", builder.slice(), _options);
-  if (!result.successful()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(result.code, result.errorMessage);
+  if (result.fail()) {
+    THROW_ARANGO_EXCEPTION(result.result);
   }
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
   if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    THROW_ARANGO_EXCEPTION(res);
   }
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Updated persisted agency configuration: "
+    << builder.slice().toJson();
 }
 
 query_t State::allLogs() const {
@@ -1212,7 +1250,7 @@ query_t State::allLogs() const {
 
 }
 
-std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
+std::vector<index_t> State::inquire(query_t const& query) const {
   if (!query->slice().isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
         20001, 
@@ -1220,31 +1258,31 @@ std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
         + ". We got " + query->toJson());
   }
   
-  std::vector<std::vector<log_t>> result;
+  std::vector<index_t> result;
   size_t pos = 0;
   
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
   for (auto const& i : VPackArrayIterator(query->slice())) {
-
+    
     if (!i.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
         210002, std::string("ClientIds must be strings. On position ")
-        + std::to_string(pos) + " we got " + i.toJson());
+        + std::to_string(pos++) + " we got " + i.toJson());
     }
-
-    std::vector<log_t> transactions;
+    
     auto ret = _clientIdLookupTable.equal_range(i.copyString());
+    index_t index = 0;
     for (auto it = ret.first; it != ret.second; ++it) {
       if (it->second < _log[0].index) {
         continue;
       }
-      transactions.push_back(_log.at(it->second-_cur));
+      if (index < _log.at(it->second-_cur).index) {
+        index = _log.at(it->second-_cur).index;
+      }
     }
-    result.push_back(transactions);
-
-    pos++;
+    result.push_back(index);
   }
-
+  
   return result;
 }
 
@@ -1285,7 +1323,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(
     buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
     store = ii.get("readDB");
     index = arangodb::basics::StringUtils::uint64(ii.get("_key").copyString());
-    term = arangodb::basics::StringUtils::uint64(ii.get("term").copyString());
+    term = ii.get("term").getNumber<uint64_t>();
     LOG_TOPIC(INFO, Logger::AGENCY) << "Read snapshot at index "
       << index << " with term " << term;
   }

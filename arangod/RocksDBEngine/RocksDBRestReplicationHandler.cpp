@@ -308,6 +308,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
         dumper.dump(marker);
         httpResponse->body().appendChar('\n');
+        //LOG_TOPIC(INFO, Logger::FIXME) << marker.toJson(trxContext->getVPackOptions());
       }
     }
     // add client
@@ -506,9 +507,10 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
   //lock context
   RocksDBReplicationContextGuard(_manager, ctx);
 
-  VPackBuilder b;
-  ctx->dumpKeyChunks(b, chunkSize);
-  generateResult(rest::ResponseCode::OK, b.slice());
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  ctx->dumpKeyChunks(builder, chunkSize);
+  generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
 /// @brief returns date for a key range
@@ -558,6 +560,19 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
                   "invalid 'type' value");
     return;
   }
+  
+  size_t offsetInChunk = 0;
+  size_t maxChunkSize = SIZE_MAX;
+  std::string const& value4 = _request->value("offset", found);
+  if (found) {
+    offsetInChunk = static_cast<size_t>(StringUtils::uint64(value4));
+    // "offset" was introduced with ArangoDB 3.3. if the client sends it,
+    // it means we can adapt the result size dynamically and the client
+    // may refetch data for the same chunk
+    maxChunkSize = 8 * 1024 * 1024; 
+    // if a client does not send an "offset" parameter at all, we are
+    // not sure if it supports this protocol (3.2 and before) or not
+  } 
 
   std::string const& id = suffixes[1];
 
@@ -577,11 +592,15 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   }
   RocksDBReplicationContextGuard(_manager, ctx);
 
-  auto trxContext = transaction::StandaloneContext::Create(_vocbase);
-  VPackBuilder resultBuilder(trxContext->getVPackOptions());
+  std::shared_ptr<transaction::Context> transactionContext =
+      transaction::StandaloneContext::Create(_vocbase);
+
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer, transactionContext->getVPackOptions());
+  
   if (keys) {
-    Result rv = ctx->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize), lowKey);
-    if (rv.fail()){
+    Result rv = ctx->dumpKeys(builder, chunk, static_cast<size_t>(chunkSize), lowKey);
+    if (rv.fail()) {
       generateError(rv);
       return;
     }
@@ -592,14 +611,16 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
     }
-    Result rv = ctx->dumpDocuments(resultBuilder, chunk, static_cast<size_t>(chunkSize), lowKey, parsedIds->slice());
-    if (rv.fail()){
+    
+    Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk, maxChunkSize, lowKey, parsedIds->slice());
+    if (rv.fail()) {
       generateError(rv);
       return;
     }
   }
 
-  generateResult(rest::ResponseCode::OK, resultBuilder.slice(), trxContext);
+  generateResult(rest::ResponseCode::OK, std::move(buffer),
+                 transactionContext);
 }
 
 void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {

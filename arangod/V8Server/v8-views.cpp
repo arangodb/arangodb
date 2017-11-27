@@ -34,7 +34,6 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/PhysicalView.h"
-#include "VocBase/modes.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -152,10 +151,6 @@ static void JS_CreateViewVocbase(
   // we require exactly 3 arguments
   if (args.Length() != 3) {
     TRI_V8_THROW_EXCEPTION_USAGE("_createView(<name>, <type>, <properties>)");
-  }
-
-  if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
   PREVENT_EMBEDDED_TRANSACTION();

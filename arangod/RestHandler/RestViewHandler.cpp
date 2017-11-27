@@ -174,7 +174,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       return;
     }
     VPackSlice body = parsedBody.get()->slice();
-  
+
     // handle rename functionality
     if (suffixes[1] == "rename") {
       VPackSlice newName = body.get("name");
@@ -185,7 +185,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       }
 
       int res = _vocbase->renameView(view, newName.copyString());
-      
+
       if (res == TRI_ERROR_NO_ERROR) {
         getSingleView(newName.copyString());
       } else {
@@ -231,7 +231,7 @@ void RestViewHandler::deleteView() {
   int res = _vocbase->dropView(name);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    generateSuccess(rest::ResponseCode::OK, VPackSlice::trueSlice());
+    generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
   } else if (res == TRI_ERROR_ARANGO_VIEW_NOT_FOUND) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_VIEW_NOT_FOUND);

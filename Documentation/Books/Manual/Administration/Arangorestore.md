@@ -4,6 +4,13 @@ Arangorestore
 To reload data from a dump previously created with [arangodump](Arangodump.md),
 ArangoDB provides the _arangorestore_ tool.
 
+Please note that arangorestore
+**must not be used to create several similar database instances in one installation**.
+
+This means if you have an arangodump output of database `a`, and you create a second database `b`
+on the same instance of ArangoDB, and restore the dump of `a` into `b` - data integrity can not
+be guaranteed.
+
 Reloading Data into an ArangoDB database
 ----------------------------------------
 
@@ -99,6 +106,10 @@ Collections will be processed by in alphabetical order by _arangorestore_, with 
 collections being processed before all [edge collection](../Appendix/Glossary.md#edge-collection)s. This is to ensure that reloading
 data into edge collections will have the document collections linked in edges (*_from* and
 *_to* attributes) loaded.
+
+### Encryption
+
+See [arangodump](Arangodump.md) for details.
 
 ### Restoring Revision Ids and Collection Ids
  

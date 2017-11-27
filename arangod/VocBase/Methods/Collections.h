@@ -23,14 +23,13 @@
 #ifndef ARANGOD_VOC_BASE_API_COLLECTIONS_H
 #define ARANGOD_VOC_BASE_API_COLLECTIONS_H 1
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 #include "Basics/Result.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <functional>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 class LogicalCollection;
@@ -38,13 +37,48 @@ namespace methods {
 
 /// Common code for collection REST handler and v8-collections
 struct Collections {
-  static void enumerateCollections(
-      TRI_vocbase_t* vocbase, std::function<void(LogicalCollection*)> const&);
-  static bool lookupCollection(TRI_vocbase_t* vocbase,
-                               std::string const& collection,
-                               std::function<void(LogicalCollection*)> const&);
-};
-}
-}
+  typedef std::function<void(LogicalCollection*)> const& FuncCallback;
 
+  static void enumerate(TRI_vocbase_t* vocbase, FuncCallback);
+  
+  /// @brief lookup a collection in vocbase or clusterinfo.
+  static Result lookup(TRI_vocbase_t* vocbase, std::string const& collection,
+                     FuncCallback);
+  /// Create collection, ownership of collection in callback is
+  /// transferred to callee
+  static Result create(TRI_vocbase_t* vocbase, std::string const& name,
+                       TRI_col_type_e collectionType,
+                       velocypack::Slice const& properties,
+                       bool createWaitsForSyncReplication,
+                       bool enforceReplicationFactor, FuncCallback);
+  
+  static Result load(TRI_vocbase_t* vocbase, LogicalCollection* coll);
+  static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);
+  
+  static Result properties(LogicalCollection* coll, velocypack::Builder&);
+  static Result updateProperties(LogicalCollection* coll,
+                                 velocypack::Slice const&);
+  
+  static Result rename(LogicalCollection* coll, std::string const& newName,
+                       bool doOverride);
+  
+  static Result drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
+                     bool allowDropSystem, double timeout);
+  
+  static Result warmup(TRI_vocbase_t* vocbase,
+                       LogicalCollection* coll);
+  
+  static Result revisionId(TRI_vocbase_t* vocbase, LogicalCollection* coll,
+                           TRI_voc_rid_t& rid);
+};
+#ifdef USE_ENTERPRISE
+  Result ULColCoordinatorEnterprise(std::string const& databaseName,
+                                    std::string const& collectionCID,
+                                    TRI_vocbase_col_status_e status);
+  
+  Result DropColCoordinatorEnterprise(LogicalCollection* collection,
+                                      bool allowDropSystem);
+#endif
+}
+}
 #endif

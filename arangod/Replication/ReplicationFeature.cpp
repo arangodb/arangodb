@@ -46,6 +46,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer* server)
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
+  startsAfter("ServerId");
   startsAfter("StorageEngine");
 }
 

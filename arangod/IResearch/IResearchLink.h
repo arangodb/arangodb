@@ -86,7 +86,7 @@ class IResearchLink {
     transaction::Methods* trx,
     LocalDocumentId const& documentId,
     VPackSlice const& doc,
-    bool isRollback
+    Index::OperationMode mode
   ); // arangodb::Index override
 
   bool isPersistent() const; // arangodb::Index override
@@ -129,7 +129,7 @@ class IResearchLink {
     transaction::Methods* trx,
     arangodb::LocalDocumentId const& documentId,
     VPackSlice const& doc,
-    bool isRollback
+    Index::OperationMode mode
   ); // arangodb::Index override
 
   //////////////////////////////////////////////////////////////////////////////
@@ -139,7 +139,7 @@ class IResearchLink {
   arangodb::Result remove(
     transaction::Methods* trx,
     arangodb::LocalDocumentId const& documentId,
-    bool isRollback
+    Index::OperationMode mode
   );
 
   ////////////////////////////////////////////////////////////////////////////////

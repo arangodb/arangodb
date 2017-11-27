@@ -50,9 +50,9 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -91,8 +91,8 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   VPackBuilder output;
   Result res = methods::Indexes::ensureIndex(collection, builder.slice(),
                                              create, output);
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, output.slice());
   TRI_V8_RETURN(result);
@@ -184,8 +184,8 @@ static void JS_GetIndexesVocbaseCol(
   
   VPackBuilder output;
   Result res = methods::Indexes::getAll(collection, withFigures, output);
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
   
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, output.slice());
@@ -203,19 +203,12 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
+  if (vocbase == nullptr || vocbase->isDangling()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (args.Length() < 1 || args.Length() > 4) {
+  } else if (args.Length() < 1 || args.Length() > 4) {
     TRI_V8_THROW_EXCEPTION_USAGE("_create(<name>, <properties>, <type>, <options>)");
   }
-  if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
-  }
   
-  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
   if (ExecContext::CURRENT != nullptr &&
       !ExecContext::CURRENT->canUseDatabase(vocbase->name(), AuthLevel::RW)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
@@ -235,87 +228,46 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   // extract the name
   std::string const name = TRI_ObjectToString(args[0]);
-
-  VPackBuilder builder;
-  VPackSlice infoSlice;
-  if (2 <= args.Length()) {
+  
+  VPackBuilder properties;
+  VPackSlice propSlice = VPackSlice::emptyObjectSlice();
+  if (args.Length() >= 2) {
     if (!args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
-    v8::Handle<v8::Object> obj = args[1]->ToObject();
-    // Add the type and name into the object. Easier in v8 than in VPack
-    obj->Set(TRI_V8_ASCII_STRING(isolate, "type"),
-             v8::Number::New(isolate, static_cast<int>(collectionType)));
-    obj->Set(TRI_V8_ASCII_STRING(isolate, "name"), TRI_V8_STD_STRING(isolate, name));
-
-    int res = TRI_V8ToVPack(isolate, builder, obj, false);
-
+    int res = TRI_V8ToVPack(isolate, properties, args[1]->ToObject(), false);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-
-  } else {
-    // create an empty properties object
-    builder.openObject();
-    builder.add("type", VPackValue(static_cast<int>(collectionType)));
-    builder.add("name", VPackValue(name));
-    builder.close();
+    propSlice = properties.slice();
   }
+  
+  // waitForSync can be 3. or 4. parameter
+  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  bool createWaitsForSyncReplication = cluster->createWaitsForSyncReplication();
+  bool enforceReplicationFactor = true;
 
-  infoSlice = builder.slice();
+  if (args.Length() >= 3 && args[args.Length()-1]->IsObject()) {
+    v8::Handle<v8::Object> obj = args[args.Length()-1]->ToObject();
+    createWaitsForSyncReplication = TRI_GetOptionalBooleanProperty(isolate,
+      obj, "waitForSyncReplication", createWaitsForSyncReplication);
 
+    enforceReplicationFactor = TRI_GetOptionalBooleanProperty(isolate,
+      obj, "enforceReplicationFactor", enforceReplicationFactor);
+  }
+  
   v8::Handle<v8::Value> result;
-  if (ServerState::instance()->isCoordinator()) {
-    bool createWaitsForSyncReplication =
-      application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->createWaitsForSyncReplication();
-
-    if (args.Length() >= 3 && args[args.Length()-1]->IsObject()) {
-      v8::Handle<v8::Object> obj = args[args.Length()-1]->ToObject();
-      auto v8WaitForSyncReplication = obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSyncReplication"));
-      if (!v8WaitForSyncReplication->IsUndefined()) {
-        createWaitsForSyncReplication = TRI_ObjectToBoolean(v8WaitForSyncReplication);
-      }
-    }
-
-    std::unique_ptr<LogicalCollection> col =
-        ClusterMethods::createCollectionOnCoordinator(
-          collectionType, vocbase, infoSlice, false,
-          createWaitsForSyncReplication);
-    
-    result = WrapCollection(isolate, col.release());
-  } else {
-    try {
-      arangodb::LogicalCollection const* collection =
-      vocbase->createCollection(infoSlice);
-      
-      TRI_ASSERT(collection != nullptr);
-      result = WrapCollection(isolate, collection);
-      
-    } catch (basics::Exception const& ex) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
-    } catch (std::exception const& ex) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
-    } catch (...) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "cannot create collection");
-    }
+  Result res = methods::Collections::create(vocbase, name, collectionType,
+                                            propSlice,
+                                            createWaitsForSyncReplication,
+                                            enforceReplicationFactor,
+                                            [&isolate, &result](LogicalCollection* collection) {
+                                              result = WrapCollection(isolate, collection);
+                                            });
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
   
-  if (result.IsEmpty()) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-  
-  // do not grant rights on system collections
-  // in case of success we grant the creating user RW access
-  if (name[0] != '_' && ExecContext::CURRENT != nullptr &&
-      (ServerState::instance()->isCoordinator() ||
-       !ServerState::instance()->isRunningInCluster())) {
-    // this should not fail, we can not get here without database RW access
-    auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
-                                 [&](AuthUserEntry& entry) {
-      entry.grantCollection(vocbase->name(), name, AuthLevel::RW);
-    });
-  }
   TRI_V8_RETURN(result);
 }
 

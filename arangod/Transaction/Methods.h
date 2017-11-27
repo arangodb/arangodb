@@ -301,7 +301,11 @@ class Methods {
   /// @brief remove all documents in a collection
   OperationResult truncate(std::string const& collectionName,
                            OperationOptions const& options);
-
+  
+  /// @brief rotate all active journals of the collection
+  OperationResult rotateActiveJournal(std::string const& collectionName,
+                                      OperationOptions const& options);
+  
   /// @brief count the number of documents in a collection
   ENTERPRISE_VIRT OperationResult count(std::string const& collectionName, bool aggregate);
 
@@ -461,6 +465,14 @@ class Methods {
 
   OperationResult truncateLocal(std::string const& collectionName,
                                 OperationOptions& options);
+  
+  OperationResult rotateActiveJournalCoordinator(std::string const& collectionName,
+                                                 OperationOptions const& options);
+  
+  OperationResult rotateActiveJournalLocal(std::string const& collectionName,
+                                           OperationOptions const& options);
+
+
 
   OperationResult countCoordinator(std::string const& collectionName, bool aggregate);
   OperationResult countLocal(std::string const& collectionName);
@@ -528,7 +540,7 @@ class Methods {
 
   /// @brief findIndexHandleForAndNode
   std::pair<bool, bool> findIndexHandleForAndNode(
-      std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode* node,
+      std::vector<std::shared_ptr<Index>> const& indexes, arangodb::aql::AstNode* node,
       arangodb::aql::Variable const* reference,
       arangodb::aql::SortCondition const* sortCondition,
       size_t itemsInCollection,
@@ -537,7 +549,7 @@ class Methods {
       bool& isSparse) const;
 
   /// @brief findIndexHandleForAndNode, Shorthand which does not support Sort
-  bool findIndexHandleForAndNode(std::vector<std::shared_ptr<Index>> indexes,
+  bool findIndexHandleForAndNode(std::vector<std::shared_ptr<Index>> const& indexes,
                                  arangodb::aql::AstNode*& node,
                                  arangodb::aql::Variable const* reference,
                                  size_t itemsInCollection,

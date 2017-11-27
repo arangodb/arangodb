@@ -172,7 +172,7 @@ class AgencyPrecondition {
  public:
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
-  AgencyPrecondition(std::string const& key, Type, VPackSlice const);
+  AgencyPrecondition(std::string const& key, Type, VPackSlice const&);
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
@@ -685,7 +685,7 @@ class AgencyComm {
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
                                     std::string const&, VPackSlice,
-                                    std::string const& clientId = std::string());
+                                    std::string clientId = std::string());
 
  private:
   bool lock(std::string const&, double, double,

@@ -165,10 +165,10 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
+             arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
+             arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   void batchInsert(transaction::Methods*,
                    std::vector<std::pair<LocalDocumentId, VPackSlice>> const&,
@@ -229,9 +229,6 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   /// @brief the hash table for _to
   std::unique_ptr<TRI_MMFilesEdgeIndexHash_t> _edgesTo;
-
-  /// @brief number of buckets effectively used by the index
-  size_t _numBuckets;
 };
 }
 

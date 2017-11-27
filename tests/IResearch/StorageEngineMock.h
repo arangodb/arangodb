@@ -57,7 +57,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   std::deque<std::pair<arangodb::velocypack::Builder, bool>> documents; // std::pair<jSON, valid>, deque -> pointers remain valid
 
   PhysicalCollectionMock(arangodb::LogicalCollection* collection, arangodb::velocypack::Slice const& info);
-  virtual PhysicalCollection* clone(arangodb::LogicalCollection*) override;
+  virtual PhysicalCollection* clone(arangodb::LogicalCollection*) const override;
   virtual int close() override;
   virtual std::shared_ptr<arangodb::Index> createIndex(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const& info, bool& created) override;
   virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback) override;
@@ -213,6 +213,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual std::string versionFilename(TRI_voc_tick_t) const override;
   virtual void waitForSyncTick(TRI_voc_tick_t tick) override;
   virtual void waitForSyncTimeout(double maxWait) override;
+  virtual arangodb::Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile);
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
   virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
 

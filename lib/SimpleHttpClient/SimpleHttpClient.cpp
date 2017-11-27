@@ -781,7 +781,6 @@ void SimpleHttpClient::processChunkedHeader() {
   if (*pos == '\r') {
     ++_readBufferOffset;
     TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
-    ++len;
   }
 
   // empty lines are an error

@@ -79,7 +79,7 @@ class StorageEngine : public application_features::ApplicationFeature {
     startsAfter("CacheManager");
     startsAfter("DatabasePath");
     startsAfter("FileDescriptors");
-    startsBefore("StorageEngine"); 
+    startsBefore("StorageEngine");
     startsAfter("Temp");
     startsAfter("TransactionManager");
     startsAfter("ViewTypes");
@@ -151,14 +151,17 @@ class StorageEngine : public application_features::ApplicationFeature {
   // the return values will be the usual  TRI_ERROR_* codes.
 
   virtual void waitForSyncTick(TRI_voc_tick_t tick) = 0;
-  
+
   virtual void waitForSyncTimeout(double maxWait) = 0;
+
+  virtual Result flushWal(bool waitForSync = false, bool waitForCollector = false,
+                          bool writeShutdownFile = false) = 0;
 
   //// operations on databasea
 
   /// @brief opens a database
   virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) = 0;
-  TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade){
+  TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade) {
     int status;
     TRI_vocbase_t* rv = openDatabase(args, isUpgrade, status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
@@ -262,7 +265,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual arangodb::Result renameCollection(
       TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
       std::string const& oldName) = 0;
-  
+
   // asks the storage engine to persist renaming of a view
   virtual arangodb::Result renameView(
       TRI_vocbase_t* vocbase, std::shared_ptr<arangodb::LogicalView> view,

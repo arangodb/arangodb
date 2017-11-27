@@ -50,9 +50,6 @@ using namespace arangodb::velocypack;
 
 double const RocksDBReplicationContext::DefaultTTL = 300.0; // seconds
 
-RocksDBReplicationContext::RocksDBReplicationContext()
-    : RocksDBReplicationContext(DefaultTTL) {}
-
 RocksDBReplicationContext::RocksDBReplicationContext(double ttl)
     : _id(TRI_NewTickServer()),
       _lastTick(0),
@@ -413,8 +410,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
 
 /// dump keys and document
 arangodb::Result RocksDBReplicationContext::dumpDocuments(
-    VPackBuilder& b, size_t chunk, size_t chunkSize, std::string const& lowKey,
-    VPackSlice const& ids) {
+    VPackBuilder& b, size_t chunk, size_t chunkSize, size_t offsetInChunk,
+    size_t maxChunkSize, std::string const& lowKey, VPackSlice const& ids) {
   Result rv;
 
   TRI_ASSERT(_trx);
@@ -468,9 +465,12 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     b.add(current);
   };
 
+  auto buffer = b.buffer();
   bool hasMore = true;
   b.openArray();
   size_t oldPos = from;
+  size_t offset = 0;
+  
   for (auto const& it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
       return Result(TRI_ERROR_BAD_PARAMETER);
@@ -488,9 +488,26 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
       TRI_ASSERT(ignore == newPos - oldPos);
       _lastIteratorOffset += ignore;
     }
-    hasMore = _iter->next(cb, 1);
+
+    bool full = false;
+    if (offset < offsetInChunk) {
+      // skip over the initial few documents
+      hasMore = _iter->next([&b](LocalDocumentId const&) {
+        b.add(VPackValue(VPackValueType::Null));
+      }, 1);
+    } else {
+      hasMore = _iter->next(cb, 1);
+      if (buffer->byteSize() > maxChunkSize) {
+        // result is big enough so that we abort prematurely
+        full = true;
+      }
+    }
     _lastIteratorOffset++;
     oldPos = newPos + 1;
+    ++offset;
+    if (full) {
+      break;
+    }
   }
   b.close();
   _hasMore = hasMore;
@@ -524,12 +541,12 @@ void RocksDBReplicationContext::release() {
 }
 
 void RocksDBReplicationContext::releaseDumpingResources() {
+  if (_iter != nullptr) {
+    _iter.reset();
+  }
   if (_trx != nullptr) {
     _trx->abort();
     _trx.reset();
-  }
-  if (_iter != nullptr) {
-    _iter.reset();
   }
   _collection = nullptr;
   _guard.reset();

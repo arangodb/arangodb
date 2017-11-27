@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Logger/Logger.h"
@@ -396,15 +397,6 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
         }
         continue;
       }
-/*
-      if (failOnMissing &&
-          it.second->isEnabled() && 
-          !this->feature(other)->isEnabled()) {
-        fail("enabled feature '" + it.second->name() +
-             "' depends on other feature '" + other +
-             "', which is disabled");
-      }
-*/
       this->feature(other)->startsAfter(it.second->name());
     }
   }
@@ -577,7 +569,7 @@ void ApplicationServer::prepare() {
 void ApplicationServer::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::start";
 
-  int res = TRI_ERROR_NO_ERROR;
+  Result res;
 
   for (auto feature : _orderedFeatures) {
     if (!feature->isEnabled()) {
@@ -591,24 +583,17 @@ void ApplicationServer::start() {
       feature->state(FeatureState::STARTED);
       reportFeatureProgress(_state, feature->name());
     } catch (basics::Exception const& ex) {
-      LOG_TOPIC(ERR, Logger::STARTUP) << "caught exception during start of feature '" << feature->name()
-               << "': " << ex.what() << ". shutting down";
-      res = ex.code();
+      res.reset(ex.code(), std::string("startup aborted: caught exception during start of feature '") + feature->name() + "': " + ex.what());
     } catch (std::bad_alloc const& ex) {
-      LOG_TOPIC(ERR, Logger::STARTUP) << "caught exception during start of feature '" << feature->name()
-               << "': " << ex.what() << ". shutting down";
-      res = TRI_ERROR_OUT_OF_MEMORY;
+      res.reset(TRI_ERROR_OUT_OF_MEMORY, std::string("startup aborted: caught exception during start of feature '") + feature->name() + "': " + ex.what());
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::STARTUP) << "caught exception during start of feature '" << feature->name()
-               << "': " << ex.what() << ". shutting down";
-      res = TRI_ERROR_INTERNAL;
+      res.reset(TRI_ERROR_INTERNAL, std::string("startup aborted: caught exception during start of feature '") + feature->name() + "': " + ex.what());
     } catch (...) {
-      LOG_TOPIC(ERR, Logger::STARTUP) << "caught unknown exception during start of feature '"
-               << feature->name() << "'. shutting down";
-      res = TRI_ERROR_INTERNAL;
+      res.reset(TRI_ERROR_INTERNAL, std::string("startup aborted: caught unknown exception during start of feature '") + feature->name() + "'");
     }
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (res.fail()) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << res.errorMessage() << ". shutting down";
       LOG_TOPIC(TRACE, Logger::STARTUP) << "aborting startup, now stopping and unpreparing all features";
       // try to stop all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
@@ -647,7 +632,7 @@ void ApplicationServer::start() {
       }
       shutdownFatalError();
       // throw exception so the startup aborts
-      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("startup aborted: ") + TRI_errno_string(res));
+      THROW_ARANGO_EXCEPTION(res);
     }
   }
 
@@ -716,8 +701,7 @@ void ApplicationServer::raisePrivilegesTemporarily() {
   }
 
   LOG_TOPIC(TRACE, Logger::STARTUP) << "raising privileges";
-
-  // TODO
+  // TODO: raising privileges not implemented
 }
 
 // temporarily drop privileges
@@ -729,8 +713,7 @@ void ApplicationServer::dropPrivilegesTemporarily() {
   }
 
   LOG_TOPIC(TRACE, Logger::STARTUP) << "dropping privileges";
-
-  // TODO
+  // TODO: dropping privileges not implemented
 }
 
 // permanently dropped privileges
@@ -738,13 +721,14 @@ void ApplicationServer::dropPrivilegesPermanently() {
   if (_privilegesDropped) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        "must not try to drop privileges after dropping them");
+        "must not try to drop privileges after having dropped them");
   }
 
-  auto privilege = dynamic_cast<PrivilegeFeature*>(lookupFeature("Privilege"));
-
-  if (privilege != nullptr) {
-    privilege->dropPrivilegesPermanently();
+  if (exists("Privilege")) {
+    auto privilege = dynamic_cast<PrivilegeFeature*>(lookupFeature("Privilege"));
+    if (privilege != nullptr) {
+      privilege->dropPrivilegesPermanently();
+    }
   }
 
   _privilegesDropped = true;

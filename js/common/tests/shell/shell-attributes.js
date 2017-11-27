@@ -419,7 +419,7 @@ function AttributesSuite () {
       ];
 
       data.forEach(function(value) {
-        c.truncate();
+        c.toArray().forEach(doc => c.remove(doc));
         c.insert(value);
 
         var doc = c.toArray()[0];

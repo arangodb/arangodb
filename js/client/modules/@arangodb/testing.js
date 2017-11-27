@@ -80,6 +80,8 @@ let optionsDocumentation = [
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer timeouts',
   '',
+  '   - `resilientsingle` starts resilient single server setup (active/passive)',
+  '',
   '   - `valgrind`: if set the programs are run with the valgrind',
   '     memory checker; should point to the valgrind executable',
   '   - `valgrindFileBase`: string to prepend to the report filename',
@@ -127,6 +129,7 @@ const optionsDefaults = {
   'replication': false,
   'rr': false,
   'sanitizer': false,
+  'resilientsingle': false,
   'skipLogAnalysis': true,
   'skipMemoryIntense': false,
   'skipNightly': true,
@@ -406,10 +409,7 @@ function loadTestSuites () {
   let testSuites = _.filter(fs.list(fs.join(__dirname, 'testsuites')),
                             function (p) {
                               return (p.substr(-3) === '.js');
-                            })
-      .map(function (x) {
-        return x;
-      }).sort();
+                            }).sort();
 
   for (let j = 0; j < testSuites.length; j++) {
     try {

@@ -70,7 +70,8 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
         transaction::StandaloneContext::Create(vocbase), coll->cid(),
         arangodb::AccessMode::Type::WRITE);
     for (auto link : links) {
-      link->insert(&trx, LocalDocumentId(rev), doc, false);
+      link->insert(&trx, LocalDocumentId(rev), doc,
+                   Index::OperationMode::internal);
     }
     trx.commit();
 
@@ -99,7 +100,7 @@ void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
         transaction::StandaloneContext::Create(vocbase), coll->cid(),
         arangodb::AccessMode::Type::WRITE);
     for (auto link : links) {
-      link->remove(&trx, LocalDocumentId(rev), false);
+      link->remove(&trx, LocalDocumentId(rev), Index::OperationMode::internal);
     }
     trx.commit();
 

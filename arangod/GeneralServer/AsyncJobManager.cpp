@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,41 +34,19 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-class arangodb::rest::AsyncCallbackContext {
- public:
-  explicit AsyncCallbackContext(std::string const& coordHeader)
-      : _coordHeader(coordHeader), _response(nullptr) {}
-
-  ~AsyncCallbackContext() {
-    if (_response != nullptr) {
-      delete _response;
-    }
-  }
-
- public:
-  std::string& getCoordinatorHeader() { return _coordHeader; }
-
- private:
-  std::string _coordHeader;
-  GeneralResponse* _response;
-};
-
 AsyncJobResult::AsyncJobResult()
     : _jobId(0),
       _response(nullptr),
       _stamp(0.0),
       _status(JOB_UNDEFINED),
-      _ctx(nullptr),
       _handler(nullptr) {}
 
 AsyncJobResult::AsyncJobResult(IdType jobId, Status status,
-                               AsyncCallbackContext* ctx,
                                RestHandler* handler)
     : _jobId(jobId),
       _response(nullptr),
       _stamp(TRI_microtime()),
       _status(status),
-      _ctx(ctx),
       _handler(handler) {}
 
 AsyncJobResult::~AsyncJobResult() {}
@@ -78,7 +56,7 @@ AsyncJobManager::AsyncJobManager()
 
 AsyncJobManager::~AsyncJobManager() {
   // remove all results that haven't been fetched
-  deleteJobResults();
+  deleteJobs();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,7 +119,7 @@ bool AsyncJobManager::deleteJobResult(AsyncJobResult::IdType jobId) {
 /// @brief deletes all results
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::deleteJobResults() {
+void AsyncJobManager::deleteJobs() {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _jobs.begin();
@@ -190,25 +168,44 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
   if (it == _jobs.end()) {
     rv.reset(TRI_ERROR_HTTP_NOT_FOUND
             , "could not find job (" + std::to_string(jobId) +
-              ") in AsyncJobManager during cancel operation"
-            );
+              ") in AsyncJobManager during cancel operation");
     return rv;
   }
 
   bool ok = true;
-  auto handler = it->second._handler;
-
+  RestHandler* handler = it->second._handler;
   if (handler != nullptr) {
     ok = handler->cancel();
   }
 
   if(!ok){
     // if you end up here you might need to implement the cancel method on your handler
-    rv.reset(TRI_ERROR_INTERNAL
-            ,"could not cancel job (" + std::to_string(jobId) +
-             ") in handler"
-            );
+    rv.reset(TRI_ERROR_INTERNAL,"could not cancel job (" +
+             std::to_string(jobId) + ") in handler");
   }
+  return rv;
+}
+
+/// @brief cancel and delete all pending / done jobs
+Result AsyncJobManager::clearAllJobs() {
+  Result rv;
+  WRITE_LOCKER(writeLocker, _lock);
+  
+  for (auto const& it : _jobs) {
+    bool ok = true;
+    RestHandler* handler = it.second._handler;
+    if (handler != nullptr) {
+      ok = handler->cancel();
+    }
+    
+    if(!ok){
+      // if you end up here you might need to implement the cancel method on your handler
+      rv.reset(TRI_ERROR_INTERNAL,"could not cancel job (" +
+               std::to_string(it.first) + ") in handler " + handler->name());
+    }
+  }
+  _jobs.clear();
+  
   return rv;
 }
 
@@ -260,16 +257,10 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
 /// @brief initializes an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::initAsyncJob(RestHandler* handler, char const* hdr) {
+void AsyncJobManager::initAsyncJob(RestHandler* handler) {
   AsyncJobResult::IdType jobId = handler->handlerId();
-  AsyncCallbackContext* ctx = nullptr;
 
-  if (hdr != nullptr) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Found header X-Arango-Coordinator in async request";
-    ctx = new AsyncCallbackContext(std::string(hdr));
-  }
-
-  AsyncJobResult ajr(jobId, AsyncJobResult::JOB_PENDING, ctx, handler);
+  AsyncJobResult ajr(jobId, AsyncJobResult::JOB_PENDING, handler);
 
   WRITE_LOCKER(writeLocker, _lock);
 
@@ -283,26 +274,17 @@ void AsyncJobManager::initAsyncJob(RestHandler* handler, char const* hdr) {
 void AsyncJobManager::finishAsyncJob(RestHandler* handler) {
   AsyncJobResult::IdType jobId = handler->handlerId();
   std::unique_ptr<GeneralResponse> response = handler->stealResponse();
-  AsyncCallbackContext* ctx = nullptr;
 
   {
     WRITE_LOCKER(writeLocker, _lock);
     auto it = _jobs.find(jobId);
 
     if (it == _jobs.end()) {
-      return;
+      return; // job is already canceled
     }
 
-    ctx = (*it).second._ctx;
-
-    if (nullptr != ctx) {
-      _jobs.erase(it);
-    } else {
-      (*it).second._response = response.release();
-      (*it).second._status = AsyncJobResult::JOB_DONE;
-      (*it).second._stamp = TRI_microtime();
-    }
+    it->second._response = response.release();
+    it->second._status = AsyncJobResult::JOB_DONE;
+    it->second._stamp = TRI_microtime();
   }
-
-  delete ctx;
 }

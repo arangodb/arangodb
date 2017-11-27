@@ -142,8 +142,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
-                                   "Error executing user query: " + queryResult.details);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        queryResult.code, "Error executing user query: " + queryResult.details);
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
@@ -189,8 +189,8 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
-                                   "Error executing user query: " + queryResult.details);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        queryResult.code, "Error executing user query: " + queryResult.details);
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
@@ -208,8 +208,9 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
   if (doc.isExternal()) {
     doc = doc.resolveExternals();
   }
-
-  return VPackBuilder(doc);
+  VPackBuilder result;
+  result.add(doc);
+  return result;
 }
 
 static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
@@ -338,7 +339,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
     OperationResult result =
         replace ? trx.replace(TRI_COL_NAME_USERS, data.slice(), ops)
                 : trx.insert(TRI_COL_NAME_USERS, data.slice(), ops);
-    res = trx.finish(result.code);
+    res = trx.finish(result.result);
     if (res.ok()) {
       VPackSlice userDoc = result.slice();
       TRI_ASSERT(userDoc.isObject() && userDoc.hasKey("new"));
@@ -397,34 +398,16 @@ void AuthInfo::reloadAllUsers() {
 
   // tell other coordinators to reload as well
   AgencyComm agency;
+
+  AgencyWriteTransaction incrementVersion({
+    AgencyOperation("Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)
+  });
+
   int maxTries = 10;
 
   while (maxTries-- > 0) {
-    AgencyCommResult commRes = agency.getValues("Sync/UserVersion");
-
-    if (!commRes.successful()) {
-      // Error in communication, note that value not found is not an error
-      LOG_TOPIC(TRACE, Logger::AUTHENTICATION)
-          << "AuthInfo: no agency communication";
-      break;
-    }
-
-    VPackSlice oldVal = commRes.slice()[0].get(
-        {AgencyCommManager::path(), "Sync", "UserVersion"});
-
-    if (!oldVal.isInteger()) {
-      LOG_TOPIC(ERR, Logger::AUTHENTICATION)
-          << "Sync/UserVersion is not a number";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-    }
-
-    VPackBuilder newVal;
-    newVal.add(VPackValue(oldVal.getUInt() + 1));
-    commRes =
-        agency.casValue("Sync/UserVersion", oldVal, newVal.slice(), 0.0,
-                        AgencyCommManager::CONNECTION_OPTIONS._requestTimeout);
-
-    if (commRes.successful()) {
+    AgencyCommResult result = agency.sendTransactionWithFailover(incrementVersion);
+    if (result.successful()) {
       return;
     }
   }
@@ -450,7 +433,7 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
     return TRI_ERROR_USER_DUPLICATE;
   }
 
-  std::string oldKey; // will only be populated during replace
+  std::string oldKey;  // will only be populated during replace
 
   if (replace) {
     auto const& oldEntry = it->second;
@@ -497,7 +480,7 @@ static Result UpdateUser(VPackSlice const& user) {
   if (res.ok()) {
     OperationResult result =
         trx.update(TRI_COL_NAME_USERS, user, OperationOptions());
-    res = trx.finish(result.code);
+    res = trx.finish(result.result);
   }
   return res;
 }
@@ -603,6 +586,7 @@ VPackBuilder AuthInfo::serializeUser(std::string const& user) {
 static Result RemoveUserInternal(AuthUserEntry const& entry) {
   TRI_ASSERT(!entry.key().empty());
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
@@ -617,6 +601,7 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
+
   if (res.ok()) {
     VPackBuilder builder;
     {
@@ -627,8 +612,9 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
 
     OperationResult result =
         trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
-    res = trx.finish(result.code);
+    res = trx.finish(result.result);
   }
+
   return res;
 }
 
@@ -636,10 +622,13 @@ Result AuthInfo::removeUser(std::string const& user) {
   if (user.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
+
   if (user == "root") {
     return TRI_ERROR_FORBIDDEN;
   }
+
   loadFromDB();
+
   Result res;
   {
     WRITE_LOCKER(guard, _authInfoLock);
@@ -663,14 +652,18 @@ Result AuthInfo::removeUser(std::string const& user) {
       _authBasicCache.clear();
     }
   }
+
   reloadAllUsers();
   return res;
 }
 
 Result AuthInfo::removeAllUsers() {
   loadFromDB();
+
   Result res;
+
   {
+    MUTEX_LOCKER(locker, _loadFromDBLock);
     WRITE_LOCKER(guard, _authInfoLock);
 
     for (auto const& pair : _authInfo) {
@@ -689,7 +682,6 @@ Result AuthInfo::removeAllUsers() {
 
     // do not get into race conditions with loadFromDB
     {
-      MUTEX_LOCKER(locker, _loadFromDBLock);
       _authInfo.clear();
       _authBasicCache.clear();
       _outdated = true;
@@ -785,8 +777,9 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   auto it = _authInfo.find(username);
   auto feature = AuthenticationFeature::INSTANCE;
 
-  if (it != _authInfo.end() && (it->second.source() == AuthSource::COLLECTION)
-      && feature != nullptr && ! feature->localAuthentication()) {
+  if (it != _authInfo.end() &&
+      (it->second.source() == AuthSource::COLLECTION) && feature != nullptr &&
+      !feature->localAuthentication()) {
     return result;
   }
 
@@ -848,12 +841,11 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   return result;
 }
 
-#include <iostream>
-
-AuthLevel AuthInfo::canUseDatabase(std::string const& username,
-                                   std::string const& dbname) {
-  loadFromDB();
-  READ_LOCKER(guard, _authInfoLock);
+// worker function for configuredDatabaseAuthLevel
+// must only be called with the read-lock on _authInfoLock being held
+AuthLevel AuthInfo::configuredDatabaseAuthLevelInternal(std::string const& username,
+                                                        std::string const& dbname,
+                                                        size_t depth) const {
   auto it = _authInfo.find(username);
 
   if (it == _authInfo.end()) {
@@ -863,19 +855,113 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
   auto const& entry = it->second;
   AuthLevel level = entry.databaseAuthLevel(dbname);
 
+#ifdef USE_ENTERPRISE
+  // check all roles and use the highest permission from them
   for (auto const& role : entry.roles()) {
     if (level == AuthLevel::RW) {
+      // we already have highest permission
+      break;
+    }
+
+    // recurse into function, but only one level deep.
+    // this allows us to avoid endless recursion without major overhead
+    if (depth == 0) {
+      AuthLevel roleLevel = configuredDatabaseAuthLevelInternal(role, dbname, depth + 1);
+
+      if (level == AuthLevel::NONE) {
+        // use the permission of the role we just found
+        level = roleLevel;
+      }
+    }
+  }
+#endif
+  return level;
+}
+
+AuthLevel AuthInfo::configuredDatabaseAuthLevel(std::string const& username,
+                                                std::string const& dbname) {
+  loadFromDB();
+  READ_LOCKER(guard, _authInfoLock);
+  return configuredDatabaseAuthLevelInternal(username, dbname, 0);
+}
+
+AuthLevel AuthInfo::canUseDatabase(std::string const& username,
+                                   std::string const& dbname) {
+  AuthLevel level = configuredDatabaseAuthLevel(username, dbname);
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    return AuthLevel::RO;
+  }
+  return level;
+}
+
+AuthLevel AuthInfo::canUseDatabaseNoLock(std::string const& username,
+                                         std::string const& dbname) {
+  AuthLevel level = configuredDatabaseAuthLevelInternal(username, dbname, 0);
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    return AuthLevel::RO;
+  }
+  return level;
+}
+
+
+// internal method called by configuredCollectionAuthLevel
+// asserts that collection name is non-empty and already translated
+// from collection id to name
+AuthLevel AuthInfo::configuredCollectionAuthLevelInternal(std::string const& username,
+                                                          std::string const& dbname,
+                                                          std::string const& coll,
+                                                          size_t depth) const {
+
+  // we must have got a non-empty collection name when we get here
+  TRI_ASSERT(coll[0] < '0' || coll[0] > '9');
+
+  auto it = _authInfo.find(username);
+  if (it == _authInfo.end()) {
+    return AuthLevel::NONE;
+  }
+
+  auto const& entry = it->second;
+  AuthLevel level = entry.collectionAuthLevel(dbname, coll);
+
+#ifdef USE_ENTERPRISE
+  for (auto const& role : entry.roles()) {
+    if (level == AuthLevel::RW) {
+      // we already have highest permission
       return level;
     }
 
-    AuthLevel roleLevel = canUseDatabase(role, dbname);
+    // recurse into function, but only one level deep.
+    // this allows us to avoid endless recursion without major overhead
+    if (depth == 0) {
+      AuthLevel roleLevel = configuredCollectionAuthLevelInternal(role, dbname, coll, depth + 1);
 
-    if (level == AuthLevel::NONE) {
-      level = roleLevel;
+      if (level == AuthLevel::NONE) {
+        // use the permission of the role we just found
+        level = roleLevel;
+      }
     }
   }
-
+#endif
   return level;
+}
+
+AuthLevel AuthInfo::configuredCollectionAuthLevel(std::string const& username,
+                                                  std::string const& dbname,
+                                                  std::string coll) {
+  if (coll.empty()) {
+    // no collection name given
+    return AuthLevel::NONE;
+  }
+  if (coll[0] >= '0' && coll[0] <= '9') {
+    coll = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
+  }
+
+  loadFromDB();
+  READ_LOCKER(guard, _authInfoLock);
+
+  return configuredCollectionAuthLevelInternal(username, dbname, coll, 0);
 }
 
 AuthLevel AuthInfo::canUseCollection(std::string const& username,
@@ -886,51 +972,38 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
     return AuthLevel::NONE;
   }
 
-  if (coll[0] >= '0' && coll[0] <= '9') {
-    // lookup by collection id
-    // translate numeric collection id into collection name
-    return canUseCollectionInternal(username, dbname, DatabaseFeature::DATABASE->translateCollectionName(dbname, coll));
+  AuthLevel level = configuredCollectionAuthLevel(username, dbname, coll);
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    return AuthLevel::RO;
   }
-
-  // lookup by collection name
-  return canUseCollectionInternal(username, dbname, coll);
+  return level;
 }
 
-// internal method called by canUseCollection
-// asserts that collection name is non-empty and already translated
-// from collection id to name
-AuthLevel AuthInfo::canUseCollectionInternal(std::string const& username,
-                                             std::string const& dbname,
-                                             std::string const& coll) {
-  // we must have got a non-empty collection name when we get here
-  TRI_ASSERT(!coll.empty());
-  TRI_ASSERT(coll[0] < '0' || coll[0] > '9');
-
-  loadFromDB();
-  READ_LOCKER(guard, _authInfoLock);
-  auto it = _authInfo.find(username);
-
-  if (it == _authInfo.end()) {
+AuthLevel AuthInfo::canUseCollectionNoLock(std::string const& username,
+                                           std::string const& dbname,
+                                           std::string const& coll) {
+  if (coll.empty()) {
+    // no collection name given
     return AuthLevel::NONE;
   }
 
-  auto const& entry = it->second;
-  AuthLevel level = entry.collectionAuthLevel(dbname, coll);
-
-  for (auto const& role : entry.roles()) {
-    if (level == AuthLevel::RW) {
-      return level;
-    }
-
-    AuthLevel roleLevel = canUseCollection(role, dbname, coll);
-
-    if (level == AuthLevel::NONE) {
-      level = roleLevel;
-    }
+  AuthLevel level;
+  if (coll[0] >= '0' && coll[0] <= '9') {
+    std::string tmpColl = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
+    level = configuredCollectionAuthLevelInternal(username, dbname, tmpColl, 0);
+  } else {
+    level = configuredCollectionAuthLevelInternal(username, dbname, coll, 0);
   }
 
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    return AuthLevel::RO;
+  }
   return level;
 }
+
+
 
 // public called from HttpCommTask.cpp and VstCommTask.cpp
 // should only lock if required, otherwise we will serialize all
@@ -1238,4 +1311,10 @@ std::string AuthInfo::generateJwt(VPackBuilder const& payload) {
     }
   }
   return generateRawJwt(bodyBuilder);
+}
+
+void AuthInfo::setAuthInfo(AuthUserEntryMap const& newMap) {
+  WRITE_LOCKER(writeLocker, _authInfoLock);
+  _authInfo = newMap;
+  _outdated = false;
 }

@@ -28,15 +28,15 @@
 #include "Cluster/TraverserEngineRegistry.h"
 
 namespace arangodb {
-namespace transaction {
-class Methods;
+namespace aql {
+class Query;
 }
 namespace graph {
 class TraverserCache;
 
 namespace cacheFactory {
 TraverserCache* CreateCache(
-    arangodb::transaction::Methods* trx, bool activateDocumentCache,
+    arangodb::aql::Query* query, bool activateDocumentCache,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
 
 }  // namespace cacheFactory

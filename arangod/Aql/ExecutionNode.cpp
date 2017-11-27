@@ -396,9 +396,18 @@ void ExecutionNode::toVelocyPack(VPackBuilder& builder,
 }
 
 /// @brief execution Node clone utility to be called by derives
-void ExecutionNode::cloneHelper(ExecutionNode* other, ExecutionPlan* plan,
+void ExecutionNode::cloneHelper(ExecutionNode* other,
                                 bool withDependencies,
                                 bool withProperties) const {
+  ExecutionPlan* plan = other->plan();
+
+  if (plan == _plan) {
+    // same execution plan for source and target
+    // now assign a new id to the cloned node, otherwise it will leak
+    // upon node registration and its meaning is ambiguous
+    other->setId(plan->nextId());
+  }
+
   plan->registerNode(other);
 
   if (withProperties) {
@@ -1165,7 +1174,7 @@ EnumerateCollectionNode::EnumerateCollectionNode(
       _random(base.get("random").getBoolean()) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
-  
+
   if (_collection == nullptr) {
     std::string msg("collection '");
     msg.append(base.get("collection").copyString());
@@ -1208,7 +1217,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
 
   c->setProjection(_projection);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1264,7 +1273,7 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
 
   auto c = new EnumerateListNode(plan, _id, inVariable, outVariable);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1427,7 +1436,7 @@ ExecutionNode* EnumerateViewNode::clone(ExecutionPlan* plan,
                                  _condition, _sortCondition);
                                  // TODO clone condition and sortCondition?
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1551,7 +1560,7 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
                                conditionVariable, outVariable);
   c->_canRemoveIfThrows = _canRemoveIfThrows;
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1620,7 +1629,7 @@ ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = new SubqueryNode(
       plan, _id, _subquery->clone(plan, true, withProperties), outVariable);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1810,7 +1819,7 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
   }
   auto c = new FilterNode(plan, _id, inVariable);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1859,7 +1868,7 @@ ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = new ReturnNode(plan, _id, inVariable);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }

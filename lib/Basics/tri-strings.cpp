@@ -997,7 +997,7 @@ char* TRI_UnescapeUtf8String(char const* in,
       TRI_Free(buffer);
       return utf8_nfc;
     }
-    // intentional fall-through
+    // intentionally falls through
   }
 
   return buffer;

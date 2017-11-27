@@ -52,9 +52,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext();
   explicit RocksDBReplicationContext(double ttl);
-
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const; //batchId
@@ -94,8 +92,8 @@ class RocksDBReplicationContext {
                             size_t chunkSize, std::string const& lowKey);
   /// dump keys and document
   arangodb::Result dumpDocuments(velocypack::Builder& b, size_t chunk,
-                                 size_t chunkSize, std::string const& lowKey,
-                                 velocypack::Slice const& ids);
+                                 size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize, 
+                                 std::string const& lowKey, velocypack::Slice const& ids);
 
   double expires() const;
   bool isDeleted() const;

@@ -45,6 +45,7 @@ Release64/
 Release32/
 WindowsLibraries/
 cluster/**
+cluster-init*/**
 p/
 
 core

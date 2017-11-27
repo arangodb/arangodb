@@ -560,7 +560,7 @@ size_t IResearchAnalyzerFeature::erase(
       auto result = trx.remove(ANALYZER_COLLECTION_NAME, builder.slice(), options);
 
       // stataic analyzers may be not persisted if their '_refCount' did not change
-      if (!result.successful() && TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND != result.code) {
+      if (!result.ok() && result.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failure to persist AnalyzerPool configuration while removing IResearch analyzer name '" << pool->name() << "'";
         trx.abort();
 
@@ -1160,7 +1160,7 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
 
     auto result = trx.insert(ANALYZER_COLLECTION_NAME, builder.slice(), options);
 
-    if (!result.successful()) {
+    if (!result.ok()) {
       LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failure to persist AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "'";
       trx.abort();
 
@@ -1278,7 +1278,7 @@ bool IResearchAnalyzerFeature::updateConfiguration(
   options.waitForSync = true;
   options.mergeObjects = true;
 
-  return trx.update(ANALYZER_COLLECTION_NAME, builder.slice(), options).successful();
+  return trx.update(ANALYZER_COLLECTION_NAME, builder.slice(), options).ok();
 }
 
 bool IResearchAnalyzerFeature::visit(

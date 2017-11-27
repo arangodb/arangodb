@@ -385,7 +385,7 @@ OperationResult transaction::helpers::buildCountResult(std::vector<std::pair<std
     }
     resultBuilder.close();
   }
-  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
+  return OperationResult(Result(), resultBuilder.steal(), nullptr, false);
 }
 
 /// @brief creates an id string from a custom _id value and the _key string

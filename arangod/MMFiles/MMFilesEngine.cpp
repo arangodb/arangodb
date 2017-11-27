@@ -717,6 +717,12 @@ void MMFilesEngine::waitForSyncTimeout(double maxWait) {
   MMFilesLogfileManager::instance()->waitForSync(maxWait);
 }
 
+Result MMFilesEngine::flushWal(bool waitForSync, bool waitForCollector,
+                             bool writeShutdownFile) {
+  return MMFilesLogfileManager::instance()->flush(
+                        waitForSync, waitForCollector, writeShutdownFile);
+}
+
 TRI_vocbase_t* MMFilesEngine::openDatabase(
     arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) {
   VPackSlice idSlice = args.get("id");
@@ -2132,7 +2138,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
       auto uniqCol =
-          std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it);
+          std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it, false);
       auto collection = uniqCol.get();
       TRI_ASSERT(collection != nullptr);
       StorageEngine::registerCollection(vocbase.get(), uniqCol.get());
@@ -2676,29 +2682,27 @@ int MMFilesEngine::shutdownDatabase(TRI_vocbase_t* vocbase) {
 
 // start the cleanup thread for the database
 int MMFilesEngine::startCleanup(TRI_vocbase_t* vocbase) {
-  std::unique_ptr<MMFilesCleanupThread> thread;
+  std::shared_ptr<MMFilesCleanupThread> thread;
 
   {
     MUTEX_LOCKER(locker, _threadsLock);
 
     thread.reset(new MMFilesCleanupThread(vocbase));
-    _cleanupThreads.emplace(vocbase, thread.get());
+  
+    if (!thread->start()) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not start cleanup thread";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    _cleanupThreads.emplace(vocbase, std::move(thread));
   }
 
-  TRI_ASSERT(thread != nullptr);
-
-  if (!thread->start()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not start cleanup thread";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  thread.release();
   return TRI_ERROR_NO_ERROR;
 }
 
 // stop and delete the cleanup thread for the database
 int MMFilesEngine::stopCleanup(TRI_vocbase_t* vocbase) {
-  MMFilesCleanupThread* thread = nullptr;
+  std::shared_ptr<MMFilesCleanupThread> thread;
 
   {
     MUTEX_LOCKER(locker, _threadsLock);
@@ -2723,14 +2727,12 @@ int MMFilesEngine::stopCleanup(TRI_vocbase_t* vocbase) {
     usleep(5000);
   }
 
-  delete thread;
-
   return TRI_ERROR_NO_ERROR;
 }
 
 // start the compactor thread for the database
 int MMFilesEngine::startCompactor(TRI_vocbase_t* vocbase) {
-  std::unique_ptr<MMFilesCompactorThread> thread;
+  std::shared_ptr<MMFilesCompactorThread> thread;
 
   {
     MUTEX_LOCKER(locker, _threadsLock);
@@ -2742,24 +2744,22 @@ int MMFilesEngine::startCompactor(TRI_vocbase_t* vocbase) {
     }
 
     thread.reset(new MMFilesCompactorThread(vocbase));
-    _compactorThreads.emplace(vocbase, thread.get());
+  
+    if (!thread->start()) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "could not start compactor thread";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    _compactorThreads.emplace(vocbase, std::move(thread));
   }
 
-  TRI_ASSERT(thread != nullptr);
-
-  if (!thread->start()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "could not start compactor thread";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  thread.release();
   return TRI_ERROR_NO_ERROR;
 }
 
 // signal the compactor thread to stop
 int MMFilesEngine::beginShutdownCompactor(TRI_vocbase_t* vocbase) {
-  MMFilesCompactorThread* thread = nullptr;
+  std::shared_ptr<MMFilesCompactorThread> thread;
 
   {
     MUTEX_LOCKER(locker, _threadsLock);
@@ -2773,7 +2773,7 @@ int MMFilesEngine::beginShutdownCompactor(TRI_vocbase_t* vocbase) {
 
     thread = (*it).second;
   }
-
+ 
   TRI_ASSERT(thread != nullptr);
 
   thread->beginShutdown();
@@ -2784,7 +2784,7 @@ int MMFilesEngine::beginShutdownCompactor(TRI_vocbase_t* vocbase) {
 
 // stop and delete the compactor thread for the database
 int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
-  MMFilesCompactorThread* thread = nullptr;
+  std::shared_ptr<MMFilesCompactorThread> thread;
 
   {
     MUTEX_LOCKER(locker, _threadsLock);
@@ -2799,7 +2799,7 @@ int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
     thread = (*it).second;
     _compactorThreads.erase(it);
   }
-
+  
   TRI_ASSERT(thread != nullptr);
 
   thread->beginShutdown();
@@ -2808,8 +2808,6 @@ int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
   while (thread->isRunning()) {
     usleep(5000);
   }
-
-  delete thread;
 
   return TRI_ERROR_NO_ERROR;
 }

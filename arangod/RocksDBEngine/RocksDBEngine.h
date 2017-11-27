@@ -52,6 +52,7 @@ class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
 class RocksDBReplicationManager;
+class RocksDBThrottle;    // breaks tons if RocksDBThrottle.h included here
 class RocksDBVPackComparator;
 class RocksDBWalAccess;
 class TransactionCollection;
@@ -154,13 +155,15 @@ class RocksDBEngine final : public StorageEngine {
                     uint64_t tickEnd,
                     std::shared_ptr<velocypack::Builder>& builderSPtr) override;
   WalAccess const* walAccess() const override;
-  
+
   // database, collection and index management
   // -----------------------------------------
-  
+
   // intentionally empty, not useful for this type of engine
   void waitForSyncTick(TRI_voc_tick_t) override {}
   void waitForSyncTimeout(double) override {}
+  Result flushWal(bool waitForSync, bool waitForCollector,
+                  bool writeShutdownFile) override;
 
   virtual TRI_vocbase_t* openDatabase(velocypack::Slice const& parameters,
                                       bool isUpgrade, int&) override;
@@ -286,22 +289,18 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
-  
+
   /// @brief recovery manager
   RocksDBCounterManager* counterManager() const {
     TRI_ASSERT(_counterManager);
     return _counterManager.get();
   }
-  
+
   /// @brief manages the ongoing dump clients
   RocksDBReplicationManager* replicationManager() const {
     TRI_ASSERT(_replicationManager);
     return _replicationManager.get();
   }
-  
-  arangodb::Result syncWal(bool waitForSync = false,
-                           bool waitForCollector = false,
-                           bool writeShutdownFile = false);
 
   arangodb::Result registerRecoveryHelper(
       std::shared_ptr<RocksDBRecoveryHelper> helper);
@@ -319,13 +318,14 @@ class RocksDBEngine final : public StorageEngine {
   std::string _path;
   /// path to arangodb data dir
   std::string _basePath;
+
   /// @brief repository for replication contexts
   std::unique_ptr<RocksDBReplicationManager> _replicationManager;
   /// @brief tracks the count of documents in collections
   std::unique_ptr<RocksDBCounterManager> _counterManager;
   /// @brief Local wal access abstraction
   std::unique_ptr<RocksDBWalAccess> _walAccess;
-  
+
   /// Background thread handling garbage collection etc
   std::unique_ptr<RocksDBBackgroundThread> _backgroundThread;
   uint64_t _maxTransactionSize;       // maximum allowed size for a transaction
@@ -352,6 +352,11 @@ class RocksDBEngine final : public StorageEngine {
 
   // do not release walfiles containing writes later than this
   TRI_voc_tick_t _releasedTick;
+
+  // code to pace ingest rate of writes to reduce chances of compactions getting
+  //  too far behind and blocking incoming writes
+  std::shared_ptr<RocksDBThrottle> _listener;
+
 };
 }  // namespace arangodb
 #endif

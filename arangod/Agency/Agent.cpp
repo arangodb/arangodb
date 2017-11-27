@@ -53,7 +53,7 @@ Agent::Agent(config_t const& config)
     _agentNeedsWakeup(false),
     _compactor(this),
     _ready(false),
-    _preparing(false) {
+    _preparing(0) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
@@ -86,22 +86,31 @@ bool Agent::mergeConfiguration(VPackSlice const& persisted) {
 
 /// Dtor shuts down thread
 Agent::~Agent() {
+  waitForThreadsStop();
+  // This usually was already done called from AgencyFeature::unprepare,
+  // but since this only waits for the threads to stop, it can be done
+  // multiple times, and we do it just in case the Agent object was
+  // created but never really started. Here, we exit with a fatal error
+  // if the threads do not stop in time.
+}
 
-  // Give up if some subthread breaks shutdown
+/// Wait until threads are terminated:
+void Agent::waitForThreadsStop() {
+  // It is allowed to call this multiple times, we do so from the constructor
+  // and from AgencyFeature::unprepare.
   int counter = 0;
   while (_constituent.isRunning() || _compactor.isRunning() ||
          (_config.supervision() && _supervision.isRunning()) ||
          (_inception != nullptr && _inception->isRunning())) {
     usleep(100000);
 
-    // emit warning after 15 seconds
-    if (++counter == 10 * 15) {
+    // fail fatally after 5 mins:
+    if (++counter >= 10 * 60 * 5) {
       LOG_TOPIC(FATAL, Logger::AGENCY) << "some agency thread did not finish";
       FATAL_ERROR_EXIT();
     }
   }
-    
-  shutdown();
+  shutdown();  // wait for the main Agent thread to terminate
 }
 
 /// State machine
@@ -141,7 +150,7 @@ priv_rpc_ret_t Agent::requestVote(
     term_t termOfPeer, std::string const& id, index_t lastLogIndex,
     index_t lastLogTerm, query_t const& query, int64_t timeoutMult) {
 
-  if (timeoutMult != -1 && timeoutMult != _config._timeoutMult) {
+  if (timeoutMult != -1 && timeoutMult != _config.timeoutMult()) {
     adjustTimeoutMult(timeoutMult);
     LOG_TOPIC(WARN, Logger::AGENCY) << "Voter: setting timeout multiplier to "
       << timeoutMult << " for next term.";
@@ -173,17 +182,15 @@ std::string Agent::leaderID() const {
 
 /// Are we leading?
 bool Agent::leading() const {
-  // When we become leader, we first are officially still a follower, but
-  // prepare for the leading. This is indicated by the _preparing flag in the
-  // Agent, the Constituent stays with role FOLLOWER for now. The agent has
-  // to send out AppendEntriesRPC calls immediately, but only when we are
-  // properly leading (with initialized stores etc.) can we execute requests.
-  return (_preparing && _constituent.following()) || _constituent.leading();
-}
-
-/// Start constituent personality
-void Agent::startConstituent() {
-  activateAgency();
+  // When we become leader, we are first entering a preparation phase.
+  // Note that this method returns true regardless of whether we
+  // are still preparing or not. The preparation phases 1 and 2 are
+  // indicated by the _preparing member in the Agent, the Constituent is
+  // already LEADER.
+  // The Constituent has to send out AppendEntriesRPC calls immediately, but
+  // only when we are properly leading (with initialized stores etc.)
+  // can we execute requests.
+  return _constituent.leading();
 }
 
 // Waits here for confirmation of log's commits up to index. Timeout in seconds.
@@ -251,14 +258,17 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     // Update last acknowledged answer
     auto t = system_clock::now();
     std::chrono::duration<double> d = t - _lastAcked[peerId];
-    if (peerId != id() && d.count() > _config._minPing * _config._timeoutMult) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Last confirmation from peer "
-        << peerId << " was received more than minPing ago: " << d.count();
+    auto secsSince = d.count();
+    if (secsSince < 1.5e9 && peerId != id()
+        && secsSince > _config.minPing() * _config.timeoutMult()) {
+      LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Last confirmation from peer " << peerId
+        << " was received more than minPing ago: " << secsSince;
     }
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Setting _lastAcked["
-      << peerId << "] to time "
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Setting _lastAcked[" << peerId << "] to time "
       << std::chrono::duration_cast<std::chrono::microseconds>(
-          t.time_since_epoch()).count();
+        t.time_since_epoch()).count();
     _lastAcked[peerId] = t;
 
     if (index > _confirmed[peerId]) {  // progress this follower?
@@ -270,7 +280,6 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
       wakeupMainLoop();   // only necessary for non-empty callbacks
     }
   }
-
 
   duration<double> reportInTime = system_clock::now() - startTime;
   if (reportInTime.count() > 0.1) {
@@ -298,9 +307,14 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got AppendEntriesRPC from "
     << leaderId << " with term " << term;
 
+  term_t t(this->term());
+  if (!ready()) { // We have not been able to put together our configuration
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agent is not ready yet.";
+    return priv_rpc_ret_t(false,t);
+  }
+
   VPackSlice payload = queries->slice();
 
-  term_t t(this->term());
   // Update commit index
   if (payload.type() != VPackValueType::Array) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
@@ -559,8 +573,10 @@ void Agent::sendAppendEntriesRPC() {
 
 
 void Agent::resign(term_t otherTerm) {
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Resigning in term "
+    << _constituent.term() << " because of peer's term " << otherTerm;
   _constituent.follow(otherTerm);
-  _preparing = false;
+  endPrepareLeadership();
 }
 
 
@@ -574,6 +590,9 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
   }
 
   if (!leading()) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Not sending empty appendEntriesRPC to follower " << followerId
+      << " because we are no longer leading.";
     return;
   }
 
@@ -589,6 +608,9 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
 
   // Just check once more:
   if (!leading()) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Not sending empty appendEntriesRPC to follower " << followerId
+      << " because we are no longer leading.";
     return;
   }
 
@@ -669,86 +691,19 @@ bool Agent::active() const {
 }
 
 
-// Activate with everything I need to know
-query_t Agent::activate(query_t const& everything) {
-
-  auto ret = std::make_shared<Builder>();
-  ret->openObject();
-
-  Slice slice = everything->slice();
-
-  if (slice.isObject()) {
-    
-    if (active()) {
-      ret->add("success", VPackValue(false));
-    } else {
-
-      Slice compact = slice.get("compact");
-      Slice    logs = slice.get("logs");
-
-      
-      VPackBuilder batch;
-      batch.openArray();
-      for (auto const& q : VPackArrayIterator(logs)) {
-        batch.add(q.get("request"));
-      }
-      batch.close();
-
-      index_t commitIndex = 0;
-      {
-        _tiLock.assertNotLockedByCurrentThread();
-        term_t t = _constituent.term();
-        MUTEX_LOCKER(ioLocker, _ioLock); // Atomicity 
-        if (!compact.isEmptyArray()) {
-          _readDB = compact.get("readDB");
-        }
-        {
-          CONDITION_LOCKER(guard, _waitForCV);
-          commitIndex = _commitIndex;  // take a local copy
-        }
-        /* do not perform callbacks */
-        _readDB.applyLogEntries(batch, commitIndex, t, false);
-        _spearhead = _readDB;
-      }
-
-      ret->add("success", VPackValue(true));
-      ret->add("commitId", VPackValue(commitIndex));
-    }
-
-  } else {
-
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Activation failed. \"Everything\" must be an object, is however "
-      << slice.typeName();
-
-  }
-  ret->close();
-  return ret;
-
-}
-
 /// @brief Activate agency (Inception thread for multi-host, main thread else)
-bool Agent::activateAgency() {
-  if (_config.activeEmpty()) {
-    size_t count = 0;
-    for (auto const& pair : _config.pool()) {
-      _config.activePushBack(pair.first);
-      if (++count == size()) {
-        break;
-      }
-    }
-    bool persisted = false; 
-    try {
-      _state.persistActiveAgents(_config.activeToBuilder(),
-                                 _config.poolToBuilder());
-      persisted = true;
-    } catch (std::exception const& e) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "Failed to persist active agency: " << e.what();
-    }
-    return persisted;
+void Agent::activateAgency() {
+
+  _config.activate();
+  try {
+    _state.persistActiveAgents(
+      _config.activeToBuilder(), _config.poolToBuilder());
+  } catch (std::exception const& e) {
+    LOG_TOPIC(FATAL, Logger::AGENCY)
+      << "Failed to persist active agency: " << e.what();
+      FATAL_ERROR_EXIT();
   }
-  return true;
+  
 }
 
 /// Load persistent state called once
@@ -877,6 +832,10 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
   arangodb::consensus::index_t maxind = 0; // maximum write index
 
+  // Note that we are leading (_constituent.leading()) if and only
+  // if _constituent.leaderId == our own ID. Therefore, we do not have
+  // to use leading() or _constituent.leading() here, but can simply
+  // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
     return trans_ret_t(false, leader);
@@ -884,7 +843,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
   {
     CONDITION_LOCKER(guard, _waitForCV);
-    while (_preparing) {
+    while (getPrepareLeadership() != 0) {
       _waitForCV.wait(100);
     }
   }
@@ -941,7 +900,10 @@ trans_ret_t Agent::transact(query_t const& queries) {
 // Non-persistent write to non-persisted key-value store
 trans_ret_t Agent::transient(query_t const& queries) {
 
-  auto ret = std::make_shared<arangodb::velocypack::Builder>();
+  // Note that we are leading (_constituent.leading()) if and only
+  // if _constituent.leaderId == our own ID. Therefore, we do not have
+  // to use leading() or _constituent.leading() here, but can simply
+  // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
     return trans_ret_t(false, leader);
@@ -949,11 +911,13 @@ trans_ret_t Agent::transient(query_t const& queries) {
 
   {
     CONDITION_LOCKER(guard, _waitForCV);
-    while (_preparing) {
+    while (getPrepareLeadership() != 0) {
       _waitForCV.wait(100);
     }
   }
   
+  auto ret = std::make_shared<arangodb::velocypack::Builder>();
+
   // Apply to spearhead and get indices for log entries
   {
     VPackArrayBuilder b(ret.get());
@@ -983,50 +947,35 @@ trans_ret_t Agent::transient(query_t const& queries) {
 }
 
 
-inquire_ret_t Agent::inquire(query_t const& query) {
-  inquire_ret_t ret;
+write_ret_t Agent::inquire(query_t const& query) {
 
+  // Note that we are leading (_constituent.leading()) if and only
+  // if _constituent.leaderId == our own ID. Therefore, we do not have
+  // to use leading() or _constituent.leading() here, but can simply
+  // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
-    return inquire_ret_t(false, leader);
+    return write_ret_t(false, leader);
   }
+
+  write_ret_t ret;
   
   _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(ioLocker, _ioLock);
 
-  auto si = _state.inquire(query);
-
-  bool found = false;
-  auto builder = std::make_shared<VPackBuilder>();
-  {
-    VPackArrayBuilder b(builder.get());
-    for (auto const& i : si) {
-      VPackArrayBuilder bb(builder.get());
-      for (auto const& j : i) {
-        found = true;
-        VPackObjectBuilder bbb(builder.get());
-        builder->add("index", VPackValue(j.index));
-        builder->add("term", VPackValue(j.term));
-        builder->add("query", VPackSlice(j.entry->data()));
-      }
-    }
-  }
-  
-  ret = inquire_ret_t(true, id(), builder);
-
-  if (!found) {
-    return ret;
-  }
+  ret.indices = _state.inquire(query);
 
   // Check ongoing ones:
   for (auto const& s : VPackArrayIterator(query->slice())) {
     std::string ss = s.copyString();
     if (isTrxOngoing(ss)) {
-      ret.result->clear();
-      ret.result->add(VPackValue("ongoing"));
+      ret.indices.clear();
+      break;
     }
   }
 
+  ret.accepted = true;
+  
   return ret;
 }
 
@@ -1038,6 +987,10 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
   std::vector<index_t> indices;
   auto multihost = size()>1;
 
+  // Note that we are leading (_constituent.leading()) if and only
+  // if _constituent.leaderId == our own ID. Therefore, we do not have
+  // to use leading() or _constituent.leading() here, but can simply
+  // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (multihost && leader != id()) {
     return write_ret_t(false, leader);
@@ -1045,7 +998,7 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
 
   if (!discardStartup) {
     CONDITION_LOCKER(guard, _waitForCV);
-    while (_preparing) {
+    while (getPrepareLeadership() != 0) {
       _waitForCV.wait(100);
     }
   }
@@ -1106,6 +1059,10 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
 /// Read from store
 read_ret_t Agent::read(query_t const& query) {
 
+  // Note that we are leading (_constituent.leading()) if and only
+  // if _constituent.leaderId == our own ID. Therefore, we do not have
+  // to use leading() or _constituent.leading() here, but can simply
+  // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
     return read_ret_t(false, leader);
@@ -1113,7 +1070,7 @@ read_ret_t Agent::read(query_t const& query) {
 
   {
     CONDITION_LOCKER(guard, _waitForCV);
-    while (_preparing) {
+    while (getPrepareLeadership() != 0) {
       _waitForCV.wait(100);
     }
   }
@@ -1150,8 +1107,34 @@ void Agent::run() {
       _agentNeedsWakeup = false;
     }
 
+    if (leading() && getPrepareLeadership() == 1) {
+      // If we are officially leading but the _preparing flag is set, we
+      // are in the process of preparing for leadership. This flag is
+      // set when the Constituent celebrates an election victory. Here,
+      // in the main thread, we do the actual preparations:
+
+      if (!prepareLead()) {
+        _constituent.follow(0);  // do not change term
+      } else {
+        // we need to start work as leader
+        lead();
+      }
+
+      donePrepareLeadership();   // we are ready to roll, except that we
+                                 // have to wait for the _commitIndex to
+                                 // reach the end of our log
+    }
+
     // Leader working only
     if (leading()) {
+      if (1 == getPrepareLeadership()) {
+        // Skip the usual work and the waiting such that above preparation
+        // code runs immediately. We will return with value 2 such that
+        // replication and confirmation of it can happen. Service will 
+        // continue once _commitIndex has reached the end of the log and then
+        // getPrepareLeadership() will finally return 0.
+        continue;
+      }
 
       // Append entries to followers
       sendAppendEntriesRPC();
@@ -1159,6 +1142,23 @@ void Agent::run() {
       // Check whether we can advance _commitIndex
       advanceCommitIndex();
 
+      bool commenceService = false;
+      {
+        CONDITION_LOCKER(guard2, _waitForCV);
+        if (leading() && getPrepareLeadership() == 2 &&
+            _commitIndex == _state.lastIndex()) {
+          commenceService = true;
+        }
+      }
+
+      if (commenceService) {
+        _tiLock.assertNotLockedByCurrentThread();
+        MUTEX_LOCKER(ioLocker, _ioLock);
+        _spearhead = _readDB;
+        endPrepareLeadership();  // finally service can commence
+      }
+
+      // Go to sleep some:
       {
         CONDITION_LOCKER(guard, _appendCV);
         if (!_agentNeedsWakeup) {
@@ -1270,29 +1270,15 @@ void Agent::lead() {
     }
   }
   
-  // Wake up run
-  wakeupMainLoop();
-
   // Agency configuration
   term_t myterm;
   myterm = _constituent.term();
 
   persistConfiguration(myterm);
 
-  {
-    CONDITION_LOCKER(guard, _waitForCV);
-    // Note that when we are stopping
-    while(!isStopping() && _commitIndex != _state.lastIndex()) {
-      _waitForCV.wait(10000);
-    }
-  }
-
-  {
-    _tiLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(ioLocker, _ioLock);
-    _spearhead = _readDB;
-  }
-  
+  // This is all right now, in the main loop we will wait until a
+  // majority of all servers have replicated this configuration.
+  // Then we will copy the _readDB to the _spearhead and start service.
 }
 
 // When did we take on leader ship?
@@ -1576,14 +1562,25 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20002, "Gossip message must contain string parameter 'id'");
   }
+  std::string id = slice.get("id").copyString();
 
   if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20003, "Gossip message must contain string parameter 'endpoint'");
   }
   std::string endpoint = slice.get("endpoint").copyString();
+  
   if ( _inception != nullptr && isCallback) {
     _inception->reportVersionForEp(endpoint, version);
+  }
+
+  // If pool complete but knabe is not member => reject at all times
+  if (_config.poolComplete()) {
+    auto pool = _config.pool();
+    if (pool.find(id) == pool.end()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        20003, "Gossip message from new peer while my pool is complete.");
+    }
   }
 
   LOG_TOPIC(TRACE, Logger::AGENCY)
@@ -1596,11 +1593,6 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
   VPackSlice pslice = slice.get("pool");
 
-  if (slice.hasKey("active") && slice.get("active").isArray()) {
-    for (auto const& a : VPackArrayIterator(slice.get("active"))) {
-      _config.activePushBack(a.copyString());
-    }
-  }
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "Received gossip " << slice.toJson();
 
@@ -1642,19 +1634,12 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       auto pool = _config.pool();
       auto active = _config.active();
 
-      // Wrapped in envelope in RestAgencyPriveHandler
+      // Wrapped in envelope in RestAgencyPrivHandler
       out->add(VPackValue("pool"));
       {
         VPackObjectBuilder bb(out.get());
         for (auto const& i : pool) {
           out->add(i.first, VPackValue(i.second));
-        }
-      }
-      out->add(VPackValue("active"));
-      {
-        VPackArrayBuilder bb(out.get());
-        for (auto const& i : active) {
-          out->add(VPackValue(i));
         }
       }
     }

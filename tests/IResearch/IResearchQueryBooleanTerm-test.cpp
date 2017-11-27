@@ -268,7 +268,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
     for (auto& entry: docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
-      CHECK((res.successful()));
+      CHECK((res.ok()));
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
@@ -302,7 +302,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
     for (auto& entry: docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
-      REQUIRE((res.successful()));
+      REQUIRE((res.ok()));
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 

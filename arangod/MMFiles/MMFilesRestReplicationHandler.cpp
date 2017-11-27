@@ -90,7 +90,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
 
     // extract ttl
     double expires =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
 
     TRI_voc_tick_t id;
     MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
@@ -123,7 +123,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
 
     // extract ttl
     double expires =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
 
     // now extend the blocker
     MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
@@ -180,7 +180,7 @@ void MMFilesRestReplicationHandler::handleCommandBarrier() {
 
     // extract ttl
     double ttl =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
 
     TRI_voc_tick_t minTick = 0;
     VPackSlice const v = input->slice().get("tick");
@@ -223,7 +223,7 @@ void MMFilesRestReplicationHandler::handleCommandBarrier() {
 
     // extract ttl
     double ttl =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
 
     TRI_voc_tick_t minTick = 0;
     VPackSlice const v = input->slice().get("tick");
@@ -441,6 +441,13 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "invalid response type");
       }
+      
+      /*std::string ll(TRI_BeginStringBuffer(dump._buffer),
+                       TRI_LengthStringBuffer(dump._buffer));
+      for (std::string const& str : basics::StringUtils::split(ll, '\n')) {
+        if (!str.empty()) LOG_TOPIC(WARN, Logger::FIXME) << str;
+      }*/
+      
       // transfer ownership of the buffer contents
       httpResponse->body().set(dump._buffer);
 
@@ -803,6 +810,19 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
     return;
   }
 
+  size_t offsetInChunk = 0;
+  size_t maxChunkSize = SIZE_MAX;
+  std::string const& value4 = _request->value("offset", found);
+  if (found) {
+    offsetInChunk = static_cast<size_t>(StringUtils::uint64(value4));
+    // "offset" was introduced with ArangoDB 3.3. if the client sends it,
+    // it means we can adapt the result size dynamically and the client
+    // may refetch data for the same chunk
+    maxChunkSize = 8 * 1024 * 1024; 
+    // if a client does not send an "offset" parameter at all, we are
+    // not sure if it supports this protocol (3.2 and before) or not
+  }
+
   std::string const& id = suffixes[1];
 
   auto keysRepository = _vocbase->collectionKeys();
@@ -836,8 +856,8 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
         return;
       }
       collectionKeys->dumpDocs(resultBuilder, chunk,
-                               static_cast<size_t>(chunkSize),
-                               parsedIds->slice());
+                               static_cast<size_t>(chunkSize), offsetInChunk,
+                               maxChunkSize, parsedIds->slice());
     }
 
     resultBuilder.close();

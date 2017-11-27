@@ -34,12 +34,12 @@ namespace httpclient {
 class SimpleHttpResult;
 }
 
-class RestoreFeature final
-    : public application_features::ApplicationFeature,
-      public ArangoClientHelper {
+class EncryptionFeature;
+
+class RestoreFeature final : public application_features::ApplicationFeature,
+                             public ArangoClientHelper {
  public:
-  RestoreFeature(application_features::ApplicationServer* server,
-                       int* result);
+  RestoreFeature(application_features::ApplicationServer* server, int* result);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -58,7 +58,6 @@ class RestoreFeature final
   bool _importStructure;
   bool _progress;
   bool _overwrite;
-  bool _recycleIds;
   bool _force;
   bool _ignoreDistributeShardsLikeErrors;
   bool _clusterMode;
@@ -73,9 +72,13 @@ class RestoreFeature final
   int sendRestoreData(std::string const& cname, char const* buffer,
                       size_t bufferSize, std::string& errorMsg);
   int processInputDirectory(std::string& errorMsg);
+  ssize_t readData(int fd, char* data, size_t len);
+  void beginDecryption(int fd);
+  void endDecryption(int fd);
 
  private:
   int* _result;
+  EncryptionFeature* _encryption;
 
   // statistics
   struct {

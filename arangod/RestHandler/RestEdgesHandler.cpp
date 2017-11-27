@@ -84,7 +84,7 @@ void RestEdgesHandler::readCursor(
   std::unique_ptr<OperationCursor> cursor(trx.indexScanForCondition(
       indexId, condition, var, &mmdr, false));
 
-  if (cursor->failed()) {
+  if (cursor->fail()) {
     THROW_ARANGO_EXCEPTION(cursor->code);
   }
 
@@ -202,9 +202,9 @@ bool RestEdgesHandler::readEdges() {
   if (ServerState::instance()->isCoordinator()) {
     std::string vertexString(startVertex);
     rest::ResponseCode responseCode;
-    VPackBuilder resultDocument;
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder resultDocument(buffer);
     resultDocument.openObject();
-
     int res = getFilteredEdgesOnCoordinator(
         _vocbase->name(), collectionName, vertexString, direction,
         responseCode, resultDocument);
@@ -217,7 +217,7 @@ bool RestEdgesHandler::readEdges() {
     resultDocument.add("code", VPackValue(200));
     resultDocument.close();
 
-    generateResult(rest::ResponseCode::OK, resultDocument.slice());
+    generateResult(rest::ResponseCode::OK, std::move(buffer));
 
     return true;
   }
@@ -239,7 +239,8 @@ bool RestEdgesHandler::readEdges() {
   size_t filtered = 0;
   size_t scannedIndex = 0;
 
-  VPackBuilder resultBuilder;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder resultBuilder(buffer);
   resultBuilder.openObject();
   // build edges
   resultBuilder.add(VPackValue("edges"));  // only key
@@ -288,7 +289,7 @@ bool RestEdgesHandler::readEdges() {
   resultBuilder.close();
 
   // and generate a response
-  generateResult(rest::ResponseCode::OK, resultBuilder.slice(),
+  generateResult(rest::ResponseCode::OK, std::move(buffer),
                  trx.transactionContext());
 
   return true;
@@ -341,9 +342,10 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   if (ServerState::instance()->isCoordinator()) {
     rest::ResponseCode responseCode;
-    VPackBuilder resultDocument;
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder resultDocument(buffer);
+    
     resultDocument.openObject();
-
     for (auto const& it : VPackArrayIterator(body)) {
       if (it.isString()) {
         std::string vertexString(it.copyString());
@@ -361,7 +363,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     resultDocument.add("code", VPackValue(200));
     resultDocument.close();
 
-    generateResult(rest::ResponseCode::OK, resultDocument.slice());
+    generateResult(rest::ResponseCode::OK, std::move(buffer));
     return true;
   }
 
@@ -383,7 +385,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   size_t filtered = 0;
   size_t scannedIndex = 0;
 
-  VPackBuilder resultBuilder;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder resultBuilder(buffer);
   resultBuilder.openObject();
   // build edges
   resultBuilder.add(VPackValue("edges"));  // only key
@@ -433,7 +436,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.close();
 
   // and generate a response
-  generateResult(rest::ResponseCode::OK, resultBuilder.slice(),
+  generateResult(rest::ResponseCode::OK, std::move(buffer),
                  trx.transactionContext());
 
   return true;

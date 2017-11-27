@@ -45,9 +45,11 @@
 #include "ProgramOptions/Section.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminRoutingHandler.h"
+#include "RestHandler/RestAdminServerHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
+#include "RestHandler/RestCollectionHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDatabaseHandler.h"
 #include "RestHandler/RestDebugHandler.h"
@@ -238,7 +240,7 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
 }
 
 void GeneralServerFeature::prepare() {
-  RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::MAINTENANCE);
+  ServerState::setServerMode(ServerState::Mode::MAINTENANCE);
   GENERAL_SERVER = this;
 }
 
@@ -352,6 +354,11 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::BATCH_PATH,
       RestHandlerCreator<RestBatchHandler>::createNoData);
+  
+  
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::COLLECTION_PATH,
+      RestHandlerCreator<RestCollectionHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::CURSOR_PATH,
@@ -534,6 +541,10 @@ void GeneralServerFeature::defineHandlers() {
         "/_open/auth",
         RestHandlerCreator<arangodb::RestAuthHandler>::createNoData);
   }
+
+  _handlerFactory->addPrefixHandler(
+    "/_admin/server",
+    RestHandlerCreator<arangodb::RestAdminServerHandler>::createNoData);
 
   // ...........................................................................
   // actions defined in v8

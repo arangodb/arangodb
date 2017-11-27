@@ -92,15 +92,9 @@ TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 /// @brief decide based on _masterInfo which api to use
 ///        GlobalTailingSyncer should overwrite this probably
 std::string TailingSyncer::tailingBaseUrl(std::string const& cc) {
-  TRI_ASSERT(!_masterInfo._endpoint.empty() &&
-             _masterInfo._serverId != 0 &&
-             _masterInfo._majorVersion != 0);
-  
-  bool is33 = _masterInfo._majorVersion >= 3 &&
-  _masterInfo._minorVersion >= 3;
-  std::string const& base = is33 ? TailingSyncer::WalAccessUrl :
-                                   Syncer::ReplicationUrl;
-  if (!is33) { // fallback pre 3.3
+  bool act32 = simulate32Client();
+  std::string const& base = act32 ? Syncer::ReplicationUrl : TailingSyncer::WalAccessUrl;
+  if (act32) { // fallback pre 3.3
     if (cc == "tail") {
       return base + "/logger-follow?";
     } else if (cc == "open-transactions") {
@@ -283,10 +277,8 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
         LOG_TOPIC(ERR, Logger::REPLICATION) << res.errorMessage();
       }
       return res;
-    } else {
-      return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
-    
+    return TRI_ERROR_NO_ERROR; // ignoring because it's idempotent
   }
   TRI_ASSERT(false);
   return Result(TRI_ERROR_INTERNAL); // unreachable
@@ -568,11 +560,17 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
   arangodb::LogicalCollection* col = nullptr;
   if (slice.hasKey("cuid")) {
     col = resolveCollection(vocbase, slice);
+    if (col == nullptr) {
+      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown cuid");
+    }
   } else if (collection.hasKey("oldName")) {
     col = vocbase->lookupCollection(collection.get("oldName").copyString());
+    if (col == nullptr) {
+      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown old collection name");
+    }
   }
-  if (col == nullptr) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  if (col->isSystem()) {
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "Renaming system collection " << col->name();
   }
   return Result(vocbase->renameCollection(col, name, true));
 }
@@ -635,7 +633,15 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
   TRI_replication_operation_e type = (TRI_replication_operation_e)typeValue;
   if (type == REPLICATION_MARKER_DOCUMENT ||
       type == REPLICATION_MARKER_REMOVE) {
-    return processDocument(type, slice);
+    try {
+      return processDocument(type, slice);
+    } catch (basics::Exception const& ex) {
+      return Result(ex.code(), ex.what());
+    } catch (std::exception const& ex) {
+      return Result(TRI_ERROR_INTERNAL, ex.what());
+    } catch (...) {
+      return Result(TRI_ERROR_INTERNAL, "unknown exception in processDocument");
+    }
   }
 
   else if (type == REPLICATION_TRANSACTION_START) {

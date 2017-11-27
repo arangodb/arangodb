@@ -190,11 +190,14 @@ void MMFilesCollectionKeys::dumpKeys(VPackBuilder& result, size_t chunk,
 ////////////////////////////////////////////////////////////////////////////////
 
 void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size_t chunk,
-                              size_t chunkSize, VPackSlice const& ids) const {
+                                     size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize, 
+                                     VPackSlice const& ids) const {
   if (!ids.isArray()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-
+        
+  auto buffer = result.buffer();
+  size_t offset = 0;
   for (auto const& it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -206,10 +209,20 @@ void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
     
-    VPackSlice current(_vpack.at(position));
-    TRI_ASSERT(current.isObject());
-  
-    result.add(current);
+    if (offset < offsetInChunk) {
+      // skip over the initial few documents
+      result.add(VPackValue(VPackValueType::Null));
+    } else { 
+      VPackSlice current(_vpack.at(position));
+      TRI_ASSERT(current.isObject());
+      result.add(current);
+
+      if (buffer->byteSize() > maxChunkSize) {
+        // buffer is full
+        break;
+      }
+    }
+    ++offset;
   }
 }
 

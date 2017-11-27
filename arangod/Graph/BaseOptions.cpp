@@ -148,7 +148,7 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   // If we do not have an index yet we cannot do anything.
   // Should NOT be the case
   TRI_ASSERT(!idxHandles.empty());
-  auto idx = idxHandles[0].getIndex();
+  std::shared_ptr<Index> idx = idxHandles[0].getIndex();
   if (idx->hasSelectivityEstimate()) {
     double expected = 1 / idx->selectivityEstimate();
     nrItems += static_cast<size_t>(expected);
@@ -160,23 +160,25 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
 }
 
 std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(
-    transaction::Methods* trx, VPackSlice const& definition) {
+    arangodb::aql::Query* query, VPackSlice const& definition) {
   VPackSlice type = definition.get("type");
   if (type.isString() && type.isEqualString("shortestPath")) {
-    return std::make_unique<ShortestPathOptions>(trx, definition);
+    return std::make_unique<ShortestPathOptions>(query, definition);
   }
-  return std::make_unique<TraverserOptions>(trx, definition);
+  return std::make_unique<TraverserOptions>(query, definition);
 }
 
-BaseOptions::BaseOptions(transaction::Methods* trx)
+BaseOptions::BaseOptions(arangodb::aql::Query* query)
     : _ctx(new aql::FixedVarExpressionContext()),
-      _trx(trx),
+      _query(query),
+      _trx(query->trx()),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _cache(nullptr) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other)
     : _ctx(new aql::FixedVarExpressionContext()),
+      _query(other._query),
       _trx(other._trx),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
@@ -188,6 +190,7 @@ BaseOptions::BaseOptions(BaseOptions const& other)
 BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info,
                          VPackSlice collections)
     : _ctx(new aql::FixedVarExpressionContext()),
+      _query(query),
       _trx(query->trx()),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
@@ -248,8 +251,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   info.indexCondition = condition->clone(plan->getAst());
   bool res = _trx->getBestIndexHandleForFilterCondition(
       collectionName, info.indexCondition, _tmpVar, 1000, info.idxHandles[0]);
-  TRI_ASSERT(res);  // Right now we have an enforced edge index which will
-                    // always fit.
+  // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "expected edge index not found");
@@ -444,5 +446,5 @@ void BaseOptions::activateCache(
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
-  _cache.reset(cacheFactory::CreateCache(_trx, enableDocumentCache, engines));
+  _cache.reset(cacheFactory::CreateCache(_query, enableDocumentCache, engines));
 }
