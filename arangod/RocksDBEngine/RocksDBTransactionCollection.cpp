@@ -108,6 +108,13 @@ bool RocksDBTransactionCollection::isLocked(AccessMode::Type accessType,
 
 /// @brief check whether a collection is locked at all
 bool RocksDBTransactionCollection::isLocked() const {
+  if (CollectionLockState::_noLockHeaders != nullptr) {
+    std::string collName(_collection->name());
+    auto it = CollectionLockState::_noLockHeaders->find(collName);
+    if (it != CollectionLockState::_noLockHeaders->end()) {
+      return true;
+    }
+  }
   return (_lockType != AccessMode::Type::NONE);
 }
 
@@ -289,6 +296,7 @@ void RocksDBTransactionCollection::commitCounts() {
 int RocksDBTransactionCollection::doLock(AccessMode::Type type,
                                          int nestingLevel) {
   if (!AccessMode::isWriteOrExclusive(type)) {
+    _lockType = type;
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -355,6 +363,7 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type,
                                            int nestingLevel) {
   if (!AccessMode::isWriteOrExclusive(type) ||
       !AccessMode::isWriteOrExclusive(_lockType)) {
+    _lockType = AccessMode::Type::NONE;
     return TRI_ERROR_NO_ERROR;
   }
 
