@@ -182,13 +182,6 @@ With clusters of a significant size, the sync master will require a significant 
 Therefore it is recommended to deploy sync masters on their own servers, equiped with sufficient
 CPU power and memory capacity.
 
-ArangoSync will transport messages from one datacenter to another in "transport topics".
-This is a limited set of well know topics. The list should be large enough to avoid 
-performance bottlenecks. Typically 10-20 topics will do.
-<br/> The list of transport topics cannot change over time without re-configuration.
-To change the list of transport topics, first stop synchronization completely, then restart the 
-sync masters with the new list of topics and re-configure synchronization.
-
 To start a sync master using a `systemd` service, use a unit like this:
 
 ```
@@ -213,17 +206,11 @@ ExecStart=/usr/sbin/arangosync run master \
     --mq.kafka-addr=${KAFKAENDPOINTS} \
     --mq.kafka-client-keyfile=${CERTIFICATEDIR}/kafka-client.key \
     --mq.kafka-cacert=${CERTIFICATEDIR}/tls-ca.crt \
-    --mq.transport-topic=${CLUSTERNAME}-1 \
-    --mq.transport-topic=${CLUSTERNAME}-2 \
-    --mq.transport-topic=${CLUSTERNAME}-3
 TimeoutStopSec=60
 
 [Install]
 WantedBy=multi-user.target
 ```
-
-The `--mq.transport-topic` arguments can be replaced by a list of transport topic name in 
-a file. Pass an `--mq.transport-topicsfile=filename` in that case.
 
 The sync master needs a TLS server certificate and a 
 If you want the service to create a TLS certificate & client authentication 
@@ -429,6 +416,15 @@ arangosync get tasks \
   -v
 ```
 
+Use the following command to get a list of all masters in a datacenter and know which master is the current leader:
+```
+arangosync get masters \
+  --master.endpoint=<endpoints of sync masters in datacenter of interest> \
+  --auth.user=<username used for authentication of this command> \
+  --auth.password=<password of auth.user> \
+  -v
+```
+
 Use the following command to get a list of all workers in a datacenter:
 ```
 arangosync get workers \
@@ -497,7 +493,7 @@ Below you'll find an overview per component.
   or worker, provide:
   - A status API, see `arangosync get status`. Make sure that all statuses report `running`.
     <br/>For even more detail the following commands are also available:
-    `arangosync get tasks` & `arangosync get workers`.
+    `arangosync get tasks`, `arangosync get masters` & `arangosync get workers`.
   - A log on the standard output. Log levels can be configured using `--log.level` settings.
   - A metrics API `GET /metrics`. This API is compatible with Prometheus.
     Sample Grafana dashboards for inspecting these metrics are available.
@@ -535,6 +531,7 @@ contact support. Make sure to include provide support with the following informa
 - Output of `arangosync get version ...` on both datacenters.
 - Output of `arangosync get status ... -v` on both datacenters.
 - Output of `arangosync get tasks ... -v` on both datacenters.
+- Output of `arangosync get masters ... -v` on both datacenters.
 - Output of `arangosync get workers ... -v` on both datacenters.
 - Log files of all components
 - A complete description of the problem you observed and what you did to resolve it.
