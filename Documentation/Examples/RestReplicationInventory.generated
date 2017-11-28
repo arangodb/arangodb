@@ -341,7 +341,7 @@ x-content-type-options: nosniff
         <span class="hljs-string">"keyOptions"</span> : { 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
           <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-          <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">11952</span> 
+          <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">11955</span> 
         }, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"_users"</span>, 
         <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
@@ -455,10 +455,10 @@ x-content-type-options: nosniff
   ], 
   <span class="hljs-string">"state"</span> : { 
     <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"11993"</span>, 
-    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"12003"</span>, 
+    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"11996"</span>, 
+    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"12006"</span>, 
     <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">4130</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-11-24T12:45:20Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-11-28T16:40:28Z"</span> 
   }, 
-  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"12003"</span> 
+  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"12006"</span> 
 }

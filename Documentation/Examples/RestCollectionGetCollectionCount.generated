@@ -13,7 +13,7 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/count
   <span class="hljs-string">"keyOptions"</span> : { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
     <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">10361</span> 
+    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">10367</span> 
   }, 
   <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
