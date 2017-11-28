@@ -959,11 +959,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         // is in flight, this is possible, since we might have scheduled
         // a retry later than now and simply wait till then
         if (now < actionNeeded) {
-#ifdef _WIN32
-          std::this_thread::sleep_for(std::chrono::microseconds((unsigned long) ((actionNeeded - now) * 1000000)));
-#else
-          std::this_thread::sleep_for(std::chrono::microseconds((useconds_t) ((actionNeeded - now) * 1000000)));
-#endif
+          std::this_thread::sleep_for(std::chrono::microseconds((unsigned long long) ((actionNeeded - now) * 1000000.0)));
         }
         continue;
       }
