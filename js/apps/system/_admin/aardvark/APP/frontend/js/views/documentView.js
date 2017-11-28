@@ -32,7 +32,6 @@
       'click #document-to': 'navigateToDocument',
       'keydown #documentEditor .ace_editor': 'keyPress',
       'keyup .jsoneditor .search input': 'checkSearchBox',
-      'click .jsoneditor .modes': 'storeMode',
       'click #addDocument': 'addDocument'
     },
 
@@ -63,14 +62,11 @@
       }
     },
 
-    storeMode: function () {
+    storeMode: function (mode) {
       var self = this;
-
-      $('.type-modes').on('click', function (elem) {
-        var mode = $(elem.currentTarget).text().toLowerCase();
-        localStorage.setItem('JSONEditorMode', mode);
-        self.defaultMode = mode;
-      });
+      localStorage.setItem('JSONEditorMode', mode);
+      self.defaultMode = mode;
+      self.editor.setMode(this.defaultMode);
     },
 
     keyPress: function (e) {
@@ -222,6 +218,9 @@
         onChange: function () {
           self.jsonContentChanged();
         },
+        onModeChange: function (newMode) {
+          self.storeMode(newMode);
+        },
         search: true,
         mode: 'tree',
         modes: ['tree', 'code'],
@@ -230,6 +229,10 @@
       };
 
       this.editor = new JSONEditor(container, options);
+      var testMode = localStorage.getItem('JSONEditorMode');
+      if (testMode === 'code' || testMode === 'tree') {
+        this.defaultMode = testMode;
+      }
       if (this.defaultMode) {
         this.editor.setMode(this.defaultMode);
       }

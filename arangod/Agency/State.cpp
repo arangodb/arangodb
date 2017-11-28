@@ -914,7 +914,6 @@ bool State::loadRemaining() {
       // Dummy fill missing entries (Not good at all.)
       index_t index(basics::StringUtils::uint64(
                       ii.get(StaticStrings::KeyString).copyString()));
-      term_t term(ii.get("term").getNumber<uint64_t>());
 
       // Ignore log entries, which are older than lastIndex:
       if (index >= lastIndex) {
@@ -925,6 +924,7 @@ bool State::loadRemaining() {
             std::make_shared<Buffer<uint8_t>>();
           VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
           buf->append(value.startAs<char const>(), value.byteSize());
+          term_t term(ii.get("term").getNumber<uint64_t>());
           for (index_t i = lastIndex+1; i < index; ++i) {
             LOG_TOPIC(WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
             _log.push_back(log_t(i, term, buf, std::string()));
