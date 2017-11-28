@@ -664,7 +664,10 @@ QueryResult Query::execute(QueryRegistry* registry) {
                                       << "Query::execute: before _trx->commit"
                                       << " this: " << (uintptr_t) this;
 
-    _trx->commit();
+    auto commitResult = _trx->commit();
+    if (commitResult.fail()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(commitResult.errorNumber(), commitResult.errorMessage());
+    }
     
     LOG_TOPIC(DEBUG, Logger::QUERIES)
         << TRI_microtime() - _startTime << " "
@@ -867,7 +870,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
                                       << "Query::executeV8: before _trx->commit"
                                       << " this: " << (uintptr_t) this;
 
-    _trx->commit();
+    auto commitResult = _trx->commit();
+    if (commitResult.fail()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(commitResult.errorNumber(), commitResult.errorMessage());
+    }
 
     LOG_TOPIC(DEBUG, Logger::QUERIES)
         << TRI_microtime() - _startTime << " "
