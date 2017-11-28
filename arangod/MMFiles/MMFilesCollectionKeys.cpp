@@ -42,9 +42,10 @@
 
 using namespace arangodb;
 
-MMFilesCollectionKeys::MMFilesCollectionKeys(TRI_vocbase_t* vocbase, std::string const& name,
+MMFilesCollectionKeys::MMFilesCollectionKeys(TRI_vocbase_t* vocbase, std::unique_ptr<CollectionGuard> guard,
                                              TRI_voc_tick_t blockerId, double ttl)
-    : CollectionKeys(vocbase, name, ttl),
+    : CollectionKeys(vocbase, ttl),
+      _guard(std::move(guard)),
       _ditch(nullptr),
       _resolver(vocbase),
       _blockerId(blockerId) {
@@ -52,8 +53,6 @@ MMFilesCollectionKeys::MMFilesCollectionKeys(TRI_vocbase_t* vocbase, std::string
 
   // prevent the collection from being unloaded while the export is ongoing
   // this may throw
-  _guard.reset(new arangodb::CollectionGuard(vocbase, _name.c_str(), false));
-
   _collection = _guard->collection();
   TRI_ASSERT(_collection != nullptr);
 }
@@ -94,8 +93,11 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
   // copy all document tokens into the result under the read-lock
   {
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(_collection->vocbase()), _name,
+        transaction::StandaloneContext::Create(_collection->vocbase()), _collection->cid(),
         AccessMode::Type::READ);
+
+    // already locked by _guard
+    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
     Result res = trx.begin();
 
