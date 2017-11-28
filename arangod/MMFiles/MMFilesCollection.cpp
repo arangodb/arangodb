@@ -273,7 +273,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
                                                  state->_mmdr,
                                                  Index::OperationMode::normal);
 
-    if (res.errorNumber() != TRI_ERROR_NO_ERROR) {
+    if (res.fail()) {
       physical->removeLocalDocumentId(localDocumentId, false);
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
           << "inserting document into primary index failed with error: "
@@ -312,14 +312,13 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
 
     if (old.dataptr() != nullptr) {
       uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
-      int64_t size = static_cast<int64_t>(
-          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) +
-          VPackSlice(vpack).byteSize());
+      MMFilesMarker const* oldMarker = reinterpret_cast<MMFilesMarker const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
 
+      int64_t size = MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(oldMarker);
       dfi->numberAlive--;
-      dfi->sizeAlive -= encoding::alignedSize<int64_t>(size);
+      dfi->sizeAlive -= size;
       dfi->numberDead++;
-      dfi->sizeDead += encoding::alignedSize<int64_t>(size);
+      dfi->sizeDead += size;
     }
 
     state->_dfi->numberAlive++;
@@ -393,14 +392,13 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(
     TRI_ASSERT(old.dataptr() != nullptr);
 
     uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
-    int64_t size = encoding::alignedSize<int64_t>(
-        MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) +
-        VPackSlice(vpack).byteSize());
+    MMFilesMarker const* oldMarker = reinterpret_cast<MMFilesMarker const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
 
+    int64_t size = MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(oldMarker);
     dfi->numberAlive--;
-    dfi->sizeAlive -= encoding::alignedSize<int64_t>(size);
+    dfi->sizeAlive -= size;
     dfi->numberDead++;
-    dfi->sizeDead += encoding::alignedSize<int64_t>(size);
+    dfi->sizeDead += size;
     state->_dfi->numberDeletions++;
 
     state->_primaryIndex->removeKey(trx, oldLocalDocumentId, VPackSlice(vpack),
@@ -2770,7 +2768,7 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
                                   options, documentId, builder->slice());
 
       if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res.errorNumber());
+        THROW_ARANGO_EXCEPTION(res);
       }
     }
 
@@ -3076,9 +3074,8 @@ void MMFilesCollection::removeLocalDocumentId(LocalDocumentId const& documentId,
     if (old && !old.pointsToWal() && old.fid() != 0) {
       TRI_ASSERT(old.dataptr() != nullptr);
       uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
-      int64_t size = encoding::alignedSize<int64_t>(
-          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) +
-          VPackSlice(vpack).byteSize());
+      auto oldMarker = reinterpret_cast<MMFilesMarker const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+      int64_t size = MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(oldMarker);
       _datafileStatistics.increaseDead(old.fid(), 1, size);
     }
   } else {
@@ -3814,7 +3811,7 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
     if (res.fail()) {
       insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
                              Index::OperationMode::rollback);
-      THROW_ARANGO_EXCEPTION(res.errorNumber());
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     res = deletePrimaryIndex(trx, oldDocumentId, oldDoc, options);
@@ -3822,7 +3819,7 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
     if (res.fail()) {
       insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
                              Index::OperationMode::rollback);
-      THROW_ARANGO_EXCEPTION(res.errorNumber());
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     operation.indexed();
