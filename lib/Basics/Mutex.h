@@ -31,9 +31,11 @@
 #include "Basics/Thread.h"
 #endif
 
+#include <thread>
+
 namespace arangodb {
 
-class Mutex {
+class Mutex : public std::mutex {
  private:
   Mutex(Mutex const&) = delete;
   Mutex& operator=(Mutex const&) = delete;
@@ -58,15 +60,6 @@ class Mutex {
 #endif
 
  private:
-#ifdef TRI_HAVE_POSIX_THREADS
-  pthread_mutex_t _mutex;
-  pthread_mutexattr_t _attributes;
-#endif
-
-#ifdef TRI_HAVE_WIN32_THREADS
-  // as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
-  SRWLOCK _mutex;
-#endif
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_tid_t _holder;
