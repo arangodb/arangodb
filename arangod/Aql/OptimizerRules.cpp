@@ -4441,8 +4441,9 @@ static bool isValueTypeString(AstNode* node) {
   node->type == NODE_TYPE_REFERENCE;
 }
 
-static bool isValueTypeInt(AstNode* node) {
-  return (node->type == NODE_TYPE_VALUE && node->value.type == VALUE_TYPE_INT) ||
+static bool isValueTypeNumber(AstNode* node) {
+  return (node->type == NODE_TYPE_VALUE && (node->value.type == VALUE_TYPE_INT ||
+                                            node->value.type == VALUE_TYPE_DOUBLE)) ||
          node->type == NODE_TYPE_REFERENCE;
 }
 
@@ -4469,7 +4470,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode, ExecutionPlan* 
   // get the ast node of the expression
   auto func = static_cast<Function const*>(flltxtNode->getData());
   // we're looking for "FULLTEXT()", which is a function call
-  // with an empty parameters array
+  // with a parameters array with collection, attribute, query, limit
   if (func->name != "FULLTEXT" || flltxtNode->numMembers() != 1) {
     return false;
   }
@@ -4484,7 +4485,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode, ExecutionPlan* 
   AstNode* limitNode = fargs->numMembers() == 4 ? limitNode = fargs->getMember(3) : nullptr;
   if ((collNode->type != NODE_TYPE_COLLECTION && collNode->type != NODE_TYPE_VALUE) ||
       !isValueTypeString(attrNode) || !isValueTypeString(queryNode) ||
-      (limitNode != nullptr && !isValueTypeInt(limitNode))) {
+      (limitNode != nullptr && !isValueTypeNumber(limitNode))) {
     return false;
   }
   
@@ -4499,7 +4500,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode, ExecutionPlan* 
   std::shared_ptr<arangodb::Index> index;
   for (auto idx : logical->getIndexes()) {
     if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-      std::vector<basics::AttributeName> fields = idx->fields()[0];
+      std::vector<basics::AttributeName> const& fields = idx->fields()[0];
       TRI_ASSERT(!fields.empty());
       if (fields[0].name == attr) {
         index = idx;
@@ -4528,22 +4529,28 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode, ExecutionPlan* 
   condition->andCombine(cond);
   condition->normalize(plan);
   
-  auto inode = new IndexNode(plan, plan->nextId(), vocbase,
-                             coll, elnode->outVariable(),
-                             std::vector<transaction::Methods::IndexHandle>{
-                               transaction::Methods::IndexHandle{index}},
-                             condition.get(), false);
-  plan->registerNode(inode);
+  auto indexNode = new IndexNode(plan, plan->nextId(), vocbase,
+                                 coll, elnode->outVariable(),
+                                 std::vector<transaction::Methods::IndexHandle>{
+                                   transaction::Methods::IndexHandle{index}},
+                                 condition.get(), false);
+  plan->registerNode(indexNode);
   condition.release();
-  plan->replaceNode(elnode, inode);
+  plan->replaceNode(elnode, indexNode);
 
-  // FIXME: how to add a LimitNode
-  /*if (limitNode != nullptr) {
-    LimitNode* lnode = new LimitNode(plan, plan->nextId(), 0,
-                                     static_cast<size_t>(limitNode->getIntValue()));
-    plan->registerNode(lnode);
-    lnode->addDependency(inode);
-  }*/
+  if (limitNode != nullptr) { // FIXME: check smaller 0999999..
+    LimitNode* limitnode = new LimitNode(plan, plan->nextId(), 0,
+                                         static_cast<size_t>(limitNode->getIntValue()));
+    plan->registerNode(limitnode);
+    auto parents = indexNode->getParents(); // Intentional copy
+    for (ExecutionNode* parent : parents) {
+      if (!parent->replaceDependency(indexNode, limitnode)) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "Could not replace dependencies of an old node");
+      }
+    }
+    limitnode->addDependency(indexNode);
+  }
   
   return true;
 }
@@ -4563,6 +4570,7 @@ void arangodb::aql::fulltextIndexRule(Optimizer* opt,
       if (current->getType() == EN::ENUMERATE_LIST) {
         EnumerateListNode* elnode = static_cast<EnumerateListNode*>(current);
         modified = modified || applyFulltextOptimization(elnode, plan.get());
+        break;
       }
       current = current->getFirstDependency();  // inspect next node
     }
