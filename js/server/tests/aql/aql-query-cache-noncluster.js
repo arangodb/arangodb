@@ -951,7 +951,7 @@ function ahuacatlQueryCacheTestSuite () {
         });
         fail();
       } catch (err) {
-        assertEqual("peng!", String(err));
+        assertMatch(/peng!/, String(err));
       }
             
       var result = AQL_EXECUTE(query, { "@collection": c1.name() });
