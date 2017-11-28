@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::Manager
+/// @brief test suite for ClusterComm
 ///
 /// @file
 ///
@@ -161,7 +161,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.0049 < diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff < 0.0051);
     REQUIRE(CL_COMM_TIMEOUT == result.status);
     REQUIRE(0 == result.operationID);
 
@@ -171,7 +170,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.09 <= diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff <= 0.11);
     REQUIRE(CL_COMM_TIMEOUT == result.status);
     REQUIRE(0 == result.operationID);
   } // simple function time out
@@ -211,7 +209,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.014 <= diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff <= 0.016);
     REQUIRE(CL_COMM_RECEIVED == result.status);
     REQUIRE(id_first == result.operationID);
     f1.get();
@@ -234,7 +231,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.029 <= diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff <= 0.031);
     REQUIRE(CL_COMM_RECEIVED == result.status);
     REQUIRE(id_other == result.operationID);
     f2.get();
@@ -270,7 +266,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.014 <= diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff <= 0.016);
     REQUIRE(CL_COMM_RECEIVED == result.status);
     REQUIRE(id_other == result.operationID);
     f3.get();
@@ -293,7 +288,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.029 <= diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff <= 0.031);
     REQUIRE(CL_COMM_RECEIVED == result.status);
     REQUIRE(id_first == result.operationID);
     f4.get();
@@ -317,7 +311,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.499 <= diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff <= 0.501);
     REQUIRE(CL_COMM_RECEIVED == result.status);
     REQUIRE(id_first == result.operationID);
     f5.get();
