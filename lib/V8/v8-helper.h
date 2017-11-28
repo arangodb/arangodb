@@ -90,7 +90,7 @@ inline bool isContextCanceled(v8::Isolate* isolate) {
   return v8g->_canceled;
 }
 
-inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate, v8::TryCatch& tryCatch) {
+inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate, v8::TryCatch& tryCatch, int errorCode) {
   // function tries to receive arango error form tryCatch Object
   // return tuple:
   //   bool - can continue
@@ -115,7 +115,7 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate, v
     // the error is a plain string
     std::string errorMessage = *v8::String::Utf8Value(exception->ToString());
     std::get<1>(rv) = true;
-    std::get<2>(rv).reset(TRI_ERROR_FAILED, errorMessage);
+    std::get<2>(rv).reset(errorCode, errorMessage);
     tryCatch.Reset();
     return rv;
   }
@@ -126,9 +126,9 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate, v
     TRI_Utf8ValueNFC exception(tryCatch.Exception());
     char const* exceptionString = *exception;
     if (exceptionString == nullptr) {
-      std::get<2>(rv).reset(TRI_ERROR_FAILED, "JavaScript exception");
+      std::get<2>(rv).reset(errorCode, "JavaScript exception");
     } else {
-      std::get<2>(rv).reset(TRI_ERROR_FAILED, exceptionString);
+      std::get<2>(rv).reset(errorCode, exceptionString);
     }
     return rv;
   }
