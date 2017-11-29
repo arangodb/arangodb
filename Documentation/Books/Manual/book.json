@@ -37,8 +37,8 @@
     },
     "sitemap-general": {
       "prefix": "https://docs.arangodb.com/devel/Manual/",
-      "changefreq": "daily",
-      "priority": 0.7
+      "changefreq": "@GCHANGE_FREQ@",
+      "priority": @GPRIORITY@
     },
     "ga": {
       "token": "UA-81053435-2"

@@ -70,7 +70,6 @@ endif ()
 # ------------------------------------------------------------------------------
 # VERSION information
 # ------------------------------------------------------------------------------
-set(ARANGODB_VERSION_GSEARCH_ID "010085642145132923492:sk0npkzjnmc")
 
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "3")

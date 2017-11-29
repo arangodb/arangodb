@@ -35,7 +35,10 @@ RESET="${C[RESET]}"
 
 newVersionNumber=$( tr -d '\r\n' < ../../VERSION)
 
-GSEARCH_ID=$(grep "GSEARCH" ../../CMakeLists.txt |sed 's;.*"\([0-9a-zA-Z:]*\)".*;\1;')
+GSEARCH_ID=$(  grep "GSEARCH" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:]*\)".*;\1;')
+GCHANGE_FREQ=$(grep "GCHANGE_FREQ" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:]*\)".*;\1;')
+GPRIORITY=$(grep "GPRIORITY" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z.]*\)".*;\1;')
+BROWSEABLE_VERSIONS=$(grep "BROWSEABLE_VERSIONS" ../../VERSIONS |sed -e 's;" *$;;' -e 's;.*";;')
 
 function start_X11_display()
 {
@@ -445,6 +448,9 @@ function build-book()
             sed -e "s/VERSION_NUMBER/v${VERSION}/g" \
                 -e "s;/devel;/${RELEASE_DIRECTORY};" \
                 -e "s;@GSEARCH_ID@;${GSEARCH_ID};" \
+                -e "s;@GCHANGE_FREQ@;${GCHANGE_FREQ};" \
+                -e "s;@GPRIORITY@;${GPRIORITY};" \
+                -e "s;@BROWSEABLE_VERSIONS@;${BROWSEABLE_VERSIONS};" \
                 \
                 -i "${facilityfile}"
 
@@ -656,7 +662,7 @@ function build-dist-books()
 
 function printHelp()
 {
-cat <<EOF
+    cat <<EOF
 Usage: VERB arguments
 Available Verbs:
     build-dist-books - build all books in all representations (HTML(+tarball)/PDF/...) - takes some time.
