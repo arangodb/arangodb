@@ -328,7 +328,7 @@ function SynchronousReplicationSuite () {
         console.log("Inquired successfully a matched precondition under 503 response from write");
         try {
           writeResult = ArangoAgency.write([[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
-          assertEqual(true,false);
+          fail();
         } catch (e1) {
           console.log("Inquired successfully a failed precondition under 503 response from write");
         }
@@ -336,7 +336,7 @@ function SynchronousReplicationSuite () {
         console.log("Inquired successfully a matched precondition under 0 response from write");
         try {
           writeResult = ArangoAgency.write([[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
-          assertEqual(true,false);
+          fail();
         } catch (e1) {
           console.log("Inquired successfully a failed precondition under 0 response from write");
         }
