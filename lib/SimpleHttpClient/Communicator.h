@@ -119,7 +119,7 @@ class Communicator {
   ~Communicator();
 
  public:
-  Ticket addRequest(Destination, std::unique_ptr<GeneralRequest>, Callbacks,
+  Ticket addRequest(Destination&&, std::unique_ptr<GeneralRequest>, Callbacks,
                     Options);
 
   int work_once();

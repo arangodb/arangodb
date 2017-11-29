@@ -169,13 +169,13 @@ Communicator::~Communicator() {
   ::curl_global_cleanup();
 }
 
-Ticket Communicator::addRequest(Destination destination,
+Ticket Communicator::addRequest(Destination&& destination,
                                 std::unique_ptr<GeneralRequest> request,
                                 Callbacks callbacks, Options options) {
   uint64_t id = NEXT_TICKET_ID.fetch_add(1, std::memory_order_seq_cst);
-
+  TRI_ASSERT(request != nullptr);
+  
   {
-    TRI_ASSERT(request != nullptr);
     MUTEX_LOCKER(guard, _newRequestsLock);
     _newRequests.emplace_back(
         NewRequest{destination, std::move(request), callbacks, options, id});
@@ -390,7 +390,13 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
  
   { 
     MUTEX_LOCKER(guard, _handlesLock);
-    _handlesInProgress.emplace(newRequest._ticketId, std::move(handleInProgress));
+    // ticketId is produced by adding to an atomic counter, so each
+    // ticketId should occur only once. adding to the map should
+    // always succeed (or throw an exception in case of OOM). but it
+    // should never happen that the key for the ticketId already exists
+    // in the map
+    auto result = _handlesInProgress.emplace(newRequest._ticketId, std::move(handleInProgress));
+    TRI_ASSERT(result.second);
   }
   curl_multi_add_handle(_curl, handle);
 }
@@ -492,7 +498,7 @@ size_t Communicator::readBody(void* data, size_t size, size_t nitems,
   try {
     rip->_responseBody->appendText((char*)data, realsize);
     return realsize;
-  } catch (std::bad_alloc&) {
+  } catch (std::bad_alloc const&) {
     return 0;
   }
 }
