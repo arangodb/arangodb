@@ -322,26 +322,6 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      if (!inquiry_checked) {
-        console.warn("Checking inquiry");
-        var writeResult = ArangoAgency.write([[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
-        console.log("Inquired successfully a matched precondition under 503 response from write");
-        try {
-          writeResult = ArangoAgency.write([[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
-          fail();
-        } catch (e1) {
-          console.log("Inquired successfully a failed precondition under 503 response from write");
-        }
-        writeResult = ArangoAgency.write([[{"a":1},{"a":1},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
-        console.log("Inquired successfully a matched precondition under 0 response from write");
-        try {
-          writeResult = ArangoAgency.write([[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
-          fail();
-        } catch (e1) {
-          console.log("Inquired successfully a failed precondition under 0 response from write");
-        }
-        inquiry_checked = true;
-      }
       var systemCollServers = findCollectionServers("_system", "_graphs");
       console.info("System collections use servers:", systemCollServers);
       while (true) {
@@ -366,6 +346,40 @@ function SynchronousReplicationSuite () {
     tearDown : function () {
       db._drop(cn);
       global.ArangoAgency.set('Target/FailedServers', {});
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check inquiry functionality
+////////////////////////////////////////////////////////////////////////////////
+    testInquiry : function () {
+      if (!inquiry_checked) {
+        console.warn("Checking inquiry");
+        var writeResult = ArangoAgency.write(
+          [[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
+        console.log(
+          "Inquired successfully a matched precondition under 503 response from write");
+        try {
+          writeResult = ArangoAgency.write(
+            [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
+          fail();
+        } catch (e1) {
+          console.log(
+            "Inquired successfully a failed precondition under 503 response from write");
+        }
+        writeResult = ArangoAgency.write(
+          [[{"a":1},{"a":1},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
+        console.log(
+          "Inquired successfully a matched precondition under 0 response from write");
+        try {
+          writeResult = ArangoAgency.write(
+            [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
+          fail();
+        } catch (e1) {
+          console.log(
+            "Inquired successfully a failed precondition under 0 response from write");
+        }
+        inquiry_checked = true;
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
