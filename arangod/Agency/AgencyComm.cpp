@@ -364,11 +364,12 @@ AgencyCommResult::AgencyCommResult(
       _sent(false) {}
 
 void AgencyCommResult::set(int code, std::string const& message) {
-  _location.clear();
   _message = message;
+  _statusCode = code;
+  _location.clear();
   _body.clear();
   _values.clear();
-  _statusCode = code;
+  _vpack.reset();
 }
 
 bool AgencyCommResult::connected() const { return _connected; }
@@ -440,6 +441,7 @@ void AgencyCommResult::clear() {
   _location = "";
   _message = "";
   _body = "";
+  _vpack.reset();
   _statusCode = 0;
   _sent = false;
   _connected = false;
@@ -884,12 +886,12 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
     result.setVPack(VPackParser::fromJson(result.bodyRef()));
 
     if (!result.slice().isArray()) {
-      result._statusCode = 500;
+      result.set(500, "got invalid result structure for getValues response");
       return result;
     }
 
     if (result.slice().length() != 1) {
-      result._statusCode = 500;
+      result.set(500, "got invalid result structure length for getValues response");
       return result;
     }
 
@@ -1139,7 +1141,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
     result.setVPack(VPackParser::fromJson(result.bodyRef()));
 
     if (!transaction.validate(result)) {
-      result._statusCode = 500;
+      result.set(500, std::string("validation failed for response to URL " + url));
       return result;
     }
 
