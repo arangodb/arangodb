@@ -256,7 +256,6 @@ class AgencyCommResult {
   std::string _location;
   std::string _message;
   std::string _body;
-  std::string _realBody;
 
   std::unordered_map<std::string, AgencyCommResultEntry> _values;
   int _statusCode;
