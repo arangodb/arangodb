@@ -2,31 +2,38 @@
 ALLBOOKS="HTTP AQL Manual Cookbook"
 OTHER_MIME="pdf epub mobi"
 
-
+# shellcheck disable=SC2016
+TRIPPLETICS='```'
 declare -A COLORS
 declare -A C
 COLORS[RESET]='\033[0m'
 # Regular Colors
 #COLORS[Black]='\033[0;30m'        # Black
+# shellcheck disable=SC2154
 COLORS[Red]='\033[0;31m'          # Red
+# shellcheck disable=SC2154
 COLORS[Green]='\033[0;32m'        # Green
+# shellcheck disable=SC2154
 COLORS[Yellow]='\033[0;33m'       # Yellow
 #COLORS[Blue]='\033[0;34m'         # Blue
 #COLORS[Purple]='\033[0;35m'       # Purple
 #COLORS[Cyan]='\033[0;36m'         # Cyan
+# shellcheck disable=SC2154
 COLORS[White]='\033[0;37m'        # White
 
 for i in "${!COLORS[@]}"; do
+    # shellcheck disable=SC2086
     C[${i}]=$(echo -e ${COLORS[$i]})
 done
 
+# shellcheck disable=SC2034
 WRN_COLOR="${C[Yellow]}"
 ERR_COLOR="${C[Red]}"
 STD_COLOR="${C[White]}"
 OK_COLOR="${C[Green]}"
 RESET="${C[RESET]}"
 
-newVersionNumber=$(cat ../../VERSION | tr -d '\r\n')
+newVersionNumber=$( tr -d '\r\n' < ../../VERSION)
 
 GSEARCH_ID=$(grep "GSEARCH" ../../CMakeLists.txt |sed 's;.*"\([0-9a-zA-Z:]*\)".*;\1;')
 
@@ -105,10 +112,10 @@ function ppbook-precheck-bad-code-sections()
 {
     NAME="$1"
     echo "${STD_COLOR}##### checking for bad code sections in ${NAME}${RESET}"
-    if grep -qR  '^``` *.* ' "${NAME}"; then
+    if grep -qR  "^${TRIPPLETICS} *.* " "${NAME}"; then
 	echo "${ERR_COLOR}"
 	echo "tripple tics with blanks afterwards found: "
-	grep -R  '^``` *.* ' "${NAME}"
+	grep -R  "^${TRIPPLETICS} *.* " "${NAME}"
 	echo "${RESET}"
 	exit 1
     fi
@@ -225,7 +232,7 @@ function book-check-markdown-leftovers()
     fi
     
     set +e
-    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '```' {} \; -print)
+    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep "${TRIPPLETICS}" {} \; -print)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
 	echo "${ERR_COLOR}"
@@ -263,6 +270,7 @@ function check-dangling-anchors()
     echo "${STD_COLOR}##### checking for dangling anchors${RESET}"
     find books/ -name '*.html' | while IFS= read -r htmlf; do
 	fn=$(basename "${htmlf}")
+        # shellcheck disable=SC2001
 	dir=$(echo "$htmlf" |sed "s;/$fn;;")
 	mkdir -p "/tmp/tags/${dir}"
         grep '<h. ' < "${htmlf}" | \
@@ -277,6 +285,7 @@ function check-dangling-anchors()
     echo "${STD_COLOR}##### cross checking anchors${RESET}"
     NO=0
     echo "${NO}" > /tmp/anchorlistcount.txt
+    # shellcheck disable=SC2002
     cat /tmp/anchorlist.txt | while IFS= read -r i; do
 	ANCHOR=$(echo "$i" | cut '-d,' -f 3)
 	FN=$(echo "$i" | cut '-d,' -f 2)
@@ -285,6 +294,7 @@ function check-dangling-anchors()
 	if test -z "$FN"; then
 	    FN="$SFN"
 	else
+            # shellcheck disable=SC2001
 	    SFNP=$(echo "$SFN" | sed 's;/[a-zA-Z0-9]*.html;;')
 	    FN="${SFNP}/${FN}"
 	fi
@@ -421,7 +431,8 @@ function build-book()
         RELEASE_DIRECTORY=devel
     else
 	VERSION="${newVersionNumber}"
-        RELEASE_DIRECTORY=$(echo ${newVersionNumber} |sed "s;\.[0-9]*$;;")
+        # shellcheck disable=SC2001
+        RELEASE_DIRECTORY=$(echo "${newVersionNumber}" |sed "s;\.[0-9]*$;;")
     fi
     export VERSION
 
@@ -455,6 +466,7 @@ function build-book()
 	(cd "ppbooks/${NAME}"; gitbook install -g)
     fi
     echo "${STD_COLOR} - Building Book ${NAME} ${RESET}"
+    # shellcheck disable=SC2086
     (cd "ppbooks/${NAME}" && gitbook ${GITBOOK_ARGS} build "./" "./../../books/${NAME}")
     rm -f "./books/${NAME}/HEADER.html"
     rm -f "./books/${NAME}/FOOTER.html"
@@ -473,7 +485,8 @@ function build-book-dist()
     cd "ppbooks/${NAME}"
     for ext in ${OTHER_MIME}; do
 	OUTPUT="${OUTPUT_DIR}/ArangoDB_${NAME}_${newVersionNumber}.${ext}"
-	if gitbook ${GITBOOK_ARGS} "${ext}" ./ "${OUTPUT}"; then
+	# shellcheck disable=SC2086
+        if gitbook ${GITBOOK_ARGS} "${ext}" ./ "${OUTPUT}"; then
 	    echo "success building ${OUTPUT}"
 	else
 	    exit 1
@@ -738,7 +751,8 @@ case "$VERB" in
 	build-book-keep-md "$NAME"
 	;;
     clean)
-        clean
+        # shellcheck disable=SC2068
+        clean $@
         ;;
     *)
 	printHelp
