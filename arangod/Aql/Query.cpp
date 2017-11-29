@@ -590,7 +590,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
     options.buildUnindexedObjects = true;
 
     auto resultBuilder = std::make_shared<VPackBuilder>(&options);
-    resultBuilder->buffer()->reserve(
+    resultBuilder->reserve(
         16 * 1024);  // reserve some space in Builder to avoid frequent reallocs
     
     TRI_ASSERT(_engine != nullptr);
