@@ -1142,6 +1142,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
 
     if (!transaction.validate(result)) {
       result.set(500, std::string("validation failed for response to URL " + url));
+      LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) << "validation failed for url: " << url << ", type: " << transaction.typeName() << ", sent: " << builder.toJson() << ", received: " << result.bodyRef();
       return result;
     }
 
