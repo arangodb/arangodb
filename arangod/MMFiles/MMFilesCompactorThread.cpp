@@ -440,6 +440,9 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER);
   trx.addHint(transaction::Hints::Hint::NO_COMPACTION_LOCK);
   trx.addHint(transaction::Hints::Hint::NO_THROTTLING);
+  // when we get into this function, the caller has already acquired the
+  // collection's status lock - so we better do not lock it again
+  trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
   CompactionInitialContext initial = getCompactionContext(&trx, collection, toCompact);
 
@@ -999,6 +1002,9 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collect
   // if lock acquisition fails, we go on and report an (arbitrary) positive number
   trx.addHint(transaction::Hints::Hint::TRY_LOCK); 
   trx.addHint(transaction::Hints::Hint::NO_THROTTLING);
+  // when we get into this function, the caller has already acquired the
+  // collection's status lock - so we better do not lock it again
+  trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
   Result res = trx.begin();
 

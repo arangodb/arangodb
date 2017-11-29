@@ -123,6 +123,16 @@ class AuthInfo {
                              std::string const& dbname,
                              std::string const& coll);
 
+  // No Lock variants of the above to be used in callbacks
+  // Use with CARE! You need to make sure that the lock
+  // is held from outside.
+  AuthLevel canUseDatabaseNoLock(std::string const& username,
+                                 std::string const& dbname);
+  AuthLevel canUseCollectionNoLock(std::string const& username,
+                                   std::string const& dbname,
+                                   std::string const& coll);
+
+
   void setJwtSecret(std::string const&);
   std::string jwtSecret();
   std::string generateJwt(VPackBuilder const&);

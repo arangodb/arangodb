@@ -208,8 +208,9 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
   if (doc.isExternal()) {
     doc = doc.resolveExternals();
   }
-
-  return VPackBuilder(doc);
+  VPackBuilder result;
+  result.add(doc);
+  return result;
 }
 
 static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
@@ -402,34 +403,16 @@ void AuthInfo::reloadAllUsers() {
 
   // tell other coordinators to reload as well
   AgencyComm agency;
+
+  AgencyWriteTransaction incrementVersion({
+    AgencyOperation("Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)
+  });
+
   int maxTries = 10;
 
   while (maxTries-- > 0) {
-    AgencyCommResult commRes = agency.getValues("Sync/UserVersion");
-
-    if (!commRes.successful()) {
-      // Error in communication, note that value not found is not an error
-      LOG_TOPIC(TRACE, Logger::AUTHENTICATION)
-          << "AuthInfo: no agency communication";
-      break;
-    }
-
-    VPackSlice oldVal = commRes.slice()[0].get(
-        {AgencyCommManager::path(), "Sync", "UserVersion"});
-
-    if (!oldVal.isInteger()) {
-      LOG_TOPIC(ERR, Logger::AUTHENTICATION)
-          << "Sync/UserVersion is not a number";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-    }
-
-    VPackBuilder newVal;
-    newVal.add(VPackValue(oldVal.getUInt() + 1));
-    commRes =
-        agency.casValue("Sync/UserVersion", oldVal, newVal.slice(), 0.0,
-                        AgencyCommManager::CONNECTION_OPTIONS._requestTimeout);
-
-    if (commRes.successful()) {
+    AgencyCommResult result = agency.sendTransactionWithFailover(incrementVersion);
+    if (result.successful()) {
       return;
     }
   }
@@ -685,6 +668,7 @@ Result AuthInfo::removeAllUsers() {
   Result res;
 
   {
+    MUTEX_LOCKER(locker, _loadFromDBLock);
     WRITE_LOCKER(guard, _authInfoLock);
 
     for (auto const& pair : _authInfo) {
@@ -703,7 +687,6 @@ Result AuthInfo::removeAllUsers() {
 
     // do not get into race conditions with loadFromDB
     {
-      MUTEX_LOCKER(locker, _loadFromDBLock);
       _authInfo.clear();
       _authBasicCache.clear();
       _outdated = true;
@@ -917,6 +900,17 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
   return level;
 }
 
+AuthLevel AuthInfo::canUseDatabaseNoLock(std::string const& username,
+                                         std::string const& dbname) {
+  AuthLevel level = configuredDatabaseAuthLevelInternal(username, dbname, 0);
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    return AuthLevel::RO;
+  }
+  return level;
+}
+
+
 // internal method called by configuredCollectionAuthLevel
 // asserts that collection name is non-empty and already translated
 // from collection id to name
@@ -984,6 +978,29 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
   }
 
   AuthLevel level = configuredCollectionAuthLevel(username, dbname, coll);
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    return AuthLevel::RO;
+  }
+  return level;
+}
+
+AuthLevel AuthInfo::canUseCollectionNoLock(std::string const& username,
+                                           std::string const& dbname,
+                                           std::string const& coll) {
+  if (coll.empty()) {
+    // no collection name given
+    return AuthLevel::NONE;
+  }
+
+  AuthLevel level;
+  if (coll[0] >= '0' && coll[0] <= '9') {
+    std::string tmpColl = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
+    level = configuredCollectionAuthLevelInternal(username, dbname, tmpColl, 0);
+  } else {
+    level = configuredCollectionAuthLevelInternal(username, dbname, coll, 0);
+  }
+
   static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
   if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
     return AuthLevel::RO;

@@ -107,6 +107,10 @@ collections being processed before all [edge collection](../Appendix/Glossary.md
 data into edge collections will have the document collections linked in edges (*_from* and
 *_to* attributes) loaded.
 
+### Encryption
+
+See [arangodump](Arangodump.md) for details.
+
 ### Restoring Revision Ids and Collection Ids
  
 _arangorestore_ will reload document and edges data with the exact same *_key*, *_from* and 

@@ -1539,6 +1539,11 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, collection->cid(),
                                     AccessMode::Type::EXCLUSIVE);
+
+    // collection status lock was already acquired by collection guard 
+    // above
+    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+    
     Result res = trx.begin();
 
     if (!res.ok()) {

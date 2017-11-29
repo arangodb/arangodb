@@ -167,13 +167,16 @@ bool BaseEngine::lockCollection(std::string const& shard) {
     return false;
   }
   _trx->pinData(cid);  // will throw when it fails
-  Result res = _trx->lock(cid, AccessMode::Type::READ);
-  if (!res.ok()) {
+
+  Result lockResult = _trx->lockRecursive(cid, AccessMode::Type::READ);
+  
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Logging Shard " << shard << " lead to exception '"
-        << res.errorNumber() << "' (" << res.errorMessage() << ") ";
+        << "Locking shard " << shard << " lead to exception '"
+        << lockResult.errorNumber() << "' (" << lockResult.errorMessage() << ") ";
     return false;
   }
+
   return true;
 }
 
