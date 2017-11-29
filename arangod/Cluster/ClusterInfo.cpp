@@ -1277,9 +1277,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     }
   }
 
-  AgencyGeneralTransaction transaction;
-  transaction.transactions.push_back(
-    AgencyGeneralTransaction::TransactionType(opers,precs));
+  AgencyWriteTransaction transaction(opers,precs);
 
   { // we hold this mutex from now on until we have updated our cache
     // using loadPlan, this is necessary for the callback closure to
