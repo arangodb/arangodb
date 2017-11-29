@@ -36,7 +36,7 @@
       "css": ["styles/header.css"]
     },
     "sitemap-general": {
-      "prefix": "https://docs.arangodb.com/3.2/AQL/",
+      "prefix": "https://docs.arangodb.com/devel/AQL/",
       "changefreq": "daily",
       "priority": 0.7
     },
@@ -44,7 +44,7 @@
       "token": "UA-81053435-2"
     },
     "edit-link": {
-      "base": "https://github.com/arangodb/arangodb/edit/3.2/Documentation/Books/AQL",
+      "base": "https://github.com/arangodb/arangodb/edit/devel/Documentation/Books/AQL",
       "label": "Edit Page"
     },
     "localized-footer": {
