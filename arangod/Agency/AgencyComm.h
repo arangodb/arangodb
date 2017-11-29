@@ -284,6 +284,7 @@ public:
   virtual std::string getClientId() const = 0;
   
   virtual bool validate(AgencyCommResult const& result) const = 0;
+  virtual char const* typeName() const = 0;
   
 };
 
@@ -333,6 +334,7 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
   }
   
   virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyGeneralTransaction"; }
   std::string clientId;
 
 };
@@ -395,6 +397,7 @@ public:
   }
   
   virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyWriteTransaction"; }
 
   std::vector<AgencyPrecondition> preconditions;
   std::vector<AgencyOperation> operations;
@@ -455,6 +458,7 @@ public:
   }
   
   virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyTransientTransaction"; }
 
   std::vector<AgencyPrecondition> preconditions;
   std::vector<AgencyOperation> operations;
@@ -488,6 +492,7 @@ public:
   }
   
   virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyReadTransaction"; }
 
   std::vector<std::string> keys;
 
