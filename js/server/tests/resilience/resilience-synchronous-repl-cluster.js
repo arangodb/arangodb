@@ -355,6 +355,10 @@ function SynchronousReplicationSuite () {
         [[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
       console.log(
         "Inquired successfully a matched precondition under 503 response from write");
+      assertTrue(typeof writeResult === "object");
+      assertTrue(writeResult !== null);
+      assertTrue("results" in writeResult);
+      assertTrue(writeResult.results[0]>0);
       try {
         writeResult = ArangoAgency.write(
           [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
