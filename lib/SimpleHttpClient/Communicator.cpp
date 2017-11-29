@@ -272,37 +272,45 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
 
   CURL* handle = handleInProgress->_handle;
   struct curl_slist* requestHeaders = nullptr;
-
-  switch (request->contentType()) {
-    case ContentType::UNSET:
-    case ContentType::CUSTOM:
-    case ContentType::VPACK:
-    case ContentType::DUMP:
-      break;
-    case ContentType::JSON:
-      requestHeaders =
-          curl_slist_append(requestHeaders, "Content-Type: application/json");
-      break;
-    case ContentType::HTML:
-      requestHeaders =
-          curl_slist_append(requestHeaders, "Content-Type: text/html");
-      break;
-    case ContentType::TEXT:
-      requestHeaders =
-          curl_slist_append(requestHeaders, "Content-Type: text/plain");
-      break;
+  if (request->body().length() > 0) {
+    curl_easy_setopt(handle, CURLOPT_POSTFIELDSIZE,
+                     handleInProgress->_rip->_requestBody.length());
+    curl_easy_setopt(handle, CURLOPT_POSTFIELDS,
+                     handleInProgress->_rip->_requestBody.c_str());
+    switch (request->contentType()) {
+      case ContentType::UNSET:
+      case ContentType::CUSTOM:
+      case ContentType::VPACK:
+      case ContentType::DUMP:
+        break;
+      case ContentType::JSON:
+        requestHeaders =
+            curl_slist_append(requestHeaders, "Content-Type: application/json");
+        break;
+      case ContentType::HTML:
+        requestHeaders =
+            curl_slist_append(requestHeaders, "Content-Type: text/html");
+        break;
+      case ContentType::TEXT:
+        requestHeaders =
+            curl_slist_append(requestHeaders, "Content-Type: text/plain");
+        break;
+    }
   }
   for (auto const& header : request->headers()) {
     std::string thisHeader(header.first + ": " + header.second);
     requestHeaders = curl_slist_append(requestHeaders, thisHeader.c_str());
   }
 
+  if (Logger::COMMUNICATION.level() >= LogLevel::DEBUG) {
+    curl_easy_setopt(handle, CURLOPT_VERBOSE, 1L);
+  }
+
   std::string url = createSafeDottedCurlUrl(newRequest._destination.url());
   handleInProgress->_rip->_requestHeaders = requestHeaders;
   curl_easy_setopt(handle, CURLOPT_HTTPHEADER, requestHeaders);
-  curl_easy_setopt(handle, CURLOPT_HEADER, 0L);
   curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
-  curl_easy_setopt(handle, CURLOPT_VERBOSE, 1L);
+
   curl_easy_setopt(handle, CURLOPT_PROXY, "");
   
   // the xfer/progress options are only used to handle request abortions
@@ -373,13 +381,6 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
           "Invalid request type " +
           GeneralRequest::translateMethod(request->requestType()));
       break;
-  }
-
-  if (request->body().length() > 0) {
-    curl_easy_setopt(handle, CURLOPT_POSTFIELDSIZE,
-                     handleInProgress->_rip->_requestBody.length());
-    curl_easy_setopt(handle, CURLOPT_POSTFIELDS,
-                     handleInProgress->_rip->_requestBody.c_str());
   }
 
   handleInProgress->_rip->_startTime = TRI_microtime();
