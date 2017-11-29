@@ -4603,6 +4603,180 @@ void arangodb::aql::fulltextIndexRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+ExecutionNode* findInDependencies(ExecutionNode * const startNode
+                                 ,ExecutionNode::NodeType typeToFind
+                                 ){
+  if(!startNode){
+    return nullptr;
+  }
+  ExecutionNode* currentNode = startNode->getFirstDependency();
+
+  while(currentNode){
+    auto currentType = currentNode->getType();
+
+    if(currentType == typeToFind){
+      return currentNode;
+    }
+    currentNode = currentNode->getFirstDependency();
+  }
+  return nullptr;
+}
+
+std::tuple<ExecutionNode*,ExecutionNode::NodeType>
+findInDependencies(ExecutionNode * const startNode
+                  ,std::vector<ExecutionNode::NodeType> const& typesToFind
+                  ,std::vector<ExecutionNode::NodeType> const& allowedTypes
+                  ,bool readOnlySubQueries = true
+                  ){
+
+  std::tuple<ExecutionNode*,ExecutionNode::NodeType> rv{nullptr,ExecutionNode::SINGLETON};
+
+  if(!startNode){
+    return rv;
+  }
+  ExecutionNode* currentNode = startNode->getFirstDependency();
+
+  while(currentNode){
+    auto currentType = currentNode->getType();
+
+    auto found = std::find(typesToFind.begin(), typesToFind.end(), currentType);
+    if(found != typesToFind.end()){
+      std::get<0>(rv) = currentNode;
+      std::get<1>(rv) = *found;
+      return rv;
+    }
+
+    if (allowedTypes.size()) {
+      auto found = std::find(allowedTypes.begin(), allowedTypes.end(), currentType);
+      if(found != allowedTypes.end()){
+        if (readOnlySubQueries &&
+            currentType == ExecutionNode::SUBQUERY &&
+            static_cast<SubqueryNode*>(currentNode)->isModificationQuery()
+           ) { return rv; }
+        currentNode = currentNode->getFirstDependency();
+      } else {
+        return rv;
+      }
+    }
+
+  }
+  return rv;
+}
+
+ExecutionNode* insertAbove(ExecutionNode* referenceNode, ExecutionNode* nodeToInsert){
+  ExecutionNode* referenceDependency = referenceNode->getFirstDependency();
+  if(!referenceDependency){
+    LOG_DEVEL << "remote has no dependency";
+    return nullptr;
+  }
+
+  nodeToInsert->addDependency(referenceDependency);
+  referenceNode->replaceDependency(referenceDependency,nodeToInsert);
+  return nodeToInsert;
+}
+
+/// @brief moves limits up towards the singleton nodes
+/// TODO - add documentation when done
+void arangodb::aql::optimizeClusterLimitsToShardsRule(Optimizer* opt,
+                                             std::unique_ptr<ExecutionPlan> plan,
+                                             OptimizerRule const* rule) {
+
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+
+  static const std::vector<ExecutionNode::NodeType>
+    allowedTypes = {
+      ExecutionNode::SCATTER,
+      ExecutionNode::GATHER,
+      ExecutionNode::DISTRIBUTE,
+      ExecutionNode::CALCULATION,
+      ExecutionNode::SUBQUERY,
+      ExecutionNode::ENUMERATE_LIST,
+      ExecutionNode::ENUMERATE_COLLECTION,
+      ExecutionNode::INDEX
+    };
+
+  static const std::vector<ExecutionNode::NodeType>
+    remoteOrLimit = {
+      ExecutionNode::REMOTE,
+      ExecutionNode::LIMIT
+    };
+
+  bool wasModified = false;
+
+  SmallVector<ExecutionNode*>::allocator_type::arena_type s;
+  SmallVector<ExecutionNode*> endNodes{s};
+  plan->findEndNodes(endNodes,true);
+
+  for (auto* current : endNodes) {
+    LimitNode* foundLimitNode = nullptr;
+
+    while (current) {
+
+      if(!foundLimitNode){
+        LimitNode* limitNode = static_cast<LimitNode*>(findInDependencies(current, ExecutionNode::LIMIT));
+        current = limitNode; // advance current
+        if (!limitNode) {
+          continue;
+        }
+        if(limitNode->getFullCount()){
+          LOG_DEVEL << "fullcount node";
+          continue;
+        }
+        foundLimitNode = limitNode;
+        LOG_DEVEL << "found limit node";
+      }
+
+      auto findResultTuple = findInDependencies(current, remoteOrLimit, allowedTypes);
+      ExecutionNode* node = std::get<0>(findResultTuple);
+      if(!node){
+        LOG_DEVEL <<"break inner branch";
+        foundLimitNode = nullptr; // indirect advance
+      } else {
+
+        LOG_DEVEL << "entering second part";
+        current = node; // advance
+        if (ExecutionNode::LIMIT == std::get<1>(findResultTuple)) {
+          LOG_DEVEL << "found followup limit";
+          LimitNode* newLimitNode = static_cast<LimitNode*>(node);
+
+          if (newLimitNode->getFullCount()){
+            LOG_DEVEL << "fullcount node";
+            foundLimitNode = nullptr;
+            continue;
+          }
+
+          // merge limits
+          if(  foundLimitNode->offset() == newLimitNode->offset()
+            && foundLimitNode->limit()  <  newLimitNode->limit()){
+            LOG_DEVEL << "merge nodes";
+            //  newLimitNode->setLimit();
+          }
+
+          wasModified = true;
+          foundLimitNode = newLimitNode;
+
+        } else if (ExecutionNode::REMOTE == std::get<1>(findResultTuple)) {
+          LOG_DEVEL << "found remote";
+          LimitNode* insertLimitNode = new LimitNode(plan.get(), plan->nextId(),
+                                                     0 /*offset*/,
+                                                     foundLimitNode->offset() + foundLimitNode->limit() /*limit*/ );
+          wasModified = true;
+          LOG_DEVEL << "register new node";
+          plan->registerNode(insertLimitNode);
+          LOG_DEVEL << "insert new limit";
+          auto scatter = current->getFirstDependency();
+          if (scatter->getType() == ExecutionNode::SCATTER){
+            current = scatter;
+          }
+          current = insertAbove(current, insertLimitNode); // advance
+          LOG_DEVEL << "inserted new limit";
+        }
+      } // if node
+    } // current - branch between endnode and singleton node
+  } // endnodes
+
+  opt->addPlan(std::move(plan), rule, wasModified);
+}
 
 struct GeoIndexInfo {
   operator bool() const { return distanceNode && valid; }
