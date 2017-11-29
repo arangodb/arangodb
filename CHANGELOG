@@ -1,15 +1,29 @@
 devel
 -----
 
+* UI: document/edge editor now remembering their modes (e.g. code or tree)
+
+* UI: optimized error messages for invalid graph definitions. Also fixed a
+  graph renderer cleanrenderer cleanup error.
+
+* UI: added a delay within the graph viewer while changing the colors of the
+  graph. Necessary due different browser behaviour.
+
+* added options `--encryption.keyfile` and `--encryption.key-generator` to arangodump
+  and arangorestore
+
 * removed `--recycle-ids` option for arangorestore
 
   using that option could have led to problems on the restore, with potential
-  id conflicts between the originating server (the source dump server) and the 
+  id conflicts between the originating server (the source dump server) and the
   target server (the restore server)
 
 * add readonly mode REST API
 
-* allow compilation of ArangoDB source code with g++7
+* allow compilation of ArangoDB source code with g++ 7
+
+* upgrade minimum required g++ compiler version to g++ 5.4
+  That means ArangoDB source code will not compile with g++ 4.x or g++ < 5.4 anymore.
 
 * AQL: during a traversal if a vertex is not found. It will not print an ERROR to the log and continue
   with a NULL value, but will register a warning at the query and continue with a NULL value.
@@ -19,23 +33,23 @@ devel
 
 * potential fix for issue #3562: Document WITHIN_RECTANGLE not found
 
-* introduce `enforceReplicationFactor` attribute for creating collections: 
-  this optional parameter controls if the coordinator should bail out during collection 
+* introduce `enforceReplicationFactor` attribute for creating collections:
+  this optional parameter controls if the coordinator should bail out during collection
   creation if there are not enough DBServers available for the desired `replicationFactor`.
 
 * fixed issue #3516: Show execution time in arangosh
-    
+
   this change adds more dynamic prompt components for arangosh
-  The following components are now available for dynamic prompts, 
+  The following components are now available for dynamic prompts,
   settable via the `--console.prompt` option in arangosh:
-    
+
   - '%t': current time as timestamp
   - '%p': duration of last command in seconds
   - '%d': name of current database
   - '%e': current endpoint
   - '%E': current endpoint without protocol
   - '%u': current user
-    
+
   The time a command takes can be displayed easily by starting arangosh with `--console.prompt "%p> "`.
 
 * make the ArangoShell refill its collection cache when a yet-unknown collection
@@ -48,8 +62,8 @@ devel
 
 * make AQL `DISTINCT` not change the order of the results it is applied on
 
-* incremental transfer of initial collection data now can handle partial 
-  responses for a chunk, allowing the leader/master to send smaller chunks 
+* incremental transfer of initial collection data now can handle partial
+  responses for a chunk, allowing the leader/master to send smaller chunks
   (in terms of HTTP response size) and limit memory usage
 
   this optimization is only active if client applications send the "offset" parameter
@@ -59,7 +73,7 @@ devel
   `replicationFactor` values bigger than 1. this is achieved by an optimization
   for the case when the collection on the leader is still empty
 
-* potential fix for issue #3517: several "filesystem full" errors in logs 
+* potential fix for issue #3517: several "filesystem full" errors in logs
   while there's a lot of disk space
 
 * added C++ implementations for AQL function `SUBSTRING()`, `LEFT()`, `RIGHT()` and `TRIM()`
@@ -101,7 +115,7 @@ devel
 * added `--rocksdb.encryption-key-generator` for enterprise
 
 * removed `--compat28` parameter from arangodump and replication API
-  
+
   older ArangoDB versions will no longer be supported by these tools.
 
 * increase the recommended value for `/proc/sys/vm/max_map_count` to a value
@@ -118,7 +132,7 @@ devel
 v3.2.7 (2017-11-13)
 -------------------
 
-* Cluster customers, which have upgraded from 3.1 to 3.2 need to upgrade 
+* Cluster customers, which have upgraded from 3.1 to 3.2 need to upgrade
   to 3.2.7. The cluster supervision is otherwise not operational.
 
 * Fixed issue #3597: AQL with path filters returns unexpected results
@@ -146,24 +160,24 @@ v3.2.7 (2017-11-13)
 
 * only users with read/write rights on the "_system" database can now execute
   "_admin/shutdown" as well as modify properties of the write-ahead log (WAL)
- 
-* increase default maximum number of V8 contexts to at least 16 if not explicitly 
-  configured otherwise. 
-  the procedure for determining the actual maximum value of V8 contexts is unchanged 
+
+* increase default maximum number of V8 contexts to at least 16 if not explicitly
+  configured otherwise.
+  the procedure for determining the actual maximum value of V8 contexts is unchanged
   apart from the value `16` and works as follows:
   - if explicitly set, the value of the configuration option `--javascript.v8-contexts`
     is used as the maximum number of V8 contexts
   - when the option is not set, the maximum number of V8 contexts is determined
-    by the configuration option `--server.threads` if that option is set. if 
+    by the configuration option `--server.threads` if that option is set. if
     `--server.threads` is not set, then the maximum number of V8 contexts is the
     server's reported hardware concurrency (number of processors visible
-    to the arangod process). if that would result in a maximum value of less than 16 
+    to the arangod process). if that would result in a maximum value of less than 16
     in any of these two cases, then the maximum value will be increased to 16.
 
-* fixed issue #3447: ArangoError 1202: AQL: NotFound: (while executing) when 
+* fixed issue #3447: ArangoError 1202: AQL: NotFound: (while executing) when
   updating collection
 
-* potential fix for issue #3581: Unexpected "rocksdb unique constraint 
+* potential fix for issue #3581: Unexpected "rocksdb unique constraint
   violated" with unique hash index
 
 * fixed geo index optimizer rule for geo indexes with a single (array of coordinates)
@@ -177,14 +191,14 @@ v3.2.7 (2017-11-13)
 
 * several fixes for agency restart and shutdown
 
-* the cluster-internal representation of planned collection objects is now more 
+* the cluster-internal representation of planned collection objects is now more
   lightweight than before, using less memory and not allocating any cache for indexes
   etc.
 
 * fixed issue #3403: How to kill long running AQL queries with the browser console's
   AQL (display issue)
 
-* fixed issue #3549: server reading ENGINE config file fails on common standard 
+* fixed issue #3549: server reading ENGINE config file fails on common standard
   newline character
 
 * UI: fixed error notifications for collection modifications
@@ -195,18 +209,18 @@ v3.2.7 (2017-11-13)
     order to prevent too frequent "could not truncate collection" errors
 
   * after a truncate operation, collections in MMFiles still used disk space.
-    to reclaim disk space used by truncated collection, the truncate actions 
+    to reclaim disk space used by truncated collection, the truncate actions
     in the web interface and from the ArangoShell now issue an extra WAL flush
     command (in cluster mode, this command is also propagated to all servers).
-    the WAL flush allows all servers to write out any pending operations into the 
-    datafiles of the truncated collection. afterwards, a final journal rotate 
-    command is sent, which enables the compaction to entirely remove all datafiles 
+    the WAL flush allows all servers to write out any pending operations into the
+    datafiles of the truncated collection. afterwards, a final journal rotate
+    command is sent, which enables the compaction to entirely remove all datafiles
     and journals for the truncated collection, so that all disk space can be
     reclaimed
 
   * for MMFiles a special method will be called after a truncate operation so that
     all indexes of the collection can free most of their memory. previously some
-    indexes (hash and skiplist indexes) partially kept already allocated memory 
+    indexes (hash and skiplist indexes) partially kept already allocated memory
     in order to avoid future memory allocations
 
   * after a truncate operation in the RocksDB engine, an additional compaction
@@ -220,7 +234,7 @@ v3.2.7 (2017-11-13)
 * enable JEMalloc background threads for purging and returning unused memory
   back to the operating system (Linux only)
 
-  JEMalloc will create its background threads on demand. The number of background 
+  JEMalloc will create its background threads on demand. The number of background
   threads is capped by the number of CPUs or active arenas. The background threads run
   periodically and purge unused memory pages, allowing memory to be returned to the
   operating system.
@@ -231,7 +245,7 @@ v3.2.7 (2017-11-13)
 
 * upgraded bundled V8 engine to bugfix version v5.7.492.77
 
-  this upgrade fixes a memory leak in upstream V8 described in 
+  this upgrade fixes a memory leak in upstream V8 described in
   https://bugs.chromium.org/p/v8/issues/detail?id=5945 that will result in memory
   chunks only getting uncommitted but not unmapped
 
@@ -246,7 +260,7 @@ v3.2.6 (2017-10-26)
 * fixed a permission problem that prevented collection contents to be displayed
   in the web interface
 
-* removed posix_fadvise call from RocksDB's PosixSequentialFile::Read(). This is 
+* removed posix_fadvise call from RocksDB's PosixSequentialFile::Read(). This is
   consistent with Facebook PR 2573 (#3505)
 
   this fix should improve the performance of the replication with the RocksDB
@@ -283,12 +297,12 @@ v3.2.5 (2017-10-16)
   operations have at least one extra context. This requirement was not enforced
   anymore.
 
-* fixed issue #3395: AQL: cannot instantiate CollectBlock with undetermined 
+* fixed issue #3395: AQL: cannot instantiate CollectBlock with undetermined
   aggregation method
 
 * UI: fixed wrong user attribute name validation, issue #3228
 
-* fix potential overflow in CRC marker check when a corrupted CRC marker 
+* fix potential overflow in CRC marker check when a corrupted CRC marker
   is found at the very beginning of an MMFiles datafile
 
 * UI: fixed unresponsive events in cluster shards view
