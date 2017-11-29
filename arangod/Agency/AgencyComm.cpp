@@ -1338,8 +1338,10 @@ AgencyCommResult AgencyComm::sendWithFailover(
   VPackSlice body = inBody.resolveExternals();
 
   if (body.isArray()) {
+    // In the writing case we want to find all transactions with client IDs
+    // and remember these IDs:
     for (auto const& query : VPackArrayIterator(body)) {
-      if (query.length() == 3 && query[0].isObject() && query[2].isString()) {
+      if (query.isArray() && query.length() == 3 && query[0].isObject() && query[2].isString()) {
         clientIds.push_back(query[2].copyString());
       }
     }
