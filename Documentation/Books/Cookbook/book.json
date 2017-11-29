@@ -36,7 +36,7 @@
       "css": ["styles/header.css"]
     },
     "sitemap-general": {
-      "prefix": "https://docs.arangodb.com/3.2/cookbook/",
+      "prefix": "https://docs.arangodb.com/devel/cookbook/",
       "changefreq": "weekly",
       "priority": 0.8
     },
@@ -44,7 +44,7 @@
       "token": "UA-81053435-2"
     },
     "edit-link": {
-      "base": "https://github.com/arangodb/arangodb/edit/3.2/Documentation/Books/Cookbook",
+      "base": "https://github.com/arangodb/arangodb/edit/devel/Documentation/Books/Cookbook",
       "label": "Edit Page"
     },
     "localized-footer": {

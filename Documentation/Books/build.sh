@@ -28,6 +28,7 @@ RESET="${C[RESET]}"
 
 newVersionNumber=$(cat ../../VERSION | tr -d '\r\n')
 
+GSEARCH_ID=$(grep "GSEARCH" ../../CMakeLists.txt |sed 's;.*"\([0-9a-zA-Z:]*\)".*;\1;')
 
 function start_X11_display()
 {
@@ -386,15 +387,8 @@ function build-book()
             cp "../../${NAME}/FOOTER.html" .
         fi
     )
-    if test -z "${RELEASE_DIRECTORY}"; then
-	if ! test -f "ppbooks/${NAME}/book.json" ; then
-            cp "${NAME}/book.json" "ppbooks/${NAME}"
-        fi
-    else
-	if ! test -f "ppbooks/${NAME}/book.json" ; then
-            sed "s;/devel;/${RELEASE_DIRECTORY};" < "${NAME}/book.json" > "ppbooks/${NAME}/book.json"
-        fi
-    fi
+
+
     (
         cd "ppbooks/${NAME}"
         cp -a "../../${NAME}/styles/"* styles/
@@ -412,21 +406,6 @@ function build-book()
            ppbooks/ \
            ../../js/apps/system/_admin/aardvark/APP/api-docs.json \
            "${FILTER}" || exit 1
-    if echo "${newVersionNumber}" | grep -q devel; then
-	VERSION="${newVersionNumber} $(date +' %d. %b %Y ')"
-    else
-	VERSION="${newVersionNumber}"
-    fi
-    export VERSION
-    echo "${STD_COLOR} - Building Version ${VERSION}${RESET}"
-
-    (
-        cd "ppbooks/${NAME}"
-        sed -i -e "s/VERSION_NUMBER/v${VERSION}/g" styles/header.js
-        sed -i -e "s/VERSION_NUMBER/v${VERSION}/g" HEADER.html
-        sed -i -e "s/VERSION_NUMBER/v${VERSION}/g" README.md
-        sed -i -e "s/VERSION_NUMBER/v${VERSION}/g" book.json
-     )
     
     test -d "books/${NAME}" || mkdir -p "books/${NAME}"
 
@@ -436,6 +415,37 @@ function build-book()
     book-check-restheader-leftovers "${NAME}"
     ppbook-check-directory-link "${NAME}"
     book-check-images-referenced "${NAME}"
+
+    if echo "${newVersionNumber}" | grep -q devel; then
+	VERSION="${newVersionNumber} $(date +' %d. %b %Y ')"
+        RELEASE_DIRECTORY=devel
+    else
+	VERSION="${newVersionNumber}"
+        RELEASE_DIRECTORY=$(echo ${newVersionNumber} |sed "s;\.[0-9]*$;;")
+    fi
+    export VERSION
+
+    if ! test -f "ppbooks/${NAME}/book.json" ; then
+        cp "${NAME}/book.json" "ppbooks/${NAME}"
+    fi
+
+    for facilityfile in book.json styles/header.js HEADER.html README.md; do
+        export facilityfile
+        export RELEASE_DIRECTORY
+        (
+            cd "ppbooks/${NAME}"
+            sed -e "s/VERSION_NUMBER/v${VERSION}/g" \
+                -e "s;/devel;/${RELEASE_DIRECTORY};" \
+                -e "s;@GSEARCH_ID@;${GSEARCH_ID};" \
+                \
+                -i "${facilityfile}"
+
+        )
+    done
+
+    echo "${STD_COLOR} - Building Version ${VERSION}${RESET}"
+
+    
 
     if test -n "${NODE_MODULES_DIR}"; then
         echo "${STD_COLOR}#### Installing plugins from ${NODE_MODULES_DIR}${RESET}"
