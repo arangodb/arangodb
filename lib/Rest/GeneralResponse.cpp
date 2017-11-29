@@ -30,63 +30,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-namespace detail {
-VPackOptions const* getOptions(VPackOptions const* options) {
-  if (options) {
-    return options;
-  }
-  return &VPackOptions::Options::Defaults;
-}
-}
-
-void GeneralResponse::addPayload(VPackSlice const& slice,
-                                 VPackOptions const* options,
-                                 bool resolveExternals) {
-  addPayloadPreconditions();
-  _numPayloads++;
-  options = detail::getOptions(options);
-
-  bool skipBody = false;
-  addPayloadPreHook(true, resolveExternals, skipBody);
-
-  if (!skipBody) {
-    if (resolveExternals) {
-      auto tmpBuffer =
-          basics::VelocyPackHelper::sanitizeNonClientTypesChecked(slice, options);
-      _vpackPayloads.push_back(std::move(tmpBuffer));
-    } else {
-      // just copy
-      _vpackPayloads.emplace_back(slice.byteSize());
-      _vpackPayloads.back().append(slice.startAs<char const>(),
-                                   slice.byteSize());
-    }
-  }
-  // we pass the original slice here the new one can be accessed
-  addPayloadPostHook(slice, options, resolveExternals, skipBody);
-}
-
-void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
-                                 arangodb::velocypack::Options const* options,
-                                 bool resolveExternals) {
-  addPayloadPreconditions();
-  _numPayloads++;
-  options = detail::getOptions(options);
-
-  bool skipBody = false;
-  addPayloadPreHook(true, resolveExternals, skipBody);
-  if (!skipBody) {
-    if (resolveExternals) {
-      auto tmpBuffer = basics::VelocyPackHelper::sanitizeNonClientTypesChecked(
-          VPackSlice(buffer.data()), options);
-      _vpackPayloads.push_back(std::move(tmpBuffer));
-    } else {
-      _vpackPayloads.push_back(std::move(buffer));
-    }
-  }
-  addPayloadPostHook(VPackSlice(buffer.data()), options, resolveExternals,
-                     skipBody);
-}
-
 std::string GeneralResponse::responseString(ResponseCode code) {
   switch (code) {
     //  Informational 1xx
@@ -338,6 +281,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD:
     case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:
     case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY:
+    case TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN:
     case TRI_ERROR_TYPE_ERROR:
     case TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE:
     case TRI_ERROR_QUERY_VARIABLE_NAME_INVALID:
@@ -378,6 +322,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_ARANGO_VALIDATION_FAILED:
     case TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED:
     case TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST:
+    case TRI_ERROR_ARANGO_ILLEGAL_NAME:
     case TRI_ERROR_ARANGO_INDEX_HANDLE_BAD:
     case TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE:
     case TRI_ERROR_QUERY_PARSE:
@@ -412,6 +357,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_GRAPH_INVALID_ID:
     case TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS:
     case TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST:
+    case TRI_ERROR_ARANGO_NO_JOURNAL:
       return ResponseCode::BAD;
 
     case TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE:
@@ -438,6 +384,10 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_GRAPH_NO_GRAPH_COLLECTION:
     case TRI_ERROR_QUEUE_UNKNOWN:
       return ResponseCode::NOT_FOUND;
+    
+    case TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION:
+    case TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION: 
+      return ResponseCode::NOT_ACCEPTABLE;
 
     case TRI_ERROR_REQUEST_CANCELED:
     case TRI_ERROR_QUERY_KILLED:
@@ -457,11 +407,17 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_ARANGO_OUT_OF_KEYS:
     case TRI_ERROR_CLUSTER_SHARD_GONE:
     case TRI_ERROR_CLUSTER_TIMEOUT:
+    case TRI_ERROR_LOCK_TIMEOUT:
+    case TRI_ERROR_LOCKED:
+    case TRI_ERROR_DEBUG:
     case TRI_ERROR_OUT_OF_MEMORY:
     case TRI_ERROR_INTERNAL:
       return ResponseCode::SERVER_ERROR;
 
     case TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE:
+    case TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED:
+    case TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING:
+    case TRI_ERROR_CLUSTER_NOT_LEADER:
       return ResponseCode::SERVICE_UNAVAILABLE;
 
     case TRI_ERROR_CLUSTER_UNSUPPORTED:
@@ -476,8 +432,6 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
 GeneralResponse::GeneralResponse(ResponseCode responseCode)
     : _responseCode(responseCode),
       _headers(),
-      _vpackPayloads(),
-      _numPayloads(),
       _contentType(ContentType::UNSET),
       _connectionType(ConnectionType::C_NONE),
       _options(velocypack::Options::Defaults),

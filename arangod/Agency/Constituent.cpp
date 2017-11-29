@@ -126,13 +126,10 @@ void Constituent::termNoLock(term_t t) {
         body.add("voted_for", Value(_votedFor)); }
       
       TRI_ASSERT(_vocbase != nullptr);
-      auto transactionContext =
-        std::make_shared<transaction::StandaloneContext>(_vocbase);
-      SingleCollectionTransaction trx(transactionContext, "election",
-                                      AccessMode::Type::WRITE);
+      auto ctx = transaction::StandaloneContext::Create(_vocbase);
+      SingleCollectionTransaction trx(ctx, "election", AccessMode::Type::WRITE);
       
-      auto res = trx.begin();
-      
+      Result res = trx.begin();
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -150,8 +147,7 @@ void Constituent::termNoLock(term_t t) {
         FATAL_ERROR_EXIT();
       }
 
-      res = trx.finish(result.code);
-
+      res = trx.finish(result.errorNumber());
     }
   }
 }
@@ -226,18 +222,6 @@ void Constituent::followNoLock(term_t t) {
 
 /// Become leader
 void Constituent::lead(term_t term) {
-
-  // we need to rebuild spear_head and read_db
-
-  _agent->beginPrepareLeadership();
-  TRI_DEFER(_agent->endPrepareLeadership());
-
-  if (!_agent->prepareLead()) {
-    MUTEX_LOCKER(guard, _castLock);
-    followNoLock(term);
-    return;
-  }
-
   {
     MUTEX_LOCKER(guard, _castLock);
 
@@ -262,11 +246,13 @@ void Constituent::lead(term_t term) {
     // Keep track of this election time:
     MUTEX_LOCKER(locker, _recentElectionsMutex);
     _recentElections.push_back(readSystemClock());
+
+    // we need to rebuild spear_head and read_db, but this is done in the
+    // main Agent thread:
+    _agent->beginPrepareLeadership();
   }
 
-  // we need to start work as leader
-  _agent->lead();
-  
+  _agent->wakeupMainLoop();
 }
 
 /// Become candidate
@@ -322,7 +308,7 @@ std::string Constituent::endpoint(std::string id) const {
 
 /// @brief Check leader
 bool Constituent::checkLeader(
-  term_t term, std::string id, index_t prevLogIndex, term_t prevLogTerm) {
+  term_t term, std::string const& id, index_t prevLogIndex, term_t prevLogTerm) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -343,6 +329,7 @@ bool Constituent::checkLeader(
   
   if (term > _term) {
     termNoLock(term);
+    _agent->endPrepareLeadership();
     if (_role != FOLLOWER) {
       followNoLock(term);
     }
@@ -377,7 +364,7 @@ bool Constituent::checkLeader(
 }
 
 /// @brief Vote
-bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
+bool Constituent::vote(term_t termOfPeer, std::string const& id, index_t prevLogIndex,
                        term_t prevLogTerm) {
 
   if (!_agent->ready()) {
@@ -395,6 +382,7 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
 
   if (termOfPeer > _term) {
     termNoLock(termOfPeer);
+    _agent->endPrepareLeadership();
 
     if (_role != FOLLOWER) {
       followNoLock(_term);
@@ -457,6 +445,7 @@ void Constituent::callElection() {
   {
     MUTEX_LOCKER(locker, _castLock);
     this->termNoLock(_term + 1);  // raise my term
+    _agent->endPrepareLeadership();
     _cast     = true;
     _votedFor = _id;
     savedTerm = _term;
@@ -737,7 +726,7 @@ void Constituent::run() {
         if (isTimeout) {
           LOG_TOPIC(TRACE, Logger::AGENCY) << "timeout, calling an election";
           candidate();
-          _agent->unprepareLead();
+          _agent->endPrepareLeadership();
         }
 
       } else if (role == CANDIDATE) {

@@ -447,7 +447,8 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
                                         RocksDBMethods* mthd,
                                         LocalDocumentId const& documentId,
-                                        VPackSlice const& doc) {
+                                        VPackSlice const& doc,
+                                        OperationMode mode) {
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
   auto fromToRef = StringRef(fromTo);
@@ -469,7 +470,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     _estimator->insert(hash);
-    return IndexResult(TRI_ERROR_NO_ERROR);
+    return IndexResult();
   } else {
     return IndexResult(r.errorNumber(), this);
   }
@@ -478,7 +479,8 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
 Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
                                         RocksDBMethods* mthd,
                                         LocalDocumentId const& documentId,
-                                        VPackSlice const& doc) {
+                                        VPackSlice const& doc,
+                                        OperationMode mode) {
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   auto fromToRef = StringRef(fromTo);
@@ -499,7 +501,7 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     _estimator->remove(hash);
-    return IndexResult(TRI_ERROR_NO_ERROR);
+    return IndexResult();
   } else {
     return IndexResult(res.errorNumber(), this);
   }
@@ -997,5 +999,5 @@ Result RocksDBEdgeIndex::postprocessRemove(transaction::Methods* trx,
 
   uint64_t hash = RocksDBEdgeIndex::HashForKey(key);
   _estimator->remove(hash);
-  return {TRI_ERROR_NO_ERROR};
+  return Result();
 }

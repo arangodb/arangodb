@@ -35,7 +35,6 @@
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/db.h>
@@ -51,7 +50,8 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 }
 
 /// @brief transaction type
-MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase, transaction::Options const& options)
+MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase,
+                                                 transaction::Options const& options)
     : TransactionState(vocbase, options),
       _rocksTransaction(nullptr),
       _beginWritten(false),
@@ -215,6 +215,7 @@ Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx
 
 /// @brief add a WAL operation for a transaction collection
 int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
+                                          TRI_voc_rid_t revisionId,
                                           MMFilesDocumentOperation& operation,
                                           MMFilesWalMarker const* marker,
                                           bool& waitForSync) {
@@ -353,7 +354,7 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
         _vocbase, collection->name());
   }
 
-  physical->setRevision(documentId.id(), false);
+  physical->setRevision(revisionId, false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 

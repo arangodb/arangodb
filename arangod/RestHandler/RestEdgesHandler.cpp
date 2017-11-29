@@ -67,7 +67,7 @@ RestStatus RestEdgesHandler::execute() {
 void RestEdgesHandler::readCursor(
     aql::AstNode* condition, aql::Variable const* var,
     std::string const& collectionName, SingleCollectionTransaction& trx,
-    std::function<void(LocalDocumentId const&)> cb) {
+    std::function<void(LocalDocumentId const&)> const& cb) {
   transaction::Methods::IndexHandle indexId;
   bool foundIdx = trx.getBestIndexHandleForFilterCondition(
       collectionName, condition, var, 1000, indexId);
@@ -84,7 +84,7 @@ void RestEdgesHandler::readCursor(
   std::unique_ptr<OperationCursor> cursor(trx.indexScanForCondition(
       indexId, condition, var, &mmdr, false));
 
-  if (cursor->failed()) {
+  if (cursor->fail()) {
     THROW_ARANGO_EXCEPTION(cursor->code);
   }
 
@@ -95,7 +95,7 @@ void RestEdgesHandler::readCursor(
 bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id, std::string const& collectionName,
     TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
-    std::function<void(LocalDocumentId const&)> cb) {
+    std::function<void(LocalDocumentId const&)> const& cb) {
   trx.pinData(trx.cid());  // will throw when it fails
 
   // Create a conditionBuilder that manages the AstNodes for querying
@@ -202,9 +202,9 @@ bool RestEdgesHandler::readEdges() {
   if (ServerState::instance()->isCoordinator()) {
     std::string vertexString(startVertex);
     rest::ResponseCode responseCode;
-    VPackBuilder resultDocument;
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder resultDocument(buffer);
     resultDocument.openObject();
-
     int res = getFilteredEdgesOnCoordinator(
         _vocbase->name(), collectionName, vertexString, direction,
         responseCode, resultDocument);
@@ -217,15 +217,14 @@ bool RestEdgesHandler::readEdges() {
     resultDocument.add("code", VPackValue(200));
     resultDocument.close();
 
-    generateResult(rest::ResponseCode::OK, resultDocument.slice());
+    generateResult(rest::ResponseCode::OK, std::move(buffer));
 
     return true;
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(_vocbase), collectionName,
-      AccessMode::Type::READ);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   // .............................................................................
   // inside read transaction
@@ -240,7 +239,8 @@ bool RestEdgesHandler::readEdges() {
   size_t filtered = 0;
   size_t scannedIndex = 0;
 
-  VPackBuilder resultBuilder;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder resultBuilder(buffer);
   resultBuilder.openObject();
   // build edges
   resultBuilder.add(VPackValue("edges"));  // only key
@@ -289,7 +289,7 @@ bool RestEdgesHandler::readEdges() {
   resultBuilder.close();
 
   // and generate a response
-  generateResult(rest::ResponseCode::OK, resultBuilder.slice(),
+  generateResult(rest::ResponseCode::OK, std::move(buffer),
                  trx.transactionContext());
 
   return true;
@@ -342,9 +342,10 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   if (ServerState::instance()->isCoordinator()) {
     rest::ResponseCode responseCode;
-    VPackBuilder resultDocument;
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder resultDocument(buffer);
+    
     resultDocument.openObject();
-
     for (auto const& it : VPackArrayIterator(body)) {
       if (it.isString()) {
         std::string vertexString(it.copyString());
@@ -362,14 +363,13 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     resultDocument.add("code", VPackValue(200));
     resultDocument.close();
 
-    generateResult(rest::ResponseCode::OK, resultDocument.slice());
+    generateResult(rest::ResponseCode::OK, std::move(buffer));
     return true;
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(_vocbase), collectionName,
-      AccessMode::Type::READ);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   // .............................................................................
   // inside read transaction
@@ -385,7 +385,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   size_t filtered = 0;
   size_t scannedIndex = 0;
 
-  VPackBuilder resultBuilder;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder resultBuilder(buffer);
   resultBuilder.openObject();
   // build edges
   resultBuilder.add(VPackValue("edges"));  // only key
@@ -435,7 +436,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.close();
 
   // and generate a response
-  generateResult(rest::ResponseCode::OK, resultBuilder.slice(),
+  generateResult(rest::ResponseCode::OK, std::move(buffer),
                  trx.transactionContext());
 
   return true;

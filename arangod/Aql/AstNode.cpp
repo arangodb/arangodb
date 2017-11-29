@@ -1175,7 +1175,7 @@ AstNode const* AstNode::castToBool(Ast* ast) const {
         return ast->createNodeValueBool(value.length > 0);
       default: {}
     }
-    // fall-through intentional
+    // intentionally falls through
   } else if (type == NODE_TYPE_ARRAY) {
     return ast->createNodeValueBool(true);
   } else if (type == NODE_TYPE_OBJECT) {
@@ -1220,9 +1220,9 @@ AstNode const* AstNode::castToNumber(Ast* ast) const {
           }
           // conversion failed
         }
-        // fall-through intentional
+        // intentionally falls through
     }
-    // fall-through intentional
+    // intentionally falls through
   } else if (type == NODE_TYPE_ARRAY) {
     size_t const n = numMembers();
     if (n == 0) {
@@ -1233,9 +1233,9 @@ AstNode const* AstNode::castToNumber(Ast* ast) const {
       // convert only member to number
       return member->castToNumber(ast);
     }
-    // fall-through intentional
+    // intentionally falls through
   } else if (type == NODE_TYPE_OBJECT) {
-    // fall-through intentional
+    // intentionally falls through
   }
 
   return ast->createNodeValueInt(0);
@@ -1278,6 +1278,11 @@ double AstNode::getDoubleValue() const {
 
 /// @brief whether or not the node value is trueish
 bool AstNode::isTrue() const {
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS && isConstant()) {
+    AstNode const* resolved = Ast::resolveConstAttributeAccess(this);
+    return resolved->isTrue();
+  }
+
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
       case VALUE_TYPE_NULL:
@@ -1315,6 +1320,11 @@ bool AstNode::isTrue() const {
 
 /// @brief whether or not the node value is falsey
 bool AstNode::isFalse() const {
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS && isConstant()) {
+    AstNode const* resolved = Ast::resolveConstAttributeAccess(this);
+    return resolved->isFalse();
+  }
+
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
       case VALUE_TYPE_NULL:
@@ -1357,7 +1367,12 @@ bool AstNode::isFalse() const {
 bool AstNode::isAttributeAccessForVariable(
     std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>&
         result, bool allowIndexedAccess) const {
-  if (type != NODE_TYPE_ATTRIBUTE_ACCESS && type != NODE_TYPE_EXPANSION) {
+
+  if ( !( type == NODE_TYPE_ATTRIBUTE_ACCESS
+       || type == NODE_TYPE_EXPANSION
+       || (allowIndexedAccess && type == NODE_TYPE_INDEXED_ACCESS)
+       )
+     ){
     return false;
   }
 

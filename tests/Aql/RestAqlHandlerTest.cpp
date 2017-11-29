@@ -61,6 +61,17 @@ class FakeResponse : public GeneralResponse {
      _responseCode = code;
    }
 
+  void addPayload(VPackSlice const&,
+                  arangodb::velocypack::Options const* = nullptr,
+                  bool resolveExternals = true) {
+    // TODO
+  };
+  void addPayload(VPackBuffer<uint8_t>&&,
+                  arangodb::velocypack::Options const* = nullptr,
+                  bool resolveExternals = true) {
+    // TODO
+  };
+
   private:
     arangodb::Endpoint::TransportType const _transport;
 };

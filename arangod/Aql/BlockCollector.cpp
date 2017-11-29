@@ -31,7 +31,7 @@
 using namespace arangodb::aql;
 
 BlockCollector::BlockCollector(AqlItemBlockManager* blockManager) 
-    : _blockManager(blockManager), _blocks{_arena}, _totalSize(0) {}
+    : _blockManager(blockManager), _totalSize(0) {}
 
 BlockCollector::~BlockCollector() { clear(); }
 
@@ -53,10 +53,7 @@ void BlockCollector::clear() {
 }
   
 void BlockCollector::add(std::unique_ptr<AqlItemBlock> block) {
-  TRI_ASSERT(block->size() > 0);
-
-  _blocks.push_back(block.get());
-  _totalSize += block->size();
+  add(block.get());
   block.release();
 }
 
@@ -64,6 +61,9 @@ void BlockCollector::add(AqlItemBlock* block) {
   TRI_ASSERT(block != nullptr);
   TRI_ASSERT(block->size() > 0);
 
+  if (_blocks.capacity() == 0) {
+    _blocks.reserve(8);
+  }
   _blocks.push_back(block);
   _totalSize += block->size();
 }

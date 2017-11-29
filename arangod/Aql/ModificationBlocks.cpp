@@ -64,7 +64,7 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
   }
 
   // check if we're a DB server in a cluster
-  _isDBServer = transaction()->state()->isDBServer();
+  _isDBServer = ServerState::instance()->isDBServer();
 
   if (_isDBServer) {
     _usesDefaultSharding = _collection->usesDefaultSharding();
@@ -327,7 +327,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
           keyBuilder.close();
         } else {
           // We have an error, handle it
-          handleResult(errorCode, ep->_options.ignoreErrors);
+          handleResult(errorCode, ep->_options.ignoreErrors, nullptr);
         }
       }
     }
@@ -343,7 +343,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       // all exceptions are caught in _trx->remove()
       OperationResult opRes = _trx->remove(_collection->name, toRemove, options);
       if (isMultiple) {
-        TRI_ASSERT(opRes.successful());
+        TRI_ASSERT(opRes.ok());
         VPackSlice removedList = opRes.slice();
         TRI_ASSERT(removedList.isArray());
         if (producesOutput) {
@@ -370,7 +370,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
               if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
                 result->emplaceValue(dstRow, _outRegOld, it.get("old"));
               }
-              handleResult(errorCode, ep->_options.ignoreErrors);
+              handleResult(errorCode, ep->_options.ignoreErrors, nullptr);
               ++iter;
             }
             ++dstRow;
@@ -383,7 +383,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
           dstRow += n;
         }
       } else {
-        errorCode = opRes.code;
+        errorCode = opRes.errorNumber();
         if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer &&
             ignoreDocumentNotFound) {
           // Ignore document not found on the DBserver:
@@ -392,7 +392,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
           result->emplaceValue(dstRow, _outRegOld, opRes.slice().get("old"));
         }
-        handleResult(errorCode, ep->_options.ignoreErrors);
+        handleResult(errorCode, ep->_options.ignoreErrors, nullptr);
         ++dstRow;
       }
     } else {
@@ -426,6 +426,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
 
+  std::string errorMessage;
   bool const producesOutput = (ep->_outVariableNew != nullptr);
 
   result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
@@ -449,11 +450,12 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
     if (!isMultiple) {
       // loop over the complete block. Well it is one element only
       for (size_t i = 0; i < n; ++i) {
-        AqlValue a = res->getValue(i, registerId);
+        AqlValue const& a = res->getValueReference(i, registerId);
 
         // only copy 1st row of registers inherited from previous frame(s)
         inheritRegisters(res, result.get(), i, dstRow);
 
+        errorMessage.clear();
         int errorCode = TRI_ERROR_NO_ERROR;
 
         if (!a.isObject()) {
@@ -463,18 +465,21 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           if (!ep->_options.consultAqlWriteFilter ||
               !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
             OperationResult opRes = _trx->insert(_collection->name, a.slice(), options); 
-            errorCode = opRes.code;
+            errorCode = opRes.errorNumber();
 
             if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
               // return $NEW
               result->emplaceValue(dstRow, _outRegNew, opRes.slice().get("new"));
-            }
+            } 
+            if (errorCode != TRI_ERROR_NO_ERROR) {
+              errorMessage.assign(opRes.errorMessage());
+            } 
           } else {
             errorCode = TRI_ERROR_NO_ERROR;
           }
         }
 
-        handleResult(errorCode, ep->_options.ignoreErrors);
+        handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
         ++dstRow;
       }
       // done with a block
@@ -482,7 +487,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
       babyBuilder.clear();
       babyBuilder.openArray();
       for (size_t i = 0; i < n; ++i) {
-        AqlValue a = res->getValue(i, registerId);
+        AqlValue const& a = res->getValueReference(i, registerId);
 
         // only copy 1st row of registers inherited from previous frame(s)
         inheritRegisters(res, result.get(), i, dstRow);
@@ -506,7 +511,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           TRI_ASSERT(resultList.isArray());
           auto iter = VPackArrayIterator(resultList);
           for (size_t i = 0; i < n; ++i) {
-            AqlValue a = res->getValue(i, registerId);
+            AqlValue const& a = res->getValueReference(i, registerId);
             if (!ep->_options.consultAqlWriteFilter ||
                 !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
               TRI_ASSERT(iter.valid());
@@ -605,6 +610,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
       AqlValue const& a = res->getValueReference(i, docRegisterId);
 
+      errorMessage.clear();
       int errorCode = TRI_ERROR_NO_ERROR;
 
       if (a.isObject()) {
@@ -619,9 +625,9 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
         }
       } else {
         errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
-        errorMessage += std::string("expecting 'Object', got: ") +
-                        a.slice().typeName() + std::string(" while handling: ") +
-                        _exeNode->getTypeString();
+        errorMessage = std::string("expecting 'Object', got: ") +
+                       a.slice().typeName() + std::string(" while handling: ") +
+                       _exeNode->getTypeString();
       }
 
       if (errorCode == TRI_ERROR_NO_ERROR) {
@@ -670,7 +676,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     // fetch old revision
     OperationResult opRes = _trx->update(_collection->name, toUpdate, options); 
     if (!isMultiple) {
-      int errorCode = opRes.code;
+      int errorCode = opRes.errorNumber();
 
       if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
         if (ep->_outVariableOld != nullptr) {
@@ -687,6 +693,12 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
           ignoreDocumentNotFound) {
         // Ignore document not found on the DBserver:
         errorCode = TRI_ERROR_NO_ERROR;
+      }
+            
+      if (errorCode != TRI_ERROR_NO_ERROR) {
+        errorMessage.assign(opRes.errorMessage());
+      } else {
+        errorMessage.clear();
       }
 
       handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
@@ -813,6 +825,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
       // only copy 1st row of registers inherited from previous frame(s)
       inheritRegisters(res, result.get(), i, dstRow);
 
+      errorMessage.clear();
       errorCode = TRI_ERROR_NO_ERROR;
 
       bool tookThis = false;
@@ -842,7 +855,6 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
               } else {
                 updateBuilder = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
               }
-
             } else {
               errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
             }
@@ -908,10 +920,15 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         }
       } else {
         OperationResult opRes = _trx->insert(_collection->name, toInsert, options);
-        errorCode = opRes.code; 
+        errorCode = opRes.errorNumber(); 
 
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
           result->emplaceValue(dstRow - 1, _outRegNew, opRes.slice().get("new"));
+        }
+        if (errorCode != TRI_ERROR_NO_ERROR) {
+          errorMessage.assign(opRes.errorMessage());
+        } else {
+          errorMessage.clear();
         }
         handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
       }
@@ -957,11 +974,16 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           // update
           opRes = _trx->update(_collection->name, toUpdate, options);
         }
-        errorCode = opRes.code;
+        errorCode = opRes.errorNumber();
 
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
           // store $NEW
           result->emplaceValue(dstRow - 1, _outRegNew, opRes.slice().get("new"));
+        }
+        if (errorCode != TRI_ERROR_NO_ERROR) {
+          errorMessage.assign(opRes.errorMessage());
+        } else {
+          errorMessage.clear();
         }
         handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
       }
@@ -1044,6 +1066,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
       AqlValue const& a = res->getValueReference(i, docRegisterId);
 
+      errorMessage.clear();
       int errorCode = TRI_ERROR_NO_ERROR;
 
       if (a.isObject()) {
@@ -1058,9 +1081,9 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
         }
       } else {
         errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
-        errorMessage += std::string("expecting 'Object', got: ") +
-                        a.slice().typeName() + std::string(" while handling: ") +
-                        _exeNode->getTypeString();
+        errorMessage = std::string("expecting 'Object', got: ") +
+                       a.slice().typeName() + std::string(" while handling: ") +
+                       _exeNode->getTypeString();
       }
 
       if (errorCode == TRI_ERROR_NO_ERROR) {
@@ -1106,7 +1129,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     // fetch old revision
     OperationResult opRes = _trx->replace(_collection->name, toUpdate, options); 
     if (!isMultiple) {
-      int errorCode = opRes.code;
+      int errorCode = opRes.errorNumber();
 
       if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
         if (ep->_outVariableOld != nullptr) {
@@ -1123,6 +1146,12 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
           ignoreDocumentNotFound) {
         // Ignore document not found on the DBserver:
         errorCode = TRI_ERROR_NO_ERROR;
+      }
+            
+      if (errorCode != TRI_ERROR_NO_ERROR) {
+        errorMessage.assign(opRes.errorMessage());
+      } else {
+        errorMessage.clear();
       }
       handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
       ++dstRow;

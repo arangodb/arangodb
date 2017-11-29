@@ -141,7 +141,7 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(400)
         doc.parsed_response['errorNum'].should eq(600)
-        doc.parsed_response['errorMessage'].should eq("SyntaxError: Unexpected token n in JSON at position 2")
+        doc.parsed_response['errorMessage'].should eq("VPackError error: Expecting '\"' or '}'")
       end
 
       it "creating a collection with a null body" do

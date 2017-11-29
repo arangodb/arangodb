@@ -209,7 +209,7 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
     uint64_t operationCount = 16 * 1024 * 1024;
     std::atomic<uint64_t> hitCount(0);
     std::atomic<uint64_t> missCount(0);
-    auto worker = [&manager, &cache, initialInserts, operationCount, &hitCount,
+    auto worker = [&cache, initialInserts, operationCount, &hitCount,
                    &missCount](uint64_t lower, uint64_t upper) -> void {
       // fill with some initial data
       for (uint64_t i = 0; i < initialInserts; i++) {

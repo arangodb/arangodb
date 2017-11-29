@@ -44,15 +44,7 @@ class VstCommTask final : public GeneralCommTask {
 
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
-  void addResponse(GeneralResponse* response, RequestStatistics* stat) override {
-    VstResponse* vstResponse = dynamic_cast<VstResponse*>(response);
-
-    if (vstResponse == nullptr) {
-      throw std::logic_error("invalid response or response Type");
-    }
-
-    addResponse(vstResponse, stat);
-  }
+  void addResponse(GeneralResponse*, RequestStatistics*) override;
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
@@ -68,8 +60,9 @@ class VstCommTask final : public GeneralCommTask {
 
   void handleAuthHeader(VPackSlice const& header, uint64_t messageId);
 
-  void handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, uint64_t id) override {
-    VstResponse response(code, id);
+  void handleSimpleError(rest::ResponseCode code, GeneralRequest const& req,
+                         uint64_t mid) override {
+    VstResponse response(code, mid);
     response.setContentType(req.contentTypeResponse());
     addResponse(&response, nullptr);
   }
@@ -84,8 +77,6 @@ class VstCommTask final : public GeneralCommTask {
   // reets the internal state this method can be called to clean up when the
   // request handling aborts prematurely
   void closeTask(rest::ResponseCode code = rest::ResponseCode::SERVER_ERROR);
-
-  void addResponse(VstResponse*, RequestStatistics* stat);
 
  private:
   using MessageID = uint64_t;
@@ -142,6 +133,8 @@ class VstCommTask final : public GeneralCommTask {
   bool getMessageFromMultiChunks(
       ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
       char const* vpackBegin, char const* chunkEnd);
+  
+private:
 
   /// Is the current user authorized
   bool _authorized;

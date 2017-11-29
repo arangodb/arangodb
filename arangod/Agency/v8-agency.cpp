@@ -135,16 +135,11 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   write_ret_t ret = agent->write(query);
 
   if (ret.accepted) {  // Leading
-
-    size_t errors = 0;
     Builder body;
     body.openObject();
     body.add("results", VPackValue(VPackValueType::Array));
     for (auto const& index : ret.indices) {
       body.add(VPackValue(index));
-      if (index == 0) {
-        errors++;
-      }
     }
     body.close();
     body.close();

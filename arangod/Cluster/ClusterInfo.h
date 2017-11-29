@@ -66,7 +66,7 @@ class CollectionInfoCurrent {
 
   CollectionInfoCurrent& operator=(CollectionInfoCurrent&&) = delete;
 
-  ~CollectionInfoCurrent();
+  virtual ~CollectionInfoCurrent();
 
  public:
   bool add(ShardID const& shardID, VPackSlice slice) {
@@ -125,10 +125,9 @@ class CollectionInfoCurrent {
 
   std::unordered_map<ShardID, int> errorNum() const {
     std::unordered_map<ShardID, int> m;
-    int s;
 
     for (auto const& it: _vpacks) {
-      s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum", 0);
+      int s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum", 0);
       m.insert(std::make_pair(it.first, s));
     }
     return m;
@@ -138,7 +137,7 @@ class CollectionInfoCurrent {
   /// @brief returns the current leader and followers for a shard
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<ServerID> servers(ShardID const& shardID) const {
+  virtual std::vector<ServerID> servers(ShardID const& shardID) const {
     std::vector<ServerID> v;
 
     auto it = _vpacks.find(shardID);
@@ -247,7 +246,7 @@ class ClusterInfo {
   /// @brief shuts down library
   //////////////////////////////////////////////////////////////////////////////
 
-  ~ClusterInfo();
+  virtual ~ClusterInfo();
 
  public:
   static void createInstance(AgencyCallbackRegistry*);
@@ -316,7 +315,7 @@ class ClusterInfo {
   /// @brief ask about all collections
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::shared_ptr<LogicalCollection>> const getCollections(
+  virtual std::vector<std::shared_ptr<LogicalCollection>> const getCollections(
       DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -334,7 +333,7 @@ class ClusterInfo {
   /// If it is not found in the cache, the cache is reloaded once.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(
+  virtual std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(
       DatabaseID const&, CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -516,7 +515,9 @@ class ClusterInfo {
   std::vector<std::string> getFailedServers() { MUTEX_LOCKER(guard, _failedServersMutex); return _failedServers; }
   void setFailedServers(std::vector<std::string> const& failedServers) { MUTEX_LOCKER(guard, _failedServersMutex); _failedServers = failedServers; }
 
-  std::unordered_map<ServerID, std::string> getServerAliases();
+  std::unordered_map<ServerID, std::string> getServers();
+
+  virtual std::unordered_map<ServerID, std::string> getServerAliases();
   
  private:
 

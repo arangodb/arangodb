@@ -32,14 +32,13 @@
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
+#include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-dispatcher.h"
-#include "VocBase/AuthInfo.h"
-#include "VocBase/modes.h"
 #include "VocBase/vocbase.h"
 
 #include <v8.h>
@@ -83,7 +82,8 @@ std::vector<std::string> Databases::list(std::string const& user) {
       std::vector<std::string> names;
       std::vector<std::string> dbs = databaseFeature->getDatabaseNamesCoordinator();
       for (std::string const& db : dbs) {
-        if (auth->canUseDatabase(user, db) != AuthLevel::NONE) {
+        if (!auth->isActive() ||
+            auth->authInfo()->canUseDatabase(user, db) != AuthLevel::NONE) {
           names.push_back(db);
         }
       }
@@ -123,7 +123,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected type for 'id' attribute");
       }
-      result.add("path", value.get("none"));
+      result.add("path", VPackValue("none"));
       result.add("isSystem", VPackValue(name[0] == '_'));
     }
   } else {
@@ -139,15 +139,13 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 arangodb::Result Databases::create(std::string const& dbName,
                                    VPackSlice const& inUsers,
                                    VPackSlice const& inOptions) {
-  if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
-    return Result(TRI_ERROR_ARANGO_READ_ONLY);
-  }
   auto auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
-    AuthLevel level = ExecContext::CURRENT->systemAuthLevel();
-
-    if (level != AuthLevel::RW) {
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr) {
+    if (!exec->isAdminUser()) {
       return TRI_ERROR_FORBIDDEN;
+    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 
@@ -178,7 +176,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     } else if (user.hasKey("user")) {
       name = user.get("user");
     }
-    if (!name.isString()) {
+    if (!name.isString()) { // empty names are silently ignored later
       return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
     }
     sanitizedUsers.add("username", name);
@@ -208,9 +206,7 @@ arangodb::Result Databases::create(std::string const& dbName,
   }
   sanitizedUsers.close();
 
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
   if (databaseFeature == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
@@ -263,7 +259,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     TRI_ASSERT(vocbase->name() == dbName);
 
     // we need to add the permissions before running the upgrade script
-    if (auth->isActive() && ExecContext::CURRENT != nullptr) {
+    if (ExecContext::CURRENT != nullptr) {
       // ignore errors here Result r =
       auth->authInfo()->updateUser(
           ExecContext::CURRENT->user(), [&](AuthUserEntry& entry) {
@@ -315,7 +311,8 @@ arangodb::Result Databases::create(std::string const& dbName,
     TRI_ASSERT(!vocbase->isDangling());
 
     // we need to add the permissions before running the upgrade script
-    if (auth->isActive() && ExecContext::CURRENT != nullptr) {
+    if (ServerState::instance()->isSingleServer() &&
+        ExecContext::CURRENT != nullptr) {
       // ignore errors here Result r =
       auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
                                    [&](AuthUserEntry& entry) {
@@ -383,15 +380,16 @@ arangodb::Result Databases::create(std::string const& dbName,
 arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
                                  std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
-  if (ExecContext::CURRENT != nullptr) {
-    AuthLevel level = ExecContext::CURRENT->systemAuthLevel();
-
-    if (level != AuthLevel::RW) {
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr) {
+    if (exec->systemAuthLevel() != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
+    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 
-  V8Context* ctx = V8DealerFeature::DEALER->enterContext(systemVocbase, true);
+  auto ctx = V8DealerFeature::DEALER->enterContext(systemVocbase, true);
   if (ctx == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
   }
@@ -405,9 +403,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
     // Arguments are already checked, there is exactly one argument
-    auto databaseFeature =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database");
+    DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
     TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(dbName);
 
     if (vocbase == nullptr) {
@@ -442,10 +438,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
     }
 
   } else {
-    DatabaseFeature* databaseFeature =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database");
-    int res = databaseFeature->dropDatabase(dbName, false, true);
+    int res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
@@ -464,11 +457,15 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
         TRI_V8_ASCII_STRING(isolate, "reload routing"), false);
   }
 
+  Result res;
   auto auth = FeatureCacheFeature::instance()->authenticationFeature();
   if (ServerState::instance()->isCoordinator() ||
       !ServerState::instance()->isRunningInCluster()) {
-    auth->authInfo()->enumerateUsers(
-        [&](AuthUserEntry& entry) { entry.removeDatabase(dbName); });
+    res = auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
+      entry.removeDatabase(dbName);
+    });
   }
-  return Result();
+  return res;
 }
+
+

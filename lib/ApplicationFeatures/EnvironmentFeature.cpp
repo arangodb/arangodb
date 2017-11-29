@@ -47,6 +47,17 @@ EnvironmentFeature::EnvironmentFeature(
 }
 
 void EnvironmentFeature::prepare() {
+#ifdef __linux__
+  try {
+    if (basics::FileUtils::exists("/proc/version")) {
+      std::string value = basics::StringUtils::trim(basics::FileUtils::slurp("/proc/version"));
+      LOG_TOPIC(INFO, Logger::FIXME) << "detected operating system: " << value;
+    }
+  } catch (...) {
+    // ignore any errors as the log output is just informational
+  }
+#endif
+
   if (sizeof(void*) == 4) {
     // 32 bit build
     LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
@@ -56,6 +67,26 @@ void EnvironmentFeature::prepare() {
   }
 
 #ifdef __linux__
+  {
+    char const* v = getenv("MALLOC_CONF");
+    
+    if (v != nullptr) {
+      // report value of MALLOC_CONF environment variable
+      LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
+          << "found custom MALLOC_CONF environment value '" << v << "'";
+    }
+  }
+
+
+  // test local ipv6 support
+  try {
+    if (!basics::FileUtils::exists("/proc/net/if_inet6")) {
+      LOG_TOPIC(INFO, arangodb::Logger::COMMUNICATION) << "IPv6 support seems to be disabled";
+    }
+  } catch (...) {
+    // file not found
+  }
+
   // test local ipv4 port range
   try {
     std::string value =
@@ -98,16 +129,18 @@ void EnvironmentFeature::prepare() {
   }
 
 #ifdef __GLIBC__
-  // test presence of environment variable GLIBCXX_FORCE_NEW
-  char const* v = getenv("GLIBCXX_FORCE_NEW");
+  {
+    // test presence of environment variable GLIBCXX_FORCE_NEW
+    char const* v = getenv("GLIBCXX_FORCE_NEW");
 
-  if (v == nullptr) {
-    // environment variable not set
-    LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
-        << "environment variable GLIBCXX_FORCE_NEW' is not set. "
-        << "it is recommended to set it to some value to avoid unnecessary memory pooling in glibc++";
-    LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
-        << "execute 'export GLIBCXX_FORCE_NEW=1'";
+    if (v == nullptr) {
+      // environment variable not set
+      LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
+          << "environment variable GLIBCXX_FORCE_NEW' is not set. "
+          << "it is recommended to set it to some value to avoid unnecessary memory pooling in glibc++";
+      LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
+          << "execute 'export GLIBCXX_FORCE_NEW=1'";
+    }
   }
 #endif
   

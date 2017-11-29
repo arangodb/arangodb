@@ -63,7 +63,6 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _importStructure(true),
       _progress(true),
       _overwrite(true),
-      _recycleIds(false),
       _force(false),
       _ignoreDistributeShardsLikeErrors(false),
       _clusterMode(false),
@@ -86,6 +85,9 @@ void RestoreFeature::collectOptions(
       "--collection",
       "restrict to collection name (can be specified multiple times)",
       new VectorParameter<StringParameter>(&_collections));
+
+  options->addObsoleteOption("--recycle-ids", 
+                             "collection ids are now handled automatically", false);
 
   options->addOption("--batch-size",
                      "maximum size for individual data batches (in bytes)",
@@ -113,9 +115,6 @@ void RestoreFeature::collectOptions(
 
   options->addOption("--overwrite", "overwrite collections if they exist",
                      new BooleanParameter(&_overwrite));
-
-  options->addOption("--recycle-ids", "recycle collection ids from dump",
-                     new BooleanParameter(&_recycleIds));
 
   options->addOption("--default-number-of-shards",
                      "default value for numberOfShards if not specified",
@@ -230,8 +229,7 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
   std::string url =
     "/_api/replication/restore-collection"
     "?overwrite=" +
-    std::string(_overwrite ? "true" : "false") + "&recycleIds=" +
-    std::string(_recycleIds ? "true" : "false") + "&force=" +
+    std::string(_overwrite ? "true" : "false") + "&force=" +
     std::string(_force ? "true" : "false") +
     "&ignoreDistributeShardsLikeErrors=" +
     std::string(_ignoreDistributeShardsLikeErrors ? "true":"false");
@@ -317,8 +315,7 @@ int RestoreFeature::sendRestoreData(std::string const& cname,
                                     char const* buffer, size_t bufferSize,
                                     std::string& errorMsg) {
   std::string const url = "/_api/replication/restore-data?collection=" +
-                          StringUtils::urlEncode(cname) + "&recycleIds=" +
-                          (_recycleIds ? "true" : "false") + "&force=" +
+                          StringUtils::urlEncode(cname) + "&force=" +
                           (_force ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(
@@ -345,9 +342,9 @@ int RestoreFeature::sendRestoreData(std::string const& cname,
   return TRI_ERROR_NO_ERROR;
 }
 
-static bool SortCollections(VPackSlice const& l, VPackSlice const& r) {
-  VPackSlice const left = l.get("parameters");
-  VPackSlice const right = r.get("parameters");
+static bool SortCollections(VPackBuilder const& l, VPackBuilder const& r) {
+  VPackSlice const left = l.slice().get("parameters");
+  VPackSlice const right = r.slice().get("parameters");
 
   // First we sort by distribution.
   // We first have to create collections defining the distribution.
@@ -389,8 +386,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
     std::vector<std::string> const files =
         FileUtils::listFiles(_inputDirectory);
     std::string const suffix = std::string(".structure.json");
-    std::vector<std::shared_ptr<VPackBuilder>> collectionBuilders;
-    std::vector<VPackSlice> collections;
+    std::vector<VPackBuilder> collections;
 
     // Step 1 determine all collections to process
     {
@@ -413,9 +409,8 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         }
 
         std::string const fqn = _inputDirectory + TRI_DIR_SEPARATOR_STR + file;
-        std::shared_ptr<VPackBuilder> fileContentBuilder =
-            arangodb::basics::VelocyPackHelper::velocyPackFromFile(fqn);
-        VPackSlice const fileContent = fileContentBuilder->slice();
+        VPackBuilder fileContentBuilder = basics::VelocyPackHelper::velocyPackFromFile(fqn);
+        VPackSlice const fileContent = fileContentBuilder.slice();
 
         if (!fileContent.isObject()) {
           errorMsg = "could not read collection structure file '" + fqn + "'";
@@ -464,27 +459,19 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         }
 
         if (overwriteName) {
-          // TODO MAX
-          // Situation:
-          // Ich habe ein Json-Object von Datei (teile des Inhalts im Zweifel
-          // unbekannt)
-          // Es gibt ein Sub-Json-Object "parameters" mit einem Attribute "name"
-          // der gesetzt ist.
-          // Ich muss nur diesen namen überschreiben, der Rest soll identisch
-          // bleiben.
+          // TODO: we have a JSON object with sub-object "parameters" with
+          // attribute "name". we only want to replace this. how?
         } else {
-          collectionBuilders.emplace_back(fileContentBuilder);
-          collections.emplace_back(fileContent);
+          collections.emplace_back(std::move(fileContentBuilder));
         }
       }
     }
-
     std::sort(collections.begin(), collections.end(), SortCollections);
-
+    
     StringBuffer buffer(true);
-
     // step2: run the actual import
-    for (VPackSlice const& collection : collections) {
+    for (VPackBuilder const& b : collections) {
+      VPackSlice const collection = b.slice();
       VPackSlice const parameters = collection.get("parameters");
       VPackSlice const indexes = collection.get("indexes");
       std::string const cname =
@@ -551,7 +538,6 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
             if (buffer.reserve(16384) != TRI_ERROR_NO_ERROR) {
               TRI_TRACKED_CLOSE_FILE(fd);
               errorMsg = "out of memory";
-
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
@@ -653,8 +639,12 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         }
       }
     }
+  } catch (std::exception const& ex) {
+    errorMsg = "arangorestore terminated because of an unhandled exception: ";
+    errorMsg.append(ex.what());
+    return TRI_ERROR_INTERNAL;
   } catch (...) {
-    errorMsg = "out of memory";
+    errorMsg = "arangorestore out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   return TRI_ERROR_NO_ERROR;

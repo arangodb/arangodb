@@ -156,24 +156,24 @@ std::vector<bool> Store::applyTransactions(query_t const& query) {
       for (auto const& i : VPackArrayIterator(query->slice())) {
         MUTEX_LOCKER(storeLocker, _storeLock);
         switch (i.length()) {
-        case 1:  // No precondition
-          success.push_back(applies(i[0]));
-          break;
-        case 2: // precondition + uuid
-        case 3:
-          if (check(i[1]).successful()) {
+          case 1:  // No precondition
             success.push_back(applies(i[0]));
-          } else {  // precondition failed
-            LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+            break;
+          case 2: // precondition + uuid
+          case 3:
+            if (check(i[1]).successful()) {
+              success.push_back(applies(i[0]));
+            } else {  // precondition failed
+              LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+              success.push_back(false);
+            }
+            break;
+          default:  // Wrong
+            LOG_TOPIC(ERR, Logger::AGENCY)
+              << "We can only handle log entry with or without precondition! "
+              << " however, We received " << i.toJson();
             success.push_back(false);
-          }
-          break;
-        default:  // Wrong
-          LOG_TOPIC(ERR, Logger::AGENCY)
-            << "We can only handle log entry with or without precondition! "
-            << " However, We received " << i.toJson();
-          success.push_back(false);
-          break;
+            break;
         }
       }
 
@@ -183,9 +183,10 @@ std::vector<bool> Store::applyTransactions(query_t const& query) {
         _cv.signal();
       }
 
-    } catch (std::exception const& e) {  // Catch any erorrs
+    } catch (std::exception const& e) {  // Catch any errors
       LOG_TOPIC(ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " "
                                      << e.what();
+      success.push_back(false);
     }
 
   } else {
@@ -201,38 +202,32 @@ check_ret_t Store::applyTransaction(Slice const& query) {
 
   check_ret_t ret(true);
 
-  try {
-    MUTEX_LOCKER(storeLocker, _storeLock);
-    switch (query.length()) {
-    case 1:  // No precondition
+  MUTEX_LOCKER(storeLocker, _storeLock);
+  switch (query.length()) {
+  case 1:  // No precondition
+    applies(query[0]);
+    break;
+  case 2:  // precondition
+  case 3:  // precondition + clientId
+    ret = check(query[1], CheckMode::FULL);
+    if (ret.successful()) {
       applies(query[0]);
-      break;
-    case 2:  // precondition
-    case 3:  // precondition + clientId
-      ret = check(query[1], CheckMode::FULL);
-      if (ret.successful()) {
-        applies(query[0]);
-      } else {  // precondition failed
-        LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
-      }
-      break;
-    default:  // Wrong
-      LOG_TOPIC(ERR, Logger::AGENCY)
-        << "We can only handle log entry with or without precondition! "
-        << "However we received " << query.toJson(); 
-      break;
-    }  
-    // Wake up TTL processing
-    {
-      CONDITION_LOCKER(guard, _cv);
-      _cv.signal();
+    } else {  // precondition failed
+      LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
     }
-      
-  } catch (std::exception const& e) {  // Catch any erorrs
+    break;
+  default:  // Wrong
     LOG_TOPIC(ERR, Logger::AGENCY)
-      << __FILE__ << ":" << __LINE__ << " " << e.what();
+      << "We can only handle log entry with or without precondition! "
+      << "However we received " << query.toJson(); 
+    break;
+  }  
+  // Wake up TTL processing
+  {
+    CONDITION_LOCKER(guard, _cv);
+    _cv.signal();
   }
-    
+      
   return ret;
   
 }
@@ -386,7 +381,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
     Node node("precond");
 
     // Check is guarded in ::apply
-    bool found = (_node.exists(pv).size() == pv.size());
+    bool found = _node.has(pv);
     if (found) {
       node = _node(pv);
     }
@@ -483,8 +478,15 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (mode == FIRST_FAIL) {
             break;
           }
+        }  else {
+          // Objects without any of the above cases are not considered to
+          // be a precondition:
+          LOG_TOPIC(WARN, Logger::AGENCY)
+            << "Malformed object-type precondition was ignored: "
+            << "key: " << precond.key.toJson() << " value: "
+            << precond.value.toJson();
         }
-      } 
+      }
     } else {
       if (node != precond.value) {
         ret.push_back(precond.key);

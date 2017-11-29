@@ -36,6 +36,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Cluster/ServerState.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -50,6 +51,9 @@ struct HealthRecord {
   std::string endpoint;
   std::string lastAcked;
   std::string hostId;
+  size_t version;
+
+  HealthRecord() : version(0) {}
 
   HealthRecord(
     std::string const& sn, std::string const& ep, std::string const& ho) :
@@ -64,15 +68,32 @@ struct HealthRecord {
   }
 
   HealthRecord& operator=(Node const& node) {
+    version = 0;
+    if (shortName.empty()) {
+      shortName = node("ShortName").getString();
+    }
+    if (endpoint.empty()) {
+      endpoint = node("Endpoint").getString();
+    }
     if (node.has("Status")) {
-      syncStatus = node("SyncStatus").toJson();
-      status = node("Status").toJson();
-      if (node.has("SyncTime")) {
-        lastAcked = node("LastAcked").toJson();
-        syncTime = node("SyncTime").toJson();
+      status = node("Status").getString();
+      if (node.has("SyncStatus")) { // New format
+        version = 2;
+        syncStatus = node("SyncStatus").getString();
+        if (node.has("SyncTime")) {
+          lastAcked = node("LastAcked").getString();
+          syncTime = node("SyncTime").getString();
+        }
+      } else if (node.has("LastHeartbeatStatus")) {
+        version = 1;
+        syncStatus = node("LastHeartbeatStatus").getString();
+        if (node.has("LastHeartbeatSent")) {
+          lastAcked = node("LastHeartbeatAcked").getString();
+          syncTime = node("LastHeartbeatSent").getString();
+        }
       }
       if (node.has("Host")) {
-        hostId = node("Host").toJson();
+        hostId = node("Host").getString();
       }
     }
     return *this;
@@ -147,7 +168,7 @@ static std::string const targetShortID = "/Target/MapUniqueToShortID/";
 static std::string const currentServersRegisteredPrefix =
   "/Current/ServersRegistered";
 static std::string const foxxmaster = "/Current/Foxxmaster";
-
+static std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
 
 void Supervision::upgradeOne(Builder& builder) {
   _lock.assertLockedByCurrentThread();
@@ -181,15 +202,49 @@ void Supervision::upgradeZero(Builder& builder) {
         builder.add(VPackValue(failedServersPrefix));
         { VPackObjectBuilder oo(&builder);
           if (fails.length() > 0) {
-            for (auto const& fail : VPackArrayIterator(fails)) {
+            for (VPackSlice fail : VPackArrayIterator(fails)) {
               builder.add(VPackValue(fail.copyString()));
               { VPackObjectBuilder ooo(&builder); }
+            }
+          }
+        }}} // trx
+  }
+}
+
+void Supervision::upgradeHealthRecords(Builder& builder) {
+  _lock.assertLockedByCurrentThread();
+  // "/arango/Supervision/health" is in old format
+  Builder b;
+  size_t n = 0;
+  
+  if (_snapshot.has(healthPrefix)) {
+    HealthRecord hr;
+    { VPackObjectBuilder oo(&b);
+      for (auto recPair : _snapshot(healthPrefix).children()) {
+        if (recPair.second->has("ShortName") &&
+            recPair.second->has("Endpoint")) {
+          hr = *recPair.second;
+          if (hr.version == 1) {
+            ++n;
+            b.add(VPackValue(recPair.first));
+            { VPackObjectBuilder ooo(&b);
+              hr.toVelocyPack(b);
+              
             }
           }
         }
       }
     }
   }
+  
+  if (n>0) {
+    { VPackArrayBuilder trx(&builder);
+      { VPackObjectBuilder o(&builder);
+        b.add(healthPrefix, b.slice());
+      }
+    }
+  }
+  
 }
 
 // Upgrade agency, guarded by wakeUp
@@ -202,7 +257,11 @@ void Supervision::upgradeAgency() {
     upgradeZero(builder);
     fixPrototypeChain(builder);
     upgradeOne(builder);
+    upgradeHealthRecords(builder);
   }
+
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Upgrading the agency:" << builder.toJson();
 
   if (builder.slice().length() > 0) {
     generalTransaction(_agent, builder);
@@ -251,25 +310,35 @@ void handleOnStatusCoordinator(
   Agent* agent, Node const& snapshot, HealthRecord& persisted,
   HealthRecord& transisted, std::string const& serverID) {
   
-  if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
-    
-    std::string currentFoxxmaster;
-    if (snapshot.has(foxxmaster)) {
-      currentFoxxmaster = snapshot(foxxmaster).getString();
-    }
-    
-    if (serverID == currentFoxxmaster) {
+  if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
+    // if the current foxxmaster server failed => reset the value to ""
+    if (snapshot.has(foxxmaster) && snapshot(foxxmaster).getString() == serverID) {
       VPackBuilder create;
       { VPackArrayBuilder tx(&create);
         { VPackObjectBuilder d(&create);
-          create.add(foxxmaster, VPackValue(serverID)); }}
+          create.add(foxxmaster, VPackValue("")); }}
       singleWriteTransaction(agent, create);
     }
     
   }
-
 }
 
+void handleOnStatusSingle(
+   Agent* agent, Node const& snapshot, HealthRecord& persisted,
+   HealthRecord& transisted, std::string const& serverID) {
+  // if the current leader server failed => reset the value to ""
+  if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
+    
+    if (snapshot.has(asyncReplLeader) && snapshot(asyncReplLeader).getString() == serverID) {
+      VPackBuilder create;
+      { VPackArrayBuilder tx(&create);
+        { VPackObjectBuilder d(&create);
+          create.add(asyncReplLeader, VPackValue("")); }}
+      singleWriteTransaction(agent, create);
+    }
+    
+  }
+}
   
 void handleOnStatus(
   Agent* agent, Node const& snapshot, HealthRecord& persisted,
@@ -282,9 +351,11 @@ void handleOnStatus(
   } else if (serverID.compare(0,4,"CRDN") == 0) {
     handleOnStatusCoordinator(
       agent, snapshot, persisted, transisted, serverID);
+  } else if (serverID.compare(0,4,"SNGL") == 0) {
+    handleOnStatusSingle(agent, snapshot, persisted, transisted, serverID);
   } else {
     LOG_TOPIC(ERR, Logger::SUPERVISION)
-      << "Unknown server type. No supervision action taken.";
+      << "Unknown server type. No supervision action taken. " << serverID;
   }
   
 }
@@ -301,7 +372,9 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   auto const& serversRegistered = _snapshot(currentServersRegisteredPrefix);
   std::vector<std::string> todelete;
   for (auto const& machine : _snapshot(healthPrefix).children()) {
-    if (machine.first.compare(0, 2, (type == "DBServers") ? "PR" : "CR") == 0) {
+    if ((type == "DBServers" && machine.first.compare(0,4,"PRMR") == 0) ||
+        (type == "Coordinators" && machine.first.compare(0,4,"CRDN") == 0) ||
+        (type == "Singles" && machine.first.compare(0,4,"SNGL") == 0)) {
       todelete.push_back(machine.first);
     }
   }
@@ -328,18 +401,18 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   for (auto const& machine : machinesPlanned) {
     std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
       lastStatus, serverID(machine.first),
-      shortName(_snapshot(targetShortID + serverID + "/ShortName").toJson());
+      shortName(_snapshot(targetShortID + serverID + "/ShortName").getString());
     
     // Endpoint
     std::string endpoint;
     std::string epPath = serverID + "/endpoint";
     if (serversRegistered.has(epPath)) {
-      endpoint = serversRegistered(epPath).toJson();
+      endpoint = serversRegistered(epPath).getString();
     }
     std::string hostId;
     std::string hoPath = serverID + "/host";
     if (serversRegistered.has(hoPath)) {
-      hostId = serversRegistered(hoPath).toJson();
+      hostId = serversRegistered(hoPath).getString();
     }
 
     // Health records from persistence, from transience and a new one
@@ -358,10 +431,10 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     // Sync.time is copied to Health.syncTime
     // Sync.status is copied to Health.syncStatus
     std::string syncTime = _transient.has(syncPrefix + serverID) ?
-      _transient(syncPrefix + serverID + "/time").toJson() :
+      _transient(syncPrefix + serverID + "/time").getString() :
       timepointToString(std::chrono::system_clock::time_point());
     std::string syncStatus = _transient.has(syncPrefix + serverID) ?
-      _transient(syncPrefix + serverID + "/status").toJson() : "UNKNOWN";
+      _transient(syncPrefix + serverID + "/status").getString() : "UNKNOWN";
 
     // Last change registered in sync (transient != sync)
     // Either now or value in transient
@@ -416,7 +489,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
           if (envelope != nullptr) {                       // Failed server
             TRI_ASSERT(
               envelope->slice().isArray() && envelope->slice()[0].isObject());
-            for (const auto& i : VPackObjectIterator(envelope->slice()[0])) {
+            for (VPackObjectIterator::ObjectPair i : VPackObjectIterator(envelope->slice()[0])) {
               pReport->add(i.key.copyString(), i.value);
             }
           }} // Operation
@@ -471,11 +544,14 @@ bool Supervision::updateSnapshot() {
 // All checks, guarded by main thread
 bool Supervision::doChecks() {
   _lock.assertLockedByCurrentThread();
-  check("DBServers");
-  check("Coordinators");
+  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY) == "DBServers");
+  check(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY));
+  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR) == "Coordinators");
+  check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));
+  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE) == "Singles");
+  check(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE));
   return true;
 }
-
 
 void Supervision::run() {
   // First wait until somebody has initialized the ArangoDB data, before

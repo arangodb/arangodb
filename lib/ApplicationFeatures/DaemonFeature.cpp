@@ -26,6 +26,7 @@
 #include <iostream>
 
 #include "Basics/FileUtils.h"
+#include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -221,6 +222,11 @@ int DaemonFeature::forkProcess() {
                                       << pid;
     return pid;
   }
+ 
+  TRI_ASSERT(pid == 0); // we are in the child
+
+  // child    
+  LogAppender::allowStdLogging(false);
 
   // change the file mode mask
   umask(0);
@@ -260,8 +266,21 @@ int DaemonFeature::forkProcess() {
     }
   }
 
+  remapStandardFileDescriptors();
+
+  return pid;
+}
+
+void DaemonFeature::remapStandardFileDescriptors() {
   // we're a daemon so there won't be a terminal attached
   // close the standard file descriptors and re-open them mapped to /dev/null
+
+  // close all descriptors
+  for (int i=getdtablesize(); i >= 0; --i){
+    close(i);
+  }
+
+  // open fd /dev/null
   int fd = open("/dev/null", O_RDWR | O_CREAT, 0644);
 
   if (fd < 0) {
@@ -269,27 +288,30 @@ int DaemonFeature::forkProcess() {
     FATAL_ERROR_EXIT();
   }
 
-  if (dup2(fd, STDIN_FILENO) < 0) {
+  // the following calls silently close and repoen the given fds
+  // to avoid concurrency issues
+  if (dup2(fd, STDIN_FILENO) != STDIN_FILENO) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "cannot re-map stdin to /dev/null";
     FATAL_ERROR_EXIT();
   }
 
-  if (dup2(fd, STDOUT_FILENO) < 0) {
+  if (dup2(fd, STDOUT_FILENO) != STDOUT_FILENO) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "cannot re-map stdout to /dev/null";
     FATAL_ERROR_EXIT();
   }
 
-  if (dup2(fd, STDERR_FILENO) < 0) {
+  if (dup2(fd, STDERR_FILENO) != STDERR_FILENO) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "cannot re-map stderr to /dev/null";
     FATAL_ERROR_EXIT();
   }
 
-  close(fd);
-
-  return 0;
+  // Do not close one of the recently opened fds
+  if(fd > 2) {
+    close(fd);
+  }
 }
 
 void DaemonFeature::writePidFile(int pid) {

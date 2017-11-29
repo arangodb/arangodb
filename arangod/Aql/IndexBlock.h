@@ -25,7 +25,6 @@
 #ifndef ARANGOD_AQL_INDEX_BLOCK_H
 #define ARANGOD_AQL_INDEX_BLOCK_H 1
 
-#include "Aql/BlockCollector.h"
 #include "Aql/DocumentProducingBlock.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"

@@ -110,6 +110,11 @@ void doAsyncWrite(T& socket, boost::asio::mutable_buffers_1 const& buffer,
   return boost::asio::async_write(socket, buffer, handler);
 }
 template <typename T>
+void doAsyncWrite(T& socket, std::vector<void const*> const& buffers,
+                  AsyncHandler const& handler) {
+  return boost::asio::async_write(socket, buffers, handler);
+}
+template <typename T>
 size_t doRead(T& socket, boost::asio::mutable_buffers_1 const& buffer,
               boost::system::error_code& ec) {
   return socket.read_some(buffer, ec);

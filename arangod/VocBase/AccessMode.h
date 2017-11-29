@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,10 @@ struct AccessMode {
     WRITE = 2,
     EXCLUSIVE = 4
   };
+  static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
+                AccessMode::Type::READ < AccessMode::Type::WRITE &&
+                AccessMode::Type::READ < AccessMode::Type::EXCLUSIVE,
+                "AccessMode::Type total order fail");
   
   static inline bool isRead(Type type) {
     return (type == Type::READ);

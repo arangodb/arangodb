@@ -32,8 +32,8 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Traverser.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -96,7 +96,7 @@ RestStatus RestSimpleHandler::execute() {
 }
 
 bool RestSimpleHandler::cancel() {
-  RestHandler::cancel();
+  RestVocbaseBaseHandler::cancel();
   return cancelQuery();
 }
 

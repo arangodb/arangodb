@@ -177,6 +177,14 @@
       this.events['mousedown .dygraph-rangesel-zoomhandle'] = this.stopUpdating.bind(this);
       this.events['mouseup .dygraph-rangesel-zoomhandle'] = this.startUpdating.bind(this);
 
+      // quick workaround for when serverToShow.target is not correctly populated...
+      if (options.serverToShow === undefined) {
+        options.serverToShow = {};
+      }
+      if (options.serverToShow.target === undefined && window.location.hash.indexOf('#node/') === 0) {
+        options.serverToShow.target = window.location.hash.split('/')[1];
+      }
+
       this.serverInfo = options.serverToShow;
 
       if (!this.serverInfo) {
@@ -734,7 +742,10 @@
       }
 
       if (self.server !== '-local-') {
-        urlParams += '&type=short&DBserver=' + self.serverInfo.target;
+        urlParams += '&type=short';
+        if (self.serverInfo.target) {
+          urlParams += '&DBserver=' + self.serverInfo.target;
+        }
 
         if (!self.history.hasOwnProperty(self.server)) {
           self.history[self.server] = {};

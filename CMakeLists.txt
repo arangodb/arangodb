@@ -137,15 +137,21 @@ else ()
   string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
 endif ()
 
-configure_file (
+configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h"
   NEWLINE_STYLE UNIX
 )
 
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Pipeline/Jenkinsfile.groovy.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Pipeline/Jenkinsfile.groovy"
+  NEWLINE_STYLE UNIX @ONLY
+)
+
 if (NOT DEFINED GENERATE_BUILD_DATE OR GENERATE_BUILD_DATE)
   set(GENERATE_BUILD_DATE ON CACHE INTERNAL "whether we should generate the build date")
-  configure_file (
+  configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-date.h.in"
     "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h"
     NEWLINE_STYLE UNIX
@@ -193,7 +199,7 @@ else ()
   set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
 endif()
 
-configure_file (
+configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-repository.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-repository.h"
   NEWLINE_STYLE UNIX
@@ -352,9 +358,9 @@ endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.4")
-    message(FATAL_ERROR "ArangoDB requires GCC 5.4 or newer.")
-  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "6.9.9")
-    message(FATAL_ERROR "ArangoDB doesn't support GCC 7.0 yet.")
+    message(FATAL_ERROR "ArangoDB requires g++ 5.4 or newer.")
+  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "7.9.9")
+    message(FATAL_ERROR "ArangoDB doesn't support g++ 8.0 yet.")
   endif()
   set(BASE_C_FLAGS "${BASE_C_FLAGS} -std=gnu89")
 endif ()
@@ -433,6 +439,7 @@ include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X)
 
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
@@ -558,7 +565,7 @@ else()
 endif()
 
 include(debugInformation)
-find_program(FILE_EXECUTABLE file)
+find_program(READELF_EXECUTABLE readelf)
 detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
 
 ################################################################################
@@ -872,7 +879,7 @@ include_directories(
 )
 
 ################################################################################
-## PATHS, installation, packages
+## PATHS, installation, packages, frontend
 ################################################################################
 
 if (MSVC)
@@ -882,6 +889,7 @@ if (MSVC)
 endif()
 
 include(ArangoDBInstall)
+include(frontend/aardvark)
 if (NOT(SKIP_PACKAGING))
   include(packages/packages)
 endif()
@@ -916,7 +924,7 @@ if (USE_MAINTAINER_MODE)
   endforeach ()
 
   add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
- 
+
   set(EXIT_CODE_FILES
     lib/Basics/exitcodes.h
     lib/Basics/exitcodes.cpp
@@ -1060,7 +1068,7 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 
 # if (VERBOSE)
 #   get_cmake_property(_variableNames VARIABLES)
-# 
+#
 #   foreach (_variableName ${_variableNames})
 #     message(STATUS "${_variableName}=${${_variableName}}")
 #   endforeach ()

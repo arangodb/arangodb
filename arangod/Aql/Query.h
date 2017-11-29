@@ -176,7 +176,7 @@ class Query {
   void registerErrorCustom(int, char const*);
 
   /// @brief register a warning
-  void registerWarning(int, char const* = nullptr);
+  virtual void registerWarning(int, char const* = nullptr);
   
   void prepare(QueryRegistry*, uint64_t queryHash);
 

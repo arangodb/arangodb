@@ -1347,7 +1347,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
                      arangodb::rest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/collection/" + p.first + "/truncate",
-                     std::shared_ptr<std::string>(), headers, nullptr, 60.0);
+                     std::shared_ptr<std::string>(), headers, nullptr, 600.0);
   }
   // Now listen to the results:
   unsigned int count;
@@ -1364,6 +1364,69 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   // Note that nrok is always at least 1!
   if (nrok < shards->size()) {
     return TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION;
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rotate the active journals for the collection on all DBServers
+////////////////////////////////////////////////////////////////////////////////
+
+int rotateActiveJournalOnAllDBServers(std::string const& dbname,
+                                      std::string const& collname) {
+  // Set a few variables needed for our work:
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
+
+  // First determine the collection ID from the name:
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(dbname, collname);
+  } catch (...) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  TRI_ASSERT(collinfo != nullptr);
+
+  // Some stuff to prepare cluster-intern requests:
+  // We have to contact everybody:
+  unsigned int expected = 0;
+  auto shards = collinfo->shardIds();
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  for (auto const& p : *shards) {
+    auto serverList = ci->getResponsibleServer(p.first);
+
+    for (auto& s : *serverList) {
+      auto headers =
+          std::make_unique<std::unordered_map<std::string, std::string>>();
+      cc->asyncRequest("", coordTransactionID, "server:" + s,
+                      arangodb::rest::RequestType::PUT,
+                      "/_db/" + StringUtils::urlEncode(dbname) +
+                          "/_api/collection/" + p.first + "/rotate",
+                      std::shared_ptr<std::string>(), headers, nullptr, 600.0);
+
+      ++expected;
+    }
+  }
+
+  // Now listen to the results:
+  unsigned int nrok = 0;
+  for (unsigned int count = expected; count > 0; count--) {
+    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+    if (res.status == CL_COMM_RECEIVED) {
+      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
+        nrok++;
+      }
+    }
+  }
+
+
+  // Note that nrok is always at least 1!
+  if (nrok < expected) {
+    return TRI_ERROR_FAILED;
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -2328,7 +2391,7 @@ int modifyDocumentOnCoordinator(
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
+int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWaitTime) {
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -2340,6 +2403,10 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   std::string url = std::string("/_admin/wal/flush?waitForSync=") +
                     (waitForSync ? "true" : "false") + "&waitForCollector=" +
                     (waitForCollector ? "true" : "false");
+  if (maxWaitTime >= 0.0) {
+    url += "&maxWaitTime=" + std::to_string(maxWaitTime);
+  }
+
   auto body = std::make_shared<std::string const>();
   for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
     auto headers =
@@ -2380,7 +2447,8 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
 std::unordered_map<std::string, std::vector<std::string>> distributeShards(
     uint64_t numberOfShards,
     uint64_t replicationFactor,
-    std::vector<std::string>& dbServers) {
+    std::vector<std::string>& dbServers,
+    bool warnAboutReplicationFactor) {
 
   std::unordered_map<std::string, std::vector<std::string>> shards;
 
@@ -2409,9 +2477,11 @@ std::unordered_map<std::string, std::vector<std::string>> distributeShards(
     std::vector<std::string> serverIds;
     for (uint64_t j = 0; j < replicationFactor; ++j) {
       if (j >= dbServers.size()) {
-        LOG_TOPIC(WARN, Logger::CLUSTER)
-          << "createCollectionCoordinator: replicationFactor is "
-          << "too large for the number of DBservers";
+        if (warnAboutReplicationFactor) {
+          LOG_TOPIC(WARN, Logger::CLUSTER)
+            << "createCollectionCoordinator: replicationFactor is "
+            << "too large for the number of DBservers";
+        }
         break;
       }
       std::string candidate;
@@ -2444,13 +2514,15 @@ std::unordered_map<std::string, std::vector<std::string>> distributeShards(
 #ifndef USE_ENTERPRISE
 std::unique_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator(
   TRI_col_type_e collectionType, TRI_vocbase_t* vocbase, VPackSlice parameters,
-  bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication) {
-  auto col = std::make_unique<LogicalCollection>(vocbase, parameters);  
+  bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
+  bool enforceReplicationFactor) {
+  auto col = std::make_unique<LogicalCollection>(vocbase, parameters, true);  
     // Collection is a temporary collection object that undergoes sanity checks etc.
     // It is not used anywhere and will be cleaned up after this call.
     // Persist collection will return the real object.
   return persistCollectionInAgency(
-    col.get(), ignoreDistributeShardsLikeErrors, waitForSyncReplication, parameters);
+    col.get(), ignoreDistributeShardsLikeErrors, waitForSyncReplication,
+    enforceReplicationFactor, parameters);
 }
 #endif
 
@@ -2460,7 +2532,8 @@ std::unique_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator
 
 std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   LogicalCollection* col, bool ignoreDistributeShardsLikeErrors,
-  bool waitForSyncReplication, VPackSlice parameters) {
+  bool waitForSyncReplication, bool enforceReplicationFactor,
+  VPackSlice parameters) {
   
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> avoid = col->avoidServers();
@@ -2581,12 +2654,15 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
     dbServers = ci->getCurrentDBServers();
   }
 
-  // cluster system replicationFactor is 1...allow startup with 1 DBServer.
-  // an addFollower job will be spawned right away and ensure proper
-  // resilience as soon as another DBServer is available :S
+  // system collections should never enforce replicationfactor
+  // to allow them to come up with 1 dbserver
+  if (enforceReplicationFactor && col->isSystem()) {
+    enforceReplicationFactor = false;
+  }
+
   // the default behaviour however is to bail out and inform the user
   // that the requested replicationFactor is not possible right now
-  if (dbServers.size() < replicationFactor && !col->isSystem()) {
+  if (enforceReplicationFactor && dbServers.size() < replicationFactor) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
   }
 
@@ -2594,9 +2670,10 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   // distributeShards below.
 
   // Now create the shards:
+  bool warnAboutReplicationFactor = (!col->isSystem()); 
   auto shards = std::make_shared<
       std::unordered_map<std::string, std::vector<std::string>>>(
-      arangodb::distributeShards(numberOfShards, replicationFactor, dbServers));
+      arangodb::distributeShards(numberOfShards, replicationFactor, dbServers, warnAboutReplicationFactor));
   if (shards->empty() && !col->isSmart()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "no database servers found in cluster");
@@ -2604,8 +2681,8 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   col->setShardMap(shards);
 
   std::unordered_set<std::string> const ignoreKeys{
-      "allowUserKeys", "cid", /* cid really ignore?*/
-      "count",         "planId", "version", "objectId",
+      "allowUserKeys", "cid", "globallyUniqueId",
+      "count", "planId", "version", "objectId"
   };
   col->setStatus(TRI_VOC_COL_STATUS_LOADED);
   VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);

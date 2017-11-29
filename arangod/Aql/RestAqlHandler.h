@@ -38,6 +38,7 @@ class TraverserEngineRegistry;
 }
 
 namespace aql {
+class Query;
 class QueryRegistry;
 
 /// @brief shard control request handler
@@ -164,12 +165,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   // name of the queue
   static std::string const QUEUE_NAME;
-
-  // request context
-  VocbaseContext* _context;
-
-  // the vocbase
-  TRI_vocbase_t* _vocbase;
 
   // our query registry
   QueryRegistry* _queryRegistry;

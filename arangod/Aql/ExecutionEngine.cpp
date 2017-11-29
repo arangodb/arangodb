@@ -252,6 +252,10 @@ ExecutionBlock* ExecutionEngine::createBlock(
                  CollectOptions::CollectMethod::COLLECT_METHOD_SORTED) {
         return new SortedCollectBlock(this,
                                       static_cast<CollectNode const*>(en));
+      } else if (aggregationMethod ==
+                 CollectOptions::CollectMethod::COLLECT_METHOD_DISTINCT) {
+        return new DistinctCollectBlock(this,
+                                      static_cast<CollectNode const*>(en));
       }
 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

@@ -35,9 +35,6 @@ class Result;
 
 namespace transaction {
 class Methods;
-}
-
-namespace transaction {
 class Context;
 }
 

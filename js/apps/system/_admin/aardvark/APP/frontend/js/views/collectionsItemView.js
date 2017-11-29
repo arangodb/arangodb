@@ -196,7 +196,12 @@
                 arangoHelper.arangoError('Collection error: ' + error.responseText);
               } else {
                 var wfs = $('#change-collection-sync').val();
-                this.model.changeCollection(wfs, journalSize, indexBuckets, callbackChange);
+                var replicationFactor;
+                if (frontendConfig.isCluster) {
+                  replicationFactor = $('#change-replication-factor').val();
+                }
+
+                this.model.changeCollection(wfs, journalSize, indexBuckets, replicationFactor, callbackChange);
               }
             }.bind(this);
 
@@ -300,12 +305,15 @@
                 this.truncateCollection.bind(this)
               )
             );
-            buttons.push(
-              window.modalView.createDeleteButton(
-                'Load Indexes in Memory',
-                this.warumupCollection.bind(this)
-              )
-            );
+
+            if (frontendConfig.engine === 'rocksdb') {
+              buttons.push(
+                window.modalView.createDeleteButton(
+                  'Load Indexes into Memory',
+                  this.warumupCollection.bind(this)
+                )
+              );
+            }
             if (collectionIsLoaded) {
               buttons.push(
                 window.modalView.createNotificationButton(

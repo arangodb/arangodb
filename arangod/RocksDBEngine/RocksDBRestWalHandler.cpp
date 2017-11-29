@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBRestWalHandler.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -30,6 +31,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionManager.h"
+#include "Utils/ExecContext.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 
@@ -38,22 +40,19 @@ using namespace arangodb::rest;
 
 RocksDBRestWalHandler::RocksDBRestWalHandler(GeneralRequest* request,
                                              GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestBaseHandler(request, response) {}
 
-RestStatus RocksDBRestWalHandler::execute() {
+RestStatus RocksDBRestWalHandler::execute() {  
   std::vector<std::string> const& suffixes = _request->suffixes();
-
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting /_admin/wal/<operation>");
     return RestStatus::DONE;
   }
-
-  std::string const& operation = suffixes[0];
-
+  
   // extract the sub-request type
   auto const type = _request->requestType();
-
+  std::string const& operation = suffixes[0];
   if (operation == "transactions") {
     if (type == rest::RequestType::GET) {
       transactions();
@@ -104,6 +103,7 @@ void RocksDBRestWalHandler::flush() {
 
   bool waitForSync = false;
   bool waitForCollector = false;
+  double maxWaitTime = 60.0;
 
   if (slice.isObject()) {
     // got a request body
@@ -120,6 +120,11 @@ void RocksDBRestWalHandler::flush() {
     } else if (value.isBoolean()) {
       waitForCollector = value.getBoolean();
     }
+    
+    value = slice.get("maxWaitTime");
+    if (value.isNumber()) {
+      maxWaitTime = value.getNumericValue<double>();
+    }
   } else {
     // no request body
     bool found;
@@ -135,14 +140,20 @@ void RocksDBRestWalHandler::flush() {
         waitForCollector = (v == "1" || v == "true");
       }
     }
+    {
+      std::string const& v = _request->value("maxWaitTime", found);
+      if (found) {
+        maxWaitTime = basics::StringUtils::doubleDecimal(v);
+      }
+    }
   }
 
   int res = TRI_ERROR_NO_ERROR;
   if (ServerState::instance()->isCoordinator()) {
-    res = flushWalOnAllDBServers(waitForSync, waitForCollector);
+    res = flushWalOnAllDBServers(waitForSync, waitForCollector, maxWaitTime);
   } else {
     if (waitForSync) {
-      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal();
+      EngineSelectorFeature::ENGINE->flushWal();
     }
   }
 

@@ -29,7 +29,6 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
-#include "Cluster/ClusterComm.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
@@ -295,7 +294,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   c->_fromCondition = _fromCondition->clone(_plan->getAst());
   c->_toCondition = _toCondition->clone(_plan->getAst());
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }

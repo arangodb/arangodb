@@ -1026,7 +1026,14 @@ int MMFilesCollectorThread::updateDatafileStatistics(
        /* no hoisting */) {
     MMFilesCollection* mmfiles = static_cast<MMFilesCollection*>(collection->getPhysical());
     TRI_ASSERT(mmfiles);
-    mmfiles->updateStats((*it).first, (*it).second);
+    try {
+      mmfiles->updateStats((*it).first, (*it).second, false);
+    } catch (...) {
+      // we do not care if the datafile is gone now.
+      // it may be the case that we started moving markers around into a journal,
+      // only to find that someone truncated the entire collection, rotated the journal etc.
+      // so it is not completely unexpected that we cannot update the stats anymore
+    }
 
     // flush the local datafile info so we don't update the statistics twice
     // with the same values

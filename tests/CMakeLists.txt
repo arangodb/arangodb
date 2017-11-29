@@ -13,6 +13,7 @@ add_executable(
   Agency/FailedServerTest.cpp
   Agency/MoveShardTest.cpp
   Agency/RemoveFollowerTest.cpp
+  Agency/StoreTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/RestAqlHandlerTest.cpp
   Basics/icu-helper.cpp
@@ -53,13 +54,17 @@ add_executable(
   Cache/TransactionalStore.cpp
   Cache/TransactionManager.cpp
   Cache/TransactionsWithBackingStore.cpp
+  #Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
+  Cluster/ShardDistributionReporterTest.cpp
   Geo/georeg.cpp
+  Graph/ClusterTraverserCacheTest.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TypeConversionTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
+  VocBase/AuthInfoTest.cpp
   main.cpp
 )
 
