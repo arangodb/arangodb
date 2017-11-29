@@ -14,6 +14,7 @@
     "sitemap-general@git+https://github.com/Simran-B/gitbook-plugin-sitemap-general.git",
     "ga",
     "localized-footer",
+    "edit-link@git+https://github.com/Simran-B/gitbook-plugin-edit-link.git",
     "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git",
     "arangodb-outdated@git+https://github.com/Simran-B/gitbook-plugin-arangodb-outdated.git"
   ],
@@ -36,12 +37,17 @@
       "css": ["styles/header.css"]
     },
     "sitemap-general": {
-      "prefix": "https://docs.arangodb.com/3.0/AQL/",
-      "changefreq": "monthly",
-      "priority": 0.1
+      "prefix": "https://docs.arangodb.com/devel/AQL/",
+      "changefreq": "@GCHANGE_FREQ@",
+      "priority": @GPRIORITY@
     },
     "ga": {
       "token": "UA-81053435-2"
+    },
+    "edit-link": {
+      "base": "https://github.com/arangodb/arangodb/edit/devel/Documentation/Books/AQL",
+      "label": "Edit Page",
+      "extension": ".mdpp"
     },
     "localized-footer": {
       "filename": "FOOTER.html"
