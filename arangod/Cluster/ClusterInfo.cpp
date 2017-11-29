@@ -1323,10 +1323,12 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
           LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
         }
       } else {
-        errorMsg += std::string("\n") + __FILE__ + std::to_string(__LINE__);
-        errorMsg += std::string("\n") + res.errorMessage();
-        errorMsg += std::string("\n") + res.errorDetails();
-        errorMsg += std::string("\n") + res.body();
+        errorMsg += std::string("file: ") + __FILE__ + 
+                    " line: " + std::to_string(__LINE__);
+        errorMsg += " HTTP code: " + std::to_string(res.httpCode());
+        errorMsg += " error message: " + res.errorMessage();
+        errorMsg += " error details: " + res.errorDetails();
+        errorMsg += " body: " + res.body();
         events::CreateCollection(
           name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
         return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
