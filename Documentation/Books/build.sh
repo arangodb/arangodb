@@ -41,7 +41,7 @@ function start_X11_display()
 {
     PIDFILE="$1"
     if test -f "${PIDFILE}"; then
-	stop_X11_display "${PIDFILE}"
+        stop_X11_display "${PIDFILE}"
     fi
     /usr/bin/daemon "--pidfile=${PIDFILE}" --name=xvfb --inherit --output=/tmp/xvfb.log --  Xvfb "${DISPLAY}" -screen 0 800x600x16  -ac -pn -noreset
 }
@@ -65,18 +65,18 @@ function check-summary()
         grep -v gitbook-plugin | \
         grep -v node_modules/ | \
         sort > /tmp/is_md.txt
-    
+
     grep -v '^ *# '< "${NAME}/SUMMARY.md" | \
         grep '(' |sed -e "s;.*(;;" -e "s;).*;;" | \
         sort  > /tmp/is_summary.txt
-    
+
     if test "$(comm -3 /tmp/is_md.txt /tmp/is_summary.txt|wc -l)" -ne 0; then
-	echo "${ERR_COLOR}"
-	echo "not all files are mapped to the summary!"
-	echo " files found       |    files in summary"
-	comm -3 /tmp/is_md.txt /tmp/is_summary.txt
-	echo "${RESET}"
-	exit 1
+        echo "${ERR_COLOR}"
+        echo "not all files are mapped to the summary!"
+        echo " files found       |    files in summary"
+        comm -3 /tmp/is_md.txt /tmp/is_summary.txt
+        echo "${RESET}"
+        exit 1
     fi
 }
 
@@ -86,11 +86,11 @@ function book-check-leftover-docublocks()
     echo "${STD_COLOR}##### checking for left over docublocks in ${NAME}${RESET}"
     ERRORS=$(grep -rl "startDocuBlock" --include "*.md" "ppbooks/${NAME}" | sed -e "s/^/- /g")
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
-	echo "${ERR_COLOR}"
-	echo "startDocuBlock markers still found in generated output files:"
+        echo "${ERR_COLOR}"
+        echo "startDocuBlock markers still found in generated output files:"
         echo "${ERRORS}"
-	echo "${RESET}"
-	exit 1
+        echo "${RESET}"
+        exit 1
     fi
 }
 
@@ -100,11 +100,11 @@ function book-check-restheader-leftovers()
     echo "${STD_COLOR}##### checking for restheader leftovers in ${NAME}${RESET}"
     ERRORS=$(find "ppbooks/${NAME}" -name "*.md" -exec grep -- '^@[A-Z]*' {} \; -print)
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
-	echo "${ERR_COLOR}"
-	echo "found these unconverted Swagger Restapi tags: "
+        echo "${ERR_COLOR}"
+        echo "found these unconverted Swagger Restapi tags: "
         echo "${ERRORS}"
-	echo "${RESET}"
-	exit 1
+        echo "${RESET}"
+        exit 1
     fi
 }
 
@@ -113,11 +113,11 @@ function ppbook-precheck-bad-code-sections()
     NAME="$1"
     echo "${STD_COLOR}##### checking for bad code sections in ${NAME}${RESET}"
     if grep -qR  "^${TRIPPLETICS} *.* " "${NAME}"; then
-	echo "${ERR_COLOR}"
-	echo "tripple tics with blanks afterwards found: "
-	grep -R  "^${TRIPPLETICS} *.* " "${NAME}"
-	echo "${RESET}"
-	exit 1
+        echo "${ERR_COLOR}"
+        echo "tripple tics with blanks afterwards found: "
+        grep -R  "^${TRIPPLETICS} *.* " "${NAME}"
+        echo "${RESET}"
+        exit 1
     fi
 }
 
@@ -126,11 +126,11 @@ function ppbook-precheck-bad-headings()
     NAME="$1"
     echo "${STD_COLOR}##### checking for headers that won't proper display on github in ${NAME}${RESET}"
     if grep -qRI  '^##*[a-zA-Z]' "${NAME}"; then
-	echo "${ERR_COLOR}"
-	echo "Headlines broken on github found: "
+        echo "${ERR_COLOR}"
+        echo "Headlines broken on github found: "
         grep -RI  '^##*[a-zA-Z]' "${NAME}"
-	echo "${RESET}"
-	exit 1
+        echo "${RESET}"
+        exit 1
     fi
 }
 
@@ -148,14 +148,14 @@ function ppbook-check-html-link()
         grep -v 'header.css' | \
         grep -v -f /tmp/books.regex > /tmp/relative_html_links.txt
     set -e
-    
+
     if test "$(wc -l < /tmp/relative_html_links.txt)" -gt 0; then
-	echo "${ERR_COLOR}"
-	echo "Found links to .html files inside of the document! use <foo>.md instead!"
-	echo
-	cat  /tmp/relative_html_links.txt
-	echo "${RESET}"
-	exit 1
+        echo "${ERR_COLOR}"
+        echo "Found links to .html files inside of the document! use <foo>.md instead!"
+        echo
+        cat  /tmp/relative_html_links.txt
+        echo "${RESET}"
+        exit 1
     fi
 }
 
@@ -176,11 +176,11 @@ function ppbook-check-directory-link()
     set -e
     nERRORS=$(echo -n "${ERRORS}" | wc -l)
     if test "$nERRORS" -gt 0; then
-	echo "${ERR_COLOR}"
-	echo "Found director links! use ../<directory>/README.md instead!"
-	echo "${ERRORS}"
-	echo "${RESET}"
-	exit 1
+        echo "${ERR_COLOR}"
+        echo "Found director links! use ../<directory>/README.md instead!"
+        echo "${ERRORS}"
+        echo "${RESET}"
+        exit 1
     fi
 }
 
@@ -191,77 +191,77 @@ function book-check-markdown-leftovers()
     echo "${STD_COLOR}##### checking for remaining markdown snippets in the HTML output of ${NAME}${RESET}"
     ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep -- '##' {} \; -print)
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
-	echo "${ERR_COLOR}";
-	echo "found these unconverted markdown titles: "
+        echo "${ERR_COLOR}";
+        echo "found these unconverted markdown titles: "
         echo "${ERRORS}"
-	echo "${RESET}";
-	exit 1;
+        echo "${RESET}";
+        exit 1;
     fi
 
     set +e
     ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep -- '&amp;gt;' {} \; -print)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
-	echo "${ERR_COLOR}"
-	echo "found these double converted > signs: "
+        echo "${ERR_COLOR}"
+        echo "found these double converted > signs: "
         echo "${ERRORS}"
-	echo "${RESET}"
-	exit 1;
+        echo "${RESET}"
+        exit 1;
     fi
-    
+
     set +e
     ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '\.md\"[ />]' {} \; | grep -v data-filepath)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
-	echo "${ERR_COLOR}"
+        echo "${ERR_COLOR}"
         echo "${ERRORS}"
-	echo "found dangling markdown links; see the list above "
-	echo "${RESET}"
-	exit 1
+        echo "found dangling markdown links; see the list above "
+        echo "${RESET}"
+        exit 1
     fi
-    
+
     set +e
     ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '\.md#' {} \; -print)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
-	echo "${ERR_COLOR}"
-	echo "found dangling markdown links: "
+        echo "${ERR_COLOR}"
+        echo "found dangling markdown links: "
         echo "${ERRORS}"
-	echo "${RESET}"
-	exit 1
+        echo "${RESET}"
+        exit 1
     fi
-    
+
     set +e
     ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep "${TRIPPLETICS}" {} \; -print)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
-	echo "${ERR_COLOR}"
-	echo "found dangling markdown code sections: "
+        echo "${ERR_COLOR}"
+        echo "found dangling markdown code sections: "
         echo "${ERRORS}"
-	echo "${RESET}"
-	exit 1
+        echo "${RESET}"
+        exit 1
     fi
-    
+
     set +e
     ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '\]<a href' {} \; -print)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
-	echo "${ERR_COLOR}"
-	echo "found unconverted markdown links: "
+        echo "${ERR_COLOR}"
+        echo "found unconverted markdown links: "
         echo "${ERRORS}"
-	echo "${RESET}"
-	exit 1
+        echo "${RESET}"
+        exit 1
     fi
 
     set +e
     ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '\[.*\](.*[\.html|\.md|http|#.*])' {} \; -print)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
-	echo "${ERR_COLOR}"
-	echo "found unconverted markdown links: "
+        echo "${ERR_COLOR}"
+        echo "found unconverted markdown links: "
         echo "${ERRORS}"
-	echo "${RESET}"
-	exit 1
+        echo "${RESET}"
+        exit 1
     fi
 }
 
@@ -269,63 +269,61 @@ function check-dangling-anchors()
 {
     echo "${STD_COLOR}##### checking for dangling anchors${RESET}"
     find books/ -name '*.html' | while IFS= read -r htmlf; do
-	fn=$(basename "${htmlf}")
-        # shellcheck disable=SC2001
-	dir=$(echo "$htmlf" |sed "s;/$fn;;")
-	mkdir -p "/tmp/tags/${dir}"
+        fn=$(basename "${htmlf}")
+        dir=$(sed "s;/$fn;;" <<< "$htmlf")
+        mkdir -p "/tmp/tags/${dir}"
         grep '<h. ' < "${htmlf}" | \
             sed -e 's;.*id=";;' -e 's;".*;;' > "/tmp/tags/${dir}/${fn}"
     done
 
     echo "${STD_COLOR}##### fetching anchors from generated http files${RESET}"
     grep -R "a href.*#" books/ | \
-	egrep -v "(styles/header\.js|/app\.js|class=\"navigation|https*://|href=\"#\")" | \
-	sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' | grep -v " " > /tmp/anchorlist.txt
+        egrep -v "(styles/header\.js|/app\.js|class=\"navigation|https*://|href=\"#\")" | \
+        sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' | grep -v " " > /tmp/anchorlist.txt
 
     echo "${STD_COLOR}##### cross checking anchors${RESET}"
     NO=0
     echo "${NO}" > /tmp/anchorlistcount.txt
     # shellcheck disable=SC2002
     cat /tmp/anchorlist.txt | while IFS= read -r i; do
-	ANCHOR=$(echo "$i" | cut '-d,' -f 3)
-	FN=$(echo "$i" | cut '-d,' -f 2)
-	SFN=$(echo "$i" | cut '-d,' -f 1)
-        
-	if test -z "$FN"; then
-	    FN="$SFN"
-	else
-            # shellcheck disable=SC2001
-	    SFNP=$(echo "$SFN" | sed 's;/[a-zA-Z0-9]*.html;;')
-	    FN="${SFNP}/${FN}"
-	fi
-	if test -d "$FN"; then
-	    FN="${FN}index.html"
-	fi
-	if test -n "$ANCHOR"; then
-	    if test ! -f "/tmp/tags/${FN}"; then
-		echo "${ERR_COLOR}"
-		echo "File referenced by ${i} doesn't exist."
-		NO=$((NO + 1))
-		echo "${RESET}"
-	    else
+        ANCHOR=$(echo "$i" | cut '-d,' -f 3)
+        FN=$(echo "$i" | cut '-d,' -f 2)
+        SFN=$(echo "$i" | cut '-d,' -f 1)
+
+        if test -z "$FN"; then
+            FN="$SFN"
+        else
+            SFNP=$(sed 's;/[a-zA-Z0-9]*.html;;' <<< "$SFN")
+            FN="${SFNP}/${FN}"
+        fi
+        if test -d "$FN"; then
+            FN="${FN}index.html"
+        fi
+        if test -n "$ANCHOR"; then
+            if test ! -f "/tmp/tags/${FN}"; then
+                echo "${ERR_COLOR}"
+                echo "File referenced by ${i} doesn't exist."
+                NO=$((NO + 1))
+                echo "${RESET}"
+            else
                 if grep -q "^$ANCHOR$" "/tmp/tags/$FN"; then
-		    true
-		else
-		    echo "${ERR_COLOR}"
-		    echo "Anchor not found in $i"
-		    NO=$((NO + 1))
-		    echo "${RESET}"
-		fi
-	    fi
-	fi
+                    true
+                else
+                    echo "${ERR_COLOR}"
+                    echo "Anchor not found in $i"
+                    NO=$((NO + 1))
+                    echo "${RESET}"
+                fi
+            fi
+        fi
         echo "${NO}" > /tmp/anchorlistcount.txt
     done
     NO="$(cat /tmp/anchorlistcount.txt)"
     if test "${NO}" -gt 0; then
-	echo "${ERR_COLOR}"
-	echo "${NO} Dangling anchors found!"
-	echo "${RESET}"
-	exit 1
+        echo "${ERR_COLOR}"
+        echo "${NO} Dangling anchors found!"
+        echo "${RESET}"
+        exit 1
     fi
     rm -rf /tmp/anchorlist.txt /tmp/tags
 }
@@ -335,13 +333,13 @@ function book-check-images-referenced()
     NAME="$1"
     set +e
     find "${NAME}" -name \*.png | while IFS= read -r image; do
-	baseimage=$(basename "$image")
-	if ! grep -Rq "${baseimage}" "${NAME}"; then
-	    echo "${ERR_COLOR}"
-	    echo "$image is not used!"
-	    echo "${RESET}"
+        baseimage=$(basename "$image")
+        if ! grep -Rq "${baseimage}" "${NAME}"; then
+            echo "${ERR_COLOR}"
+            echo "$image is not used!"
+            echo "${RESET}"
             exit "1"
-	fi
+        fi
     done
     set -e
 }
@@ -352,9 +350,9 @@ function build-book-symlinks()
     cd "books/${NAME}"
     pwd
     find . -name "README.md" |\
-	sed -e 's:README\.md$::' |\
-	awk '{print "ln -s index.html " "$1" "README.html"}' |\
-	bash
+        sed -e 's:README\.md$::' |\
+        awk '{print "ln -s index.html " "$1" "README.html"}' |\
+        bash
 }
 
 function build-book()
@@ -365,24 +363,24 @@ function build-book()
     ppbook-precheck-bad-headings "${NAME}"
 
     if test ! -d "ppbooks/${NAME}"; then
-	mkdir -p "ppbooks/${NAME}"
-	WD=$(pwd)
+        mkdir -p "ppbooks/${NAME}"
+        WD=$(pwd)
         find "${NAME}" -type d | while IFS= read -r dir; do 
-	    cd "${WD}/ppbooks"
-	    test -d "${dir}" || mkdir -p "${dir}"
-	done
+            cd "${WD}/ppbooks"
+            test -d "${dir}" || mkdir -p "${dir}"
+        done
     fi
     if ditaa --help > /dev/null; then
-	echo "${STD_COLOR} - generating ditaa images${RESET}"
-	find "${NAME}" -name "*.ditaa" | while IFS= read -r image; do
-	    ditaa "${image}" "ppbooks/${image//ditaa/png}"
-	done
+        echo "${STD_COLOR} - generating ditaa images${RESET}"
+        find "${NAME}" -name "*.ditaa" | while IFS= read -r image; do
+            ditaa "${image}" "ppbooks/${image//ditaa/png}"
+        done
     else
-	echo "${ERR_COLOR} - generating FAKE ditaa images - no ditaa installed${RESET}"
-	find "${NAME}" -name "*.ditaa" | while IFS= read -r image; do
-	    cp "../../js/node/node_modules/mocha/images/error.png" \
+        echo "${ERR_COLOR} - generating FAKE ditaa images - no ditaa installed${RESET}"
+        find "${NAME}" -name "*.ditaa" | while IFS= read -r image; do
+            cp "../../js/node/node_modules/mocha/images/error.png" \
                "ppbooks/${image//ditaa/png}"
-	done
+        done
     fi
     echo "${STD_COLOR} - preparing environment${RESET}"
     (
@@ -406,8 +404,8 @@ function build-book()
     WD=$(pwd)
     echo "${STD_COLOR} - copying images${RESET}"
     find "${NAME}" -name "*.png" | while IFS= read -r pic; do
-	cd "${WD}/ppbooks"
-	cp "${WD}/${pic}" "${pic}"
+        cd "${WD}/ppbooks"
+        cp "${WD}/${pic}" "${pic}"
     done
 
     echo "${STD_COLOR} - generating MD-Files${RESET}"
@@ -416,7 +414,7 @@ function build-book()
            ppbooks/ \
            ../../js/apps/system/_admin/aardvark/APP/api-docs.json \
            "${FILTER}" || exit 1
-    
+
     test -d "books/${NAME}" || mkdir -p "books/${NAME}"
 
     echo "${STD_COLOR} - Checking integrity ${VERSION}${RESET}"
@@ -427,12 +425,11 @@ function build-book()
     book-check-images-referenced "${NAME}"
 
     if echo "${newVersionNumber}" | grep -q devel; then
-	VERSION="${newVersionNumber} $(date +' %d. %b %Y ')"
+        VERSION="${newVersionNumber} $(date +' %d. %b %Y ')"
         RELEASE_DIRECTORY=devel
     else
-	VERSION="${newVersionNumber}"
-        # shellcheck disable=SC2001
-        RELEASE_DIRECTORY=$(echo "${newVersionNumber}" |sed "s;\.[0-9]*$;;")
+        VERSION="${newVersionNumber}"
+        RELEASE_DIRECTORY=$(sed "s;\.[0-9]*$;;" <<< "${newVersionNumber}")
     fi
     export VERSION
 
@@ -456,25 +453,22 @@ function build-book()
 
     echo "${STD_COLOR} - Building Version ${VERSION}${RESET}"
 
-    
-
     if test -n "${NODE_MODULES_DIR}"; then
         echo "${STD_COLOR}#### Installing plugins from ${NODE_MODULES_DIR}${RESET}"
-	cp -a "${NODE_MODULES_DIR}" "ppbooks/${NAME}"
+        cp -a "${NODE_MODULES_DIR}" "ppbooks/${NAME}"
     else
         echo "${STD_COLOR}#### Downloading plugins from ${NODE_MODULES_DIR}${RESET}"
-	(cd "ppbooks/${NAME}"; gitbook install -g)
+        (cd "ppbooks/${NAME}"; gitbook install -g)
     fi
     echo "${STD_COLOR} - Building Book ${NAME} ${RESET}"
-    # shellcheck disable=SC2086
-    (cd "ppbooks/${NAME}" && gitbook ${GITBOOK_ARGS} build "./" "./../../books/${NAME}")
+    (cd "ppbooks/${NAME}" && gitbook "${GITBOOK_ARGS[@]}" build "./" "./../../books/${NAME}")
     rm -f "./books/${NAME}/HEADER.html"
     rm -f "./books/${NAME}/FOOTER.html"
     echo "${STD_COLOR} - deleting markdown files in output (gitbook 3.x bug)"
     find "./books/${NAME}/" -type f -name "*.md" -delete
     echo "${STD_COLOR} - putting in deprecated items ${RESET}"
     python ../Scripts/deprecated.py || exit 1
-    
+
     book-check-markdown-leftovers "${NAME}"
 }
 
@@ -484,13 +478,12 @@ function build-book-dist()
     export DISPLAY="$2"
     cd "ppbooks/${NAME}"
     for ext in ${OTHER_MIME}; do
-	OUTPUT="${OUTPUT_DIR}/ArangoDB_${NAME}_${newVersionNumber}.${ext}"
-	# shellcheck disable=SC2086
-        if gitbook ${GITBOOK_ARGS} "${ext}" ./ "${OUTPUT}"; then
-	    echo "success building ${OUTPUT}"
-	else
-	    exit 1
-	fi
+        OUTPUT="${OUTPUT_DIR}/ArangoDB_${NAME}_${newVersionNumber}.${ext}"
+        if gitbook "${GITBOOK_ARGS[@]}" "${ext}" ./ "${OUTPUT}"; then
+            echo "success building ${OUTPUT}"
+        else
+            exit 1
+        fi
     done
 }
 
@@ -526,21 +519,21 @@ function clean-book-intermediate()
 function check-docublocks()
 {
     grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
-	grep -v '@startDocuBlockInline' |\
-	grep -v ppbook |\
-	grep -v allComments.txt |\
-	grep -v Makefile |\
-	grep -v '.*~:.*' |\
-	grep -v '.*#.*:.*' \
-	     > /tmp/rawindoc.txt
+        grep -v '@startDocuBlockInline' |\
+        grep -v ppbook |\
+        grep -v allComments.txt |\
+        grep -v Makefile |\
+        grep -v '.*~:.*' |\
+        grep -v '.*#.*:.*' \
+             > /tmp/rawindoc.txt
 
     grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
-	grep -v ppbook |\
-	grep -v allComments.txt |\
-	grep -v Makefile |\
-	grep -v '.*~:.*' |\
-	grep -v '.*#.*:.*' \
-	     >> /tmp/rawindoc.txt
+        grep -v ppbook |\
+        grep -v allComments.txt |\
+        grep -v Makefile |\
+        grep -v '.*~:.*' |\
+        grep -v '.*#.*:.*' \
+             >> /tmp/rawindoc.txt
 
     sed  -e "s;.*ck ;;" -e "s;.*ne ;;" < /tmp/rawindoc.txt |sort -u > /tmp/indoc.txt
 
@@ -548,45 +541,45 @@ function check-docublocks()
     grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" --include "*.md" |grep -v aardvark > /tmp/rawinprog.txt
     # searching the Inline docublocks needs some more blacklisting:
     grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
-	grep -v ppbook |\
-	grep -v allComments.txt |\
-	grep -v Makefile |\
-	grep -v '.*~:.*' |\
-	grep -v '.*#.*:.*' \
-	     >> /tmp/rawinprog.txt
+        grep -v ppbook |\
+        grep -v allComments.txt |\
+        grep -v Makefile |\
+        grep -v '.*~:.*' |\
+        grep -v '.*#.*:.*' \
+             >> /tmp/rawinprog.txt
     set -e
     echo "Generated: startDocuBlockInline errorCodes">> /tmp/rawinprog.txt
 
     sed -e "s;.*ck ;;" -e "s;.*ne ;;" < /tmp/rawinprog.txt  |sort > /tmp/inprog_raw.txt
     sort -u < /tmp/inprog_raw.txt > /tmp/inprog.txt
-    
+
     if test "$(wc -l < /tmp/inprog.txt)" -ne "$(wc -l < /tmp/inprog_raw.txt)"; then 
-	echo "${ERR_COLOR}"
-	echo "Duplicate entry found in the source trees:"
-	comm -3 /tmp/inprog_raw.txt /tmp/inprog.txt
-	echo "${RESET}"
-	exit 1
+        echo "${ERR_COLOR}"
+        echo "Duplicate entry found in the source trees:"
+        comm -3 /tmp/inprog_raw.txt /tmp/inprog.txt
+        echo "${RESET}"
+        exit 1
     fi
-    
+
     if test "$(comm -3 /tmp/indoc.txt /tmp/inprog.txt |wc -l)" -ne 0; then
-	echo "${ERR_COLOR}"
-	echo "Not all blocks were found on both sides:"
-	echo "Documentation      |     Programcode:"
-	comm -3 /tmp/indoc.txt /tmp/inprog.txt
-	if test "$(comm -2 -3 /tmp/indoc.txt /tmp/inprog.txt |wc -l)" -gt 0; then
-	    echo "Documentation: "
-	    for grepit in $(comm -2 -3 /tmp/indoc.txt /tmp/inprog.txt); do
-		grep "$grepit" /tmp/rawindoc.txt
-	    done
-	fi
-	if test "$(comm -1 -3 /tmp/indoc.txt /tmp/inprog.txt |wc -l)" -gt 0; then
-	    echo "Program code:"
-	    for grepit in $(comm -1 -3 /tmp/indoc.txt /tmp/inprog.txt); do
-		grep "$grepit" /tmp/rawinprog.txt | sed "s;/// @startDocuBlock;\t\t;"
-	    done
-	fi
-	echo "${RESET}"
-	exit 1
+        echo "${ERR_COLOR}"
+        echo "Not all blocks were found on both sides:"
+        echo "Documentation      |     Programcode:"
+        comm -3 /tmp/indoc.txt /tmp/inprog.txt
+        if test "$(comm -2 -3 /tmp/indoc.txt /tmp/inprog.txt |wc -l)" -gt 0; then
+            echo "Documentation: "
+            for grepit in $(comm -2 -3 /tmp/indoc.txt /tmp/inprog.txt); do
+                grep "$grepit" /tmp/rawindoc.txt
+            done
+        fi
+        if test "$(comm -1 -3 /tmp/indoc.txt /tmp/inprog.txt |wc -l)" -gt 0; then
+            echo "Program code:"
+            for grepit in $(comm -1 -3 /tmp/indoc.txt /tmp/inprog.txt); do
+                grep "$grepit" /tmp/rawinprog.txt | sed "s;/// @startDocuBlock;\t\t;"
+            done
+        fi
+        echo "${RESET}"
+        exit 1
     fi
 }
 
@@ -617,15 +610,15 @@ function build-books()
     rm -rf /tmp/tags
     set -e
     for book in ${ALLBOOKS}; do
-	clean-intermediate "${book}"
+        clean-intermediate "${book}"
     done
 
     for book in ${ALLBOOKS}; do
-	build-book-keep-md "${book}"
+        build-book-keep-md "${book}"
     done
 
     for book in ${ALLBOOKS}; do
-	ppbook-check-html-link "${book}"
+        ppbook-check-html-link "${book}"
     done
 
     check-docublocks
@@ -641,23 +634,23 @@ function build-dist-books()
     rm -rf books ppbooks
     PIDFILE=/tmp/xvfb_20_0.pid
     if test -z "${DISPLAY}"; then
-	DISPLAY=:20.0
-	start_X11_display "${PIDFILE}" "${DISP}"
-	trap 'stop_X11_display "${PIDFILE}"' 0
+        DISPLAY=:20.0
+        start_X11_display "${PIDFILE}" "${DISP}"
+        trap 'stop_X11_display "${PIDFILE}"' 0
     fi
     export DISPLAY
-    
+
     WD=$(pwd)
     build-books
     mkdir -p "${OUTPUT_DIR}"
     (
-	mv books "ArangoDB-${newVersionNumber}"
+        mv books "ArangoDB-${newVersionNumber}"
         pwd
-	tar -czf "${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz" "ArangoDB-${newVersionNumber}"
-	mv "ArangoDB-${newVersionNumber}" books
+        tar -czf "${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz" "ArangoDB-${newVersionNumber}"
+        mv "ArangoDB-${newVersionNumber}" books
     )
     for book in $ALLBOOKS; do
-	cd "$WD"; build-book-dist "${book}"
+        cd "$WD"; build-book-dist "${book}"
     done
 }
 
@@ -692,36 +685,36 @@ fi
 
 while [ $# -gt 0 ];  do
     case "$1" in
-	--name)
-	    shift
-	    NAME=$1
-	    shift
-	    ;;
-	--filter)
-	    shift
-	    FILTER=$1
-	    export FILTER
-	    shift
-	    ;;
-	--outputDir)
-	    shift
-	    OUTPUT_DIR=$1
-	    shift
-	    ;;
-	--cookBook)
-	    shift
-	    shift
-	    ;;
-	--nodeModulesDir)
-	    shift
-	    NODE_MODULES_DIR=$1
-	    export NODE_MODULES_DIR
+        --name)
             shift
-	    ;;
-	*)
-	    printHelp
-	    exit 1
-	    ;;
+            NAME=$1
+            shift
+            ;;
+        --filter)
+            shift
+            FILTER=$1
+            export FILTER
+            shift
+            ;;
+        --outputDir)
+            shift
+            OUTPUT_DIR=$1
+            shift
+            ;;
+        --cookBook)
+            shift
+            shift
+            ;;
+        --nodeModulesDir)
+            shift
+            NODE_MODULES_DIR=$1
+            export NODE_MODULES_DIR
+            shift
+            ;;
+        *)
+            printHelp
+            exit 1
+            ;;
 
     esac
 done
@@ -729,35 +722,34 @@ done
 
 case "$VERB" in
     build-books)
-	build-books
-	;;
+        build-books
+        ;;
     build-book)
-	if test -z "$NAME"; then
-	    echo "you need to specify the name!"
-	    printHelp
-	    exit 1
-	fi
-	build-book "$NAME"
-	;;
+        if test -z "$NAME"; then
+            echo "you need to specify the name!"
+            printHelp
+            exit 1
+        fi
+        build-book "$NAME"
+        ;;
     build-dist-books)
-	build-dist-books
-	;;
+        build-dist-books
+        ;;
     build-book-keep-md)
-	if test -z "$NAME"; then
-	    echo "you need to specify the name!"
-	    printHelp
-	    exit 1
-	fi
-	build-book-keep-md "$NAME"
-	;;
+        if test -z "$NAME"; then
+            echo "you need to specify the name!"
+            printHelp
+            exit 1
+        fi
+        build-book-keep-md "$NAME"
+        ;;
     clean)
-        # shellcheck disable=SC2068
-        clean $@
+        clean "$@"
         ;;
     *)
-	printHelp
-	exit 1
-	;;
+        printHelp
+        exit 1
+        ;;
 esac
 
 echo "${OK_COLOR}Well done!${RESET}"
