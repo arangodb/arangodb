@@ -1,6 +1,8 @@
 v3.2.9 (2017-XX-XX)
 -------------------
 
+* Properly report errors when AQL queries fail in a late stage
+
 * UI: optimized error messages for invalid graph definitions. Also fixed a
   graph renderer cleanrenderer cleanup error.
 
