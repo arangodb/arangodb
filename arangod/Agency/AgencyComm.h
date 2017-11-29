@@ -250,7 +250,7 @@ class AgencyCommResult {
   void clear();
 
   VPackSlice slice() const;
-  void setVPack(std::shared_ptr<velocypack::Builder> vpack) { _vpack = vpack; }
+  void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) { _vpack = vpack; }
 
  public:
   std::string _location;
