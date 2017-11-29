@@ -35,7 +35,7 @@ RESET="${C[RESET]}"
 
 newVersionNumber=$( tr -d '\r\n' < ../../VERSION)
 
-GSEARCH_ID=$(  grep "GSEARCH" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:]*\)".*;\1;')
+GSEARCH_ID=$(  grep "GSEARCH_ID" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:-]*\)".*;\1;')
 GCHANGE_FREQ=$(grep "GCHANGE_FREQ" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:]*\)".*;\1;')
 GPRIORITY=$(grep "GPRIORITY" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z.]*\)".*;\1;')
 BROWSEABLE_VERSIONS=$(grep "BROWSEABLE_VERSIONS" ../../VERSIONS |sed -e 's;" *$;;' -e 's;.*";;')
