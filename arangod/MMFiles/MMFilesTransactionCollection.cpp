@@ -100,6 +100,13 @@ bool MMFilesTransactionCollection::isLocked(AccessMode::Type accessType, int nes
   
 /// @brief check whether a collection is locked at all
 bool MMFilesTransactionCollection::isLocked() const {
+  if (CollectionLockState::_noLockHeaders != nullptr) {
+    std::string collName(_collection->name());
+    auto it = CollectionLockState::_noLockHeaders->find(collName);
+    if (it != CollectionLockState::_noLockHeaders->end()) {
+      return true;
+    }
+  }
   return (_lockType != AccessMode::Type::NONE);
 }
   
@@ -156,8 +163,8 @@ bool MMFilesTransactionCollection::canAccess(AccessMode::Type accessType) const 
   }
 
   // check if access type matches
-  if (AccessMode::AccessMode::isWriteOrExclusive(accessType) && 
-      !AccessMode::AccessMode::isWriteOrExclusive(_accessType)) {
+  if (AccessMode::isWriteOrExclusive(accessType) && 
+      !AccessMode::isWriteOrExclusive(_accessType)) {
     // type doesn't match. probably also a mistake by the caller
     return false;
   }
@@ -166,8 +173,8 @@ bool MMFilesTransactionCollection::canAccess(AccessMode::Type accessType) const 
 }
 
 int MMFilesTransactionCollection::updateUsage(AccessMode::Type accessType, int nestingLevel) {
-  if (AccessMode::AccessMode::isWriteOrExclusive(accessType) && 
-      !AccessMode::AccessMode::isWriteOrExclusive(_accessType)) {
+  if (AccessMode::isWriteOrExclusive(accessType) && 
+      !AccessMode::isWriteOrExclusive(_accessType)) {
     if (nestingLevel > 0) {
       // trying to write access a collection that is only marked with
       // read-access
@@ -237,7 +244,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
   TRI_ASSERT(physical != nullptr);
 
   if (nestingLevel == 0 &&
-      AccessMode::AccessMode::isWriteOrExclusive(_accessType)) {
+      AccessMode::isWriteOrExclusive(_accessType)) {
     // read-lock the compaction lock
     if (!_transaction->hasHint(transaction::Hints::Hint::NO_COMPACTION_LOCK)) {
       if (!_compactionLocked) {
@@ -250,7 +257,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
   bool shouldLock = _transaction->hasHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
   if (!shouldLock) {
-    shouldLock = (AccessMode::AccessMode::isWriteOrExclusive(_accessType) && !_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
+    shouldLock = (!AccessMode::isNone(_accessType) && !_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
   }
 
   if (shouldLock && !isLocked()) {
@@ -266,7 +273,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
     }
   }
   
-  if (AccessMode::AccessMode::isWriteOrExclusive(_accessType) && _originalRevision == 0) {
+  if (AccessMode::isWriteOrExclusive(_accessType) && _originalRevision == 0) {
     // store original revision at transaction start
     _originalRevision = physical->revision();
   }
@@ -284,7 +291,7 @@ void MMFilesTransactionCollection::unuse(int nestingLevel) {
   // the top level transaction releases all collections
   if (nestingLevel == 0 && _collection != nullptr) {
     if (!_transaction->hasHint(transaction::Hints::Hint::NO_COMPACTION_LOCK)) {
-      if (AccessMode::AccessMode::isWriteOrExclusive(_accessType) && _compactionLocked) {
+      if (AccessMode::isWriteOrExclusive(_accessType) && _compactionLocked) {
         auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
         TRI_ASSERT(physical != nullptr);
         // read-unlock the compaction lock

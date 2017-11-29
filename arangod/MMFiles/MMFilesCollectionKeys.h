@@ -46,7 +46,7 @@ class MMFilesCollectionKeys final : public CollectionKeys {
   MMFilesCollectionKeys(MMFilesCollectionKeys const&) = delete;
   MMFilesCollectionKeys& operator=(MMFilesCollectionKeys const&) = delete;
 
-  MMFilesCollectionKeys(TRI_vocbase_t*, std::string const& name, 
+  MMFilesCollectionKeys(TRI_vocbase_t*, std::unique_ptr<CollectionGuard> guard,
                         TRI_voc_tick_t blockerId, double ttl);
 
   ~MMFilesCollectionKeys();

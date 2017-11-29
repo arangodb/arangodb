@@ -2207,6 +2207,9 @@ int MMFilesLogfileManager::inspectLogfiles() {
   // update the tick with the max tick we found in the WAL
   TRI_UpdateTickServer(_recoverState->lastTick);
 
+  // return the lock here to ensure proper locking order
+  writeLocker.unlock();
+  
   TRI_ASSERT(_slots != nullptr);
   // set the last ticks we found in existing logfile data
   _slots->setLastTick(_recoverState->lastTick);

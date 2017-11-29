@@ -43,6 +43,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8Server/v8-collection.h"
@@ -248,7 +249,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(collection->vocbase()),
+      transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
       collection->cid(),
       create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ);
 
@@ -548,7 +549,7 @@ arangodb::Result Indexes::drop(arangodb::LogicalCollection const* collection,
     READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(collection->vocbase()),
+        transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
         collection->cid(), AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
