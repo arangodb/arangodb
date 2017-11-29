@@ -32,7 +32,6 @@
 #include "Aql/CollectOptions.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
-#include "Aql/EnumerateViewBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexBlock.h"
 #include "Aql/ModificationBlocks.h"
@@ -53,6 +52,11 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
+
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewNode.h"
+#include "IResearch/IResearchViewBlock.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -106,10 +110,13 @@ static ExecutionBlock* CreateBlock(
       return new EnumerateListBlock(engine,
                                     static_cast<EnumerateListNode const*>(en));
     }
-    case ExecutionNode::ENUMERATE_VIEW: {
-      return new EnumerateViewBlock(engine,
-                                    static_cast<EnumerateViewNode const*>(en));
+#ifdef USE_IRESEARCH
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+      return new iresearch::IResearchViewBlock(
+        engine, static_cast<iresearch::IResearchViewNode const*>(en)
+      );
     }
+#endif
     case ExecutionNode::TRAVERSAL: {
       return new TraversalBlock(engine, static_cast<TraversalNode const*>(en));
     }

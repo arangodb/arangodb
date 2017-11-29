@@ -28,6 +28,10 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewOptimizerRules.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::aql;
@@ -236,9 +240,11 @@ void OptimizerRulesFeature::addRules() {
   registerRule("patch-update-statements", patchUpdateStatementsRule,
                OptimizerRule::patchUpdateStatementsRule_pass9, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
+#ifdef USE_IRESEARCH  
   // move filters and sort conditions into views
-  registerRule("handle-views", handleViewsRule,
+  registerRule("handle-views", arangodb::iresearch::handleViewsRule,
                OptimizerRule::handleViewsRule_pass6, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
+#endif
 
   // patch update statements
   OptimizerRulesFeature::registerRule("geo-index-optimizer", geoIndexRule,

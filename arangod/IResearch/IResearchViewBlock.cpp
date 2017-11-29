@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +18,12 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Daniel H. Larkin
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "EnumerateViewBlock.h"
+#include "IResearchViewBlock.h"
+#include "IResearchViewNode.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
@@ -35,18 +37,23 @@
 
 namespace {
 
-template<typename T>
-inline T const& getPlanNode(arangodb::aql::ExecutionBlock const& block) noexcept {
+inline arangodb::iresearch::IResearchViewNode const& getPlanNode(
+    arangodb::iresearch::IResearchViewBlock const& block
+) noexcept {
+  TRI_ASSERT(block.getPlanNode());
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  return dynamic_cast<T const&>(*block.getPlanNode());
+  return dynamic_cast<arangodb::iresearch::IResearchViewNode const&>(*block.getPlanNode());
 #else
-  return static_cast<T const&>(*block.getPlanNode());
+  return static_cast<arangodb::iresearch::IResearchViewNode const&>(*block.getPlanNode());
 #endif
 }
 
 }
 
-using namespace arangodb;
+namespace arangodb {
+namespace iresearch {
+
 using namespace arangodb::aql;
 
 // -----------------------------------------------------------------------------
@@ -82,9 +89,9 @@ AqlValue ViewExpressionContext::getVariableValue(
 // --SECTION--                                 EnumerateViewBlock implementation
 // -----------------------------------------------------------------------------
 
-EnumerateViewBlock::EnumerateViewBlock(
+IResearchViewBlock::IResearchViewBlock(
     ExecutionEngine* engine,
-    EnumerateViewNode const* en)
+    IResearchViewNode const* en)
   : ExecutionBlock(engine, en),
     _ctx(this),
     _iter(nullptr),
@@ -92,7 +99,7 @@ EnumerateViewBlock::EnumerateViewBlock(
     _volatileState(en->volatile_state()) {
 }
 
-int EnumerateViewBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+int IResearchViewBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
   const int res = ExecutionBlock::initializeCursor(items, pos);
 
@@ -106,7 +113,7 @@ int EnumerateViewBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_END_BLOCK();
 }
 
-void EnumerateViewBlock::refreshIterator() {
+void IResearchViewBlock::refreshIterator() {
   TRI_ASSERT(!_buffer.empty());
 
   _ctx._data = _buffer.front();
@@ -114,7 +121,7 @@ void EnumerateViewBlock::refreshIterator() {
 
   if (!_iter) {
     // initialize `_iter` in lazy fashion
-    _iter = ::getPlanNode<EnumerateViewNode>(*this).iterator(*_trx, _ctx);
+    _iter = ::getPlanNode(*this).iterator(*_trx, _ctx);
   }
 
   if (!_iter || !_iter->reset(_volatileState ? &_ctx : nullptr)) {
@@ -122,7 +129,7 @@ void EnumerateViewBlock::refreshIterator() {
   }
 }
 
-AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
+AqlItemBlock* IResearchViewBlock::getSome(size_t, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin();
 
@@ -173,7 +180,7 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
     TRI_ASSERT(cur);
 
     size_t const curRegs = cur->getNrRegs();
-    auto const& planNode = ::getPlanNode<EnumerateViewNode>(*this);
+    auto const& planNode = ::getPlanNode(*this);
     RegisterId const nrRegs = planNode.getRegisterPlan()->nrRegs[planNode.getDepth()];
 
     res.reset(requestBlock(atMost, nrRegs));
@@ -238,7 +245,7 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
   DEBUG_END_BLOCK();
 }
 
-size_t EnumerateViewBlock::skipSome(size_t atLeast, size_t atMost) {
+size_t IResearchViewBlock::skipSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
   TRI_ASSERT(_iter != nullptr);
@@ -289,3 +296,6 @@ size_t EnumerateViewBlock::skipSome(size_t atLeast, size_t atMost) {
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
+
+} // iresearch
+} // arangodb

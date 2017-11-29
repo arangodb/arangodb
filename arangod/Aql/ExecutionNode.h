@@ -131,7 +131,9 @@ class ExecutionNode {
     TRAVERSAL = 22,
     INDEX = 23,
     SHORTEST_PATH = 24,
-    ENUMERATE_VIEW = 25
+#ifdef USE_IRESEARCH
+    ENUMERATE_IRESEARCH_VIEW = 25
+#endif
   };
 
   ExecutionNode() = delete;
@@ -822,106 +824,6 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief output variable to write to
   Variable const* _outVariable;
 };
-
-/// @brief class EnumerateViewNode
-class EnumerateViewNode : public ExecutionNode {
-  friend class ExecutionNode;
-  friend class ExecutionBlock;
-  friend class EnumerateViewBlock;
-  friend class RedundantCalculationsReplacer;
-
- public:
-  EnumerateViewNode(
-      ExecutionPlan* plan,
-      size_t id,
-      TRI_vocbase_t* vocbase,
-      std::shared_ptr<LogicalView> view,
-      Variable const* outVariable,
-      Condition* condition,
-      std::shared_ptr<SortCondition> sortCondition)
-    : ExecutionNode(plan, id),
-      _vocbase(vocbase),
-      _view(view),
-      _outVariable(outVariable),
-      _condition(condition),
-      _sortCondition(sortCondition) {
-    TRI_ASSERT(_vocbase);
-    TRI_ASSERT(_view);
-    TRI_ASSERT(_outVariable);
-  }
-
-  EnumerateViewNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
-
-  ~EnumerateViewNode();
-
-  /// @brief return the type of the node
-  NodeType getType() const override final { return ENUMERATE_VIEW; }
-
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
-
-  /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
-
-  /// @brief the cost of an enumerate list node
-  double estimateCost(size_t&) const override final;
-
-  /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final {
-    return std::vector<Variable const*>{_outVariable};
-  }
-
-  /// @brief return out variable
-  Variable const* outVariable() const { return _outVariable; }
-
-  /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  /// @brief return the view
-  std::shared_ptr<LogicalView> view() const { return _view; }
-
-  /// @brief return the filter node
-  Condition* condition() const { return _condition; }
-
-  /// @brief return the condition to pass to the view
-  std::shared_ptr<SortCondition> sortCondition() const {
-    return _sortCondition;
-  }
-
-  std::unique_ptr<ViewIterator> iterator(
-    transaction::Methods& trx,
-    ExpressionContext& ctx
-  ) const;
-
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final;
-
-  /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-    std::unordered_set<Variable const*>& vars
-  ) const override final;
-
-  /// @brief node has nondeterministic filter condition or located inside a loop
-  bool volatile_state() const;
-
- private:
-  /// @brief the database
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief collection
-  std::shared_ptr<LogicalView> _view;
-
-  /// @brief output variable to write to
-  Variable const* _outVariable;
-
-  /// @brief filter node to pass to view
-  Condition* _condition;
-
-  /// @brief sortCondition to pass to the view
-  std::shared_ptr<SortCondition> _sortCondition;
-}; // EnumerateViewNode
 
 /// @brief class LimitNode
 class LimitNode : public ExecutionNode {

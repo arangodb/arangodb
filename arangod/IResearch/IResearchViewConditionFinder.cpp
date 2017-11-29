@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,44 +17,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ConditionFinder.h"
+#include "IResearchViewConditionFinder.h"
+#include "IResearchViewNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IndexNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 
+namespace arangodb {
+namespace iresearch {
+
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-bool ConditionFinder::before(ExecutionNode* en) {
+bool IResearchViewConditionFinder::before(ExecutionNode* en) {
   switch (en->getType()) {
-    case EN::ENUMERATE_LIST:
-    case EN::COLLECT:
-    case EN::SCATTER:
-    case EN::DISTRIBUTE:
-    case EN::GATHER:
-    case EN::REMOTE:
-    case EN::SUBQUERY:
-    case EN::INDEX:
-    case EN::INSERT:
-    case EN::REMOVE:
-    case EN::REPLACE:
-    case EN::UPDATE:
-    case EN::UPSERT:
-    case EN::RETURN:
-    case EN::TRAVERSAL:
-    case EN::SHORTEST_PATH:
-#ifdef USE_IRESEARCH
-    case EN::ENUMERATE_IRESEARCH_VIEW:
-#endif
-      // in these cases we simply ignore the intermediate nodes, note
-      // that we have taken care of nodes that could throw exceptions
-      // above.
-      break;
-
     case EN::LIMIT:
       // LIMIT invalidates the sort expression we already found
       _sorts.clear();
@@ -101,16 +81,16 @@ bool ConditionFinder::before(ExecutionNode* en) {
       break;
     }
 
-    case EN::ENUMERATE_COLLECTION: {
-      auto node = static_cast<EnumerateCollectionNode const*>(en);
+    case EN::ENUMERATE_IRESEARCH_VIEW: {
+      auto node = static_cast<iresearch::IResearchViewNode const*>(en);
       if (_changes->find(node->id()) != _changes->end()) {
         // already optimized this node
         break;
       }
 
       auto condition = std::make_unique<Condition>(_plan->getAst());
-      bool ok = handleFilterCondition(en, condition);
-      if (!ok) {
+
+      if (!handleFilterCondition(en, condition)) {
         break;
       }
 
@@ -122,54 +102,50 @@ bool ConditionFinder::before(ExecutionNode* en) {
         break;
       }
 
-      std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      auto canUseIndex =
-          condition->findIndexes(node, usedIndexes, sortCondition.get());
+      auto const canUseView = condition->checkView(
+        node->view().get(), node->outVariable(), sortCondition.get()
+      );
 
-      if (canUseIndex.first /*filtering*/ || canUseIndex.second /*sorting*/) {
-        bool reverse = false;
-        if (canUseIndex.second && sortCondition->isUnidirectional()) {
-          reverse = sortCondition->isDescending();
-        }
-
-        if (!canUseIndex.first) {
-          // index cannot be used for filtering, but only for sorting
-          // remove the condition now
-          TRI_ASSERT(canUseIndex.second);
-          condition.reset(new Condition(_plan->getAst()));
-          condition->normalize(_plan);
-        }
-
-        TRI_ASSERT(!usedIndexes.empty());
-
-        // We either can find indexes for everything or findIndexes will clear
-        // out usedIndexes
-        std::unique_ptr<ExecutionNode> newNode(new IndexNode(
-            _plan, _plan->nextId(), node->vocbase(), node->collection(),
-            node->outVariable(), usedIndexes, condition.get(), reverse));
+      if (canUseView.first && canUseView.second) {
+        auto newNode = std::make_unique<iresearch::IResearchViewNode>(
+          _plan,
+          _plan->nextId(),
+          node->vocbase(),
+          node->view(),
+          node->outVariable(),
+          condition.get(),
+          std::move(sortCondition)
+        );
         condition.release();
-        TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
+
+        TRI_IF_FAILURE("ConditionFinder::insertViewNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
         // We keep this node's change
         _changes->emplace(node->id(), newNode.get());
         newNode.release();
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "filter clause "
+          "not yet supported with view");
       }
 
       break;
     }
+
+    default:
+      // in these cases we simply ignore the intermediate nodes, note
+      // that we have taken care of nodes that could throw exceptions
+      // above.
+      break;
   }
 
   return false;
 }
 
-bool ConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
-  return false;
-}
-
-bool ConditionFinder::handleFilterCondition(
-    ExecutionNode* en, std::unique_ptr<Condition>& condition) {
+bool IResearchViewConditionFinder::handleFilterCondition(
+    ExecutionNode* en,
+    std::unique_ptr<Condition>& condition) {
   bool foundCondition = false;
   for (auto& it : _variableDefinitions) {
     if (_filters.find(it.first) != _filters.end()) {
@@ -240,8 +216,10 @@ bool ConditionFinder::handleFilterCondition(
   return true;
 }
 
-void ConditionFinder::handleSortCondition(
-    ExecutionNode* en, Variable const* outVar, std::unique_ptr<Condition>& condition,
+void IResearchViewConditionFinder::handleSortCondition(
+    ExecutionNode* en,
+    Variable const* outVar,
+    std::unique_ptr<Condition>& condition,
     std::unique_ptr<SortCondition>& sortCondition) {
   if (!en->isInInnerLoop()) {
     // we cannot optimize away a sort if we're in an inner loop ourselves
@@ -252,3 +230,6 @@ void ConditionFinder::handleSortCondition(
     sortCondition.reset(new SortCondition());
   }
 }
+
+} // iresearch
+} // arangodb

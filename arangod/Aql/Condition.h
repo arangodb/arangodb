@@ -36,7 +36,6 @@ namespace aql {
 
 class Ast;
 class EnumerateCollectionNode;
-class EnumerateViewNode;
 class ExecutionPlan;
 struct Index;
 class SortCondition;
@@ -248,7 +247,7 @@ class Condition {
   /// @brief check if view can be used for conditions
   /// return value is a pair indicating whether the view can be used for
   /// filtering(first) and sorting(second)
-  std::pair<bool, bool> checkView(EnumerateViewNode const*, SortCondition const*);
+  std::pair<bool, bool> checkView(LogicalView const*, Variable const*, SortCondition const*);
 
   /// @brief get the attributes for a sub-condition that are const
   /// (i.e. compared with equality)

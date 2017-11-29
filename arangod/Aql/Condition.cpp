@@ -411,13 +411,11 @@ std::pair<bool, bool> Condition::findIndexes(
 }
 
 std::pair<bool, bool> Condition::checkView(
-    EnumerateViewNode const* node, SortCondition const* sortCondition) {
-  TRI_ASSERT(node != nullptr);
+    LogicalView const* view,
+    Variable const* var,
+    SortCondition const* sortCondition) {
   TRI_ASSERT(sortCondition != nullptr);
-
-  auto view = node->view();
   TRI_ASSERT(view != nullptr);
-  auto var = node->outVariable();
   TRI_ASSERT(var != nullptr);
 
   // FIXME how we can use these variables?
