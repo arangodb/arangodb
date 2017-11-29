@@ -64,6 +64,118 @@ var sortedKeys = function (col) {
   return keys;
 };
 
+function transactionFailuresSuite () {
+  'use strict';
+  var cn = 'UnitTestsTransaction';
+  var c = null;
+
+  return {
+
+    setUp: function () {
+      internal.debugClearFailAt();
+      db._drop(cn);
+      c = db._create(cn);
+    },
+
+    tearDown: function () {
+      internal.debugClearFailAt();
+
+      if (c !== null) {
+        c.drop();
+      }
+
+      c = null;
+      internal.wait(0);
+    },
+    
+    testCommitEmptyTransactionFailure : function () {
+      c.insert({ _key: "foobar", value: "baz" });
+      assertEqual(1, c.count());
+
+      internal.debugSetFailAt("TransactionCommitFail");
+      try {
+        db._executeTransaction({ 
+          collections: {
+            write: cn 
+          },
+          action: function () {}
+        });
+
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+      }
+
+      internal.debugClearFailAt();
+      assertEqual(1, c.count());
+      assertEqual("baz", c.document("foobar").value);
+    },
+
+    testCommitTransactionWithRemovalsFailure : function () {
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i });
+      }
+      assertEqual(100, c.count());
+      
+      internal.debugSetFailAt("TransactionCommitFail");
+      try {
+        db._executeTransaction({ 
+          collections: {
+            write: cn 
+          },
+          action: function () {
+            for (var i = 0; i < 100; ++i) {
+              c.remove("test" + i);
+            }
+            assertEqual(0, c.count());
+          }
+        });
+
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+      }
+
+      internal.debugClearFailAt();
+      assertEqual(100, c.count());
+    },
+    
+    testCommitTransactionWithFailuresInsideFailure : function () {
+      c.insert({ _key: "foobar", value: "baz" });
+
+      internal.debugSetFailAt("TransactionCommitFail");
+      try {
+        db._executeTransaction({ 
+          collections: {
+            write: cn 
+          },
+          action: function () {
+            for (var i = 0; i < 100; ++i) {
+              try {
+                // insert conflicting document
+                c.insert({ _key: "foobar" });
+                fail();
+              } catch (err) {
+              }
+            }
+
+            assertEqual(1, c.count());
+          }
+        });
+
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+      }
+
+      internal.debugClearFailAt();
+      assertEqual(1, c.count());
+      assertEqual("baz", c.document("foobar").value);
+    }
+
+  };
+}
+
 function transactionRevisionsSuite () {
   'use strict';
   var cn = 'UnitTestsTransaction';
@@ -3918,6 +4030,9 @@ function transactionTraversalSuite () {
 // / @brief executes the test suites
 // //////////////////////////////////////////////////////////////////////////////
 
+if (internal.debugCanUseFailAt()) {
+  jsunity.run(transactionFailuresSuite);
+}
 jsunity.run(transactionRevisionsSuite);
 jsunity.run(transactionRollbackSuite);
 jsunity.run(transactionInvocationSuite);
