@@ -32,7 +32,6 @@
       'click #document-to': 'navigateToDocument',
       'keydown #documentEditor .ace_editor': 'keyPress',
       'keyup .jsoneditor .search input': 'checkSearchBox',
-      'click .jsoneditor .modes': 'storeMode',
       'click #addDocument': 'addDocument'
     },
 
@@ -63,14 +62,11 @@
       }
     },
 
-    storeMode: function () {
+    storeMode: function (mode) {
       var self = this;
-
-      $('.type-modes').on('click', function (elem) {
-        var mode = $(elem.currentTarget).text().toLowerCase();
-        localStorage.setItem('JSONEditorMode', mode);
-        self.defaultMode = mode;
-      });
+      localStorage.setItem('JSONEditorMode', mode);
+      self.defaultMode = mode;
+      self.editor.setMode(this.defaultMode);
     },
 
     keyPress: function (e) {
@@ -125,7 +121,9 @@
     deleteDocument: function () {
       var successFunction = function () {
         if (this.customView) {
-          this.customDeleteFunction();
+          if (this.customDeleteFunction) {
+            this.customDeleteFunction();
+          }
         } else {
           var navigateTo = 'collection/' + encodeURIComponent(this.colid) + '/documents/1';
           window.modalView.hide();
@@ -222,6 +220,9 @@
         onChange: function () {
           self.jsonContentChanged();
         },
+        onModeChange: function (newMode) {
+          self.storeMode(newMode);
+        },
         search: true,
         mode: 'tree',
         modes: ['tree', 'code'],
@@ -230,6 +231,10 @@
       };
 
       this.editor = new JSONEditor(container, options);
+      var testMode = localStorage.getItem('JSONEditorMode');
+      if (testMode === 'code' || testMode === 'tree') {
+        this.defaultMode = testMode;
+      }
       if (this.defaultMode) {
         this.editor.setMode(this.defaultMode);
       }
@@ -287,6 +292,7 @@
     },
 
     confirmSaveDocument: function () {
+      var self = this;
       window.modalView.hide();
 
       var model;
@@ -308,6 +314,12 @@
           } else {
             this.successConfirmation();
             this.disableSaveButton();
+
+            if (self.customView) {
+              if (self.customSaveFunction) {
+                self.customSaveFunction(data);
+              }
+            }
           }
         }.bind(this);
 
@@ -319,6 +331,12 @@
           } else {
             this.successConfirmation();
             this.disableSaveButton();
+
+            if (self.customView) {
+              if (self.customSaveFunction) {
+                self.customSaveFunction(data);
+              }
+            }
           }
         }.bind(this);
 

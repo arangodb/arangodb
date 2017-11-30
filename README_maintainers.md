@@ -372,11 +372,27 @@ creating the file `/etc/sysctl.d/corepattern.conf` (or add the following lines t
     # and know the PID plus the process name for later use.
     kernel.core_uses_pid = 1
     kernel.core_pattern =  /var/tmp/core-%e-%p-%t
+    
+to reload the above settings most systems support:
 
-Note that the `proc` paths translate sub-directories to dots. The non permanent way of doing this in a running system is:
+    sudo sysctl -p
+
+Note that the `proc` paths translate sub-directories to dots.
+The non permanent way of doing this in a running system is:
 
     echo 1 > /proc/sys/kernel/core_uses_pid
     echo '/var/tmp/core-%e-%p-%t' > /proc/sys/kernel/core_pattern
+
+(you may also inspect these files to validate the current settings)
+
+More modern systems facilitate [`systemd-coredump`](https://www.freedesktop.org/software/systemd/man/systemd-coredump.html) (via a similar named package) to controll coredumps.
+On most systems it will put compressed coredumps to `/var/lib/systemd/coredump`. 
+
+In order to use automatic coredump analysis with the unittests you need to configure 
+`/etc/systemd/coredump.conf` and set `Compress=no` - so instant analysis may take place.
+
+Please note that we can't support [Ubuntu Apport](https://wiki.ubuntu.com/Apport).
+Please use `apport-unpack` to send us the bare coredumps.
 
 Solaris Coredumps
 =================
