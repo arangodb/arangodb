@@ -35,7 +35,12 @@ RESET="${C[RESET]}"
 
 newVersionNumber=$( tr -d '\r\n' < ../../VERSION)
 
-GSEARCH_ID=$(  grep "GSEARCH" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:-]*\)".*;\1;')
+declare -A ALL_GSEARCH_ID
+for book in ${ALLBOOKS}; do
+    ALL_GSEARCH_ID[$book]=$(  grep "GSEARCH_ID_${book}" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:-]*\)".*;\1;')
+done
+
+
 GCHANGE_FREQ=$(grep "GCHANGE_FREQ" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:]*\)".*;\1;')
 GPRIORITY=$(grep "GPRIORITY" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z.]*\)".*;\1;')
 BROWSEABLE_VERSIONS=$(grep "BROWSEABLE_VERSIONS" ../../VERSIONS |sed -e 's;" *$;;' -e 's;.*";;')
@@ -447,13 +452,12 @@ function build-book()
             cd "ppbooks/${NAME}"
             sed -e "s/VERSION_NUMBER/v${VERSION}/g" \
                 -e "s;/devel;/${RELEASE_DIRECTORY};" \
-                -e "s;@GSEARCH_ID@;${GSEARCH_ID};" \
+                -e "s;@GSEARCH_ID@;${ALL_GSEARCH_ID[${NAME}]};" \
                 -e "s;@GCHANGE_FREQ@;${GCHANGE_FREQ};" \
                 -e "s;@GPRIORITY@;${GPRIORITY};" \
                 -e "s;@BROWSEABLE_VERSIONS@;${BROWSEABLE_VERSIONS};" \
                 \
                 -i "${facilityfile}"
-
         )
     done
 
