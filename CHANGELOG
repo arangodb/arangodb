@@ -7,7 +7,7 @@ v3.2.9 (2017-XX-XX)
 
 * fixed a deadlock in user privilege/permission change routine
 
-* fixed a deadlock on server shutdown 
+* fixed a deadlock on server shutdown
 
 * fixed some collection locking issues in MMFiles engine
 
@@ -25,11 +25,12 @@ v3.2.9 (2017-XX-XX)
 * fix removal of failed cluster nodes via web interface
 
 * back port of ClusterComm::wait fix in devel
-  among other things this fixes too eager dropping of other followers in case 
+  among other things this fixes too eager dropping of other followers in case
   one of the followers does not respond in time
-  
+
 * transact interface in agency should not be inquired as of now
 
+* inquiry tests and blocking of inquiry on AgencyGeneralTransaction
 
 v3.2.8 (2017-11-18)
 -------------------
