@@ -308,7 +308,7 @@ class ClusterInfo {
   /// argument can be a collection ID or a collection name (both cluster-wide).
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
+  virtual std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
                                                    CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////

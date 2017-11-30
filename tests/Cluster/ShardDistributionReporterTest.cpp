@@ -60,7 +60,7 @@ static void VerifyNumbers(VPackSlice result, std::string const& colName,
   REQUIRE(shard.isObject());
 
   VPackSlice progress = shard.get("progress");
-  REQUIRE(progress.isObject());
+  REQUIRE(progress.isNone());
 
   VPackSlice total = progress.get("total");
   REQUIRE(total.isNumber());
@@ -95,6 +95,9 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
   fakeit::Mock<LogicalCollection> colMock;
   LogicalCollection& col = colMock.get();
 
+  fakeit::Mock<std::shared_ptr<std::vector<std::string>>> allShardsMock;
+  std::shared_ptr<std::vector<std::string>>& allShards = allShardsMock.get();
+
   std::string dbname = "UnitTestDB";
   std::string colName = "UnitTestCollection";
   std::string cidString = "1337";
@@ -123,11 +126,20 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
   // Fake the collections
   std::vector<std::shared_ptr<LogicalCollection>> allCollections;
+  
+  // Fake the collection
+  std::shared_ptr<LogicalCollection> allCollection;
 
   // Now we fake the calls
   fakeit::When(Method(infoMock, getCollections)).AlwaysDo([&](DatabaseID const& dbId) {
     REQUIRE(dbId == dbname);
     return allCollections;
+  });
+  // Now we fake the calls #2
+  fakeit::When(Method(infoMock, getCollection)).AlwaysDo([&](DatabaseID const& dbId, CollectionID const& colId) {
+    REQUIRE(dbId == dbname);
+    REQUIRE(colId == colName);
+    return allCollection;
   });
   fakeit::When(Method(infoMock, getServerAliases)).AlwaysReturn(aliases);
   fakeit::When(Method(infoMock, getCollectionCurrent).Using(dbname, cidString))
@@ -138,6 +150,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       });
 
   fakeit::When(Method(colMock, name)).AlwaysReturn(colName);
+  fakeit::When(Method(colMock, shardIds)).AlwaysReturn(shards);
   fakeit::When(
       ConstOverloadedMethod(colMock, shardIds, std::shared_ptr<ShardMap>()))
       .AlwaysReturn(shards);
@@ -352,7 +365,11 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       VPackBuilder resultBuilder;
       testee.getDistributionForDatabase(dbname, resultBuilder);
 
+      VPackBuilder resultBuilderCollection;
+      testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilderCollection);
+
       VPackSlice result = resultBuilder.slice();
+      VPackSlice resultC = resultBuilder.slice();
 
       THEN("It should return an object") { REQUIRE(result.isObject()); }
 
@@ -363,10 +380,12 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
       WHEN("Checking one of those collections") {
         result = result.get(colName);
+        resultC = resultC.get(colName);
         REQUIRE(result.isObject());
 
         WHEN("validating the plan") {
           VPackSlice plan = result.get("Plan");
+          VPackSlice planC = resultC.get("Plan");
           REQUIRE(plan.isObject());
 
           // One entry per shard
@@ -374,6 +393,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
           WHEN("Testing the in-sync shard") {
             VPackSlice shard = plan.get(s1);
+            VPackSlice shardC = planC.get(s1);
 
             REQUIRE(shard.isObject());
 
@@ -407,11 +427,15 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
             THEN("It should not display progress") {
               VPackSlice progress = shard.get("progress");
               REQUIRE(progress.isNone());
+
+              VPackSlice progressC = shardC.get("progress");
+              REQUIRE(progressC.isNone());
             }
           }
 
           WHEN("Testing the off-sync shard") {
             VPackSlice shard = plan.get(s2);
+            VPackSlice shardC = planC.get(s2);
 
             REQUIRE(shard.isObject());
 
@@ -442,7 +466,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               }
             }
 
-            THEN("It should display the progress") {
+            THEN("It should not display the progress") {
               VPackSlice progress = shard.get("progress");
               REQUIRE(progress.isObject());
 
@@ -454,10 +478,24 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               REQUIRE(current.isNumber());
               REQUIRE(current.getNumber<uint64_t>() == shard2LowFollowerCount);
             }
+
+            THEN("It should not display the progress - collection specified") {
+              VPackSlice progressC = shardC.get("progress");
+              REQUIRE(progressC.isObject());
+
+              VPackSlice total = progressC.get("total");
+              REQUIRE(total.isNumber());
+              REQUIRE(total.getNumber<uint64_t>() == shard2LeaderCount);
+
+              VPackSlice current = progressC.get("current");
+              REQUIRE(current.isNumber());
+              REQUIRE(current.getNumber<uint64_t>() == shard2LowFollowerCount);
+            }
           }
 
           WHEN("Testing the partial in-sync shard") {
             VPackSlice shard = plan.get(s3);
+            VPackSlice shardC = planC.get(s3);
 
             REQUIRE(shard.isObject());
 
@@ -488,8 +526,13 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               }
             }
 
-            THEN("It should display the progress") {
+            THEN("It should not display the progress") {
               VPackSlice progress = shard.get("progress");
+              REQUIRE(progress.isNone());
+            }
+
+            THEN("It should display the progress - collection specified") {
+              VPackSlice progress = shardC.get("progress");
               REQUIRE(progress.isObject());
 
               VPackSlice total = progress.get("total");
