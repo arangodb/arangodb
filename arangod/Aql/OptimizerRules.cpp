@@ -4447,7 +4447,8 @@ static bool isValueTypeNumber(AstNode* node) {
          node->type == NODE_TYPE_REFERENCE;
 }
 
-static bool applyFulltextOptimization(EnumerateListNode* elnode, ExecutionPlan* plan) {
+static bool applyFulltextOptimization(EnumerateListNode* elnode,
+                                      LimitNode* limitNode, ExecutionPlan* plan) {
   std::vector<Variable const*> varsUsedHere = elnode->getVariablesUsedHere();
   TRI_ASSERT(varsUsedHere.size() == 1);
   // now check who introduced our variable
@@ -4479,30 +4480,33 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode, ExecutionPlan* 
     return false;
   }
   
-  AstNode* collNode = fargs->getMember(0);
-  AstNode* attrNode = fargs->getMember(1);
-  AstNode* queryNode = fargs->getMember(2);
-  AstNode* limitNode = fargs->numMembers() == 4 ? limitNode = fargs->getMember(3) : nullptr;
-  if ((collNode->type != NODE_TYPE_COLLECTION && collNode->type != NODE_TYPE_VALUE) ||
-      !isValueTypeString(attrNode) || !isValueTypeString(queryNode) ||
-      (limitNode != nullptr && !isValueTypeNumber(limitNode))) {
+  AstNode* collArg = fargs->getMember(0);
+  AstNode* attrArg = fargs->getMember(1);
+  AstNode* queryArg = fargs->getMember(2);
+  AstNode* limitArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
+  if ((collArg->type != NODE_TYPE_COLLECTION && collArg->type != NODE_TYPE_VALUE) ||
+      !isValueTypeString(attrArg) || !isValueTypeString(queryArg) ||
+      (limitArg != nullptr && !isValueTypeNumber(limitArg))) {
     return false;
   }
   
-  std::string name = collNode->getString();
-  std::string attr = attrNode->getString();
+  std::string name = collArg->getString();
   TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
   aql::Collections* colls = plan->getAst()->query()->collections();
   aql::Collection const* coll = colls->add(name, AccessMode::Type::READ);
+  std::vector<basics::AttributeName> field;
+  TRI_ParseAttributeString(attrArg->getString(), field, /*allowExpansion*/false);
+  if (field.empty()) {
+    return false;
+  }
   
   //check for suitiable indexes
   std::shared_ptr<LogicalCollection> logical = coll->getCollection();
   std::shared_ptr<arangodb::Index> index;
   for (auto idx : logical->getIndexes()) {
     if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-      std::vector<basics::AttributeName> const& fields = idx->fields()[0];
-      TRI_ASSERT(!fields.empty());
-      if (fields[0].name == attr) {
+      TRI_ASSERT(idx->fields().size() == 1);
+      if (basics::AttributeName::isIdentical(idx->fields()[0], field, false)) {
         index = idx;
         break;
       }
@@ -4517,11 +4521,11 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode, ExecutionPlan* 
   //AstNode* varAstNode = ast->createNodeReference(elnode->outVariable());
   
   auto args = ast->createNodeArray(2);
-  args->addMember(ast->clone(collNode));  // only so createNodeFunctionCall doesn't throw
-  args->addMember(attrNode);
-  args->addMember(queryNode);
-  if (limitNode != nullptr) {
-    args->addMember(limitNode);
+  args->addMember(ast->clone(collArg));  // only so createNodeFunctionCall doesn't throw
+  args->addMember(attrArg);
+  args->addMember(queryArg);
+  if (limitArg != nullptr) {
+    args->addMember(limitArg);
   }
   AstNode* cond = ast->createNodeFunctionCall("FULLTEXT", args);
   TRI_ASSERT(cond != nullptr);
@@ -4538,20 +4542,19 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode, ExecutionPlan* 
   condition.release();
   plan->replaceNode(elnode, indexNode);
 
-  if (limitNode != nullptr) { // FIXME: check smaller 0999999..
-    LimitNode* limitnode = new LimitNode(plan, plan->nextId(), 0,
-                                         static_cast<size_t>(limitNode->getIntValue()));
-    plan->registerNode(limitnode);
+  if (limitArg != nullptr && limitNode == nullptr) { // add LIMIT
+    size_t limit = static_cast<size_t>(limitArg->getIntValue());
+    limitNode = new LimitNode(plan, plan->nextId(), 0, limit);
+    plan->registerNode(limitNode);
     auto parents = indexNode->getParents(); // Intentional copy
     for (ExecutionNode* parent : parents) {
-      if (!parent->replaceDependency(indexNode, limitnode)) {
+      if (!parent->replaceDependency(indexNode, limitNode)) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "Could not replace dependencies of an old node");
       }
     }
-    limitnode->addDependency(indexNode);
+    limitNode->addDependency(indexNode);
   }
-  
   return true;
 }
 
@@ -4566,11 +4569,14 @@ void arangodb::aql::fulltextIndexRule(Optimizer* opt,
   
   for (ExecutionNode* node : nodes) {
     ExecutionNode* current = node;
+    LimitNode* limit = nullptr; // maybe we have an existing LIMIT x,y
     while (current) {
       if (current->getType() == EN::ENUMERATE_LIST) {
         EnumerateListNode* elnode = static_cast<EnumerateListNode*>(current);
-        modified = modified || applyFulltextOptimization(elnode, plan.get());
+        modified = modified || applyFulltextOptimization(elnode, limit, plan.get());
         break;
+      } else if (current->getType() == EN::LIMIT) {
+        limit = static_cast<LimitNode*>(current);
       }
       current = current->getFirstDependency();  // inspect next node
     }

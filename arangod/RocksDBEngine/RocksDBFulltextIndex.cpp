@@ -82,8 +82,6 @@ RocksDBFulltextIndex::RocksDBFulltextIndex(
   }
 }
 
-RocksDBFulltextIndex::~RocksDBFulltextIndex() {}
-
 /// @brief return a VelocyPack representation of the index
 void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                         bool forPersistence) const {
