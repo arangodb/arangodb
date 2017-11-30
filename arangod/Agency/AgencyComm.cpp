@@ -1383,7 +1383,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
   bool isInquiry = false;   // Set to true whilst we investigate a potentially
                             // failed transaction.
   static std::string const writeURL {"/_api/agency/write"};
-  bool isWriteTrans = (url == writeURL);
+  bool isWriteTrans = (initialUrl == writeURL);
 
   while (true) {  // will be left by timeout eventually
     // If for some reason we did not find an agency endpoint, we bail out:
