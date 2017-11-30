@@ -6,6 +6,8 @@ v3.2.9 (2017-XX-XX)
 * UI: optimized error messages for invalid graph definitions. Also fixed a
   graph renderer cleanrenderer cleanup error.
 
+* UI: document/edge editor now remembering their modes (e.g. code or tree)
+
 * UI: added a delay within the graph viewer while changing the colors of the
   graph. Necessary due different browser behaviour.
 
