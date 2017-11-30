@@ -106,14 +106,14 @@ if(NOT WIN32)
 endif()
 
 # select windows runteime (dynamic / static)
-# option(WITH_MD_LIBRARY "build with MD" ON)
-# if(WIN32 AND MSVC)
-#   if(WITH_MD_LIBRARY)
-#       set(RUNTIME_LIBRARY "MD") #DYNAMIC
-#   else()
-#       set(RUNTIME_LIBRARY "MT") #STATIC
-#   endif()
-# endif()
+option(WITH_MD_LIBRARY "build with MD" ON)
+if(WIN32 AND MSVC)
+  if(WITH_MD_LIBRARY)
+      set(RUNTIME_LIBRARY "MD") #DYNAMIC
+  else()
+      set(RUNTIME_LIBRARY "MT") #STATIC
+  endif()
+endif()
 
 # portable does not set -m<arch>
 # but we are still able to force SSE

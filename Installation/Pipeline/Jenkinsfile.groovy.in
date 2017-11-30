@@ -1348,10 +1348,10 @@ def buildEdition(os, edition, maintainer) {
             logFile = "..\\" + logFile
             extra = "-DUSE_CATCH_TESTS=ON -DUSE_FAILURE_TESTS=ON -DDEBUG_SYNC_REPLICATION=ON"
             if( edition == "enterprise"){
-                extra.append(" -DUSE_ENTERPRIZE=ON")
+                extra += " -DUSE_ENTERPRISE=ON"
             }
             if( maintainer == "maintainer"){
-                extra.append(" -DUSE_MAINTAINER_MODE=ON")
+                extra += " -DUSE_MAINTAINER_MODE=ON"
             }
 
             powershell "Remove-Item -Force -Recurse ${arch} -ErrorAction SilentlyContinue"
