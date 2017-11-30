@@ -413,7 +413,10 @@ RestStatus RestAgencyHandler::handleInquire() {
           for (auto const& index : ret.indices) {
             body.add(VPackValue(index));
             failed = (failed || index == 0);
-          }}}
+          }}
+
+      }
+      body.add("inquired", VPackValue(true));
     }
     generateResult(failed ? rest::ResponseCode::PRECONDITION_FAILED :
                    rest::ResponseCode::OK, body.slice());

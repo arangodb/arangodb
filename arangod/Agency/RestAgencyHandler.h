@@ -47,7 +47,7 @@ class RestAgencyHandler : public RestBaseHandler {
   RestStatus reportErrorEmptyRequest();
   RestStatus reportTooManySuffices();
   RestStatus reportUnknownMethod();
-  RestStatus reportMessage();
+  RestStatus reportMessage(arangodb::rest::ResponseCode, std::string const&);
   RestStatus handleStores();
   RestStatus handleStore();
   RestStatus handleRead();
