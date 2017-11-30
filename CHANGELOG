@@ -1,7 +1,18 @@
 v3.2.9 (2017-XX-XX)
 -------------------
 
-* Properly report errors when AQL queries fail in a late stage
+* allow compilation of ArangoDB source code with g++ 7
+
+* fixed issue #3224: Issue in the Foxx microservices examples
+
+* fixed a deadlock in user privilege/permission change routine
+
+* fixed a deadlock on server shutdown 
+
+* fixed some collection locking issues in MMFiles engine
+
+* properly report commit errors in AQL write queries to the caller for the
+  RocksDB engine
 
 * UI: optimized error messages for invalid graph definitions. Also fixed a
   graph renderer cleanrenderer cleanup error.
@@ -11,9 +22,12 @@ v3.2.9 (2017-XX-XX)
 * UI: added a delay within the graph viewer while changing the colors of the
   graph. Necessary due different browser behaviour.
 
-* fix removal of failed nodes
-* back port of ClusterComm::wait fix in devel
+* fix removal of failed cluster nodes via web interface
 
+* back port of ClusterComm::wait fix in devel
+  among other things this fixes too eager dropping of other followers in case 
+  one of the followers does not respond in time
+  
 
 v3.2.8 (2017-11-18)
 -------------------
