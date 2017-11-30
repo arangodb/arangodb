@@ -492,7 +492,6 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
                                           const ServerState::RoleEnum& role,
                                           std::string const& id) {
 
-  typedef std::pair<AgencyOperation,AgencyPrecondition> operationType;
   std::string agencyKey = role == ROLE_COORDINATOR ?
     "Coordinators" : "DBServers";
   std::string idKey = role == ROLE_COORDINATOR ?
@@ -526,19 +525,17 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
     std::string planUrl = "Plan/" + agencyKey + "/" + id;
     std::string currentUrl = "Current/" + agencyKey + "/" + id;
 
-    AgencyGeneralTransaction reg;
-    reg.push_back( // Plan entry if not exists
-        operationType(
-          AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
-          AgencyPrecondition(planUrl, AgencyPrecondition::Type::EMPTY, true)));
-
-    reg.push_back( // Current entry if not exists
-        operationType(
-          AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
-          AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true)));
-    
+    AgencyWriteTransaction preg(
+      AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
+      AgencyPrecondition(planUrl, AgencyPrecondition::Type::EMPTY, true));
     // ok to fail..if it failed we are already registered
-    comm.sendTransactionWithFailover(reg, 0.0);
+    comm.sendTransactionWithFailover(preg, 0.0);
+    AgencyWriteTransaction creg(
+      AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
+      AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true));
+    // ok to fail..if it failed we are already registered
+    comm.sendTransactionWithFailover(creg, 0.0);
+    
   } else {
     std::string currentUrl = "Current/" + agencyKey + "/" + _idOfPrimary;
     AgencyCommResult result = comm.setValue(currentUrl, id, 0.0);

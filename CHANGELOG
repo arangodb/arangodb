@@ -28,6 +28,8 @@ v3.2.9 (2017-XX-XX)
   among other things this fixes too eager dropping of other followers in case 
   one of the followers does not respond in time
   
+* transact interface in agency should not be inquired as of now
+
 
 v3.2.8 (2017-11-18)
 -------------------
