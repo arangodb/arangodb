@@ -100,6 +100,14 @@ class CollectionGuard {
   }
 
  public:
+  /// @brief prematurely release the usage lock
+  void release() {
+    if (_collection != nullptr) {
+      _vocbase->releaseCollection(_collection);
+      _collection = nullptr;
+    }
+  }
+
   /// @brief return the collection pointer
   inline arangodb::LogicalCollection* collection() const { return _collection; }
 
