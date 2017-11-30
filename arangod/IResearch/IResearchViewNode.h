@@ -21,8 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__ENUMERATE_VIEW_NODE_H
-#define ARANGOD_IRESEARCH__ENUMERATE_VIEW_NODE_H 1
+#ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H
+#define ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
 

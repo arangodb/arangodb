@@ -17,12 +17,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Daniel H. Larkin
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__ENUMERATE_VIEW_BLOCK_H
-#define ARANGOD_IRESEARCH__ENUMERATE_VIEW_BLOCK_H 1
+#ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_BLOCK_H
+#define ARANGOD_IRESEARCH__IRESEARCH_VIEW_BLOCK_H 1
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
