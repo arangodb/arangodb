@@ -131,7 +131,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an S2CellId
   //////////////////////////////////////////////////////////////////////////////
-  void constructSphericalIndexValue(uint64_t indexId, uint64_t value,
+  void constructS2IndexValue(uint64_t indexId, uint64_t value,
                                     TRI_voc_rid_t revisionId);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -265,7 +265,7 @@ class RocksDBKey {
   ///
   /// May be called only on S2IndexValues
   //////////////////////////////////////////////////////////////////////////////
-  static uint64_t sphericalValue(rocksdb::Slice const& slice);
+  static uint64_t S2Value(rocksdb::Slice const& slice);
 
   /// size of internal objectID
   static constexpr size_t objectIdSize() { return sizeof(uint64_t); }

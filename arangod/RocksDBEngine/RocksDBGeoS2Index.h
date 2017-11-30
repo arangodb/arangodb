@@ -37,35 +37,35 @@
 class S2Region;
 
 namespace arangodb {
-class RocksDBSphericalIndex;
+class RocksDBGeoS2Index;
 
 /// Common spherical Iterator supertype
-class RocksDBSphericalIndexIterator : public IndexIterator {
+class RocksDBGeoS2IndexIterator : public IndexIterator {
  public:
-  RocksDBSphericalIndexIterator(LogicalCollection* collection,
-                                transaction::Methods* trx,
-                                ManagedDocumentResult* mmdr,
-                                RocksDBSphericalIndex const* index);
+  RocksDBGeoS2IndexIterator(LogicalCollection* collection,
+                            transaction::Methods* trx,
+                            ManagedDocumentResult* mmdr,
+                            RocksDBGeoS2Index const* index);
 
-  char const* typeName() const override { return "geospatial-index-iterator"; }
+  char const* typeName() const override { return "s2index-index-iterator"; }
 
   virtual geo::FilterType filterType() const = 0;
 
  protected:
-  RocksDBSphericalIndex const* _index;
+  RocksDBGeoS2Index const* _index;
   std::unique_ptr<rocksdb::Iterator> _iter;
 };
 
-class RocksDBSphericalIndex final : public arangodb::RocksDBIndex {
+class RocksDBGeoS2Index final : public arangodb::RocksDBIndex {
   friend class RocksDBSphericalIndexIterator;
 
  public:
-  RocksDBSphericalIndex() = delete;
+  RocksDBGeoS2Index() = delete;
 
-  RocksDBSphericalIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
-                        velocypack::Slice const&);
+  RocksDBGeoS2Index(TRI_idx_iid_t, arangodb::LogicalCollection*,
+                    velocypack::Slice const&);
 
-  ~RocksDBSphericalIndex() override {}
+  ~RocksDBGeoS2Index() override {}
 
  public:
   /// @brief geo index variants
@@ -82,9 +82,9 @@ class RocksDBSphericalIndex final : public arangodb::RocksDBIndex {
   };
 
  public:
-  IndexType type() const override { return TRI_IDX_TYPE_GEOSPATIAL_INDEX; }
+  IndexType type() const override { return TRI_IDX_TYPE_S2_INDEX; }
 
-  char const* typeName() const override { return "geospatial"; }
+  char const* typeName() const override { return "s2index"; }
 
   IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
@@ -108,26 +108,6 @@ class RocksDBSphericalIndex final : public arangodb::RocksDBIndex {
   void unload() override {}
 
   void truncate(transaction::Methods*) override;
-
-  /// @brief looks up all points within a given radius
-  /*arangodb::rocksdbengine::GeoCoordinates* withinQuery(transaction::Methods*,
-                                                       double, double,
-                                                       double) const;
-
-  /// @brief looks up the nearest points
-  arangodb::rocksdbengine::GeoCoordinates* nearQuery(transaction::Methods*,
-                                                     double, double,
-                                                     size_t) const;*/
-
-  /*bool isSame(std::vector<std::string> const& location, bool geoJson) const {
-    return (!_location.empty() && _location == location && _geoJson == geoJson);
-  }
-
-  bool isSame(std::vector<std::string> const& latitude,
-              std::vector<std::string> const& longitude) const {
-    return (!_latitude.empty() && !_longitude.empty() &&
-            _latitude == latitude && _longitude == longitude);
-  }*/
 
   /// insert index elements into the specified write batch.
   Result insertInternal(transaction::Methods* trx, RocksDBMethods*,

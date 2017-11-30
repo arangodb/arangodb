@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBSphericalIndex.h"
+#include "RocksDBGeoS2Index.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -41,9 +41,9 @@
 
 using namespace arangodb;
 
-RocksDBSphericalIndexIterator::RocksDBSphericalIndexIterator(
+RocksDBGeoS2IndexIterator::RocksDBGeoS2IndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, RocksDBSphericalIndex const* index)
+    ManagedDocumentResult* mmdr, RocksDBGeoS2Index const* index)
     : IndexIterator(collection, trx, mmdr, index), _index(index) {
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
   rocksdb::ReadOptions options = mthds->readOptions();
@@ -53,13 +53,13 @@ RocksDBSphericalIndexIterator::RocksDBSphericalIndexIterator(
              RocksDBColumnFamily::geo()->GetID());
 }
 /*
-class RegionIterator : public RocksDBSphericalIndexIterator {
+class RegionIterator : public RocksDBGeoS2IndexIterator {
  public:
   RegionIterator(LogicalCollection* collection, transaction::Methods* trx,
                  ManagedDocumentResult* mmdr,
-                 RocksDBSphericalIndex const* index,
+                 RocksDBGeoS2Index const* index,
                  std::unique_ptr<S2Region> region, geo::FilterType ft)
-      : RocksDBSphericalIndexIterator(collection, trx, mmdr, index),
+      : RocksDBGeoS2IndexIterator(collection, trx, mmdr, index),
         _region(region.release()),
         _filterType(ft) {}
 
@@ -87,13 +87,13 @@ private:
   std::vector<geo::GeoCover::Interval> _intervals;
 };*/
 
-class NearIterator final : public RocksDBSphericalIndexIterator {
+class NearIterator final : public RocksDBGeoS2IndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
-               ManagedDocumentResult* mmdr, RocksDBSphericalIndex const* index,
+               ManagedDocumentResult* mmdr, RocksDBGeoS2Index const* index,
                geo::NearParams const& params)
-      : RocksDBSphericalIndexIterator(collection, trx, mmdr, index),
+      : RocksDBGeoS2IndexIterator(collection, trx, mmdr, index),
         _near(params) {
     estimateDensity();
   }
@@ -145,6 +145,7 @@ class NearIterator final : public RocksDBSphericalIndexIterator {
   // around our target point. We need to fetch them ALL and then sort
   // found results in a priority list according to their distance
   void performScan() {
+    
     rocksdb::Comparator const* cmp = _index->comparator();
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
@@ -154,9 +155,9 @@ class NearIterator final : public RocksDBSphericalIndexIterator {
     for (size_t i = 0; i < scan.size(); i++) {
       geo::Interval const& it = scan[i];
       TRI_ASSERT(it.min <= it.max);
-      RocksDBKeyBounds bds = RocksDBKeyBounds::SphericalIndex(_index->objectId(),
-                                                              it.min.id(), it.max.id());
-
+      RocksDBKeyBounds bds = RocksDBKeyBounds::S2Index(_index->objectId(),
+                                                       it.min.id(), it.max.id());
+      
       // intervals are sorted and likely consecutive, try to avoid seeks
       // by checking whether we are in the range already
       bool seek = true;
@@ -189,9 +190,9 @@ class NearIterator final : public RocksDBSphericalIndexIterator {
 
       uint64_t cellId = it.min.id();
       while (_iter->Valid() && cmp->Compare(_iter->key(), bds.end()) <= 0) {
-        cellId = RocksDBKey::sphericalValue(_iter->key());
+        cellId = RocksDBKey::S2Value(_iter->key());
         TRI_voc_rid_t rid = RocksDBKey::revisionId(
-            RocksDBEntryType::SphericalIndexValue, _iter->key());
+            RocksDBEntryType::S2IndexValue, _iter->key());
         geo::Coordinate cntrd = RocksDBValue::centroid(_iter->value());
         _near.reportFound(rid, cntrd);
         _iter->Next();
@@ -211,7 +212,7 @@ class NearIterator final : public RocksDBSphericalIndexIterator {
     S2CellId cell = S2CellId::FromPoint(_near.centroid());
 
     RocksDBKeyLeaser key(_trx);
-    key->constructSphericalIndexValue(_index->objectId(), cell.id(), 1);
+    key->constructS2IndexValue(_index->objectId(), cell.id(), 1);
     _iter->Seek(key->string());
     if (!_iter->Valid()) {
       _iter->SeekForPrev(key->string());
@@ -221,7 +222,7 @@ class NearIterator final : public RocksDBSphericalIndexIterator {
       _near.estimateDensity(first);
     } else {
       LOG_TOPIC(INFO, Logger::ROCKSDB)
-          << "Apparently the spherical index is empty";
+          << "Apparently the s2 index is empty";
       _near.invalidate();
     }
   }
@@ -230,7 +231,7 @@ class NearIterator final : public RocksDBSphericalIndexIterator {
   geo::NearUtils _near;
 };
 
-RocksDBSphericalIndex::RocksDBSphericalIndex(TRI_idx_iid_t iid,
+RocksDBGeoS2Index::RocksDBGeoS2Index(TRI_idx_iid_t iid,
                                              LogicalCollection* collection,
                                              VPackSlice const& info)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
@@ -274,7 +275,7 @@ RocksDBSphericalIndex::RocksDBSphericalIndex(TRI_idx_iid_t iid,
 }
 
 /// @brief return a JSON representation of the index
-void RocksDBSphericalIndex::toVelocyPack(VPackBuilder& builder,
+void RocksDBGeoS2Index::toVelocyPack(VPackBuilder& builder,
                                          bool withFigures,
                                          bool forPersistence) const {
   TRI_ASSERT(_variant != IndexVariant::NONE);
@@ -298,7 +299,7 @@ void RocksDBSphericalIndex::toVelocyPack(VPackBuilder& builder,
 }
 
 /// @brief Test if this index matches the definition
-bool RocksDBSphericalIndex::matchesDefinition(VPackSlice const& info) const {
+bool RocksDBGeoS2Index::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(_variant != IndexVariant::NONE);
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -367,7 +368,7 @@ bool RocksDBSphericalIndex::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* RocksDBSphericalIndex::iteratorForCondition(
+IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) {
@@ -406,7 +407,7 @@ IndexIterator* RocksDBSphericalIndex::iteratorForCondition(
   return new NearIterator(_collection, trx, mmdr, this, params);
 }
 
-Result RocksDBSphericalIndex::parse(VPackSlice const& doc,
+Result RocksDBGeoS2Index::parse(VPackSlice const& doc,
                                     std::vector<S2CellId>& cells,
                                     geo::Coordinate& centroid) const {
   if (_variant == IndexVariant::COMBINED_GEOJSON) {
@@ -431,7 +432,7 @@ Result RocksDBSphericalIndex::parse(VPackSlice const& doc,
 }
 
 /// internal insert function, set batch or trx before calling
-Result RocksDBSphericalIndex::insertInternal(transaction::Methods* trx,
+Result RocksDBGeoS2Index::insertInternal(transaction::Methods* trx,
                                              RocksDBMethods* mthd,
                                              LocalDocumentId const& documentId,
                                              velocypack::Slice const& doc,
@@ -445,17 +446,13 @@ Result RocksDBSphericalIndex::insertInternal(transaction::Methods* trx,
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
-  
-  // LOG_TOPIC(INFO, Logger::FIXME) << "[Insert] " << documentId.id() <<
-  //   " at " << centroid.toString();
 
-  RocksDBValue val = RocksDBValue::SphericalValue(centroid);
+  RocksDBValue val = RocksDBValue::S2Value(centroid);
   RocksDBKeyLeaser key(trx);
-
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
-    key->constructSphericalIndexValue(_objectId, cell.id(), documentId.id());
+    key->constructS2IndexValue(_objectId, cell.id(), documentId.id());
     Result r = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
     if (r.fail()) {
       return r;
@@ -466,7 +463,7 @@ Result RocksDBSphericalIndex::insertInternal(transaction::Methods* trx,
 }
 
 /// internal remove function, set batch or trx before calling
-Result RocksDBSphericalIndex::removeInternal(transaction::Methods* trx,
+Result RocksDBGeoS2Index::removeInternal(transaction::Methods* trx,
                                              RocksDBMethods* mthd,
                                              LocalDocumentId const& documentId,
                                              VPackSlice const& doc,
@@ -487,7 +484,7 @@ Result RocksDBSphericalIndex::removeInternal(transaction::Methods* trx,
   for (S2CellId cell : cells) {
     // LOG_TOPIC(INFO, Logger::FIXME) << "[Remove] " << cell;
 
-    key->constructSphericalIndexValue(_objectId, cell.id(), documentId.id());
+    key->constructS2IndexValue(_objectId, cell.id(), documentId.id());
     Result r = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
     if (r.fail()) {
       return r;
@@ -497,7 +494,7 @@ Result RocksDBSphericalIndex::removeInternal(transaction::Methods* trx,
   return IndexResult();
 }
 
-void RocksDBSphericalIndex::truncate(transaction::Methods* trx) {
+void RocksDBGeoS2Index::truncate(transaction::Methods* trx) {
   RocksDBIndex::truncate(trx);
   // GeoIndex_reset(_geoIndex, RocksDBTransactionState::toMethods(trx));
 }

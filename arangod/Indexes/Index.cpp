@@ -167,8 +167,8 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "geo2") == 0) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
-  if (::strcmp(type, "geospatial") == 0) {
-    return TRI_IDX_TYPE_GEOSPATIAL_INDEX;
+  if (::strcmp(type, "s2index") == 0) {
+    return TRI_IDX_TYPE_S2_INDEX;
   }
   if (::strcmp(type, "noaccess") == 0) {
     return TRI_IDX_TYPE_NO_ACCESS_INDEX;
@@ -200,8 +200,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "geo1";
     case TRI_IDX_TYPE_GEO2_INDEX:
       return "geo2";
-    case TRI_IDX_TYPE_GEOSPATIAL_INDEX:
-      return "geospatial";
+    case TRI_IDX_TYPE_S2_INDEX:
+      return "s2index";
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
     case TRI_IDX_TYPE_UNKNOWN: {

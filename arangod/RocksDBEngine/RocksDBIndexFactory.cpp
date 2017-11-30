@@ -30,11 +30,11 @@
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBGeoIndex.h"
+#include "RocksDBEngine/RocksDBGeoS2Index.h"
 #include "RocksDBEngine/RocksDBHashIndex.h"
 #include "RocksDBEngine/RocksDBPersistentIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
-#include "RocksDBEngine/RocksDBSphericalIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -201,10 +201,10 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a spherical index
+/// @brief enhances the json of a s2 index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EnhanceJsonIndexSpherical(VPackSlice const definition,
+static int EnhanceJsonIndexS2(VPackSlice const definition,
                                      VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 1, 2, create);
   if (res == TRI_ERROR_NO_ERROR) {
@@ -318,8 +318,8 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       res = EnhanceJsonIndexGeo2(definition, enhanced, create);
       break;
       
-    case Index::TRI_IDX_TYPE_GEOSPATIAL_INDEX:
-      res = EnhanceJsonIndexSpherical(definition, enhanced, create);
+    case Index::TRI_IDX_TYPE_S2_INDEX:
+      res = EnhanceJsonIndexS2(definition, enhanced, create);
       break;
 
     case Index::TRI_IDX_TYPE_HASH_INDEX:
@@ -389,8 +389,8 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
   if (typeString == "geo1" || typeString == "geo2") {
     return std::make_shared<RocksDBGeoIndex>(iid, col, info);
   }
-  if (typeString == "geospatial") {
-    return std::make_shared<RocksDBSphericalIndex>(iid, col, info);
+  if (typeString == "s2index") {
+    return std::make_shared<RocksDBGeoS2Index>(iid, col, info);
   }
   if (typeString == "fulltext") {
     return std::make_shared<RocksDBFulltextIndex>(iid, col, info);
@@ -420,5 +420,5 @@ void RocksDBIndexFactory::fillSystemIndexes(
 
 std::vector<std::string> RocksDBIndexFactory::supportedIndexes() const {
   return std::vector<std::string>{"primary",    "edge", "hash",    "skiplist",
-                                  "persistent", "geo",  "fulltext"};
+                                  "persistent", "geo", "s2index", "fulltext"};
 }

@@ -4643,13 +4643,13 @@ GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode const*, AstNode const
       std::size_t fieldNum = index.fields().size();
       bool isGeo1 = (index.type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX) && fieldNum == 1;
       bool isGeo2 = (index.type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) && fieldNum == 2;
-      bool isSpherical = (index.type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEOSPATIAL_INDEX);
+      bool isS2Index = (index.type() == arangodb::Index::IndexType::TRI_IDX_TYPE_S2_INDEX);
 
-      if (!isGeo1 && !isGeo2 && !isSpherical) {
+      if (!isGeo1 && !isGeo2 && !isS2Index) {
         continue;
       }
 
-      if (isGeo2 || (isSpherical && fieldNum == 2)) {
+      if (isGeo2 || (isS2Index && fieldNum == 2)) {
         // check access paths of attributes in ast and those in index match
         if (index.fields()[0] == attributeAccess1.second && index.fields()[1] == attributeAccess2.second) {
           info.collectionNode = collNode;
@@ -4658,7 +4658,7 @@ GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode const*, AstNode const
           TRI_AttributeNamesJoinNested(attributeAccess2.second, info.latitude, true);
           return info;
         }
-      } else if (isGeo1 || (isSpherical && fieldNum == 1)) {
+      } else if (isGeo1 || (isS2Index && fieldNum == 1)) {
         std::vector<basics::AttributeName> fields1 = index.fields()[0];
         std::vector<basics::AttributeName> fields2 = index.fields()[0];
 

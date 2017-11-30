@@ -67,8 +67,8 @@ RocksDBValue RocksDBValue::KeyGeneratorValue(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::KeyGeneratorValue, data);
 }
 
-RocksDBValue RocksDBValue::SphericalValue(geo::Coordinate const& c) {
-  return RocksDBValue(RocksDBEntryType::SphericalIndexValue,
+RocksDBValue RocksDBValue::S2Value(geo::Coordinate const& c) {
+  return RocksDBValue(RocksDBEntryType::S2IndexValue,
                       c.latitude, c.longitude);
 }
 
@@ -179,9 +179,8 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, StringRef const& data)
 RocksDBValue::RocksDBValue(RocksDBEntryType type, double lat, double lon)
   : _type(type), _buffer() {
   switch (_type) {
-    case RocksDBEntryType::SphericalIndexValue: {
+    case RocksDBEntryType::S2IndexValue: {
       _buffer.reserve(sizeof(double) * 2);
-      RocksDBValue val(RocksDBEntryType::SphericalIndexValue);
       uint64ToPersistent(_buffer, rocksutils::doubleToInt(lat));
       uint64ToPersistent(_buffer, rocksutils::doubleToInt(lon));
       break;

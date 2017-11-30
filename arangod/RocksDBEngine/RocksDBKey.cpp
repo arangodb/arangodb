@@ -174,10 +174,10 @@ void RocksDBKey::constructGeoIndexValue(uint64_t indexId, int32_t offset,
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Create a fully-specified key for an S2CellId
 //////////////////////////////////////////////////////////////////////////////
-void RocksDBKey::constructSphericalIndexValue(uint64_t indexId, uint64_t value,
+void RocksDBKey::constructS2IndexValue(uint64_t indexId, uint64_t value,
                                               TRI_voc_rid_t revisionId) {
   TRI_ASSERT(indexId != 0 && revisionId != 0);
-  _type = RocksDBEntryType::SphericalIndexValue;
+  _type = RocksDBEntryType::S2IndexValue;
   size_t keyLength = 3 * sizeof(uint64_t);
   _buffer.clear();
   _buffer.reserve(keyLength);
@@ -344,7 +344,7 @@ std::pair<bool, int32_t> RocksDBKey::geoValues(rocksdb::Slice const& slice) {
   return std::pair<bool, int32_t>(isSlot, static_cast<int32_t>(val >> 32));
 }
 
-uint64_t RocksDBKey::sphericalValue(rocksdb::Slice const& slice) {
+uint64_t RocksDBKey::S2Value(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() == sizeof(uint64_t) * 3);
   return uint64FromBigEndianPersistent(slice.data() + sizeof(uint64_t));
 }
@@ -415,7 +415,7 @@ TRI_voc_rid_t RocksDBKey::revisionId(RocksDBEntryType type, char const* data,
     case RocksDBEntryType::Document:
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::FulltextIndexValue:
-    case RocksDBEntryType::SphericalIndexValue: {
+    case RocksDBEntryType::S2IndexValue: {
       TRI_ASSERT(size >= (2 * sizeof(uint64_t)));
       // last 8 bytes should be the revision
       return uint64FromPersistent(data + size - sizeof(uint64_t));

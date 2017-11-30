@@ -108,11 +108,11 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds GeoIndex(uint64_t indexId, bool isSlot);
   
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all entries in spherical index
+  /// @brief Bounds for all entries in s2 index
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds SphericalIndex(uint64_t indexId);
-  static RocksDBKeyBounds SphericalIndex(uint64_t indexId, uint64_t minCell,
-                                         uint64_t maxCell);
+  static RocksDBKeyBounds S2Index(uint64_t indexId);
+  static RocksDBKeyBounds S2Index(uint64_t indexId, uint64_t minCell,
+                                  uint64_t maxCell);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries within a value range belonging to a

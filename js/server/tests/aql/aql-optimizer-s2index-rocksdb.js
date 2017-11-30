@@ -95,7 +95,7 @@ function optimizerRuleTestSuite() {
     assertEqual(rn.length, 1, query.string + " Has IndexNode");
     assertEqual(rn[0].indexes.length, 1);
     var indexType = rn[0].indexes[0].type;
-    assertTrue(indexType === "geospatial");
+    assertTrue(indexType === "s2index");
   };
   var isNodeType = function(node, type, query) {
     assertEqual(node.type, type, query.string + " check whether this node is of type " + type);
@@ -130,9 +130,9 @@ function optimizerRuleTestSuite() {
         /*geocol.ensureIndex({type:"geo", fields:["lat","lon"]});
         geocol.ensureIndex({type:"geo", fields:["geo"]});
         geocol.ensureIndex({type:"geo", fields:["loca.tion.lat","loca.tion.lon"]});*/
-        geocol.ensureIndex({type: "geospatial", fields:["lat","lon"]});  
-        geocol.ensureIndex({type: "geospatial", fields:["geo"]});  
-        geocol.ensureIndex({type: "geospatial", fields:["loca.tion.lat","loca.tion.lon"]});  
+        geocol.ensureIndex({type: "s2index", fields:["lat","lon"]});  
+        geocol.ensureIndex({type: "s2index", fields:["geo"]});  
+        geocol.ensureIndex({type: "s2index", fields:["loca.tion.lat","loca.tion.lon"]});  
         var lat, lon;
         for (lat=-40; lat <=40 ; ++lat) {
             for (lon=-40; lon <= 40; ++lon) {

@@ -98,13 +98,13 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, bool isSlot) {
   return b;
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::SphericalIndex(uint64_t indexId) {
-  return RocksDBKeyBounds(RocksDBEntryType::SphericalIndexValue, indexId);
+RocksDBKeyBounds RocksDBKeyBounds::S2Index(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::S2IndexValue, indexId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::SphericalIndex(uint64_t indexId, uint64_t minCell,
+RocksDBKeyBounds RocksDBKeyBounds::S2Index(uint64_t indexId, uint64_t minCell,
                                                   uint64_t maxCell) {
-  return RocksDBKeyBounds(RocksDBEntryType::SphericalIndexValue, indexId, minCell, maxCell);
+  return RocksDBKeyBounds(RocksDBEntryType::S2IndexValue, indexId, minCell, maxCell);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId,
@@ -204,7 +204,7 @@ uint64_t RocksDBKeyBounds::objectId() const {
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::UniqueVPackIndexValue:
     case RocksDBEntryType::GeoIndexValue:
-    case RocksDBEntryType::SphericalIndexValue:
+    case RocksDBEntryType::S2IndexValue:
     case RocksDBEntryType::FulltextIndexValue: {
       TRI_ASSERT(_internals.buffer().size() > sizeof(uint64_t));
       return uint64FromPersistent(_internals.buffer().data());
@@ -232,7 +232,7 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::FulltextIndexValue:
       return RocksDBColumnFamily::fulltext();
     case RocksDBEntryType::GeoIndexValue:
-    case RocksDBEntryType::SphericalIndexValue:
+    case RocksDBEntryType::S2IndexValue:
       return RocksDBColumnFamily::geo();
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
@@ -324,7 +324,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     }
     case RocksDBEntryType::Document:
     case RocksDBEntryType::GeoIndexValue:
-    case RocksDBEntryType::SphericalIndexValue:{
+    case RocksDBEntryType::S2IndexValue:{
       // Documents are stored as follows:
       // Key: 8-byte object ID of collection + 8-byte document revision ID
       _internals.reserve(3 * sizeof(uint64_t));
@@ -448,9 +448,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                                    uint64_t second, uint64_t third) : _type(type) {
   switch (_type) {
-    case RocksDBEntryType::SphericalIndexValue: {
-      size_t ll = sizeof(uint64_t) * 3;
-      _internals.reserve(ll * 2);
+    case RocksDBEntryType::S2IndexValue: {
+      _internals.reserve(sizeof(uint64_t) * 3 * 2);
       uint64ToPersistent(_internals.buffer(), first);
       uint64ToBigEndianPersistent(_internals.buffer(), second);
       _internals.separate();

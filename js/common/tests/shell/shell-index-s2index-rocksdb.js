@@ -71,7 +71,7 @@ function SphericalIndexCreationSuite() {
       collection.truncate();
 
       //collection.ensureGeoIndex("coordinates", true);
-      collection.ensureIndex({type: "geospatial", 
+      collection.ensureIndex({type: "s2index", 
                               fields: ["coordinates"], 
                               geoJson: true
                              });
@@ -140,31 +140,31 @@ function SphericalIndexCreationSuite() {
 
     testCreationIndexLocationList : function () {
       //var idx = collection.ensureGeoIndex("loc");
-      let idx = collection.ensureIndex({type: "geospatial", fields:["loc"], geoJson: false});
+      let idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: false});
       var id = idx.id;
 
       assertNotEqual(0, id);
-      assertEqual("geospatial", idx.type);
+      assertEqual("s2index", idx.type);
       assertFalse(idx.constraint);
       assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
       //idx = collection.ensureGeoIndex("loc");
-      idx = collection.ensureIndex({type: "geospatial", fields:["loc"], geoJson: false});                        
+      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: false});                        
 
       assertEqual(id, idx.id);
-      assertEqual("geospatial", idx.type);
+      assertEqual("s2index", idx.type);
       assertFalse(idx.constraint);
       assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertFalse(idx.isNewlyCreated);
 
       //idx = collection.ensureGeoIndex("loc", true);
-      idx = collection.ensureIndex({type: "geospatial", fields:["loc"], geoJson: true});                  
+      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: true});                  
 
       assertNotEqual(id, idx.id);
-      assertEqual("geospatial", idx.type);
+      assertEqual("s2index", idx.type);
       assertFalse(idx.constraint);
       assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
@@ -173,10 +173,10 @@ function SphericalIndexCreationSuite() {
       collection.unload();
 
       //idx = collection.ensureGeoIndex("loc", true);
-      idx = collection.ensureIndex({type: "geospatial", fields:["loc"], geoJson: true});            
+      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: true});            
 
       assertNotEqual(id, idx.id);
-      assertEqual("geospatial", idx.type);
+      assertEqual("s2index", idx.type);
       assertFalse(idx.constraint);
       assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
@@ -189,31 +189,31 @@ function SphericalIndexCreationSuite() {
 
     testCreationIndexLocationListGeo : function () {
       //var idx = collection.ensureGeoIndex("loc", true);
-      let idx = collection.ensureIndex({type: "geospatial", fields:["loc"], geoJson: true});      
+      let idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: true});      
       var id = idx.id;
 
       assertNotEqual(0, id);
-      assertEqual("geospatial", idx.type);
+      assertEqual("s2index", idx.type);
       assertFalse(idx.constraint);
       assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
       //idx = collection.ensureGeoIndex("loc", true);
-      idx = collection.ensureIndex({type: "geospatial", fields:["loc"], geoJson: true});   
+      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: true});   
 
       assertEqual(id, idx.id);
-      assertEqual("geospatial", idx.type);
+      assertEqual("s2index", idx.type);
       assertFalse(idx.constraint);
       assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertFalse(idx.isNewlyCreated);
 
       //idx = collection.ensureGeoIndex("loc", false);
-      idx = collection.ensureIndex({type: "geospatial", fields:["loc"], geoJson: false});
+      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: false});
 
       assertNotEqual(id, idx.id);
-      assertEqual("geospatial", idx.type);
+      assertEqual("s2index", idx.type);
       assertFalse(idx.constraint);
       assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
@@ -222,10 +222,10 @@ function SphericalIndexCreationSuite() {
       collection.unload();
 
       //idx = collection.ensureGeoIndex("loc", false);
-      idx = collection.ensureIndex({type: "geospatial", fields:["loc"], geoJson: false});
+      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: false});
 
       assertNotEqual(id, idx.id);
-      assertEqual("geospatial", idx.type);
+      assertEqual("s2index", idx.type);
       assertFalse(idx.constraint);
       assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
@@ -238,20 +238,20 @@ function SphericalIndexCreationSuite() {
 
     testCreationIndexLocationAttributes : function () {
       //var idx = collection.ensureGeoIndex("lat", "lon");
-      let idx = collection.ensureIndex({type: "geospatial", fields:["lat", "lon"]});
+      let idx = collection.ensureIndex({type: "s2index", fields:["lat", "lon"]});
       var id = idx.id;
 
       assertNotEqual(0, id);
-      assertEqual("geospatial", idx.type);
+      assertEqual("s2index", idx.type);
       assertFalse(idx.constraint);
       assertEqual(["lat", "lon"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
       //idx = collection.ensureGeoIndex("lat", "lon");
-      idx = collection.ensureIndex({type: "geospatial", fields:["lat", "lon"]});
+      idx = collection.ensureIndex({type: "s2index", fields:["lat", "lon"]});
 
       assertEqual(id, idx.id);
-      assertEqual("geospatial", idx.type);
+      assertEqual("s2index", idx.type);
       assertFalse(idx.constraint);
       assertEqual(["lat", "lon"], idx.fields);
       assertFalse(idx.isNewlyCreated);
@@ -259,10 +259,10 @@ function SphericalIndexCreationSuite() {
       collection.unload();
 
       //idx = collection.ensureGeoIndex("lat", "lon");
-      idx = collection.ensureIndex({type: "geospatial", fields:["lat", "lon"]});      
+      idx = collection.ensureIndex({type: "s2index", fields:["lat", "lon"]});      
 
       assertEqual(id, idx.id);
-      assertEqual("geospatial", idx.type);
+      assertEqual("s2index", idx.type);
       assertFalse(idx.constraint);
       assertEqual(["lat", "lon"], idx.fields);
       assertFalse(idx.isNewlyCreated);
@@ -274,11 +274,11 @@ function SphericalIndexCreationSuite() {
 
     testCreationConstraintLocationList : function () {
       //var idx = collection.ensureGeoConstraint("loc", false);
-      let idx = collection.ensureIndex({type: "geospatial", fields:["loc"], geoJson: false});            
+      let idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: false});            
       var id = idx.id;
 
       assertNotEqual(0, id);
-      assertEqual("geospatial", idx.type);
+      assertEqual("s2index", idx.type);
       assertFalse(idx.constraint);
       assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
@@ -287,10 +287,10 @@ function SphericalIndexCreationSuite() {
       assertTrue(idx.isNewlyCreated);
 
       //idx = collection.ensureGeoConstraint("loc", false);
-      idx = collection.ensureIndex({type: "geospatial", fields:["loc"], geoJson: false});       
+      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: false});       
 
       assertEqual(id, idx.id);
-      assertEqual("geospatial", idx.type);
+      assertEqual("s2index", idx.type);
       assertFalse(idx.constraint);
       assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);

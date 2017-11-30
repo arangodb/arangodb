@@ -51,6 +51,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBFulltextIndex.cpp
   RocksDBEngine/RocksDBGeoIndex.cpp
   RocksDBEngine/RocksDBGeoIndexImpl.cpp
+  RocksDBEngine/RocksDBGeoS2Index.cpp
   RocksDBEngine/RocksDBHashIndex.cpp
   RocksDBEngine/RocksDBIncrementalSync.cpp
   RocksDBEngine/RocksDBIndex.cpp
@@ -71,7 +72,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBRestHandlers.cpp
   RocksDBEngine/RocksDBRestReplicationHandler.cpp
   RocksDBEngine/RocksDBRestWalHandler.cpp
-  RocksDBEngine/RocksDBSphericalIndex.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBThrottle.cpp
