@@ -73,8 +73,7 @@ function SphericalIndexCreationSuite() {
       //collection.ensureGeoIndex("coordinates", true);
       collection.ensureIndex({type: "s2index", 
                               fields: ["coordinates"], 
-                              geoJson: true
-                             });
+                              geoJson: true });
 
       [
         { _key: "a", coordinates : [ 138.46782, 36.199674 ] },
@@ -95,11 +94,12 @@ function SphericalIndexCreationSuite() {
       });
 
       assertEqual(13, collection.count());
-
+      // FIXME this is not using the optimizer
       var query = "FOR doc IN " + collection.name() + " LET n = (" +
-                  "LET c = doc.coordinates\n FOR other IN " + collection.name() +
-                 "FILTER DISTANCE(c[1], c[0], other.coordinates[1], other.coordinates[0]) < 1000 RETURN other._key) " +
-                  "UPDATE doc WITH {others: n} IN " + collection.name();
+                  "LET c = doc.coordinates\n FOR other IN " + collection.name() + "\n" +
+                  "SORT DISTANCE(c[1], c[0], other.coordinates[1], other.coordinates[0]) ASC\n" +                                    
+                  "FILTER DISTANCE(c[1], c[0], other.coordinates[1], other.coordinates[0]) < 1000\n" +
+                  "RETURN other._key) UPDATE doc WITH {others: n} IN " + collection.name();
 
       internal.db._query(query);
 
@@ -122,6 +122,9 @@ function SphericalIndexCreationSuite() {
         { "key" : "l", "coordinates" : [ 134.899736, 34.341144 ], "others" : [ "l" ] },
         { "key" : "m", "coordinates" : [ 134.846816, 34.316229 ], "others" : [ "m" ] }
       ];
+      for (let i = 0; i < expected.length; i++) {
+        assertEqual(expected[i], actual[i]);
+      }
 
       assertEqual(expected.length, actual.length);
       for (var i = 0; i < expected.length; ++i) {
@@ -279,8 +282,6 @@ function SphericalIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("s2index", idx.type);
-      assertFalse(idx.constraint);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
@@ -291,36 +292,10 @@ function SphericalIndexCreationSuite() {
 
       assertEqual(id, idx.id);
       assertEqual("s2index", idx.type);
-      assertFalse(idx.constraint);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertFalse(idx.isNewlyCreated);
-
-      /*idx = collection.ensureGeoConstraint("loc", true, false);
-
-      assertNotEqual(id, idx.id);
-      assertEqual("geo1", idx.type);
-      assertFalse(idx.constraint);
-      assertTrue(idx.ignoreNull);
-      assertTrue(idx.sparse);
-      assertTrue(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
-
-      collection.unload();
-
-      idx = collection.ensureGeoConstraint("loc", true, false);
-
-      assertNotEqual(id, idx.id);
-      assertEqual("geo1", idx.type);
-      assertFalse(idx.constraint);
-      assertTrue(idx.ignoreNull);
-      assertTrue(idx.sparse);
-      assertTrue(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertFalse(idx.isNewlyCreated);*/
     }
   };
 }

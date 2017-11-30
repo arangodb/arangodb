@@ -419,44 +419,25 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
   double latitude;
   double longitude;
 
+  VPackSlice lat, lon;
   if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
-    VPackSlice lat = doc.get(_latitude);
-    if (!lat.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return IndexResult();
-    }
-
-    VPackSlice lon = doc.get(_longitude);
-    if (!lon.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return IndexResult();
-    }
-    latitude = lat.getNumericValue<double>();
-    longitude = lon.getNumericValue<double>();
+    lat = doc.get(_latitude);
+    lon = doc.get(_longitude);
   } else {
     VPackSlice loc = doc.get(_location);
     if (!loc.isArray() || loc.length() < 2) {
       // Invalid, no insert. Index is sparse
       return IndexResult();
     }
-    VPackSlice first = loc.at(0);
-    if (!first.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return IndexResult();
-    }
-    VPackSlice second = loc.at(1);
-    if (!second.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return IndexResult();
-    }
-    if (_geoJson) {
-      longitude = first.getNumericValue<double>();
-      latitude = second.getNumericValue<double>();
-    } else {
-      latitude = first.getNumericValue<double>();
-      longitude = second.getNumericValue<double>();
-    }
+    lat = loc.at(_geoJson ? 1 : 0);
+    lon = loc.at(_geoJson ? 0 : 1);
   }
+  if (!lat.isNumber() || !lon.isNumber()) {
+    // Invalid, no insert. Index is sparse
+    return IndexResult();
+  }
+  longitude = lat.getNumericValue<double>();
+  latitude = lon.getNumericValue<double>();
 
   // and insert into index
   GeoCoordinate gc;

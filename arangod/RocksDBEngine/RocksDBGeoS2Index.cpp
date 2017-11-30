@@ -287,13 +287,7 @@ void RocksDBGeoS2Index::toVelocyPack(VPackBuilder& builder,
               VPackValue(_variant == IndexVariant::COMBINED_GEOJSON));
   // geo indexes are always non-unique
   // geo indexes are always sparse.
-  // "ignoreNull" has the same meaning as "sparse" and is only returned for
-  // backwards compatibility
-  // the "constraint" attribute has no meaning since ArangoDB 2.5 and is only
-  // returned for backwards compatibility
-  builder.add("constraint", VPackValue(false));
   builder.add("unique", VPackValue(false));
-  builder.add("ignoreNull", VPackValue(true));
   builder.add("sparse", VPackValue(true));
   builder.close();
 }
@@ -387,10 +381,13 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
 
   geo::Coordinate center(/*lat*/ args->getMember(1)->getDoubleValue(),
                          /*lon*/ args->getMember(2)->getDoubleValue());
+  TRI_ASSERT(std::abs(center.latitude) <= 90.0 &&
+             std::abs(center.longitude) <= 180.0);
+  LOG_TOPIC(ERR, Logger::FIXME) << "center: " << center.toString();
+  
   geo::NearParams params(center);
-  params.minDistance = 0; // TODO support
-  if (numMembers == 5) {
-    // WITHIN
+  params.minDistance = 0; // TODO support minDistance
+  if (numMembers == 5) { // WITHIN
     params.maxDistance = args->getMember(3)->getDoubleValue();
     //params.maxInclusive = args->getMember(4)->getBoolValue();
     // FIXME: maxInclusive support
@@ -403,17 +400,19 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
     // it is unnessesary to have the level smaller
     params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
   }
-
   return new NearIterator(_collection, trx, mmdr, this, params);
 }
 
 Result RocksDBGeoS2Index::parse(VPackSlice const& doc,
-                                    std::vector<S2CellId>& cells,
-                                    geo::Coordinate& centroid) const {
+                                std::vector<S2CellId>& cells,
+                                geo::Coordinate& centroid) const {
   if (_variant == IndexVariant::COMBINED_GEOJSON) {
+    VPackSlice loc = doc.get(_location);
+    if (loc.isArray()) {
+      return geo::GeoUtils::indexCellsLatLng(loc, true, cells, centroid);
+    }
     S2RegionCoverer coverer;
     _coverParams.configureS2RegionCoverer(&coverer);
-    VPackSlice loc = doc.get(_location);
     return geo::GeoUtils::indexCellsGeoJson(&coverer, loc, cells, centroid);
   } else if (_variant == IndexVariant::COMBINED_LAT_LON) {
     VPackSlice loc = doc.get(_location);
@@ -439,19 +438,22 @@ Result RocksDBGeoS2Index::insertInternal(transaction::Methods* trx,
                                              OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
-  geo::Coordinate centroid(-1, -1);
-
+  geo::Coordinate centroid(-1.0, -1.0);
   Result res = parse(doc, cells, centroid);
   if (res.fail()) {
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
+  TRI_ASSERT(!cells.empty() &&
+             std::abs(centroid.latitude) <= 90.0 &&
+             std::abs(centroid.longitude) <= 180.0);
 
   RocksDBValue val = RocksDBValue::S2Value(centroid);
   RocksDBKeyLeaser key(trx);
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
+    //LOG_TOPIC(ERR, Logger::FIXME) << "[Insert] " << cell;
     key->constructS2IndexValue(_objectId, cell.id(), documentId.id());
     Result r = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
     if (r.fail()) {
@@ -477,20 +479,21 @@ Result RocksDBGeoS2Index::removeInternal(transaction::Methods* trx,
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
+  TRI_ASSERT(!cells.empty() &&
+             std::abs(centroid.latitude) <= 90.0 &&
+             std::abs(centroid.longitude) <= 180.0);
 
   RocksDBKeyLeaser key(trx);
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
     // LOG_TOPIC(INFO, Logger::FIXME) << "[Remove] " << cell;
-
     key->constructS2IndexValue(_objectId, cell.id(), documentId.id());
     Result r = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
     if (r.fail()) {
       return r;
     }
   }
-
   return IndexResult();
 }
 

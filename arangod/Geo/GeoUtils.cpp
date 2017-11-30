@@ -43,9 +43,7 @@ Result GeoUtils::indexCellsGeoJson(S2RegionCoverer* coverer,
                                    VPackSlice const& data,
                                    std::vector<S2CellId>& cells,
                                    geo::Coordinate& centroid) {
-  if (data.isArray()) {
-    return indexCellsLatLng(data, true, cells, centroid);
-  } else if (!data.isObject()) {  // actual geojson
+  if (!data.isObject()) {  // actual geojson
     return TRI_ERROR_BAD_PARAMETER;
   }
 
@@ -108,8 +106,8 @@ Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
   if (!lat.isNumber() || !lat.isNumber()) {
     return TRI_ERROR_BAD_PARAMETER;
   }
-  centroid.longitude = lat.getNumericValue<double>();
-  centroid.latitude = lon.getNumericValue<double>();
+  centroid.latitude = lat.getNumericValue<double>();
+  centroid.longitude = lon.getNumericValue<double>();
   S2LatLng ll = S2LatLng::FromDegrees(centroid.latitude, centroid.longitude);
   cells.push_back(S2CellId::FromLatLng(ll));
   return TRI_ERROR_NO_ERROR;

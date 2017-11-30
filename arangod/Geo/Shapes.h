@@ -47,9 +47,6 @@ struct Coordinate {
     return "(lat: " + std::to_string(latitude) + ", lon: " +
            std::to_string(longitude) + ")";
   }
-
-  // arangodb::LoggerStream& operator<<(arangodb::LoggerStream& os,
-  // arangodb::geo::Coordinate const& cc);
 };
 
 /// Thin wrapper around S2Region combined with
