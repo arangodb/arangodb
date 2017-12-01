@@ -450,7 +450,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     case CURLE_OPERATION_TIMEDOUT:
     case CURLE_RECV_ERROR:
     case CURLE_GOT_NOTHING:
-      if (rip->_aborted || 0.0==connect_time) {
+      if (rip->_aborted || (CURLE_OPERATION_TIMEDOUT == rc && 0.0==connect_time)) {
         callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
       } else {
         callErrorFn(rip, TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
