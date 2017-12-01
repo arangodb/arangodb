@@ -1,6 +1,8 @@
 v3.2.9 (2017-XX-XX)
 -------------------
 
+* fixed issue #3858: Foxx queues stuck in 'progress' status
+
 * allow compilation of ArangoDB source code with g++ 7
 
 * fixed issue #3224: Issue in the Foxx microservices examples
