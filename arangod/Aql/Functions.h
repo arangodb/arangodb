@@ -62,8 +62,7 @@ struct Functions {
 
    /// @brief extract a function parameter from the arguments
    static AqlValue ExtractFunctionParameterValue(
-       transaction::Methods*, VPackFunctionParameters const& parameters,
-       size_t position);
+       VPackFunctionParameters const& parameters, size_t position);
 
    /// @brief extra a collection name from an AqlValue
    static std::string ExtractCollectionName(
