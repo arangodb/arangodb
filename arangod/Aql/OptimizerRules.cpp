@@ -4453,7 +4453,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   TRI_ASSERT(varsUsedHere.size() == 1);
   // now check who introduced our variable
   ExecutionNode* node = plan->getVarSetBy(varsUsedHere[0]->id);
-  if (node->getType() != EN::CALCULATION || elnode->isInInnerLoop()) {
+  if (node->getType() != EN::CALCULATION) {
     return false;
   }
   
@@ -4516,11 +4516,8 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
     return false;
   }
   
-  //std::unique_ptr<Condition> condition(buildGeoCondition(plan, first));
-  Ast* ast = plan->getAst();
-  //AstNode* varAstNode = ast->createNodeReference(elnode->outVariable());
-  
-  auto args = ast->createNodeArray(2);
+  Ast* ast = plan->getAst();  
+  AstNode* args = ast->createNodeArray(2);
   args->addMember(ast->clone(collArg));  // only so createNodeFunctionCall doesn't throw
   args->addMember(attrArg);
   args->addMember(queryArg);
