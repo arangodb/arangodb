@@ -97,8 +97,8 @@ bool ShellColorsFeature::useColors() {
 
 bool ShellColorsFeature::prepareConsole() {
 #ifdef _WIN32
-  hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-  if (hOut == INVALID_HANDLE_VALUE) {
+  HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+  if (hStdout == INVALID_HANDLE_VALUE) {
     return false;
   }
 
