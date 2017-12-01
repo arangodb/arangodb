@@ -70,7 +70,9 @@ class ShapeContainer final {
   ShapeContainer(S2Region* ptr, Type tt) : _data(ptr), _type(tt) {}
   ~ShapeContainer();
   
-  Result parse(velocypack::Slice const& json);
+  /// Parses a coordinate pair
+  Result parseCoordinates(velocypack::Slice const& json, bool geoJson);
+  Result parseGeoJson(velocypack::Slice const& json);
 
  public:
   void reset(std::unique_ptr<S2Region>&& ptr, Type tt);

@@ -2289,10 +2289,10 @@ AqlValue Functions::GeoContainsIntersect(arangodb::aql::Query* query,
                                          transaction::Methods* trx,
                                          VPackFunctionParameters const& parameters,
                                          char const* func, bool contains) {
-  ValidateParameters(parameters, func, 2, 2);
-  
+  ValidateParameters(parameters, func, 2, 3);
   AqlValue p1 = ExtractFunctionParameterValue(trx, parameters, 0);
   AqlValue p2 = ExtractFunctionParameterValue(trx, parameters, 1);
+  AqlValue isGeoJson = ExtractFunctionParameterValue(trx, parameters, 2);
   
   // non-numeric input...
   if (!p1.isObject()) {
@@ -2308,17 +2308,11 @@ AqlValue Functions::GeoContainsIntersect(arangodb::aql::Query* query,
   
   AqlValueMaterializer materializer(trx);
   geo::ShapeContainer filter;
-  Result res = filter.parse(materializer.slice(p1, true));
+  Result res = filter.parseGeoJson(materializer.slice(p1, true));
   if (res.fail()) {
     RegisterWarning(query, func, res);
     return AqlValue(AqlValueHintNull());
   }
-  /*S2LatLngRect bounds = container->GetRectBound();
-   if (bounds.is_empty()) {
-   RegisterWarning(query, "GEO_CONTAINS", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-   "Specified area is empty");
-   return AqlValue(AqlValueHintNull());
-   }*/
   
   if (!filter.isAreaType()) {
     RegisterWarning(query, func, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
@@ -2326,14 +2320,23 @@ AqlValue Functions::GeoContainsIntersect(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintNull());
   }
   
-  geo::ShapeContainer doc;
-  res = geo::GeoJsonParser::parseGeoJson(materializer.slice(p2, true), doc);
+  bool geoJson = isGeoJson.isBoolean() && isGeoJson.toBoolean();
+  VPackSlice doc = materializer.slice(p2, true);
+  geo::ShapeContainer testShape;
+  if (doc.isArray()) {
+    res = testShape.parseCoordinates(doc, geoJson);
+  } else if (doc.isObject()) {
+    res = geo::GeoJsonParser::parseGeoJson(doc, testShape);
+  } else {
+    res.reset(TRI_ERROR_BAD_PARAMETER, "Second arg requires coordinate pair or GeoJSON");
+  }
+  
   if (res.fail()) {
     RegisterWarning(query, func, res);
     return AqlValue(AqlValueHintNull());
   }
   
-  bool ret = contains ? filter.contains(&doc) : filter.intersects(&doc);
+  bool ret = contains ? filter.contains(&testShape) : filter.intersects(&testShape);
   return AqlValue(AqlValueHintBool(ret));
 }
 

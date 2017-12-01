@@ -40,25 +40,27 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
-Result ShapeContainer::parse(VPackSlice const& json) {
+Result ShapeContainer::parseCoordinates(VPackSlice const& json, bool geoJson) {
+  if (!json.isArray() || json.length() < 2) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
+  }
   
-  if (json.isArray()) {
-    if (json.length() < 2) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
-    }
-    VPackSlice lat, lng;
-    if (!(lat = json.at(0)).isNumber() || !(lng = json.at(1)).isNumber()) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
-    }
-    
-    S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
-                                        lng.getNumericValue<double>());
-    _data = new S2PointRegion(ll.ToPoint());
-    _type = Type::S2_POINT;
-    return TRI_ERROR_NO_ERROR;
-    
-  } else if (!json.isObject()) {
-    return TRI_ERROR_BAD_PARAMETER;
+  VPackSlice lat = json.at(geoJson ? 1 : 0);
+  VPackSlice lng = json.at(geoJson ? 0 : 1);
+  if (!lat.isNumber() || !lng.isNumber()) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
+  }
+  
+  S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
+                                      lng.getNumericValue<double>());
+  _data = new S2PointRegion(ll.ToPoint());
+  _type = Type::S2_POINT;
+  return TRI_ERROR_NO_ERROR;
+}
+
+Result ShapeContainer::parseGeoJson(VPackSlice const& json) {
+  if (!json.isObject()) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid GeoJson Object");
   }
 
   for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(json)) {
@@ -338,7 +340,8 @@ bool ShapeContainer::contains(S2Polygon const* poly) const {
 bool ShapeContainer::contains(ShapeContainer const* cc) const {
   switch (cc->_type) {
     case ShapeContainer::Type::S2_POINT: {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      S2Point const& p = static_cast<S2PointRegion*>(cc->_data)->point();
+      return _data->VirtualContainsPoint(p);
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

@@ -416,9 +416,6 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
                                        velocypack::Slice const& doc,
                                        OperationMode mode) {
   // GeoIndex is always exclusively write-locked with rocksdb
-  double latitude;
-  double longitude;
-
   VPackSlice lat, lon;
   if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
     lat = doc.get(_latitude);
@@ -436,8 +433,8 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
     // Invalid, no insert. Index is sparse
     return IndexResult();
   }
-  longitude = lat.getNumericValue<double>();
-  latitude = lon.getNumericValue<double>();
+  double longitude = lat.getNumericValue<double>();
+  double latitude = lon.getNumericValue<double>();
 
   // and insert into index
   GeoCoordinate gc;
