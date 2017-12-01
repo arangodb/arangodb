@@ -570,4 +570,12 @@
   h4 {
     color: $c-info-blue;
   }
+
+  &.errorBox {
+    border-left-color: $c-negative;
+
+    h4 {
+      color: $c-negative;
+    }
+  }
 }

@@ -146,17 +146,22 @@ window.ArangoDocument = Backbone.Collection.extend({
       data: JSON.stringify(data),
       processData: false,
       success: function (data) {
-        self.add(data.documents[0]);
-        if (data.documents[0]._from && data.documents[0]._to) {
-          callback(false, data, 'edge');
+        if (data.documents[0]) {
+          self.add(data.documents[0]);
+          if (data.documents[0]._from && data.documents[0]._to) {
+            callback(false, data, 'edge');
+          } else {
+            callback(false, data, 'document');
+          }
         } else {
-          callback(false, data, 'document');
+          self.add(true, data);
+          callback(true, data, colid + '/' + dockey);
         }
       },
       error: function (data) {
+        self.add(true, data);
         arangoHelper.arangoError('Error', data.responseJSON.errorMessage + ' - error number: ' + data.responseJSON.errorNum);
         callback(true, data, colid + '/' + dockey);
-        self.add(true, data);
       }
     });
   },
