@@ -1230,7 +1230,7 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
                ". Last tick available on master is " +
                StringUtils::itoa(readTick) +
                ". It may be required to do a full resync and increase the "
-               "number of historic logfiles on the master.";
+               "number of historic logfiles/WAL file timeout on the master.";
 
     return TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
   }
@@ -1296,6 +1296,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
       BaseUrl + "/logger-follow?chunkSize=" + _chunkSize + "&barrier=" + StringUtils::itoa(_barrierId);
 
   worked = false;
+  TRI_voc_tick_t const originalFetchTick = fetchTick;
 
   std::string const url = baseUrl + "&from=" + StringUtils::itoa(fetchTick) +
                           "&firstRegular=" +
@@ -1423,7 +1424,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
   }
 
   if (res == TRI_ERROR_NO_ERROR && !fromIncluded && _requireFromPresent &&
-      fetchTick > 0) {
+      fetchTick > 0 && originalFetchTick != fetchTick) {
     TRI_ASSERT(_masterIs27OrHigher);
     res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
     errorMsg = "required follow tick value '" + StringUtils::itoa(fetchTick) +
@@ -1431,7 +1432,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
                _masterInfo._endpoint +
                ". Last tick available on master is " + StringUtils::itoa(tick) +
                ". It may be required to do a full resync and increase the "
-               "number of historic logfiles on the master.";
+               "number of historic logfiles/WAL file timeout on the master.";
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
