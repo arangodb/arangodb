@@ -1701,9 +1701,12 @@ int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
 
   try {
     // transfer filters first since they only apply to pre-merge data
-    auto& memoryStore = activeMemoryStore();
     for (auto& filter: removals) {
-      memoryStore._writer->remove(filter);
+      // FIXME TODO potential problem of loss of 'remove' if:
+      // 'insert' in '_toFlush' and 'remove' comes during IResearchView::commit()
+      // after '_toFlush' is commit()ed but before '_toFlush' in import()ed
+      _memoryNode->_store._writer->remove(filter);
+      _toFlush->_store._writer->remove(filter);
     }
 
     // transfer filters to persisted store as well otherwise query resuts will be incorrect
@@ -1713,6 +1716,8 @@ int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
         _storePersisted._writer->remove(filter);
       }
     }
+
+    auto& memoryStore = activeMemoryStore();
 
     trxStore._writer->commit(); // ensure have latest view in reader
     memoryStore._writer->import(trxStore._reader.reopen());
@@ -2359,6 +2364,18 @@ int IResearchView::remove(
   }
 
   std::shared_ptr<irs::filter> shared_filter(FilterFactory::filter(cid, documentId.id()));
+
+  if (_inRecovery) {
+    // FIXME TODO potential problem of loss of 'remove' if:
+    // 'insert' in '_toFlush' and 'remove' comes during IResearchView::commit()
+    // after '_toFlush' is commit()ed but before '_toFlush' in import()ed
+    _memoryNode->_store._writer->remove(shared_filter);
+    _toFlush->_store._writer->remove(shared_filter);
+    _storePersisted._writer->remove(shared_filter);
+
+    return TRI_ERROR_NO_ERROR;
+  }
+
   TidStore* store;
 
   {
