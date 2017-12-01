@@ -180,7 +180,7 @@ exports.run = function () {
     try {
       db._useDatabase(name);
       db._jobs.toArray().filter(function(job) {
-        return job.stats === 'progress';
+        return job.status === 'progress';
       }).forEach(function(job) {
         db._jobs.update(job._id, { status: 'pending' });
       });
