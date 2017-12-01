@@ -57,7 +57,7 @@ struct HealthRecord {
 
   HealthRecord(
     std::string const& sn, std::string const& ep, std::string const& ho) :
-    shortName(sn), endpoint(ep), hostId(ho) {}
+    shortName(sn), endpoint(ep), hostId(ho), version(0) {}
 
   HealthRecord(Node const& node) {
     *this = node;
@@ -105,6 +105,7 @@ struct HealthRecord {
     status = other.status;
     endpoint = other.endpoint;
     hostId = other.hostId;
+    version = other.version;
     return *this;
   }
 

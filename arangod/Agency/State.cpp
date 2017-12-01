@@ -914,7 +914,6 @@ bool State::loadRemaining() {
       // Dummy fill missing entries (Not good at all.)
       index_t index(basics::StringUtils::uint64(
                       ii.get(StaticStrings::KeyString).copyString()));
-      term_t term(ii.get("term").getNumber<uint64_t>());
 
       // Ignore log entries, which are older than lastIndex:
       if (index >= lastIndex) {
@@ -925,6 +924,7 @@ bool State::loadRemaining() {
             std::make_shared<Buffer<uint8_t>>();
           VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
           buf->append(value.startAs<char const>(), value.byteSize());
+          term_t term(ii.get("term").getNumber<uint64_t>());
           for (index_t i = lastIndex+1; i < index; ++i) {
             LOG_TOPIC(WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
             _log.push_back(log_t(i, term, buf, std::string()));
@@ -1250,7 +1250,7 @@ query_t State::allLogs() const {
 
 }
 
-std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
+std::vector<index_t> State::inquire(query_t const& query) const {
   if (!query->slice().isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
         20001, 
@@ -1258,31 +1258,31 @@ std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
         + ". We got " + query->toJson());
   }
   
-  std::vector<std::vector<log_t>> result;
+  std::vector<index_t> result;
   size_t pos = 0;
   
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
   for (auto const& i : VPackArrayIterator(query->slice())) {
-
+    
     if (!i.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
         210002, std::string("ClientIds must be strings. On position ")
-        + std::to_string(pos) + " we got " + i.toJson());
+        + std::to_string(pos++) + " we got " + i.toJson());
     }
-
-    std::vector<log_t> transactions;
+    
     auto ret = _clientIdLookupTable.equal_range(i.copyString());
+    index_t index = 0;
     for (auto it = ret.first; it != ret.second; ++it) {
       if (it->second < _log[0].index) {
         continue;
       }
-      transactions.push_back(_log.at(it->second-_cur));
+      if (index < _log.at(it->second-_cur).index) {
+        index = _log.at(it->second-_cur).index;
+      }
     }
-    result.push_back(transactions);
-
-    pos++;
+    result.push_back(index);
   }
-
+  
   return result;
 }
 

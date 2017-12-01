@@ -348,7 +348,12 @@ authRouter.get('/graph/:name', function (req, res) {
     ]
   };
 
-  var graph = gm._graph(name);
+  var graph;
+  try {
+    graph = gm._graph(name);
+  } catch (e) {
+    res.throw('bad request', e.errorMessage);
+  }
 
   var verticesCollections = graph._vertexCollections();
   if (!verticesCollections || verticesCollections.length === 0) {

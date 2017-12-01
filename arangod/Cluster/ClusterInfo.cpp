@@ -988,8 +988,8 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
         (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
       return setErrormsg(TRI_ERROR_ARANGO_DUPLICATE_NAME, errorMsg);
     }
-    errorMsg = std::string("Failed to create database with ") +
-      res._clientId + " at " + __FILE__ + ":" + std::to_string(__LINE__);
+    errorMsg = std::string("Failed to create database at ") +
+      __FILE__ + ":" + std::to_string(__LINE__);
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,
                        errorMsg);
   }
@@ -1277,9 +1277,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     }
   }
 
-  AgencyGeneralTransaction transaction;
-  transaction.transactions.push_back(
-    AgencyGeneralTransaction::TransactionType(opers,precs));
+  AgencyWriteTransaction transaction(opers,precs);
 
   { // we hold this mutex from now on until we have updated our cache
     // using loadPlan, this is necessary for the callback closure to
@@ -1323,11 +1321,12 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
           LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
         }
       } else {
-        errorMsg += std::string("\nClientId ") + res._clientId;
-        errorMsg += std::string("\n") + __FILE__ + std::to_string(__LINE__);
-        errorMsg += std::string("\n") + res.errorMessage();
-        errorMsg += std::string("\n") + res.errorDetails();
-        errorMsg += std::string("\n") + res.body();
+        errorMsg += std::string("file: ") + __FILE__ + 
+                    " line: " + std::to_string(__LINE__);
+        errorMsg += " HTTP code: " + std::to_string(res.httpCode());
+        errorMsg += " error message: " + res.errorMessage();
+        errorMsg += " error details: " + res.errorDetails();
+        errorMsg += " body: " + res.body();
         events::CreateCollection(
           name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
         return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
@@ -1491,7 +1490,6 @@ int ClusterInfo::dropCollectionCoordinator(
   if (!res.successful()) {
     AgencyCommResult ag = ac.getValues("");
     if (ag.successful()) {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "ClientId: " << res._clientId;
       LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
                                       << ag.slice().toJson();
     } else {
@@ -2023,7 +2021,6 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     } else {
       errorMsg += " Failed to execute ";
       errorMsg += trx.toJson();
-      errorMsg += "ClientId: " + result._clientId + " ";
       errorMsg += " ResultCode: " + std::to_string(result.errorCode()) + " ";
       errorMsg += " HttpCode: " + std::to_string(result.httpCode()) + " ";
       errorMsg += std::string(__FILE__) + ":" + std::to_string(__LINE__);
@@ -2267,7 +2264,6 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   if (!result.successful()) {
     errorMsg += " Failed to execute ";
     errorMsg += trx.toJson();
-    errorMsg += " ClientId: " + result._clientId + " ";
     errorMsg += " ResultCode: " + std::to_string(result.errorCode()) + " ";
 
     events::DropIndex(collectionID, idString,

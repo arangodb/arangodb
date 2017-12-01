@@ -527,7 +527,9 @@ void MMFilesLogfileManager::unprepare() {
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "stopping collector thread";
       _collectorThread->forceStop();
       while (_collectorThread->isRunning()) {
+        locker.unlock();
         usleep(10000);
+        locker.lock();
       }
       delete _collectorThread;
       _collectorThread = nullptr;

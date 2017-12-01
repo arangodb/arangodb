@@ -72,9 +72,9 @@ actions.defineHttp({
       return;
     }
 
-    if (node.Role !== 'Coordinator' && node.Role !== 'DBServer') {
+    if (serverId.substr(0, 4) !== 'CRDN' && serverId.substr(0, 4) !== 'PRMR') {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'unhandled role ' + node.role);
+        'couldn\'t determine role for serverid ' + serverId);
       return;
     }
 
@@ -106,11 +106,11 @@ actions.defineHttp({
     }
 
     let operations = {};
-    operations['/arango/Coordinators/' + serverId] = {'op': 'delete'};
-    operations['/arango/DBServers/' + serverId] = {'op': 'delete'};
+    operations['/arango/Plan/Coordinators/' + serverId] = {'op': 'delete'};
+    operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
     operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
     operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
-    operations['/arango/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
+    operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
 
     try {
       global.ArangoAgency.write([[operations, preconditions]]);
