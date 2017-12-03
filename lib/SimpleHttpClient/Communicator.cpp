@@ -393,7 +393,7 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
 
 void Communicator::handleResult(CURL* handle, CURLcode rc) {
   // remove request in progress
-  double connect_time(0.0);
+  double connectTime(0.0);
   curl_multi_remove_handle(_curl, handle);
 
   RequestInProgress* rip = nullptr;
@@ -411,9 +411,9 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
       << prefix << "Curl rc is : " << rc << " after "
       << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
   if (CURLE_OPERATION_TIMEDOUT == rc) {
-    curl_easy_getinfo(handle, CURLINFO_CONNECT_TIME, &connect_time);
+    curl_easy_getinfo(handle, CURLINFO_CONNECT_TIME, &connectTime);
     LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-      << prefix << "CURLINFO_CONNECT_TIME is " << connect_time;
+      << prefix << "CURLINFO_CONNECT_TIME is " << connectTime;
   } // if
   if (strlen(rip->_errorBuffer) != 0) {
     LOG_TOPIC(TRACE, Logger::COMMUNICATION)
@@ -450,7 +450,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     case CURLE_OPERATION_TIMEDOUT:
     case CURLE_RECV_ERROR:
     case CURLE_GOT_NOTHING:
-      if (rip->_aborted || (CURLE_OPERATION_TIMEDOUT == rc && 0.0==connect_time)) {
+      if (rip->_aborted || (CURLE_OPERATION_TIMEDOUT == rc && 0.0==connectTime)) {
         callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
       } else {
         callErrorFn(rip, TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
