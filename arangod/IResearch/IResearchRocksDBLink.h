@@ -140,6 +140,8 @@ class IResearchRocksDBLink final
     }
   }
 
+  static Result drop(TRI_voc_cid_t viewId, TRI_voc_cid_t collectionId);
+
  private:
   IResearchRocksDBLink(
     TRI_idx_iid_t iid,

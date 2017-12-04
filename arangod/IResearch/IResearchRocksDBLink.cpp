@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h" // required for RocksDBColumnFamily.h
+#include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
@@ -116,6 +117,10 @@ void IResearchRocksDBLink::toVelocyPack(
   }
 
   builder.close();
+}
+
+Result IResearchRocksDBLink::drop(TRI_voc_cid_t viewId, TRI_voc_cid_t collectionId) {
+  LOG_TOPIC(DEBUG, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Removing all documents belonging to view " << viewId << " sourced from collection " << collectionId;
 }
 
 NS_END // iresearch
