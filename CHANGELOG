@@ -1,3 +1,8 @@
+v3.2.10 (2017-XX-XX)
+
+* UI: edge collections were wrongly added to from and to vertices select box during graph creation
+
+
 v3.2.9 (2017-12-04)
 -------------------
 
