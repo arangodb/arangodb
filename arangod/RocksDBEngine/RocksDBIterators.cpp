@@ -128,8 +128,8 @@ bool RocksDBAllIndexIterator::nextDocument(
   }
 
   while (limit > 0) {
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
-    cb(LocalDocumentId(revisionId), VPackSlice(_iterator->value().data()));
+    TRI_voc_rid_t documentId = RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
+    cb(LocalDocumentId(documentId), VPackSlice(_iterator->value().data()));
     --limit;
 
     if (_reverse) {
@@ -253,8 +253,8 @@ bool RocksDBAnyIndexIterator::nextDocument(
   }
 
   while (limit > 0) {
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
-    cb(LocalDocumentId(revisionId), VPackSlice(_iterator->value().data()));
+    TRI_voc_rid_t documentId = RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
+    cb(LocalDocumentId(documentId), VPackSlice(_iterator->value().data()));
     --limit;
     _returned++;
     _iterator->Next();
@@ -317,8 +317,8 @@ bool RocksDBSortedAllIterator::next(LocalDocumentIdCallback const& cb, size_t li
   }
 
   while (limit > 0) {
-    LocalDocumentId token(RocksDBValue::revisionId(_iterator->value()));
-    cb(token);
+    LocalDocumentId documentId(RocksDBValue::revisionId(_iterator->value()));
+    cb(documentId);
 
     --limit;
 
@@ -328,35 +328,6 @@ bool RocksDBSortedAllIterator::next(LocalDocumentIdCallback const& cb, size_t li
     }
   }
 
-  return true;
-}
-
-/// special method to expose the document key for incremental replication
-bool RocksDBSortedAllIterator::nextWithKey(TokenKeyCallback const& cb,
-                                           size_t limit) {
-  TRI_ASSERT(_trx->state()->isRunning());
-
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
-    // No limit no data, or we are actually done. The last call should have
-    // returned false
-    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-    return false;
-  }
-
-  while (limit > 0) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
-#endif
-    LocalDocumentId token(RocksDBValue::revisionId(_iterator->value()));
-    StringRef key = RocksDBKey::primaryKey(_iterator->key());
-    cb(token, key);
-    --limit;
-
-    _iterator->Next();
-    if (!_iterator->Valid() || outOfRange()) {
-      return false;
-    }
-  }
   return true;
 }
 
