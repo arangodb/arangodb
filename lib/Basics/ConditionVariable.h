@@ -27,6 +27,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/locks.h"
+#include "Basics/Mutex.h"
+
+#include <condition_variable>
 
 namespace arangodb {
 namespace basics {
@@ -121,7 +124,8 @@ class ConditionVariable {
   /// @brief condition variable
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_condition_t _condition;
+  std::condition_variable_any _cv;
+  Mutex _mutex;
 };
 }
 }
