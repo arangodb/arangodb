@@ -449,7 +449,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
                                      "unable to create replication context");
     }
 
-    RocksDBReplicationContextGuard(_manager, ctx);
+    RocksDBReplicationContextGuard guard(_manager, ctx);
     ctx->bind(_vocbase);  // create transaction+snapshot
 
     VPackBuilder b;
@@ -494,7 +494,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     int res = TRI_ERROR_NO_ERROR;
     bool busy;
     RocksDBReplicationContext* ctx = _manager->find(id, busy, expires);
-    RocksDBReplicationContextGuard(_manager, ctx);
+    RocksDBReplicationContextGuard guard(_manager, ctx);
     if (busy) {
       res = TRI_ERROR_CURSOR_BUSY;
       generateError(GeneralResponse::responseCode(res), res);
@@ -744,7 +744,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
                   "context is busy or nullptr");
     return;
   }
-  RocksDBReplicationContextGuard(_manager, ctx);
+  RocksDBReplicationContextGuard guard(_manager, ctx);
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
 
@@ -910,7 +910,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
                   "batchId not specified");
     return;
   }
-  RocksDBReplicationContextGuard(_manager, ctx);
+  RocksDBReplicationContextGuard guard(_manager, ctx);
 
   // to is ignored because the snapshot time is the latest point in time
  
@@ -989,7 +989,7 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
   }
 
   //lock context
-  RocksDBReplicationContextGuard(_manager, ctx);
+  RocksDBReplicationContextGuard guard(_manager, ctx);
 
   VPackBuilder b;
   ctx->dumpKeyChunks(b, chunkSize);
@@ -1063,7 +1063,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
                   "batch is busy");
     return;
   }
-  RocksDBReplicationContextGuard(_manager, ctx);
+  RocksDBReplicationContextGuard guard(_manager, ctx);
 
   std::shared_ptr<transaction::Context> transactionContext =
       transaction::StandaloneContext::Create(_vocbase);
@@ -1111,7 +1111,7 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
                   "batchId not specified");
     return;
   }
-  RocksDBReplicationContextGuard(_manager, ctx);*/
+  RocksDBReplicationContextGuard guard(_manager, ctx);*/
 
   /*auto keys = _vocbase->collectionKeys();
   TRI_ASSERT(keys != nullptr);
@@ -1171,7 +1171,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   // acquire context
   bool isBusy = false;
   RocksDBReplicationContext* context = _manager->find(contextId, isBusy);
-  RocksDBReplicationContextGuard(_manager, context);
+  RocksDBReplicationContextGuard guard(_manager, context);
 
   if (context == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
