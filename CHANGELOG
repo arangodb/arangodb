@@ -1,6 +1,8 @@
 v3.2.9 (2017-12-04)
 -------------------
 
+* under certain conditions, replication could stop. Now fixed by adding an equality check for requireFromPresent tick value
+
 * fixed locking for replication context info in RocksDB engine
   this fixes undefined behavior when parallel requests are made to the
   same replication context
