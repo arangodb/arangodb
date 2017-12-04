@@ -51,7 +51,7 @@ void Mutex::lock() {
   TRI_ASSERT(_holder != Thread::currentThreadId());
 #endif
 
-  std::mutex::lock();
+  _mutex.lock();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _holder = Thread::currentThreadId();
@@ -64,7 +64,7 @@ bool Mutex::tryLock() {
   TRI_ASSERT(_holder != Thread::currentThreadId());
 #endif
 
-  if (!try_lock()) {
+  if (!_mutex.try_lock()) {
     return false;
   }
 
@@ -81,7 +81,7 @@ void Mutex::unlock() {
   _holder = 0;
 #endif
 
-  std::mutex::unlock();
+  _mutex.unlock();
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

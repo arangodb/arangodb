@@ -31,11 +31,12 @@
 #include "Basics/Thread.h"
 #endif
 
-#include <thread>
+#include <mutex>
+
 
 namespace arangodb {
 
-class Mutex : public std::mutex {
+class Mutex {
  private:
   Mutex(Mutex const&) = delete;
   Mutex& operator=(Mutex const&) = delete;
@@ -60,6 +61,8 @@ class Mutex : public std::mutex {
 #endif
 
  private:
+
+  std::mutex _mutex;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_tid_t _holder;
