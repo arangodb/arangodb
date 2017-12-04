@@ -4,7 +4,7 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"first"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/17519"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/17515"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
@@ -13,31 +13,31 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17522"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17522"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_W-zL6Iu---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17518"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17518"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WADNeAy---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17526"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17526"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_W-zL6Iu--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17522"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17522"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WADNeA2---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"John"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17529"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17529"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_W-zL6Iu--A"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17525"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17525"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WADNeA6---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17532"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17532"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_W-zL6Iy---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17528"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17528"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WADNeA6--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17535"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17535"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_W-zL6Iy--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17531"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17531"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WADNeB----"</span> 
 }
