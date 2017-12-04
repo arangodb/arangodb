@@ -29,6 +29,11 @@ RocksDBReplicationResult::RocksDBReplicationResult(int errorNumber,
                                                    uint64_t maxTick)
     : Result(errorNumber), _maxTick(maxTick), _fromTickIncluded(false) {}
 
+RocksDBReplicationResult::RocksDBReplicationResult(int errorNumber,
+                                                   char const* errorMessage,
+                                                   uint64_t maxTick) 
+    : Result(errorNumber, errorMessage), _maxTick(maxTick), _fromTickIncluded(false) {}
+
 uint64_t RocksDBReplicationResult::maxTick() const { return _maxTick; }
 
 bool RocksDBReplicationResult::fromTickIncluded() const {
