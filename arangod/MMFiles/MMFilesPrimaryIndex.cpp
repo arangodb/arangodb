@@ -54,9 +54,9 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
 
 MMFilesPrimaryIndexIterator::MMFilesPrimaryIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, MMFilesPrimaryIndex const* index,
+    MMFilesPrimaryIndex const* index,
     std::unique_ptr<VPackBuilder>& keys)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _index(index),
       _keys(keys.get()),
       _iterator(_keys->slice()) {
@@ -420,7 +420,7 @@ Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
     return IndexResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, this);
   }
 
-  return Result(TRI_ERROR_NO_ERROR);
+  return Result();
 }
 
 Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
@@ -500,14 +500,14 @@ IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(_collection, trx, mmdr, this);
+      return new EmptyIndexIterator(_collection, trx, this);
     }
 
     return createInIterator(trx, mmdr, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(_collection, trx, mmdr, this);
+  return new EmptyIndexIterator(_collection, trx, this);
 }
 
 /// @brief specializes the condition for use with the index
@@ -547,7 +547,7 @@ IndexIterator* MMFilesPrimaryIndex::createInIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new MMFilesPrimaryIndexIterator(_collection, trx, mmdr, this, keys);
+  return new MMFilesPrimaryIndexIterator(_collection, trx, this, keys);
 }
 
 /// @brief create the iterator, for a single attribute, EQ operator
@@ -570,7 +570,7 @@ IndexIterator* MMFilesPrimaryIndex::createEqIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new MMFilesPrimaryIndexIterator(_collection, trx, mmdr, this, keys);
+  return new MMFilesPrimaryIndexIterator(_collection, trx, this, keys);
 }
 
 /// @brief add a single value node to the iterator's keys

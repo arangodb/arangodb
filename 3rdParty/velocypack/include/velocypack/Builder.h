@@ -340,19 +340,37 @@ class Builder {
   }
 
   // Add a subvalue into an object from a Value:
-  uint8_t* add(std::string const& attrName, Value const& sub);
-  uint8_t* add(char const* attrName, Value const& sub);
-  uint8_t* add(char const* attrName, size_t attrLength, Value const& sub);
+  uint8_t* add(std::string const& attrName, Value const& sub) {
+    return addInternal<Value>(attrName, sub);
+  }
+  uint8_t* add(char const* attrName, Value const& sub) {
+    return addInternal<Value>(attrName, sub);
+  }
+  uint8_t* add(char const* attrName, size_t attrLength, Value const& sub) {
+    return addInternal<Value>(attrName, attrLength, sub);
+  }
 
   // Add a subvalue into an object from a Slice:
-  uint8_t* add(std::string const& attrName, Slice const& sub);
-  uint8_t* add(char const* attrName, Slice const& sub);
-  uint8_t* add(char const* attrName, size_t attrLength, Slice const& sub);
+  uint8_t* add(std::string const& attrName, Slice const& sub) {
+    return addInternal<Slice>(attrName, sub);
+  }
+  uint8_t* add(char const* attrName, Slice const& sub) {
+    return addInternal<Slice>(attrName, sub);
+  }
+  uint8_t* add(char const* attrName, size_t attrLength, Slice const& sub) {
+    return addInternal<Slice>(attrName, attrLength, sub);
+  }
 
   // Add a subvalue into an object from a ValuePair:
-  uint8_t* add(std::string const& attrName, ValuePair const& sub);
-  uint8_t* add(char const* attrName, ValuePair const& sub);
-  uint8_t* add(char const* attrName, size_t attrLength, ValuePair const& sub);
+  uint8_t* add(std::string const& attrName, ValuePair const& sub) {
+    return addInternal<ValuePair>(attrName, sub);
+  }
+  uint8_t* add(char const* attrName, ValuePair const& sub) {
+    return addInternal<ValuePair>(attrName, sub);
+  }
+  uint8_t* add(char const* attrName, size_t attrLength, ValuePair const& sub) {
+    return addInternal<ValuePair>(attrName, attrLength, sub);
+  }
 
   // Add all subkeys and subvalues into an object from an ObjectIterator
   // and leaves open the object intentionally
@@ -720,7 +738,7 @@ class Builder {
     _index[depth].pop_back();
   }
 
-  void reportAdd() {
+  inline void reportAdd() {
     size_t depth = _stack.size() - 1;
     _index[depth].push_back(_pos - _stack[depth]);
   }

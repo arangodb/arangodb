@@ -1409,7 +1409,7 @@ OperationResult transaction::Methods::insertLocal(
 
   auto workForOneDocument = [&](VPackSlice const value) -> Result {
     if (!value.isObject()) {
-      return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+      return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     }
 
     ManagedDocumentResult result;
@@ -1432,16 +1432,18 @@ OperationResult transaction::Methods::insertLocal(
 
     TRI_ASSERT(!result.empty());
 
-    StringRef keyString(transaction::helpers::extractKeyFromDocument(
-        VPackSlice(result.vpack())));
+    if (!options.silent || _state->isDBServer()) {
+      StringRef keyString(transaction::helpers::extractKeyFromDocument(
+          VPackSlice(result.vpack())));
 
-    buildDocumentIdentity(collection, resultBuilder, cid, keyString, revisionId,
-                          0, nullptr, options.returnNew ? &result : nullptr);
+      buildDocumentIdentity(collection, resultBuilder, cid, keyString, revisionId,
+                            0, nullptr, options.returnNew ? &result : nullptr);
+    }
 
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   };
 
-  Result res = TRI_ERROR_NO_ERROR;
+  Result res;
   bool const multiCase = value.isArray();
   std::unordered_map<int, size_t> countErrorCodes;
   if (multiCase) {
@@ -1770,12 +1772,14 @@ OperationResult transaction::Methods::modifyLocal(
     TRI_ASSERT(!result.empty());
     TRI_ASSERT(!previous.empty());
 
-    StringRef key(newVal.get(StaticStrings::KeyString));
-    buildDocumentIdentity(collection, resultBuilder, cid, key,
-                          TRI_ExtractRevisionId(VPackSlice(result.vpack())),
-                          actualRevision,
-                          options.returnOld ? &previous : nullptr,
-                          options.returnNew ? &result : nullptr);
+    if (!options.silent || _state->isDBServer()) {
+      StringRef key(newVal.get(StaticStrings::KeyString));
+      buildDocumentIdentity(collection, resultBuilder, cid, key,
+                            TRI_ExtractRevisionId(VPackSlice(result.vpack())),
+                            actualRevision,
+                            options.returnOld ? &previous : nullptr,
+                            options.returnNew ? &result : nullptr);
+    }
 
     return res;  // must be ok!
   };
@@ -2058,13 +2062,15 @@ OperationResult transaction::Methods::removeLocal(
     }
 
     TRI_ASSERT(!previous.empty());
-    buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision,
-                          0, options.returnOld ? &previous : nullptr, nullptr);
+    if (!options.silent || _state->isDBServer()) {
+      buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision,
+                            0, options.returnOld ? &previous : nullptr, nullptr);
+    }
 
-    return Result(TRI_ERROR_NO_ERROR);
+    return Result();
   };
 
-  Result res(TRI_ERROR_NO_ERROR);
+  Result res;
   bool multiCase = value.isArray();
   std::unordered_map<int, size_t> countErrorCodes;
   if (multiCase) {

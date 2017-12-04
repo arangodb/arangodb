@@ -3250,10 +3250,9 @@ Result MMFilesCollection::update(
     return res;
   }
 
-  uint8_t const* vpack = previous.vpack();
   LocalDocumentId const oldDocumentId = previous.localDocumentId();
-  VPackSlice oldDoc(vpack);
-  TRI_voc_rid_t oldRevisionId =
+  VPackSlice const oldDoc(previous.vpack());
+  TRI_voc_rid_t const oldRevisionId =
       transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
 
@@ -3285,7 +3284,7 @@ Result MMFilesCollection::update(
     if (_logicalCollection->waitForSync()) {
       options.waitForSync = true;
     }
-    return Result(TRI_ERROR_NO_ERROR);
+    return Result();
   }
 
   // merge old and new values
@@ -3569,8 +3568,7 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
     return res;
   }
 
-  uint8_t const* vpack = previous.vpack();
-  VPackSlice oldDoc(vpack);
+  VPackSlice const oldDoc(previous.vpack());
   LocalDocumentId const oldDocumentId = previous.localDocumentId();
   TRI_voc_rid_t oldRevisionId = arangodb::transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
@@ -3627,7 +3625,7 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
         static_cast<MMFilesTransactionState*>(trx->state())
             ->addOperation(documentId, revisionId, operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
-    res = Result(ex.code());
+    res = Result(ex.code(), ex.what());
   } catch (std::bad_alloc const&) {
     res = Result(TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {

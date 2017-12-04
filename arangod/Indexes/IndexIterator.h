@@ -104,8 +104,8 @@ class IndexIterator {
 /// @brief Special iterator if the condition cannot have any result
 class EmptyIndexIterator final : public IndexIterator {
  public:
-  EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, ManagedDocumentResult* mmdr, arangodb::Index const* index) 
-      : IndexIterator(collection, trx, mmdr, index) {}
+  EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, arangodb::Index const* index) 
+      : IndexIterator(collection, trx, index) {}
 
   ~EmptyIndexIterator() {}
 

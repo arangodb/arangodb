@@ -153,7 +153,7 @@ class Parser {
   }
 
   ValueLength parse(std::string const& json, bool multi = false) {
-    return parse(reinterpret_cast<uint8_t const*>(json.c_str()), json.size(),
+    return parse(reinterpret_cast<uint8_t const*>(json.data()), json.size(),
                  multi);
   }
 

@@ -219,9 +219,9 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
 /// object and is left open at the end
 ////////////////////////////////////////////////////////////////////////////////
 
-static int V8ToVPackNoKeyRevId (v8::Isolate* isolate,
-                                VPackBuilder& builder,
-                                v8::Local<v8::Value> const obj) {
+static int V8ToVPackNoKeyRevId(v8::Isolate* isolate,
+                               VPackBuilder& builder,
+                               v8::Local<v8::Value> const obj) {
 
   TRI_ASSERT(obj->IsObject() && !obj->IsArray());
   auto o = v8::Local<v8::Object>::Cast(obj);
@@ -601,28 +601,17 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // Find collection and vocbase
-  std::string collectionName;
   arangodb::LogicalCollection const* col
       = TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
   TRI_vocbase_t* vocbase = col->vocbase();
-  collectionName = col->name();
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
-  SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::WRITE);
-  if (!args[0]->IsArray()) {
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
-
-  Result res = trx.begin();
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  std::string collectionName = col->name();
 
   VPackBuilder searchBuilder;
 
@@ -653,14 +642,21 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   VPackSlice toRemove = searchBuilder.slice();
+  
+  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
+  SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::WRITE);
+  if (!args[0]->IsArray()) {
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  }
+
+  Result res = trx.begin();
+  if (!res.ok()) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
 
   OperationResult result = trx.remove(collectionName, toRemove, options);
 
   res = trx.finish(result.result);
-
-  if (result.fail()) {
-    TRI_V8_THROW_EXCEPTION(result.result);
-  }
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1596,7 +1592,6 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
 
   std::string collectionName = col->name();
 
-
   VPackBuilder updateBuilder;
 
   auto workOnOneSearchVal = [&](v8::Local<v8::Value> const searchVal, bool isBabies) {
@@ -1697,10 +1692,6 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
     opResult = trx.update(collectionName, update, options);
   }
   res = trx.finish(opResult.result);
-
-  if (opResult.fail()) {
-    TRI_V8_THROW_EXCEPTION(opResult.result);
-  }
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
