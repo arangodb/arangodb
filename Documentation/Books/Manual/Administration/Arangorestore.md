@@ -67,8 +67,8 @@ The following parameters are available to adjust this behavior:
   database. If the target database already contains a collection with the same name,
   it will be dropped first and then re-created with the properties found in the input
   directory. Set to *false* to keep existing collections in the target database. If 
-  set to *false* and _arangorestore_ encounters a collection that is present in both 
-  the target database and the input directory, it will abort. The default value is *true*.
+  set to *false* and _arangorestore_ encounters a collection that is present in the
+  input directory but not in the target database, it will abort. The default value is *true*.
 * *--import-data <bool>*: set to *true* to load document data into the collections in
   the target database. Set to *false* to not load any document data. The default value 
   is *true*.
