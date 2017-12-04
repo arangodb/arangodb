@@ -1,4 +1,7 @@
-"use strict"
+"use strict";
+var Buffer = require("buffer").Buffer;
+
+// Note: UTF16-LE (or UCS2) codec is Node.js native. See encodings/internal.js
 
 // == UTF16-BE codec. ==========================================================
 

@@ -13,8 +13,8 @@ var inflect = module.exports;
 inflect.inflections = require('./inflections')
 
 // Gives easy access to add inflections to this class
-inflect.inflect = function (inflections_function) {
-  inflections_function(inflect.inflections);
+inflect.inflect = function (fn) {
+  fn(inflect.inflections);
 };
 
 // By default, _camelize_ converts strings to UpperCamelCase. If the argument to _camelize_
