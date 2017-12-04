@@ -18,99 +18,86 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
-/// @author Achim Brandt
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReadWriteLock.h"
 
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a read-write lock
-////////////////////////////////////////////////////////////////////////////////
-
-ReadWriteLock::ReadWriteLock() : _writeLocked(false) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes read-write lock
-////////////////////////////////////////////////////////////////////////////////
-
-ReadWriteLock::~ReadWriteLock() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locks for reading
-////////////////////////////////////////////////////////////////////////////////
-
-void ReadWriteLock::readLock() {
-  _mutex.lock_shared();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to lock for reading
-////////////////////////////////////////////////////////////////////////////////
-
-bool ReadWriteLock::tryReadLock() {
-  return _mutex.try_lock_shared();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to lock for reading, sleeping if the lock cannot be
-/// acquired instantly, sleepTime is in microseconds
-////////////////////////////////////////////////////////////////////////////////
-
-bool ReadWriteLock::tryReadLock(uint64_t sleepTime) {
-  return _mutex.try_lock_shared_for(
-    std::chrono::duration<uint64_t,std::micro>(sleepTime));
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locks for writing
-////////////////////////////////////////////////////////////////////////////////
-
 void ReadWriteLock::writeLock() {
-  _mutex.lock();
-  _writeLocked = true;
+  std::unique_lock<std::mutex> guard(_mut);
+  if (_state == 0) {
+    _state = -1;
+    return;
+  }
+  do {
+    _wantWrite = true;
+    _bell.wait(guard);
+  } while (_state != 0);
+  _state = -1;
+  _wantWrite = false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to lock for writing
-////////////////////////////////////////////////////////////////////////////////
-
+/// @brief locks for writing, but only tries
 bool ReadWriteLock::tryWriteLock() {
-  _writeLocked = _mutex.try_lock();
-  return _writeLocked;
+  std::unique_lock<std::mutex> guard(_mut);
+  if (_state == 0) {
+    _state = -1;
+    return true;
+  }
+  return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to lock for writing, sleeping if the lock cannot be
-/// acquired instantly, sleepTime is in microseconds
-////////////////////////////////////////////////////////////////////////////////
-
-bool ReadWriteLock::tryWriteLock(uint64_t sleepTime) {
-  _writeLocked = _mutex.try_lock_for(
-    std::chrono::duration<uint64_t,std::micro>(sleepTime));
-  return _writeLocked;
+/// @brief locks for reading
+void ReadWriteLock::readLock() {
+  std::unique_lock<std::mutex> guard(_mut);
+  if (!_wantWrite && _state >= 0) {
+    _state += 1;
+    return;
+  }
+  while (true) {
+    while (_wantWrite || _state < 0) {
+      _bell.wait(guard);
+    }
+    if (!_wantWrite) {
+      break;
+    }
+  }
+  _state += 1;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+/// @brief locks for reading, tries only
+bool ReadWriteLock::tryReadLock() {
+  std::unique_lock<std::mutex> guard(_mut);
+  if (!_wantWrite && _state >= 0) {
+    _state += 1;
+    return true;
+  }
+  return false;
+}
+
 /// @brief releases the read-lock or write-lock
-////////////////////////////////////////////////////////////////////////////////
-
 void ReadWriteLock::unlock() {
-  if (_writeLocked) {
-    _writeLocked = false;
-    _mutex.unlock();
+  std::unique_lock<std::mutex> guard(_mut);
+  if (_state == -1) {
+    _state = 0;
+    _bell.notify_all();
   } else {
-    _mutex.unlock_shared();
+    _state -= 1;
+    if (_state == 0) {
+      _bell.notify_all();
+    }
   }
 }
-
+  
+/// @brief releases the read-lock
 void ReadWriteLock::unlockRead() {
-  _mutex.unlock_shared();
+  unlock();
 }
-
+  
+/// @brief releases the write-lock
 void ReadWriteLock::unlockWrite() {
-  _mutex.unlock();
+  unlock();
 }
-

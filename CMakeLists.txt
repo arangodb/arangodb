@@ -34,7 +34,7 @@ endif ()
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 
 if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
-  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
 endif ()
 
 if (WIN32)
