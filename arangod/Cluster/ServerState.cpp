@@ -516,7 +516,6 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
                                    const ServerState::RoleEnum& role,
                                    std::string const& id) {
 
-  typedef std::pair<AgencyOperation,AgencyPrecondition> operationType;
   std::string agencyListKey = roleToAgencyListKey(role);
   std::string idKey = "Latest" + roleToAgencyKey(role) + "Id";
 
@@ -545,19 +544,16 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
   std::string planUrl = "Plan/" + agencyListKey + "/" + id;
   std::string currentUrl = "Current/" + agencyListKey + "/" + id;
 
-  AgencyGeneralTransaction reg;
-  reg.push_back( // Plan entry if not exists
-      operationType(
-        AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
-        AgencyPrecondition(planUrl, AgencyPrecondition::Type::EMPTY, true)));
-
-  reg.push_back( // Current entry if not exists
-      operationType(
-        AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
-        AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true)));
-  
+  AgencyWriteTransaction preg(
+    AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
+    AgencyPrecondition(planUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
-  comm.sendTransactionWithFailover(reg, 0.0);
+  comm.sendTransactionWithFailover(preg, 0.0);
+  AgencyWriteTransaction creg(
+    AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
+    AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true));
+  // ok to fail..if it failed we are already registered
+  comm.sendTransactionWithFailover(creg, 0.0);
 
   std::string targetIdStr = "Target/" + idKey;
   std::string targetUrl = "Target/MapUniqueToShortID/" + id;
