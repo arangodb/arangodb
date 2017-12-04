@@ -1,13 +1,11 @@
-v3.2.10 (XXXX-XX-XX)
---------------------
+v3.2.9 (2017-12-04)
+-------------------
 
 * fixed locking for replication context info in RocksDB engine
   this fixes undefined behavior when parallel requests are made to the
   same replication context
 
-
-v3.2.9 (2017-12-01)
--------------------
+* UI: added not found views for documents and collections
 
 * fixed issue #3858: Foxx queues stuck in 'progress' status
 
