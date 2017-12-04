@@ -73,9 +73,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl",
                                                            RocksDBReplicationContext::DefaultTTL);
-    RocksDBReplicationContext* ctx = _manager->createContext(ttl);
-
     // create transaction+snapshot
+    RocksDBReplicationContext* ctx = _manager->createContext(ttl);
     RocksDBReplicationContextGuard(_manager, ctx);
     ctx->bind(_vocbase);
 
@@ -121,7 +120,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     int res = TRI_ERROR_NO_ERROR;
     bool busy;
     RocksDBReplicationContext* ctx = _manager->find(id, busy, expires);
-    RocksDBReplicationContextGuard(_manager, ctx);
+    RocksDBReplicationContextGuard guard(_manager, ctx);
     if (busy) {
       res = TRI_ERROR_CURSOR_BUSY;
       generateError(GeneralResponse::responseCode(res), res);
@@ -343,6 +342,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   if (found) {
     ctx = _manager->find(StringUtils::uint64(batchId), busy);
   }
+  RocksDBReplicationContextGuard guard(_manager, ctx);
   if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified");
@@ -353,7 +353,6 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
                   "context is busy or nullptr");
     return;
   }
-  RocksDBReplicationContextGuard(_manager, ctx);
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
 
@@ -430,12 +429,12 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   if (found) {
     ctx = _manager->find(StringUtils::uint64(batchId), busy);
   }
+  RocksDBReplicationContextGuard guard(_manager, ctx);
   if (!found || busy || ctx == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified");
     return;
   }
-  RocksDBReplicationContextGuard(_manager, ctx);
  
   // TRI_voc_tick_t tickEnd = UINT64_MAX;
   // determine end tick for keys
@@ -493,6 +492,9 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
   // get context
   bool busy;
   RocksDBReplicationContext* ctx = _manager->find(batchId, busy);
+  //lock context
+  RocksDBReplicationContextGuard guard(_manager, ctx);
+
   if (ctx == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified, expired or invalid in another way");
@@ -503,9 +505,6 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
                   "replication context is busy");
     return;
   }
-
-  //lock context
-  RocksDBReplicationContextGuard(_manager, ctx);
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
@@ -579,6 +578,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   uint64_t batchId = arangodb::basics::StringUtils::uint64(id);
   bool busy;
   RocksDBReplicationContext* ctx = _manager->find(batchId, busy);
+  RocksDBReplicationContextGuard guard(_manager, ctx);
   if (ctx == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified or not found");
@@ -590,7 +590,6 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
                   "batch is busy");
     return;
   }
-  RocksDBReplicationContextGuard(_manager, ctx);
 
   std::shared_ptr<transaction::Context> transactionContext =
       transaction::StandaloneContext::Create(_vocbase);
@@ -674,8 +673,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   // acquire context
   bool isBusy = false;
   RocksDBReplicationContext* context = _manager->find(contextId, isBusy);
-  RocksDBReplicationContextGuard(_manager, context);
-
+  RocksDBReplicationContextGuard guard(_manager, context);
+  
   if (context == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "replication dump - unable to find context (it could be expired)");
