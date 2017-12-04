@@ -28,7 +28,7 @@
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
-#include "Basics/locks.h"
+
 #include "Basics/mimetypes.h"
 #include "Basics/process-utils.h"
 #include "Logger/Logger.h"

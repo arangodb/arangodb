@@ -27,7 +27,6 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/locks.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"

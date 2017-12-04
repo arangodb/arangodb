@@ -24,35 +24,34 @@
 
 #include "ReadWriteLock.h"
 
-#if 0
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadWriteLock::ReadWriteLock() : _rwlock(), _writeLocked(false) {
-  TRI_InitReadWriteLock(&_rwlock);
-}
+ReadWriteLock::ReadWriteLock() : _writeLocked(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadWriteLock::~ReadWriteLock() { TRI_DestroyReadWriteLock(&_rwlock); }
+ReadWriteLock::~ReadWriteLock() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks for reading
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReadWriteLock::readLock() { TRI_ReadLockReadWriteLock(&_rwlock); }
+void ReadWriteLock::readLock() {
+  _mutex.lock_shared();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to lock for reading
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ReadWriteLock::tryReadLock() {
-  return TRI_TryReadLockReadWriteLock(&_rwlock);
+  return _mutex.try_lock_shared();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,13 +60,8 @@ bool ReadWriteLock::tryReadLock() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ReadWriteLock::tryReadLock(uint64_t sleepTime) {
-  while (true) {
-    if (tryReadLock()) {
-      return true;
-    }
-
-    usleep(static_cast<TRI_usleep_t>(sleepTime));
-  }
+  return _mutex.try_lock_shared_for(
+    std::chrono::duration<uint64_t,std::micro>(sleepTime));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,8 +69,7 @@ bool ReadWriteLock::tryReadLock(uint64_t sleepTime) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ReadWriteLock::writeLock() {
-  TRI_WriteLockReadWriteLock(&_rwlock);
-
+  _mutex.lock();
   _writeLocked = true;
 }
 
@@ -85,12 +78,8 @@ void ReadWriteLock::writeLock() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ReadWriteLock::tryWriteLock() {
-  if (!TRI_TryWriteLockReadWriteLock(&_rwlock)) {
-    return false;
-  }
-
-  _writeLocked = true;
-  return true;
+  _writeLocked = _mutex.try_lock();
+  return _writeLocked;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,13 +88,9 @@ bool ReadWriteLock::tryWriteLock() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ReadWriteLock::tryWriteLock(uint64_t sleepTime) {
-  while (true) {
-    if (tryWriteLock()) {
-      return true;
-    }
-
-    usleep(static_cast<TRI_usleep_t>(sleepTime));
-  }
+  _writeLocked = _mutex.try_lock_for(
+    std::chrono::duration<uint64_t,std::micro>(sleepTime));
+  return _writeLocked;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,18 +100,17 @@ bool ReadWriteLock::tryWriteLock(uint64_t sleepTime) {
 void ReadWriteLock::unlock() {
   if (_writeLocked) {
     _writeLocked = false;
-    unlockWrite();
+    _mutex.unlock();
   } else {
-    unlockRead();
+    _mutex.unlock_shared();
   }
 }
 
 void ReadWriteLock::unlockRead() {
-  TRI_ReadUnlockReadWriteLock(&_rwlock);
+  _mutex.unlock_shared();
 }
 
 void ReadWriteLock::unlockWrite() {
-  TRI_WriteUnlockReadWriteLock(&_rwlock);
+  _mutex.unlock();
 }
 
-#endif

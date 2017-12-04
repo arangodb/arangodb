@@ -34,7 +34,6 @@ endif ()
 
 if (MSVC)
   set(LIB_ARANGO_MSVC
-    Basics/locks-win32.cpp
     Basics/memory-map-win32.cpp
     Basics/terminal-utils-win32.cpp
     Basics/threads-win32.cpp
@@ -46,7 +45,6 @@ else ()
   set(LIB_ARANGO_POSIX
     ApplicationFeatures/DaemonFeature.cpp
     ApplicationFeatures/SupervisorFeature.cpp
-    Basics/locks-posix.cpp
     Basics/memory-map-posix.cpp
     Basics/terminal-utils-posix.cpp
     Basics/threads-posix.cpp
@@ -139,7 +137,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Mutex.cpp
   Basics/Nonce.cpp
   Basics/OpenFilesTracker.cpp
-  Basics/ReadWriteLockCPP11.cpp
+  Basics/ReadWriteLock.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SharedPRNG.cpp

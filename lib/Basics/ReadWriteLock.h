@@ -26,15 +26,12 @@
 #define ARANGODB_BASICS_READ_WRITE_LOCK_H 1
 
 #include "Basics/Common.h"
-#include "Basics/locks.h"
-#include "Basics/ReadWriteLockCPP11.h"
+
+#include <shared_mutex>
 
 namespace arangodb {
 namespace basics {
 
-typedef ReadWriteLockCPP11 ReadWriteLock;
-
-#if 0
 /// @brief read-write lock
 class ReadWriteLock {
   ReadWriteLock(ReadWriteLock const&) = delete;
@@ -79,15 +76,14 @@ class ReadWriteLock {
   /// @brief releases the write-lock
   void unlockWrite();
 
- private:
-  /// @brief read-write lock variable
-  TRI_read_write_lock_t _rwlock;
+private:
 
+  
+  std::shared_timed_mutex _mutex;
+  
   /// @brief write lock marker
   bool _writeLocked;
 };
-
-#endif
 
 }
 }

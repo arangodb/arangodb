@@ -26,7 +26,6 @@
 #define ARANGODB_BASICS_CONDITION_VARIABLE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/locks.h"
 #include "Basics/Mutex.h"
 
 #include <condition_variable>
