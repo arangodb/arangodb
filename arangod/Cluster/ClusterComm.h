@@ -304,7 +304,7 @@ struct ClusterCommResult {
 
 struct ClusterCommCallback {
   ClusterCommCallback() {}
-  virtual ~ClusterCommCallback(){};
+  virtual ~ClusterCommCallback() {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual callback function

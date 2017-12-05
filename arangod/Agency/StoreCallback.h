@@ -33,9 +33,7 @@ class StoreCallback : public arangodb::ClusterCommCallback {
  public:
   StoreCallback(std::string const&, std::string const&);
 
-  virtual bool operator()(arangodb::ClusterCommResult*) override final;
-
-  void shutdown();
+  bool operator()(arangodb::ClusterCommResult*) override final;
 
  private:
 

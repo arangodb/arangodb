@@ -460,8 +460,7 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
       char* utf8Word = TRI_UCharToUtf8(tempUtf16,
                                        chunkLength, &utf8WordLength);
       if (utf8Word != nullptr) {
-        std::string word(utf8Word, utf8WordLength);
-        words.emplace(word);
+        words.emplace(utf8Word, utf8WordLength);
         TRI_Free(utf8Word);
       }
     }
