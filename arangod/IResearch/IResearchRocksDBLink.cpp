@@ -26,6 +26,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "VocBase/LogicalView.h"
 
 #include "IResearchRocksDBLink.h"
 
@@ -73,6 +74,40 @@ IResearchRocksDBLink::~IResearchRocksDBLink() {
   // NOOP
 }
 
+/*static*/ arangodb::Result IResearchRocksDBLink::drop(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t viewId,
+    TRI_voc_cid_t collectionId
+) {
+  auto logicalView = vocbase.lookupView(viewId);
+
+  if (!logicalView || IResearchView::type() != logicalView->type()) {
+    return arangodb::Result(
+      TRI_ERROR_ARANGO_VIEW_NOT_FOUND,
+      std::string("error looking up view '") + std::to_string(viewId) + "': no such view"
+    );
+  }
+
+  // TODO FIXME find a better way to look up an iResearch View
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* view = dynamic_cast<IResearchView*>(logicalView->getImplementation());
+  #else
+    auto* view = static_cast<IResearchView*>(logicalView->getImplementation());
+  #endif
+
+  if (!view) {
+    return arangodb::Result(
+      TRI_ERROR_ARANGO_VIEW_NOT_FOUND,
+      std::string("error finding view: '") + std::to_string(viewId) + "': not an iresearhc view"
+    );
+  }
+
+  LOG_TOPIC(DEBUG, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Removing all documents belonging to view " << viewId << " sourced from collection " << collectionId;
+
+
+  return view->drop(collectionId);
+}
+
 /*static*/ IResearchRocksDBLink::ptr IResearchRocksDBLink::make(
   TRI_idx_iid_t iid,
   arangodb::LogicalCollection* collection,
@@ -117,10 +152,6 @@ void IResearchRocksDBLink::toVelocyPack(
   }
 
   builder.close();
-}
-
-Result IResearchRocksDBLink::drop(TRI_voc_cid_t viewId, TRI_voc_cid_t collectionId) {
-  LOG_TOPIC(DEBUG, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Removing all documents belonging to view " << viewId << " sourced from collection " << collectionId;
 }
 
 NS_END // iresearch

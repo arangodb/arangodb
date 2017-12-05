@@ -58,6 +58,12 @@ class IResearchRocksDBLink final
     return IResearchLink::drop();
   }
 
+  static arangodb::Result drop(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t viewId,
+    TRI_voc_cid_t collectionId
+  );
+
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();
   }
@@ -139,8 +145,6 @@ class IResearchRocksDBLink final
       THROW_ARANGO_EXCEPTION(res);
     }
   }
-
-  static Result drop(TRI_voc_cid_t viewId, TRI_voc_cid_t collectionId);
 
  private:
   IResearchRocksDBLink(
