@@ -132,6 +132,7 @@ devel
       WARNING {memory} maximum number of memory mappings per process is 65530, which seems too low. it is recommended to set it to at least 512000
       WARNING {memory} execute 'sudo sysctl -w "vm.max_map_count=512000"'
 
+* Foxx now warns about malformed configuration/dependency names and aliases in the manifest.
 
 v3.2.7 (2017-11-13)
 -------------------
