@@ -472,11 +472,6 @@ IndexIterator* RocksDBFulltextIndex::iteratorForCondition(transaction::Methods* 
   std::string attr = args->getMember(1)->getString();
   std::string query = args->getMember(2)->getString();
   
-  size_t limit = 0;
-  if (numMembers == 4) {
-    limit = args->getMember(3)->getIntValue();
-  }
-  
   FulltextQuery parsedQuery;
   Result res = parseQueryString(query, parsedQuery);
   if (res.fail()) {
