@@ -1056,12 +1056,8 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 
   if (!_isLocal) {
     // We need to inform the cluster as well
-    int tmp = ClusterInfo::instance()->setCollectionPropertiesCoordinator(
+    return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
         _vocbase->name(), cid_as_string(), this);
-    if (tmp == TRI_ERROR_NO_ERROR) {
-      return {};
-    }
-    return {tmp, TRI_errno_string(tmp)};
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
