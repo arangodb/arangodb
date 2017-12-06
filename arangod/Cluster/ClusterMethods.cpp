@@ -754,7 +754,8 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int countOnCoordinator(std::string const& dbname, std::string const& collname,
-                       std::vector<std::pair<std::string, uint64_t>>& result) {
+                       std::vector<std::pair<std::string, uint64_t>>& result,
+                       bool sendNoLockHeader) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -777,12 +778,24 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
   auto shards = collinfo->shardIds();
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>();
-  for (auto const& p : *shards) {
-    requests.emplace_back("shard:" + p.first,
-                          arangodb::rest::RequestType::GET,
-                          "/_db/" + StringUtils::urlEncode(dbname) +
-                          "/_api/collection/" +
-                          StringUtils::urlEncode(p.first) + "/count", body);
+  if (sendNoLockHeader) {
+    for (auto const& p : *shards) {
+      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      headers->emplace("x-arango-nolock", p.first);
+      requests.emplace_back(
+          "shard:" + p.first, arangodb::rest::RequestType::GET,
+          "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
+              StringUtils::urlEncode(p.first) + "/count",
+          body, headers);
+    }
+  } else {
+    for (auto const& p : *shards) {
+      requests.emplace_back("shard:" + p.first,
+                            arangodb::rest::RequestType::GET,
+                            "/_db/" + StringUtils::urlEncode(dbname) +
+                            "/_api/collection/" +
+                            StringUtils::urlEncode(p.first) + "/count", body);
+    }
   }
   size_t nrDone = 0;
   cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES, true);

@@ -364,6 +364,19 @@ struct ClusterCommRequest {
         body(body),
         done(false) {}
 
+  ClusterCommRequest(std::string const& dest, rest::RequestType type,
+                     std::string const& path,
+                     std::shared_ptr<std::string const> body,
+                     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers)
+      : destination(dest),
+        requestType(type),
+        path(path),
+        body(body),
+        done(false) {
+    headerFields = std::move(headers);
+  }
+
+
   void setHeaders(
       std::unique_ptr<std::unordered_map<std::string, std::string>>& headers) {
     headerFields = std::move(headers);

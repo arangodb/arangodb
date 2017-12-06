@@ -87,7 +87,8 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int countOnCoordinator(std::string const& dbname, std::string const& collname,
-                       std::vector<std::pair<std::string, uint64_t>>& result);
+                       std::vector<std::pair<std::string, uint64_t>>& result,
+                       bool sendNoLockHeader);
 
 int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string const& collname,
                                       std::unordered_map<std::string, double>& result);

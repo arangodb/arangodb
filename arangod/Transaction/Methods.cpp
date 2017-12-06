@@ -2476,7 +2476,7 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (_state->isCoordinator()) {
-    return countCoordinator(collectionName, aggregate);
+    return countCoordinator(collectionName, aggregate, true);
   }
 
   return countLocal(collectionName);
@@ -2485,9 +2485,10 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
 /// @brief count the number of documents in a collection
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::countCoordinator(
-    std::string const& collectionName, bool aggregate) {
+    std::string const& collectionName, bool aggregate, bool sendNoLockHeader) {
   std::vector<std::pair<std::string, uint64_t>> count;
-  int res = arangodb::countOnCoordinator(databaseName(), collectionName, count);
+  int res = arangodb::countOnCoordinator(databaseName(), collectionName, count,
+                                         sendNoLockHeader);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);

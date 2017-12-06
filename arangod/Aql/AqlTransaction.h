@@ -87,6 +87,11 @@ class AqlTransaction : public transaction::Methods {
   /// order via an HTTP call. This method is used to implement that HTTP action.
   int lockCollections() override;
 
+  /// @brief count the number of documents in a collection
+  /// Handle locks based on the collections known to this transaction
+  /// (Coordinator only)
+  OperationResult count(std::string const& collectionName, bool aggregate) override;
+
  protected:
   AqlTransaction(
       std::shared_ptr<transaction::Context> const& transactionContext,
