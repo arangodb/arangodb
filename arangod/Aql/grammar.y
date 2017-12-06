@@ -981,11 +981,7 @@ upsert_statement:
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
       parser->pushStack(parser->ast()->createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), true));
-    } expression T_INSERT expression update_or_replace expression in_or_into_collection options {
-      if (! parser->configureWriteQuery($8, $9)) {
-        YYABORT;
-      }
-
+    } expression {
       AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
       
       auto scopes = parser->ast()->scopes();
@@ -995,7 +991,7 @@ upsert_statement:
       
       scopes->start(arangodb::aql::AQL_SCOPE_FOR);
       std::string const variableName = parser->ast()->variables()->nextName();
-      auto forNode = parser->ast()->createNodeFor(variableName.c_str(), variableName.size(), $8, false);
+      auto forNode = parser->ast()->createNodeFor(variableName.c_str(), variableName.size(), parser->ast()->createNodeArray(), false);
       parser->ast()->addOperation(forNode);
 
       auto filterNode = parser->ast()->createNodeUpsertFilter(parser->ast()->createNodeReference(variableName), $3);
@@ -1021,8 +1017,17 @@ upsert_statement:
       auto index = parser->ast()->createNodeValueInt(0);
       auto firstDoc = parser->ast()->createNodeLet(variableNode, parser->ast()->createNodeIndexedAccess(parser->ast()->createNodeReference(subqueryName), index));
       parser->ast()->addOperation(firstDoc);
+      
+      parser->pushStack(forNode);
+    } T_INSERT expression update_or_replace expression in_or_into_collection options {
+      AstNode* forNode = static_cast<AstNode*>(parser->popStack());
+      forNode->changeMember(1, $9); 
 
-      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)), $5, $7, $8, $9);
+      if (!parser->configureWriteQuery($9, $10)) {
+        YYABORT;
+      }
+
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($7), parser->ast()->createNodeReference(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)), $6, $8, $9, $10);
       parser->ast()->addOperation(node);
     }
   ;

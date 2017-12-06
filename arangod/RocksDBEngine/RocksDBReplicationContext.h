@@ -119,6 +119,7 @@ class RocksDBReplicationContext {
   
   /// @brief Iterator on collection
   std::unique_ptr<IndexIterator> _iter;
+
   /// @brief offset in the collection used with the incremental sync
   uint64_t _lastIteratorOffset;
 

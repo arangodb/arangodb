@@ -192,7 +192,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    char const* p = key.c_str();
+    char const* p = key.data();
     char const* end = p + keyLength;
     int capState = 1;
 

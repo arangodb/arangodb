@@ -15,11 +15,12 @@ LINT=1
 PARALLEL=8
 
 SED=sed
-isMac=0
+IS_MAC=0
+
 if test "$(uname)" == "Darwin"; then
     SED=gsed
     OSNAME=darwin
-    isMac=1
+    IS_MAC=1
 fi
 
 if flex --version; then
@@ -192,8 +193,7 @@ if test -z "${SYNCER_REV}"; then
     exit 1
 fi
 
-echo "${SYNCER_REV}" > SYNCER_REV
-
+sed -i VERSIONS -e "s;SYNCER_REV.*;SYNCER_REV \"${SYNCER_REV}\";"
 
 GITSHA=$(git log -n1 --pretty='%h')
 if git describe --exact-match --tags "${GITSHA}"; then
@@ -227,7 +227,7 @@ mv CMakeLists.txt.tmp CMakeLists.txt
 
 CMAKE_CONFIGURE="-DUSE_MAINTAINER_MODE=ON"
 
-if [ "${isMac}" == 1 ];  then
+if [ "${IS_MAC}" == 1 ];  then
     CMAKE_CONFIGURE="${CMAKE_CONFIGURE} -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11"
 fi
 
@@ -260,10 +260,11 @@ if [ "$LINT" == "1" ]; then
 fi
 
 # we utilize https://developer.github.com/v3/repos/ to get the newest release of the arangodb starter:
-curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
+STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
                          grep tag_name | \
                          head -n 1 | \
-                         ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;' > STARTER_REV
+                         ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;')
+sed -i VERSIONS -e "s;STARTER_REV.*;STARTER_REV \"${STARTER_REV}\";"
 
 git add -f \
     README \
@@ -275,8 +276,7 @@ git add -f \
     lib/Basics/voc-errors.cpp \
     js/common/bootstrap/errors.js \
     CMakeLists.txt \
-    STARTER_REV \
-    SYNCER_REV
+    VERSIONS
 
 if [ "$EXAMPLES" == "1" ];  then
     echo "EXAMPLES"
@@ -303,7 +303,7 @@ if [ "$BOOK" == "1" ];  then
     (cd Documentation/Books; make)
 fi
 
-case "$TAG" in
+case "$VERSION" in
     *-milestone*|*-alpha*|*-beta*|devel)
     ;;
 

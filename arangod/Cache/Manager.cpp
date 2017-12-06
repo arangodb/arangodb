@@ -103,7 +103,13 @@ Manager::Manager(PostFn schedulerPost, uint64_t globalLimit,
   }
 }
 
-Manager::~Manager() { shutdown(); }
+Manager::~Manager() { 
+  try {
+    shutdown(); 
+  } catch (...) {
+    // no exceptions allowed here
+  }
+}
 
 std::shared_ptr<Cache> Manager::createCache(CacheType type,
                                             bool enableWindowedStats,
