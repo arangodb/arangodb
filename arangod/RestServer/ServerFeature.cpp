@@ -92,7 +92,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new UInt32Parameter(&_vstMaxSize));
 }
 
-void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   int count = 0;
 
   if (_console) {
@@ -126,9 +126,14 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     ApplicationServer::disableFeatures({"Daemon", "Endpoint", "GeneralServer",
                                         "SslServer", "Supervisor"});
 
-    ReplicationFeature* replicationFeature =
-        ApplicationServer::getFeature<ReplicationFeature>("Replication");
-    replicationFeature->disableReplicationApplier();
+    if (!options->processingResult().touched("replication.auto-start")) {
+      // turn off replication applier when we do not have a rest server
+      // but only if the config option is not explicitly set (the recovery
+      // test want the applier to be enabled for testing it)
+      ReplicationFeature* replicationFeature =
+          ApplicationServer::getFeature<ReplicationFeature>("Replication");
+      replicationFeature->disableReplicationApplier();
+    }
 
     StatisticsFeature* statisticsFeature =
         ApplicationServer::getFeature<StatisticsFeature>("Statistics");
