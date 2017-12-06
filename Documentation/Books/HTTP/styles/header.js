@@ -1,4 +1,6 @@
 // Try to set the version number early, jQuery not available yet
+var searcheable_versions = [@BROWSEABLE_VERSIONS@];
+var cx = '@GSEARCH_ID@';
 document.addEventListener("DOMContentLoaded", function(event) {
   if (!gitbook.state.root) return;
   var bookVersion = gitbook.state.root.match(/\/(\d\.\d(\.\d)?|devel)\//);
@@ -16,6 +18,21 @@ window.localStorage.removeItem(":keyword");
 $(document).ready(function() {
 
 function appendHeader() {
+  var VERSION_SELECTOR = ""
+  var i = 0;
+  var prefix;
+  for (i = 0; i < searcheable_versions.length; i++ ) {
+    if (searcheable_versions[i] === 'devel') {
+      prefix = '';
+    } else {
+      prefix = 'v';
+    }
+    VERSION_SELECTOR += '<option value="' +
+      searcheable_versions[i] +
+      '">' + prefix + 
+      searcheable_versions[i] +
+      '</option>\n';
+  }
 
   var div = document.createElement('div');
   div.innerHTML = '<div class="arangodb-header">\n' +
@@ -30,11 +47,7 @@ function appendHeader() {
     '    </a>\n' +
     '  </div>\n' +
     '  <select class="arangodb-version-switcher">\n' +
-    '    <option value="devel">devel</option>\n' +
-    '    <option value="3.2">v3.2</option>\n' +
-    '    <option value="3.1">v3.1</option>\n' +
-    '    <option value="3.0">v3.0</option>\n' +
-    '    <option value="2.8">v2.8</option>\n' +
+      VERSION_SELECTOR +
     '  </select>\n' +
     '  <div class="google-search">\n' +
     '    <gcse:searchbox-only></gcse:searchbox-only>\n' +
@@ -93,7 +106,6 @@ function appendHeader() {
   //render header
   rerenderNavbar();
   function addGoogleSrc() {
-    var cx = '010085642145132923492:fixi4yzeiz8';
     var gcse = document.createElement('script');
     gcse.type = 'text/javascript';
     gcse.async = true;
