@@ -178,9 +178,15 @@ void StatisticsFeature::start() {
   }
 
   _statisticsThread.reset(new StatisticsThread);
+  _statisticsWorker.reset(new StatisticsWorker);
 
   if (!_statisticsThread->start()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not start statistics thread";
+    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS) << "could not start statistics thread";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (!_statisticsWorker->start()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS) << "could not start statistics worker";
     FATAL_ERROR_EXIT();
   }
 }
@@ -194,7 +200,16 @@ void StatisticsFeature::unprepare() {
     }
   }
 
+  if (_statisticsWorker != nullptr) {
+    _statisticsWorker->beginShutdown();
+
+    while (_statisticsWorker->isRunning()) {
+      usleep(10000);
+    }
+  }
+
   _statisticsThread.reset();
+  _statisticsWorker.reset();
 
   delete TRI_ConnectionTimeDistributionStatistics;
   TRI_ConnectionTimeDistributionStatistics = nullptr;
