@@ -1625,18 +1625,20 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
   std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
   WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
-
-  _meta._collections.erase(cid); // will no longer be fully indexed
+  bool meta_updated = _meta._collections.erase(cid); // will no longer be fully indexed
   mutex.unlock(true); // downgrade to a read-lock
 
-  auto res = persistProperties(metaStore, _valid); // persist '_meta' definition
+  // no need to persist properties if thy were not modified (optimization)
+  if (meta_updated) {
+    auto res = persistProperties(metaStore, _valid); // persist '_meta' definition
 
-  if (!res.ok()) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "failed to persist view definition while dropping collection from iResearch view '" << id()
-      << "' cid '" << cid << "'";
+    if (!res.ok()) {
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+        << "failed to persist view definition while dropping collection from iResearch view '" << id()
+        << "' cid '" << cid << "'";
 
-    return res.errorNumber();
+      return res.errorNumber();
+    }
   }
 
   // ...........................................................................
