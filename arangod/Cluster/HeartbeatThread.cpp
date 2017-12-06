@@ -390,9 +390,9 @@ void HeartbeatThread::runDBServer() {
   }
 
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
-
+  
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-      << "stopped heartbeat thread (DBServer version)";
+    << "stopped heartbeat thread (DBServer version)";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
