@@ -1380,6 +1380,9 @@ AgencyCommResult AgencyComm::sendWithFailover(
     return false;
   };
 
+  static std::string const writeURL {"/_api/agency/write"};
+  bool isWriteTrans = (initialUrl == writeURL);
+
   bool isInquiry = false;   // Set to true whilst we investigate a potentially
                             // failed transaction.
 
@@ -1467,7 +1470,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
       // the operation. If it actually was done, we are good. If not, we
       // can retry. If in doubt, we have to retry inquire until the global
       // timeout is reached.
-      if (!clientIds.empty() && result._sent &&
+      // Also note that we only inquire about WriteTransactions.
+      if (isWriteTrans && !clientIds.empty() && result._sent &&
           (result._statusCode == 0 || result._statusCode == 503)) {
         isInquiry = true;
       }
@@ -1510,11 +1514,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
         if (outer.isObject() && outer.hasKey("results")) {
           VPackSlice results = outer.get("results");
           if (results.length() > 0) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-            LOG_TOPIC(WARN, Logger::AGENCYCOMM)
-#else
             LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
-#endif
               << "Inquired " << resultBody->toJson();
             AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
             break;
