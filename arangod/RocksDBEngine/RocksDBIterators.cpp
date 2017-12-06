@@ -45,7 +45,6 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
       _reverse(reverse),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
-      _iterator(),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()) {
   // acquire rocksdb transaction
   auto* mthds = RocksDBTransactionState::toMethods(trx);
@@ -59,6 +58,8 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
   options.verify_checksums = false;  // TODO evaluate
   // options.readahead_size = 4 * 1024 * 1024;
   _iterator = mthds->NewIterator(options, cf);
+  TRI_ASSERT(_iterator);
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   rocksdb::ColumnFamilyDescriptor desc;
   cf->GetDescriptor(&desc);
@@ -177,7 +178,6 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
     : IndexIterator(col, trx, mmdr, index),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()),
-      _iterator(),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
       _total(0),
@@ -190,6 +190,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   options.fill_cache = AnyIteratorFillBlockCache;
   options.verify_checksums = false;  // TODO evaluate
   _iterator = mthds->NewIterator(options, RocksDBColumnFamily::documents());
+  TRI_ASSERT(_iterator);
 
   _total = col->numberDocuments(trx);
   uint64_t off = RandomGenerator::interval(_total - 1);
@@ -282,7 +283,6 @@ RocksDBSortedAllIterator::RocksDBSortedAllIterator(
     : IndexIterator(collection, trx, mmdr, index),
       _trx(trx),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
-      _iterator(),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _index(index),
 #endif
@@ -296,6 +296,7 @@ RocksDBSortedAllIterator::RocksDBSortedAllIterator(
   options.fill_cache = false; // only used for incremental sync
   options.verify_checksums = false;
   _iterator = mthds->NewIterator(options, index->columnFamily());
+  TRI_ASSERT(_iterator);
   _iterator->Seek(_bounds.start());
   TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::primary());
 }

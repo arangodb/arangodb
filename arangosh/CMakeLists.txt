@@ -77,6 +77,7 @@ add_executable(${BIN_ARANGODUMP}
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
   V8Client/ArangoClientHelper.cpp
+  ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
 )
 
 target_link_libraries(${BIN_ARANGODUMP}
@@ -229,6 +230,7 @@ add_executable(${BIN_ARANGORESTORE}
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
   V8Client/ArangoClientHelper.cpp
+  ${ADDITIONAL_BIN_ARANGORESTORE_SOURCES}
 )
 
 target_link_libraries(${BIN_ARANGORESTORE}

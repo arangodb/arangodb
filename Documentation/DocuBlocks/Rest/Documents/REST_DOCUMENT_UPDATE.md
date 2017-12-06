@@ -81,9 +81,9 @@ If a precondition is violated, an *HTTP 412* is returned.
 
 If the document exists and can be updated, then an *HTTP 201* or
 an *HTTP 202* is returned (depending on *waitForSync*, see below),
-the *ETag* header field contains the new revision of the document
-and the *Location* header contains a complete URL under which the
-document can be queried.
+the *Etag* header field contains the new revision of the document
+(in double quotes) and the *Location* header contains a complete URL
+under which the document can be queried.
 
 Optionally, the query parameter *waitForSync* can be used to force
 synchronization of the updated document operation to disk even in case

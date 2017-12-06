@@ -48,7 +48,7 @@ Possibly given *_id* and *_rev* attributes in the body are always ignored,
 the URL part or the query parameter collection respectively counts.
 
 If the document was created successfully, then the *Location* header
-contains the path to the newly created document. The *ETag* header field
+contains the path to the newly created document. The *Etag* header field
 contains the revision of the document. Both are only set in the single
 document case.
 

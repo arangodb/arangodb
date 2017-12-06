@@ -104,7 +104,7 @@ might work for some cases.
 
 ArangoDB tries to adhere to the existing HTTP standard as far as
 possible. To this end, results of single document queries have the HTTP
-header `ETag` set to the document revision enclosed in double quotes.
+header `Etag` set to the document revision enclosed in double quotes.
 
 The basic operations (create, read, exists, replace, update, delete)
 for documents are mapped to the standard HTTP methods (*POST*, *GET*,
@@ -165,7 +165,7 @@ Example:
 **Note**: The following examples use the short URL format for brevity.
 
 The [document revision](../../Manual/Appendix/Glossary.html#document-revision) 
-is returned in the "ETag" HTTP header when requesting a document.
+is returned in the "Etag" HTTP header when requesting a document.
 
 If you obtain a document using *GET* and you want to check whether a 
 newer revision

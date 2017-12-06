@@ -319,7 +319,7 @@ Alternatively, here's a version without template strings (notice how much cleane
 ```js
 const keys = db._query(
   'FOR entry IN @@coll RETURN entry._key',
-  {'@coll': foxxColl}
+  {'@coll': foxxColl.name()}
 );
 ```
 

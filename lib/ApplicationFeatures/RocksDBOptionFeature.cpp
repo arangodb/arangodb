@@ -119,7 +119,7 @@ void RocksDBOptionFeature::collectOptions(
 
   options->addOption("--rocksdb.transaction-lock-timeout",
                      "If positive, specifies the wait timeout in milliseconds when "
-                     " a transaction attempts to lock a document. Defaults is 1000. A negative value "
+                     " a transaction attempts to lock a document. A negative value "
                      "is not recommended as it can lead to deadlocks (0 = no waiting, < 0 no timeout)",
                      new Int64Parameter(&_transactionLockTimeout));
 
