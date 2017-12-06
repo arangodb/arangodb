@@ -117,7 +117,6 @@ void StatisticsWorker::_collectGarbage(std::string const& name,
 
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, name, AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
 
@@ -126,7 +125,11 @@ void StatisticsWorker::_collectGarbage(std::string const& name,
   }
 
   OperationResult result = trx.remove(name, keysToRemove, opOptions);
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
+
+  if (res.fail()) {
+    LOG_TOPIC(WARN, Logger::STATISTICS) << "removing outdated statistics failed: " << res.errorMessage();
+  } 
 }
 
 void StatisticsWorker::historian() const {
@@ -952,20 +955,11 @@ void StatisticsWorker::_saveSlice(VPackSlice const& slice,
   // Will commit if no error occured.
   // or abort if an error occured.
   // result stays valid!
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
   if (res.fail()) {
-    LOG_TOPIC(INFO, Logger::STATISTICS) << "could not commit stats to "
-                                        << collection;
+    LOG_TOPIC(WARN, Logger::STATISTICS) << "could not commit stats to "
+                                        << collection << ": " << res.errorMessage();
   }
-
-  /* useless until we do something
-  if (result.failed()) {
-    return;
-  }
-
-  if (!res.ok()) {
-    return;
-  }*/
 }
 
 void StatisticsWorker::createCollections() const {
