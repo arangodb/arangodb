@@ -410,12 +410,11 @@ void HeartbeatThread::runDBServer() {
 
 /// CAS a key in the agency, works only if it does not exist, result should
 /// contain the value of the written key.
-static AgencyCommResult CasWithResult(AgencyComm agency, std::string const& key,
-                                      VPackSlice const& oldValue,
-                                      VPackSlice const& newJson, double timeout) {
+static AgencyCommResult CasWithResult(
+  AgencyComm agency, std::string const& key, VPackSlice const& oldValue,
+  VPackSlice const& newJson, double timeout) {
   AgencyOperation write(key, AgencyValueOperationType::SET, newJson);
   write._ttl = 0; // no ttl
-  
   if (oldValue.isNone()) { // for some reason this doesn't work
     // precondition: the key must equal old value
     AgencyPrecondition pre(key, AgencyPrecondition::Type::EMPTY, true);

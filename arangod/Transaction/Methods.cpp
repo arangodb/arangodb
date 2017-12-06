@@ -710,7 +710,7 @@ Result transaction::Methods::begin() {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::RUNNING);
     }
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
   return _state->beginTransaction(_localHints);
@@ -718,6 +718,10 @@ Result transaction::Methods::begin() {
 
 /// @brief commit / finish the transaction
 Result transaction::Methods::commit() {
+  TRI_IF_FAILURE("TransactionCommitFail") {
+    return Result(TRI_ERROR_DEBUG);
+  }
+
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
     return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on commit");
@@ -737,7 +741,7 @@ Result transaction::Methods::commit() {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::COMMITTED);
     }
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
   return _state->commitTransaction(this);
@@ -757,7 +761,7 @@ Result transaction::Methods::abort() {
       _state->updateStatus(transaction::Status::ABORTED);
     }
 
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
   return _state->abortTransaction(this);
