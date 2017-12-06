@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed issue #3917: traversals with high maximal depth take extremely long
+  in planning phase.
+
 * fixed issue #3741: fix terminal color output in Windows 
 
 * UI: using default user database api during database creation now
