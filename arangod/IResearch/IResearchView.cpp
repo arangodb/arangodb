@@ -1625,18 +1625,20 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
   std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
   WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
-
-  _meta._collections.erase(cid); // will no longer be fully indexed
+  bool meta_updated = _meta._collections.erase(cid); // will no longer be fully indexed
   mutex.unlock(true); // downgrade to a read-lock
 
-  auto res = persistProperties(metaStore, _valid); // persist '_meta' definition
+  // no need to persist properties if thy were not modified (optimization)
+  if (meta_updated) {
+    auto res = persistProperties(metaStore, _valid); // persist '_meta' definition
 
-  if (!res.ok()) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "failed to persist view definition while dropping collection from iResearch view '" << id()
-      << "' cid '" << cid << "'";
+    if (!res.ok()) {
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+        << "failed to persist view definition while dropping collection from iResearch view '" << id()
+        << "' cid '" << cid << "'";
 
-    return res.errorNumber();
+      return res.errorNumber();
+    }
   }
 
   // ...........................................................................
@@ -1701,9 +1703,12 @@ int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
 
   try {
     // transfer filters first since they only apply to pre-merge data
-    auto& memoryStore = activeMemoryStore();
     for (auto& filter: removals) {
-      memoryStore._writer->remove(filter);
+      // FIXME TODO potential problem of loss of 'remove' if:
+      // 'insert' in '_toFlush' and 'remove' comes during IResearchView::commit()
+      // after '_toFlush' is commit()ed but before '_toFlush' in import()ed
+      _memoryNode->_store._writer->remove(filter);
+      _toFlush->_store._writer->remove(filter);
     }
 
     // transfer filters to persisted store as well otherwise query resuts will be incorrect
@@ -1713,6 +1718,8 @@ int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
         _storePersisted._writer->remove(filter);
       }
     }
+
+    auto& memoryStore = activeMemoryStore();
 
     trxStore._writer->commit(); // ensure have latest view in reader
     memoryStore._writer->import(trxStore._reader.reopen());
@@ -2359,6 +2366,18 @@ int IResearchView::remove(
   }
 
   std::shared_ptr<irs::filter> shared_filter(FilterFactory::filter(cid, documentId.id()));
+
+  if (_inRecovery) {
+    // FIXME TODO potential problem of loss of 'remove' if:
+    // 'insert' in '_toFlush' and 'remove' comes during IResearchView::commit()
+    // after '_toFlush' is commit()ed but before '_toFlush' in import()ed
+    _memoryNode->_store._writer->remove(shared_filter);
+    _toFlush->_store._writer->remove(shared_filter);
+    _storePersisted._writer->remove(shared_filter);
+
+    return TRI_ERROR_NO_ERROR;
+  }
+
   TidStore* store;
 
   {

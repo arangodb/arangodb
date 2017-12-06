@@ -149,11 +149,10 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
 }
 
 void registerRecoveryHelper() {
-  auto rawEngine = arangodb::EngineSelectorFeature::ENGINE;
-  if (rawEngine->typeName() == arangodb::RocksDBEngine::EngineName) {
-    auto engine = static_cast<arangodb::RocksDBEngine*>(rawEngine);
-    auto helper = std::make_shared<arangodb::iresearch::IResearchRocksDBRecoveryHelper>();
-    engine->registerRecoveryHelper(helper);
+  auto helper = std::make_shared<arangodb::iresearch::IResearchRocksDBRecoveryHelper>();
+  auto res = arangodb::RocksDBEngine::registerRecoveryHelper(helper);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), "failed to register RocksDB recovery helper");
   }
 }
 
@@ -218,6 +217,8 @@ void IResearchFeature::prepare() {
      IResearchView::type(),
      IResearchView::make
   );
+
+  registerRecoveryHelper();
 }
 
 void IResearchFeature::start() {
@@ -235,8 +236,6 @@ void IResearchFeature::start() {
     }
 
   }
-
-  registerRecoveryHelper();
 
   _running = true;
 }

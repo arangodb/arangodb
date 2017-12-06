@@ -40,6 +40,10 @@
 #include "Transaction/Methods.h"
 #include "Views/ViewIterator.h"
 
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewNode.h"
+#endif
+
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -77,7 +81,9 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
     {static_cast<int>(UPSERT), "UpsertNode"},
     {static_cast<int>(TRAVERSAL), "TraversalNode"},
     {static_cast<int>(SHORTEST_PATH), "ShortestPathNode"},
-    {static_cast<int>(ENUMERATE_VIEW), "EnumerateViewNode"}};
+#ifdef USE_IRESEARCH
+    {static_cast<int>(ENUMERATE_IRESEARCH_VIEW), "IResearchViewNode"}};
+#endif
 
 /// @brief returns the type name of the node
 std::string const& ExecutionNode::getTypeString() const {
@@ -145,8 +151,10 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new EnumerateCollectionNode(plan, slice);
     case ENUMERATE_LIST:
       return new EnumerateListNode(plan, slice);
-    case ENUMERATE_VIEW:
-      return new EnumerateViewNode(plan, slice);
+#ifdef USE_IRESEARCH
+    case ENUMERATE_IRESEARCH_VIEW:
+      return new iresearch::IResearchViewNode(plan, slice);
+#endif
     case FILTER:
       return new FilterNode(plan, slice);
     case LIMIT:
@@ -567,7 +575,10 @@ ExecutionNode const* ExecutionNode::getLoop() const {
 
     if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
         type == ENUMERATE_LIST || type == SHORTEST_PATH ||
-        type == ENUMERATE_VIEW) {
+#ifdef USE_IRESEARCH
+        type == ENUMERATE_IRESEARCH_VIEW
+#endif
+        ) {
       return node;
     }
   }
@@ -857,8 +868,8 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       totalNrRegs++;
       break;
     }
-
-    case ExecutionNode::ENUMERATE_VIEW: {
+#ifdef USE_IRESEARCH
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       depth++;
       nrRegsHere.emplace_back(1);
       // create a copy of the last value here
@@ -867,12 +878,13 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       RegisterId registerId = 1 + nrRegs.back();
       nrRegs.emplace_back(registerId);
 
-      auto ep = static_cast<EnumerateViewNode const*>(en);
+      auto ep = static_cast<iresearch::IResearchViewNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       break;
     }
+#endif
 
     case ExecutionNode::CALCULATION: {
       nrRegsHere[depth]++;
@@ -1329,157 +1341,6 @@ double EnumerateListNode::estimateCost(size_t& nrItems) const {
 
   nrItems = length * incoming;
   return depCost + static_cast<double>(length) * incoming;
-}
-
-EnumerateViewNode::EnumerateViewNode(ExecutionPlan* plan,
-                                     arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
-      _view(_vocbase->lookupView(base.get("view").copyString())),
-      _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
-      _condition(Condition::fromVPack(plan, base.get("condition"))),
-      _sortCondition(SortCondition::fromVelocyPack(plan, base, "sortCondition")) {}
-
-
-EnumerateViewNode::~EnumerateViewNode() {
-  delete _condition;
-}
-
-bool EnumerateViewNode::volatile_state() const {
-  if (_condition && isInInnerLoop()) {
-    auto const* conditionRoot = _condition->root();
-
-    if (!conditionRoot->isDeterministic()) {
-      return true;
-    }
-
-    std::unordered_set<arangodb::aql::Variable const*> vars;
-    Ast::getReferencedVariables(conditionRoot, vars);
-    vars.erase(this->outVariable()); // remove "our" variable
-
-    for (auto const* var : vars) {
-      auto* setter = this->plan()->getVarSetBy(var->id);
-
-      if (!setter) {
-        // unable to find setter
-        continue;
-      }
-
-      if (!setter->isDeterministic()) {
-        // found nondeterministic setter
-        return true;
-      }
-
-      switch (setter->getType()) {
-        case arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION:
-        case arangodb::aql::ExecutionNode::ENUMERATE_LIST:
-        case arangodb::aql::ExecutionNode::SUBQUERY:
-        case arangodb::aql::ExecutionNode::COLLECT:
-        case arangodb::aql::ExecutionNode::TRAVERSAL:
-        case arangodb::aql::ExecutionNode::INDEX:
-        case arangodb::aql::ExecutionNode::SHORTEST_PATH:
-        case arangodb::aql::ExecutionNode::ENUMERATE_VIEW:
-          // we're in the loop with dependent context
-          return true;
-        default:
-          break;
-      }
-    }
-  }
-
-  return false;
-}
-
-/// @brief toVelocyPack, for EnumerateViewNode
-void EnumerateViewNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                           bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
-
-  nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("view", VPackValue(_view->name()));
-
-  nodes.add(VPackValue("outVariable"));
-  _outVariable->toVelocyPack(nodes);
-
-  nodes.add(VPackValue("condition"));
-  if (_condition) {
-    _condition->toVelocyPack(nodes, verbose);
-  } else {
-    nodes.openObject();
-    nodes.close();
-  }
-
-  nodes.add(VPackValue("sortCondition"));
-  if (_sortCondition) {
-    _sortCondition->toVelocyPackHelper(nodes, verbose);
-  } else {
-    nodes.openObject();
-    nodes.close();
-  }
-
-  // And close it:
-  nodes.close();
-}
-
-/// @brief clone ExecutionNode recursively
-ExecutionNode* EnumerateViewNode::clone(ExecutionPlan* plan,
-                                        bool withDependencies,
-                                        bool withProperties) const {
-  auto outVariable = _outVariable;
-
-  if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
-  }
-
-  auto c = new EnumerateViewNode(plan, _id, _vocbase, _view, outVariable,
-                                 _condition, _sortCondition);
-                                 // TODO clone condition and sortCondition?
-
-  cloneHelper(c, withDependencies, withProperties);
-
-  return static_cast<ExecutionNode*>(c);
-}
-
-/// @brief the cost of an enumerate view node
-double EnumerateViewNode::estimateCost(size_t& nrItems) const {
-  size_t incoming = 0;
-  double depCost = _dependencies.at(0)->getCost(incoming);
-
-  // For the time being, we assume 100
-  size_t length = 100; // TODO: get a better guess from view
-
-  nrItems = length * incoming;
-  return depCost + static_cast<double>(length) * incoming;
-}
-
-std::unique_ptr<arangodb::ViewIterator> EnumerateViewNode::iterator(
-    arangodb::transaction::Methods& trx,
-    ExpressionContext& ctx
-) const {
-  return std::unique_ptr<arangodb::ViewIterator>(_view->iteratorForCondition(
-    &trx,
-    const_cast<ExecutionPlan*>(plan()), // FIXME `Expression` requires non-const pointer
-    &ctx,
-    _condition ? _condition->root() : nullptr,  // no filter means 'RETURN *'
-    _outVariable,
-    _sortCondition.get()
-  ));
-}
-
-std::vector<Variable const*> EnumerateViewNode::getVariablesUsedHere() const {
-  std::unordered_set<Variable const*> vars;
-  getVariablesUsedHere(vars);
-  return { vars.begin(), vars.end() };
-}
-
-/// @brief getVariablesUsedHere, modifying the set in-place
-void EnumerateViewNode::getVariablesUsedHere(
-    std::unordered_set<Variable const*>& vars
-) const {
-  if (_condition) {
-    Ast::getReferencedVariables(_condition->root(), vars);
-  }
 }
 
 LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)

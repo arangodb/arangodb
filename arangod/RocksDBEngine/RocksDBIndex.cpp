@@ -176,11 +176,11 @@ void RocksDBIndex::destroyCache() {
   TRI_ASSERT(_cacheEnabled);
 }
 
-void RocksDBIndex::serializeEstimate(std::string&) const {
+void RocksDBIndex::serializeEstimate(std::string&, uint64_t) const {
   // All indexes that do not have an estimator do not serialize anything.
 }
 
-bool RocksDBIndex::deserializeEstimate(RocksDBCounterManager*) {
+bool RocksDBIndex::deserializeEstimate(RocksDBSettingsManager*) {
   // All indexes that do not have an estimator do not deserialize anything.
   // So the estimate is always recreatable.
   // We do not advance anything here.
@@ -270,7 +270,7 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
 
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
-    
+
     // report size of key
     RocksDBOperationResult result = state->addInternalOperation(
         0, iter->key().size());
@@ -382,4 +382,8 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+}
+
+std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> RocksDBIndex::estimator() const {
+  return std::make_pair(nullptr, 0);
 }

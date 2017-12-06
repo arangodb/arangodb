@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,28 +17,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ROCKSDB_RECOVERY_FINALIZER_H
-#define ROCKSDB_RECOVERY_FINALIZER_H 1
+#ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_OPTIMIZER_RULES_H
+#define ARANGOD_IRESEARCH__IRESEARCH_VIEW_OPTIMIZER_RULES_H 1
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include <memory>
 
 namespace arangodb {
-// a small glue feature that only establishes the dependencies between the RocksDBEngine
-// feature and the DatabaseFeature
-// its start method will be run after both the RocksDBEngine and the DatabaseFeature
-// have started and all databases have been established
-// it will then call the DatabaseFeature's recoveryDone() method, which will start
-// replication in all databases if nececessary
-class RocksDBRecoveryFinalizer final : public application_features::ApplicationFeature {
- public:
-  explicit RocksDBRecoveryFinalizer(application_features::ApplicationServer* server);
 
- public:
-  void start() override final;
-};
-}
+namespace aql {
+class Optimizer;
+class OptimizerRule;
+class ExecutionPlan;
+} // aql
 
-#endif
+namespace iresearch {
+
+/// @brief move filters and sort conditions into views
+void handleViewsRule(
+  arangodb::aql::Optimizer* opt,
+  std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+  arangodb::aql::OptimizerRule const* rule
+);
+
+} // iresearch
+} // arangodb
+
+#endif // ARANGOD_IRESEARCH__IRESEARCH_VIEW_OPTIMIZER_RULES_H

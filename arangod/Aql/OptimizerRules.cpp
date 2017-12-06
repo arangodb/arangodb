@@ -1892,7 +1892,9 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::TRAVERSAL:
       case EN::SHORTEST_PATH:
       case EN::ENUMERATE_LIST:
-      case EN::ENUMERATE_VIEW:
+#ifdef USE_IRESEARCH
+      case EN::ENUMERATE_IRESEARCH_VIEW:
+#endif
       case EN::SUBQUERY:
       case EN::FILTER:
         return false;  // skip. we don't care.
@@ -2981,7 +2983,9 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         case EN::SORT:
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
-        case EN::ENUMERATE_VIEW:
+#ifdef USE_IRESEARCH
+        case EN::ENUMERATE_IRESEARCH_VIEW:
+#endif
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
           // do break
@@ -3084,7 +3088,9 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
         case EN::ENUMERATE_COLLECTION:
-        case EN::ENUMERATE_VIEW:
+#ifdef USE_IRESEARCH
+        case EN::ENUMERATE_IRESEARCH_VIEW:
+#endif
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
           // CalculationNodes that can be moved to the DBservers have
@@ -3344,7 +3350,9 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
       }
       case EN::SINGLETON:
       case EN::ENUMERATE_LIST:
-      case EN::ENUMERATE_VIEW:
+#ifdef USE_IRESEARCH
+      case EN::ENUMERATE_IRESEARCH_VIEW:
+#endif
       case EN::SUBQUERY:
       case EN::COLLECT:
       case EN::INSERT:
@@ -4034,121 +4042,6 @@ void arangodb::aql::patchUpdateStatementsRule(
   // always re-add the original plan, be it modified or not
   // only a flag in the plan will be modified
   opt->addPlan(std::move(plan), rule, modified);
-}
-
-/// @brief move filters and sort conditions into views
-void arangodb::aql::handleViewsRule(Optimizer* opt,
-                                    std::unique_ptr<ExecutionPlan> plan,
-                                    OptimizerRule const* rule) {
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
-  std::unordered_map<size_t, ExecutionNode*> changes;
-
-  auto cleanupChanges = [&changes](){
-    for (auto& v : changes) {
-      delete v.second;
-    }
-  };
-  TRI_DEFER(cleanupChanges());
-
-  // newly created view nodes (replacement)
-  std::unordered_set<ExecutionNode const*> createdViewNodes;
-
-  // try to find `EnumerateViewNode`s and push corresponding filters and sorts inside
-  plan->findEndNodes(nodes, true);
-
-  bool hasEmptyResult = false;
-  for (auto const& n : nodes) {
-    ConditionFinder finder(plan.get(), &changes, &hasEmptyResult, true);
-    n->walk(&finder);
-  }
-
-  createdViewNodes.reserve(changes.size());
-
-  for (auto& it : changes) {
-    auto*& node = it.second;
-
-    if (!node || EN::ENUMERATE_VIEW != node->getType()) {
-      // filter out invalid nodes
-      continue;
-    }
-
-    plan->registerNode(node);
-    plan->replaceNode(plan->getNodeById(it.first), node);
-
-    createdViewNodes.insert(node);
-
-    // prevent double deletion by cleanupChanges()
-    node = nullptr;
-  }
-
-  if (!changes.empty()) {
-    std::unordered_set<ExecutionNode*> toUnlink;
-
-    // remove filters covered by a view
-    nodes.clear(); // ensure array is empty
-    plan->findNodesOfType(nodes, EN::FILTER, true);
-
-    // `createdViewNodes` will not change
-    auto const noMatch = createdViewNodes.end();
-
-    for (auto* node : nodes) {
-      // find the node with the filter expression
-      auto inVar = static_cast<FilterNode const*>(node)->getVariablesUsedHere();
-      TRI_ASSERT(inVar.size() == 1);
-
-      auto setter = plan->getVarSetBy(inVar[0]->id);
-
-      if (!setter || setter->getType() != EN::CALCULATION) {
-        continue;
-      }
-
-      auto const it = createdViewNodes.find(setter->getLoop());
-
-      if (it != noMatch) {
-        toUnlink.emplace(node);
-        toUnlink.emplace(setter);
-        static_cast<CalculationNode*>(setter)->canRemoveIfThrows(true);
-      }
-    }
-
-    // remove sorts covered by a view
-    nodes.clear(); // ensure array is empty
-    plan->findNodesOfType(nodes, EN::SORT, true);
-
-    for (auto* node : nodes) {
-      // find the node with the sort expression
-      auto inVar = static_cast<SortNode const*>(node)->getVariablesUsedHere();
-      TRI_ASSERT(!inVar.empty());
-
-      for (auto& var : inVar) {
-        auto setter = plan->getVarSetBy(var->id);
-
-        if (!setter || setter->getType() != EN::CALCULATION) {
-          continue;
-        }
-
-        auto const it = createdViewNodes.find(setter->getLoop());
-
-        if (it != noMatch) {
-          if (!(*it)->isInInnerLoop()) {
-            toUnlink.emplace(node);
-            toUnlink.emplace(setter);
-          }
-//FIXME uncomment when EnumerateViewNode can create variables
-//        toUnlink.emplace(setter);
-//        if (!(*it)->isInInnerLoop()) {
-//          toUnlink.emplace(node);
-//        }
-          static_cast<CalculationNode*>(setter)->canRemoveIfThrows(true);
-        }
-      }
-    }
-
-    plan->unlinkNodes(toUnlink);
-  }
-
-  opt->addPlan(std::move(plan), rule, !changes.empty());
 }
 
 /// @brief optimizes away unused traversal output variables and

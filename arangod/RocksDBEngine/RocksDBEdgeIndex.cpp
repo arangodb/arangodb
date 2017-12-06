@@ -36,10 +36,10 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "Scheduler/Scheduler.h"
@@ -408,7 +408,8 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                    !ServerState::instance()->isCoordinator() /*useCache*/),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
-      _estimator(nullptr) {
+      _estimator(nullptr),
+      _estimatorSerializedSeq(0) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::edge());
 
   if (!ServerState::instance()->isCoordinator()) {
@@ -505,6 +506,11 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
   } else {
     return IndexResult(res.errorNumber(), this);
   }
+}
+
+std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t>
+RocksDBEdgeIndex::estimator() const {
+  return std::make_pair(_estimator.get(), _estimatorSerializedSeq);
 }
 
 void RocksDBEdgeIndex::batchInsert(
@@ -948,12 +954,14 @@ void RocksDBEdgeIndex::handleValNode(
   }
 }
 
-void RocksDBEdgeIndex::serializeEstimate(std::string& output) const {
+void RocksDBEdgeIndex::serializeEstimate(std::string& output,
+                                         uint64_t seq) const {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->serialize(output);
+  _estimatorSerializedSeq = seq;
 }
 
-bool RocksDBEdgeIndex::deserializeEstimate(RocksDBCounterManager* mgr) {
+bool RocksDBEdgeIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   // We simply drop the current estimator and steal the one from recovery
   // We are than save for resizing issues in our _estimator format
@@ -961,13 +969,14 @@ bool RocksDBEdgeIndex::deserializeEstimate(RocksDBCounterManager* mgr) {
 
   TRI_ASSERT(mgr != nullptr);
   auto tmp = mgr->stealIndexEstimator(_objectId);
-  if (tmp == nullptr) {
+  if (tmp.first == nullptr) {
     // We expected to receive a stored index estimate, however we got none.
     // We use the freshly created estimator but have to recompute it.
     return false;
   }
-  _estimator.swap(tmp);
+  _estimator.swap(tmp.first);
   TRI_ASSERT(_estimator != nullptr);
+  _estimatorSerializedSeq = tmp.second;
   return true;
 }
 

@@ -60,6 +60,10 @@ if (USE_IRESEARCH)
     IResearch/IResearchRocksDBRecoveryHelper.cpp
     IResearch/IResearchRocksDBRecoveryHelper.h
     IResearch/IResearchView.cpp IResearch/IResearchView.h
+    IResearch/IResearchViewOptimizerRules.cpp IResearch/IResearchViewOptimizerRules.h
+    IResearch/IResearchViewNode.cpp IResearch/IResearchViewNode.h
+    IResearch/IResearchViewBlock.cpp IResearch/IResearchViewBlock.h
+    IResearch/IResearchViewConditionFinder.cpp IResearch/IResearchViewConditionFinder.h
     IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
     IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
     IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
@@ -180,7 +184,6 @@ SET(ARANGOD_SOURCES
   Aql/DocumentProducingNode.cpp
   Aql/EnumerateCollectionBlock.cpp
   Aql/EnumerateListBlock.cpp
-  Aql/EnumerateViewBlock.cpp
   Aql/ExecutionBlock.cpp
   Aql/ExecutionEngine.cpp
   Aql/ExecutionNode.cpp

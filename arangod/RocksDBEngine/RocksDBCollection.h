@@ -195,12 +195,12 @@ class RocksDBCollection final : public PhysicalCollection {
   bool hasGeoIndex() { return _hasGeoIndex; }
 
   Result serializeIndexEstimates(rocksdb::Transaction*) const;
-  void deserializeIndexEstimates(arangodb::RocksDBCounterManager* mgr);
+  void deserializeIndexEstimates(arangodb::RocksDBSettingsManager* mgr);
 
   void recalculateIndexEstimates();
 
   Result serializeKeyGenerator(rocksdb::Transaction*) const;
-  void deserializeKeyGenerator(arangodb::RocksDBCounterManager* mgr);
+  void deserializeKeyGenerator(arangodb::RocksDBSettingsManager* mgr);
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
@@ -274,6 +274,7 @@ class RocksDBCollection final : public PhysicalCollection {
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<TRI_voc_rid_t> _revisionId;
   mutable std::atomic<bool> _needToPersistIndexEstimates;
+  uint64_t _indexesSerializedSeq;
 
   /// upgrade write locks to exclusive locks if this flag is set
   bool _hasGeoIndex;

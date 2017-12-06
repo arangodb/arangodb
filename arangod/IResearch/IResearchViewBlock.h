@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,66 +17,72 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_ENUMERATE_VIEW_BLOCK_H
-#define ARANGOD_AQL_ENUMERATE_VIEW_BLOCK_H 1
+#ifndef ARANGOD_IRESEARCH__ENUMERATE_VIEW_BLOCK_H
+#define ARANGOD_IRESEARCH__ENUMERATE_VIEW_BLOCK_H 1
 
-#include "ExecutionBlock.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExpressionContext.h"
 #include "Views/ViewIterator.h"
 #include "VocBase/LogicalView.h"
 
 namespace arangodb {
-namespace aql {
 
+namespace aql {
 class AqlItemBlock;
 class ExecutionEngine;
+} // aql
+
+namespace iresearch {
+
+class IResearchViewNode;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class ViewExpressionContext
 ///////////////////////////////////////////////////////////////////////////////
-class ViewExpressionContext final : public arangodb::aql::ExpressionContext {
+class ViewExpressionContext final : public aql::ExpressionContext {
  public:
-  explicit ViewExpressionContext(ExecutionBlock* block)
+  explicit ViewExpressionContext(aql::ExecutionBlock* block)
     : _block(block) {
     TRI_ASSERT(_block);
   }
 
   virtual size_t numRegisters() const override;
 
-  virtual arangodb::aql::AqlValue const& getRegisterValue(size_t i) const override {
+  virtual aql::AqlValue const& getRegisterValue(size_t i) const override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  virtual arangodb::aql::Variable const* getVariable(size_t i) const override {
+  virtual aql::Variable const* getVariable(size_t i) const override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  virtual arangodb::aql::AqlValue getVariableValue(
-    Variable const* variable,
+  virtual aql::AqlValue getVariableValue(
+    aql::Variable const* variable,
     bool doCopy,
     bool& mustDestroy
   ) const override;
 
-  arangodb::aql::AqlItemBlock const* _data{};
-  arangodb::aql::ExecutionBlock* _block;
+  aql::AqlItemBlock const* _data{};
+  aql::ExecutionBlock* _block;
   size_t _pos{};
 }; // ViewExpressionContext
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class EnumerateViewBlock
 ///////////////////////////////////////////////////////////////////////////////
-class EnumerateViewBlock final : public ExecutionBlock {
+class IResearchViewBlock final : public aql::ExecutionBlock {
  public:
-  EnumerateViewBlock(ExecutionEngine*, EnumerateViewNode const*);
+  IResearchViewBlock(aql::ExecutionEngine*, IResearchViewNode const*);
 
   // here we release our docs from this collection
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  int initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
 
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  aql::AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
 
   // skip between atLeast and atMost returns the number actually skipped . . .
   // will only return less than atLeast if there aren't atLeast many
@@ -94,7 +99,7 @@ class EnumerateViewBlock final : public ExecutionBlock {
   bool _volatileState; // we have to recreate cached iterator when `reset` requested
 }; // EnumerateViewBlock
 
-} // aql
+} // iresearch
 } // arangodb
 
-#endif
+#endif // ARANGOD_IRESEARCH__ENUMERATE_VIEW_BLOCK_H 
