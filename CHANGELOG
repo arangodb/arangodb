@@ -3,6 +3,10 @@ devel
 
 * UI: added not found views for documents and collections
 
+* UI: edge collections were wrongly added to from and to vertices select box during graph creation
+
+* fixed issue #3640: limit in subquery
+
 * UI: the graph viewer now displays updated label values correctly.
   Additionally the included node/edge editor now closes automatically
 	after a successful node/edge update.
