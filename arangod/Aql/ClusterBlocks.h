@@ -34,7 +34,6 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
-;
 struct ClusterCommResult;
 
 namespace aql {
@@ -117,7 +116,7 @@ class GatherBlock : public ExecutionBlock {
     std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
     std::vector<SortElementBlock>& _sortRegisters;
   };
-  using Heap = std::vector<std::pair<std::size_t,std::size_t>>;
+  using Heap = std::vector<std::pair<std::size_t, std::size_t>>;
   std::unique_ptr<Heap> _heap;
 };
 
