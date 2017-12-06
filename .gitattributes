@@ -1,5 +1,6 @@
 *.sh eol=lf 
 VERSION eol=lf
+VERSIONS eol=lf
 scripts/unittest eol=lf
 *.groovy eol=lf
 *.csv binary
