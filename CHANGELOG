@@ -1,6 +1,10 @@
 devel
 -----
 
+* UI: the graph viewer backend now picks one random start vertex of the
+  first 1000 documents instead of calling any(). The implementation of
+  any is known to scale bad on huge collections with rocksdb.
+
 * UI: the graph viewer now displays updated label values correctly.
   Additionally the included node/edge editor now closes automatically
 	after a successful node/edge update.
