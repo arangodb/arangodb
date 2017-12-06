@@ -231,9 +231,13 @@ void OptimizerRulesFeature::addRules() {
   registerRule("patch-update-statements", patchUpdateStatementsRule,
                OptimizerRule::patchUpdateStatementsRule_pass9, DoesNotCreateAdditionalPlans, CanBeDisabled);
   
-  // patch update statements
+  // remove FILTER DISTANCE(...) and SORT DISTANCE(...)
   OptimizerRulesFeature::registerRule("geo-index-optimizer", geoIndexRule,
-                                      OptimizerRule::applyGeoIndexRule, false, true);
+                                      OptimizerRule::applyGeoIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  
+  // replace FOR v IN FULLTEXT(...) with an IndexNode and Limit
+  OptimizerRulesFeature::registerRule("fulltext-index-optimizer", fulltextIndexRule,
+                                      OptimizerRule::applyFulltextIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #if 0
