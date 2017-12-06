@@ -4,7 +4,6 @@
 !addplugindir  '@CPACK_PLUGIN_PATH@/AccessControl/Plugins'
 !addincludedir '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS'
 !addincludedir '@CPACK_PLUGIN_PATH@/'
-!include "OpenLink.nsh"
 !include "exitcodes.nsh"
 
 ;--------------------------------
@@ -973,7 +972,8 @@ continueUI:
       StrCpy $ServiceUp "1"
     ${EndIf}
     ${If} $ServiceUp == 1
-      ${OpenURL} ${TRI_AARDVARK_URL}
+      ; open web ui in default browser
+      ExecShell "" "$TRI_AARDVARK_URL"
     ${EndIf}
   ${EndIf}
 FunctionEnd
