@@ -819,7 +819,7 @@ bool TRI_ReadPointer(int fd, void* buffer, size_t length) {
   char* ptr = static_cast<char*>(buffer);
 
   while (0 < length) {
-    ssize_t n = TRI_READ(fd, ptr, (unsigned int)length);
+    ssize_t n = TRI_READ(fd, ptr, static_cast<TRI_read_t>(length));
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1150,7 +1150,7 @@ int TRI_VerifyLockFile(char const* filename) {
   char buffer[128];
   memset(buffer, 0,
          sizeof(buffer));  // not really necessary, but this shuts up valgrind
-  ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
+  ssize_t n = TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
 
   if (n < 0) {
     TRI_TRACKED_CLOSE_FILE(fd);
@@ -1646,10 +1646,8 @@ static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize,
   } else
 #endif
   {
-// 128k:
-#define C128 131072
-    TRI_write_t nRead;
-    TRI_read_t chunkRemain = fileSize;
+    // 128k:
+    constexpr size_t C128 = 128 * 1024;
     char* buf =
         static_cast<char*>(TRI_Allocate(C128));
 
@@ -1657,23 +1655,39 @@ static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize,
       error = "failed to allocate temporary buffer";
       rc = false;
     }
+    
+    size_t chunkRemain = fileSize;
     while (rc && (chunkRemain > 0)) {
-      TRI_read_t readChunk;
-      if (chunkRemain > C128) {
-        readChunk = C128;
-      } else {
-        readChunk = chunkRemain;
-      }
+      size_t readChunk = std::min(C128, chunkRemain);
+      ssize_t nRead = TRI_READ(srcFD, buf, static_cast<TRI_read_t>(readChunk));
 
-      nRead = TRI_READ(srcFD, buf, readChunk);
-      if (nRead < 1) {
+      if (nRead < 0) {
         error = std::string("failed to read a chunk: ") + strerror(errno);
-        break;
-      }
-
-      if ((TRI_read_t)TRI_WRITE(dstFD, buf, nRead) != nRead) {
         rc = false;
         break;
+      }
+
+      if (nRead == 0) {
+        // EOF. done
+        break;
+      }
+
+      size_t writeOffset = 0;
+      size_t writeRemaining = static_cast<size_t>(nRead);
+      while (writeRemaining > 0) {
+        // write can write less data than requested. so we must go on writing until
+        // we have written out all data
+        ssize_t nWritten = TRI_WRITE(dstFD, buf + writeOffset, static_cast<TRI_write_t>(writeRemaining));
+
+        if (nWritten < 0) {
+          // error during write
+          error = std::string("failed to read a chunk: ") + strerror(errno);
+          rc = false;
+          break;
+        }
+
+        writeOffset += static_cast<size_t>(nWritten);
+        writeRemaining -= static_cast<size_t>(nWritten);
       }
 
       chunkRemain -= nRead;

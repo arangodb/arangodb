@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #3741: fix terminal color output in Windows 
+
 * UI: using default user database api during database creation now
 
 * UI: the graph viewer backend now picks one random start vertex of the

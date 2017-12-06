@@ -86,7 +86,31 @@ void ShellColorsFeature::prepare() {
 
 bool ShellColorsFeature::useColors() {
 #ifdef _WIN32
+  if (!prepareConsole()) {
+    return false;
+  }
   return terminalKnowsANSIColors();
+#else
+  return true;
+#endif
+}
+
+bool ShellColorsFeature::prepareConsole() {
+#ifdef _WIN32
+  HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+  if (hStdout == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+
+  DWORD handleMode = 0;
+  if (!GetConsoleMode(hStdout, &handleMode)) {
+    return false;
+  }
+  handleMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+  if (!SetConsoleMode(hStdout, handleMode)) {
+    return false;
+  }
+  return true;
 #else
   return true;
 #endif

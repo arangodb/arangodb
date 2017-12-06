@@ -93,6 +93,7 @@ exports.checkRequestResult = function (requestResult) {
         throw new TypeError(requestResult.errorMessage);
       }
 
+      internal.print(requestResult);
       const error = new ArangoError(requestResult);
       error.message = requestResult.message;
       throw error;

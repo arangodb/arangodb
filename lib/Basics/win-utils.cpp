@@ -31,6 +31,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <crtdbg.h>
+#include <atlstr.h>
 #include <VersionHelpers.h>
 
 #include "Logger/Logger.h"
@@ -558,15 +559,14 @@ void ADB_WindowsExitFunction(int exitCode, void* data) {
 }
 
 // Detect cygwin ssh / terminals
-int _cyg_isatty(int fd)
-{
+int _cyg_isatty(int fd) {
   // detect standard windows ttys:
   if (_isatty (fd)) {
     return 1;
   }
 
   // stupid hack to allow forcing a tty..need to understand this better
-  // and create a thorugh fix..without this the logging stuff will not
+  // and create a thorough fix..without this the logging stuff will not
   // log to the foreground which is super annoying for debugging the
   // resilience tests
   char* forcetty = getenv("FORCE_WINDOWS_TTY");
@@ -660,8 +660,7 @@ int _is_cyg_tty(int fd)
   return 0;
 }
 
-bool terminalKnowsANSIColors()
-{
+bool terminalKnowsANSIColors() {
   if (_is_cyg_tty (STDOUT_FILENO)) {
     // Its a cygwin shell, expected to understand ANSI color codes.
     return true;
@@ -671,7 +670,6 @@ bool terminalKnowsANSIColors()
   return IsWindows8OrGreater();
 }
 
-#include <atlstr.h>
 std::string getFileNameFromHandle(HANDLE fileHandle) {
   char  buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH];
   FILE_NAME_INFO *FileInformation = (FILE_NAME_INFO*) buff;
