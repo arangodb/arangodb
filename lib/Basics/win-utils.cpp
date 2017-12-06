@@ -70,61 +70,6 @@ int getpagesize(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Calls the windows Sleep function which always sleeps for milliseconds
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_sleep(unsigned long waitTime) { Sleep(waitTime * 1000); }
-
-////////////////////////////////////////////////////////////////////////////////
-// Calls a timer which waits for a signal after the elapsed time in 
-// microseconds. The timer is accurate to 100nanoseconds.
-// This is only a Windows workaround, use usleep, which is mapped to 
-// TRI_usleep on Windows!
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_usleep(unsigned long waitTime) {
-  int result;
-  HANDLE hTimer = NULL;            // stores the handle of the timer object
-  LARGE_INTEGER wTime;             // essentially a 64bit number
-  wTime.QuadPart = waitTime * 10;  // *10 to change to microseconds
-  wTime.QuadPart =
-      -wTime.QuadPart;  // negative indicates relative time elapsed,
-
-  // Create an unnamed waitable timer.
-  hTimer = CreateWaitableTimer(NULL, 1, NULL);
-
-  if (hTimer == NULL) {
-    // not much we can do at this low level
-    return;
-  }
-
-  if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "internal error in TRI_usleep()";
-    FATAL_ERROR_EXIT();
-  }
-
-  // Set timer to wait for indicated micro seconds.
-  if (!SetWaitableTimer(hTimer, &wTime, 0, NULL, NULL, 0)) {
-    // not much we can do at this low level
-    CloseHandle(hTimer);
-    return;
-  }
-
-  // Wait for the timer
-  result = WaitForSingleObject(hTimer, INFINITE);
-
-  if (result != WAIT_OBJECT_0) {
-    CloseHandle(hTimer);
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "couldn't wait for timer in TRI_usleep()";
-    FATAL_ERROR_EXIT();
-  }
-
-  CloseHandle(hTimer);
-  // todo: go through what the result is e.g. WAIT_OBJECT_0
-  return;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Sets up a handler when invalid (win) handles are passed to a windows
 // function.
 // This is not of much use since no values can be returned. All we can do

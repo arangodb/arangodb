@@ -598,7 +598,7 @@ int MMFilesCollection::close() {
   while (_ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_DROP) ||
          _ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_RENAME) ||
          _ditches.contains(MMFilesDitch::TRI_DITCH_COMPACTION)) {
-    usleep(20000);
+    std::this_thread::sleep_for(std::chrono::microseconds(20000));
   }
 
   {
@@ -2552,7 +2552,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
-      usleep(static_cast<TRI_usleep_t>(waitTime));
+      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
       if (waitTime < 32) {
         waitTime *= 2;
       }
@@ -2665,7 +2665,7 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, double timeout) {
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
-      usleep(static_cast<TRI_usleep_t>(waitTime));
+      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
       if (waitTime < 32) {
         waitTime *= 2;
       }

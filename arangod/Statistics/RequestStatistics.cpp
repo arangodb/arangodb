@@ -164,7 +164,7 @@ void RequestStatistics::process(RequestStatistics* statistics) {
     if (_freeList.push(statistics)) {
       break;
     }
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 
   if (tries > 1) {
