@@ -279,9 +279,9 @@ ShardDistributionReporter::instance() {
 void ShardDistributionReporter::helperDistributionForDatabase(
     std::string const& dbName,
     VPackBuilder& result,
-    std::queue<std::shared_ptr<LogicalCollection>> todoSyncStateCheck,
+    std::queue<std::shared_ptr<LogicalCollection>>& todoSyncStateCheck,
     double endtime,
-    std::unordered_map<std::string, std::string> aliases,
+    std::unordered_map<std::string, std::string>& aliases,
     bool progress) {
 
   if (!todoSyncStateCheck.empty()) {

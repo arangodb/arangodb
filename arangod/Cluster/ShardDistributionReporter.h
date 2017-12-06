@@ -75,9 +75,9 @@ class ShardDistributionReporter {
   void helperDistributionForDatabase(
       std::string const& dbName,
       arangodb::velocypack::Builder& result,
-      std::queue<std::shared_ptr<LogicalCollection>> todoSyncStateCheck,
+      std::queue<std::shared_ptr<LogicalCollection>>& todoSyncStateCheck,
       double endtime,
-      std::unordered_map<std::string, std::string> aliases,
+      std::unordered_map<std::string, std::string>& aliases,
       bool progress);
 
  private:
