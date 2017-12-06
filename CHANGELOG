@@ -1,3 +1,9 @@
+v3.3.0 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #3745: Invalid result when using OLD object with array attribute in UPSERT statement
+
+
 v3.3.rc4 (2017-11-28)
 ---------------------
 
