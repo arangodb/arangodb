@@ -4220,7 +4220,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
                                               << exceptionString;
     }
   } else {
-    TRI_Utf8ValueNFC filename(                              message->GetScriptResourceName());
+    TRI_Utf8ValueNFC filename(message->GetScriptResourceName());
     char const* filenameString = *filename;
     // if ifdef is not used, the compiler will complain about linenum being
     // unused
