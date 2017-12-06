@@ -959,12 +959,70 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHugeTransactionPackage : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
       var huge = [];
       for (var i = 0; i < 20000; ++i) {
         huge.push([{"a":{"op":"increment"}}]);
       }
       writeAndCheck(huge);
       assertEqual(readAndCheck([["a"]]), [{"a":20000}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Huge transaction package, inc/dec
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionWithIncDec : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+      var trx = [];
+      for (var i = 0; i < 100; ++i) {
+        trx.push([{"a":{"op":"increment"}}]);
+        trx.push([{"a":{"op":"decrement"}}]);
+      }
+      writeAndCheck(trx);
+      assertEqual(readAndCheck([["a"]]), [{"a":0}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transaction, update of same key
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionUpdateSameKey : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+      var trx = [];
+      trx.push([{"a":"foo"}]);
+      trx.push([{"a":"bar"}]);
+      writeAndCheck(trx);
+      assertEqual(readAndCheck([["a"]]), [{"a":"bar"}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transaction, insert and remove of same key
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionInsertRemoveSameKey : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+      var trx = [];
+      trx.push([{"a":"foo"}]);
+      trx.push([{"a":{"op":"delete"}}]);
+      writeAndCheck(trx);
+      assertEqual(readAndCheck([["/a"]]), [{}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Huge transaction package, all different keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionDifferentKeys : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+      var huge = [], i;
+      for (i = 0; i < 100; ++i) {
+        huge.push([{["a" + i]:{"op":"increment"}}]);
+      }
+      writeAndCheck(huge);
+      for (i = 0; i < 100; ++i) {
+        assertEqual(readAndCheck([["a" + i]]), [{["a" + i]:1}]);
+      }
     }
   };
 }

@@ -568,6 +568,9 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown old collection name");
     }
+  } else {
+    TRI_ASSERT(col == nullptr);
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unable to identify collection");
   }
   if (col->isSystem()) {
     LOG_TOPIC(WARN, Logger::REPLICATION) << "Renaming system collection " << col->name();
@@ -960,6 +963,7 @@ retry:
         _applier->_state._failedConnects = 0;
         _applier->_state._totalRequests = 0;
         _applier->_state._totalFailedConnects = 0;
+        _applier->_state._totalResyncs = 0;
         
         saveApplierState();
       }
@@ -993,6 +997,12 @@ retry:
         
         // always abort if we get here
         return res;
+      }
+
+      {
+        // increase number of syncs counter
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+        ++_applier->_state._totalResyncs;
       }
       
       // do an automatic full resync

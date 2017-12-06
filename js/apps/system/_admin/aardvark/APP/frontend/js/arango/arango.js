@@ -837,6 +837,9 @@
         var callback = function (error, data, toRun) {
           if (error) {
             arangoHelper.arangoError('Error', 'Could not detect collection type');
+            if (toRun) {
+              toRun(error);
+            }
           } else {
             this.CollectionTypes[identifier] = data.type;
             if (this.CollectionTypes[identifier] === 3) {

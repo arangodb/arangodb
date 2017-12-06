@@ -143,10 +143,20 @@ class RocksDBReplicationContextGuard {
   
   RocksDBReplicationContextGuard(RocksDBReplicationManager* manager,
                                  RocksDBReplicationContext* ctx)
-    : _manager(manager), _ctx(ctx) {}
+    : _manager(manager), _ctx(ctx) {
+    if (_ctx != nullptr) {
+      TRI_ASSERT(_ctx->isUsed());
+    }
+  }
+
+  RocksDBReplicationContextGuard(RocksDBReplicationContextGuard&& other)
+    noexcept : _manager(other._manager), _ctx(other._ctx) {
+    other._ctx = nullptr;
+  } 
   
   ~RocksDBReplicationContextGuard()  {
     if (_ctx != nullptr) {
+      TRI_ASSERT(_ctx->isUsed());
       _manager->release(_ctx);
     }
   }
