@@ -973,7 +973,7 @@ void MMFilesCompactorThread::run() {
       if (numCompacted > 0) {
         // no need to sleep long or go into wait state if we worked.
         // maybe there's still work left
-        usleep(1000);
+        std::this_thread::sleep_for(std::chrono::microseconds(1000));
       } else if (state != TRI_vocbase_t::State::SHUTDOWN_COMPACTOR && _vocbase->state() == TRI_vocbase_t::State::NORMAL) {
         // only sleep while server is still running
         CONDITION_LOCKER(locker, _condition);

@@ -1248,7 +1248,7 @@ static void JS_QuerySleepAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   double const until = TRI_microtime() + n;
 
   while (TRI_microtime() < until) {
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
 
     if (query != nullptr) {
       if (query->killed()) {

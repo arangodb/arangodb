@@ -118,7 +118,7 @@ template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Called ~Worker()";
   _state = WorkerState::DONE;
-  usleep(50000);  // 50ms wait for threads to die
+  std::this_thread::sleep_for(std::chrono::microseconds(50000));  // 50ms wait for threads to die
   delete _readCache;
   delete _writeCache;
   delete _writeCacheNextGSS;

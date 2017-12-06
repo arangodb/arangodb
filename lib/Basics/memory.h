@@ -28,40 +28,16 @@
 #error use <Basics/Common.h>
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for allocate
-////////////////////////////////////////////////////////////////////////////////
-
 void* TRI_Allocate(size_t);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for reallocate
-////////////////////////////////////////////////////////////////////////////////
-
 void* TRI_Reallocate(void*, size_t);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for deallocate
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_Free(void*);
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_AllowMemoryFailures();
-#else
-static inline void TRI_AllowMemoryFailures() {}
-#endif
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_DisallowMemoryFailures();
-#else
-static inline void TRI_DisallowMemoryFailures() {}
-#endif
 
 /// @brief securely zero memory
 void TRI_ZeroMemory(void* m, size_t size);
-
-/// @brief initialize memory subsystem
-void TRI_InitializeMemory(void);
 
 #endif
