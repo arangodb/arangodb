@@ -25,7 +25,7 @@
 * [Administration](Administration/README.md)
   * [Using Authentication](Administration/Authentication.md)
   * [Importing Data](Administration/ImportingData.md)
-  * [Replication](Replication/README.md)
+  * [Replication](Administration/Replication/README.md)
     * [Replicating Data](Administration/ReplicatingData.md)
     * [Slave Initialization](Administration/Replication/ReplicationFromBackup.md)
   * [XCopy Install Windows](Administration/XCopyInstallWindows.md)
