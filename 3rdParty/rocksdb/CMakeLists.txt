@@ -25,8 +25,7 @@ endif ()
 
 # snappy settings
 #set(SNAPPY_HOME ${CMAKE_SOURCE_DIR}/3rdParty/snappy/google-snappy-d53de18/)
-
-if (WIN32)
+if (NOT USE_OPTIMIZE_FOR_ARCHITECTURE)
   set(PORTABLE On CACHE BOOL "enable portable rocksdb build (disabling might yield better performance but break portability)")
 endif ()
 #if (WIN32)
