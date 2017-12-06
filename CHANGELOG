@@ -1,3 +1,9 @@
+v3.3.0 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #3741: fix terminal color output in Windows 
+
+
 v3.3.rc4 (2017-11-28)
 ---------------------
 
