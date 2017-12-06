@@ -160,7 +160,7 @@ void SchedulerFeature::stop() {
     exitSignals->cancel();
   }
 
-#ifndef WIN32
+#ifndef _WIN32
   if (_hangupSignals != nullptr) {
     _hangupSignals->cancel();
     _hangupSignals.reset();
@@ -271,7 +271,7 @@ void SchedulerFeature::buildScheduler() {
 }
 
 void SchedulerFeature::buildControlCHandler() {
-#ifdef WIN32
+#ifdef _WIN32
   {
     int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
 
@@ -281,7 +281,6 @@ void SchedulerFeature::buildControlCHandler() {
   }
 #else
 
-#ifndef WIN32
   // Signal masking on POSIX platforms
   //
   // POSIX allows signals to be blocked using functions such as sigprocmask()
@@ -291,7 +290,6 @@ void SchedulerFeature::buildControlCHandler() {
   sigset_t all;
   sigemptyset(&all);
   pthread_sigmask(SIG_SETMASK, &all, 0);
-#endif
 
   auto ioService = _scheduler->managerService();
   _exitSignals = std::make_shared<boost::asio::signal_set>(*ioService, SIGINT,
@@ -326,7 +324,7 @@ void SchedulerFeature::buildControlCHandler() {
 }
 
 void SchedulerFeature::buildHangupHandler() {
-#ifndef WIN32
+#ifndef _WIN32
   auto ioService = _scheduler->managerService();
 
   _hangupSignals =
