@@ -47,7 +47,8 @@ class SenderThread : public arangodb::Thread {
 
  public:
   explicit SenderThread(std::unique_ptr<httpclient::SimpleHttpClient>&&,
-                        ImportStatistics* stats);
+                        ImportStatistics* stats,
+                        std::function<void()> const& wakeup);
 
   ~SenderThread();
 
@@ -74,6 +75,7 @@ class SenderThread : public arangodb::Thread {
  private:
   basics::ConditionVariable _condition;
   httpclient::SimpleHttpClient* _client;
+  std::function<void()> _wakeup;
   std::string _url;
   basics::StringBuffer _data;
   bool _hasError;

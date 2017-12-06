@@ -40,9 +40,11 @@ using namespace arangodb::import;
 
 SenderThread::SenderThread(
     std::unique_ptr<httpclient::SimpleHttpClient>&& client,
-    ImportStatistics* stats)
+    ImportStatistics* stats,
+    std::function<void()> const& wakeup)
     : Thread("Import Sender"),
       _client(client.release()),
+      _wakeup(wakeup),
       _data(false),
       _hasError(false),
       _idle(true),
@@ -127,6 +129,8 @@ void SenderThread::run() {
       _hasError = true;
       _idle = true;
     }
+
+    _wakeup();
   }
     
   CONDITION_LOCKER(guard, _condition);

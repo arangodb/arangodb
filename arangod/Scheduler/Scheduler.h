@@ -129,13 +129,13 @@ class Scheduler {
   inline void setStopping() noexcept { _counters |= (1ULL << 63); }
 
   inline void incRunning() noexcept { _counters += 1ULL << 0; }
-  inline void decRunning() noexcept { _counters -= 1ULL << 0; }
+  inline void decRunning() noexcept { TRI_ASSERT((_counters & 0xFFFFUL) > 0); _counters -= 1ULL << 0; }
 
   inline void workThread() noexcept { _counters += 1ULL << 16; } 
-  inline void unworkThread() noexcept { _counters -= 1ULL << 16; }
+  inline void unworkThread() noexcept { TRI_ASSERT(((_counters & 0XFFFF0000UL) >> 16) > 0); _counters -= 1ULL << 16; }
 
   inline void blockThread() noexcept { _counters += 1ULL << 32; }
-  inline void unblockThread() noexcept { _counters -= 1ULL << 32; }
+  inline void unblockThread() noexcept { TRI_ASSERT(((_counters & 0XFFFF00000000UL) >> 32) > 0); _counters -= 1ULL << 32; }
 
   inline bool isStopping(uint64_t value) const noexcept { return (value & (1ULL << 63)) != 0; }
 
