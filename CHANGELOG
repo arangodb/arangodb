@@ -1,5 +1,10 @@
+devel
+-----
+
+* fixed issue #3917: traversals with high maximal depth take extremely long
+  in planning phase.
+
 v3.3.rc4 (2017-11-28)
----------------------
 
 * minor bug-fixes
 
