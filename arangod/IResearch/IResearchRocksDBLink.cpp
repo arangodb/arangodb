@@ -21,11 +21,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h" // required for RocksDBColumnFamily.h
+#include "Basics/Common.h"  // required for RocksDBColumnFamily.h
 #include "IResearch/IResearchFeature.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBLogValue.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
 #include "IResearchRocksDBLink.h"
@@ -44,11 +46,13 @@ VPackSlice const& emptyParentSlice() {
       VPackBuilder fieldsBuilder;
 
       fieldsBuilder.openArray();
-      fieldsBuilder.close(); // empty array
+      fieldsBuilder.close();  // empty array
       _builder.openObject();
-      _builder.add("fields", fieldsBuilder.slice()); // empty array
-      arangodb::iresearch::IResearchLink::setType(_builder); // the index type required by Index
-      _builder.close(); // object with just one field required by the Index constructor
+      _builder.add("fields", fieldsBuilder.slice());  // empty array
+      arangodb::iresearch::IResearchLink::setType(
+          _builder);     // the index type required by Index
+      _builder.close();  // object with just one field required by the Index
+                         // constructor
       _slice = _builder.slice();
     }
   } emptySlice;
@@ -62,81 +66,49 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 IResearchRocksDBLink::IResearchRocksDBLink(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection
-): RocksDBIndex(iid, collection, emptyParentSlice(), RocksDBColumnFamily::invalid(), false),
-   IResearchLink(iid, collection) {
-  _unique = false; // cannot be unique since multiple fields are indexed
-  _sparse = true;  // always sparse
+    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection)
+    : RocksDBIndex(iid, collection, emptyParentSlice(),
+                   RocksDBColumnFamily::invalid(), false),
+      IResearchLink(iid, collection) {
+  _unique = false;  // cannot be unique since multiple fields are indexed
+  _sparse = true;   // always sparse
 }
 
 IResearchRocksDBLink::~IResearchRocksDBLink() {
   // NOOP
 }
 
-/*static*/ arangodb::Result IResearchRocksDBLink::drop(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t viewId,
-    TRI_voc_cid_t collectionId
-) {
-  auto logicalView = vocbase.lookupView(viewId);
-
-  if (!logicalView || IResearchView::type() != logicalView->type()) {
-    return arangodb::Result(
-      TRI_ERROR_ARANGO_VIEW_NOT_FOUND,
-      std::string("error looking up view '") + std::to_string(viewId) + "': no such view"
-    );
-  }
-
-  // TODO FIXME find a better way to look up an iResearch View
-  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* view = dynamic_cast<IResearchView*>(logicalView->getImplementation());
-  #else
-    auto* view = static_cast<IResearchView*>(logicalView->getImplementation());
-  #endif
-
-  if (!view) {
-    return arangodb::Result(
-      TRI_ERROR_ARANGO_VIEW_NOT_FOUND,
-      std::string("error finding view: '") + std::to_string(viewId) + "': not an iresearhc view"
-    );
-  }
-
-  LOG_TOPIC(DEBUG, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Removing all documents belonging to view " << viewId << " sourced from collection " << collectionId;
-
-
-  return view->drop(collectionId);
-}
-
 /*static*/ IResearchRocksDBLink::ptr IResearchRocksDBLink::make(
-  TRI_idx_iid_t iid,
-  arangodb::LogicalCollection* collection,
-  arangodb::velocypack::Slice const& definition
-) noexcept {
+    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
+    arangodb::velocypack::Slice const& definition) noexcept {
   try {
     PTR_NAMED(IResearchRocksDBLink, ptr, iid, collection);
 
-    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto* link = dynamic_cast<arangodb::iresearch::IResearchRocksDBLink*>(ptr.get());
-    #else
-      auto* link = static_cast<arangodb::iresearch::IResearchRocksDBLink*>(ptr.get());
-    #endif
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* link =
+        dynamic_cast<arangodb::iresearch::IResearchRocksDBLink*>(ptr.get());
+#else
+    auto* link =
+        static_cast<arangodb::iresearch::IResearchRocksDBLink*>(ptr.get());
+#endif
 
     return link && link->init(definition) ? ptr : nullptr;
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::DEVEL) << "caught exception while creating IResearch view RocksDB link '" << iid << "'" << e.what();
+    LOG_TOPIC(WARN, Logger::DEVEL)
+        << "caught exception while creating IResearch view RocksDB link '"
+        << iid << "'" << e.what();
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::DEVEL) << "caught exception while creating IResearch view RocksDB link '" << iid << "'";
+    LOG_TOPIC(WARN, Logger::DEVEL)
+        << "caught exception while creating IResearch view RocksDB link '"
+        << iid << "'";
   }
 
   return nullptr;
 }
 
-void IResearchRocksDBLink::toVelocyPack(
-    arangodb::velocypack::Builder& builder,
-    bool withFigures,
-    bool forPersistence
-) const {
+void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
+                                        bool withFigures,
+                                        bool forPersistence) const {
   TRI_ASSERT(!builder.isOpenObject());
   builder.openObject();
   bool success = json(builder, forPersistence);
@@ -154,9 +126,26 @@ void IResearchRocksDBLink::toVelocyPack(
   builder.close();
 }
 
-NS_END // iresearch
-NS_END // arangodb
+void IResearchRocksDBLink::writeRocksWalMarker() {
+  RocksDBLogValue logValue = RocksDBLogValue::IResearchLinkDrop(
+      Index::_collection->vocbase()->id(),
+      Index::_collection->cid(), IResearchLink::_view->id(),
+      Index::_iid);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+  rocksdb::WriteBatch batch;
+  rocksdb::WriteOptions wo;  // TODO: check which options would make sense
+  auto db = rocksutils::globalRocksDB();
+
+  batch.PutLogData(logValue.slice());
+  auto status = rocksutils::convertStatus(db->Write(wo, &batch));
+  if (!status.ok()) {
+    THROW_ARANGO_EXCEPTION(status.errorNumber());
+  }
+}
+
+NS_END      // iresearch
+    NS_END  // arangodb
+
+    // -----------------------------------------------------------------------------
+    // --SECTION-- END-OF-FILE
+    // -----------------------------------------------------------------------------

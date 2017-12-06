@@ -198,8 +198,10 @@ class IResearchLink {
   TRI_idx_iid_t const _id; // the index identifier
   IResearchLinkMeta _meta; // how this collection should be indexed
   mutable irs::async_utils::read_write_mutex _mutex; // for use with _view to allow asynchronous disassociation
+ protected:
   IResearchView::sptr _view; // effectively the index itself (nullptr == not associated)
 
+ private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief update the '_view' pointer under lock and return the original value
   /// @param isNew this is a new instance of the link for the view

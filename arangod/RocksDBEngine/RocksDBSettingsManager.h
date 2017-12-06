@@ -19,10 +19,11 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Simon Grätzer
+/// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COUNTMANAGER_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COUNTMANAGER_H 1
+#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_SETTINGS_MANAGER_H
+#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_SETTINGS_MANAGER_H 1
 
 #include <rocksdb/types.h>
 #include "Basics/Common.h"
@@ -39,16 +40,16 @@
 namespace rocksdb {
 class DB;
 class Transaction;
-}
+}  // namespace rocksdb
 
 namespace arangodb {
 
-class RocksDBCounterManager {
+class RocksDBSettingsManager {
   friend class RocksDBEngine;
 
   /// Constructor needs to be called synchronously,
   /// will load counts from the db and scan the WAL
-  explicit RocksDBCounterManager(rocksdb::DB* db);
+  explicit RocksDBSettingsManager(rocksdb::TransactionDB* db);
 
  public:
   struct CounterAdjustment {
@@ -71,7 +72,9 @@ class RocksDBCounterManager {
     TRI_voc_rid_t revisionId() const { return _revisionId; }
   };
 
-  void runRecovery();
+ public:
+  /// Retrieve initial settings values from database on engine startup
+  void retrieveInitialValues();
 
   /// Thread-Safe load a counter
   CounterAdjustment loadCounter(uint64_t objectId) const;
@@ -88,15 +91,18 @@ class RocksDBCounterManager {
   /// Thread-Safe remove a counter
   void removeCounter(uint64_t objectId);
 
+  /// Return copy of full list of counters
+  std::unordered_map<uint64_t, rocksdb::SequenceNumber> counterSeqs();
+
   /// Thread-Safe force sync
-  arangodb::Result sync(bool force);
+  Result sync(bool force);
 
   // Steal the index estimator that the recovery has built up to inject it into
   // an index.
   // NOTE: If this returns nullptr the recovery was not ably to find any
   // estimator
   // for this index.
-  std::unique_ptr<arangodb::RocksDBCuckooIndexEstimator<uint64_t>>
+  std::pair<std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>, uint64_t>
   stealIndexEstimator(uint64_t indexObjectId);
 
   // Steal the key genenerator state that recovery has detected.
@@ -137,7 +143,14 @@ class RocksDBCounterManager {
   void readIndexEstimates();
   void readKeyGenerators();
 
-  bool parseRocksWAL();
+  bool lockForSync(bool force);
+  Result writeCounterValue(rocksdb::Transaction* rtrx, VPackBuilder& b,
+                           std::pair<uint64_t, CMValue> const& pair);
+  Result writeSettings(rocksdb::Transaction* rtrx, VPackBuilder& b,
+                       uint64_t seqNumber);
+  Result writeIndexEstimatorAndKeyGenerator(
+      rocksdb::Transaction* rtrx, VPackBuilder& b,
+      std::pair<uint64_t, CMValue> const& pair);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief counter values
@@ -176,9 +189,9 @@ class RocksDBCounterManager {
   std::atomic<bool> _syncing;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief rocsdb instance
+  /// @brief rocksdb instance
   //////////////////////////////////////////////////////////////////////////////
-  rocksdb::DB* _db;
+  rocksdb::TransactionDB* _db;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief protect _syncing and _counters
@@ -187,6 +200,6 @@ class RocksDBCounterManager {
 
   TRI_voc_tick_t _initialReleasedTick;
 };
-}
+}  // namespace arangodb
 
 #endif

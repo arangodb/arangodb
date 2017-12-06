@@ -31,7 +31,7 @@
 #include "RestServer/TransactionManagerFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBCounterManager.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -167,7 +167,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
       // under some circumstances we can use untracking Put/Delete methods,
       // but we need to be sure this does not cause any lost updates or other
-      // inconsistencies. 
+      // inconsistencies.
       // TODO: enable this optimization once these circumstances are clear
       // and fully covered by tests
       if (false && isExclusiveTransactionOnSingleCollection()) {
@@ -193,9 +193,9 @@ void RocksDBTransactionState::createTransaction() {
   rocksdb::TransactionOptions trxOpts;
   trxOpts.set_snapshot = true;
   trxOpts.deadlock_detect = !hasHint(transaction::Hints::Hint::NO_DLD);
-  
+
   _rocksTransaction.reset(db->BeginTransaction(_rocksWriteOptions, trxOpts));
-  
+
   // set begin marker
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
     RocksDBLogValue header =
@@ -227,7 +227,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     TRI_ASSERT(_numLogdata >= 1 + (x > 0 ? 1 : 0) + _numRemoves);
   }
 #endif
-  
+
   ExecContext const* exe = ExecContext::CURRENT;
   if (!isReadOnlyTransaction() && exe != nullptr) {
     bool cancelRW = !ServerState::writeOpsEnabled() && !exe->isSuperuser();
@@ -272,10 +272,10 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         RocksDBEngine* engine =
             static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
 
-        RocksDBCounterManager::CounterAdjustment update(
+        RocksDBSettingsManager::CounterAdjustment update(
             latestSeq, collection->numInserts(), collection->numRemoves(),
             collection->revision());
-        engine->counterManager()->updateCounter(coll->objectId(), update);
+        engine->settingsManager()->updateCounter(coll->objectId(), update);
       }
 
       // we need this in case of an intermediate commit. The number of
@@ -292,7 +292,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       _cacheTx = nullptr;
     }
   }
-  
+
   _rocksTransaction.reset();
   return result;
 }
@@ -498,7 +498,7 @@ RocksDBOperationResult RocksDBTransactionState::addInternalOperation(
         std::to_string(_options.maxTransactionSize) + " bytes is reached";
     return RocksDBOperationResult(Result(TRI_ERROR_RESOURCE_LIMIT, message));
   }
-  
+
   ++_numInternal;
 
   // perform an intermediate commit if necessary
@@ -602,4 +602,3 @@ RocksDBKeyLeaser::~RocksDBKeyLeaser() {
     _rtrx->returnRocksDBKey(_key);
   }
 }
-
