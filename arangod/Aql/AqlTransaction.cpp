@@ -89,7 +89,7 @@ Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
     auto startTime = TRI_microtime();
     auto endTime = startTime + 60.0;
     do {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
       if (TRI_microtime() > endTime) {
         break;
       }

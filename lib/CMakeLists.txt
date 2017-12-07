@@ -139,7 +139,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Mutex.cpp
   Basics/Nonce.cpp
   Basics/OpenFilesTracker.cpp
-  Basics/ReadWriteLockCPP11.cpp
+  Basics/ReadWriteLock.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SharedPRNG.cpp

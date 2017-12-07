@@ -27,6 +27,7 @@
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBGeoIndex.h"
 #include "StorageEngine/TransactionState.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
@@ -53,8 +54,8 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
   }
 
   std::string const collectionName(collectionValue.slice().copyString());
@@ -62,8 +63,8 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   AqlValue attribute = ExtractFunctionParameterValue(trx, parameters, 1);
 
   if (!attribute.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
   }
 
   std::string attributeName(attribute.slice().copyString());
@@ -71,8 +72,8 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   AqlValue queryValue = ExtractFunctionParameterValue(trx, parameters, 2);
 
   if (!queryValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
   }
 
   std::string queryString = queryValue.slice().copyString();
@@ -81,8 +82,8 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   if (parameters.size() >= 4) {
     AqlValue limit = ExtractFunctionParameterValue(trx, parameters, 3);
     if (!limit.isNull(true) && !limit.isNumber()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+      RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return AqlValue(AqlValueHintNull());
     }
     if (limit.isNumber()) {
       int64_t value = limit.toInt64(trx);
@@ -99,8 +100,8 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   LogicalCollection* collection = trx->documentCollection(cid);
 
   if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "",
-                                  collectionName.c_str());
+    RegisterWarning(query, "FULLTEXT", TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return AqlValue(AqlValueHintNull());
   }
 
   // NOTE: The shared_ptr is protected by trx lock.
@@ -130,24 +131,52 @@ AqlValue RocksDBAqlFunctions::Fulltext(
 
   if (fulltextIndex == nullptr) {
     // fiddle collection name into error message
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING,
-                                  collectionName.c_str());
+    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING);
+    return AqlValue(AqlValueHintNull());
   }
   // do we need this in rocksdb?
   trx->pinData(cid);
-
-  transaction::BuilderLeaser builder(trx);
+  
   FulltextQuery parsedQuery;
   Result res = fulltextIndex->parseQueryString(queryString, parsedQuery);
   if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
+    RegisterWarning(query, "FULLTEXT", res.errorNumber());
+    return AqlValue(AqlValueHintNull());
   }
-  res = fulltextIndex->executeQuery(trx, parsedQuery, maxResults,
-                                    *(builder.get()));
+  std::set<LocalDocumentId> results;
+  res = fulltextIndex->executeQuery(trx, parsedQuery, results);
   if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
+    RegisterWarning(query, "FULLTEXT", res.errorNumber());
+    return AqlValue(AqlValueHintNull());
   }
-  return AqlValue(builder.get());
+  
+  PhysicalCollection* physical = collection->getPhysical();
+  ManagedDocumentResult mmdr;
+  if (maxResults == 0) {  // 0 appearantly means "all results"
+    maxResults = SIZE_MAX;
+  }
+  
+  auto buffer = std::make_unique<VPackBuffer<uint8_t>>();
+  VPackBuilder builder(*buffer.get());
+  builder.openArray();
+  // get the first N results
+  std::set<LocalDocumentId>::iterator it = results.cbegin();
+  while (maxResults > 0 && it != results.cend()) {
+    LocalDocumentId const& documentId = (*it);
+    if (documentId.isSet() && physical->readDocument(trx, documentId, mmdr)) {
+      mmdr.addToBuilder(builder, false);
+      maxResults--;
+    }
+    ++it;
+  }
+  builder.close();
+  
+  bool shouldDelete = true;
+  AqlValue value = AqlValue(buffer.get(), shouldDelete);
+  if (!shouldDelete) {
+    buffer.release();
+  }
+  return value;
 }
 
 /// @brief Load geoindex for collection name
@@ -389,7 +418,7 @@ void RocksDBAqlFunctions::registerResources() {
   TRI_ASSERT(functions != nullptr);
 
   // fulltext functions
-  functions->add({"FULLTEXT", ".h,.,.|.", false, true,
+  functions->add({"FULLTEXT", ".h,.,.|.", true, false,
                   false, true, &RocksDBAqlFunctions::Fulltext,
                   NotInCoordinator});
   functions->add({"NEAR", ".h,.,.|.,.", false, true, false,

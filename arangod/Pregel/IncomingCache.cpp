@@ -140,7 +140,7 @@ void ArrayInCache<M>::mergeCache(WorkerConfig const& config,
       TRY_MUTEX_LOCKER(guard, this->_bucketLocker[shardId]);
       if (guard.isLocked() == false) {
         if (i == 0) {   // eventually we hit the last one
-          usleep(100);  // don't busy wait
+          std::this_thread::sleep_for(std::chrono::microseconds(100));  // don't busy wait
         }
         continue;
       }
@@ -255,7 +255,7 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
       TRY_MUTEX_LOCKER(guard, this->_bucketLocker[shardId]);
       if (guard.isLocked() == false) {
         if (i == 0) {   // eventually we hit the last one
-          usleep(100);  // don't busy wait
+          std::this_thread::sleep_for(std::chrono::microseconds(100));  // don't busy wait
         }
         continue;
       }
