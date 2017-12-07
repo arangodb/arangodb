@@ -142,10 +142,9 @@ function ahuacatlDateFunctionsTestSuite () {
 /// @brief test date_now function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDateNow : function () {
-      var actual = getQueryResults("RETURN IS_NUMBER(DATE_NOW())")[0];
-
-      assertEqual(true, actual);
+    testDateNow() {
+      const [t1, t2] = getQueryResults("RETURN [NOOPT(V8(DATE_NOW())), NOOPT(DATE_NOW())]")[0];
+      assertEqual(true, Math.abs(t1 - t2) < 1000);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

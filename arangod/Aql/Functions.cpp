@@ -58,6 +58,7 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+#include <3rdParty/date/date.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -1371,6 +1372,34 @@ AqlValue Functions::RegexReplace(arangodb::aql::Query* query,
   
   return AqlValue(result);
 }
+
+
+
+// DATE FUNCTIONS
+
+/// @brief function DATE_NOW
+AqlValue Functions::DateNow(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+
+  uint64_t dur = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
+  return AqlValue(AqlValueHintUInt(dur));
+
+  // return AqlValue(static_cast<uint64_t>(duration_cast<milliseconds>(
+  //   system_clock::now().time_since_epoch() ) .count() ));
+
+    //dur = duration_cast< duration<uint64_t, std::milli>>(system_clock::now().time_since_epoch() ) .count();
+}
+
+
+
+
+
+
+
+
 
 /// @brief function PASSTHRU
 AqlValue Functions::Passthru(arangodb::aql::Query* query,

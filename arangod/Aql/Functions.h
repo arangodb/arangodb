@@ -162,6 +162,14 @@ struct Functions {
                              VPackFunctionParameters const&);
    static AqlValue RegexReplace(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
+
+
+    // date
+   static AqlValue DateNow(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+
+
+
    static AqlValue Passthru(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
    static AqlValue Unset(arangodb::aql::Query*, transaction::Methods*,

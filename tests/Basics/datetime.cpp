@@ -24,10 +24,8 @@ SCENARIO("testing", "[datetime]") {
                                         "T12:34:56.789+10:22",
                                         "T12:34:56.789-10:22"};
 
-
-    
     std::vector<std::string> datesToTest{};
-    
+
     for (auto const& d : dates) {
         for (auto const& t : times) {
             datesToTest.push_back(d+t);

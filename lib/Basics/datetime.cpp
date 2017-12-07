@@ -25,8 +25,6 @@
 #include <iostream>
 #include <vector>
 
-// using namespace arangodb; // ::basics;
-
 bool arangodb::basics::parse_dateTime(std::string const& dateTime, std::chrono::system_clock::time_point& date_tp) {
 //    std::cout << std::endl;
     using namespace date;
