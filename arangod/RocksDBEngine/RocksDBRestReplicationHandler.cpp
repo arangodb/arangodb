@@ -265,6 +265,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   // generate the result
   size_t length = data.length();
+  TRI_ASSERT(length == 0 || result.maxTick() > 0);
 
   if (length == 0) {
     resetResponse(rest::ResponseCode::NO_CONTENT);
