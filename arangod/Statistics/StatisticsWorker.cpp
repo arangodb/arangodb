@@ -1039,6 +1039,5 @@ void StatisticsWorker::run() {
 
     seconds++; // TODO should this run adaptively ?
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    
   }
 }
