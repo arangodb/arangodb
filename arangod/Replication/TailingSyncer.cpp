@@ -568,6 +568,8 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown old collection name");
     }
+  } else {
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unable to identify collection");
   }
   if (col->isSystem()) {
     LOG_TOPIC(WARN, Logger::REPLICATION) << "Renaming system collection " << col->name();
@@ -1273,11 +1275,12 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
   
   TRI_voc_tick_t readTick = StringUtils::uint64(header);
   
-  if (!fromIncluded && _requireFromPresent && fromTick > 0) {
+  if (!fromIncluded && _requireFromPresent && fromTick > 0 &&
+      (!simulate32Client() || fromTick != readTick)) {
     return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, std::string("required init tick value '") +
                   StringUtils::itoa(fromTick) + "' is not present (anymore?) on master at " +
                   _masterInfo._endpoint + ". Last tick available on master is '" + StringUtils::itoa(readTick) +
-                  "'. It may be required to do a full resync and increase the number of historic logfiles on the master.");
+                  "'. It may be required to do a full resync and increase the number of historic logfiles/WAL file timeout on the master.");
   }
   
   startTick = readTick;
@@ -1327,6 +1330,7 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   StringUtils::itoa(_configuration._chunkSize) + "&barrier=" +
   StringUtils::itoa(_barrierId);
   
+  TRI_voc_tick_t const originalFetchTick = fetchTick;
   worked = false;
   
   std::string const url = baseUrl + "&from=" + StringUtils::itoa(fetchTick) +
@@ -1432,12 +1436,13 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
     _applier->_state._lastAvailableContinuousTick = tick;
   }
   
-  if (!fromIncluded && _requireFromPresent && fetchTick > 0) {
+  if (!fromIncluded && _requireFromPresent && fetchTick > 0 && 
+      (!simulate32Client() || originalFetchTick != tick)) {
     return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, std::string("required follow tick value '") +
                   StringUtils::itoa(fetchTick) + "' is not present (anymore?) on master at " + _masterInfo._endpoint +
                   ". Last tick available on master is '" + StringUtils::itoa(tick) +
                   "'. It may be required to do a full resync and increase the number " +
-                  "of historic logfiles on the master");
+                  "of historic logfiles/WAL file timeout on the master");
   }
   
   TRI_voc_tick_t lastAppliedTick;

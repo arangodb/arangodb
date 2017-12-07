@@ -122,9 +122,27 @@ VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
   builder.add(VPackValue(int(2)));  // 2 == response
   builder.add(VPackValue(static_cast<int>(meta::underlyingValue(_responseCode)))); // 3 == request - return code
 
+  std::string currentHeader;
   builder.openObject(); // 4 == meta
-  for (auto const& item : _headers) {
-    builder.add(item.first, VPackValue(item.second));
+  for (auto& item : _headers) {
+    currentHeader.assign(item.first);
+    int capState = 1;
+    for (auto& it : currentHeader) {
+      if (capState == 1) {
+        // upper case
+        it = ::toupper(it);
+        capState = 0;
+      } else if (capState == 0) {
+        // normal case
+        it = ::tolower(it);
+        if (it == '-') {
+          capState = 1;
+        } else if (it == ':') {
+          capState = 2;
+        }
+      } 
+    }
+    builder.add(currentHeader, VPackValue(item.second));
   }
   builder.close();
 
