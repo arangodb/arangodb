@@ -19,6 +19,7 @@ add_executable(
   Basics/AttributeNameParserTest.cpp
   Basics/associative-multi-pointer-test.cpp
   Basics/associative-multi-pointer-nohashcache-test.cpp
+  Basics/datetime.cpp
   Basics/conversions-test.cpp
   Basics/csv-test.cpp
   Basics/files-test.cpp
