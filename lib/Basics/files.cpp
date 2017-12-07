@@ -30,6 +30,8 @@
 #include <thread>
 #endif
 
+#include <algorithm>
+
 #include "Basics/directories.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -1658,7 +1660,7 @@ static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize,
     
     size_t chunkRemain = fileSize;
     while (rc && (chunkRemain > 0)) {
-      size_t readChunk = std::min(C128, chunkRemain);
+      size_t readChunk = (std::min)(C128, chunkRemain);
       ssize_t nRead = TRI_READ(srcFD, buf, static_cast<TRI_read_t>(readChunk));
 
       if (nRead < 0) {

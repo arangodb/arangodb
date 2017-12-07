@@ -206,7 +206,7 @@ void StatisticsFeature::unprepare() {
     _statisticsWorker->beginShutdown();
 
     while (_statisticsWorker->isRunning()) {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
   }
 
