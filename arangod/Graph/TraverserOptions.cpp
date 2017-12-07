@@ -532,7 +532,7 @@ double TraverserOptions::estimateCost(size_t& nrItems) const {
   size_t baseCreateItems = 0;
   double baseCost = costForLookupInfoList(_baseLookupInfos, baseCreateItems);
 
-  for (uint64_t depth = 0; depth < maxDepth; ++depth) {
+  for (uint64_t depth = 0; depth < maxDepth && depth < 10; ++depth) {
     auto liList = _depthLookupInfo.find(depth);
     if (liList == _depthLookupInfo.end()) {
       // No LookupInfo for this depth use base
@@ -544,6 +544,12 @@ double TraverserOptions::estimateCost(size_t& nrItems) const {
       cost += depthCost * count;
       count *= createItems;
     }
+  }
+
+  if (maxDepth > 10) {
+    // We have a too high depth this cost will be pruned anyway
+    cost *= (maxDepth - 10) * 10;
+    count *= (maxDepth - 10) * 10;
   }
   nrItems = count;
   return cost;

@@ -45,9 +45,6 @@ class RocksDBPrimaryIndex;
 /// basically sorted after revision ID
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
-  typedef std::function<void(LocalDocumentId const& token,
-                             StringRef const& key)>
-      TokenKeyCallback;
   RocksDBAllIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
                           ManagedDocumentResult* mmdr,
@@ -104,9 +101,6 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 /// into the document store. E.g. used for incremental sync
 class RocksDBSortedAllIterator final : public IndexIterator {
  public:
-  typedef std::function<void(LocalDocumentId const& token,
-                             StringRef const& key)>
-      TokenKeyCallback;
   RocksDBSortedAllIterator(LogicalCollection* collection,
                            transaction::Methods* trx,
                            ManagedDocumentResult* mmdr,
@@ -120,7 +114,6 @@ class RocksDBSortedAllIterator final : public IndexIterator {
   void reset() override;
 
   // engine specific optimizations
-  bool nextWithKey(TokenKeyCallback const& cb, size_t limit);
   void seek(StringRef const& key);
 
  private:
