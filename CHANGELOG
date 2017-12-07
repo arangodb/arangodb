@@ -1,6 +1,8 @@
 v3.3.rc7 (2017-XX-XX)
 ---------------------
 
+* UI: using default user database api during database creation now
+
 * UI: the graph viewer backend now picks one random start vertex of the
   first 1000 documents instead of calling any(). The implementation of
   "any" is known to scale bad on huge collections with RocksDB.
