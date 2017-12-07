@@ -1,6 +1,8 @@
 v3.3.rc7 (2017-XX-XX)
 ---------------------
 
+* fixed issue #3745: Invalid result when using OLD object with array attribute in UPSERT statement
+
 * UI: edge collections were wrongly added to from and to vertices select box during graph creation
 
 * UI: added not found views for documents and collections
