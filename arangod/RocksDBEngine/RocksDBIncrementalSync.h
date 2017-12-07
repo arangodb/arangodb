@@ -38,9 +38,7 @@ Result syncChunkRocksDB(
 
 Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                              arangodb::LogicalCollection* col,
-                             std::string const& keysId, std::string const& cid,
-                             std::string const& collectionName,
-                             TRI_voc_tick_t maxTick);
+                             std::string const& keysId);
 }
 
 #endif

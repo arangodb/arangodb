@@ -110,7 +110,7 @@ class Syncer {
 
   /// @brief apply a single marker from the collection dump
   Result applyCollectionDumpMarker(transaction::Methods&,
-                                   std::string const&,
+                                   LogicalCollection* coll,
                                    TRI_replication_operation_e,
                                    arangodb::velocypack::Slice const&, 
                                    arangodb::velocypack::Slice const&);
@@ -160,7 +160,7 @@ class Syncer {
   
   /// @brief apply a single marker from the collection dump
   Result applyCollectionDumpMarkerInternal(transaction::Methods&,
-                                           std::string const&,
+                                           LogicalCollection* coll,
                                            TRI_replication_operation_e,
                                            arangodb::velocypack::Slice const&, 
                                            arangodb::velocypack::Slice const&); 
