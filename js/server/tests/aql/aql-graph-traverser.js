@@ -1683,7 +1683,7 @@ function complexInternaSuite () {
 
       try {
         db._query(query);
-        assertTrue(false, "This query is expected too fail");
+        fail();
       } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
       }
@@ -1698,7 +1698,7 @@ function complexInternaSuite () {
       RETURN v._id`;
       try {
         db._query(query);
-        assertTrue(false, "This query is expected too fail");
+        fail();
       } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
       }
@@ -1714,7 +1714,7 @@ function complexInternaSuite () {
 
       try {
         db._query(query);
-        assertTrue(false, "This query is expected too fail");
+        fail();
       } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
       }
