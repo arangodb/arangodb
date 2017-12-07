@@ -1,6 +1,8 @@
 v3.3.rc7 (2017-XX-XX)
 ---------------------
 
+* UI: fixed issue #3822: disabled name input field for system collections
+
 * fixed issue #3640: limit in subquery
 
 * fixed issue #3745: Invalid result when using OLD object with array attribute in UPSERT statement
