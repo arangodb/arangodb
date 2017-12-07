@@ -75,7 +75,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
                                                            RocksDBReplicationContext::DefaultTTL);
     // create transaction+snapshot
     RocksDBReplicationContext* ctx = _manager->createContext(ttl);
-    RocksDBReplicationContextGuard(_manager, ctx);
+    RocksDBReplicationContextGuard guard(_manager, ctx);
     ctx->bind(_vocbase);
 
     VPackBuilder b;
