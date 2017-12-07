@@ -697,9 +697,16 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         arangodb::LogicalCollection* other = vocbase->lookupCollection(name);
 
         if (other != nullptr) {
-          TRI_voc_cid_t otherCid = other->cid();
-          state->releaseCollection(otherCid);
-          vocbase->dropCollection(other, true, -1.0);
+          if (other->cid() == collection->cid()) {
+            LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+              << "collection " << collectionId << " in database "
+              << databaseId << " already renamed; moving on";
+            break;
+          } else {
+            TRI_voc_cid_t otherCid = other->cid();
+            state->releaseCollection(otherCid);
+            vocbase->dropCollection(other, true, -1.0);
+          }
         }
 
         int res = vocbase->renameCollection(collection, name, true);
