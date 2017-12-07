@@ -1020,7 +1020,7 @@ void StatisticsWorker::run() {
       // startup aborted
       return;
     }
-    usleep(100000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
   createCollections();
   
@@ -1037,7 +1037,8 @@ void StatisticsWorker::run() {
       historianAverage();
     }
 
-    seconds++;
-    usleep(1000 * 1000);  // TODO should this run adaptively ?
+    seconds++; // TODO should this run adaptively ?
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    
   }
 }
