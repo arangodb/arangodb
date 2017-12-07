@@ -1,7 +1,26 @@
-v3.3.0 (XXXX-XX-XX)
--------------------
+v3.3.rc7 (2017-XX-XX)
+---------------------
 
 * fixed issue #3745: Invalid result when using OLD object with array attribute in UPSERT statement
+
+* UI: edge collections were wrongly added to from and to vertices select box during graph creation
+
+* UI: added not found views for documents and collections
+
+* UI: using default user database api during database creation now
+
+* UI: the graph viewer backend now picks one random start vertex of the
+  first 1000 documents instead of calling any(). The implementation of
+  "any" is known to scale bad on huge collections with RocksDB.
+
+* UI: fixed disappearing of the navigation label in some case special case
+
+* UI: the graph viewer now displays updated label values correctly.
+  Additionally the included node/edge editor now closes automatically
+	after a successful node/edge update.
+  
+* fixed issue #3917: traversals with high maximal depth take extremely long
+  in planning phase.
 
 
 v3.3.rc4 (2017-11-28)
@@ -29,6 +48,10 @@ v3.3.rc2 (2017-11-22)
 
 * added options `--encryption.keyfile` and `--encryption.key-generator` to arangodump
   and arangorestore
+
+* UI: the graph viewer now displays updated label values correctly.
+  Additionally the included node/edge editor now closes automatically
+	after a successful node/edge update.
 
 * removed `--recycle-ids` option for arangorestore
 

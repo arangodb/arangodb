@@ -419,12 +419,12 @@ static AgencyCommResult CasWithResult(AgencyComm agency, std::string const& key,
   if (oldValue.isNone()) { // for some reason this doesn't work
     // precondition: the key must equal old value
     AgencyPrecondition pre(key, AgencyPrecondition::Type::EMPTY, true);
-    AgencyGeneralTransaction trx(write, pre);
+    AgencyWriteTransaction trx(write, pre);
     return agency.sendTransactionWithFailover(trx, timeout);
   } else {
     // precondition: the key must equal old value
     AgencyPrecondition pre(key, AgencyPrecondition::Type::VALUE, oldValue);
-    AgencyGeneralTransaction trx(write, pre);
+    AgencyWriteTransaction trx(write, pre);
     return agency.sendTransactionWithFailover(trx, timeout);
   }
 }
