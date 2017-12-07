@@ -568,6 +568,8 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown old collection name");
     }
+  } else {
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unable to identify collection");
   }
   if (col->isSystem()) {
     LOG_TOPIC(WARN, Logger::REPLICATION) << "Renaming system collection " << col->name();
