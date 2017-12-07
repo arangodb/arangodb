@@ -38,6 +38,7 @@
 #include "Basics/conversions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/CollectionLockState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Cluster/FollowerInfo.h"
@@ -2881,6 +2882,11 @@ static void JS_CountVocbaseCol(
 
   SingleCollectionTransaction trx(transaction::V8Context::Create(vocbase, true), collectionName, AccessMode::Type::READ);
 
+  if (CollectionLockState::_noLockHeaders != nullptr) {
+    if (CollectionLockState::_noLockHeaders->find(collectionName) != CollectionLockState::_noLockHeaders->end()) {
+      trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
+    }
+  }
   Result res = trx.begin();
 
   if (!res.ok()) {

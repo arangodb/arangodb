@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -490,6 +491,10 @@ void RestCollectionHandler::collectionRepresentation(
   if (showCount) {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, coll->cid(), AccessMode::Type::READ);
+    if (CollectionLockState::_noLockHeaders != nullptr &&
+        CollectionLockState::_noLockHeaders->find(coll->name()) != CollectionLockState::_noLockHeaders->end()) {
+      trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
+    }
     Result res = trx.begin();
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
