@@ -6,33 +6,33 @@ x-content-type-options: nosniff
 
 [ 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/var/folders/sb/5_j9t5wx4d7bpprydjdb0xtc0000gn/T/arangosh_OSGYSU/tmp-78310-1954060383/data/journals/logfile-2.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_9nMCTh/tmp-30210-893125001/data/journals/logfile-2.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
     <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"5"</span>, 
-    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"10382"</span> 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"10385"</span> 
   }, 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/var/folders/sb/5_j9t5wx4d7bpprydjdb0xtc0000gn/T/arangosh_OSGYSU/tmp-78310-1954060383/data/journals/logfile-85.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_9nMCTh/tmp-30210-893125001/data/journals/logfile-33.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
-    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"10398"</span>, 
-    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"10484"</span> 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"10401"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"10496"</span> 
   }, 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/var/folders/sb/5_j9t5wx4d7bpprydjdb0xtc0000gn/T/arangosh_OSGYSU/tmp-78310-1954060383/data/journals/logfile-86.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_9nMCTh/tmp-30210-893125001/data/journals/logfile-56.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
-    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"10491"</span>, 
-    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"11978"</span> 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"10506"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"12011"</span> 
   }, 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/var/folders/sb/5_j9t5wx4d7bpprydjdb0xtc0000gn/T/arangosh_OSGYSU/tmp-78310-1954060383/data/journals/logfile-10385.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_9nMCTh/tmp-30210-893125001/data/journals/logfile-10388.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
-    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"11984"</span>, 
-    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"11993"</span> 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"12015"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"12029"</span> 
   }, 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/var/folders/sb/5_j9t5wx4d7bpprydjdb0xtc0000gn/T/arangosh_OSGYSU/tmp-78310-1954060383/data/journals/logfile-10487.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/arangosh_9nMCTh/tmp-30210-893125001/data/journals/logfile-10499.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"open"</span>, 
-    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"11998"</span>, 
-    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"12089"</span> 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"12036"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"12117"</span> 
   } 
 ]
