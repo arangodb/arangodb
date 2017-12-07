@@ -189,7 +189,7 @@ window.ArangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: 'PUT',
-      url: arangoHelper.databaseUrl('/_api/document/' + encodeURIComponent(colid)),
+      url: arangoHelper.databaseUrl('/_api/document/' + encodeURIComponent(colid) + '?returnNew=true'),
       data: JSON.stringify([model]),
       contentType: 'application/json',
       processData: false,

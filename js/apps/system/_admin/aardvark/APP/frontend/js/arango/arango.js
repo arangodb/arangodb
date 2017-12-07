@@ -646,7 +646,13 @@
       docFrameView.customDeleteFunction = function () {
         window.modalView.hide();
         $('.arangoFrame').hide();
-      // callback()
+      };
+
+      docFrameView.customSaveFunction = function (data) {
+        self.closeDocEditor();
+        if (callback) {
+          callback(data);
+        }
       };
 
       $('.arangoFrame #deleteDocumentButton').click(function () {
