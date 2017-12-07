@@ -26,7 +26,6 @@
 #include "Geo/GeoUtils.h"
 #include "Logger/Logger.h"
 
-#include <geometry/s1angle.h>
 #include <geometry/s2latlng.h>
 #include <geometry/s2region.h>
 #include <geometry/s2regioncoverer.h>
@@ -38,16 +37,6 @@
 
 using namespace arangodb;
 using namespace arangodb::geo;
-
-double NearParams::maxDistanceRad() const {
-  double mm = std::min(maxDistance / kEarthRadiusInMeters, M_PI);
-  if (filter != FilterType::NONE) {
-    TRI_ASSERT(region != nullptr);
-    S1Angle angle = region->GetCapBound().angle();
-    return std::min(angle.radians(), mm);
-  }
-  return mm;
-}
 
 NearUtils::NearUtils(NearParams const& qp)
     : _params(qp),

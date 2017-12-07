@@ -867,9 +867,15 @@ class LimitNode : public ExecutionNode {
 
   /// @brief return the offset value
   size_t offset() const { return _offset; }
+  
+  /// @brief set the offset value
+  void setOffset(size_t offset) { _offset = offset; }
 
   /// @brief return the limit value
   size_t limit() const { return _limit; }
+  
+  /// @brief set the limit value
+  void setLimit(size_t limit) { _limit = limit; }
 
  private:
   /// @brief the offset

@@ -2336,6 +2336,14 @@ AstNodeType Ast::NaryOperatorType(AstNodeType old) {
                                  "invalid node type for n-ary operator");
 }
 
+bool Ast::IsAndOperatorType(AstNodeType tt) {
+  return tt == NODE_TYPE_OPERATOR_BINARY_AND || tt == NODE_TYPE_OPERATOR_NARY_AND;
+}
+
+bool Ast::IsOrOperatorType(AstNodeType tt) {
+  return tt == NODE_TYPE_OPERATOR_BINARY_OR || tt == NODE_TYPE_OPERATOR_NARY_OR;
+}
+
 /// @brief make condition from example
 AstNode* Ast::makeConditionFromExample(AstNode const* node) {
   TRI_ASSERT(node->numMembers() == 1);

@@ -23,6 +23,8 @@
 #include "GeoParams.h"
 #include "Basics/Common.h"
 
+#include <geometry/s1angle.h>
+#include <geometry/s2cap.h>
 #include <geometry/s2regioncoverer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -69,4 +71,14 @@ void RegionCoverParams::configureS2RegionCoverer(
   coverer->set_max_cells(maxNumCoverCells);
   coverer->set_min_level(worstIndexedLevel);
   coverer->set_max_level(bestIndexedLevel);
+}
+
+double NearParams::maxDistanceRad() const {
+  double mm = std::min(maxDistance / kEarthRadiusInMeters, M_PI);
+  if (filter != FilterType::NONE) {
+    TRI_ASSERT(region != nullptr);
+    S1Angle angle = region->GetCapBound().angle();
+    return std::min(angle.radians(), mm);
+  }
+  return mm;
 }

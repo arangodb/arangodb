@@ -417,6 +417,12 @@ class Ast {
 
   /// @brief get the n-ary operator type equivalent for a binary operator type
   static AstNodeType NaryOperatorType(AstNodeType);
+  
+  /// @brief return whether this is an `AND` operator
+  static bool IsAndOperatorType(AstNodeType);
+  
+  /// @brief return whether this is an `OR` operator
+  static bool IsOrOperatorType(AstNodeType);
 
   /// @brief create an AST node from vpack
   AstNode* nodeFromVPack(arangodb::velocypack::Slice const&, bool);

@@ -23,8 +23,10 @@
 #ifndef ARANGOD_GEO_GEO_PARAMS_H
 #define ARANGOD_GEO_GEO_PARAMS_H 1
 
+#include "Geo/Shapes.h"
 #include "VocBase/voc-types.h"
 
+class S2Region;
 class S2RegionCoverer;
 
 namespace arangodb {
@@ -33,7 +35,6 @@ class Builder;
 class Slice;
 }
 namespace geo {
-
 // Equatorial radius of earth.
 // Source: http://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
 // Equatorial radius
@@ -82,6 +83,40 @@ struct RegionCoverParams {
   int bestIndexedLevel = 28;
 };
 
+struct NearParams {
+  NearParams(geo::Coordinate center)
+  : centroid(center),
+  cover(queryMaxCoverCells, queryWorstLevel, queryBestLevel) {}
+  
+  /// Centroid from which to start
+  geo::Coordinate centroid;
+  // Min and max distance from centroid that we're willing to search.
+  double minDistance = 0.0;
+  
+  /// entire earth (halfaround in each direction),
+  /// may not be larger than half earth circumference or larger
+  /// than the bounding cap of the filter region (see _filter)
+  double maxDistance = kEarthRadiusInMeters * M_PI;
+  
+  /// Default order is from closest to farthest
+  bool ascending = true;
+  
+  // parameters to calculate the cover for index
+  // lookup intervals
+  RegionCoverParams cover;
+  
+public:
+  /// depending on @{filter} and @{region} uses maxDistance or
+  /// maxDistance / kEarthRadius or a bounding circle around
+  /// the area in region
+  double maxDistanceRad() const;
+  
+  /// some defaults for queries
+  static constexpr int queryWorstLevel = 2;
+  static constexpr int queryBestLevel = 23;  // about 1m
+  static constexpr int queryMaxCoverCells = 20;
+};
+  
 }  // namespace geo
 }  // namespace arangodb
 

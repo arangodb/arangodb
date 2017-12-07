@@ -25,7 +25,6 @@
 
 #include "Geo/GeoParams.h"
 #include "Geo/GeoUtils.h"
-#include "Geo/Shapes.h"
 
 #include <geometry/s2cap.h>
 #include <geometry/s2cellid.h>
@@ -41,46 +40,6 @@ class Builder;
 class Slice;
 }
 namespace geo {
-
-struct NearParams {
-  NearParams(geo::Coordinate center)
-      : centroid(center),
-        cover(queryMaxCoverCells, queryWorstLevel, queryBestLevel) {}
-
-  /// Centroid from which to start
-  Coordinate centroid;
-  // Min and max distance from centroid that we're willing to search.
-  double minDistance = 0.0;
-
-  /// entire earth (halfaround in each direction),
-  /// may not be larger than half earth circumference or larger
-  /// than the bounding cap of the filter region (see _filter)
-  double maxDistance = kEarthRadiusInMeters * M_PI;
-
-  /// Default order is from closest to farthest
-  // bool _ascending = true;
-
-  // parameters to calculate the cover for index
-  // lookup intervals
-  RegionCoverParams cover;
-
-  /// @brief filter to be applied on top of near
-  geo::FilterType filter = geo::FilterType::NONE;
-
-  /// @brief used depending on _filter
-  S2Region* region = nullptr;
-
- public:
-  /// depending on @{filter} and @{region} uses maxDistance or
-  /// maxDistance / kEarthRadius or a bounding circle around
-  /// the area in region
-  double maxDistanceRad() const;
-
-  /// some defaults for queries
-  static constexpr int queryWorstLevel = 2;
-  static constexpr int queryBestLevel = 23;  // about 1m
-  static constexpr int queryMaxCoverCells = 20;
-};
 
 /// result of a geospatial index query. distance may or may not be set
 struct GeoDocument {
