@@ -311,18 +311,12 @@ V8Context* V8DealerFeature::addContext() {
 }
 
 void V8DealerFeature::unprepare() {
-  // turn off memory allocation failures before going into v8 code 
-  TRI_DisallowMemoryFailures();
-
   shutdownContexts();
 
   // delete GC thread after all action threads have been stopped
   _gcThread.reset();
 
   DEALER = nullptr;
-
-  // turn on memory allocation failures again
-  TRI_AllowMemoryFailures();
 }
 
 bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
@@ -372,9 +366,6 @@ void V8DealerFeature::collectGarbage() {
   // the time we'll wait for a signal when the previous wait timed out
   uint64_t const reducedWaitTime =
       static_cast<uint64_t>(_gcFrequency * 1000.0 * 200.0);
-
-  // turn off memory allocation failures before going into v8 code 
-  TRI_DisallowMemoryFailures();
 
   while (_stopping == 0) {
     try {
@@ -502,9 +493,6 @@ void V8DealerFeature::collectGarbage() {
     }
   } 
   
-  // turn on memory allocation failures again
-  TRI_AllowMemoryFailures();
-
   _gcFinished = true;
 }
   
@@ -607,9 +595,6 @@ void V8DealerFeature::enterLockedContext(TRI_vocbase_t* vocbase,
   TRI_ASSERT(context->isUsed());
 
   auto isolate = context->_isolate;
-
-  // turn off memory allocation failures before going into v8 code 
-  TRI_DisallowMemoryFailures();
 
   {
     v8::HandleScope scope(isolate);
@@ -723,7 +708,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
       }
 
       LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "waiting for V8 context #" << id << " to become available";
-      usleep(50 * 1000);
+      std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
     }
 
     if (context == nullptr) {
@@ -1003,9 +988,6 @@ void V8DealerFeature::exitContext(V8Context* context) {
     LOG_TOPIC(TRACE, arangodb::Logger::V8) << "returned dirty V8 context #" << context->id() << " back into free";
     guard.broadcast();
   }
-  
-  // turn on memory allocation failures again
-  TRI_AllowMemoryFailures();
 }
 
 void V8DealerFeature::defineContextUpdate(
@@ -1106,7 +1088,7 @@ void V8DealerFeature::shutdownContexts() {
 
     // wait until garbage collector thread is done
     while (!_gcFinished) {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
     LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "commanding GC Thread to terminate";

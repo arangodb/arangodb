@@ -165,7 +165,10 @@
       var userName = $('#newUser').val();
 
       var options = {
-        name: dbname
+        name: dbname,
+        users: [{
+          username: userName
+        }]
       };
 
       this.collection.create(options, {
@@ -173,25 +176,6 @@
           self.handleError(err.status, err.statusText, dbname);
         },
         success: function (data) {
-          if (userName !== 'root') {
-            $.ajax({
-              type: 'PUT',
-              url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(userName) + '/database/' + encodeURIComponent(dbname)),
-              contentType: 'application/json',
-              data: JSON.stringify({
-                grant: 'rw'
-              })
-            });
-          }
-          $.ajax({
-            type: 'PUT',
-            url: arangoHelper.databaseUrl('/_api/user/root/database/' + encodeURIComponent(dbname)),
-            contentType: 'application/json',
-            data: JSON.stringify({
-              grant: 'rw'
-            })
-          });
-
           if (window.location.hash === '#databases') {
             self.updateDatabases();
           }

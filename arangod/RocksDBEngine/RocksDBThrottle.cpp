@@ -34,7 +34,7 @@
 
 #include "RocksDBThrottle.h"
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <sys/syscall.h>
 #include <sys/resource.h>
 #endif
@@ -155,11 +155,11 @@ void RocksDBThrottle::StopThread() {
 /// @brief CompactionEventListener::OnCompaction() will get called for every key in a
 ///  compaction. We only need the "level" parameter to see if thread priority should change.
 ///
-#ifndef WIN32
+#ifndef _WIN32
 CompactionEventListener * RocksDBThrottle::GetCompactionEventListener() {return &gCompactionListener;};
 #else
 CompactionEventListener * RocksDBThrottle::GetCompactionEventListener() {return nullptr;};
-#endif  // WIN32
+#endif  // _WIN32
 
 ///
 /// @brief rocksdb does not track flush time in its statistics.  Save start time in
@@ -486,7 +486,7 @@ int64_t RocksDBThrottle::ComputeBacklog() {
 /// @brief Adjust the active thread's priority to match the work
 ///  it is performing.  The routine is called HEAVILY.
 void RocksDBThrottle::AdjustThreadPriority(int Adjustment) {
-#ifndef WIN32
+#ifndef _WIN32
   // initialize thread infor if this the first time the thread has ever called
   if (!gThreadPriority._baseSet) {
     pid_t tid;

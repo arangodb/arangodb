@@ -196,7 +196,7 @@ Result RocksDBCounterManager::sync(bool force) {
       if (res) {
         break;
       }
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
   } else {
     bool expected = false;

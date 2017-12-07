@@ -37,9 +37,6 @@ var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var isEqual = helper.isEqual;
 var findExecutionNodes = helper.findExecutionNodes;
-var findReferencedNodes = helper.findReferencedNodes;
-var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
-var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 var db = require('internal').db;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,20 +51,9 @@ function optimizerRuleTestSuite() {
     sorted : true
   };
 
-  var ruleName = "geoindex";
-  var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
-  var colName2 = colName2;
+  var colName = "UnitTestsAqlOptimizerGeoIndex";
 
   var geocol;
-  var sortArray = function (l, r) {
-    if (l[0] !== r[0]) {
-      return l[0] < r[0] ? -1 : 1;
-    }
-    if (l[1] !== r[1]) {
-      return l[1] < r[1] ? -1 : 1;
-    }
-    return 0;
-  };
   var hasSortNode = function (plan,query) {
     assertEqual(findExecutionNodes(plan, "SortNode").length, 1, query.string + " Has SortNode ");
   };
@@ -82,13 +68,6 @@ function optimizerRuleTestSuite() {
   };
   var hasNoIndexNode = function (plan,query) {
     assertEqual(findExecutionNodes(plan, "IndexNode").length, 0, query.string + " Has no IndexNode");
-  };
-  var hasNoResultsNode = function (plan,query) {
-    assertEqual(findExecutionNodes(plan, "NoResultsNode").length, 1, query.string + " Has NoResultsNode");
-  };
-  var hasCalculationNodes = function (plan,query, countXPect) {
-    assertEqual(findExecutionNodes(plan, "CalculationNode").length,
-                countXPect, "Has " + countXPect +  " CalculationNode");
   };
   var hasIndexNode = function (plan,query) {
     var rn = findExecutionNodes(plan,"IndexNode");

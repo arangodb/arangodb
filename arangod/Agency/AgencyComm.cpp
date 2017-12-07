@@ -988,7 +988,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   while (tries++ < maxTries) {
     result = getValues("Sync/LatestID");
     if (!result.successful()) {
-      usleep(500000);
+      std::this_thread::sleep_for(std::chrono::microseconds(500000));
       continue;
     }
 
@@ -1024,7 +1024,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
     try {
       newBuilder.add(VPackValue(newValue));
     } catch (...) {
-      usleep(500000);
+      std::this_thread::sleep_for(std::chrono::microseconds(500000));
       continue;
     }
 
@@ -1189,7 +1189,7 @@ bool AgencyComm::ensureStructureInitialized() {
       LOG_TOPIC(WARN, Logger::AGENCYCOMM)
           << "Initializing agency failed. We'll try again soon";
       // We should really have exclusive access, here, this is strange!
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
     AgencyCommResult result = getValues("InitDone");
@@ -1207,7 +1207,7 @@ bool AgencyComm::ensureStructureInitialized() {
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
         << "Waiting for agency to get initialized";
 
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   return true;
@@ -1248,7 +1248,7 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
       return true;
     }
 
-    usleep((TRI_usleep_t) sleepTime);
+    std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
 
     if (sleepTime < MAX_SLEEP_TIME) {
       sleepTime += INITIAL_SLEEP_TIME;
@@ -1289,7 +1289,7 @@ bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice,
       return true;
     }
 
-    usleep((TRI_usleep_t)sleepTime);
+    std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
 
     if (sleepTime < MAX_SLEEP_TIME) {
       sleepTime += INITIAL_SLEEP_TIME;
