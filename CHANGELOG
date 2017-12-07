@@ -1,3 +1,9 @@
+v3.3.0 (2017-XX-XX)
+-----
+
+* UI: fixed issue #3822: disabled name input field for system collections
+
+
 devel
 -----
 
