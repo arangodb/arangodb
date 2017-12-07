@@ -554,12 +554,16 @@ int Communicator::curlDebug(CURL* handle, curl_infotype type, char* data,
       logHttpHeaders(prefix + "Header <<", dataStr);
       break;
     case CURLINFO_DATA_OUT:
-    case CURLINFO_SSL_DATA_OUT:
       logHttpBody(prefix + "Body >>", dataStr);
       break;
     case CURLINFO_DATA_IN:
-    case CURLINFO_SSL_DATA_IN:
       logHttpBody(prefix + "Body <<", dataStr);
+      break;
+    case CURLINFO_SSL_DATA_OUT:
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << prefix << "SSL outgoing data of size " << std::to_string(size);
+      break;
+    case CURLINFO_SSL_DATA_IN:
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << prefix << "SSL incoming data of size " << std::to_string(size);
       break;
     case CURLINFO_END:
       break;
