@@ -56,7 +56,6 @@ RocksDBReplicationContext::RocksDBReplicationContext(double ttl)
       _currentTick(0),
       _trx(),
       _collection(nullptr),
-      _iter(),
       _lastIteratorOffset(0),
       _mdr(),
       _customTypeHandler(),
@@ -208,6 +207,9 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   if (res != TRI_ERROR_NO_ERROR) {
     return RocksDBReplicationResult(res, _lastTick);
   }
+  if (!_iter) {
+    return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized", _lastTick);
+  }
 
   // set type
   int type = REPLICATION_MARKER_DOCUMENT;  // documents
@@ -242,6 +244,8 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     dumper.dump(slice);
     buff.appendChar('\n');
   };
+  
+  TRI_ASSERT(_iter);
 
   while (_hasMore && buff.length() < chunkSize) {
     try {
@@ -254,7 +258,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
       return ex;
     }
   }
-
+  
   if (_hasMore) {
     _currentTick++;
   }
@@ -264,10 +268,10 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
 
 arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
                                                           uint64_t chunkSize) {
-  Result rv;
-
   TRI_ASSERT(_trx);
-  if(!_iter){
+
+  Result rv;
+  if (!_iter) {
     return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized");
   }
 
@@ -330,10 +334,11 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
   TRI_ASSERT(_trx);
 
   Result rv;
-  if(!_iter){
+  if (!_iter) {
     return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized");
   }
 
+  TRI_ASSERT(_iter);
   RocksDBSortedAllIterator* primary =
       static_cast<RocksDBSortedAllIterator*>(_iter.get());
 
@@ -369,36 +374,23 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     }
   }
 
-  auto cb = [&](LocalDocumentId const& documentId, StringRef const& key) {
+  auto cb = [&](LocalDocumentId const& documentId, VPackSlice slice) {
+    TRI_voc_rid_t revisionId = 0;
+    VPackSlice key;
+    transaction::helpers::extractKeyAndRevFromDocument(slice, key, revisionId);
+
+    TRI_ASSERT(key.isString());
+    
     b.openArray();
-    b.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    b.add(VPackValue(std::to_string(documentId.id()))); // TODO: must return the revision here 
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    b.add(key);
+    b.add(VPackValue(TRI_RidToString(revisionId)));
     b.close();
   };
 
   b.openArray();
   // chunkSize is going to be ignored here
   try {
-    _hasMore = primary->nextWithKey(cb, chunkSize);
+    _hasMore = primary->nextDocument(cb, chunkSize);
     _lastIteratorOffset++;
   } catch (std::exception const&) {
     return rv.reset(TRI_ERROR_INTERNAL);
@@ -412,10 +404,10 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
 arangodb::Result RocksDBReplicationContext::dumpDocuments(
     VPackBuilder& b, size_t chunk, size_t chunkSize, size_t offsetInChunk,
     size_t maxChunkSize, std::string const& lowKey, VPackSlice const& ids) {
-  Result rv;
-
   TRI_ASSERT(_trx);
-  if(!_iter){
+
+  Result rv;
+  if (!_iter) {
     return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized");
   }
 
@@ -541,9 +533,7 @@ void RocksDBReplicationContext::release() {
 }
 
 void RocksDBReplicationContext::releaseDumpingResources() {
-  if (_iter != nullptr) {
-    _iter.reset();
-  }
+  _iter.reset();
   if (_trx != nullptr) {
     _trx->abort();
     _trx.reset();

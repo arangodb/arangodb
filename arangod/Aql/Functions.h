@@ -59,6 +59,15 @@ struct Functions {
 
    static void ValidateParameters(VPackFunctionParameters const& parameters,
                                   char const* function, int minParams);
+  
+   /// @brief register warning
+   static void RegisterWarning(arangodb::aql::Query* query,
+                               char const* functionName, int code);
+   static void RegisterWarning(arangodb::aql::Query* query,
+                               char const* functionName, Result res);
+   /// @brief register usage of an invalid function argument
+   static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
+                                              char const* functionName);
 
    /// @brief extract a function parameter from the arguments
    static AqlValue ExtractFunctionParameterValue(
@@ -332,6 +341,7 @@ struct Functions {
                                     transaction::Methods*,
                                     VPackFunctionParameters const&);
 };
+  
 }
 }
 

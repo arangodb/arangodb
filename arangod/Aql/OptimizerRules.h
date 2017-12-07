@@ -220,7 +220,11 @@ void prepareTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 /// @brief moves simple subqueries one level higher
 void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
   
+/// @brief replace FILTER and SORT containing DISTANCE function
 void geoIndexRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
+  
+/// @brief replace FULLTEXT function
+void fulltextIndexRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
 
 }  // namespace aql
 }  // namespace arangodb

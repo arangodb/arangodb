@@ -26,6 +26,7 @@
 #define ARANGODB_IMPORT_IMPORT_HELPER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 
 #include "Basics/StringBuffer.h"
@@ -268,6 +269,7 @@ class ImportHelper {
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
   uint64_t const _maxUploadSize;
   std::vector<std::unique_ptr<SenderThread>> _senderThreads;
+  basics::ConditionVariable _threadsCondition; 
 
   std::string _separator;
   std::string _quote;

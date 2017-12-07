@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,18 +17,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_INDEX_ELEMENT_H
-#define ARANGOD_INDEXES_INDEX_ELEMENT_H 1
+#include "Pregel/Worker.cpp"
 
-#include "Basics/Common.h"
-#include "VocBase/vocbase.h"
-#include "VocBase/voc-types.h"
-
-namespace arangodb {
-
-}
-
-#endif
+// custom algorihm types
+template class arangodb::pregel::Worker<SCCValue, int8_t,
+                                        SenderMessage<uint64_t>>;
+template class arangodb::pregel::Worker<HITSValue, int8_t,
+                                        SenderMessage<double>>;
+template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
+template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
+template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
+template class arangodb::pregel::Worker<SLPAValue, int8_t, uint64_t>;

@@ -155,38 +155,35 @@ std::string Functions::ExtractCollectionName(
 }
 
 /// @brief register warning
-static void RegisterWarning(arangodb::aql::Query* query,
-                            char const* functionName,
-                            int code, std::string const& errMsg) {
+void Functions::RegisterWarning(arangodb::aql::Query* query,
+                                char const* fName, int code) {
   std::string msg;
 
   if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
-    msg = arangodb::basics::Exception::FillExceptionString(code, functionName);
+    msg = arangodb::basics::Exception::FillExceptionString(code, fName);
   } else {
     msg.append("in function '");
-    msg.append(functionName);
+    msg.append(fName);
     msg.append("()': ");
-    msg.append(errMsg.empty() ? TRI_errno_string(code) : errMsg);
+    msg.append(TRI_errno_string(code));
   }
 
   query->registerWarning(code, msg.c_str());
 }
 
 /// @brief register warning
-static void RegisterWarning(arangodb::aql::Query* query,
-                            char const* functionName, int code) {
-  RegisterWarning(query, functionName, code, StaticStrings::Empty);
-}
-
-/// @brief register warning
-static void RegisterWarning(arangodb::aql::Query* query,
-                            char const* functionName, Result rr) {
-  RegisterWarning(query, functionName, rr.errorNumber(), rr.errorMessage());
+void Functions::RegisterWarning(arangodb::aql::Query* query,
+                                char const* fName, Result rr) {
+  std::string msg = "in function '";
+  msg.append(fName);
+  msg.append("()': ");
+  msg.append(rr.errorMessage());
+  query->registerWarning(rr.errorNumber(), msg.c_str());
 }
 
 /// @brief register usage of an invalid function argument
-static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
-                                           char const* functionName) {
+void Functions::RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
+                                                   char const* functionName) {
   RegisterWarning(query, functionName,
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
@@ -1778,7 +1775,7 @@ AqlValue Functions::Sleep(arangodb::aql::Query* query,
   double const until = TRI_microtime() + value.toDouble(trx);
 
   while (TRI_microtime() < until) {
-    usleep(30000);
+    std::this_thread::sleep_for(std::chrono::microseconds(30000));
 
     if (query->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -1955,9 +1952,9 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
-  for (auto const& s : VPackArrayIterator(slice)) {
+  for (VPackSlice s : VPackArrayIterator(slice)) {
     if (!s.isNone()) {
-      values.emplace(s);
+      values.emplace(s.resolveExternal());
     }
   }
 
@@ -2071,7 +2068,8 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
     materializers.emplace_back(trx);
     VPackSlice slice = materializers.back().slice(value, false);
 
-    for (auto const& v : VPackArrayIterator(slice)) {
+    for (VPackSlice v : VPackArrayIterator(slice)) {
+      v = v.resolveExternal();
       if (values.find(v) == values.end()) {
         TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -2296,13 +2294,13 @@ AqlValue Functions::GeoContainsIntersect(arangodb::aql::Query* query,
   
   // non-numeric input...
   if (!p1.isObject()) {
-    RegisterWarning(query, func, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                    "Expecting {geoJson:...} | {circle:...} | {rect:...} as filter");
+    RegisterWarning(query, func, Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                    "Expecting {geoJson:...} | {circle:...} | {rect:...} as filter"));
     return AqlValue(AqlValueHintNull());
     
   } else if (!p2.isObject() && (!p2.isArray() || p2.length() < 2)) {
-    RegisterWarning(query, func, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                    "Only GeoJSON and coordinate pairs are supported in second parameter");
+    RegisterWarning(query, func, Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                    "Only GeoJSON and coordinate pairs are supported in second parameter"));
     return AqlValue(AqlValueHintNull());
   }
   
@@ -2315,8 +2313,8 @@ AqlValue Functions::GeoContainsIntersect(arangodb::aql::Query* query,
   }
   
   if (!filter.isAreaType()) {
-    RegisterWarning(query, func, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                    "Only polygons, circle and rect are supported as filter geometry");
+    RegisterWarning(query, func, Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                    "Only polygons, circle and rect are supported as filter geometry"));
     return AqlValue(AqlValueHintNull());
   }
   

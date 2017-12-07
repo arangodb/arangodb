@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ImportHelper.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
@@ -167,7 +168,10 @@ ImportHelper::ImportHelper(ClientFeature const* client,
       _hasError(false) {
   for (uint32_t i = 0; i < threadCount; i++) {
     auto http = client->createHttpClient(endpoint, params);
-    _senderThreads.emplace_back(new SenderThread(std::move(http), &_stats));
+    _senderThreads.emplace_back(new SenderThread(std::move(http), &_stats, [this]() {
+      CONDITION_LOCKER(guard, _threadsCondition);
+      guard.signal();
+    }));
     _senderThreads.back()->start();
   }
  
@@ -859,7 +863,9 @@ SenderThread* ImportHelper::findIdleSender() {
         return t.get();
       }
     }
-    std::this_thread::yield();
+
+    CONDITION_LOCKER(guard, _threadsCondition);
+    guard.wait(10000);
   }
   return nullptr;
 }
@@ -880,7 +886,7 @@ void ImportHelper::waitForSenders() {
     if (numIdle == _senderThreads.size()) {
       return;
     }
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 }
 }

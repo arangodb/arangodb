@@ -24,6 +24,7 @@
 #define ARANGOD_ROCKSDB_ENGINE_FULLTEXT_INDEX_H 1
 
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -71,12 +72,12 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   RocksDBFulltextIndex(TRI_idx_iid_t, LogicalCollection*,
                        arangodb::velocypack::Slice const&);
 
-  ~RocksDBFulltextIndex();
+  ~RocksDBFulltextIndex() {}
 
  public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_FULLTEXT_INDEX; }
 
-  char const* typeName() const override { return "fulltext-rocksdb"; }
+  char const* typeName() const override { return "fulltext"; }
 
   bool allowExpansion() const override { return false; }
 
@@ -96,11 +97,16 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
     TRI_AttributeNamesToString(fields()[0], fieldString);
     return (_minWordLength == minWordLength && fieldString == field);
   }
+  
+  
+  IndexIterator* iteratorForCondition(transaction::Methods* trx,
+                                      ManagedDocumentResult* mdr,
+                                      aql::AstNode const* condNode,
+                                      aql::Variable const* var, bool) override;
 
   arangodb::Result parseQueryString(std::string const&, FulltextQuery&);
-  arangodb::Result executeQuery(transaction::Methods* trx, FulltextQuery const&,
-                                size_t maxResults,
-                                velocypack::Builder& builder);
+  Result executeQuery(transaction::Methods* trx, FulltextQuery const& query,
+                      std::set<LocalDocumentId>& resultSet);
 
  protected:
   /// insert index elements into the specified write batch.
@@ -128,6 +134,48 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
                                    FulltextQueryToken const&,
                                    std::set<LocalDocumentId>& resultSet);
 };
+  
+
+/// El Cheapo index iterator
+class RocksDBFulltextIndexIterator : public IndexIterator {
+public:
+  RocksDBFulltextIndexIterator(LogicalCollection* collection,
+                               transaction::Methods* trx,
+                               ManagedDocumentResult* mmdr,
+                               RocksDBFulltextIndex const* index,
+                               std::set<LocalDocumentId>&& docs)
+  : IndexIterator(collection, trx, mmdr, index),
+  _docs(std::move(docs)),
+  _pos(_docs.begin()) {}
+  
+  ~RocksDBFulltextIndexIterator() {}
+  
+  char const* typeName() const override { return "fulltext-index-iterator"; }
+  
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+    TRI_ASSERT(limit > 0);
+    while (_pos != _docs.end() && limit > 0) {
+      cb(*_pos);
+      _pos++;
+      limit--;
+    }
+    return _pos != _docs.end();
+  }
+  
+  void reset() override { _pos = _docs.begin(); }
+  
+  void skip(uint64_t count, uint64_t& skipped) override {
+    while (_pos != _docs.end()) {
+      _pos++;
+      skipped++;
+    }
+  }
+  
+private:
+  std::set<LocalDocumentId> const _docs;
+  std::set<LocalDocumentId>::iterator _pos;
+};
+  
 }  // namespace arangodb
 
 #endif
