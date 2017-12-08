@@ -38,7 +38,6 @@
 #include "Aql/ShortestPathNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Transaction/Methods.h"
-#include "Views/ViewIterator.h"
 
 #ifdef USE_IRESEARCH
 #include "IResearch/IResearchViewNode.h"

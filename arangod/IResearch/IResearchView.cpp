@@ -61,7 +61,6 @@
 #include "Transaction/UserTransaction.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
-#include "Views/ViewIterator.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -1529,129 +1528,6 @@ iresearch::CompoundReader IResearchView::snapshot(transaction::Methods &trx) {
 
   return compoundReader;
 }
-
-//arangodb::ViewIterator* IResearchView::iteratorForCondition(
-//    arangodb::transaction::Methods* trx,
-//    arangodb::aql::ExecutionPlan* plan,
-//    arangodb::aql::ExpressionContext* exprCtx,
-//    arangodb::aql::Variable const* reference,
-//    arangodb::aql::AstNode const* filterCondition,
-//    arangodb::aql::SortCondition const* sortCondition
-//) {
-//  if (!trx) {
-//    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-//      << "no transaction supplied while querying iResearch view '" << id() << "'";
-//
-//    return nullptr;
-//  }
-//
-//  if (!plan) {
-//    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-//      << "no execution plan supplied while querying iResearch view '" << id() << "'";
-//
-//    return nullptr;
-//  }
-//
-//  if (!exprCtx) {
-//    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-//      << "no expression context supplied while querying iResearch view '" << id() << "'";
-//
-//    return nullptr;
-//  }
-//
-//  if (!reference) {
-//    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-//      << "no variable reference supplied while querying iResearch view '" << id() << "'";
-//
-//    return nullptr;
-//  }
-//
-//  if (!filterCondition) {
-//    // in case if filter is not specified
-//    // set it to surrogate 'RETURN ALL' node
-//    filterCondition= &ALL;
-//  }
-//
-//  TRI_ASSERT(filterCondition);
-//
-//  irs::order order;
-//  std::vector<irs::stored_attribute::ptr> orderAttrs;
-//  OrderFactory::OrderContext orderCtx{ orderAttrs, order };
-//  CompoundReader compoundReader(_mutex); // will aquire read-lock since members can be asynchronously updated
-//
-//  if (sortCondition && !OrderFactory::order(&orderCtx, *sortCondition, _meta)) {
-//    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-//      << "failed to build order while querying iResearch view '" << id()
-//      << "', query" << filterCondition->toVelocyPack(true)->toJson();
-//
-//    return nullptr;
-//  }
-//
-//  try {
-//    compoundReader.add(_memoryNode->_store._reader);
-//    SCOPED_LOCK(_toFlush->_readMutex);
-//    compoundReader.add(_toFlush->_store._reader);
-//
-//    if (_storePersisted) {
-//      compoundReader.add(_storePersisted._reader);
-//    }
-//  } catch (std::exception const& e) {
-//    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-//      << "caught exception while collecting readers for querying iResearch view '" << id()
-//      << "': " << e.what();
-//    IR_EXCEPTION();
-//    return nullptr;
-//  } catch (...) {
-//    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-//      << "caught exception while collecting readers for querying iResearch view '" << id() << "'";
-//    IR_EXCEPTION();
-//    return nullptr;
-//  }
-//
-//  // add CIDs of known collections to transaction
-//  for (auto& entry: _meta._collections) {
-//    trx->addCollectionAtRuntime(arangodb::basics::StringUtils::itoa(entry));
-//  }
-//
-//  // add CIDs of registered collections to transaction
-//  for (auto& entry: _registeredLinks) {
-//    trx->addCollectionAtRuntime(std::to_string(entry.first));
-//  }
-//
-//  // if (!sortInternally) {
-//  if (order.empty()) {
-//    PTR_NAMED(UnorderedViewIterator,
-//      iterator,
-//      *this,
-//      *trx,
-//      std::move(compoundReader),
-//      *plan,
-//      *filterCondition,
-//      *reference,
-//      irs::order::unordered()
-//    );
-//
-//    return iterator->reset(exprCtx)
-//      ? iterator.release()
-//      : nullptr;
-//  }
-//
-//  PTR_NAMED(OrderedViewIterator,
-//    iterator,
-//    *this,
-//    *trx,
-//    std::move(compoundReader),
-//    order,
-//    std::move(orderAttrs),
-//    *plan,
-//    *filterCondition,
-//    *reference
-//  );
-//
-//  return iterator->reset(exprCtx)
-//    ? iterator.release()
-//    : nullptr;
-//}
 
 size_t IResearchView::linkCount() const noexcept {
   ReadMutex mutex(_mutex); // '_links' can be asynchronously updated

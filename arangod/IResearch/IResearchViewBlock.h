@@ -29,7 +29,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExpressionContext.h"
 #include "VocBase/LogicalView.h"
-#include "Views/ViewIterator.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include "utils/attributes.hpp"
 #include "IResearch/ExpressionFilter.h"
@@ -47,7 +47,6 @@ NS_END // aql
 
 NS_BEGIN(iresearch)
 
-class UnorderedViewIterator;
 class IResearchViewNode;
 
 ///////////////////////////////////////////////////////////////////////////////

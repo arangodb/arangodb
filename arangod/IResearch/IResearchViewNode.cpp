@@ -26,7 +26,6 @@
 #include "IResearchOrderFactory.h"
 #include "IResearchView.h"
 #include "AqlHelper.h"
-#include "Views/ViewIterator.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
 #include "Aql/Condition.h"

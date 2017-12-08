@@ -65,10 +65,10 @@
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 #include "V8Server/V8DealerFeature.h"
-#include "Views/ViewIterator.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 NS_LOCAL
 
