@@ -1,6 +1,8 @@
 v3.3.rc7 (2017-12-07)
 ---------------------
 
+* fixed issue #3741: fix terminal color output in Windows 
+
 * UI: fixed issue #3822: disabled name input field for system collections
 
 * fixed issue #3640: limit in subquery
