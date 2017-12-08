@@ -46,6 +46,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {  
+auto doNothingVisitor = [](AstNode const*) {};
+}
+
 /// @brief initialize a singleton no-op node instance
 AstNode const Ast::NopNode{NODE_TYPE_NOP};
 
@@ -1945,7 +1949,7 @@ void Ast::validateAndOptimize() {
 /// @brief determines the variables referenced in an expression
 void Ast::getReferencedVariables(AstNode const* node,
                                  std::unordered_set<Variable const*>& result) {
-  auto visitor = [](AstNode const* node, void* data) -> void {
+  auto visitor = [&result](AstNode const* node) {
     if (node == nullptr) {
       return;
     }
@@ -1959,20 +1963,19 @@ void Ast::getReferencedVariables(AstNode const* node,
       }
 
       if (variable->needsRegister()) {
-        auto result = static_cast<std::unordered_set<Variable const*>*>(data);
-        result->emplace(variable);
+        result.emplace(variable);
       }
     }
   };
 
-  traverseReadOnly(node, visitor, &result);
+  traverseReadOnly(node, visitor);
 }
 
 /// @brief count how many times a variable is referenced in an expression
 size_t Ast::countReferences(AstNode const* node,
                             Variable const* search) {
   size_t result = 0;
-  auto visitor = [&result, &search](AstNode const* node, void*) -> void {
+  auto visitor = [&result, &search](AstNode const* node) {
     if (node == nullptr) {
       return;
     }
@@ -1987,7 +1990,7 @@ size_t Ast::countReferences(AstNode const* node,
     }
   };
 
-  traverseReadOnly(node, visitor, nullptr);
+  traverseReadOnly(node, visitor);
   return result;
 }
 
@@ -1997,22 +2000,16 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
                                                 bool& isSafeForOptimization) {
   TopLevelAttributes result;
 
-  auto doNothingVisitor = [](AstNode const* node, void* data) -> void {};
-
   // traversal state
   char const* attributeName = nullptr;
   size_t nameLength = 0;
   isSafeForOptimization = true;
 
-  auto visitor = [&](AstNode const* node, void* data) -> void {
-    if (node == nullptr) {
-      return;
-    }
-
+  auto visitor = [&](AstNode const* node) {
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       attributeName = node->getStringValue();
       nameLength = node->getStringLength();
-      return;
+      return true;
     }
 
     if (node->type == NODE_TYPE_REFERENCE) {
@@ -2020,11 +2017,10 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
       if (attributeName == nullptr) {
         // we haven't seen an attribute access directly before...
         // this may have been an access to an indexed property, e.g value[0] or
-        // a
-        // reference to the complete value, e.g. FUNC(value)
+        // a reference to the complete value, e.g. FUNC(value)
         // note that this is unsafe to optimize this away
         isSafeForOptimization = false;
-        return;
+        return true;
       }
 
       TRI_ASSERT(attributeName != nullptr);
@@ -2043,7 +2039,7 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
                                      {std::string(attributeName, nameLength)}));
       } else {
         // insert attributeName only
-        (*it).second.emplace(std::string(attributeName, nameLength));
+        (*it).second.emplace(attributeName, nameLength);
       }
 
       // fall-through
@@ -2051,9 +2047,96 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
 
     attributeName = nullptr;
     nameLength = 0;
+    return true;
   };
 
-  traverseReadOnly(node, visitor, doNothingVisitor, doNothingVisitor, nullptr);
+  traverseReadOnly(node, visitor, doNothingVisitor);
+
+  return result;
+}
+
+/// @brief determines the to-be-kept attribute of an INTO expression
+std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(AstNode const* node,
+                                                                    Variable const* searchVariable,
+                                                                    bool& isSafeForOptimization) {
+  auto isTargetVariable = [&](AstNode const* node) {
+    if (node->type == NODE_TYPE_INDEXED_ACCESS) {
+      auto sub = node->getMemberUnchecked(0);
+      if (sub->type == NODE_TYPE_REFERENCE) {
+        Variable const* v = static_cast<Variable const*>(sub->getData());
+        if (v->id == searchVariable->id) {
+          return true;
+        }
+      }
+    } else if (node->type == NODE_TYPE_EXPANSION) {
+      if (node->numMembers() < 2) {
+        return false;
+      }
+      auto it = node->getMemberUnchecked(0);
+      if (it->type != NODE_TYPE_ITERATOR || it->numMembers() != 2) {
+        return false;
+      }
+
+      auto sub1 = it->getMember(0);
+      auto sub2 = it->getMember(1);
+      if (sub1->type != NODE_TYPE_VARIABLE ||
+          sub2->type != NODE_TYPE_REFERENCE) {
+        return false;
+      }
+      Variable const* v = static_cast<Variable const*>(sub2->getData());
+      if (v->id == searchVariable->id) {
+        return true;
+      }
+
+    }
+     
+    return false;
+  };
+ 
+  std::unordered_set<std::string> result;
+  isSafeForOptimization = true;
+  
+  std::function<bool(AstNode const*)> visitor = [&](AstNode const* node) {
+    if (!isSafeForOptimization) {
+      return false;
+    }
+
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      while (node->getMemberUnchecked(0)->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        node = node->getMemberUnchecked(0);
+      }
+      if (isTargetVariable(node->getMemberUnchecked(0))) {
+        result.emplace(node->getString());
+        // do not descend further
+        return false;
+      }
+    } else if (node->type == NODE_TYPE_REFERENCE) {
+      Variable const* v = static_cast<Variable const*>(node->getData());
+      if (v->id == searchVariable->id) {
+        isSafeForOptimization = false;
+        return false;
+      }
+    } else if (node->type == NODE_TYPE_EXPANSION) {
+      if (isTargetVariable(node) ) {
+        auto sub = node->getMemberUnchecked(1);
+        if (sub->type == NODE_TYPE_EXPANSION) {
+          sub = sub->getMemberUnchecked(0)->getMemberUnchecked(1);
+        }
+        if (sub->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          while (sub->getMemberUnchecked(0)->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+            sub = sub->getMemberUnchecked(0);
+          }
+          result.emplace(sub->getString());
+          // do not descend further
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
+
+  traverseReadOnly(node, visitor, doNothingVisitor);
 
   return result;
 }
@@ -2062,20 +2145,17 @@ bool Ast::populateSingleAttributeAccess(AstNode const* node,
                                         Variable const* variable,
                                         std::vector<std::string>& attributeName) {
   bool result = true;
-
-  auto doNothingVisitor = [](AstNode const* node, void* data) -> void {};
-
   attributeName.clear();
   std::vector<std::string> attributePath;
           
-  auto visitor = [&](AstNode const* node, void* data) -> void {
-    if (node == nullptr || !result) {
-      return;
+  auto visitor = [&](AstNode const* node) {
+    if (!result) {
+      return false;
     }
 
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       attributePath.emplace_back(node->getString());
-      return;
+      return true;
     }
 
     if (node->type == NODE_TYPE_REFERENCE) {
@@ -2112,9 +2192,10 @@ bool Ast::populateSingleAttributeAccess(AstNode const* node,
     }
 
     attributePath.clear();
+    return true;
   };
 
-  traverseReadOnly(node, visitor, doNothingVisitor, doNothingVisitor, nullptr);
+  traverseReadOnly(node, visitor, doNothingVisitor);
   if (attributeName.empty()) {
     return false;
   }
@@ -2128,21 +2209,18 @@ bool Ast::populateSingleAttributeAccess(AstNode const* node,
 bool Ast::variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
                                                    Variable const* variable,
                                                    std::vector<std::string> const& attributeName) {
-  bool result = true;
-
-  auto doNothingVisitor = [](AstNode const* node, void* data) -> void {};
-
   // traversal state
   std::vector<std::string> attributePath;
+  bool result = true;
           
-  auto visitor = [&](AstNode const* node, void* data) -> void {
-    if (node == nullptr || !result) {
-      return;
+  auto visitor = [&](AstNode const* node) {
+    if (!result) {
+      return false;
     }
 
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       attributePath.emplace_back(node->getString());
-      return;
+      return true;
     }
 
     if (node->type == NODE_TYPE_REFERENCE) {
@@ -2174,9 +2252,10 @@ bool Ast::variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
     }
 
     attributePath.clear();
+    return true;
   };
 
-  traverseReadOnly(node, visitor, doNothingVisitor, doNothingVisitor, nullptr);
+  traverseReadOnly(node, visitor, doNothingVisitor);
 
   return result;
 }
@@ -3349,33 +3428,32 @@ AstNode* Ast::traverseAndModify(
 }
 
 /// @brief traverse the AST, using pre- and post-order visitors
-void Ast::traverseReadOnly(
-    AstNode const* node, std::function<void(AstNode const*, void*)> preVisitor,
-    std::function<void(AstNode const*, void*)> visitor,
-    std::function<void(AstNode const*, void*)> postVisitor, void* data) {
+void Ast::traverseReadOnly(AstNode const* node, 
+    std::function<bool(AstNode const*)> const& preVisitor,
+    std::function<void(AstNode const*)> const& postVisitor) {
   if (node == nullptr) {
     return;
   }
 
-  preVisitor(node, data);
+  if (!preVisitor(node)) {
+    return;
+  }
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
 
     if (member != nullptr) {
-      traverseReadOnly(member, preVisitor, visitor, postVisitor, data);
+      traverseReadOnly(member, preVisitor, postVisitor);
     }
   }
 
-  visitor(node, data);
-  postVisitor(node, data);
+  postVisitor(node);
 }
 
 /// @brief traverse the AST using a visitor depth-first, with const nodes
 void Ast::traverseReadOnly(AstNode const* node,
-                           std::function<void(AstNode const*, void*)> visitor,
-                           void* data) {
+                           std::function<void(AstNode const*)> const& visitor) {
   if (node == nullptr) {
     return;
   }
@@ -3386,11 +3464,11 @@ void Ast::traverseReadOnly(AstNode const* node,
     auto member = node->getMemberUnchecked(i);
 
     if (member != nullptr) {
-      traverseReadOnly(const_cast<AstNode const*>(member), visitor, data);
+      traverseReadOnly(member, visitor);
     }
   }
 
-  visitor(node, data);
+  visitor(node);
 }
 
 /// @brief normalize a function name

@@ -387,6 +387,7 @@ class Ast {
   /// @brief determines the top-level attributes in an expression, grouped by
   /// variable
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
+  static std::unordered_set<std::string> getReferencedAttributesForKeep(AstNode const*, Variable const* searchVariable, bool&);
   
   static bool populateSingleAttributeAccess(AstNode const* node,
                                             Variable const* variable,
@@ -503,16 +504,14 @@ public:
 
   /// @brief traverse the AST, using pre- and post-order visitors
   static void traverseReadOnly(AstNode const*,
-                               std::function<void(AstNode const*, void*)>,
-                               std::function<void(AstNode const*, void*)>,
-                               std::function<void(AstNode const*, void*)>,
-                               void*);
+                               std::function<bool(AstNode const*)> const&,
+                               std::function<void(AstNode const*)> const&);
 
   /// @brief traverse the AST using a depth-first visitor, with const nodes
   static void traverseReadOnly(AstNode const*,
-                               std::function<void(AstNode const*, void*)>,
-                               void*);
-private:
+                               std::function<void(AstNode const*)> const&);
+
+ private:
   /// @brief normalize a function name
   std::pair<std::string, bool> normalizeFunctionName(char const*);
 

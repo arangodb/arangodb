@@ -1105,11 +1105,11 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
 
     TRI_ASSERT(variable != nullptr);
     builder.add("name", VPackValue(variable->name));
-    builder.add("id", VPackValue(static_cast<double>(variable->id)));
+    builder.add("id", VPackValue(variable->id));
   }
 
   if (type == NODE_TYPE_EXPANSION) {
-    builder.add("levels", VPackValue(static_cast<double>(getIntValue(true))));
+    builder.add("levels", VPackValue(getIntValue(true)));
   }
 
   // dump sub-nodes

@@ -439,6 +439,16 @@ class ExecutionNode {
     }
     return ids;
   }
+  
+  /// @brief tests whether the node sets one of the passed variables
+  bool setsVariable(std::unordered_set<Variable const*> const& which) const {
+    for (auto const& v : getVariablesSetHere()) {
+      if (which.find(v) != which.end()) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   /// @brief setVarsUsedLater
   void setVarsUsedLater(std::unordered_set<Variable const*>& v) {

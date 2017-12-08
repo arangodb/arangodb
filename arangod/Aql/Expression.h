@@ -70,7 +70,7 @@ class Expression {
   ~Expression();
  
   /// @brief replace the root node
-  void replaceNode (AstNode* node) {
+  void replaceNode(AstNode* node) {
     _node = node;
     invalidate();
   }

@@ -1661,59 +1661,6 @@ void ExecutionPlan::findEndNodes(SmallVector<ExecutionNode*>& result,
   root()->walk(&finder);
 }
 
-/// @brief check linkage of execution plan
-#if 0
-class LinkChecker : public WalkerWorker<ExecutionNode> {
-
-  public:
-    LinkChecker () {
-    }
-
-    bool before (ExecutionNode* en) {
-      auto deps = en->getDependencies();
-      for (auto x : deps) {
-        auto parents = x->getParents();
-        bool ok = false;
-        for (auto it = parents.begin(); it != parents.end(); ++it) {
-          if (*it == en) {
-            ok = true;
-            break;
-          }
-        }
-        if (! ok) {
-          std::cout << "Found dependency which does not have us as a parent!"
-                    << std::endl;
-        }
-      }
-      auto parents = en->getParents();
-      if (parents.size() > 1) {
-        std::cout << "Found a node with more than one parent!" << std::endl;
-      }
-      for (auto x : parents) {
-        auto deps = x->getDependencies();
-        bool ok = false;
-        for (auto it = deps.begin(); it != deps.end(); ++it) {
-          if (*it == en) {
-            ok = true;
-            break;
-          }
-        }
-        if (! ok) {
-          std::cout << "Found parent which does not have us as a dependency!"
-                    << std::endl;
-        }
-      }
-      return false;
-    }
-};
-
-void ExecutionPlan::checkLinkage () {
-  LinkChecker checker;
-  root()->walk(&checker);
-}
-
-#endif
-
 /// @brief helper struct for findVarUsage
 struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
   std::unordered_set<Variable const*> _usedLater;

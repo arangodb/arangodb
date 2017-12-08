@@ -172,6 +172,21 @@ class CollectNode : public ExecutionNode {
     TRI_ASSERT(!hasExpressionVariable());
     _expressionVariable = variable;
   }
+  
+  /// @brief return whether or not the collect has keep variables
+  bool hasKeepVariables() const {
+    return !_keepVariables.empty();
+  }
+  
+  /// @brief return the keep variables
+  std::vector<Variable const*> const& keepVariables() const {
+    return _keepVariables;
+  }
+  
+  /// @brief set list of variables to keep if INTO is used
+  void setKeepVariables(std::vector<Variable const*>&& variables) {
+    _keepVariables = std::move(variables);
+  }
 
   /// @brief return the variable map
   std::unordered_map<VariableId, std::string const> const& variableMap() const {
