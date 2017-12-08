@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed issue #3917: traversals with high maximal depth take extremely long
+  in planning phase.
+  
 * UI: fixed issue #3822: disabled name input field for system collections
 
 * fixed issue #3741: fix terminal color output in Windows 
