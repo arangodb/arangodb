@@ -228,30 +228,57 @@
           var tableContent = [];
 
           if (!isCoordinator) {
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'change-collection-name',
-                'Name',
-                this.model.get('name'),
-                false,
-                '',
-                true,
-                [
-                  {
-                    rule: Joi.string().regex(/^[a-zA-Z]/),
-                    msg: 'Collection name must always start with a letter.'
-                  },
-                  {
-                    rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-                    msg: 'Only Symbols "_" and "-" are allowed.'
-                  },
-                  {
-                    rule: Joi.string().required(),
-                    msg: 'No collection name given.'
-                  }
-                ]
-              )
-            );
+            if (this.model.get('name').substr(0, 1) === '_') {
+              tableContent.push(
+                window.modalView.createReadOnlyEntry(
+                  'change-collection-name',
+                  'Name',
+                  this.model.get('name'),
+                  false,
+                  '',
+                  true,
+                  [
+                    {
+                      rule: Joi.string().regex(/^[a-zA-Z]/),
+                      msg: 'Collection name must always start with a letter.'
+                    },
+                    {
+                      rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
+                      msg: 'Only Symbols "_" and "-" are allowed.'
+                    },
+                    {
+                      rule: Joi.string().required(),
+                      msg: 'No collection name given.'
+                    }
+                  ]
+                )
+              );
+            } else {
+              tableContent.push(
+                window.modalView.createTextEntry(
+                  'change-collection-name',
+                  'Name',
+                  this.model.get('name'),
+                  false,
+                  '',
+                  true,
+                  [
+                    {
+                      rule: Joi.string().regex(/^[a-zA-Z]/),
+                      msg: 'Collection name must always start with a letter.'
+                    },
+                    {
+                      rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
+                      msg: 'Only Symbols "_" and "-" are allowed.'
+                    },
+                    {
+                      rule: Joi.string().required(),
+                      msg: 'No collection name given.'
+                    }
+                  ]
+                )
+              );
+            }
           }
 
           var after = function () {
