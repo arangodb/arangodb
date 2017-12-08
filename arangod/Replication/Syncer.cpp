@@ -337,7 +337,7 @@ arangodb::LogicalCollection* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, 
 }
 
 int Syncer::applyCollectionDumpMarker(
-    transaction::Methods& trx, std::string const& collectionName,
+    transaction::Methods& trx, LogicalCollection* coll,
     TRI_replication_operation_e type, VPackSlice const& old, 
     VPackSlice const& slice, std::string& errorMsg) {
 
@@ -345,7 +345,7 @@ int Syncer::applyCollectionDumpMarker(
     decltype(_configuration._lockTimeoutRetries) tries = 0;
 
     while (true) {
-      int res = applyCollectionDumpMarkerInternal(trx, collectionName, type, old, slice, errorMsg);
+      int res = applyCollectionDumpMarkerInternal(trx, coll, type, old, slice, errorMsg);
 
       if (res != TRI_ERROR_LOCK_TIMEOUT) {
         return res;
@@ -362,13 +362,13 @@ int Syncer::applyCollectionDumpMarker(
       // retry
     }
   } else {
-    return applyCollectionDumpMarkerInternal(trx, collectionName, type, old, slice, errorMsg);
+    return applyCollectionDumpMarkerInternal(trx, coll, type, old, slice, errorMsg);
   }
 }
 
 /// @brief apply the data from a collection dump or the continuous log
 int Syncer::applyCollectionDumpMarkerInternal(
-    transaction::Methods& trx, std::string const& collectionName,
+    transaction::Methods& trx, LogicalCollection* coll,
     TRI_replication_operation_e type, VPackSlice const& old, 
     VPackSlice const& slice, std::string& errorMsg) {
 
@@ -387,11 +387,11 @@ int Syncer::applyCollectionDumpMarkerInternal(
 
     try {
       // try insert first
-      OperationResult opRes = trx.insert(collectionName, slice, options); 
+      OperationResult opRes = trx.insert(coll->name(), slice, options);
 
       if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         // perform an update
-        opRes = trx.replace(collectionName, slice, options); 
+        opRes = trx.replace(coll->name(), slice, options); 
       }
     
       res = opRes.code;
@@ -421,7 +421,7 @@ int Syncer::applyCollectionDumpMarkerInternal(
       if (!_leaderId.empty()) {
         options.isSynchronousReplicationFrom = _leaderId;
       }
-      OperationResult opRes = trx.remove(collectionName, old, options);
+      OperationResult opRes = trx.remove(coll->name(), old, options);
 
       if (opRes.successful() ||
           opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {

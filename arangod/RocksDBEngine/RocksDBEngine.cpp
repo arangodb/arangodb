@@ -1743,12 +1743,8 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 int RocksDBEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
                                   arangodb::LogicalCollection* col,
                                   std::string const& keysId,
-                                  std::string const& cid,
-                                  std::string const& collectionName,
-                                  TRI_voc_tick_t maxTick,
                                   std::string& errorMsg) {
-  return handleSyncKeysRocksDB(syncer, col, keysId, cid, collectionName,
-                               maxTick, errorMsg);
+  return handleSyncKeysRocksDB(syncer, col, keysId, errorMsg);
 }
   
 Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
