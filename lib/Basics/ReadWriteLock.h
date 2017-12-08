@@ -18,61 +18,53 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
-/// @author Achim Brandt
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_BASICS_READ_WRITE_LOCK_H
 #define ARANGODB_BASICS_READ_WRITE_LOCK_H 1
 
 #include "Basics/Common.h"
-#include "Basics/locks.h"
-#include "Basics/ReadWriteLockCPP11.h"
+
+#include <mutex>
+#include <condition_variable>
+#include <thread>
 
 namespace arangodb {
 namespace basics {
 
-typedef ReadWriteLockCPP11 ReadWriteLock;
-
-#if 0
-/// @brief read-write lock
+/// @brief read-write lock, slow but just using CPP11
+/// This class has two other advantages:
+///  (1) it is possible that a thread tries to acquire a lock even if it
+///      has it already. This is important when we are running a thread
+///      pool that works on task groups and a task group needs to acquire
+///      a lock across multiple (non-concurrent) tasks. This must work,
+///      even if tasks from different groups that fight for a lock are
+///      actually executed by the same thread! POSIX RW-locks do not have
+///      this property.
+///  (2) write locks have a preference over read locks: as long as a task
+///      wants to get a write lock, no other task can get a (new) read lock.
+///      This is necessary to avoid starvation of writers by many readers.
+///      The current implementation can starve readers, though.
 class ReadWriteLock {
-  ReadWriteLock(ReadWriteLock const&) = delete;
-  ReadWriteLock& operator=(ReadWriteLock const&) = delete;
-  ReadWriteLock(ReadWriteLock&&) = delete;
-  ReadWriteLock& operator=(ReadWriteLock&&) = delete;
-
  public:
-  /// @brief constructs a read-write lock
-  ReadWriteLock();
-
-  /// @brief deletes read-write lock
-  ~ReadWriteLock();
-
- public:
-  /// @brief locks for reading
-  void readLock();
-
-  /// @brief tries to lock for reading
-  bool tryReadLock();
-
-  /// @brief tries to lock for reading, sleeping if the lock cannot be
-  /// acquired instantly, sleepTime is in microseconds
-  bool tryReadLock(uint64_t sleepTime);
+  ReadWriteLock() : _state(0), _wantWrite(false) {}
 
   /// @brief locks for writing
   void writeLock();
 
-  /// @brief tries to lock for writing
+  /// @brief locks for writing, but only tries
   bool tryWriteLock();
 
-  /// @brief tries to lock for writing, sleeping if the lock cannot be
-  /// acquired instantly, sleepTime is in microseconds
-  bool tryWriteLock(uint64_t sleepTime);
+  /// @brief locks for reading
+  void readLock();
+
+  /// @brief locks for reading, tries only
+  bool tryReadLock();
 
   /// @brief releases the read-lock or write-lock
   void unlock();
-
+  
   /// @brief releases the read-lock
   void unlockRead();
   
@@ -80,15 +72,19 @@ class ReadWriteLock {
   void unlockWrite();
 
  private:
-  /// @brief read-write lock variable
-  TRI_read_write_lock_t _rwlock;
+  /// @brief a mutex
+  std::mutex _mut;
 
-  /// @brief write lock marker
-  bool _writeLocked;
+  /// @brief a condition variable to wake up threads
+  std::condition_variable _bell;
+
+  /// @brief _state, 0 means unlocked, -1 means write locked, positive means
+  /// a number of read locks
+  int _state;
+
+  /// @brief _wantWrite, is set if somebody is waiting for the write lock
+  bool _wantWrite;
 };
-
-#endif
-
 }
 }
 

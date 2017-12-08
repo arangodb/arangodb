@@ -22,13 +22,15 @@
 
 #include "StatisticsFeature.h"
 
-
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
+
+#include <thread>
+#include <chrono>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -89,14 +91,14 @@ class arangodb::StatisticsThread final : public Thread {
           }
         }
 
-        usleep(static_cast<TRI_usleep_t>(sleepTime));
+        std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
       } else {
         nothingHappened = 0;
 
         if (count < 10) {
-          usleep(10 * 1000);
+          std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
         } else if (count < 100) {
-          usleep(1 * 1000);
+          std::this_thread::sleep_for(std::chrono::microseconds(1 * 1000));
         }
       }
     }
@@ -178,9 +180,15 @@ void StatisticsFeature::start() {
   }
 
   _statisticsThread.reset(new StatisticsThread);
+  _statisticsWorker.reset(new StatisticsWorker);
 
   if (!_statisticsThread->start()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not start statistics thread";
+    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS) << "could not start statistics thread";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (!_statisticsWorker->start()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS) << "could not start statistics worker";
     FATAL_ERROR_EXIT();
   }
 }
@@ -190,11 +198,20 @@ void StatisticsFeature::unprepare() {
     _statisticsThread->beginShutdown();
 
     while (_statisticsThread->isRunning()) {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+  }
+
+  if (_statisticsWorker != nullptr) {
+    _statisticsWorker->beginShutdown();
+
+    while (_statisticsWorker->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
   }
 
   _statisticsThread.reset();
+  _statisticsWorker.reset();
 
   delete TRI_ConnectionTimeDistributionStatistics;
   TRI_ConnectionTimeDistributionStatistics = nullptr;

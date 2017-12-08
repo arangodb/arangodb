@@ -108,7 +108,7 @@ void AqlFeature::stop() {
       << o << " registered traverser engines to terminate and for "
       << n << " registered queries to terminate and for "
       << m << " feature leases to be released";
-    usleep(500000);
+    std::this_thread::sleep_for(std::chrono::microseconds(500000));
   }
   MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
   AqlFeature::_AQL = nullptr;

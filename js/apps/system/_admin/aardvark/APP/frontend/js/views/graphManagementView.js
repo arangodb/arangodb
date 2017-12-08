@@ -1041,10 +1041,11 @@
       var collList = []; var collections = this.options.collectionCollection.models;
 
       collections.forEach(function (c) {
-        if (c.get('isSystem')) {
-          return;
+        if (!c.get('isSystem')) {
+          if (c.get('type') !== 'edge') {
+            collList.push(c.id);
+          }
         }
-        collList.push(c.id);
       });
       e.stopPropagation();
       var id = $(e.currentTarget).attr('id'); var number;
@@ -1078,6 +1079,8 @@
         });
         window.modalView.undelegateEvents();
         window.modalView.delegateEvents(this.events);
+
+        arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'right');
 
         var i;
         $('.modal-body .spacer').remove();
