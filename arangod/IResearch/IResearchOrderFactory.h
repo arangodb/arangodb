@@ -37,6 +37,8 @@ NS_BEGIN(arangodb)
 NS_BEGIN(aql)
 
 class SortCondition; // forward declaration
+class AstNode;
+class Variable;
 
 NS_END // aql
 
@@ -49,6 +51,7 @@ NS_END // transaction
 NS_BEGIN(iresearch)
 
 struct IResearchViewMeta; // forward declaration
+struct QueryContext;
 
 struct OrderFactory {
   struct OrderContext {
@@ -62,8 +65,14 @@ struct OrderFactory {
   ////////////////////////////////////////////////////////////////////////////////
   static bool order(
     OrderContext* ctx,
-    arangodb::aql::SortCondition const& node,
+    aql::SortCondition const& node,
     IResearchViewMeta const& meta
+  );
+
+  static bool scorer(
+    irs::sort::ptr* scorer,
+    aql::AstNode const& node,
+    aql::Variable const& ref
   );
 }; // OrderFactory
 

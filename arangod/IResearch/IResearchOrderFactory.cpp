@@ -47,7 +47,6 @@ class Sort: public irs::sort {
      _attrPath(attrPath),
      _impl(std::move(impl)) {
     TRI_ASSERT(_impl);
-    irs::sort::reverse(_impl->reverse()); // ensure full equivalence for tests
   }
 
   virtual ~Sort() { }
@@ -60,8 +59,8 @@ class Sort: public irs::sort {
     return ptr;
   }
 
-  virtual prepared::ptr prepare() const override {
-    auto ptr = _impl->prepare();
+  virtual prepared::ptr prepare(bool reverse) const override {
+    auto ptr = _impl->prepare(reverse);
 
     if (!ptr) {
       return nullptr;
@@ -75,8 +74,6 @@ class Sort: public irs::sort {
 
     return ptr;
   }
-
-  void reverse(bool rev) { TRI_ASSERT(false); } // must initialize impl before construction wrapper
 
  private:
   arangodb::iresearch::attribute::AttributePath& _attrPath;
@@ -220,8 +217,7 @@ bool fromFCall(
   }
 
   if (ctx) {
-    scorer->reverse(reverse);
-    ctx->order.add<Sort>(std::move(scorer), *attrPtr);
+    ctx->order.add<Sort>(reverse, std::move(scorer), *attrPtr);
   }
 
   return true;
@@ -303,6 +299,166 @@ bool fromValue(
   );
 }
 
+bool validateFuncArgs(
+    arangodb::aql::AstNode const* args,
+    arangodb::aql::Variable const& ref
+) {
+  if (!args || arangodb::aql::NODE_TYPE_ARRAY != args->type) {
+    return false;
+  }
+
+  size_t const size = args->numMembers();
+
+  if (size < 1) {
+    return false; // invalid args
+  }
+
+  // 1st argument has to be reference to `ref`
+  auto const* arg0 = args->getMemberUnchecked(0);
+
+  if (!arg0
+      || arangodb::aql::NODE_TYPE_REFERENCE != arg0->type
+      || reinterpret_cast<void const*>(&ref) != arg0->getData()) {
+    return false;
+  }
+
+  for (size_t i = 1, size = args->numMembers(); i < size; ++i) {
+    auto const* arg = args->getMemberUnchecked(i);
+
+    if (!arg || !arg->isConstant()) {
+      // we don't support non-constant arguments for scorers
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool makeScorer(
+    irs::sort::ptr& scorer,
+    irs::string_ref const& name,
+    arangodb::aql::AstNode const& args,
+    arangodb::iresearch::QueryContext const& ctx
+) {
+  TRI_ASSERT(!args.numMembers() || arangodb::iresearch::findReference(*args.getMember(0), *ctx.ref));
+
+  switch (args.numMembers()) {
+    case 0:
+      break;
+    case 1: {
+
+      scorer = irs::scorers::get(name, irs::string_ref::nil);
+
+      if (!scorer) {
+        scorer = irs::scorers::get(name, "[]"); // pass arg as json array
+      }
+    } break;
+    default: { // fall through
+      arangodb::velocypack::Builder builder;
+      arangodb::iresearch::ScopedAqlValue arg;
+
+      builder.openArray();
+
+      for (size_t i = 1, count = args.numMembers(); i < count; ++i) {
+        auto const* argNode = args.getMemberUnchecked(i);
+
+        if (!argNode) {
+          return false; // invalid arg
+        }
+
+        arg.reset(*argNode);
+
+        if (!arg.execute(ctx)) {
+          // failed to execute value
+          return false;
+        }
+
+        arg.toVelocyPack(builder);
+      }
+
+      builder.close();
+      scorer = irs::scorers::get(name, builder.toJson()); // pass arg as json
+    }
+  }
+
+  return bool(scorer);
+}
+
+bool fromFCall(
+    irs::sort::ptr* scorer,
+    arangodb::aql::AstNode const& node,
+    arangodb::iresearch::QueryContext const& ctx
+) {
+  TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL == node.type);
+  auto* fn = static_cast<arangodb::aql::Function*>(node.getData());
+
+  if (!fn || 1 != node.numMembers()) {
+    return false; // no function
+  }
+
+  auto* args = node.getMemberUnchecked(0);
+
+  if (!validateFuncArgs(args, *ctx.ref)) {
+    // invalid arguments
+    return false;
+  }
+
+  auto& name = fn->name;
+  std::string scorerName(name);
+
+  // convert name to lower case
+  std::transform(
+    scorerName.begin(), scorerName.end(), scorerName.begin(), ::tolower
+  );
+
+  if (!scorer) {
+    // shallow check
+    return irs::scorers::exists(scorerName);
+  }
+
+  // we don't support non-constant arguments for scorers now, if it
+  // will change ensure that proper `ExpressionContext` set in `ctx`
+
+  return makeScorer(*scorer, scorerName, *args, ctx);
+}
+
+bool fromFCallUser(
+    irs::sort::ptr* scorer,
+    arangodb::aql::AstNode const& node,
+    arangodb::iresearch::QueryContext const& ctx
+) {
+  TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL_USER == node.type);
+
+  if (arangodb::aql::VALUE_TYPE_STRING != node.value.type
+      || 1 != node.numMembers()) {
+    return false; // no function name
+  }
+
+  auto* args = node.getMemberUnchecked(0);
+
+  if (!validateFuncArgs(args, *ctx.ref)) {
+    // invalid arguments
+    return false;
+  }
+
+  irs::string_ref scorerName;
+
+  if (!arangodb::iresearch::parseValue(scorerName, node)) {
+    // failed to extract function name
+    return false;
+  }
+
+  if (!scorer) {
+    // shallow check
+    return irs::scorers::exists(scorerName);
+  }
+
+  // we don't support non-constant arguments for scorers now, if it
+  // will change ensure that proper `ExpressionContext` set in `ctx`
+
+  return makeScorer(*scorer, scorerName, *args, ctx);
+}
+
 NS_END
 
 NS_BEGIN(arangodb)
@@ -352,6 +508,27 @@ NS_BEGIN(iresearch)
   }
 
   return true;
+}
+
+/*static*/ bool OrderFactory::scorer(
+    irs::sort::ptr* scorer,
+    aql::AstNode const& node,
+    aql::Variable const& ref
+) {
+  QueryContext const ctx {
+    nullptr, nullptr, nullptr, nullptr, &ref
+  };
+
+  switch (node.type) {
+    case arangodb::aql::NODE_TYPE_FCALL: // function call
+      return fromFCall(scorer, node, ctx);
+    case arangodb::aql::NODE_TYPE_FCALL_USER: // user function call
+      return fromFCallUser(scorer, node, ctx);
+    default:
+      // IResearch does not support any
+      // expressions except function calls
+      return false;
+  }
 }
 
 NS_END // iresearch

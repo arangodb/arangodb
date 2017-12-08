@@ -63,7 +63,6 @@ if (USE_IRESEARCH)
     IResearch/IResearchViewOptimizerRules.cpp IResearch/IResearchViewOptimizerRules.h
     IResearch/IResearchViewNode.cpp IResearch/IResearchViewNode.h
     IResearch/IResearchViewBlock.cpp IResearch/IResearchViewBlock.h
-    IResearch/IResearchViewConditionFinder.cpp IResearch/IResearchViewConditionFinder.h
     IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
     IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
     IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h

@@ -24,14 +24,18 @@
 #include "catch.hpp"
 #include "common.h"
 #include "StorageEngineMock.h"
+#include "ExpressionContextMock.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
+#include "Aql/ExecutionPlan.h"
 #include "IResearch/AttributeScorer.h"
+#include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchOrderFactory.h"
-#include "IResearch/IResearchViewMeta.h"
+#include "IResearch/IResearchViewNode.h"
+#include "IResearch/IResearchFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -40,6 +44,7 @@
 #include "Transaction/UserTransaction.h"
 
 #include "search/scorers.hpp"
+#include "utils/misc.hpp"
 
 NS_LOCAL
 
@@ -48,7 +53,7 @@ struct dummy_scorer: public irs::sort {
   DECLARE_SORT_TYPE() { static irs::sort::type_id type("TEST::TFIDF"); return type; }
   static ptr make(const irs::string_ref& args) { if (!validateArgs(args)) return nullptr; PTR_NAMED(dummy_scorer, ptr); return ptr; }
   dummy_scorer(): irs::sort(dummy_scorer::type()) { }
-  virtual sort::prepared::ptr prepare() const override { return nullptr; }
+  virtual sort::prepared::ptr prepare(bool) const override { return nullptr; }
 };
 
 /*static*/ std::function<bool(irs::string_ref const&)> dummy_scorer::validateArgs =
@@ -56,53 +61,108 @@ struct dummy_scorer: public irs::sort {
 
 REGISTER_SCORER(dummy_scorer);
 
-void assertOrderSuccess(std::string const& queryString, irs::order const& expected) {
+void assertOrder(
+    bool parseOk,
+    bool execOk,
+    std::string const& queryString,
+    irs::order const& expected,
+    arangodb::aql::ExpressionContext* exprCtx = nullptr,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+    std::string const& refName = "d") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-  auto options = std::make_shared<arangodb::velocypack::Builder>();
 
   arangodb::aql::Query query(
      false, &vocbase, arangodb::aql::QueryString(queryString),
-     bindVars, options,
+     bindVars, std::make_shared<arangodb::velocypack::Builder>(),
      arangodb::aql::PART_MAIN
   );
 
   auto const parseResult = query.parse();
   REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
 
-  auto* root = query.ast()->root();
+  auto* ast = query.ast();
+  REQUIRE(ast);
+
+  auto* root = ast->root();
   REQUIRE(root);
+
   auto* orderNode = root->getMember(2);
   REQUIRE(orderNode);
+
   auto* sortNode = orderNode->getMember(0);
   REQUIRE(sortNode);
 
-  std::vector<std::vector<arangodb::basics::AttributeName>> attrs;
-  std::vector<std::pair<arangodb::aql::Variable const*, bool>> sorts;
-  std::unordered_map<arangodb::aql::VariableId, arangodb::aql::AstNode const*> variableNodes;
-  std::vector<arangodb::aql::Variable> variables;
+  // find referenced variable
+  auto* allVars = ast->variables();
+  REQUIRE(allVars);
+  arangodb::aql::Variable* ref = nullptr;
+  for (auto entry : allVars->variables(true)) {
+    if (entry.second == refName) {
+      ref = allVars->getVariable(entry.first);
+      break;
+    }
+  }
+  REQUIRE(ref);
 
-  variables.reserve(sortNode->numMembers());
+  // optimization time check
+  {
+    for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
+      auto const* sort = sortNode->getMember(i);
+      auto const* expr = sort->getMember(0);
 
-  for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
-    variables.emplace_back("arg", i);
-    sorts.emplace_back(&variables.back(), sortNode->getMember(i)->getMember(1)->value.value._bool);
-    variableNodes.emplace(variables.back().id, sortNode->getMember(i)->getMember(0));
+      CHECK(parseOk == arangodb::iresearch::OrderFactory::scorer(nullptr, *expr, *ref));
+    }
   }
 
-  irs::order actual;
-  std::vector<irs::stored_attribute::ptr> actualAttrs;
-  arangodb::iresearch::OrderFactory::OrderContext ctx { actualAttrs, actual };
-  arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
-  arangodb::iresearch::IResearchViewMeta meta;
+  // execution time check
+  {
+    irs::order actual;
+    irs::sort::ptr actualScorer;
 
-  CHECK((arangodb::iresearch::OrderFactory::order(nullptr, order, meta)));
-  CHECK((arangodb::iresearch::OrderFactory::order(&ctx, order, meta)));
-  CHECK((expected == actual));
+    for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
+      auto const* sort = sortNode->getMember(i);
+      auto const* expr = sort->getMember(0);
+      auto const asc = sort->getMember(1)->getBoolValue();
+
+
+      CHECK(execOk == arangodb::iresearch::OrderFactory::scorer(&actualScorer, *expr, *ref));
+
+      if (execOk) {
+        actual.add(!asc, std::move(actualScorer));
+      }
+    }
+    CHECK((!execOk || expected == actual));
+  }
 }
 
-void assertOrderFail(std::string const& queryString, size_t parseCode) {
+void assertOrderSuccess(
+    std::string const& queryString,
+    irs::order const& expected,
+    arangodb::aql::ExpressionContext* exprCtx = nullptr,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+    std::string const& refName = "d") {
+  return assertOrder(true, true, queryString, expected, exprCtx, bindVars, refName);
+}
+
+void assertOrderFail(
+    std::string const& queryString,
+    arangodb::aql::ExpressionContext* exprCtx = nullptr,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+    std::string const& refName = "d") {
+  irs::order expected;
+  return assertOrder(false, false, queryString, expected, exprCtx, bindVars, refName);
+}
+
+void assertOrderExecutionFail(
+    std::string const& queryString,
+    arangodb::aql::ExpressionContext* exprCtx = nullptr,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+    std::string const& refName = "d") {
+  irs::order expected;
+  return assertOrder(true, false, queryString, expected, exprCtx, bindVars, refName);
+}
+
+void assertOrderParseFail(std::string const& queryString, size_t parseCode) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
   arangodb::aql::Query query(
@@ -113,39 +173,6 @@ void assertOrderFail(std::string const& queryString, size_t parseCode) {
 
   auto const parseResult = query.parse();
   REQUIRE(parseCode == parseResult.code);
-
-  if (TRI_ERROR_NO_ERROR != parseCode) {
-    return; // expecting a parse error, nothing more to check
-  }
-
-  auto* root = query.ast()->root();
-  REQUIRE(root);
-  auto* orderNode = root->getMember(2);
-  REQUIRE(orderNode);
-  auto* sortNode = orderNode->getMember(0);
-  REQUIRE(sortNode);
-
-  std::vector<std::vector<arangodb::basics::AttributeName>> attrs;
-  std::vector<std::pair<arangodb::aql::Variable const*, bool>> sorts;
-  std::unordered_map<arangodb::aql::VariableId, arangodb::aql::AstNode const*> variableNodes;
-  std::vector<arangodb::aql::Variable> variables;
-
-  variables.reserve(sortNode->numMembers());
-
-  for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
-    variables.emplace_back("arg", i);
-    sorts.emplace_back(&variables.back(), sortNode->getMember(i)->getMember(1)->value.value._bool);
-    variableNodes.emplace(variables.back().id, sortNode->getMember(i)->getMember(0));
-  }
-
-  irs::order actual;
-  std::vector<irs::stored_attribute::ptr> actualAttrs;
-  arangodb::iresearch::OrderFactory::OrderContext ctx { actualAttrs, actual };
-  arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
-  arangodb::iresearch::IResearchViewMeta meta;
-
-  CHECK((!arangodb::iresearch::OrderFactory::order(nullptr, order, meta)));
-  CHECK((!arangodb::iresearch::OrderFactory::order(&ctx, order, meta)));
 }
 
 NS_END
@@ -169,6 +196,7 @@ struct IResearchOrderSetup {
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false);
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
 
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -188,10 +216,8 @@ struct IResearchOrderSetup {
     // user defined functions have ':' in the external function name
     // function arguments string format: requiredArg1[,requiredArg2]...[|optionalArg1[,optionalArg2]...]
     auto& functions = *arangodb::aql::AqlFunctionFeature::AQLFUNCTIONS;
-    arangodb::aql::Function valid("TFIDF", "|.", false, true, true, false);
     arangodb::aql::Function invalid("INVALID", "|.", false, true, true, false);
 
-    functions.add(valid);
     functions.add(invalid);
 
     // suppress log messages since tests check error conditions
@@ -230,58 +256,305 @@ TEST_CASE("IResearchOrderTest", "[iresearch][iresearch-order]") {
   UNUSED(s);
 
 SECTION("test_FCall") {
-  // function
-  {
-    std::string query = "FOR d IN collection FILTER '1' SORT tfidf(d) RETURN d";
-    irs::order expected;
-    auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
-
-    scorer->reverse(false); // SortCondition is by default ascending
-    expected.add(scorer);
-    assertOrderSuccess(query, expected);
-  }
-
-  // function ASC
-  {
-    std::string query = "FOR d IN collection FILTER '1' SORT tfidf(d) ASC RETURN d";
-    irs::order expected;
-    auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
-
-    scorer->reverse(false);
-    expected.add(scorer);
-    assertOrderSuccess(query, expected);
-  }
-
-  // function DESC
-  {
-    std::string query = "FOR d IN collection FILTER '1' SORT tfidf(d) DESC RETURN d";
-    irs::order expected;
-    auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
-
-    scorer->reverse(true);
-    expected.add(scorer);
-    assertOrderSuccess(query, expected);
-  }
-
-  // invalid function (no 1st parameter output variable reference)
-  {
-    std::string query = "FOR d IN collection FILTER '1' SORT tfidf() RETURN d";
-
-    assertOrderFail(query, TRI_ERROR_NO_ERROR);
-  }
-
   // invalid function (not an iResearch function)
   {
     std::string query = "FOR d IN collection FILTER '1' SORT invalid(d) RETURN d";
 
-    assertOrderFail(query, TRI_ERROR_NO_ERROR);
+    assertOrderParseFail(query, TRI_ERROR_NO_ERROR);
   }
 
   // undefined function (not a function registered with ArangoDB)
   {
     std::string query = "FOR d IN collection FILTER '1' SORT undefined(d) RETURN d";
 
-    assertOrderFail(query, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN);
+    assertOrderParseFail(query, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN);
+  }
+}
+
+SECTION("test_FCall_tfidf") {
+  // tfidf
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT tfidf(d) RETURN d";
+    irs::order expected;
+    auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
+
+    expected.add(false, scorer); // SortCondition is by default ascending
+    assertOrderSuccess(query, expected);
+  }
+
+  // tfidf ASC
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT tfidf(d) ASC RETURN d";
+    irs::order expected;
+    auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
+
+    expected.add(false, scorer);
+    assertOrderSuccess(query, expected);
+  }
+
+  // tfidf DESC
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT tfidf(d) DESC RETURN d";
+    irs::order expected;
+    auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
+
+    expected.add(true, scorer);
+    assertOrderSuccess(query, expected);
+  }
+
+  // tfidf with norms
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT tfidf(d, true) DESC RETURN d";
+    irs::order expected;
+
+    auto scorer = irs::scorers::get("tfidf", "[ true ]");
+
+    expected.add(true, scorer);
+    assertOrderSuccess(query, expected);
+  }
+
+  // reference as an argument (do not accept non-constant arguments)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("withNorms", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true}));
+
+    std::string query = "LET withNorms=true FOR d IN collection FILTER '1' SORT tfidf(d, withNorms) DESC RETURN d";
+    assertOrderFail(query, &ctx);
+  }
+
+  // deterministic expression as an argument (do not accept non-constant arguments)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{5}));
+
+    std::string query = "LET x=5 FOR d IN collection FILTER '1' SORT tfidf(d, 1+x > 3) DESC RETURN d";
+    assertOrderFail(query, &ctx);
+  }
+
+  // non-deterministic expression as an argument (do not accept non-constant arguments)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{5}));
+
+    std::string query = "LET x=5 FOR d IN collection FILTER '1' SORT tfidf(d, RAND()+x > 3) DESC RETURN d";
+    assertOrderFail(query, &ctx);
+  }
+
+  // invalid number of arguments function
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT tfidf(d, true, false) RETURN d";
+
+    assertOrderExecutionFail(query);
+  }
+
+  // invalid reference (invalid output variable reference)
+  {
+    auto obj = arangodb::velocypack::Parser::fromJson("{}");
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(obj->slice()));
+
+    std::string query = "LET c={} FOR d IN collection FILTER '1' SORT tfidf(c) RETURN d";
+
+    assertOrderFail(query, &ctx);
+  }
+
+  // invalid function (invalid 1st argument)
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT tfidf('d') RETURN d";
+
+    assertOrderFail(query);
+  }
+
+  // invalid function (no 1st parameter output variable reference)
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT tfidf() RETURN d";
+
+    assertOrderParseFail(query, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+  }
+}
+
+SECTION("test_FCall_bm25") {
+  // bm25
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT bm25(d) RETURN d";
+    irs::order expected;
+    auto scorer = irs::scorers::get("bm25", irs::string_ref::nil);
+
+    expected.add(false, scorer); // SortCondition is by default ascending
+    assertOrderSuccess(query, expected);
+  }
+
+  // bm25 ASC
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT bm25(d) ASC RETURN d";
+    irs::order expected;
+    auto scorer = irs::scorers::get("bm25", irs::string_ref::nil);
+
+    expected.add(false, scorer);
+    assertOrderSuccess(query, expected);
+  }
+
+  // bm25 DESC
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT bm25(d) DESC RETURN d";
+    irs::order expected;
+    auto scorer = irs::scorers::get("bm25", irs::string_ref::nil);
+
+    expected.add(true, scorer);
+    assertOrderSuccess(query, expected);
+  }
+
+  // bm25 with k coefficient
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT bm25(d, 0.99) DESC RETURN d";
+    irs::order expected;
+
+    auto scorer = irs::scorers::get("bm25", "[ 0.99 ]");
+
+    expected.add(true, scorer);
+    assertOrderSuccess(query, expected);
+  }
+
+  // reference as k coefficient (do not accept non-constant arguments)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("k", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.99}));
+
+    std::string query = "LET withNorms=true FOR d IN collection FILTER '1' SORT bm25(d, k) DESC RETURN d";
+    assertOrderFail(query, &ctx);
+  }
+
+  // deterministic expression as k coefficient (do not accept non-constant arguments)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
+
+    std::string query = "LET x=0.97 FOR d IN collection FILTER '1' SORT bm25(d, x+0.02) DESC RETURN d";
+    assertOrderFail(query, &ctx);
+  }
+
+  // non-deterministic expression as k coefficient (do not accept non-constant arguments)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
+
+    std::string query = "LET x=0.97 FOR d IN collection FILTER '1' SORT bm25(d, RAND()+x) DESC RETURN d";
+    assertOrderFail(query, &ctx);
+  }
+
+  // bm25 with k coefficient, b coefficient
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT bm25(d, 0.99, 1.2) DESC RETURN d";
+    irs::order expected;
+
+    auto scorer = irs::scorers::get("bm25", "[ 0.99, 1.2 ]");
+
+    expected.add(true, scorer);
+    assertOrderSuccess(query, expected);
+  }
+
+  // reference as k,b coefficients (do not accept non-constant arguments)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("k", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
+    ctx.vars.emplace("b", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{1.2}));
+
+    std::string query = "LET k=0.97 LET b=1.2 FOR d IN collection FILTER '1' SORT bm25(d, k, b) DESC RETURN d";
+    assertOrderFail(query, &ctx);
+  }
+
+  // deterministic expressions as k,b coefficients (do not accept non-constant arguments)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
+    ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.1}));
+
+    std::string query = "LET x=0.97 LET y=0.1 FOR d IN collection FILTER '1' SORT bm25(d, x+0.02, 1+y) DESC RETURN d";
+    assertOrderFail(query, &ctx);
+  }
+
+  // non-deterministic expression as b coefficient (do not accept non-constant arguments)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
+
+    std::string query = "LET x=0.97 FOR d IN collection FILTER '1' SORT bm25(d, x, RAND()) DESC RETURN d";
+    assertOrderFail(query, &ctx);
+  }
+
+  // bm25 with k coefficient, b coefficient, with norms
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT bm25(d, 0.99, 1.2, true) DESC RETURN d";
+    irs::order expected;
+
+    auto scorer = irs::scorers::get("bm25", "[ 0.99, 1.2, true ]");
+
+    expected.add(true, scorer);
+    assertOrderSuccess(query, expected);
+  }
+
+  // reference as k,b coefficients, with norms (do not accept non-constant arguments)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("k", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
+    ctx.vars.emplace("b", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{1.2}));
+    ctx.vars.emplace("withNorms", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true}));
+
+    std::string query = "LET k=0.97 LET b=1.2 LET withNorms=true FOR d IN collection FILTER '1' SORT bm25(d, k, b, withNorms) DESC RETURN d";
+    assertOrderFail(query, &ctx);
+  }
+
+  // deterministic expressions as k,b coefficients, with norms (do not accept non-constant arguments)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
+    ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.1}));
+
+    std::string query = "LET x=0.97 LET y=0.1 FOR d IN collection FILTER '1' SORT bm25(d, x+0.02, 1+y, x>y) DESC RETURN d";
+    assertOrderFail(query, &ctx);
+  }
+
+  // non-deterministic expression as b coefficient (do not accept non-constant arguments)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
+
+    std::string query = "LET x=0.97 FOR d IN collection FILTER '1' SORT bm25(d, x, x, RAND() > 0.5) DESC RETURN d";
+    assertOrderFail(query, &ctx);
+  }
+
+  // invalid number of arguments function
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT bm25(d, 0.97, 0.07, false, 1) RETURN d";
+
+    assertOrderExecutionFail(query, TRI_ERROR_NO_ERROR);
+  }
+
+  // invalid reference (invalid output variable reference)
+  {
+    auto obj = arangodb::velocypack::Parser::fromJson("{}");
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(obj->slice()));
+
+    std::string query = "LET c={} FOR d IN collection FILTER '1' SORT bm25(c) RETURN d";
+
+    assertOrderFail(query, &ctx);
+  }
+
+  // invalid function (invalid 1st argument)
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT bm25('d') RETURN d";
+
+    assertOrderFail(query);
+  }
+
+  // invalid function (no 1st parameter output variable reference)
+  {
+    std::string query = "FOR d IN collection FILTER '1' SORT bm25() RETURN d";
+
+    assertOrderParseFail(query, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
   }
 }
 
@@ -291,7 +564,7 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d) RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(irs::string_ref::nil);
+    expected.add<dummy_scorer>(false, irs::string_ref::nil);
     assertOrderSuccess(query, expected);
   }
 
@@ -302,9 +575,9 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\") RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(irs::string_ref::nil);
+    expected.add<dummy_scorer>(false, irs::string_ref::nil);
     dummy_scorer::validateArgs = [](irs::string_ref const& args)->bool {
-      CHECK((irs::string_ref("abc") == args));
+      CHECK((irs::string_ref("[\"abc\"]") == args));
       return true;
     };
     assertOrderSuccess(query, expected);
@@ -318,13 +591,16 @@ SECTION("test_FCallUser") {
     irs::order expected;
     bool valid = true;
 
-    expected.add<dummy_scorer>(irs::string_ref::nil);
-    dummy_scorer::validateArgs = [&valid](irs::string_ref const& args)->bool {
-      valid = irs::string_ref("[\"abc\"]") == args;
-      return valid;
+    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+
+    size_t attempt = 0;
+    dummy_scorer::validateArgs = [&valid, &attempt](irs::string_ref const& args)->bool {
+      attempt++;
+      return valid == (args == "[\"abc\"]");
     };
     assertOrderSuccess(query, expected);
     CHECK((valid));
+    CHECK(1 == attempt);
   }
 
   // function string jSON scorer arg (expecting string)
@@ -334,12 +610,16 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"{\\\"abc\\\": \\\"def\\\"}\") RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(irs::string_ref::nil);
-    dummy_scorer::validateArgs = [](irs::string_ref const& args)->bool {
-      CHECK((irs::string_ref("{\"abc\": \"def\"}") == args));
+    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+
+    size_t attempt = 0;
+    dummy_scorer::validateArgs = [&attempt](irs::string_ref const& args)->bool {
+      attempt++;
+      CHECK((irs::string_ref("[\"{\\\"abc\\\": \\\"def\\\"}\"]") == args));
       return true;
     };
     assertOrderSuccess(query, expected);
+    CHECK(1 == attempt);
   }
 
   // function string jSON scorer arg (expecting jSON)
@@ -350,13 +630,16 @@ SECTION("test_FCallUser") {
     irs::order expected;
     bool valid = true;
 
-    expected.add<dummy_scorer>(irs::string_ref::nil);
-    dummy_scorer::validateArgs = [&valid](irs::string_ref const& args)->bool {
+    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    size_t attempt = 0;
+    dummy_scorer::validateArgs = [&valid, &attempt](irs::string_ref const& args)->bool {
+      attempt++;
       valid = irs::string_ref("[\"{\\\"abc\\\": \\\"def\\\"}\"]") == args;
       return valid;
     };
     assertOrderSuccess(query, expected);
     CHECK((valid));
+    CHECK(1 == attempt);
   }
 
   // function raw jSON scorer arg
@@ -366,12 +649,15 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d, {\"abc\": \"def\"}) RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(irs::string_ref::nil);
-    dummy_scorer::validateArgs = [](irs::string_ref const& args)->bool {
+    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    size_t attempt = 0;
+    dummy_scorer::validateArgs = [&attempt](irs::string_ref const& args)->bool {
+      ++attempt;
       CHECK((irs::string_ref("[{\"abc\":\"def\"}]") == args));
       return true;
     };
     assertOrderSuccess(query, expected);
+    CHECK(1 == attempt);
   }
 
   // function 2 string scorer args
@@ -381,12 +667,15 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", \"def\") RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(irs::string_ref::nil);
-    dummy_scorer::validateArgs = [](irs::string_ref const& args)->bool {
+    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    size_t attempt = 0;
+    dummy_scorer::validateArgs = [&attempt](irs::string_ref const& args)->bool {
+      ++attempt;
       CHECK((irs::string_ref("[\"abc\",\"def\"]") == args));
       return true;
     };
     assertOrderSuccess(query, expected);
+    CHECK(1 == attempt);
   }
 
   // function string+jSON(string) scorer args
@@ -396,12 +685,15 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", \"{\\\"def\\\": \\\"ghi\\\"}\") RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(irs::string_ref::nil);
-    dummy_scorer::validateArgs = [](irs::string_ref const& args)->bool {
+    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    size_t attempt = 0;
+    dummy_scorer::validateArgs = [&attempt](irs::string_ref const& args)->bool {
+      ++attempt;
       CHECK((irs::string_ref("[\"abc\",\"{\\\"def\\\": \\\"ghi\\\"}\"]") == args));
       return true;
     };
     assertOrderSuccess(query, expected);
+    CHECK(1 == attempt);
   }
 
   // function string+jSON(raw) scorer args
@@ -411,12 +703,15 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", {\"def\": \"ghi\"}) RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(irs::string_ref::nil);
-    dummy_scorer::validateArgs = [](irs::string_ref const& args)->bool {
+    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    size_t attempt = 0;
+    dummy_scorer::validateArgs = [&attempt](irs::string_ref const& args)->bool {
+      ++attempt;
       CHECK((irs::string_ref("[\"abc\",{\"def\":\"ghi\"}]") == args));
       return true;
     };
     assertOrderSuccess(query, expected);
+    CHECK(1 == attempt);
   }
 
   // function ASC
@@ -424,7 +719,7 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d) ASC RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(irs::string_ref::nil);
+    expected.add<dummy_scorer>(false, irs::string_ref::nil);
     assertOrderSuccess(query, expected);
   }
 
@@ -433,7 +728,7 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d) DESC RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(irs::string_ref::nil).reverse(true);
+    expected.add<dummy_scorer>(true, irs::string_ref::nil);
     assertOrderSuccess(query, expected);
   }
 
@@ -441,14 +736,14 @@ SECTION("test_FCallUser") {
   {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf() RETURN d";
 
-    assertOrderFail(query, TRI_ERROR_NO_ERROR);
+    assertOrderFail(query);
   }
 
   // invalid function (not an iResearch function)
   {
     std::string query = "FOR d IN collection FILTER '1' SORT test::invalid(d) DESC RETURN d";
 
-    assertOrderFail(query, TRI_ERROR_NO_ERROR);
+    assertOrderFail(query);
   }
 }
 
@@ -456,102 +751,60 @@ SECTION("test_StringValue") {
   // simple field
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a' RETURN d";
-    std::vector<irs::stored_attribute::ptr> attrBuf;
-    irs::order expected;
-
-    expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a");
-    assertOrderSuccess(query, expected);
+    assertOrderFail(query);
   }
 
   // simple field ASC
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a' ASC RETURN d";
-    std::vector<irs::stored_attribute::ptr> attrBuf;
-    irs::order expected;
-
-    expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a");
-    assertOrderSuccess(query, expected);
+    assertOrderFail(query);
   }
 
   // simple field DESC
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a' DESC RETURN d";
-    std::vector<irs::stored_attribute::ptr> attrBuf;
-    irs::order expected;
-
-    expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a").reverse(true);
-    assertOrderSuccess(query, expected);
+    assertOrderFail(query);
   }
 
   // nested field
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a.b.c' RETURN d";
-    std::vector<irs::stored_attribute::ptr> attrBuf;
-    irs::order expected;
-
-    expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a.b.c");
-    assertOrderSuccess(query, expected);
+    assertOrderFail(query);
   }
 
   // nested field ASC
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a.b.c' ASC RETURN d";
-    std::vector<irs::stored_attribute::ptr> attrBuf;
-    irs::order expected;
-
-    expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a.b.c");
-    assertOrderSuccess(query, expected);
+    assertOrderFail(query);
   }
 
   // nested field DESC
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a.b.c' DESC RETURN d";
-    std::vector<irs::stored_attribute::ptr> attrBuf;
-    irs::order expected;
-
-    expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a.b.c").reverse(true);
-    assertOrderSuccess(query, expected);
+    assertOrderFail(query);
   }
 }
 
 SECTION("test_order") {
-  // test empty sort
-  {
-    std::vector<std::vector<arangodb::basics::AttributeName>> attrs;
-    std::vector<std::pair<arangodb::aql::Variable const*, bool>> sorts;
-    std::unordered_map<arangodb::aql::VariableId, arangodb::aql::AstNode const*> variableNodes;
-    std::vector<arangodb::aql::Variable> variables;
-
-    irs::order actual;
-    std::vector<irs::stored_attribute::ptr> actualAttrs;
-    arangodb::iresearch::OrderFactory::OrderContext ctx { actualAttrs, actual };
-    arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
-    arangodb::iresearch::IResearchViewMeta meta;
-
-    CHECK((arangodb::iresearch::OrderFactory::order(nullptr, order, meta)));
-    CHECK((arangodb::iresearch::OrderFactory::order(&ctx, order, meta)));
-    CHECK((0 == actual.size()));
-  }
-
   // test mutiple sort
   {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d) DESC, tfidf(d) RETURN d";
     irs::order expected;
-    auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil); // SortCondition is by default ascending
+    auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
 
-    scorer->reverse(false);
-    expected.add<dummy_scorer>(irs::string_ref::nil).reverse(true);
-    expected.add(scorer);
+    expected.add<dummy_scorer>(true, irs::string_ref::nil);
+    expected.add(false, scorer);
     assertOrderSuccess(query, expected);
   }
 
   // invalid field
   {
-    std::string query = "FOR d IN collection FILTER '1' SORT a RETURN d";
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{5}));
+    std::string query = "LET a=1 FOR d IN collection FILTER '1' SORT a RETURN d";
 
-    assertOrderFail(query, TRI_ERROR_NO_ERROR);
+    assertOrderFail(query, &ctx);
   }
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////

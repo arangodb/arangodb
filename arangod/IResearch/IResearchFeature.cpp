@@ -96,7 +96,7 @@ arangodb::aql::AqlValue noop(
 }
 
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
-  arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
+  arangodb::iresearch::addFunction(functions, {
     "EXISTS",      // name
     ".|.,.",       // positional arguments (attribute, [ "analyzer"|"type", analyzer-name|"string"|"numeric"|"bool"|"null" ])
     true,          // deterministic
@@ -106,7 +106,7 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     &noop          // function implementation (use function name as placeholder)
   });
 
-  arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
+  arangodb::iresearch::addFunction(functions, {
     "STARTS_WITH", // name
     ".,.|.",       // positional arguments (attribute, prefix, scoring-limit)
     true,          // deterministic
@@ -116,7 +116,7 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     &noop          // function implementation (use function name as placeholder)
   });
 
-  arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
+  arangodb::iresearch::addFunction(functions, {
     "PHRASE",      // name
     ".,.,.|.+",    // positional arguments (attribute, input [, offset, input... ], analyzer)
     true,          // deterministic
@@ -134,14 +134,14 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
     // AQL function external names are always in upper case
     std::transform(upperName.begin(), upperName.end(), upperName.begin(), ::toupper);
 
-    arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
+    arangodb::iresearch::addFunction(functions, {
       std::move(upperName),
       ".|+", // positional arguments (attribute [, <scorer-specific properties>...])
-      true, // deterministic
-      false, // can't throw
-      true, // can be run on server
-      true, // can pass arguments by reference
-      &noop // function implementation (use function name as placeholder)
+      true,   // deterministic
+      false,  // can't throw
+      true,   // can be run on server
+      true,   // can pass arguments by reference
+      &noop   // function implementation (use function name as placeholder)
     });
 
     return true;

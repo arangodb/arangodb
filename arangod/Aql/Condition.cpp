@@ -410,29 +410,6 @@ std::pair<bool, bool> Condition::findIndexes(
       usedIndexes, _isSorted);
 }
 
-std::pair<bool, bool> Condition::checkView(
-    LogicalView const* view,
-    Variable const* var,
-    SortCondition const* sortCondition) {
-  TRI_ASSERT(sortCondition != nullptr);
-  TRI_ASSERT(view != nullptr);
-  TRI_ASSERT(var != nullptr);
-
-  // FIXME how we can use these variables?
-  size_t covered{};
-  double cost{};
-
-  const bool handlesFilter = view->supportsFilterCondition(
-    _root, var, covered, cost
-  );
-
-  const bool handlesSort = view->supportsSortCondition(
-    sortCondition, var, cost, covered
-  );
-
-  return std::make_pair(handlesFilter, handlesSort);
-}
-
 /// @brief get the attributes for a sub-condition that are const
 /// (i.e. compared with equality)
 std::vector<std::vector<arangodb::basics::AttributeName>>

@@ -87,7 +87,6 @@ const irs::string_ref IRESEARCH_STORE_FORMAT("1_0");
 ////////////////////////////////////////////////////////////////////////////////
 const std::string LINKS_FIELD("links");
 
-typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,636 +104,6 @@ std::string toString(arangodb::iresearch::IResearchView const& view) {
 ////////////////////////////////////////////////////////////////////////////////
 inline arangodb::FlushFeature* getFlushFeature() noexcept {
   return arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple directory readers
-////////////////////////////////////////////////////////////////////////////////
-class CompoundReader: public irs::index_reader {
- public:
-  CompoundReader(irs::async_utils::read_write_mutex& mutex);
-  CompoundReader(CompoundReader&& other) noexcept;
-  irs::sub_reader const& operator[](size_t subReaderId) const noexcept {
-    return *(_subReaders[subReaderId].first);
-  }
-  void add(irs::directory_reader const& reader);
-  virtual reader_iterator begin() const override;
-  virtual uint64_t docs_count(const irs::string_ref& field) const override;
-  virtual uint64_t docs_count() const override;
-  virtual reader_iterator end() const override;
-  virtual uint64_t live_docs_count() const override;
-
-  irs::columnstore_reader::values_reader_f const& pkColumn(
-      size_t subReaderId
-  ) const noexcept {
-    return _subReaders[subReaderId].second;
-  }
-
-  virtual size_t size() const noexcept override {
-    return _subReaders.size();
-  }
-
- private:
-  typedef std::vector<
-    std::pair<irs::sub_reader*, irs::columnstore_reader::values_reader_f>
-  > SubReadersType;
-
-  class IteratorImpl final : public irs::index_reader::reader_iterator_impl {
-   public:
-    IteratorImpl(SubReadersType::const_iterator const& itr)
-      : _itr(itr) {
-    }
-
-    virtual void operator++() noexcept override {
-      ++_itr;
-    }
-    virtual reference operator*() noexcept override {
-      return *(_itr->first);
-    }
-    virtual const_reference operator*() const noexcept override {
-      return *(_itr->first);
-    }
-    virtual bool operator==(const reader_iterator_impl& other) noexcept override {
-      return static_cast<IteratorImpl const&>(other)._itr == _itr;
-    }
-
-   private:
-    SubReadersType::const_iterator _itr;
-  };
-
-  // order is important
-  ReadMutex _mutex;
-  std::unique_lock<ReadMutex> _lock;
-  std::vector<irs::directory_reader> _readers;
-  SubReadersType _subReaders;
-};
-
-CompoundReader::CompoundReader(irs::async_utils::read_write_mutex& mutex)
-  : _mutex(mutex), _lock(_mutex) {
-}
-
-CompoundReader::CompoundReader(CompoundReader&& other) noexcept
-  : _mutex(other._mutex),
-    _lock(_mutex, std::adopt_lock),
-    _readers(std::move(other._readers)),
-    _subReaders(std::move(other._subReaders)) {
-  other._lock.release();
-}
-
-void CompoundReader::add(irs::directory_reader const& reader) {
-  _readers.emplace_back(reader);
-
-  for(auto& entry: _readers.back()) {
-    const auto* pkColumn = entry.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
-
-    if (!pkColumn) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "encountered a sub-reader without a primary key column while creating a reader for iResearch view, ignoring";
-
-      continue;
-    }
-
-    _subReaders.emplace_back(&entry, pkColumn->values());
-  }
-}
-
-irs::index_reader::reader_iterator CompoundReader::begin() const {
-  return reader_iterator(new IteratorImpl(_subReaders.begin()));
-}
-
-uint64_t CompoundReader::docs_count(const irs::string_ref& field) const {
-  uint64_t count = 0;
-
-  for (auto& entry: _subReaders) {
-    count += entry.first->docs_count(field);
-  }
-
-  return count;
-}
-
-uint64_t CompoundReader::docs_count() const {
-  uint64_t count = 0;
-
-  for (auto& entry: _subReaders) {
-    count += entry.first->docs_count();
-  }
-
-  return count;
-}
-
-irs::index_reader::reader_iterator CompoundReader::end() const {
-  return reader_iterator(new IteratorImpl(_subReaders.end()));
-}
-
-uint64_t CompoundReader::live_docs_count() const {
-  uint64_t count = 0;
-
-  for (auto& entry: _subReaders) {
-    count += entry.first->live_docs_count();
-  }
-
-  return count;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief base class for iterators of query results from iResearch View
-////////////////////////////////////////////////////////////////////////////////
-class ViewIteratorBase : public arangodb::ViewIterator {
- public:
-  DECLARE_PTR(arangodb::ViewIterator);
-  ViewIteratorBase(
-    const char* typeName,
-    arangodb::ViewImplementation& view,
-    arangodb::transaction::Methods& trx,
-    CompoundReader&& reader,
-    arangodb::aql::ExecutionPlan& plan,
-    arangodb::aql::AstNode const& filterCondition,
-    arangodb::aql::Variable const& ref
-  );
-  virtual bool hasExtra() const override;
-  virtual bool nextExtra(ExtraCallback const& callback, size_t limit) override;
-  virtual bool readDocument(arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) const override;
-  virtual char const* typeName() const override;
-
- protected:
-  bool loadToken(
-    arangodb::LocalDocumentId& buf,
-    size_t subReaderId,
-    irs::doc_id_t subDocId
-  ) const noexcept;
-
-  bool compileQuery(
-      irs::order::prepared const& ord,
-      arangodb::aql::ExpressionContext& exprCtx
-  ) {
-    arangodb::iresearch::QueryContext const ctx = {
-      _trx, _plan, _plan->getAst(), &exprCtx, _ref
-    };
-
-    irs::Or root;
-
-    if (!arangodb::iresearch::FilterFactory::filter(&root, ctx, *_filterCondition)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "failed to build filter while querying iResearch view , query '"
-        << _filterCondition->toVelocyPack(true)->toJson() << "'";
-
-      return false;
-    }
-
-    _execCtx.ctx = &exprCtx; // set provided expression context
-    _filter = root.prepare(_reader, ord, irs::boost::no_boost(), _filterCtx);
-
-    return true;
-  }
-
- private:
-  irs::doc_id_t subDocId(
-    arangodb::LocalDocumentId const& token
-  ) const noexcept;
-
-  size_t subReaderId(
-    arangodb::LocalDocumentId const& token
-  ) const noexcept;
-
- protected:
-  CompoundReader _reader;
-  irs::filter::prepared::ptr _filter; // compiled iresearch query
-  irs::attribute_view _filterCtx; // filter context
- private:
-  arangodb::iresearch::ExpressionExecutionContext _execCtx; // expression execution context
-  arangodb::aql::AstNode const* _filterCondition;
-  arangodb::aql::ExecutionPlan* _plan;
-  arangodb::aql::Variable const* _ref;
-  size_t _subDocIdBits; // bits reserved for doc_id of sub-readers (depends on size of sub_readers)
-  size_t _subDocIdMask; // bit mask for the sub-reader doc_id portion of doc_id
-  char const* _typeName;
-}; // ViewIteratorBase
-
-ViewIteratorBase::ViewIteratorBase(
-    char const* typeName,
-    arangodb::ViewImplementation& view,
-    arangodb::transaction::Methods& trx,
-    CompoundReader&& reader,
-    arangodb::aql::ExecutionPlan& plan,
-    arangodb::aql::AstNode const& filterCondition,
-    arangodb::aql::Variable const& ref
-): ViewIterator(&view, &trx),
-   _reader(std::move(reader)),
-   _filter(irs::filter::prepared::empty()),
-   _filterCtx(1), // arangodb::iresearch::ExpressionExecutionContext
-   _execCtx(trx),
-   _filterCondition(&filterCondition),
-   _plan(&plan),
-   _ref(&ref),
-   _typeName(typeName) {
-  typedef arangodb::LocalDocumentId::BaseType doc_id_t;
-  _subDocIdBits = _reader.size()
-                ? irs::math::math_traits<doc_id_t>::clz(_reader.size())
-                : irs::bits_required<doc_id_t>(); // not really a usable scenario (no data)
-  _subDocIdMask = (size_t(1) <<_subDocIdBits) - 1;
-
-  // add expression execution context
-  _filterCtx.emplace(_execCtx);
-}
-
-bool ViewIteratorBase::hasExtra() const {
-  // shut up compiler warning...
-  // FIXME TODO: implementation
-  return false;
-}
-
-bool ViewIteratorBase::loadToken(
-  arangodb::LocalDocumentId& buf,
-  size_t subReaderId,
-  irs::doc_id_t subDocId
-) const noexcept {
-  if (subReaderId >= _reader.size() || subDocId > _subDocIdMask) {
-    return false; // no valid token can be specified for these args
-  }
-
-  buf = arangodb::LocalDocumentId::create((subReaderId << _subDocIdBits) | subDocId);
-
-  return true;
-}
-
-bool ViewIteratorBase::nextExtra(ExtraCallback const& callback, size_t limit) {
-  // shut up compiler warning...
-  // FIXME TODO: implementation
-  TRI_ASSERT(!hasExtra());
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "Requested extra values from an index that "
-                                 "does not support it. This seems to be a bug "
-                                 "in ArangoDB. Please report the query you are "
-                                 "using + the indexes you have defined on the "
-                                 "relevant collections to arangodb.com");
-  return false;
-}
-
-bool ViewIteratorBase::readDocument(
-    arangodb::LocalDocumentId const& token,
-    arangodb::ManagedDocumentResult& result
-) const {
-  const auto docId = subDocId(token);
-  const auto readerId = subReaderId(token);
-  const auto& pkValues = _reader.pkColumn(readerId);
-  arangodb::iresearch::DocumentPrimaryKey docPk;
-  irs::bytes_ref tmpRef;
-
-  if (!pkValues(docId, tmpRef) || !docPk.read(tmpRef)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-      << "failed to read document primary key while reading document from iResearch view, doc_id '" << docId << "'";
-
-    return false; // not a valid document reference
-  }
-
-  static const std::string unknown("<unknown>");
-
-  _trx->addCollectionAtRuntime(docPk.cid(), unknown);
-
-  auto* collection = _trx->documentCollection(docPk.cid());
-
-  if (!collection) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-      << "failed to find collection while reading document from iResearch view, cid '" << docPk.cid()
-      << "', rid '" << docPk.rid() << "'";
-
-    return false; // not a valid collection reference
-  }
-
-  arangodb::LocalDocumentId colToken(docPk.rid());
-
-  return collection->readDocument(_trx, colToken, result);
-}
-
-irs::doc_id_t ViewIteratorBase::subDocId(
-  arangodb::LocalDocumentId const& token
-) const noexcept {
-  return irs::doc_id_t(token.id() & _subDocIdMask);
-}
-
-size_t ViewIteratorBase::subReaderId(
-  arangodb::LocalDocumentId const& token
-) const noexcept {
-  return token.id() >> _subDocIdBits;
-}
-
-char const* ViewIteratorBase::typeName() const {
-  return _typeName;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterator for ordered set of query results from iResearch View
-////////////////////////////////////////////////////////////////////////////////
-class OrderedViewIterator final : public ViewIteratorBase {
- public:
-  OrderedViewIterator(
-    arangodb::ViewImplementation& view,
-    arangodb::transaction::Methods& trx,
-    CompoundReader&& reader,
-    irs::order const& order,
-    std::vector<irs::stored_attribute::ptr>&& orderAttrs,
-    arangodb::aql::ExecutionPlan& plan,
-    arangodb::aql::AstNode const& filterCondition,
-    arangodb::aql::Variable const& ref
-  );
-  virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override;
-  virtual bool reset(arangodb::aql::ExpressionContext* ctx) noexcept override;
-  virtual void skip(uint64_t count, uint64_t& skipped) override;
-
- private:
-  struct State {
-    size_t _skip;
-  }; // State
-
-  void next(LocalDocumentIdCallback const& callback, size_t limit, bool sort);
-
-  irs::order::prepared _order;
-  std::vector<irs::stored_attribute::ptr> _orderAttrs;
-  State _state; // previous iteration state
-  arangodb::iresearch::attribute::Transaction _trx; // current transaction
-};
-
-OrderedViewIterator::OrderedViewIterator(
-    arangodb::ViewImplementation& view,
-    arangodb::transaction::Methods& trx,
-    CompoundReader&& reader,
-    irs::order const& order,
-    std::vector<irs::stored_attribute::ptr>&& orderAttrs,
-    arangodb::aql::ExecutionPlan& plan,
-    arangodb::aql::AstNode const& filterCondition,
-    arangodb::aql::Variable const& ref
-) : ViewIteratorBase("iresearch-ordered-iterator", view, trx, std::move(reader), plan, filterCondition, ref),
-    _order(order.prepare()),
-    _orderAttrs(std::move(orderAttrs)),
-    _trx(trx) {
-  // set current transaction for any scorers that require it
-  for (auto& entry: _order) {
-    if (!entry.bucket) {
-      continue;
-    }
-
-    auto& attrs = entry.bucket->attributes();
-    auto* trxAttr = attrs.get<arangodb::iresearch::attribute::Transaction>();
-
-    if (trxAttr) {
-      *trxAttr = &_trx;
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief expects a callback taking LocalDocumentIds that are created
-///        from RevisionIds. In addition it expects a limit.
-///        The iterator has to walk through the Index and call the callback with
-///        at most limit many elements. On the next iteration it has to continue
-///        after the last returned Token.
-/// @return has more
-////////////////////////////////////////////////////////////////////////////////
-bool OrderedViewIterator::next(LocalDocumentIdCallback const& callback, size_t limit) {
-  TRI_ASSERT(_filter);
-
-  auto& order = _order;
-  auto scoreLess = [&order](
-      irs::bstring const& lhs,
-      irs::bstring const& rhs
-  )->bool {
-    return order.less(lhs.c_str(), rhs.c_str());
-  };
-
-  // FIXME use irs::memory_pool
-  std::multimap<irs::bstring, arangodb::LocalDocumentId, decltype(scoreLess)> orderedDocTokens(scoreLess);
-  auto maxDocCount = _state._skip + limit;
-  arangodb::LocalDocumentId tmpToken;
-
-  for (size_t i = 0, count = _reader.size(); i < count; ++i) {
-    auto& segmentReader = _reader[i];
-    auto itr = segmentReader.mask(_filter->execute(segmentReader, _order, _filterCtx));
-    const irs::score* score = itr->attributes().get<irs::score>().get();
-
-    if (!score) {
-      LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "failed to retrieve document score attribute while iterating iResearch view, ignoring: reader_id '" << i << "'";
-      IR_STACK_TRACE();
-
-      continue; // if here then there is probably a bug in IResearchView while querying
-    }
-
-#if defined(__GNUC__) && !defined(_GLIBCXX_USE_CXX11_ABI)
-    // workaround for std::basic_string's COW with old compilers
-    const irs::bytes_ref scoreValue = score->value();
-#else
-    const auto& scoreValue = score->value();
-#endif
-
-    while (itr->next()) {
-      if (!loadToken(tmpToken, i, itr->value())) {
-        LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
-          << "failed to generate document identifier token while iterating iResearch view, ignoring: reader_id '" << i
-          << "', doc_id '" << itr->value() << "'";
-        IR_STACK_TRACE();
-
-        continue; // if here then there is probably a bug in IResearchView while indexing
-      }
-
-      score->evaluate(); // compute a score for the current document
-      orderedDocTokens.emplace(scoreValue, tmpToken);
-
-      if (orderedDocTokens.size() > maxDocCount) {
-        orderedDocTokens.erase(--(orderedDocTokens.end())); // remove element with the least score
-      }
-    }
-  }
-
-  auto tokenItr = orderedDocTokens.begin();
-  auto tokenEnd = orderedDocTokens.end();
-
-  // skip documents previously returned
-  for (size_t i = _state._skip; i; --i, ++tokenItr) {
-    if (tokenItr == tokenEnd) {
-      LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "document count less than the document count during the previous iteration on the same query while iterating iResearch view'";
-
-      break; // if here then there is probably a bug in the iResearch library
-    }
-  }
-
-  // iterate through documents
-  while (limit && tokenItr != tokenEnd) {
-    callback(tokenItr->second);
-    ++tokenItr;
-    ++_state._skip;
-    --limit;
-  }
-
-  return (limit == 0); // exceeded limit
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resets the iterator
-////////////////////////////////////////////////////////////////////////////////
-bool OrderedViewIterator::reset(arangodb::aql::ExpressionContext* ctx) noexcept {
-  _state._skip = 0;
-
-  if (!ctx) {
-    // don't recompile query
-    return true;
-  }
-
-  // recompile query
-  try {
-    return compileQuery(_order, *ctx);
-  } catch (...) {
-    return false;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skip 'count' records from the next call to next
-////////////////////////////////////////////////////////////////////////////////
-void OrderedViewIterator::skip(uint64_t count, uint64_t& skipped) {
-  auto skip = _state._skip;
-  arangodb::LocalDocumentId tmpToken;
-
-  skipped = 0;
-
-  for (size_t i = 0, readerCount = _reader.size(); i < readerCount; ++i) {
-    auto& segmentReader = _reader[i];
-    auto itr = segmentReader.mask(_filter->execute(
-      segmentReader, irs::order::prepared::unordered(), _filterCtx
-    ));
-
-    while (count > skipped && itr->next()) {
-      if (!loadToken(tmpToken, i, itr->value())) {
-        LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
-          << "failed to generate document identifier token while iterating iResearch view, ignoring: reader_id '" << i
-          << "', doc_id '" << itr->value() << "'";
-
-        continue; // if here then there is probably a bug in IResearchView while indexing
-      }
-
-      if (skip) {
-        --skip;
-      } else {
-        ++skipped;
-      }
-    }
-  }
-
-  _state._skip += skipped;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterator for unordered set of query results from iResearch View
-////////////////////////////////////////////////////////////////////////////////
-class UnorderedViewIterator final : public ViewIteratorBase {
- public:
-  UnorderedViewIterator(
-    arangodb::ViewImplementation& view,
-    arangodb::transaction::Methods& trx,
-    CompoundReader&& reader,
-    arangodb::aql::ExecutionPlan& plan,
-    arangodb::aql::AstNode const& filterCondition,
-    arangodb::aql::Variable const& ref
-  );
-  virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override;
-  virtual bool reset(arangodb::aql::ExpressionContext* ctx) noexcept override;
-  virtual void skip(uint64_t count, uint64_t& skipped) override;
-
- private:
-  struct State {
-    irs::doc_iterator::ptr _itr;
-    size_t _readerOffset;
-  }; // State
-
-  State _state; // previous iteration state
-}; // UnorderedViewIterator
-
-UnorderedViewIterator::UnorderedViewIterator(
-    arangodb::ViewImplementation& view,
-    arangodb::transaction::Methods& trx,
-    CompoundReader&& reader,
-    arangodb::aql::ExecutionPlan& plan,
-    arangodb::aql::AstNode const& filterCondition,
-    arangodb::aql::Variable const& ref
-) : ViewIteratorBase("iresearch-unordered-iterator", view, trx, std::move(reader), plan, filterCondition, ref) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief expects a callback taking LocalDocumentIds that are created
-///        from RevisionIds. In addition it expects a limit.
-///        The iterator has to walk through the Index and call the callback with
-///        at most limit many elements. On the next iteration it has to continue
-///        after the last returned Token.
-/// @return has more
-////////////////////////////////////////////////////////////////////////////////
-bool UnorderedViewIterator::next(LocalDocumentIdCallback const& callback, size_t limit) {
-  TRI_ASSERT(_filter);
-
-  arangodb::LocalDocumentId tmpToken;
-
-  for (size_t count = _reader.size();
-       _state._readerOffset < count;
-       ++_state._readerOffset, _state._itr.reset()
-  ) {
-    auto& segmentReader = _reader[_state._readerOffset];
-    auto done = false;
-
-    if (!_state._itr) {
-      _state._itr = segmentReader.mask(_filter->execute(
-        segmentReader, irs::order::prepared::unordered(), _filterCtx
-      ));
-    }
-
-    while (limit && _state._itr->next()) {
-      if (!loadToken(tmpToken, _state._readerOffset, _state._itr->value())) {
-        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-          << "failed to generate document identifier token while iterating iResearch view, ignoring: reader_id '" << _state._readerOffset
-          << "', doc_id '" << _state._itr->value() << "'";
-
-        continue;
-      }
-
-      callback(tmpToken);
-      done = 0 ==--limit;
-    }
-
-    if (done) {
-      break; // do not change iterator if already reached limit
-    }
-  }
-
-  // FIXME TODO will still return 'true' if reached end of last iterator
-  return (limit == 0);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resets the iterator
-////////////////////////////////////////////////////////////////////////////////
-bool UnorderedViewIterator::reset(arangodb::aql::ExpressionContext* ctx) noexcept {
-  _state._itr.reset();
-  _state._readerOffset = 0;
-
-  if (!ctx) {
-    // don't recompile the query
-    return true;
-  }
-
-  try {
-    return compileQuery(irs::order::prepared::unordered(), *ctx);
-  } catch (...) {
-    return false;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skip 'count' records from the next call to next
-////////////////////////////////////////////////////////////////////////////////
-void UnorderedViewIterator::skip(uint64_t count, uint64_t& skipped) {
-  skipped = 0;
-  next(
-    [&skipped](arangodb::LocalDocumentId const&)->void { ++skipped; },
-    count
-  );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -922,7 +291,7 @@ arangodb::Result persistProperties(
   }
 
   return feature->registerPostRecoveryCallback([&view, valid]()->arangodb::Result {
-    ReadMutex mutex(valid->_mutex);
+    arangodb::iresearch::ReadMutex mutex(valid->_mutex);
     SCOPED_LOCK(mutex); // ensure view does not get deallocated before call back finishes
 
     if (!valid->_valid) {
@@ -1169,28 +538,103 @@ inline void insertDocument(
 
   // User fields
   while (body.valid()) {
-    doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
+    doc.insert(irs::action::index_store, field);
     ++body;
   }
 
   // System fields
   // Indexed: CID
   Field::setCidValue(field, cid, Field::init_stream_t());
-  doc.insert<irs::Action::INDEX>(field);
+  doc.insert(irs::action::index, field);
 
   // Indexed: RID
   Field::setRidValue(field, rid);
-  doc.insert<irs::Action::INDEX>(field);
+  doc.insert(irs::action::index, field);
 
   // Stored: CID + RID
   DocumentPrimaryKey const primaryKey(cid, rid);
-  doc.insert<irs::Action::STORE>(primaryKey);
+  doc.insert(irs::action::store, primaryKey);
 }
 
 NS_END
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
+
+///////////////////////////////////////////////////////////////////////////////
+/// --SECTION--                                   CompoundReader implementation
+///////////////////////////////////////////////////////////////////////////////
+
+CompoundReader::CompoundReader(irs::async_utils::read_write_mutex& mutex)
+  : _mutex(mutex), _lock(_mutex) {
+}
+
+CompoundReader::CompoundReader(CompoundReader&& other) noexcept
+  : _mutex(other._mutex),
+    _lock(_mutex, std::adopt_lock),
+    _readers(std::move(other._readers)),
+    _subReaders(std::move(other._subReaders)) {
+  other._lock.release();
+}
+
+void CompoundReader::add(irs::directory_reader const& reader) {
+  _readers.emplace_back(reader);
+
+  for(auto& entry: _readers.back()) {
+    const auto* pkColumn = entry.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
+
+    if (!pkColumn) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "encountered a sub-reader without a primary key column while creating a reader for iResearch view, ignoring";
+
+      continue;
+    }
+
+    _subReaders.emplace_back(&entry, pkColumn->values());
+  }
+}
+
+irs::index_reader::reader_iterator CompoundReader::begin() const {
+  return reader_iterator(new IteratorImpl(_subReaders.begin()));
+}
+
+uint64_t CompoundReader::docs_count(const irs::string_ref& field) const {
+  uint64_t count = 0;
+
+  for (auto& entry: _subReaders) {
+    count += entry.first->docs_count(field);
+  }
+
+  return count;
+}
+
+uint64_t CompoundReader::docs_count() const {
+  uint64_t count = 0;
+
+  for (auto& entry: _subReaders) {
+    count += entry.first->docs_count();
+  }
+
+  return count;
+}
+
+irs::index_reader::reader_iterator CompoundReader::end() const {
+  return reader_iterator(new IteratorImpl(_subReaders.end()));
+}
+
+uint64_t CompoundReader::live_docs_count() const {
+  uint64_t count = 0;
+
+  for (auto& entry: _subReaders) {
+    count += entry.first->live_docs_count();
+  }
+
+  return count;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// --SECTION--                                    IResearchView implementation
+///////////////////////////////////////////////////////////////////////////////
 
 IResearchView::DataStore::DataStore(DataStore&& other) noexcept {
   *this = std::move(other);
@@ -1282,7 +726,7 @@ IResearchView::IResearchView(
     auto valid = _valid; // create copy for lambda
 
     feature->registerPostRecoveryCallback([this, valid]()->arangodb::Result {
-      ReadMutex mutex(valid->_mutex);
+      arangodb::iresearch::ReadMutex mutex(valid->_mutex);
       SCOPED_LOCK(mutex); // ensure view does not get deallocated before call back finishes
 
       if (!valid->_valid) {
@@ -1389,7 +833,7 @@ IResearchView::IResearchView(
     };
 
     State state;
-    ReadMutex mutex(_mutex); // '_meta' can be asynchronously modified
+    arangodb::iresearch::ReadMutex mutex(_mutex); // '_meta' can be asynchronously modified
 
     for(;;) {
       // sleep until timeout
@@ -1487,7 +931,7 @@ IResearchView::~IResearchView() {
 }
 
 bool IResearchView::cleanup(size_t maxMsec /*= 0*/) {
-  ReadMutex mutex(_mutex);
+  arangodb::iresearch::ReadMutex mutex(_mutex);
   auto thresholdSec = TRI_microtime() + maxMsec/1000.0;
 
   try {
@@ -2042,62 +1486,8 @@ int IResearchView::insert(
   return TRI_ERROR_NO_ERROR;
 }
 
-arangodb::ViewIterator* IResearchView::iteratorForCondition(
-    arangodb::transaction::Methods* trx,
-    arangodb::aql::ExecutionPlan* plan,
-    arangodb::aql::ExpressionContext* exprCtx,
-    arangodb::aql::Variable const* reference,
-    arangodb::aql::AstNode const* filterCondition,
-    arangodb::aql::SortCondition const* sortCondition
-) {
-  if (!trx) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "no transaction supplied while querying iResearch view '" << id() << "'";
-
-    return nullptr;
-  }
-
-  if (!plan) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "no execution plan supplied while querying iResearch view '" << id() << "'";
-
-    return nullptr;
-  }
-
-  if (!exprCtx) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "no expression context supplied while querying iResearch view '" << id() << "'";
-
-    return nullptr;
-  }
-
-  if (!reference) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "no variable reference supplied while querying iResearch view '" << id() << "'";
-
-    return nullptr;
-  }
-
-  if (!filterCondition) {
-    // in case if filter is not specified
-    // seet it to surrogate 'RETURN ALL' node
-    filterCondition= &ALL;
-  }
-
-  TRI_ASSERT(filterCondition);
-
-  irs::order order;
-  std::vector<irs::stored_attribute::ptr> orderAttrs;
-  OrderFactory::OrderContext orderCtx{ orderAttrs, order };
-  CompoundReader compoundReader(_mutex); // will aquire read-lock since members can be asynchronously updated
-
-  if (sortCondition && !OrderFactory::order(&orderCtx, *sortCondition, _meta)) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "failed to build order while querying iResearch view '" << id()
-      << "', query" << filterCondition->toVelocyPack(true)->toJson();
-
-    return nullptr;
-  }
+iresearch::CompoundReader IResearchView::snapshot(transaction::Methods &trx) {
+  iresearch::CompoundReader compoundReader(_mutex); // will aquire read-lock since members can be asynchronously updated
 
   try {
     compoundReader.add(_memoryNode->_store._reader);
@@ -2112,56 +1502,149 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
       << "caught exception while collecting readers for querying iResearch view '" << id()
       << "': " << e.what();
     IR_EXCEPTION();
-    return nullptr;
+    throw;
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
       << "caught exception while collecting readers for querying iResearch view '" << id() << "'";
     IR_EXCEPTION();
-    return nullptr;
+    throw;
   }
 
   // add CIDs of known collections to transaction
   for (auto& entry: _meta._collections) {
-    trx->addCollectionAtRuntime(arangodb::basics::StringUtils::itoa(entry));
+    trx.addCollectionAtRuntime(arangodb::basics::StringUtils::itoa(entry));
   }
 
   // add CIDs of registered collections to transaction
   for (auto& entry: _registeredLinks) {
-    trx->addCollectionAtRuntime(std::to_string(entry.first));
+    trx.addCollectionAtRuntime(std::to_string(entry.first));
   }
 
-  if (order.empty()) {
-    PTR_NAMED(UnorderedViewIterator,
-      iterator,
-      *this,
-      *trx,
-      std::move(compoundReader),
-      *plan,
-      *filterCondition,
-      *reference
-    );
-
-    return iterator->reset(exprCtx)
-      ? iterator.release()
-      : nullptr;
-  }
-
-  PTR_NAMED(OrderedViewIterator,
-    iterator,
-    *this,
-    *trx,
-    std::move(compoundReader),
-    order,
-    std::move(orderAttrs),
-    *plan,
-    *filterCondition,
-    *reference
-  );
-
-  return iterator->reset(exprCtx)
-    ? iterator.release()
-    : nullptr;
+  return compoundReader;
 }
+
+//arangodb::ViewIterator* IResearchView::iteratorForCondition(
+//    arangodb::transaction::Methods* trx,
+//    arangodb::aql::ExecutionPlan* plan,
+//    arangodb::aql::ExpressionContext* exprCtx,
+//    arangodb::aql::Variable const* reference,
+//    arangodb::aql::AstNode const* filterCondition,
+//    arangodb::aql::SortCondition const* sortCondition
+//) {
+//  if (!trx) {
+//    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+//      << "no transaction supplied while querying iResearch view '" << id() << "'";
+//
+//    return nullptr;
+//  }
+//
+//  if (!plan) {
+//    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+//      << "no execution plan supplied while querying iResearch view '" << id() << "'";
+//
+//    return nullptr;
+//  }
+//
+//  if (!exprCtx) {
+//    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+//      << "no expression context supplied while querying iResearch view '" << id() << "'";
+//
+//    return nullptr;
+//  }
+//
+//  if (!reference) {
+//    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+//      << "no variable reference supplied while querying iResearch view '" << id() << "'";
+//
+//    return nullptr;
+//  }
+//
+//  if (!filterCondition) {
+//    // in case if filter is not specified
+//    // set it to surrogate 'RETURN ALL' node
+//    filterCondition= &ALL;
+//  }
+//
+//  TRI_ASSERT(filterCondition);
+//
+//  irs::order order;
+//  std::vector<irs::stored_attribute::ptr> orderAttrs;
+//  OrderFactory::OrderContext orderCtx{ orderAttrs, order };
+//  CompoundReader compoundReader(_mutex); // will aquire read-lock since members can be asynchronously updated
+//
+//  if (sortCondition && !OrderFactory::order(&orderCtx, *sortCondition, _meta)) {
+//    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+//      << "failed to build order while querying iResearch view '" << id()
+//      << "', query" << filterCondition->toVelocyPack(true)->toJson();
+//
+//    return nullptr;
+//  }
+//
+//  try {
+//    compoundReader.add(_memoryNode->_store._reader);
+//    SCOPED_LOCK(_toFlush->_readMutex);
+//    compoundReader.add(_toFlush->_store._reader);
+//
+//    if (_storePersisted) {
+//      compoundReader.add(_storePersisted._reader);
+//    }
+//  } catch (std::exception const& e) {
+//    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+//      << "caught exception while collecting readers for querying iResearch view '" << id()
+//      << "': " << e.what();
+//    IR_EXCEPTION();
+//    return nullptr;
+//  } catch (...) {
+//    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+//      << "caught exception while collecting readers for querying iResearch view '" << id() << "'";
+//    IR_EXCEPTION();
+//    return nullptr;
+//  }
+//
+//  // add CIDs of known collections to transaction
+//  for (auto& entry: _meta._collections) {
+//    trx->addCollectionAtRuntime(arangodb::basics::StringUtils::itoa(entry));
+//  }
+//
+//  // add CIDs of registered collections to transaction
+//  for (auto& entry: _registeredLinks) {
+//    trx->addCollectionAtRuntime(std::to_string(entry.first));
+//  }
+//
+//  // if (!sortInternally) {
+//  if (order.empty()) {
+//    PTR_NAMED(UnorderedViewIterator,
+//      iterator,
+//      *this,
+//      *trx,
+//      std::move(compoundReader),
+//      *plan,
+//      *filterCondition,
+//      *reference,
+//      irs::order::unordered()
+//    );
+//
+//    return iterator->reset(exprCtx)
+//      ? iterator.release()
+//      : nullptr;
+//  }
+//
+//  PTR_NAMED(OrderedViewIterator,
+//    iterator,
+//    *this,
+//    *trx,
+//    std::move(compoundReader),
+//    order,
+//    std::move(orderAttrs),
+//    *plan,
+//    *filterCondition,
+//    *reference
+//  );
+//
+//  return iterator->reset(exprCtx)
+//    ? iterator.release()
+//    : nullptr;
+//}
 
 size_t IResearchView::linkCount() const noexcept {
   ReadMutex mutex(_mutex); // '_links' can be asynchronously updated
@@ -2397,42 +1880,6 @@ int IResearchView::remove(
   }
 
   return TRI_ERROR_INTERNAL;
-}
-
-arangodb::aql::AstNode* IResearchView::specializeCondition(
-  arangodb::aql::Ast* ast,
-  arangodb::aql::AstNode const* node,
-  arangodb::aql::Variable const* reference
-) {
-  // FIXME TODO implement
-  return nullptr;
-}
-
-bool IResearchView::supportsFilterCondition(
-  arangodb::aql::AstNode const* node,
-  arangodb::aql::Variable const* reference,
-  size_t& /*estimatedItems*/,
-  double& /*estimatedCost*/
-) const {
-  arangodb::iresearch::QueryContext const ctx = {
-    nullptr, nullptr, nullptr, nullptr, reference
-  };
-
-  // no way to estimate items/cost before preparing the query
-  return !node || (reference && FilterFactory::filter(nullptr, ctx, *node));
-}
-
-bool IResearchView::supportsSortCondition(
-  arangodb::aql::SortCondition const* sortCondition,
-  arangodb::aql::Variable const* reference,
-  double& estimatedCost,
-  size_t& coveredAttributes
-) const {
-  irs::order order;
-  ReadMutex mutex(_mutex); // '_meta' can be asynchronously updated
-  SCOPED_LOCK(mutex);
-
-  return sortCondition && OrderFactory::order(nullptr, *sortCondition, _meta);
 }
 
 IResearchView::MemoryStore& IResearchView::activeMemoryStore() const {

@@ -478,8 +478,8 @@ AttributeScorer& AttributeScorer::orderNext(ValueType type) noexcept {
   return *this;
 }
 
-irs::sort::prepared::ptr AttributeScorer::prepare() const {
-  auto prepared = Prepared::make<Prepared>(_order, reverse());
+irs::sort::prepared::ptr AttributeScorer::prepare(bool reverse) const {
+  auto prepared = Prepared::make<Prepared>(_order, reverse);
 
   if (!prepared || _attribute.empty()) {
     return prepared; // attr should be set on Prepared instance

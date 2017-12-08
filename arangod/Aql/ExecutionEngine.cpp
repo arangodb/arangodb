@@ -55,7 +55,6 @@
 
 #ifdef USE_IRESEARCH
 #include "IResearch/IResearchViewNode.h"
-#include "IResearch/IResearchViewBlock.h"
 #endif
 
 using namespace arangodb;
@@ -112,9 +111,9 @@ static ExecutionBlock* CreateBlock(
     }
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      return new iresearch::IResearchViewBlock(
-        engine, static_cast<iresearch::IResearchViewNode const*>(en)
-      );
+      TRI_ASSERT(engine);
+      auto const* viewNode = static_cast<iresearch::IResearchViewNode const*>(en);
+      return viewNode->createExecutionBlock(*engine);
     }
 #endif
     case ExecutionNode::TRAVERSAL: {

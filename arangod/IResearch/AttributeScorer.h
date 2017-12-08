@@ -66,7 +66,7 @@ class AttributeScorer: public irs::sort {
   AttributeScorer& attributeNext(uint64_t offset);
   AttributeScorer& attributeNext(irs::string_ref const& attibute);
   AttributeScorer& orderNext(ValueType type) noexcept;
-  virtual sort::prepared::ptr prepare() const override;
+  virtual sort::prepared::ptr prepare(bool reverse) const override;
 
  private:
   struct AttributeItem {

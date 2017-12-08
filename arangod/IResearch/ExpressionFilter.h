@@ -72,8 +72,14 @@ struct ExpressionExecutionContext : irs::attribute {
   ExpressionExecutionContext() = default;
 
   ExpressionExecutionContext(
-      arangodb::transaction::Methods& trx)
-    : trx(&trx) {
+      arangodb::transaction::Methods& trx
+  ) : trx(&trx) {
+  }
+
+  ExpressionExecutionContext(
+      arangodb::transaction::Methods& trx,
+      arangodb::aql::ExpressionContext& ctx
+  ) : trx(&trx), ctx(&ctx) {
   }
 
   explicit operator bool() const noexcept {

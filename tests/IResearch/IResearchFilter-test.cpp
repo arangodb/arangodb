@@ -287,13 +287,13 @@ void assertFilter(
   }
   REQUIRE(ref);
 
-  // supportsFilterCondition
+  // optimization time
   {
     arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
     CHECK((parseOk == arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
   }
 
-  // iteratorForCondition
+  // execution time
   {
     arangodb::transaction::UserTransaction trx(
       arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()

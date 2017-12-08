@@ -82,7 +82,7 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
     {static_cast<int>(TRAVERSAL), "TraversalNode"},
     {static_cast<int>(SHORTEST_PATH), "ShortestPathNode"},
 #ifdef USE_IRESEARCH
-    {static_cast<int>(ENUMERATE_IRESEARCH_VIEW), "IResearchViewNode"}};
+    {static_cast<int>(ENUMERATE_IRESEARCH_VIEW), "EnumerateViewNode"}};
 #endif
 
 /// @brief returns the type name of the node
@@ -870,18 +870,10 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     }
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      depth++;
-      nrRegsHere.emplace_back(1);
-      // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = 1 + nrRegs.back();
-      nrRegs.emplace_back(registerId);
-
       auto ep = static_cast<iresearch::IResearchViewNode const*>(en);
-      TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
-      totalNrRegs++;
+      TRI_ASSERT(ep);
+
+      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
       break;
     }
 #endif

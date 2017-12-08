@@ -261,6 +261,15 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
   IResearchQuerySetup s;
   UNUSED(s);
 
+  // ArangoDB specific string comparer
+  struct StringComparer {
+    bool operator()(irs::string_ref const& lhs, irs::string_ref const& rhs) const {
+      return arangodb::basics::VelocyPackHelper::compareStringValues(
+        lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true
+      ) < 0;
+    }
+  }; // StringComparer
+
   // ==, !=, <, <=, >, >=, range
   static std::vector<std::string> const EMPTY;
 
@@ -639,7 +648,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.duplicated == 'abcd', name DESC
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*, StringComparer> expectedDocs {
       { "A", &insertedDocs[0] },
       { "E", &insertedDocs[4] },
       { "K", &insertedDocs[10] },
@@ -664,6 +673,9 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       CHECK(actualDocs.valid());
       auto actualDoc = actualDocs.value();
       auto const resolved = actualDoc.resolveExternals();
+      std::string const actualName = resolved.get("name").toString();
+      std::string const expectedName = arangodb::velocypack::Slice(expectedDoc->second->vpack()).get("name").toString();
+
       CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       actualDocs.next();
     }
@@ -672,7 +684,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.duplicated == 'abcd', TFIDF() ASC, name DESC
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*, StringComparer> expectedDocs {
       { "A", &insertedDocs[0] },
       { "E", &insertedDocs[4] },
       { "K", &insertedDocs[10] },
