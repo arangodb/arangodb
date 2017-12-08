@@ -81,7 +81,7 @@ protected:
       size_t collector_collect_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>();
+      auto& sort = order.add<sort::custom_sort>(false);
 
       sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
         ++collector_collect_count;
@@ -109,7 +109,7 @@ protected:
     {
       docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
       irs::order order;
-      auto& sort = order.add<sort::custom_sort>();
+      auto& sort = order.add<sort::custom_sort>(false);
 
       sort.prepare_collector = []()->irs::sort::collector::ptr { return nullptr; };
       sort.prepare_scorer = [](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_store&, const irs::attribute_view&)->irs::sort::scorer::ptr { return nullptr; };
@@ -122,7 +122,7 @@ protected:
       docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
       irs::order order;
 
-      order.add<sort::frequency_sort>();
+      order.add<sort::frequency_sort>(false);
       check_query(irs::all(), order, docs, rdr);
     }
 
@@ -131,7 +131,7 @@ protected:
       docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
       irs::order order;
 
-      order.add(irs::scorers::get("bm25", irs::string_ref::nil));
+      order.add(true, irs::scorers::get("bm25", irs::string_ref::nil));
       check_query(irs::all(), order, docs, rdr);
     }
 
@@ -140,7 +140,7 @@ protected:
       docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
       irs::order order;
 
-      order.add(irs::scorers::get("tfidf", irs::string_ref::nil));
+      order.add(true, irs::scorers::get("tfidf", irs::string_ref::nil));
       check_query(irs::all(), order, docs, rdr);
     }
   }

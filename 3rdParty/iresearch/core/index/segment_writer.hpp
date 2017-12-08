@@ -176,18 +176,21 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     const auto& features = static_cast<const flags&>(field.features());
     const auto boost = static_cast<float_t>(field.boost());
 
-    const bool indexed = index(name, tokens, features, boost);
+    if (!index(name, tokens, features, boost)) {
+      return false; // indexing failed
+    }
 
     // store field
     const doc_id_t doc = docs_cached();
     auto& stream = this->stream(doc, name);
 
-    if (!field.write(stream)) {
-      stream.reset();
-      return indexed;
+    if (field.write(stream)) {
+      return true;
     }
 
-    return true; // at least indexed
+    stream.reset();
+
+    return false; // store failed
   }
 
   // returns stream for storing attributes

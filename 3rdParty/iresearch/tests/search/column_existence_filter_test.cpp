@@ -494,7 +494,7 @@ class column_existence_filter_test_case
       size_t collector_collect_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>();
+      auto& sort = order.add<sort::custom_sort>(false);
 
       sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
         ++collector_collect_count;
@@ -570,7 +570,7 @@ class column_existence_filter_test_case
       size_t collector_collect_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>();
+      auto& sort = order.add<sort::custom_sort>(false);
 
       sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
         ++collector_collect_count;
@@ -647,7 +647,7 @@ class column_existence_filter_test_case
       size_t collector_collect_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>();
+      auto& sort = order.add<sort::custom_sort>(false);
 
       sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
         ++collector_collect_count;

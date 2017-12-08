@@ -21,6 +21,16 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4229)
+#endif
+
+  #include <unicode/uclean.h> // for u_cleanup
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4229)
+#endif
+
 #include "gtest/gtest.h"
 #include "utils/locale_utils.hpp"
 
@@ -43,6 +53,8 @@ namespace tests {
 
     virtual void TearDown() {
       // Code here will be called immediately after each test (right before the destructor).
+
+      u_cleanup(); // release/free all memory used by ICU
     }
   };
 }

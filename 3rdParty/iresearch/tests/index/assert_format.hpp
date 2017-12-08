@@ -24,6 +24,8 @@
 #ifndef IRESEARCH_ASSERT_FORMAT_H
 #define IRESEARCH_ASSERT_FORMAT_H
 
+#include <set>
+
 #include "doc_generator.hpp"
 #include "index/field_meta.hpp"
 #include "utils/block_pool.hpp"
@@ -394,6 +396,13 @@ void assert_terms_seek(
   const iresearch::term_reader& actual_term_reader,
   const iresearch::flags& features,
   size_t lookahead = 10); // number of steps to iterate after the seek
+
+void assert_index(
+  const index_t& expected_index,
+  const irs::index_reader& actual_index,
+  const irs::flags& features,
+  size_t skip = 0 // do not validate the first 'skip' segments
+);
 
 void assert_index(
   const iresearch::directory& dir,

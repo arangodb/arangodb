@@ -26,6 +26,7 @@
 
 #include "analysis/token_streams.hpp"
 #include "utils/iterator.hpp"
+#include "utils/utf8_path.hpp"
 #include "store/store_utils.hpp"
 #include "index/index_writer.hpp"
 
@@ -33,28 +34,16 @@
 #include <atomic>
 #include <functional>
 
-#if !defined(_MSC_VER)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-  #include <boost/filesystem.hpp>
-
-#if !defined(_MSC_VER)
-  #pragma GCC diagnostic pop
-#endif
-
-namespace iresearch {
+NS_BEGIN(iresearch)
 
 struct data_output;
 class flags;
 class token_stream;
 
-}
+NS_END
 
 namespace tests {
 
-namespace fs = ::boost::filesystem;
 namespace ir = iresearch;
 
 //////////////////////////////////////////////////////////////////////////////
@@ -331,7 +320,7 @@ class delim_doc_generator : public doc_generator_base {
   }; // doc_template
 
   delim_doc_generator(
-    const fs::path& file, 
+    const irs::utf8_path& file,
     doc_template& doc,
     uint32_t delim = 0x0009);
 
@@ -428,7 +417,7 @@ class json_doc_generator: public doc_generator_base {
       }
 
       assert(false);
-      return 0.;
+      return T(0.);
     }
   }; // json_value
 
@@ -439,7 +428,7 @@ class json_doc_generator: public doc_generator_base {
   )> factory_f;
 
   json_doc_generator(
-    const fs::path& file,
+    const irs::utf8_path& file,
     const factory_f& factory
   );
 
@@ -461,7 +450,7 @@ bool insert(
     irs::index_writer& writer,
     Indexed ibegin, Indexed iend) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    doc.insert(irs::action::index, ibegin, iend);
     return false; // break the loop
   };
 
@@ -474,8 +463,8 @@ bool insert(
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
-    doc.insert<irs::Action::STORE>(sbegin, send);
+    doc.insert(irs::action::index, ibegin, iend);
+    doc.insert(irs::action::store, sbegin, send);
     return false; // break the loop
   };
 
@@ -488,7 +477,7 @@ bool update(
     const irs::filter& filter,
     Indexed ibegin, Indexed iend) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    doc.insert(irs::action::index, ibegin, iend);
     return false; // break the loop
   };
 
@@ -502,8 +491,8 @@ bool update(
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
-    doc.insert<irs::Action::STORE>(sbegin, send);
+    doc.insert(irs::action::index, ibegin, iend);
+    doc.insert(irs::action::store, sbegin, send);
     return false; // break the loop
   };
 
@@ -516,7 +505,7 @@ bool update(
     irs::filter::ptr&& filter,
     Indexed ibegin, Indexed iend) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    doc.insert(irs::action::index, ibegin, iend);
     return false; // break the loop
   };
 
@@ -530,8 +519,8 @@ bool update(
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
-    doc.insert<irs::Action::STORE>(sbegin, send);
+    doc.insert(irs::action::index, ibegin, iend);
+    doc.insert(irs::action::store, sbegin, send);
     return false; // break the loop
   };
 
@@ -544,7 +533,7 @@ bool update(
     const std::shared_ptr<irs::filter>& filter,
     Indexed ibegin, Indexed iend) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
+    doc.insert(irs::action::index, ibegin, iend);
     return false; // break the loop
   };
 
@@ -558,8 +547,8 @@ bool update(
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
   auto inserter = [&](irs::index_writer::document& doc) {
-    doc.insert<irs::Action::INDEX>(ibegin, iend);
-    doc.insert<irs::Action::STORE>(sbegin, send);
+    doc.insert(irs::action::index, ibegin, iend);
+    doc.insert(irs::action::store, sbegin, send);
     return false; // break the loop
   };
 

@@ -33,6 +33,15 @@
 
 NS_ROOT
 
+FORCE_INLINE size_t hash_combine(size_t seed, size_t v) NOEXCEPT {
+  return seed ^ (v + 0x9e3779b9 + (seed<<6) + (seed>>2));
+}
+
+template<typename T>
+FORCE_INLINE size_t hash_combine(size_t seed, T const& v) {
+  return hash_combine(seed, std::hash<T>()(v));
+}
+
 template<typename Elem>
 class IRESEARCH_API_TEMPLATE hashed_basic_string_ref : public basic_string_ref<Elem> {
  public:
@@ -41,11 +50,11 @@ class IRESEARCH_API_TEMPLATE hashed_basic_string_ref : public basic_string_ref<E
   hashed_basic_string_ref(size_t hash, const base_t& ref)
     : base_t(ref), hash_(hash) {
   }
-  
+
   hashed_basic_string_ref(size_t hash, const base_t& ref, size_t size)
     : base_t(ref, size), hash_(hash) {
   }
-  
+
   hashed_basic_string_ref(size_t hash, const typename base_t::char_type* ptr)
     : base_t(ptr), hash_(hash) {
   }
@@ -53,11 +62,11 @@ class IRESEARCH_API_TEMPLATE hashed_basic_string_ref : public basic_string_ref<E
   hashed_basic_string_ref(size_t hash, const typename base_t::char_type* ptr, size_t size)
     : base_t(ptr, size), hash_(hash) {
   }
-  
+
   hashed_basic_string_ref(size_t hash, const std::basic_string<typename base_t::char_type>& str)
     : base_t(str), hash_(hash) {
   }
-  
+
   hashed_basic_string_ref(size_t hash, const std::basic_string<typename base_t::char_type>& str, size_t size)
     : base_t(str, size), hash_(hash) {
   }

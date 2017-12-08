@@ -177,7 +177,7 @@ class doc_iterator : public irs::doc_iterator {
     doc_.value = 0;
 
     const auto& features = field_->meta().features;
-    if ((has_freq_ = features.check<frequency>())) {
+    if (true == (has_freq_ = features.check<frequency>())) {
       attrs_.emplace(freq_);
       freq_.value = 0;
 

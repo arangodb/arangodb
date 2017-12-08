@@ -30,6 +30,134 @@
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
 
+NS_LOCAL
+
+irs::sort::ptr make_from_object(
+    const rapidjson::Document& json,
+    const irs::string_ref& args) {
+  assert(json.IsObject());
+
+  PTR_NAMED(irs::bm25_sort, ptr);
+
+  #ifdef IRESEARCH_DEBUG
+    auto& scorer = dynamic_cast<irs::bm25_sort&>(*ptr);
+  #else
+    auto& scorer = static_cast<irs::bm25_sort&>(*ptr);
+  #endif
+
+  {
+    // optional float
+    const auto* key = "b";
+
+    if (json.HasMember(key)) {
+      if (!json[key].IsFloat()) {
+        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
+
+        return nullptr;
+      }
+
+      scorer.b(json[key].GetFloat());
+    }
+  }
+
+  {
+    // optional float
+    const auto* key = "k";
+
+    if (json.HasMember(key)) {
+      if (!json[key].IsFloat()) {
+        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
+
+        return nullptr;
+      }
+
+      scorer.k(json[key].GetFloat());
+    }
+  }
+
+  {
+    // optional bool
+    const auto* key= "with-norms";
+
+    if (json.HasMember(key)) {
+      if (!json[key].IsBool()) {
+        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
+
+        return nullptr;
+      }
+
+      scorer.normalize(json[key].GetBool());
+    }
+  }
+
+  return ptr;
+}
+
+irs::sort::ptr make_from_array(
+    const rapidjson::Document& json,
+    const irs::string_ref& args) {
+  assert(json.IsArray());
+
+  const auto array = json.GetArray();
+  const auto size = array.Size();
+
+  if (size > 3) {
+    // wrong number of arguments
+    IR_FRMT_ERROR(
+      "Wrong number of arguments while constructing bm25 scorer from jSON arguments (must be <= 3): %s",
+      args.c_str()
+    );
+    return nullptr;
+  }
+
+  // default args
+  auto k = irs::bm25_sort::K();
+  auto b = irs::bm25_sort::B();
+  auto norms = irs::bm25_sort::WITH_NORMS();
+
+  size_t i = 0;
+
+  auto log_error = [&i, &args](){
+    IR_FRMT_ERROR(
+      "Non-float value on position '" IR_SIZE_T_SPECIFIER "' while constructing bm25 scorer from jSON arguments: %s",
+      i, args.c_str()
+    );
+  };
+
+  for (; i < size; ++i) {
+    auto& arg = array[i];
+
+    switch (i) {
+      case 0: { // parse `b` coefficient
+        if (!arg.IsNumber()) {
+          log_error();
+          return nullptr;
+        }
+        k = static_cast<float_t>(arg.GetDouble());
+      } break;
+      case 1: { // parse `b` coefficient
+        if (!arg.IsNumber()) {
+          log_error();
+          return nullptr;
+        }
+        b = static_cast<float_t>(arg.GetDouble());
+      } break;
+      case 2: { // parse `with-norms`
+        if (!arg.IsBool()) {
+          log_error();
+          return nullptr;
+        }
+        norms = arg.GetBool();
+      } break;
+    }
+  }
+
+  PTR_NAMED(irs::bm25_sort, ptr, k, b, norms);
+  return ptr;
+}
+
+NS_END // LOCAL
+
 NS_ROOT
 
 // bm25 similarity
@@ -268,7 +396,7 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
   bool normalize_;
 }; // sort
 
-NS_END // bm25 
+NS_END // bm25
 
 DEFINE_SORT_TYPE_NAMED(iresearch::bm25_sort, "bm25");
 REGISTER_SCORER(iresearch::bm25_sort);
@@ -276,72 +404,36 @@ REGISTER_SCORER(iresearch::bm25_sort);
 DEFINE_FACTORY_DEFAULT(irs::bm25_sort);
 
 /*static*/ sort::ptr bm25_sort::make(const string_ref& args) {
-  static PTR_NAMED(bm25_sort, ptr);
-
   if (args.null()) {
+    // default args
+    PTR_NAMED(bm25_sort, ptr);
     return ptr;
   }
 
   rapidjson::Document json;
 
-  if (json.Parse(args.c_str(), args.size()).HasParseError() || !json.IsObject()) {
-    IR_FRMT_ERROR("Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", args.c_str());
+  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
+    IR_FRMT_ERROR(
+      "Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", 
+      args.c_str()
+    );
 
     return nullptr;
   }
 
-  #ifdef IRESEARCH_DEBUG
-    auto& scorer = dynamic_cast<bm25_sort&>(*ptr);
-  #else
-    auto& scorer = static_cast<bm25_sort&>(*ptr);
-  #endif
+  switch (json.GetType()) {
+    case rapidjson::kObjectType:
+      return make_from_object(json, args);
+    case rapidjson::kArrayType:
+      return make_from_array(json, args);
+    default: // wrong type
+      IR_FRMT_ERROR(
+        "Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", 
+        args.c_str()
+      );
 
-  {
-    // optional float
-    const auto* key = "b";
-
-    if (json.HasMember(key)) {
-      if (!json[key].IsFloat()) {
-        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
-
-        return nullptr;
-      }
-
-      scorer.b(json[key].GetFloat());
-    }
+      return nullptr;
   }
-
-  {
-    // optional float
-    const auto* key = "k";
-
-    if (json.HasMember(key)) {
-      if (!json[key].IsFloat()) {
-        IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
-
-        return nullptr;
-      }
-
-      scorer.k(json[key].GetFloat());
-    }
-  }
-
-  {
-    // optional bool
-    const auto* key= "with-norms";
-
-    if (json.HasMember(key)) {
-      if (!json[key].IsBool()) {
-        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
-
-        return nullptr;
-      }
-
-      scorer.normalize(json[key].GetBool());
-    }
-  }
-
-  return ptr;
 }
 
 bm25_sort::bm25_sort(
@@ -349,11 +441,10 @@ bm25_sort::bm25_sort(
     float_t b /*= 0.75f*/,
     bool normalize /*= false*/
 ): sort(bm25_sort::type()), k_(k), b_(b), normalize_(normalize) {
-  reverse(true); // return the most relevant results first
 }
 
-sort::prepared::ptr bm25_sort::prepare() const {
-  return bm25::sort::make<bm25::sort>(k_, b_, normalize_, reverse());
+sort::prepared::ptr bm25_sort::prepare(bool reverse) const {
+  return bm25::sort::make<bm25::sort>(k_, b_, normalize_, reverse);
 }
 
 NS_END // ROOT

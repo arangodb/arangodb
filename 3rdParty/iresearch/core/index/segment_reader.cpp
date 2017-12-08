@@ -160,8 +160,8 @@ bool read_columns_meta(
   id_to_column.resize(count);
   name_to_column.reserve(count);
 
-  for (iresearch::column_meta meta; reader->read(meta);) {
-    columns.emplace_back(std::move(meta));
+  for (irs::column_meta col_meta; reader->read(col_meta);) {
+    columns.emplace_back(std::move(col_meta));
 
     auto& column = columns.back();
     id_to_column[column.id] = &column;

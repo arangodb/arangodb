@@ -29,8 +29,6 @@
 #include "unicode/utf8.h"
 #include "utils/file_utils.hpp"
 
-#include <boost/filesystem/fstream.hpp>
-
 #include <sstream>
 #include <iomanip>
 #include <numeric>
@@ -273,7 +271,7 @@ ifield* particle::get(const ir::string_ref& name) const {
 // -----------------------------------------------------------------------------
 
 delim_doc_generator::delim_doc_generator(
-    const fs::path& file, 
+    const irs::utf8_path& file,
     doc_template& doc,
     uint32_t delim /* = 0x0009 */)
   : ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
@@ -437,9 +435,9 @@ class parse_json_handler : irs::util::noncopyable {
 }; // parse_json_handler
 
 json_doc_generator::json_doc_generator(
-    const fs::path& file, 
+    const irs::utf8_path& file,
     const json_doc_generator::factory_f& factory) {
-  boost::filesystem::ifstream input(file, std::ios::in | std::ios::binary);
+  std::ifstream input(irs::utf8_path(file).utf8().c_str(), std::ios::in | std::ios::binary);
   assert(input);
 
   rapidjson::IStreamWrapper stream(input);
@@ -472,3 +470,7 @@ void json_doc_generator::reset() {
 }
 
 } // tests
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

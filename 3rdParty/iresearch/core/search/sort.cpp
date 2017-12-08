@@ -43,7 +43,7 @@ boost::boost()
 // --SECTION--                                                             sort
 // ----------------------------------------------------------------------------
 
-sort::sort(const type_id& type) : type_(&type), rev_(false) { }
+sort::sort(const type_id& type) : type_(&type) { }
 
 sort::~sort() { }
 
@@ -65,11 +65,11 @@ const order& order::unordered() {
   return ord;
 }
 
-void order::remove( const type_id& type ) {
-  order_.erase( 
-    std::remove_if( 
+void order::remove(const type_id& type) {
+  order_.erase(
+    std::remove_if(
       order_.begin(), order_.end(),
-      [type] ( const sort::ptr& s ) { return type == s->type(); }
+      [type] (const entry& e) { return type == e.sort().type(); }
   ));
 }
 
@@ -102,11 +102,17 @@ bool order::operator==(const order& other) const {
   }
 
   for (size_t i = 0, count = order_.size(); i < count; ++i) {
+    auto& entry = order_[i];
+    auto& other_entry = other.order_[i];
+
+    auto& sort = entry.sort_;
+    auto& other_sort = other_entry.sort_;
+
     // FIXME TODO operator==(...) should be specialized for every sort child class based on init config
-    if (!order_[i] != !other.order_[i]
-        || (order_[i]
-            && (order_[i]->type() != other.order_[i]->type()
-                || order_[i]->reverse() != other.order_[i]->reverse()))) {
+    if (!sort != !other_sort
+        || (sort
+            && (sort->type() != other_sort->type()
+                || entry.reverse_ != other_entry.reverse_))) {
       return false;
     }
   }
@@ -118,28 +124,27 @@ bool order::operator!=(const order& other) const {
   return !(*this == other);
 }
 
-order& order::add(sort::ptr const& sort) {
-  order_.emplace_back(sort);
+order& order::add(bool reverse, const sort::ptr& sort) {
+  assert(sort);
+  order_.emplace_back(sort, reverse);
 
   return *this;
 }
 
 order::prepared order::prepare() const {
   order::prepared pord;
-  pord.order_.reserve(order_.size());
+  pord.order_.reserve(order_.size()); // strong exception guarantee
 
   size_t offset = 0;
-  std::for_each(
-    begin(), end(),
-    [&pord, &offset] (const sort& s) {
-      pord.order_.emplace_back(s.prepare()); // strong exception guarantee
-      prepared::prepared_sort& psort = pord.order_.back();
-      const sort::prepared& bucket = *psort.bucket;
-      pord.features_ |= bucket.features();
-      psort.offset = offset;
-      pord.size_ += bucket.size();
-      offset += bucket.size();
-  });
+  for (auto& entry : order_) {
+    pord.order_.emplace_back(entry.sort().prepare(entry.reverse()));
+    prepared::prepared_sort& psort = pord.order_.back();
+    const sort::prepared& bucket = *psort.bucket;
+    pord.features_ |= bucket.features();
+    psort.offset = offset;
+    pord.size_ += bucket.size();
+    offset += bucket.size();
+  }
 
   return pord;
 }

@@ -257,6 +257,7 @@ struct IRESEARCH_API columnstore_writer {
 
 NS_END
 
+MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t, irs::bytes_ref&)>); // columnstore_reader::values_reader_f
 MSVC_ONLY(template class IRESEARCH_API std::function<iresearch::columnstore_writer::column_output&(iresearch::doc_id_t)>); // columnstore_writer::values_writer_f
 
 NS_ROOT

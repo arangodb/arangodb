@@ -593,7 +593,7 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
     std::unique_lock<std::mutex> lock2(mutex2);
     std::thread thread1([&pool, &mutex2, &cond2]()->void { pool.stop(); std::lock_guard<std::mutex> lock(mutex2); cond2.notify_all(); });
     std::thread thread2([&pool, &mutex2, &cond2]()->void { pool.stop(); std::lock_guard<std::mutex> lock(mutex2); cond2.notify_all(); });
-    ASSERT_EQ(std::cv_status::timeout, cond2.wait_for(lock2, std::chrono::milliseconds(6000))); // assume thread blocks in 6000ms (5000ms is not enough for MSVC2015@appveyor)
+    ASSERT_EQ(std::cv_status::timeout, cond2.wait_for(lock2, std::chrono::milliseconds(8000))); // assume thread blocks in 8000ms (7000ms is not enough for MSVC2015@appveyor, 6000ms is not enough for MSVC2017@jenkins)
     lock2.unlock();
     ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000)));
     thread1.join();

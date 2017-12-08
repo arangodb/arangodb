@@ -53,7 +53,7 @@ TEST(bitset_iterator_test, next) {
   auto& filter_attrs = irs::attribute_store::empty_instance();
   irs::order order;
 
-  order.add<tests::sort::custom_sort>();
+  order.add<tests::sort::custom_sort>(false);
 
   auto prepared_order = order.prepare();
 
@@ -267,7 +267,7 @@ TEST(bitset_iterator_test, seek) {
   auto& filter_attrs = irs::attribute_store::empty_instance();
   irs::order order;
 
-  order.add<tests::sort::custom_sort>();
+  order.add<tests::sort::custom_sort>(false);
 
   auto prepared_order = order.prepare();
 
@@ -674,7 +674,7 @@ TEST(bitset_iterator_test, seek_next) {
   auto& filter_attrs = irs::attribute_store::empty_instance();
   irs::order order;
 
-  order.add<tests::sort::custom_sort>();
+  order.add<tests::sort::custom_sort>(false);
 
   auto prepared_order = order.prepare();
 

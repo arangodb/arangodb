@@ -51,6 +51,10 @@ NS_END
 
 NS_ROOT
 
+/*static*/ bool scorers::exists(const string_ref& name) {
+  return scorer_register::instance().get(name);
+}
+
 /*static*/ sort::ptr scorers::get(
     const string_ref& name,
     const string_ref& args

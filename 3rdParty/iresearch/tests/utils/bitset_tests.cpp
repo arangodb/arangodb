@@ -362,4 +362,40 @@ TEST(bitset_tests, memset) {
     ASSERT_TRUE(bs.any());
     ASSERT_FALSE(bs.all());
   }
+
+  // multiple words bitset (all set)
+  {
+    const bitset::index_t words = 2;
+    const bitset::index_t size = 2 * irs::bits_required<irs::bitset::word_t>();
+
+    irs::bitset bs(size);
+    ASSERT_NE(nullptr, bs.data());
+    ASSERT_EQ(size, bs.size());
+    ASSERT_EQ(words, bs.words());
+    ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bs.capacity());
+    ASSERT_EQ(0, bs.count());
+    ASSERT_TRUE(bs.none());
+    ASSERT_FALSE(bs.any());
+    ASSERT_FALSE(bs.all());
+
+    struct value_t {
+      uint64_t value0;
+      uint64_t value1;
+    } value;
+    value.value0 = UINT64_C(0xFFFFFFFFFFFFFFFF);
+    value.value1 = UINT64_C(0xFFFFFFFFFFFFFFFF);
+    bs.memset(value);
+
+    ASSERT_EQ(sizeof(value_t) * irs::bits_required<uint8_t>(), bs.size()); // full size of bitset
+    ASSERT_EQ(128, bs.count()); // all 128 from 'value' are set
+    ASSERT_EQ(*(bs.begin() + irs::bitset::word(0)), value.value0); // 1st word
+    ASSERT_EQ(*(bs.begin() + irs::bitset::word(64)), value.value1); // 2nd word
+    ASSERT_FALSE(bs.none());
+    ASSERT_TRUE(bs.any());
+    ASSERT_TRUE(bs.all());
+  }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

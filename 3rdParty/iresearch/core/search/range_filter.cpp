@@ -23,7 +23,6 @@
 
 #include "shared.hpp"
 #include "range_filter.hpp"
-#include "multiterm_filter.hpp"
 #include "range_query.hpp"
 #include "term_query.hpp"
 #include "index/index_reader.hpp"

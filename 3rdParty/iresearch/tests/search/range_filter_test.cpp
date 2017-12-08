@@ -923,7 +923,7 @@ class range_filter_test_case : public filter_test_case_base {
 
       size_t collect_count = 0;
       size_t finish_count = 0;
-      auto& scorer = order.add<sort::custom_sort>();
+      auto& scorer = order.add<sort::custom_sort>(false);
       scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
         ++collect_count;
       };
@@ -950,7 +950,7 @@ class range_filter_test_case : public filter_test_case_base {
       costs_t costs{ docs.size() };
       ir::order order;
 
-      order.add<sort::frequency_sort>();
+      order.add<sort::frequency_sort>(false);
       check_query(
         ir::by_range()
           .field("value")
@@ -966,7 +966,7 @@ class range_filter_test_case : public filter_test_case_base {
       costs_t costs{ docs.size() };
       ir::order order;
 
-      order.add<sort::frequency_sort>();
+      order.add<sort::frequency_sort>(false);
       check_query(
         ir::by_range()
           .field("value")
@@ -987,7 +987,7 @@ class range_filter_test_case : public filter_test_case_base {
       auto& max_term = max_stream.attributes().get<ir::term_attribute>();
 
       ASSERT_TRUE(max_stream.next());
-      order.add<sort::frequency_sort>();
+      order.add<sort::frequency_sort>(false);
       check_query(
         ir::by_range()
           .field("value")

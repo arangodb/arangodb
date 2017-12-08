@@ -475,6 +475,9 @@ const attribute_map<T, Ref, Args...>::ref<U>::nil;
 //////////////////////////////////////////////////////////////////////////////
 /// @brief storage of shared_ptr to attributes
 //////////////////////////////////////////////////////////////////////////////
+
+MSVC_ONLY(template class IRESEARCH_API irs::attribute_map<stored_attribute, std::shared_ptr>);
+
 class IRESEARCH_API attribute_store
     : public attribute_map<stored_attribute, std::shared_ptr> {
  public:
@@ -545,6 +548,9 @@ class pointer_wrapper {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief storage of data pointers to attributes
 //////////////////////////////////////////////////////////////////////////////
+
+MSVC_ONLY(template class IRESEARCH_API irs::attribute_map<attribute, pointer_wrapper>);
+
 class IRESEARCH_API attribute_view
     : public attribute_map<attribute, pointer_wrapper> {
  public:

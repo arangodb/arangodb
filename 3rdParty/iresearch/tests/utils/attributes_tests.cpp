@@ -231,6 +231,20 @@ TEST(attributes_tests, view_ctor) {
   ASSERT_FALSE(attrs.contains<tests::attribute>());
 }
 
+TEST(attributes_tests, view_add_placeholder) {
+  irs::attribute_view attrs;
+  auto& added = attrs.emplace<tests::attribute>();
+  ASSERT_TRUE(!added);
+  ASSERT_EQ(1, attrs.size());
+  ASSERT_TRUE(attrs.contains<tests::attribute>());
+  ASSERT_EQ(nullptr, attrs.get<tests::attribute>()->get());
+
+  tests::attribute value;
+  added = &value;
+  ASSERT_FALSE(!added);
+  ASSERT_EQ(&value, attrs.get<tests::attribute>()->get());
+}
+
 TEST(attributes_tests, view_add_get_clear_state_clear) {
   irs::attribute_view attrs;
   tests::attribute value0;
@@ -325,3 +339,7 @@ TEST(attributes_tests, view_visit) {
     ASSERT_TRUE(expected.empty());
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

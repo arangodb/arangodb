@@ -224,7 +224,7 @@ void directory_test_case::read_multiple_streams() {
       auto out = dir_->create("test_async");
       ASSERT_FALSE(!out);
 
-      for (size_t i = 0; i < 10000; ++i) {
+      for (uint32_t i = 0; i < 10000; ++i) {
         out->write_vint(i);
       }
     }

@@ -23,7 +23,6 @@
 
 #include "shared.hpp"
 #include "prefix_filter.hpp"
-#include "multiterm_filter.hpp"
 #include "range_query.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
@@ -118,22 +117,6 @@ size_t by_prefix::hash() const {
 bool by_prefix::equals(const filter& rhs) const {
   const auto& trhs = static_cast<const by_prefix&>(rhs);
   return by_term::equals(rhs) && scored_terms_limit_ == trhs.scored_terms_limit_;
-}
-
-void by_prefix::collect_terms(
-    term_selector& selector,
-    const sub_reader& segment,
-    const term_reader& field,
-    seek_term_iterator& terms) const {
-  if (!seek_min<true>(terms, this->term())) {
-    // nothing to collect
-    return;
-  }
-
-  do {
-    terms.read(); // read attributes
-    selector.insert(segment, field, terms);
-  } while (terms.next());
 }
 
 NS_END // ROOT

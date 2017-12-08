@@ -45,7 +45,7 @@
 #include <iostream>
 #include <cassert>
 
-namespace tests {
+NS_BEGIN(tests)
 
 /* -------------------------------------------------------------------
 * FREQUENCY BASED DATA MODEL
@@ -932,13 +932,11 @@ void assert_terms_seek(
 }
 
 void assert_index(
-    const iresearch::directory& dir,
-    iresearch::format::ptr codec,
-    const index_t& expected_index,
-    const iresearch::flags& features,
-    size_t skip /*= 0*/) {
-  auto actual_index_reader = iresearch::directory_reader::open(dir, codec);
-
+  const index_t& expected_index,
+  const irs::index_reader& actual_index_reader,
+  const irs::flags& features,
+  size_t skip /*= 0*/
+) {
   // check number of segments
   ASSERT_EQ(expected_index.size(), actual_index_reader.size());
   size_t i = 0;
@@ -969,7 +967,7 @@ void assert_index(
       // check field terms
       auto expected_term_reader = expected_reader.field(expected_fields_begin->second.name);
       ASSERT_NE(nullptr, expected_term_reader);
-      auto actual_term_reader = actual_index_reader[i].field(actual_fields->value().meta().name);
+      auto actual_term_reader = actual_sub_reader.field(actual_fields->value().meta().name);
       ASSERT_NE(nullptr, actual_term_reader);
 
       const iresearch::field_meta* expected_field = expected_segment.find(expected_fields_begin->first);
@@ -983,7 +981,18 @@ void assert_index(
   }
 }
 
-} // tests
+void assert_index(
+    const irs::directory& dir,
+    irs::format::ptr codec,
+    const index_t& expected_index,
+    const irs::flags& features,
+    size_t skip /*= 0*/) {
+  auto actual_index_reader = iresearch::directory_reader::open(dir, codec);
+
+  assert_index(expected_index, actual_index_reader, features, skip);
+}
+
+NS_END // tests
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

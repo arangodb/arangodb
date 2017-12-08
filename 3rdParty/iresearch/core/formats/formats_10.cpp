@@ -283,6 +283,9 @@ class doc_iterator : public iresearch::doc_iterator {
       const irs::attribute_view& attrs,
       const index_input* pos_in,
       const index_input* pay_in) {
+    UNUSED(pos_in);
+    UNUSED(pay_in);
+
     // term frequency attributes
     if (enabled.freq()) {
       assert(attrs.contains<frequency>());
@@ -3245,6 +3248,8 @@ class sparse_column final : public column {
       const block_ref* begin,
       const block_ref* end,
       doc_id_t key) const NOEXCEPT {
+    UNUSED(end);
+
     if (key <= begin->key) {
       return begin;
     }

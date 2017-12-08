@@ -99,7 +99,7 @@ class freelist : private util::noncopyable {
   void* pop_n(const size_t slot_size, size_t count) NOEXCEPT {
     slot* begin = reinterpret_cast<slot*>(&head_);
     slot* end;
-    while (!(end = try_pop_n(begin, slot_size, count))) {
+    while (nullptr == (end = try_pop_n(begin, slot_size, count))) {
       if (!begin) {
         return nullptr;
       }

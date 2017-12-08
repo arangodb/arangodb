@@ -30,7 +30,7 @@
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
   #define IR_FILEPATH_SPECIFIER  "%ws"
-  #define IR_UINT64_T_SPECIFIER  "%lu"
+  #define IR_UINT64_T_SPECIFIER  "%I64u"
   #define IR_SIZE_T_SPECIFIER    "%Iu"
   #define IR_SSIZE_T_SPECIFIER   "%Id"
   #define IR_PTRDIFF_T_SPECIFIER "%Id"

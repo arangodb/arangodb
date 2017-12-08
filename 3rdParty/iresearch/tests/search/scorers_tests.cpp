@@ -27,9 +27,14 @@
 TEST(scorers_tests, duplicate_register) {
   struct dummy_scorer: public irs::sort {
     DECLARE_SORT_TYPE() { static irs::sort::type_id type("dummy_scorer"); return type; }
-    static ptr make(const irs::string_ref&) { return nullptr; }
+    static ptr make(const irs::string_ref&) { return ptr(new dummy_scorer()); }
     dummy_scorer(): irs::sort(dummy_scorer::type()) { }
+
+    prepared::ptr prepare(bool) const { return nullptr; }
   };
+
+  ASSERT_FALSE(irs::scorers::exists("dummy_scorer"));
+  ASSERT_EQ(nullptr, irs::scorers::get("dummy_scorer", irs::string_ref::nil));
 
   static bool initial_expected = true;
   irs::scorer_registrar initial(dummy_scorer::type(), &dummy_scorer::make);
@@ -37,4 +42,6 @@ TEST(scorers_tests, duplicate_register) {
   initial_expected = false; // next test iteration will not be able to register the same scorer
   irs::scorer_registrar duplicate(dummy_scorer::type(), &dummy_scorer::make);
   ASSERT_TRUE(!duplicate);
+  ASSERT_TRUE(irs::scorers::exists("dummy_scorer"));
+  ASSERT_NE(nullptr, irs::scorers::get("dummy_scorer", irs::string_ref::nil));
 }

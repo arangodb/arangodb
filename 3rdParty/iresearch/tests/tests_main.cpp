@@ -21,6 +21,18 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4101)
+  #pragma warning(disable: 4267)
+#endif
+
+  #include <cmdline.h>
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4267)
+  #pragma warning(default: 4101)
+#endif
+
 #if !defined(_MSC_VER)
   #include <dlfcn.h> // for RTLD_NEXT
 #endif
@@ -42,8 +54,6 @@
 #include "utils/network_utils.hpp"
 #include "utils/bitset.hpp"
 #include "utils/runtime_utils.hpp"
-
-#include <cmdline.h>
 
 #ifdef _MSC_VER
   // +1 for \0 at end of string

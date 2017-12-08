@@ -222,7 +222,7 @@ TEST(boolean_query_boost, hierarchy) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::And root;
@@ -301,7 +301,7 @@ TEST(boolean_query_boost, hierarchy) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::And root;
@@ -396,7 +396,7 @@ TEST(boolean_query_boost, hierarchy) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::Or root;
@@ -516,7 +516,7 @@ TEST(boolean_query_boost, and) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::And root;
@@ -547,7 +547,7 @@ TEST(boolean_query_boost, and) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::And root;
@@ -579,7 +579,7 @@ TEST(boolean_query_boost, and) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::And root;
@@ -619,7 +619,7 @@ TEST(boolean_query_boost, and) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::And root;
@@ -666,7 +666,7 @@ TEST(boolean_query_boost, and) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::And root;
@@ -713,7 +713,7 @@ TEST(boolean_query_boost, and) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::And root;
@@ -789,7 +789,7 @@ TEST(boolean_query_boost, or) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::Or root;
@@ -820,7 +820,7 @@ TEST(boolean_query_boost, or) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::Or root;
@@ -852,7 +852,7 @@ TEST(boolean_query_boost, or) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::Or root;
@@ -904,7 +904,7 @@ TEST(boolean_query_boost, or) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::Or root;
@@ -964,7 +964,7 @@ TEST(boolean_query_boost, or) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::Or root;
@@ -1023,7 +1023,7 @@ TEST(boolean_query_boost, or) {
     const iresearch::boost::boost_t value = 5;
 
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     iresearch::Or root;
@@ -3964,7 +3964,7 @@ protected:
       size_t collector_collect_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>();
+      auto& sort = order.add<sort::custom_sort>(false);
 
       sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
         ++collector_collect_count;
@@ -4044,7 +4044,7 @@ protected:
       size_t collector_collect_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>();
+      auto& sort = order.add<sort::custom_sort>(false);
 
       sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
         ++collector_collect_count;
