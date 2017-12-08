@@ -70,9 +70,10 @@ class BaseEngine {
   // does not get informed properly
 
   static std::unique_ptr<BaseEngine> BuildEngine(TRI_vocbase_t* vocbase,
-                                                 arangodb::velocypack::Slice);
+                                                 arangodb::velocypack::Slice info,
+                                                 bool needToLock);
 
-  BaseEngine(TRI_vocbase_t*, arangodb::velocypack::Slice);
+  BaseEngine(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice info, bool needToLock);
 
  public:
   virtual ~BaseEngine();
@@ -106,7 +107,7 @@ class BaseTraverserEngine : public BaseEngine {
   // deletes an engine but the registry
   // does not get informed properly
 
-  BaseTraverserEngine(TRI_vocbase_t*, arangodb::velocypack::Slice);
+  BaseTraverserEngine(TRI_vocbase_t*, arangodb::velocypack::Slice, bool needToLock);
 
   virtual ~BaseTraverserEngine();
 
@@ -137,7 +138,7 @@ class ShortestPathEngine : public BaseEngine {
   // deletes an engine but the registry
   // does not get informed properly
 
-  ShortestPathEngine(TRI_vocbase_t*, arangodb::velocypack::Slice);
+  ShortestPathEngine(TRI_vocbase_t*, arangodb::velocypack::Slice, bool needToLock);
 
   virtual ~ShortestPathEngine();
 
@@ -159,7 +160,7 @@ class TraverserEngine : public BaseTraverserEngine {
   // deletes an engine but the registry
   // does not get informed properly
 
-  TraverserEngine(TRI_vocbase_t*, arangodb::velocypack::Slice);
+  TraverserEngine(TRI_vocbase_t*, arangodb::velocypack::Slice, bool needToLock);
 
   ~TraverserEngine();
 

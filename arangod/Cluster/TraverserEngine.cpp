@@ -52,7 +52,28 @@ static const std::string TYPE = "type";
 static const std::string VARIABLES = "variables";
 static const std::string VERTICES = "vertices";
 
-BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
+#ifndef USE_ENTERPRISE
+std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(TRI_vocbase_t* vocbase,
+                                                    VPackSlice info,
+                                                    bool needToLock) {
+  VPackSlice type = info.get(std::vector<std::string>({"options", "type"}));
+  if (!type.isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "The body requires an 'options.type' attribute.");
+  }
+  if (type.isEqualString("traversal")) {
+    return std::make_unique<TraverserEngine>(vocbase, info, needToLock);
+  } else if (type.isEqualString("shortestPath")) {
+    return std::make_unique<ShortestPathEngine>(vocbase, info, needToLock);
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "The 'options.type' attribute either has to be traversal or shortestPath");
+}
+#endif
+
+BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info, bool needToLock)
     : _query(nullptr), _trx(nullptr), _collections(vocbase) {
   VPackSlice shardsSlice = info.get(SHARDS);
   if (shardsSlice.isNone() || !shardsSlice.isObject()) {
@@ -122,6 +143,9 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
                                      trxOpts, true);
 #endif
 
+  if (!needToLock) {
+    _trx->addHint(transaction::Hints::Hint::LOCK_NEVER);
+  }
   // true here as last argument is crucial: it leads to the fact that the
   // created transaction is considered a "MAIN" part and will not switch
   // off collection locking completely!
@@ -241,8 +265,9 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
 }
 
 BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
-                                         VPackSlice info)
-    : BaseEngine(vocbase, info), _opts(nullptr) {}
+                                         VPackSlice info,
+                                         bool needToLock)
+    : BaseEngine(vocbase, info, needToLock), _opts(nullptr) {}
 
 BaseTraverserEngine::~BaseTraverserEngine() {}
 
@@ -373,8 +398,9 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
 }
 
 ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t* vocbase,
-                                       arangodb::velocypack::Slice info)
-    : BaseEngine(vocbase, info) {
+                                       arangodb::velocypack::Slice info,
+                                       bool needToLock)
+    : BaseEngine(vocbase, info, needToLock) {
   VPackSlice optsSlice = info.get(OPTIONS);
   if (optsSlice.isNone() || !optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -470,8 +496,9 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
 }
 
 TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
-                                 arangodb::velocypack::Slice info)
-    : BaseTraverserEngine(vocbase, info) {
+                                 arangodb::velocypack::Slice info, bool needToLock)
+    : BaseTraverserEngine(vocbase, info, needToLock) {
+
   VPackSlice optsSlice = info.get(OPTIONS);
   if (!optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

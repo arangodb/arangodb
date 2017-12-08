@@ -36,31 +36,12 @@
 
 using namespace arangodb::traverser;
 
-#ifndef USE_ENTERPRISE
-std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(TRI_vocbase_t* vocbase,
-                                                    VPackSlice info) {
-  VPackSlice type = info.get(std::vector<std::string>({"options", "type"}));
-  if (!type.isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "The body requires an 'options.type' attribute.");
-  }
-  if (type.isEqualString("traversal")) {
-    return std::make_unique<TraverserEngine>(vocbase, info);
-  } else if (type.isEqualString("shortestPath")) {
-    return std::make_unique<ShortestPathEngine>(vocbase, info);
-  }
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_BAD_PARAMETER,
-      "The 'options.type' attribute either has to be traversal or shortestPath");
-}
-#endif
-
 TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t* vocbase,
-                                                VPackSlice info)
+                                                VPackSlice info,
+                                                bool needToLock)
     : _isInUse(false),
       _toBeDeleted(false),
-      _engine(BaseEngine::BuildEngine(vocbase, info)),
+      _engine(BaseEngine::BuildEngine(vocbase, info, needToLock)),
       _timeToLive(0),
       _expires(0) {}
 
@@ -76,11 +57,12 @@ TraverserEngineRegistry::~TraverserEngineRegistry() {
 /// @brief Create a new Engine and return it's id
 TraverserEngineID TraverserEngineRegistry::createNew(TRI_vocbase_t* vocbase,
                                                      VPackSlice engineInfo,
+                                                     bool needToLock,
                                                      double ttl) {
   TraverserEngineID id = TRI_NewTickServer();
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Register TraverserEngine with id " << id;
   TRI_ASSERT(id != 0);
-  auto info = std::make_unique<EngineInfo>(vocbase, engineInfo);
+  auto info = std::make_unique<EngineInfo>(vocbase, engineInfo, needToLock);
   info->_timeToLive = ttl;
   info->_expires = TRI_microtime() + ttl;
 

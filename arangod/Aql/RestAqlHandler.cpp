@@ -363,34 +363,9 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
   for (auto const& te : VPackArrayIterator(traverserEngines)) {
     try {
       traverser::TraverserEngineID id =
-          _traverserRegistry->createNew(_vocbase, te, ttl);
+          _traverserRegistry->createNew(_vocbase, te, needToLock, ttl);
+      needToLock = false;
       TRI_ASSERT(id != 0);
-      if (needToLock) {
-        needToLock = false;
-        try {
-          auto engine = _traverserRegistry->get(id);
-          Result res = engine->lockAll();
-          _traverserRegistry->returnEngine(id);
-          if (!res.ok()) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                res.errorNumber(), res.errorMessage());
-            return false;
-          }
-        } catch (basics::Exception  const& e) {
-          generateError(rest::ResponseCode::SERVER_ERROR,
-              e.code(), e.message());
-          return false;
-        } catch (...) {
-          generateError(rest::ResponseCode::SERVER_ERROR,
-                        TRI_ERROR_HTTP_SERVER_ERROR,
-                        "Unable to lock all collections.");
-          return false;
-        }
-        // If we get here we successfully locked the collections.
-        // If we bail out up to this point nothing is kept alive.
-        // No need to cleanup...
- 
-      }
       answerBuilder.add(VPackValue(id));
     } catch (basics::Exception const& e) {
       LOG_TOPIC(ERR, arangodb::Logger::AQL)
