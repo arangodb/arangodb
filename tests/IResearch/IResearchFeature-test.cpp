@@ -72,7 +72,6 @@ SECTION("test_start") {
     { "STARTS_WITH", ".,.|." },
 
     // scorer functions
-    { "@", ".|+" },
     { "BM25", ".|+" },
     { "TFIDF", ".|+" },
   };
