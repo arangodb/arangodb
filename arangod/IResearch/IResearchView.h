@@ -158,6 +158,17 @@ class CompoundReader final : public irs::index_reader {
 // In case if number of threads will be increased each thread has to receive
 // it's own FlushTransaction object
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief an abstraction over the IResearch index implementing the
+///        ViewImplementation interface
+/// @note the responsibility of the IResearchView API is to only manage the
+///       IResearch data store, i.e. insert/remove/query
+///       the IResearchView API does not manage which and how the data gets
+///       populated into and removed from the datatstore
+///       therefore the API provides generic insert/remvoe/drop/query functions
+///       which may be, but are not explicitly required to be, triggered via
+///       the IResearchLink or IResearchViewBlock
+///////////////////////////////////////////////////////////////////////////////
 class IResearchView final: public arangodb::ViewImplementation,
                            public arangodb::FlushTransaction {
  public:
@@ -175,7 +186,8 @@ class IResearchView final: public arangodb::ViewImplementation,
   void drop() override;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief drop collection matching 'cid' from the iResearch View
+  /// @brief remove all documents matching collection 'cid' from this IResearch
+  ///        View and the underlying IResearch stores
   ////////////////////////////////////////////////////////////////////////////////
   int drop(TRI_voc_cid_t cid);
 
@@ -183,8 +195,10 @@ class IResearchView final: public arangodb::ViewImplementation,
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   ////////////////////////////////////////////////////////////////////////////////
-  void getPropertiesVPack(arangodb::velocypack::Builder& builder,
-			  bool forPersistence) const override;
+  void getPropertiesVPack(
+    arangodb::velocypack::Builder& builder,
+    bool forPersistence
+  ) const override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the id identifying the current iResearch View or '0' if unknown
@@ -192,7 +206,8 @@ class IResearchView final: public arangodb::ViewImplementation,
   TRI_voc_cid_t id() const noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief insert a document into the iResearch View
+  /// @brief insert a document into this IResearch View and the underlying
+  ///        IResearch stores
   ///        to be done in the scope of transaction 'tid' and 'meta'
   ////////////////////////////////////////////////////////////////////////////////
   int insert(
@@ -204,7 +219,8 @@ class IResearchView final: public arangodb::ViewImplementation,
   );
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief insert a batch of documents into the iResearch View
+  /// @brief insert a batch of documents into the IResearch View and the
+  ///        underlying IResearch stores
   ///        to be done in the scope of transaction 'tid' and 'meta'
   ///        'Itrator.first' == TRI_voc_rid_t
   ///        'Itrator.second' == arangodb::velocypack::Slice
@@ -251,10 +267,15 @@ class IResearchView final: public arangodb::ViewImplementation,
   void open() override;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief remove documents matching 'cid' and 'rid' from the iResearch View
+  /// @brief remove documents matching 'cid' and 'rid' from the IResearch View
+  ///        and the underlying IResearch stores
   ///        to be done in the scope of transaction 'tid'
   ////////////////////////////////////////////////////////////////////////////////
-  int remove(transaction::Methods& trx, TRI_voc_cid_t cid, arangodb::LocalDocumentId const& documentId);
+  int remove(
+    transaction::Methods& trx,
+    TRI_voc_cid_t cid,
+    arangodb::LocalDocumentId const& documentId
+  );
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief wait for a flush of all index data to its respective stores

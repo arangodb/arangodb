@@ -47,11 +47,11 @@ namespace arangodb {
 class PhysicalCollection;
 class PhysicalView;
 class RocksDBBackgroundThread;
-class RocksDBCounterManager;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
 class RocksDBReplicationManager;
+class RocksDBSettingsManager;
 class RocksDBThrottle;    // breaks tons if RocksDBThrottle.h included here
 class RocksDBVPackComparator;
 class RocksDBWalAccess;
@@ -250,8 +250,11 @@ class RocksDBEngine final : public StorageEngine {
                                   RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
+  void addIndexMapping(uint64_t, Index*);
+
   std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
       uint64_t) const;
+  Index* mapObjectToIndex(uint64_t) const;
 
   std::vector<std::string> currentWalFiles();
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
@@ -291,9 +294,9 @@ class RocksDBEngine final : public StorageEngine {
   static std::string const FeatureName;
 
   /// @brief recovery manager
-  RocksDBCounterManager* counterManager() const {
-    TRI_ASSERT(_counterManager);
-    return _counterManager.get();
+  RocksDBSettingsManager* settingsManager() const {
+    TRI_ASSERT(_settingsManager);
+    return _settingsManager.get();
   }
 
   /// @brief manages the ongoing dump clients
@@ -302,10 +305,10 @@ class RocksDBEngine final : public StorageEngine {
     return _replicationManager.get();
   }
 
-  arangodb::Result registerRecoveryHelper(
+  static arangodb::Result registerRecoveryHelper(
       std::shared_ptr<RocksDBRecoveryHelper> helper);
-  std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&
-      recoveryHelpers() const;
+  static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&
+      recoveryHelpers();
 
  private:
   /// single rocksdb database used in this storage engine
@@ -322,7 +325,7 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief repository for replication contexts
   std::unique_ptr<RocksDBReplicationManager> _replicationManager;
   /// @brief tracks the count of documents in collections
-  std::unique_ptr<RocksDBCounterManager> _counterManager;
+  std::unique_ptr<RocksDBSettingsManager> _settingsManager;
   /// @brief Local wal access abstraction
   std::unique_ptr<RocksDBWalAccess> _walAccess;
 
@@ -336,11 +339,12 @@ class RocksDBEngine final : public StorageEngine {
                                       // for intermediate commit
 
   // hook-ins for recovery process
-  std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
+  static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
 
-  mutable basics::ReadWriteLock _collectionMapLock;
+  mutable basics::ReadWriteLock _mapLock;
   std::unordered_map<uint64_t, std::pair<TRI_voc_tick_t, TRI_voc_cid_t>>
       _collectionMap;
+  std::unordered_map<uint64_t, Index*> _indexMap;
 
   mutable basics::ReadWriteLock _walFileLock;
 

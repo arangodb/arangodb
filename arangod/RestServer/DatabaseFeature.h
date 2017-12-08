@@ -46,7 +46,7 @@ class DatabaseManagerThread : public Thread {
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
 
-  DatabaseManagerThread(); 
+  DatabaseManagerThread();
   ~DatabaseManagerThread();
 
   void run() override;
@@ -83,12 +83,14 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   /// the replication appliers) for all databases
   void recoveryDone();
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
-  ///        if StorageEngine.inRecovery() -> call at start of recoveryDone() and
-  ///                                         fail recovery if callback !ok()
-  ///        if !StorageEngine.inRecovery() -> call immediately and return result
-  ////////////////////////////////////////////////////////////////////////////////
+  ///        if StorageEngine.inRecovery() -> call at start of recoveryDone()
+  ///                                         and fail recovery if callback
+  ///                                         !ok()
+  ///        if !StorageEngine.inRecovery() -> call immediately and return
+  ///                                          result
+  //////////////////////////////////////////////////////////////////////////////
   Result registerPostRecoveryCallback(std::function<Result()>&& callback);
 
  public:
@@ -107,7 +109,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);
 
   void inventory(arangodb::velocypack::Builder& result,
-                 TRI_voc_tick_t, 
+                 TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
   TRI_vocbase_t* useDatabaseCoordinator(std::string const& name);
@@ -145,7 +147,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   /// @brief create base app directory
   int createBaseApplicationDirectory(std::string const& appPath, std::string const& type);
-  
+
   /// @brief create app subdirectory for a database
   int createApplicationDirectory(std::string const& name, std::string const& basePath);
 
@@ -175,7 +177,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   TRI_vocbase_t* _vocbase; // _system database
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 
-  std::atomic<DatabasesLists*> _databasesLists; 
+  std::atomic<DatabasesLists*> _databasesLists;
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
   // arangodb::basics::DataProtector<64>
   arangodb::basics::DataProtector _databasesProtector;

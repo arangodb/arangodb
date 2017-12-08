@@ -27,6 +27,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
+#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 
@@ -41,7 +42,7 @@ namespace cache {
 class Cache;
 }
 class LogicalCollection;
-class RocksDBCounterManager;
+class RocksDBSettingsManager;
 class RocksDBMethods;
 
 class RocksDBIndex : public Index {
@@ -113,9 +114,9 @@ class RocksDBIndex : public Index {
   void createCache();
   void destroyCache();
 
-  virtual void serializeEstimate(std::string& output) const;
+  virtual void serializeEstimate(std::string& output, uint64_t seq) const;
 
-  virtual bool deserializeEstimate(RocksDBCounterManager* mgr);
+  virtual bool deserializeEstimate(RocksDBSettingsManager* mgr);
 
   virtual void recalculateEstimates();
 
@@ -148,6 +149,8 @@ class RocksDBIndex : public Index {
 
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
                                     bool unique);
+
+  virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const;
 
  protected:
   // Will be called during truncate to allow the index to update selectivity

@@ -76,6 +76,7 @@ void FlushThread::run() {
         TRI_SegfaultDebugging("crashing before releasing tick");
       }
       engine->releaseTick(toRelease);
+      LOG_TOPIC(TRACE, Logger::ENGINES) << "released tick " << toRelease << " for garbage collection";
 
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);

@@ -439,6 +439,140 @@ SECTION("test_drop_with_link") {
   CHECK((false == TRI_IsDirectory(dataPath.c_str())));
 }
 
+SECTION("test_drop_cid") {
+  static std::vector<std::string> const EMPTY;
+
+  // cid not in list of fully indexed (view definition not updated, not persisted)
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::LogicalView logicalView(nullptr, json->slice());
+    auto viewImpl = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), false);
+    CHECK((false == !viewImpl));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+    CHECK((nullptr != view));
+
+    // fill with test data
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+      CHECK((trx.begin().ok()));
+      view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
+      CHECK((trx.commit().ok()));
+      view->sync();
+    }
+
+    // query
+    {
+      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      REQUIRE(dummyPlan);
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+      CHECK((trx.begin().ok()));
+      arangodb::aql::Variable variable("testVariable", 0);
+      std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, nullptr, nullptr));
+      CHECK((false == !itr));
+
+      uint64_t count = 0;
+      itr->skip(irs::integer_traits<uint64_t>::const_max, count); // get count of matched docs
+      REQUIRE((1 == count));
+    }
+
+    // drop cid 42
+    {
+      bool persisted = false;
+      auto before = PhysicalViewMock::before;
+      auto restore = irs::make_finally([&before]()->void { PhysicalViewMock::before = before; });
+      PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
+
+      view->drop(42);
+      CHECK((!persisted));
+      view->sync();
+    }
+
+    // query
+    {
+      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      REQUIRE(dummyPlan);
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+      CHECK((trx.begin().ok()));
+      arangodb::aql::Variable variable("testVariable", 0);
+      std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, nullptr, nullptr));
+      CHECK((false == !itr));
+
+      uint64_t count = 0;
+      itr->skip(irs::integer_traits<uint64_t>::const_max, count); // get count of matched docs
+      REQUIRE((0 == count));
+    }
+  }
+
+  // cid in list of fully indexed (view definition updated+persisted)
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"collections\": [ 42 ] }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::LogicalView logicalView(nullptr, json->slice());
+    auto viewImpl = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), false);
+    CHECK((false == !viewImpl));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+    CHECK((nullptr != view));
+
+    // fill with test data
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+      CHECK((trx.begin().ok()));
+      view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
+      CHECK((trx.commit().ok()));
+      view->sync();
+    }
+
+    // query
+    {
+      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      REQUIRE(dummyPlan);
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+      CHECK((trx.begin().ok()));
+      arangodb::aql::Variable variable("testVariable", 0);
+      std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, nullptr, nullptr));
+      CHECK((false == !itr));
+
+      uint64_t count = 0;
+      itr->skip(irs::integer_traits<uint64_t>::const_max, count); // get count of matched docs
+      REQUIRE((1 == count));
+    }
+
+    // drop cid 42
+    {
+      bool persisted = false;
+      auto before = PhysicalViewMock::before;
+      auto restore = irs::make_finally([&before]()->void { PhysicalViewMock::before = before; });
+      PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
+
+      view->drop(42);
+      CHECK((persisted));
+      view->sync();
+    }
+
+    // query
+    {
+      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      REQUIRE(dummyPlan);
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+      CHECK((trx.begin().ok()));
+      arangodb::aql::Variable variable("testVariable", 0);
+      std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, nullptr, nullptr));
+      CHECK((false == !itr));
+
+      uint64_t count = 0;
+      itr->skip(irs::integer_traits<uint64_t>::const_max, count); // get count of matched docs
+      REQUIRE((0 == count));
+    }
+  }
+}
+
 SECTION("test_insert") {
   static std::vector<std::string> const EMPTY;
   auto json = arangodb::velocypack::Parser::fromJson("{}");

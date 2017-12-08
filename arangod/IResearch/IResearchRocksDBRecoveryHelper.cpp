@@ -21,13 +21,17 @@
 /// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
 #include "IResearch/IResearchRocksDBRecoveryHelper.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
 #include "Indexes/Index.h"
+#include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -35,17 +39,21 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper()
-    : _dbFeature(DatabaseFeature::DATABASE),
-      _engine(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)),
-      _documentCF(RocksDBColumnFamily::documents()->GetID()) {}
+IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper() {}
 
 IResearchRocksDBRecoveryHelper::~IResearchRocksDBRecoveryHelper() {}
+
+void IResearchRocksDBRecoveryHelper::prepare() {
+  _dbFeature = DatabaseFeature::DATABASE,
+  _engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE),
+  _documentCF = RocksDBColumnFamily::documents()->GetID();
+}
 
 void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
                                            const rocksdb::Slice& key,
@@ -72,6 +80,8 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
     for (auto link : links) {
       link->insert(&trx, LocalDocumentId(rev), doc,
                    Index::OperationMode::internal);
+      // LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH) << "recovery helper
+      // inserted: " << doc.toJson();
     }
     trx.commit();
 
@@ -101,6 +111,8 @@ void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
         arangodb::AccessMode::Type::WRITE);
     for (auto link : links) {
       link->remove(&trx, LocalDocumentId(rev), Index::OperationMode::internal);
+      // LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH) << "recovery helper
+      // removed: " << rev;
     }
     trx.commit();
 
@@ -113,7 +125,21 @@ void IResearchRocksDBRecoveryHelper::SingleDeleteCF(uint32_t column_family_id,
 
 }
 
-void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {}
+void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
+  RocksDBLogType type = RocksDBLogValue::type(blob);
+  if (type == RocksDBLogType::IResearchLinkDrop) {
+    // check if view still exists, if not ignore
+    TRI_voc_tick_t dbId = RocksDBLogValue::databaseId(blob);
+    TRI_voc_cid_t collectionId = RocksDBLogValue::collectionId(blob);
+    TRI_voc_cid_t viewId = RocksDBLogValue::viewId(blob);
+    dropCollectionFromView(dbId, collectionId, viewId);
+  } else if (type == RocksDBLogType::CollectionDrop) {
+    // find database, iterate over all extant views and drop collection
+    TRI_voc_tick_t dbId = RocksDBLogValue::databaseId(blob);
+    TRI_voc_cid_t collectionId = RocksDBLogValue::collectionId(blob);
+    dropCollectionFromAllViews(dbId, collectionId);
+  }
+}
 
 std::pair<TRI_vocbase_t*, LogicalCollection*>
 IResearchRocksDBRecoveryHelper::lookupDatabaseAndCollection(
@@ -139,4 +165,55 @@ std::vector<IResearchLink*> IResearchRocksDBRecoveryHelper::lookupLinks(
   }
 
   return links;
+}
+
+void IResearchRocksDBRecoveryHelper::dropCollectionFromAllViews(
+    TRI_voc_tick_t dbId, TRI_voc_cid_t collectionId) {
+  auto vocbase = _dbFeature->useDatabase(dbId);
+  if (vocbase) {
+    // iterate over vocbase views
+    for (auto logicalView : vocbase->views()) {
+      if (IResearchView::type() != logicalView->type()) {
+        continue;
+      }
+      auto* view =
+          static_cast<IResearchView*>(logicalView->getImplementation());
+      LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "Removing all documents belonging to view " << view->id()
+          << " sourced from collection " << collectionId;
+      view->drop(collectionId);
+    }
+  }
+}
+
+void IResearchRocksDBRecoveryHelper::dropCollectionFromView(
+    TRI_voc_tick_t dbId, TRI_voc_cid_t collectionId, TRI_voc_cid_t viewId) {
+  auto vocbase = _dbFeature->useDatabase(dbId);
+  if (vocbase) {
+    auto logicalView = vocbase->lookupView(viewId);
+
+    if (!logicalView || IResearchView::type() != logicalView->type()) {
+      LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "error looking up view '" << viewId << "': no such view";
+      return;
+    }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* view = dynamic_cast<IResearchView*>(logicalView->getImplementation());
+#else
+    auto* view = static_cast<IResearchView*>(logicalView->getImplementation());
+#endif
+
+    if (!view) {
+      LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "error finding view: '" << viewId << "': not an iresearch view";
+      return;
+    }
+
+    LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "Removing all documents belonging to view " << viewId
+        << " sourced from collection " << collectionId;
+
+    view->drop(collectionId);
+  }
 }

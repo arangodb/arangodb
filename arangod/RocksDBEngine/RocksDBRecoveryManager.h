@@ -18,37 +18,47 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Simon Grätzer
 /// @author Daniel Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_RECOVERY_HELPER_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_RECOVERY_HELPER_H 1
+#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_RECOVERY_MANAGER_H
+#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_RECOVERY_MANAGER_H 1
 
+#include <rocksdb/types.h>
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 
-#include <rocksdb/utilities/write_batch_with_index.h>
-#include <rocksdb/write_batch.h>
+namespace rocksdb {
+class TransactionDB;
+}  // namespace rocksdb
 
 namespace arangodb {
 
-class RocksDBRecoveryHelper {
+class RocksDBRecoveryManager final
+    : public application_features::ApplicationFeature {
  public:
-  virtual ~RocksDBRecoveryHelper() {}
+  explicit RocksDBRecoveryManager(
+      application_features::ApplicationServer* server);
 
-  virtual void prepare() {}
+  static std::string featureName() { return "RocksDBRecoveryManager"; }
+  static RocksDBRecoveryManager* instance();
 
-  virtual void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
-                       const rocksdb::Slice& value) {}
+  void start() override;
 
-  virtual void DeleteCF(uint32_t column_family_id,
-                          const rocksdb::Slice& key) {}
+  void runRecovery();
+  bool inRecovery() const;
 
-  virtual void SingleDeleteCF(uint32_t column_family_id,
-                                const rocksdb::Slice& key) {}
+ protected:
+  bool parseRocksWAL();
 
-  virtual void LogData(const rocksdb::Slice& blob) {}
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief rocksdb instance
+  //////////////////////////////////////////////////////////////////////////////
+  rocksdb::TransactionDB* _db;
+
+  bool _inRecovery;
 };
-
-} // end namespace arangodb
+}  // namespace arangodb
 
 #endif
