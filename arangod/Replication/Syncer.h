@@ -78,7 +78,7 @@ class Syncer {
   
   /// @brief sleeps (nanoseconds)
   void sleep(uint64_t time) {
-    usleep(static_cast<TRI_usleep_t>(time));
+    std::this_thread::sleep_for(std::chrono::microseconds(time));
   }
 
   /// @brief request location rewriter (injects database name)
