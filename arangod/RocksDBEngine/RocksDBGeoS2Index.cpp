@@ -98,7 +98,7 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
     estimateDensity();
   }
 
-  geo::FilterType filterType() const override { return _near.filterType(); }
+  //geo::FilterType filterType() const override { return _near.filterType(); }
   
   /*bool nextDocument(DocumentCallback const& cb, size_t limit) override {
    ....

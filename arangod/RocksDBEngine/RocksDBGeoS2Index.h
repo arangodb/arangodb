@@ -49,7 +49,7 @@ class RocksDBGeoS2IndexIterator : public IndexIterator {
 
   char const* typeName() const override { return "s2index-index-iterator"; }
 
-  virtual geo::FilterType filterType() const = 0;
+  //virtual geo::FilterType filterType() const = 0;
 
  protected:
   RocksDBGeoS2Index const* _index;

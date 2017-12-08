@@ -72,9 +72,9 @@ class NearUtils {
   /// @brief get cell covering target coordinate (at max level)
   S2Point centroid() const { return _centroid; }
 
-  geo::FilterType filterType() const { return _params.filter; }
+  //geo::FilterType filterType() const { return _params.filter; }
 
-  S2Region const* region() const { return _params.region; }
+  //S2Region const* region() const { return _params.region; }
 
   /// @brief has buffered results
   bool hasNearest() const {

@@ -43,7 +43,6 @@ struct Collection;
 class Condition;
 class ExecutionBlock;
 class ExecutionPlan;
-struct Index;
 
 /// @brief class IndexNode
 class IndexNode : public ExecutionNode, public DocumentProducingNode {

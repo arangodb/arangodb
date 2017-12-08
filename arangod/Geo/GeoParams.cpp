@@ -75,10 +75,10 @@ void RegionCoverParams::configureS2RegionCoverer(
 
 double NearParams::maxDistanceRad() const {
   double mm = std::min(maxDistance / kEarthRadiusInMeters, M_PI);
-  if (filter != FilterType::NONE) {
+  /*if (filter != FilterType::NONE) {
     TRI_ASSERT(region != nullptr);
     S1Angle angle = region->GetCapBound().angle();
     return std::min(angle.radians(), mm);
-  }
+  }*/
   return mm;
 }

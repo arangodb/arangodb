@@ -75,7 +75,6 @@ struct Collection;
 class ExecutionBlock;
 class TraversalBlock;
 class ExecutionPlan;
-struct Index;
 class RedundantCalculationsReplacer;
 
 /// @brief sort element, consisting of variable, sort direction, and a possible
@@ -260,17 +259,6 @@ class ExecutionNode {
     NOT_COVERED_ATTR,
     NO_MATCH
   };
-
-  struct IndexMatch {
-    IndexMatch() : index(nullptr), doesMatch(false), reverse(false) {}
-
-    Index const* index;  // The index concerned; if null, this is a nonmatch.
-    std::vector<MatchType> matches;  // qualification of the attrs match quality
-    bool doesMatch;                  // do all criteria match?
-    bool reverse;                    // reverse index scan required
-  };
-
-  typedef std::vector<std::pair<std::string, bool>> IndexMatchVec;
 
   /// @brief make a new node the (only) parent of the node
   void setParent(ExecutionNode* p) {
