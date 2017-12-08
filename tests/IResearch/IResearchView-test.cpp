@@ -466,17 +466,9 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-      REQUIRE(dummyPlan);
       arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       CHECK((trx.begin().ok()));
-      arangodb::aql::Variable variable("testVariable", 0);
-      std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, nullptr, nullptr));
-      CHECK((false == !itr));
-
-      uint64_t count = 0;
-      itr->skip(irs::integer_traits<uint64_t>::const_max, count); // get count of matched docs
-      REQUIRE((1 == count));
+      CHECK(1 == view->snapshot(trx).live_docs_count());
     }
 
     // drop cid 42
@@ -493,17 +485,9 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-      REQUIRE(dummyPlan);
       arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       CHECK((trx.begin().ok()));
-      arangodb::aql::Variable variable("testVariable", 0);
-      std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, nullptr, nullptr));
-      CHECK((false == !itr));
-
-      uint64_t count = 0;
-      itr->skip(irs::integer_traits<uint64_t>::const_max, count); // get count of matched docs
-      REQUIRE((0 == count));
+      CHECK(0 == view->snapshot(trx).live_docs_count());
     }
   }
 
@@ -531,17 +515,9 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-      REQUIRE(dummyPlan);
       arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       CHECK((trx.begin().ok()));
-      arangodb::aql::Variable variable("testVariable", 0);
-      std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, nullptr, nullptr));
-      CHECK((false == !itr));
-
-      uint64_t count = 0;
-      itr->skip(irs::integer_traits<uint64_t>::const_max, count); // get count of matched docs
-      REQUIRE((1 == count));
+      CHECK(1 == view->snapshot(trx).live_docs_count());
     }
 
     // drop cid 42
@@ -558,17 +534,9 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-      REQUIRE(dummyPlan);
       arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       CHECK((trx.begin().ok()));
-      arangodb::aql::Variable variable("testVariable", 0);
-      std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, nullptr, nullptr));
-      CHECK((false == !itr));
-
-      uint64_t count = 0;
-      itr->skip(irs::integer_traits<uint64_t>::const_max, count); // get count of matched docs
-      REQUIRE((0 == count));
+      CHECK(0 == view->snapshot(trx).live_docs_count());
     }
   }
 }
