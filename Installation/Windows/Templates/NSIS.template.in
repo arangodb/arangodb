@@ -973,7 +973,7 @@ continueUI:
     ${EndIf}
     ${If} $ServiceUp == 1
       ; open web ui in default browser
-      ExecShell "" "$TRI_AARDVARK_URL"
+      ExecShell "" "${TRI_AARDVARK_URL}"
     ${EndIf}
   ${EndIf}
 FunctionEnd
