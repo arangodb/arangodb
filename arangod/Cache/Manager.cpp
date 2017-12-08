@@ -280,7 +280,7 @@ Transaction* Manager::beginTransaction(bool readOnly) {
   return _transactions.begin(readOnly);
 }
 
-void Manager::endTransaction(Transaction* tx) { _transactions.end(tx); }
+void Manager::endTransaction(Transaction* tx) noexcept { _transactions.end(tx); }
 
 bool Manager::post(std::function<void()> fn) { return _schedulerPost(fn); }
 

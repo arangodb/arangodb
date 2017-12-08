@@ -536,13 +536,9 @@ void HeartbeatThread::runSingleServer() {
         
         if (result.successful()) { // sucessfull leadership takeover
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "All your base are belong to us";
-          if (applier->isRunning()) {
-            applier->stopAndJoin();
-          }
-          ServerState::instance()->setFoxxmaster(_myId);
-          ServerState::setServerMode(ServerState::Mode::DEFAULT);
-          continue; // nothing more to do here
-          
+          leaderSlice = myIdBuilder.slice();
+          // intentionally falls through to case 2
+
         } else if (result.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
           // we did not become leader, someone else is, response contains
           // current value in agency
@@ -612,12 +608,12 @@ void HeartbeatThread::runSingleServer() {
         
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
-        config._endpoint = endpoint;
-        config._autoResync = true;
-        config._autoResyncRetries = 3;
         if (config._jwt.empty()) {
           config._jwt = auth->jwtToken();
         }
+        config._endpoint = endpoint;
+        config._autoResync = true;
+        config._autoResyncRetries = 3;
         // TODO: how do we initially configure the applier
         
         // start initial synchronization
