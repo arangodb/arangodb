@@ -1,6 +1,8 @@
 devel
 -----
 
+* UI: fixed disappearing of the navigation label in some case special case
+
 * fixed issue #3917: traversals with high maximal depth take extremely long
   in planning phase.
   
