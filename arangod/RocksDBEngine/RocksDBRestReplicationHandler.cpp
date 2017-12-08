@@ -75,7 +75,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
                                                            RocksDBReplicationContext::DefaultTTL);
     // create transaction+snapshot
     RocksDBReplicationContext* ctx = _manager->createContext(ttl);
-    RocksDBReplicationContextGuard(_manager, ctx);
+    RocksDBReplicationContextGuard guard(_manager, ctx);
     ctx->bind(_vocbase);
 
     VPackBuilder b;
@@ -87,16 +87,21 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // add client
     bool found;
     std::string const& value = _request->value("serverId", found);
-    TRI_server_id_t serverId = 0;
-
-    if (found) {
-      serverId = (TRI_server_id_t)StringUtils::uint64(value);
-    } else {
-      serverId = ctx->id();
+    if (!found) {
+      LOG_TOPIC(DEBUG, Logger::FIXME) << "no serverId parameter found in request to " << _request->fullUrl();
     }
+     
+    if (!found || (!value.empty() && value != "none")) {
+      TRI_server_id_t serverId = 0;
 
-    _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+      if (found) {
+        serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
+      } else {
+        serverId = ctx->id();
+      }
 
+      _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+    }
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
   }
@@ -134,16 +139,21 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // add client
     bool found;
     std::string const& value = _request->value("serverId", found);
-    TRI_server_id_t serverId = 0;
-
-    if (found) {
-      serverId = (TRI_server_id_t)StringUtils::uint64(value);
-    } else {
-      serverId = ctx->id();
+    if (!found) {
+      LOG_TOPIC(DEBUG, Logger::FIXME) << "no serverId parameter found in request to " << _request->fullUrl();
     }
+     
+    if (!found || (!value.empty() && value != "none")) {
+      TRI_server_id_t serverId = 0;
 
-    _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+      if (found) {
+        serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
+      } else {
+        serverId = ctx->id();
+      }
 
+      _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+    }
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
   }
@@ -314,11 +324,10 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     bool found;
     std::string const& value = _request->value("serverId", found);
 
-    TRI_server_id_t serverId = 0;
-    if (found) {
-      serverId = (TRI_server_id_t)StringUtils::uint64(value);
+    if (!found || (!value.empty() && value != "none")) {
+      TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
+      _vocbase->updateReplicationClient(serverId, result.maxTick());
     }
-    _vocbase->updateReplicationClient(serverId, result.maxTick());
   }
 }
 

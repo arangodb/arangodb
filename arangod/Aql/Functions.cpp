@@ -1937,9 +1937,9 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
-  for (auto const& s : VPackArrayIterator(slice)) {
+  for (VPackSlice s : VPackArrayIterator(slice)) {
     if (!s.isNone()) {
-      values.emplace(s);
+      values.emplace(s.resolveExternal());
     }
   }
 
@@ -2053,7 +2053,8 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
     materializers.emplace_back(trx);
     VPackSlice slice = materializers.back().slice(value, false);
 
-    for (auto const& v : VPackArrayIterator(slice)) {
+    for (VPackSlice v : VPackArrayIterator(slice)) {
+      v = v.resolveExternal();
       if (values.find(v) == values.end()) {
         TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

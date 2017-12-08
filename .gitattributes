@@ -1,6 +1,8 @@
 *.sh eol=lf 
-VERSION eolf=lf
+VERSION eol=lf
+VERSIONS eol=lf
 scripts/unittest eol=lf
+*.groovy
 *.csv binary
 *.json eol=lf
 arangod/Aql/tokens.cpp merge=ours
