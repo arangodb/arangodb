@@ -1001,9 +1001,9 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
   std::string const masterName =
       VelocyPackHelper::getStringValue(parameters, "name", "");
 
-  TRI_voc_cid_t const cid = VelocyPackHelper::extractIdValue(parameters);
+  TRI_voc_cid_t const masterCid = VelocyPackHelper::extractIdValue(parameters);
 
-  if (cid == 0) {
+  if (masterCid == 0) {
     errorMsg = "collection id is missing in response";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1022,13 +1022,13 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
 
   std::string const collectionMsg = "collection '" + masterName + "', type " +
                                     typeString + ", id " +
-                                    StringUtils::itoa(cid);
+                                    StringUtils::itoa(masterCid);
 
   // phase handling
   if (phase == PHASE_VALIDATE) {
     // validation phase just returns ok if we got here (aborts above if data is
     // invalid)
-    _processedCollections.emplace(cid, masterName);
+    _processedCollections.emplace(masterCid, masterName);
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -1040,7 +1040,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
     if (!incremental) {
       // first look up the collection by the cid
       arangodb::LogicalCollection* col =
-          getCollectionByIdOrName(cid, masterName);
+          getCollectionByIdOrName(masterCid, masterName);
 
       if (col != nullptr) {
         bool truncate = false;
@@ -1112,7 +1112,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
     arangodb::LogicalCollection* col = nullptr;
 
     if (incremental) {
-      col = getCollectionByIdOrName(cid, masterName);
+      col = getCollectionByIdOrName(masterCid, masterName);
 
       if (col != nullptr) {
         // collection is already present
@@ -1151,8 +1151,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
     std::string const progress = "dumping data for " + collectionMsg;
     setProgress(progress.c_str());
 
-    arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, masterName);
-
+    arangodb::LogicalCollection* col = getCollectionByIdOrName(masterCid, masterName);
     if (col == nullptr) {
       errorMsg = "cannot dump: " + collectionMsg + " not found";
 
