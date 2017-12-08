@@ -21,13 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StatisticsFeature.h"
-
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
+#include "Statistics/StatisticsWorker.h"
 
 #include <thread>
 #include <chrono>
@@ -174,7 +174,6 @@ void StatisticsFeature::prepare() {
 }
 
 void StatisticsFeature::start() {
-
   if (!_statistics) {
     return;
   }
