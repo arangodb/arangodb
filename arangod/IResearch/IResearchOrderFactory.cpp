@@ -64,8 +64,8 @@ bool validateFuncArgs(
   for (size_t i = 1, size = args->numMembers(); i < size; ++i) {
     auto const* arg = args->getMemberUnchecked(i);
 
-    if (!arg || !arg->isConstant()) {
-      // we don't support non-constant arguments for scorers
+    if (!arg || !arg->isDeterministic()) {
+      // we don't support non-deterministic arguments for scorers
       return false;
     }
   }
@@ -125,6 +125,28 @@ bool makeScorer(
 
 bool fromFCall(
     irs::sort::ptr* scorer,
+    irs::string_ref const& scorerName,
+    arangodb::aql::AstNode const* args,
+    arangodb::iresearch::QueryContext const& ctx
+) {
+  if (!validateFuncArgs(args, *ctx.ref)) {
+    // invalid arguments
+    return false;
+  }
+
+  if (!scorer) {
+    // cheap shallow check
+    return irs::scorers::exists(scorerName);
+  }
+
+  // we don't support non-constant arguments for scorers now, if it
+  // will change ensure that proper `ExpressionContext` set in `ctx`
+
+  return makeScorer(*scorer, scorerName, *args, ctx);
+}
+
+bool fromFCall(
+    irs::sort::ptr* scorer,
     arangodb::aql::AstNode const& node,
     arangodb::iresearch::QueryContext const& ctx
 ) {
@@ -135,13 +157,6 @@ bool fromFCall(
     return false; // no function
   }
 
-  auto* args = node.getMemberUnchecked(0);
-
-  if (!validateFuncArgs(args, *ctx.ref)) {
-    // invalid arguments
-    return false;
-  }
-
   auto& name = fn->name;
   std::string scorerName(name);
 
@@ -150,15 +165,7 @@ bool fromFCall(
     scorerName.begin(), scorerName.end(), scorerName.begin(), ::tolower
   );
 
-  if (!scorer) {
-    // shallow check
-    return irs::scorers::exists(scorerName);
-  }
-
-  // we don't support non-constant arguments for scorers now, if it
-  // will change ensure that proper `ExpressionContext` set in `ctx`
-
-  return makeScorer(*scorer, scorerName, *args, ctx);
+  return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
 }
 
 bool fromFCallUser(
@@ -173,13 +180,6 @@ bool fromFCallUser(
     return false; // no function name
   }
 
-  auto* args = node.getMemberUnchecked(0);
-
-  if (!validateFuncArgs(args, *ctx.ref)) {
-    // invalid arguments
-    return false;
-  }
-
   irs::string_ref scorerName;
 
   if (!arangodb::iresearch::parseValue(scorerName, node)) {
@@ -187,15 +187,7 @@ bool fromFCallUser(
     return false;
   }
 
-  if (!scorer) {
-    // shallow check
-    return irs::scorers::exists(scorerName);
-  }
-
-  // we don't support non-constant arguments for scorers now, if it
-  // will change ensure that proper `ExpressionContext` set in `ctx`
-
-  return makeScorer(*scorer, scorerName, *args, ctx);
+  return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
 }
 
 NS_END
@@ -210,12 +202,8 @@ NS_BEGIN(iresearch)
 /*static*/ bool OrderFactory::scorer(
     irs::sort::ptr* scorer,
     aql::AstNode const& node,
-    aql::Variable const& ref
+    QueryContext const& ctx
 ) {
-  QueryContext const ctx {
-    nullptr, nullptr, nullptr, nullptr, &ref
-  };
-
   switch (node.type) {
     case arangodb::aql::NODE_TYPE_FCALL: // function call
       return fromFCall(scorer, node, ctx);

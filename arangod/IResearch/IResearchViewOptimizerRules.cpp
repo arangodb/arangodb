@@ -48,6 +48,8 @@ std::vector<arangodb::iresearch::IResearchSort> buildSort(
 ) {
   std::vector<IResearchSort> entries;
 
+  QueryContext const ctx { nullptr, nullptr, nullptr, nullptr, &ref };
+
   for (auto& sort : sorts) {
     auto const* var = sort.first;
     auto varId = var->id;
@@ -76,7 +78,7 @@ std::vector<arangodb::iresearch::IResearchSort> buildSort(
       }
     }
 
-    if (var && rootNode && (!scorersOnly || OrderFactory::scorer(nullptr, *rootNode, ref))) {
+    if (var && rootNode && (!scorersOnly || OrderFactory::scorer(nullptr, *rootNode, ctx))) {
       entries.emplace_back(var, rootNode, sort.second);
     }
   }

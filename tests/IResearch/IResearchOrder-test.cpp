@@ -86,8 +86,18 @@ void assertOrder(
   auto* root = ast->root();
   REQUIRE(root);
 
-  auto* orderNode = root->getMember(2);
-  REQUIRE(orderNode);
+  // find first SORT node
+  arangodb::aql::AstNode* orderNode = nullptr;
+  for (size_t i = 0; i < root->numMembers(); ++i) {
+    auto* node = root->getMemberUnchecked(i);
+    REQUIRE(node);
+
+    if (arangodb::aql::NODE_TYPE_SORT == node->type) {
+      orderNode = node;
+      break;
+    }
+  }
+  REQUIRE((orderNode && arangodb::aql::NODE_TYPE_SORT == orderNode->type));
 
   auto* sortNode = orderNode->getMember(0);
   REQUIRE(sortNode);
@@ -106,11 +116,15 @@ void assertOrder(
 
   // optimization time check
   {
+    arangodb::iresearch::QueryContext const ctx {
+      nullptr, nullptr, nullptr, nullptr, ref
+    };
+
     for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
       auto const* sort = sortNode->getMember(i);
       auto const* expr = sort->getMember(0);
 
-      CHECK(parseOk == arangodb::iresearch::OrderFactory::scorer(nullptr, *expr, *ref));
+      CHECK(parseOk == arangodb::iresearch::OrderFactory::scorer(nullptr, *expr, ctx));
     }
   }
 
@@ -119,13 +133,22 @@ void assertOrder(
     irs::order actual;
     irs::sort::ptr actualScorer;
 
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+
+    arangodb::transaction::UserTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+    );
+
+    arangodb::iresearch::QueryContext const ctx{
+      &trx, dummyPlan.get(), ast, exprCtx, ref
+    };
+
     for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
       auto const* sort = sortNode->getMember(i);
       auto const* expr = sort->getMember(0);
       auto const asc = sort->getMember(1)->getBoolValue();
 
-
-      CHECK(execOk == arangodb::iresearch::OrderFactory::scorer(&actualScorer, *expr, *ref));
+      CHECK(execOk == arangodb::iresearch::OrderFactory::scorer(&actualScorer, *expr, ctx));
 
       if (execOk) {
         actual.add(!asc, std::move(actualScorer));
@@ -313,25 +336,37 @@ SECTION("test_FCall_tfidf") {
     assertOrderSuccess(query, expected);
   }
 
-  // reference as an argument (do not accept non-constant arguments)
+  // reference as an argument
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("withNorms", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true}));
 
     std::string query = "LET withNorms=true FOR d IN collection FILTER '1' SORT tfidf(d, withNorms) DESC RETURN d";
-    assertOrderFail(query, &ctx);
+
+    auto scorer = irs::scorers::get("tfidf", "[ true ]");
+
+    irs::order expected;
+    expected.add(true, scorer);
+
+    assertOrderSuccess(query, expected, &ctx);
   }
 
-  // deterministic expression as an argument (do not accept non-constant arguments)
+  // deterministic expression as an argument
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{5}));
 
     std::string query = "LET x=5 FOR d IN collection FILTER '1' SORT tfidf(d, 1+x > 3) DESC RETURN d";
-    assertOrderFail(query, &ctx);
+
+    auto scorer = irs::scorers::get("tfidf", "[ true ]");
+
+    irs::order expected;
+    expected.add(true, scorer);
+
+    assertOrderSuccess(query, expected, &ctx);
   }
 
-  // non-deterministic expression as an argument (do not accept non-constant arguments)
+  // non-deterministic expression as an argument
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{5}));
@@ -416,25 +451,37 @@ SECTION("test_FCall_bm25") {
     assertOrderSuccess(query, expected);
   }
 
-  // reference as k coefficient (do not accept non-constant arguments)
+  // reference as k coefficient
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("k", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.99}));
 
-    std::string query = "LET withNorms=true FOR d IN collection FILTER '1' SORT bm25(d, k) DESC RETURN d";
-    assertOrderFail(query, &ctx);
+    std::string query = "LET k=0.99 FOR d IN collection FILTER '1' SORT bm25(d, k) DESC RETURN d";
+
+    auto scorer = irs::scorers::get("bm25", "[ 0.99 ]");
+
+    irs::order expected;
+    expected.add(true, scorer);
+
+    assertOrderSuccess(query, expected, &ctx);
   }
 
-  // deterministic expression as k coefficient (do not accept non-constant arguments)
+  // deterministic expression as k coefficient
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
 
     std::string query = "LET x=0.97 FOR d IN collection FILTER '1' SORT bm25(d, x+0.02) DESC RETURN d";
-    assertOrderFail(query, &ctx);
+
+    auto scorer = irs::scorers::get("bm25", "[ 0.99 ]");
+
+    irs::order expected;
+    expected.add(true, scorer);
+
+    assertOrderSuccess(query, expected, &ctx);
   }
 
-  // non-deterministic expression as k coefficient (do not accept non-constant arguments)
+  // non-deterministic expression as k coefficient
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
@@ -446,35 +493,48 @@ SECTION("test_FCall_bm25") {
   // bm25 with k coefficient, b coefficient
   {
     std::string query = "FOR d IN collection FILTER '1' SORT bm25(d, 0.99, 1.2) DESC RETURN d";
-    irs::order expected;
 
     auto scorer = irs::scorers::get("bm25", "[ 0.99, 1.2 ]");
 
+    irs::order expected;
     expected.add(true, scorer);
+
     assertOrderSuccess(query, expected);
   }
 
-  // reference as k,b coefficients (do not accept non-constant arguments)
+  // reference as k,b coefficients
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("k", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
     ctx.vars.emplace("b", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{1.2}));
 
     std::string query = "LET k=0.97 LET b=1.2 FOR d IN collection FILTER '1' SORT bm25(d, k, b) DESC RETURN d";
-    assertOrderFail(query, &ctx);
+
+    auto scorer = irs::scorers::get("bm25", "[ 0.97, 1.2 ]");
+
+    irs::order expected;
+    expected.add(true, scorer);
+
+    assertOrderSuccess(query, expected, &ctx);
   }
 
-  // deterministic expressions as k,b coefficients (do not accept non-constant arguments)
+  // deterministic expressions as k,b coefficients
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
     ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.1}));
 
     std::string query = "LET x=0.97 LET y=0.1 FOR d IN collection FILTER '1' SORT bm25(d, x+0.02, 1+y) DESC RETURN d";
-    assertOrderFail(query, &ctx);
+
+    auto scorer = irs::scorers::get("bm25", "[ 0.99, 1.2 ]");
+
+    irs::order expected;
+    expected.add(true, scorer);
+
+    assertOrderSuccess(query, expected, &ctx);
   }
 
-  // non-deterministic expression as b coefficient (do not accept non-constant arguments)
+  // non-deterministic expression as b coefficient
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
@@ -494,7 +554,7 @@ SECTION("test_FCall_bm25") {
     assertOrderSuccess(query, expected);
   }
 
-  // reference as k,b coefficients, with norms (do not accept non-constant arguments)
+  // reference as k,b coefficients, with norms
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("k", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
@@ -502,7 +562,13 @@ SECTION("test_FCall_bm25") {
     ctx.vars.emplace("withNorms", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true}));
 
     std::string query = "LET k=0.97 LET b=1.2 LET withNorms=true FOR d IN collection FILTER '1' SORT bm25(d, k, b, withNorms) DESC RETURN d";
-    assertOrderFail(query, &ctx);
+
+    auto scorer = irs::scorers::get("bm25", "[ 0.97, 1.2, true ]");
+
+    irs::order expected;
+    expected.add(true, scorer);
+
+    assertOrderSuccess(query, expected, &ctx);
   }
 
   // deterministic expressions as k,b coefficients, with norms (do not accept non-constant arguments)
@@ -512,10 +578,16 @@ SECTION("test_FCall_bm25") {
     ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.1}));
 
     std::string query = "LET x=0.97 LET y=0.1 FOR d IN collection FILTER '1' SORT bm25(d, x+0.02, 1+y, x>y) DESC RETURN d";
-    assertOrderFail(query, &ctx);
+
+    auto scorer = irs::scorers::get("bm25", "[ 0.99, 1.1, true ]");
+
+    irs::order expected;
+    expected.add(true, scorer);
+
+    assertOrderSuccess(query, expected, &ctx);
   }
 
-  // non-deterministic expression as b coefficient (do not accept non-constant arguments)
+  // non-deterministic expression as b coefficient
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));

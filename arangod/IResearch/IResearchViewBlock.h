@@ -182,6 +182,8 @@ class IResearchViewBlock final : public IResearchViewUnorderedBlock {
   virtual size_t skip(size_t count) override;
 
  private:
+  void resetIterator();
+
   irs::score const* _scr;
   irs::bytes_ref _scrVal;
 }; // IResearchViewBlock

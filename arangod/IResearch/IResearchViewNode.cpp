@@ -294,6 +294,9 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
     return new IResearchViewUnorderedBlock(std::move(reader), engine, *this);
   }
 
+//FIXME uncomment when the following method will be there:
+// `int getAndSkip(size_t skip, size_t& skipped, size_t read, size_t& count, AqlItemBlock*& res)`
+//
 //  if (!isInInnerLoop()) {
 //    // optimized execution for simple queries
 //    return new IResearchViewOrderedBlock(std::move(reader), engine, *this);

@@ -74,6 +74,7 @@ inline arangodb::aql::RegisterId getRegister(
     ? arangodb::aql::ExecutionNode::MaxRegisterId
     : it->second.registerId;
   }
+
 }
 
 namespace arangodb {
@@ -185,7 +186,7 @@ void IResearchViewBlockBase::reset() {
       for (auto const& sort : viewNode.sortCondition()) {
         TRI_ASSERT(sort.node);
 
-        if (!arangodb::iresearch::OrderFactory::scorer(&scorer, *sort.node, *queryCtx.ref)) {
+        if (!arangodb::iresearch::OrderFactory::scorer(&scorer, *sort.node, queryCtx)) {
           // failed to append sort
           THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
         }
@@ -391,6 +392,23 @@ IResearchViewBlock::IResearchViewBlock(
   _volatileSort = true;
 }
 
+void IResearchViewBlock::resetIterator() {
+  auto& segmentReader = _reader[_readerOffset];
+
+  _itr = segmentReader.mask(_filter->execute(
+    segmentReader, _order, _filterCtx
+  ));
+
+  _scr = _itr->attributes().get<irs::score>().get();
+
+  if (_scr) {
+    _scrVal = _scr->value();
+  } else {
+    _scr = &irs::score::no_score();
+    _scrVal = irs::bytes_ref::nil;
+  }
+}
+
 bool IResearchViewBlock::next(
     AqlItemBlock& res,
     aql::RegisterId curRegs,
@@ -403,20 +421,7 @@ bool IResearchViewBlock::next(
     done = false;
 
     if (!_itr) {
-      auto& segmentReader = _reader[_readerOffset];
-
-      _itr = segmentReader.mask(_filter->execute(
-        segmentReader, _order, _filterCtx
-      ));
-
-      _scr = _itr->attributes().get<irs::score>().get();
-
-      if (_scr) {
-        _scrVal = _scr->value();
-      } else {
-        _scr = &irs::score::no_score();
-        _scrVal = irs::bytes_ref::nil;
-      }
+      resetIterator();
     }
 
     while (limit && _itr->next()) {
@@ -436,8 +441,7 @@ bool IResearchViewBlock::next(
         // evaluate scores
         _scr->evaluate();
 
-        // FIXME
-        // copy scores
+        // FIXME copy scores (as strings + provide push custom sort to `SortNode`)
         // registerId's are sequential
         auto scoreRegs = curRegs;
         for (size_t i = 0, size = getViewNode(*this).sortCondition().size(); i < size; ++i) {
@@ -454,7 +458,7 @@ bool IResearchViewBlock::next(
       }
       ++pos;
 
-      done = 0 ==--limit;
+      done = (0 == --limit);
     }
 
     if (done) {
@@ -479,25 +483,12 @@ size_t IResearchViewBlock::skip(size_t limit) {
     done = false;
 
     if (!_itr) {
-      auto& segmentReader = _reader[_readerOffset];
-
-      _itr = segmentReader.mask(_filter->execute(
-        segmentReader, _order, _filterCtx
-      ));
-
-      _scr = _itr->attributes().get<irs::score>().get();
-
-      if (_scr) {
-        _scrVal = _scr->value();
-      } else {
-        _scr = &irs::score::no_score();
-        _scrVal = irs::bytes_ref::nil;
-      }
+      resetIterator();
     }
 
     while (limit && _itr->next()) {
       ++skipped;
-      done = 0 == --limit;
+      done = (0 == --limit);
     }
 
     if (done) {
@@ -565,7 +556,7 @@ bool IResearchViewUnorderedBlock::next(
       }
       ++pos;
 
-      done = 0 ==--limit;
+      done = (0 == --limit);
     }
 
     if (done) {
@@ -599,7 +590,7 @@ size_t IResearchViewUnorderedBlock::skip(size_t limit) {
 
     while (limit && _itr->next()) {
       ++skipped;
-      done = 0 == --limit;
+      done = (0 == --limit);
     }
 
     if (done) {

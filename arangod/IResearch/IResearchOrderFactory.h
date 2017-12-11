@@ -36,6 +36,12 @@ class Variable;
 
 NS_END // aql
 
+NS_BEGIN(iresearch)
+
+struct QueryContext;
+
+NS_END // iresearch
+
 NS_BEGIN(transaction)
 
 class Methods; // forward declaration
@@ -52,7 +58,7 @@ struct OrderFactory {
   static bool scorer(
     irs::sort::ptr* scorer,
     aql::AstNode const& node,
-    aql::Variable const& ref
+    QueryContext const& ctx
   );
 }; // OrderFactory
 
