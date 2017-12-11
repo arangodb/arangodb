@@ -97,7 +97,7 @@ function foxxQueuesSuite () {
       }, {});
 
       var tries = 0;
-      while (++tries < 60) {
+      while (++tries < 240) {
         var result = db._jobs.document(id);
         if (result.status === 'pending' || result.status === 'progress') {
           internal.wait(0.5, false);
@@ -137,7 +137,7 @@ function foxxQueuesSuite () {
         }, {});
 
         var tries = 0;
-        while (++tries < 120) {
+        while (++tries < 240) {
           var result = db._jobs.document(id);
           if (result.status === 'pending') {
             internal.wait(0.5, false);
@@ -163,7 +163,7 @@ function foxxQueuesSuite () {
       }});
 
       var tries = 0;
-      while (++tries < 60) {
+      while (++tries < 240) {
         var result = db._jobs.document(id);
         if (result.status === 'pending' || result.status === 'progress') {
           internal.wait(0.5, false);
@@ -189,7 +189,7 @@ function foxxQueuesSuite () {
       }});
 
       var tries = 0;
-      while (++tries < 120) {
+      while (++tries < 240) {
         var result = db._jobs.document(id);
         if (result.status === 'pending' || result.status === 'progress') {
           internal.wait(0.5, false);
