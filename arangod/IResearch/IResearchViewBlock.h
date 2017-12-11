@@ -17,27 +17,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Daniel H. Larkin
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__ENUMERATE_VIEW_BLOCK_H
-#define ARANGOD_IRESEARCH__ENUMERATE_VIEW_BLOCK_H 1
+#ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_BLOCK_H
+#define ARANGOD_IRESEARCH__IRESEARCH_VIEW_BLOCK_H 1
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExpressionContext.h"
-#include "Views/ViewIterator.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/ManagedDocumentResult.h"
 
-namespace arangodb {
+#include "utils/attributes.hpp"
+#include "IResearch/ExpressionFilter.h"
+#include "IResearch/IResearchView.h"
 
-namespace aql {
+NS_BEGIN(iresearch)
+class score;
+NS_END // iresearch
+
+NS_BEGIN(arangodb)
+NS_BEGIN(aql)
 class AqlItemBlock;
 class ExecutionEngine;
-} // aql
+NS_END // aql
 
-namespace iresearch {
+NS_BEGIN(iresearch)
 
 class IResearchViewNode;
 
@@ -46,9 +54,9 @@ class IResearchViewNode;
 ///////////////////////////////////////////////////////////////////////////////
 class ViewExpressionContext final : public aql::ExpressionContext {
  public:
-  explicit ViewExpressionContext(aql::ExecutionBlock* block)
-    : _block(block) {
-    TRI_ASSERT(_block);
+  explicit ViewExpressionContext(IResearchViewNode const& node)
+    : _node(&node) {
+    TRI_ASSERT(_node);
   }
 
   virtual size_t numRegisters() const override;
@@ -68,19 +76,20 @@ class ViewExpressionContext final : public aql::ExpressionContext {
   ) const override;
 
   aql::AqlItemBlock const* _data{};
-  aql::ExecutionBlock* _block;
+  IResearchViewNode const* _node;
   size_t _pos{};
 }; // ViewExpressionContext
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @class EnumerateViewBlock
+/// @class IResearchViewBlockBase
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchViewBlock final : public aql::ExecutionBlock {
+class IResearchViewBlockBase : public aql::ExecutionBlock {
  public:
-  IResearchViewBlock(aql::ExecutionEngine*, IResearchViewNode const*);
-
-  // here we release our docs from this collection
-  int initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
+  IResearchViewBlockBase(
+    arangodb::iresearch::CompoundReader&& reader,
+    aql::ExecutionEngine&,
+    IResearchViewNode const&
+  );
 
   aql::AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
 
@@ -89,17 +98,127 @@ class IResearchViewBlock final : public aql::ExecutionBlock {
   // things to skip overall.
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
- private:
-  void refreshIterator();
+  // here we release our docs from this collection
+  int initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
 
+ protected:
+  bool readDocument(size_t segmentId, irs::doc_id_t docId);
+
+  virtual void reset();
+
+  virtual bool next(
+    aql::AqlItemBlock& res,
+    aql::RegisterId curReg,
+    size_t& pos,
+    size_t limit
+  ) = 0;
+
+  virtual size_t skip(size_t count) = 0;
+
+  irs::attribute_view _filterCtx; // filter context
   ViewExpressionContext _ctx;
-  std::unique_ptr<ViewIterator> _iter;
+  iresearch::CompoundReader _reader;
+  irs::filter::prepared::ptr _filter;
+  irs::order::prepared _order;
+  iresearch::ExpressionExecutionContext _execCtx; // expression execution context
   ManagedDocumentResult _mmdr;
   bool _hasMore;
-  bool _volatileState; // we have to recreate cached iterator when `reset` requested
-}; // EnumerateViewBlock
+  bool _volatileSort;
+  bool _volatileFilter;
+}; // IResearchViewBlockBase
 
-} // iresearch
-} // arangodb
+///////////////////////////////////////////////////////////////////////////////
+/// @class IResearchViewUnorderedBlock
+///////////////////////////////////////////////////////////////////////////////
+class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
+ public:
+  IResearchViewUnorderedBlock(
+    arangodb::iresearch::CompoundReader&& reader,
+    aql::ExecutionEngine& engine,
+    IResearchViewNode const& node
+  );
+
+ protected:
+  virtual void reset() override final {
+    IResearchViewBlockBase::reset();
+
+    // reset iterator state
+    _itr.reset();
+    _readerOffset = 0;
+  }
+
+  virtual bool next(
+    aql::AqlItemBlock& res,
+    aql::RegisterId curReg,
+    size_t& pos,
+    size_t limit
+  ) override;
+
+  virtual size_t skip(size_t count) override;
+
+  irs::doc_iterator::ptr _itr;
+  size_t _readerOffset;
+}; // IResearchViewUnorderedBlock
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class IResearchViewBlock
+///////////////////////////////////////////////////////////////////////////////
+class IResearchViewBlock final : public IResearchViewUnorderedBlock {
+ public:
+  IResearchViewBlock(
+    arangodb::iresearch::CompoundReader&& reader,
+    aql::ExecutionEngine& engine,
+    IResearchViewNode const& node
+  );
+
+ protected:
+  virtual bool next(
+    aql::AqlItemBlock& res,
+    aql::RegisterId curReg,
+    size_t& pos,
+    size_t limit
+  ) override;
+
+  virtual size_t skip(size_t count) override;
+
+ private:
+  void resetIterator();
+
+  irs::score const* _scr;
+  irs::bytes_ref _scrVal;
+}; // IResearchViewBlock
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class IResearchViewOrderedBlock
+///////////////////////////////////////////////////////////////////////////////
+class IResearchViewOrderedBlock final : public IResearchViewBlockBase {
+ public:
+  IResearchViewOrderedBlock(
+    arangodb::iresearch::CompoundReader&& reader,
+    aql::ExecutionEngine& engine,
+    IResearchViewNode const& node
+  );
+
+ protected:
+  virtual void reset() override {
+    IResearchViewBlockBase::reset();
+    _skip = 0;
+  }
+
+  virtual bool next(
+    aql::AqlItemBlock& res,
+    aql::RegisterId curReg,
+    size_t& pos,
+    size_t limit
+  ) override;
+
+  virtual size_t skip(size_t count) override;
+
+ private:
+  size_t _skip{};
+}; // IResearchViewOrderedBlock
+
+NS_END // iresearch
+NS_END // arangodb
 
 #endif // ARANGOD_IRESEARCH__ENUMERATE_VIEW_BLOCK_H 

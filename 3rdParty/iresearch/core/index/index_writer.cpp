@@ -380,6 +380,8 @@ bool index_writer::add_document_mask_modified_records(
     segment_writer& writer,
     const segment_meta& meta
 ) {
+  UNUSED(meta);
+
   if (modification_queries.empty()) {
     return false; // nothing new to add
   }
@@ -422,20 +424,20 @@ bool index_writer::add_segment_mask_consolidated_records(
   flush_context::segment_mask_t segment_mask;
 
   // find merge candidates
-  for (auto& segment: segments) {
-    if (!acceptor(segment.meta)) {
-      merge_candindate_default = &segment; // pick the last non-merged segment as default
+  for (auto& seg: segments) {
+    if (!acceptor(seg.meta)) {
+      merge_candindate_default = &seg; // pick the last non-merged segment as default
       continue; // fill min threshold not reached
     }
 
-    auto merge_candidate = get_segment_reader(segment.meta);
+    auto merge_candidate = get_segment_reader(seg.meta);
 
     if (!merge_candidate) {
       continue; // skip empty readers
     }
 
     merge_candidates.emplace_back(std::move(merge_candidate));
-    segment_mask.insert(segment.meta.name);
+    segment_mask.insert(seg.meta.name);
   }
 
   if (merge_candidates.empty()) {
@@ -489,9 +491,9 @@ void index_writer::consolidate(
     SCOPED_LOCK(commit_lock_); // ensure meta_ segments are not modified by concurrent consolidate()/commit()
     auto ctx = get_flush_context(); // can modify ctx->segment_mask_ without lock since have commit_lock_
 
-    for (auto& segment: meta_) {
-      if (ctx->segment_mask_.end() == ctx->segment_mask_.find(segment.meta.name)) {
-        segment_candidates.emplace(segment.meta.name, &(segment.meta));
+    for (auto& seg: meta_) {
+      if (ctx->segment_mask_.end() == ctx->segment_mask_.find(seg.meta.name)) {
+        segment_candidates.emplace(seg.meta.name, &(seg.meta));
       }
     }
 
@@ -835,11 +837,11 @@ index_writer::pending_context_t index_writer::flush_all() {
     // retain list of only non-masked segments
     pending_meta->segments_.swap(segments);
 
-    for (auto& segment: segments) {
-      if (segment_mask.end() == segment_mask.find(segment.meta.name)) {
-        pending_meta->segments_.emplace_back(std::move(segment));
+    for (auto& seg: segments) {
+      if (segment_mask.end() == segment_mask.find(seg.meta.name)) {
+        pending_meta->segments_.emplace_back(std::move(seg));
       } else {
-        cached_segment_readers_.erase(segment.meta.name); // no longer required
+        cached_segment_readers_.erase(seg.meta.name); // no longer required
       }
     }
   }

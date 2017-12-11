@@ -73,11 +73,13 @@ class IRESEARCH_API boolean_token_stream final
     attrs_.emplace(inc_); // required by field_data::invert(...)
   }
 
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   attribute_view attrs_;
   basic_term term_;
   increment inc_;
   bool in_use_;
   bool value_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -116,12 +118,14 @@ class IRESEARCH_API string_token_stream final
     attrs_.emplace(term_);
   }
 
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   attribute_view attrs_;
   offset offset_;
   increment inc_;
   basic_term term_;
   bytes_ref value_;
   bool in_use_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // string_token_stream 
 
 struct increment;
@@ -170,7 +174,7 @@ class IRESEARCH_API numeric_token_stream final
   /// @class numeric_term
   /// @brief term_attribute implementation for numeric_token_stream
   //////////////////////////////////////////////////////////////////////////////
-  class numeric_term final : public term_attribute {
+  class IRESEARCH_API numeric_term final: public term_attribute {
    public:
     static bytes_ref value(bstring& buf, int32_t value) {
       decltype(val_) val;
@@ -241,6 +245,7 @@ class IRESEARCH_API numeric_token_stream final
    private:
     enum NumericType { NT_LONG = 0, NT_DBL, NT_INT, NT_FLOAT };
 
+    IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
     bstring data_;
     union {
       uint64_t i64;
@@ -249,6 +254,7 @@ class IRESEARCH_API numeric_token_stream final
     NumericType type_;
     uint32_t step_;
     uint32_t shift_;
+    IRESEARCH_API_PRIVATE_VARIABLES_END
 
     static irs::bytes_ref value(
       bstring& buf,
@@ -297,10 +303,12 @@ class IRESEARCH_API null_token_stream final
     attrs_.emplace(inc_); // required by field_data::invert(...)
   }
 
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   attribute_view attrs_;
   basic_term term_;
   increment inc_;
   bool in_use_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 NS_END

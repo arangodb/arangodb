@@ -276,16 +276,12 @@ class IRESEARCH_API sort {
   explicit sort(const type_id& id);
   virtual ~sort();
 
-  bool reverse() const { return rev_; }
-  void reverse( bool rev ) { rev_ = rev; }
-
   const type_id& type() const { return *type_; }
 
-  virtual prepared::ptr prepare() const = 0;
+  virtual prepared::ptr prepare(bool reverse) const = 0;
 
  private:
   const type_id* type_;
-  bool rev_;
 }; // sort
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -293,10 +289,74 @@ class IRESEARCH_API sort {
 /// @brief base class for all user-side sort entries
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API order final {
-public:
-  typedef std::vector<sort::ptr> order_t;
-  typedef ptr_iterator< order_t::const_iterator > const_iterator;
-  typedef ptr_iterator< order_t::iterator > iterator;
+ public:
+  class entry : private util::noncopyable {
+   public:
+    entry(const sort::ptr& sort, bool reverse)
+      : sort_(std::move(sort)), reverse_(reverse) {
+      assert(sort);
+    }
+
+    entry(entry&& rhs) NOEXCEPT
+      : sort_(std::move(rhs.sort_)), reverse_(rhs.reverse_) {
+    }
+
+    entry& operator=(entry&& rhs) NOEXCEPT {
+      if (this != &rhs) {
+        sort_ = std::move(rhs.sort_);
+        reverse_ = rhs.reverse_;
+      }
+      return *this;
+    }
+
+    const irs::sort& sort() const NOEXCEPT {
+      assert(sort_);
+      return *sort_;
+    }
+
+    template<typename T>
+    const T& sort_cast() const NOEXCEPT {
+      typedef typename std::enable_if<
+        std::is_base_of<irs::sort, T>::value, T
+      >::type type;
+
+#ifdef IRESEARCH_DEBUG
+      return dynamic_cast<const type&>(sort());
+#else
+      return static_cast<const type&>(sort());
+#endif // IRESEARCH_DEBUG
+    }
+
+    template<typename T>
+    const T* sort_safe_cast() const NOEXCEPT {
+      typedef typename std::enable_if<
+        std::is_base_of<irs::sort, T>::value, T
+      >::type type;
+
+      return type::type() == sort().type()
+        ? static_cast<const type*>(&sort())
+        : nullptr;
+    }
+
+    bool reverse() const NOEXCEPT {
+      return reverse_;
+    }
+
+   private:
+    friend class order;
+
+    irs::sort& sort() NOEXCEPT {
+      assert(sort_);
+      return *sort_;
+    }
+
+    sort::ptr sort_;
+    bool reverse_;
+  }; // entry
+
+  typedef std::vector<entry> order_t;
+  typedef order_t::const_iterator const_iterator;
+  typedef order_t::iterator iterator;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @class sort
@@ -392,15 +452,17 @@ public:
     size_t size() const { return size_; }
     bool empty() const { return order_.empty(); }
 
-    prepared_order_t::const_iterator begin() const { 
-      return prepared_order_t::const_iterator(order_.begin()); 
+    prepared_order_t::const_iterator begin() const {
+      return prepared_order_t::const_iterator(order_.begin());
     }
 
     prepared_order_t::const_iterator end() const { 
-      return prepared_order_t::const_iterator(order_.end()); 
+      return prepared_order_t::const_iterator(order_.end());
     }
 
-    const prepared_sort& operator[]( size_t i ) const { return order_[i]; }
+    const prepared_sort& operator[]( size_t i ) const {
+      return order_[i];
+    }
 
     prepared::stats prepare_stats() const;
 
@@ -425,8 +487,8 @@ public:
     friend class order;
 
     template<typename Func>
-    inline void for_each( const Func& func ) const {
-      std::for_each( order_.begin(), order_.end(), func );
+    inline void for_each(const Func& func) const {
+      std::for_each(order_.begin(), order_.end(), func);
     }
 
     IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -449,16 +511,16 @@ public:
 
   prepared prepare() const;
 
-  order& add(sort::ptr const& sort);
+  order& add(bool reverse, sort::ptr const& sort);
 
   template<typename T, typename... Args>
-  T& add(Args&&... args) {
+  T& add(bool reverse, Args&&... args) {
     typedef typename std::enable_if <
       std::is_base_of< sort, T >::value, T
     >::type type;
 
-    order_.emplace_back(type::make(std::forward<Args>(args)...));
-    return static_cast< type& >( *order_.back() );
+    add(reverse, type::make(std::forward<Args>(args)...));
+    return static_cast<type&>(order_.back().sort());
   }
 
   template<typename T>
@@ -467,22 +529,22 @@ public:
       std::is_base_of< sort, T >::value, T
     >::type type;
 
-    remove( type::type() );
+    remove(type::type());
   }
 
-  void remove( const type_id& id );
+  void remove(const type_id& id);
   void clear() { order_.clear(); }
 
-  size_t size() const { return order_.size(); }
-  bool empty() const { return order_.empty(); }
+  size_t size() const NOEXCEPT { return order_.size(); }
+  bool empty() const NOEXCEPT { return order_.empty(); }
 
-  const_iterator begin() const { return const_iterator( order_.begin() ); }
-  const_iterator end() const { return const_iterator( order_.end() ); }
+  const_iterator begin() const { return order_.begin(); }
+  const_iterator end() const { return order_.end(); }
 
-  iterator begin() { return iterator( order_.begin() ); }
-  iterator end() { return iterator( order_.end() ); }
+  iterator begin() { return order_.begin(); }
+  iterator end() { return order_.end(); }
 
-private:
+ private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   order_t order_;
   IRESEARCH_API_PRIVATE_VARIABLES_END

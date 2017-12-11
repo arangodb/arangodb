@@ -234,6 +234,15 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
   IResearchQuerySetup s;
   UNUSED(s);
 
+  // ArangoDB specific string comparer
+  struct StringComparer {
+    bool operator()(irs::string_ref const& lhs, irs::string_ref const& rhs) const {
+      return arangodb::basics::VelocyPackHelper::compareStringValues(
+        lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true
+      ) < 0;
+    }
+  }; // StringComparer
+
   static std::vector<std::string> const EMPTY;
 
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
@@ -1950,7 +1959,7 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
 
   // d.seq > 0 AND d.seq < 31 , TFIDF() ASC, BM25() ASC, d.name DESC
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*, StringComparer> expectedDocs;
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice(doc.vpack());
       auto const keySlice = docSlice.get("seq");
@@ -2238,7 +2247,7 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
 
   // d.seq >= 0 AND d.seq < 31 , TFIDF() ASC, BM25() ASC, d.name DESC
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*, StringComparer> expectedDocs;
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice(doc.vpack());
       auto const keySlice = docSlice.get("seq");
@@ -2526,7 +2535,7 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
 
   // d.seq > 0 AND d.seq <= 31 , TFIDF() ASC, BM25() ASC, d.name DESC
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*, StringComparer> expectedDocs;
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice(doc.vpack());
       auto const keySlice = docSlice.get("seq");
@@ -2842,7 +2851,7 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
 
   // d.seq >= 0 AND d.seq <= 31 , TFIDF() ASC, BM25() ASC, d.name DESC
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*, StringComparer> expectedDocs;
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice(doc.vpack());
       auto const keySlice = docSlice.get("seq");
@@ -3072,7 +3081,7 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
 
   // d.seq >= 0 AND d.seq <= 31 , TFIDF() ASC, BM25() ASC, d.name DESC
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*, StringComparer> expectedDocs;
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice(doc.vpack());
       auto const keySlice = docSlice.get("seq");

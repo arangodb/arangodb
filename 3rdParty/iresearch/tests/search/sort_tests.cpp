@@ -30,14 +30,14 @@ TEST(sort_tests, order_equal) {
     DECLARE_SORT_TYPE() { static irs::sort::type_id type("dummy_scorer0"); return type; }
     static ptr make() { PTR_NAMED(dummy_scorer0, ptr); return ptr; }
     dummy_scorer0(): irs::sort(dummy_scorer0::type()) { }
-    virtual prepared::ptr prepare() const override { return nullptr; }
+    virtual prepared::ptr prepare(bool) const override { return nullptr; }
   };
 
   struct dummy_scorer1: public irs::sort {
     DECLARE_SORT_TYPE() { static irs::sort::type_id type("dummy_scorer1"); return type; }
     static ptr make() { PTR_NAMED(dummy_scorer1, ptr); return ptr; }
     dummy_scorer1(): irs::sort(dummy_scorer1::type()) { }
-    virtual prepared::ptr prepare() const override { return nullptr; }
+    virtual prepared::ptr prepare(bool) const override { return nullptr; }
   };
 
   // empty == empty
@@ -52,7 +52,7 @@ TEST(sort_tests, order_equal) {
   {
     irs::order ord0;
     irs::order ord1;
-    ord1.add<dummy_scorer1>();
+    ord1.add<dummy_scorer1>(false);
     ASSERT_FALSE(ord0 == ord1);
     ASSERT_TRUE(ord0 != ord1);
   }
@@ -61,8 +61,8 @@ TEST(sort_tests, order_equal) {
   {
     irs::order ord0;
     irs::order ord1;
-    ord0.add<dummy_scorer0>();
-    ord1.add<dummy_scorer1>();
+    ord0.add<dummy_scorer0>(false);
+    ord1.add<dummy_scorer1>(false);
     ASSERT_FALSE(ord0 == ord1);
     ASSERT_TRUE(ord0 != ord1);
   }
@@ -71,10 +71,10 @@ TEST(sort_tests, order_equal) {
   {
     irs::order ord0;
     irs::order ord1;
-    ord0.add<dummy_scorer0>();
-    ord0.add<dummy_scorer1>();
-    ord1.add<dummy_scorer1>();
-    ord1.add<dummy_scorer0>();
+    ord0.add<dummy_scorer0>(false);
+    ord0.add<dummy_scorer1>(false);
+    ord1.add<dummy_scorer1>(false);
+    ord1.add<dummy_scorer0>(false);
     ASSERT_FALSE(ord0 == ord1);
     ASSERT_TRUE(ord0 != ord1);
   }
@@ -83,9 +83,9 @@ TEST(sort_tests, order_equal) {
   {
     irs::order ord0;
     irs::order ord1;
-    ord0.add<dummy_scorer0>();
-    ord1.add<dummy_scorer0>();
-    ord1.add<dummy_scorer0>();
+    ord0.add<dummy_scorer0>(false);
+    ord1.add<dummy_scorer0>(false);
+    ord1.add<dummy_scorer0>(false);
     ASSERT_FALSE(ord0 == ord1);
     ASSERT_TRUE(ord0 != ord1);
   }
@@ -94,9 +94,9 @@ TEST(sort_tests, order_equal) {
   {
     irs::order ord0;
     irs::order ord1;
-    ord0.add<dummy_scorer0>();
-    ord1.add<dummy_scorer1>();
-    ord1.add<dummy_scorer1>();
+    ord0.add<dummy_scorer0>(false);
+    ord1.add<dummy_scorer1>(false);
+    ord1.add<dummy_scorer1>(false);
     ASSERT_FALSE(ord0 == ord1);
     ASSERT_TRUE(ord0 != ord1);
   }
@@ -105,10 +105,10 @@ TEST(sort_tests, order_equal) {
   {
     irs::order ord0;
     irs::order ord1;
-    ord0.add<dummy_scorer0>();
-    ord0.add<dummy_scorer1>();
-    ord1.add<dummy_scorer0>();
-    ord1.add<dummy_scorer1>();
+    ord0.add<dummy_scorer0>(false);
+    ord0.add<dummy_scorer1>(false);
+    ord1.add<dummy_scorer0>(false);
+    ord1.add<dummy_scorer1>(false);
     ASSERT_TRUE(ord0 == ord1);
     ASSERT_FALSE(ord0 != ord1);
   }

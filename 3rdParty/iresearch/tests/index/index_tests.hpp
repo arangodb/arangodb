@@ -24,7 +24,15 @@
 #ifndef IRESEARCH_INDEX_TESTS_H
 #define IRESEARCH_INDEX_TESTS_H
 
-#include <unicode/uclean.h> // for u_cleanup
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4229)
+#endif
+
+  #include <unicode/uclean.h> // for u_cleanup
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4229)
+#endif
 
 #include "tests_shared.hpp"
 #include "assert_format.hpp"
@@ -38,15 +46,15 @@
 #include "utils/timer_utils.hpp"
 #include "document/field.hpp"
 
-namespace iresearch {
+NS_ROOT
 
 struct term_attribute;
 
-} // iresearch
+NS_END // NS_ROOT
 
 namespace ir = iresearch;
 
-namespace tests {
+NS_BEGIN(tests)
 
 class index_test_base : public virtual test_base {
  protected:
@@ -123,7 +131,7 @@ class index_test_base : public virtual test_base {
   ir::format::ptr codec_;
 }; // index_test_base
 
-namespace templates { 
+NS_BEGIN(templates)
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class token_stream_payload
@@ -240,13 +248,39 @@ class string_field : public tests::field_base {
   std::string value_;
 }; // string_field
 
-} // templates
+//////////////////////////////////////////////////////////////////////////////
+/// @class europarl_doc_template
+/// @brief document template for europarl.subset.text
+//////////////////////////////////////////////////////////////////////////////
+class europarl_doc_template: public delim_doc_generator::doc_template {
+ public:
+  typedef templates::text_field<irs::string_ref> text_field;
+
+  virtual void init();
+  virtual void value(size_t idx, const std::string& value);
+  virtual void end();
+  virtual void reset();
+
+ private:
+  std::string title_; // current title
+  std::string body_; // current body
+  irs::doc_id_t idval_ = 0;
+}; // europarl_doc_template
+
+NS_END // templates
 
 void generic_json_field_factory(
   tests::document& doc,
   const std::string& name,
-  const json_doc_generator::json_value& data);
+  const json_doc_generator::json_value& data
+);
 
-} // tests 
+void payloaded_json_field_factory(
+  tests::document& doc,
+  const std::string& name,
+  const json_doc_generator::json_value& data
+);
+
+NS_END // tests
 
 #endif // IRESEARCH_INDEX_TESTS_H

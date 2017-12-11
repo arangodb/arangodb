@@ -60,6 +60,10 @@ NS_END // arangodb
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
+struct QueryContext;
+
+typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
+
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                            Forward declarations
 ///////////////////////////////////////////////////////////////////////////////
@@ -79,6 +83,71 @@ struct AsyncValid {
   irs::async_utils::read_write_mutex _mutex; // read-lock to prevent flag modification
   bool _valid; // do not need atomic because need to hold lock anyway
   AsyncValid(bool valid): _valid(valid) {}
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index reader implementation over multiple directory readers
+////////////////////////////////////////////////////////////////////////////////
+class CompoundReader final : public irs::index_reader {
+ public:
+  CompoundReader(CompoundReader&& other) noexcept;
+  irs::sub_reader const& operator[](size_t subReaderId) const noexcept {
+    return *(_subReaders[subReaderId].first);
+  }
+  void add(irs::directory_reader const& reader);
+  virtual reader_iterator begin() const override;
+  virtual uint64_t docs_count(const irs::string_ref& field) const override;
+  virtual uint64_t docs_count() const override;
+  virtual reader_iterator end() const override;
+  virtual uint64_t live_docs_count() const override;
+
+  irs::columnstore_reader::values_reader_f const& pkColumn(
+      size_t subReaderId
+  ) const noexcept {
+    return _subReaders[subReaderId].second;
+  }
+
+  virtual size_t size() const noexcept override {
+    return _subReaders.size();
+  }
+
+ private:
+  CompoundReader(irs::async_utils::read_write_mutex& mutex);
+
+  friend class IResearchView;
+
+  typedef std::vector<
+    std::pair<irs::sub_reader*, irs::columnstore_reader::values_reader_f>
+  > SubReadersType;
+
+  class IteratorImpl final : public irs::index_reader::reader_iterator_impl {
+   public:
+    IteratorImpl(SubReadersType::const_iterator const& itr)
+      : _itr(itr) {
+    }
+
+    virtual void operator++() noexcept override {
+      ++_itr;
+    }
+    virtual reference operator*() noexcept override {
+      return *(_itr->first);
+    }
+    virtual const_reference operator*() const noexcept override {
+      return *(_itr->first);
+    }
+    virtual bool operator==(const reader_iterator_impl& other) noexcept override {
+      return static_cast<IteratorImpl const&>(other)._itr == _itr;
+    }
+
+   private:
+    SubReadersType::const_iterator _itr;
+  };
+
+  // order is important
+  ReadMutex _mutex;
+  std::unique_lock<ReadMutex> _lock;
+  std::vector<irs::directory_reader> _readers;
+  SubReadersType _subReaders;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -164,22 +233,7 @@ class IResearchView final: public arangodb::ViewImplementation,
     IResearchLinkMeta const& meta
   );
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief called at query execution, when the AQL query engine requests data
-  ///        from the view
-  ///        the call will get the specialized filter condition and the sort
-  ///        condition from the previous calls
-  /// @return a ViewIterator which the AQL query engine will use for fetching
-  ///         results from the view
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::ViewIterator* iteratorForCondition(
-    arangodb::transaction::Methods* trx,
-    arangodb::aql::ExecutionPlan* plan,
-    arangodb::aql::ExpressionContext* ctx,
-    arangodb::aql::Variable const* reference,
-    arangodb::aql::AstNode const* filterCondition,
-    arangodb::aql::SortCondition const* sortCondition
-  ) override;
+  CompoundReader snapshot(transaction::Methods& trx);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief count of known links registered with this view
@@ -222,63 +276,6 @@ class IResearchView final: public arangodb::ViewImplementation,
     TRI_voc_cid_t cid,
     arangodb::LocalDocumentId const& documentId
   );
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief called for a filter condition that was previously handed to the view
-  ///        in `supportsFilterCondition`, and for which the view has claimed to
-  ///        support it (at least partially)
-  ///        this call gives the view the chance to filter out all parts of the
-  ///        filter condition that it cannot handle itself
-  ///        if the view does not support the entire filter condition (or needs to
-  ///        rewrite the filter condition somehow), it may return a new AstNode,
-  ///        it is not allowed to modify the AstNode
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::aql::AstNode* specializeCondition(
-    arangodb::aql::Ast* ast,
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference
-  ) override;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief called by the AQL optimizer to check if the view supports a filter
-  ///        condition (as identified by the AST node `node`) at least partially
-  ///        the AQL variable `reference` is the variable that was used for
-  ///        accessing the view in the AQL query
-  /// @return boolean
-  ///         can provide an estimate for the number of items to return and
-  ///         can provide an estimated cost value
-  ///         Note: that these return values are informational only (e.g. for
-  ///               displaying them in the AQL explain output)
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual bool supportsFilterCondition(
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference,
-    size_t& estimatedItems,
-    double& estimatedCost
-  ) const override;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief called by the AQL optimizer to check if the view supports a
-  ///        particular sort condition (as identifier by the `sortCondition`
-  ///        passed) at least partially
-  /// @param reference identifies the variable in the AQL query that is used to
-  ///        access the view
-  /// @return boolean
-  ///         can provide an estimated cost value
-  ///         Note: that this return value is informational only (e.g. for
-  ///               displaying them in the AQL explain output)
-  ///         it must also return the number of sort condition parts that are
-  ///         covered by the view, from left to right, starting at the first sort
-  ///         condition part
-  ///         if the first sort condition part is not covered by the view, then
-  ///         `coveredAttributes` must be `0`
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual bool supportsSortCondition(
-    arangodb::aql::SortCondition const* sortCondition,
-    arangodb::aql::Variable const* reference,
-    double& estimatedCost,
-    size_t& coveredAttributes
-  ) const override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief wait for a flush of all index data to its respective stores

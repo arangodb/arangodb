@@ -64,7 +64,7 @@ class same_position_filter_test_case : public filter_test_case_base {
       size_t collect_count = 0;
       size_t finish_count = 0;
       irs::order order;
-      auto& scorer = order.add<tests::sort::custom_sort>();
+      auto& scorer = order.add<tests::sort::custom_sort>(false);
       scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
         ++collect_count;
       };
@@ -89,7 +89,7 @@ class same_position_filter_test_case : public filter_test_case_base {
       size_t collect_count = 0;
       size_t finish_count = 0;
       irs::order order;
-      auto& scorer = order.add<tests::sort::custom_sort>();
+      auto& scorer = order.add<tests::sort::custom_sort>(false);
       scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
         ++collect_count;
       };
@@ -115,7 +115,7 @@ class same_position_filter_test_case : public filter_test_case_base {
       size_t collect_count = 0;
       size_t finish_count = 0;
       irs::order order;
-      auto& scorer = order.add<tests::sort::custom_sort>();
+      auto& scorer = order.add<tests::sort::custom_sort>(false);
       scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
         ++collect_count;
       };

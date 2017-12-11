@@ -9,7 +9,7 @@ endforeach()
 if (USE_IRESEARCH)
   set(IRESEARCH_TESTS_SOURCES
     IResearch/common.cpp
-    IResearch/AttributeScorer-test.cpp
+#    IResearch/AttributeScorer-test.cpp
     IResearch/Containers-test.cpp
     IResearch/IResearchAnalyzerFeature-test.cpp
     IResearch/IResearchFeature-test.cpp

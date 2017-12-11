@@ -30,6 +30,88 @@
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
 
+NS_LOCAL
+
+irs::sort::ptr make_from_bool(
+    const rapidjson::Document& json,
+    const irs::string_ref& args) {
+  assert(json.IsBool());
+
+  PTR_NAMED(irs::tfidf_sort, ptr, json.GetBool());
+  return ptr;
+}
+
+irs::sort::ptr make_from_object(
+    const rapidjson::Document& json,
+    const irs::string_ref& args) {
+  assert(json.IsObject());
+
+  PTR_NAMED(irs::tfidf_sort, ptr);
+
+  #ifdef IRESEARCH_DEBUG
+    auto& scorer = dynamic_cast<irs::tfidf_sort&>(*ptr);
+  #else
+    auto& scorer = static_cast<irs::tfidf_sort&>(*ptr);
+  #endif
+
+  {
+    // optional bool
+    const auto* key= "with-norms";
+
+    if (json.HasMember(key)) {
+      if (!json[key].IsBool()) {
+        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing tfidf scorer from jSON arguments: %s", key, args.c_str());
+
+        return nullptr;
+      }
+
+      scorer.normalize(json[key].GetBool());
+    }
+  }
+
+  return ptr;
+}
+
+irs::sort::ptr make_from_array(
+    const rapidjson::Document& json,
+    const irs::string_ref& args) {
+  assert(json.IsArray());
+
+  const auto array = json.GetArray();
+  const auto size = array.Size();
+
+  if (size > 1) {
+    // wrong number of arguments
+    IR_FRMT_ERROR(
+      "Wrong number of arguments while constructing tfidf scorer from jSON arguments (must be <= 1): %s",
+      args.c_str()
+    );
+    return nullptr;
+  }
+
+  // default args
+  auto norms = irs::tfidf_sort::WITH_NORMS();
+
+  // parse `with-norms` optional argument
+  if (!array.Empty()) {
+    auto& arg = array[0];
+    if (!arg.IsBool()) {
+      IR_FRMT_ERROR(
+        "Non-float value on position `0` while constructing bm25 scorer from jSON arguments: %s",
+        args.c_str()
+      );
+      return nullptr;
+    }
+
+    norms = arg.GetBool();
+  }
+
+  PTR_NAMED(irs::tfidf_sort, ptr, norms);
+  return ptr;
+}
+
+NS_END // LOCAL
+
 NS_ROOT
 NS_BEGIN(tfidf)
 
@@ -208,59 +290,47 @@ REGISTER_SCORER(iresearch::tfidf_sort);
 DEFINE_FACTORY_DEFAULT(irs::tfidf_sort);
 
 /*static*/ sort::ptr tfidf_sort::make(const string_ref& args) {
-  static PTR_NAMED(tfidf_sort, ptr);
-
   if (args.null()) {
+    PTR_NAMED(tfidf_sort, ptr);
     return ptr;
   }
 
   rapidjson::Document json;
 
-  if (json.Parse(args.c_str(), args.size()).HasParseError()
-      || !(json.IsObject() || json.IsBool())) {
-    IR_FRMT_ERROR("Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", args.c_str());
+  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
+    IR_FRMT_ERROR(
+      "Invalid jSON arguments passed while constructing tfidf scorer, arguments: %s", 
+      args.c_str()
+    );
 
     return nullptr;
   }
 
-  #ifdef IRESEARCH_DEBUG
-    auto& scorer = dynamic_cast<tfidf_sort&>(*ptr);
-  #else
-    auto& scorer = static_cast<tfidf_sort&>(*ptr);
-  #endif
+  switch (json.GetType()) {
+    case rapidjson::kFalseType:
+    case rapidjson::kTrueType:
+      return make_from_bool(json, args);
+    case rapidjson::kObjectType:
+      return make_from_object(json, args);
+    case rapidjson::kArrayType:
+      return make_from_array(json, args);
+    default: // wrong type
+      IR_FRMT_ERROR(
+        "Invalid jSON arguments passed while constructing tfidf scorer, arguments: %s", 
+        args.c_str()
+      );
 
-  if (json.IsBool()) {
-    scorer.normalize(json.GetBool());
-
-    return ptr;
+      return nullptr;
   }
-
-  {
-    // optional bool
-    const auto* key= "with-norms";
-
-    if (json.HasMember(key)) {
-      if (!json[key].IsBool()) {
-        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing tfidf scorer from jSON arguments: %s", key, args.c_str());
-
-        return nullptr;
-      }
-
-      scorer.normalize(json[key].GetBool());
-    }
-  }
-
-  return ptr;
 }
 
 tfidf_sort::tfidf_sort(bool normalize) 
   : sort(tfidf_sort::type()),
     normalize_(normalize) {
-  reverse(true); // return the most relevant results first
 }
 
-sort::prepared::ptr tfidf_sort::prepare() const {
-  return tfidf::sort::make<tfidf::sort>(normalize_, reverse());
+sort::prepared::ptr tfidf_sort::prepare(bool reverse) const {
+  return tfidf::sort::make<tfidf::sort>(normalize_, reverse);
 }
 
 NS_END // ROOT

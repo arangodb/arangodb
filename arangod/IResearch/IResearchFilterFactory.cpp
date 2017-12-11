@@ -1043,7 +1043,7 @@ bool fromFuncExists(
     }
 
     irs::string_ref arg;
-    bool bAnalyzer;
+    bool bAnalyzer = false;
     arangodb::iresearch::ScopedAqlValue type(*typeArg);
 
     if (filter || type.isConstant()) {
@@ -1357,7 +1357,7 @@ bool fromFuncPhrase(
   }
 
   decltype(fieldArg) offsetArg = nullptr;
-  size_t offset;
+  size_t offset = 0;
 
   for (size_t idx = 2, end = argc - 1; idx < end; idx += 2) {
     offsetArg = args.getMemberUnchecked(idx);

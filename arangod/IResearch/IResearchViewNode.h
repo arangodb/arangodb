@@ -21,13 +21,30 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__ENUMERATE_VIEW_NODE_H
-#define ARANGOD_IRESEARCH__ENUMERATE_VIEW_NODE_H 1
+#ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H
+#define ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
 
 namespace arangodb {
+
+namespace aql {
+class ExecutionEngine;
+}
+
 namespace iresearch {
+
+struct IResearchSort {
+  IResearchSort() = default;
+
+  IResearchSort(aql::Variable const* var, aql::AstNode const* node, bool asc)
+    : var(var), node(node), asc(asc) {
+  }
+
+  aql::Variable const* var{};
+  aql::AstNode const* node{};
+  bool asc{};
+}; // IResearchSort
 
 /// @brief class EnumerateViewNode
 class IResearchViewNode final : public arangodb::aql::ExecutionNode {
@@ -43,25 +60,24 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
       TRI_vocbase_t* vocbase,
       std::shared_ptr<arangodb::LogicalView> view,
       arangodb::aql::Variable const* outVariable,
-      arangodb::aql::Condition* condition,
-      std::shared_ptr<arangodb::aql::SortCondition> sortCondition)
+      arangodb::aql::AstNode* filterCondition,
+      std::vector<IResearchSort>&& sortCondition)
     : arangodb::aql::ExecutionNode(plan, id),
       _vocbase(vocbase),
       _view(view),
       _outVariable(outVariable),
-      _condition(condition),
-      _sortCondition(sortCondition) {
+      _filterCondition(filterCondition),
+      _sortCondition(std::move(sortCondition)) {
     TRI_ASSERT(_vocbase);
     TRI_ASSERT(_view);
     TRI_ASSERT(_outVariable);
+    init();
   }
 
   IResearchViewNode(
     arangodb::aql::ExecutionPlan*,
     arangodb::velocypack::Slice const& base
   );
-
-  virtual ~IResearchViewNode();
 
   /// @brief return the type of the node
   NodeType getType() const override final {
@@ -104,18 +120,16 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     return _view;
   }
 
-  /// @brief return the filter node
-  aql::Condition* condition() const noexcept { return _condition; }
-
-  /// @brief return the condition to pass to the view
-  std::shared_ptr<aql::SortCondition> sortCondition() const noexcept {
-    return _sortCondition;
+  /// @brief return the filter condition to pass to the view
+  arangodb::aql::AstNode const& filterCondition() const noexcept {
+    TRI_ASSERT(_filterCondition);
+    return *_filterCondition;
   }
 
-  std::unique_ptr<ViewIterator> iterator(
-    transaction::Methods& trx,
-    aql::ExpressionContext& ctx
-  ) const;
+  /// @brief return the condition to pass to the view
+  std::vector<IResearchSort> const& sortCondition() const noexcept {
+    return _sortCondition;
+  }
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<aql::Variable const*> getVariablesUsedHere() const override final;
@@ -126,9 +140,26 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   ) const override final;
 
   /// @brief node has nondeterministic filter condition or located inside a loop
-  bool volatile_state() const;
+  bool volatile_filter() const;
+
+  /// @brief node has nondeterministic sort condition or located inside a loop
+  bool volatile_sort() const;
+
+  void planNodeRegisters(
+    std::vector<aql::RegisterId>& nrRegsHere,
+    std::vector<aql::RegisterId>& nrRegs,
+    std::unordered_map<aql::VariableId, VarInfo>& varInfo,
+    unsigned int& totalNrRegs,
+    unsigned int depth
+  ) const;
+
+  aql::ExecutionBlock* createExecutionBlock(
+    aql::ExecutionEngine& engine
+  ) const;
 
  private:
+  void init();
+
   /// @brief the database
   TRI_vocbase_t* _vocbase;
 
@@ -139,10 +170,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   aql::Variable const* _outVariable;
 
   /// @brief filter node to pass to view
-  aql::Condition* _condition;
+  aql::AstNode const* _filterCondition;
 
   /// @brief sortCondition to pass to the view
-  std::shared_ptr<aql::SortCondition> _sortCondition;
+  std::vector<IResearchSort> _sortCondition;
+
 }; // EnumerateViewNode
 
 } // iresearch

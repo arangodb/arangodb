@@ -24,7 +24,7 @@
 #include <chrono>
 
 #include "MurmurHash/MurmurHash3.h"
-
+#include "integer.hpp"
 #include "string.hpp"
 
 // -----------------------------------------------------------------------------
@@ -44,9 +44,11 @@ inline uint32_t get_seed() {
 template<typename T>
 inline size_t get_hash(const T* value, size_t size) {
   static const auto seed = get_seed();
+  size_t length = std::min(size, size_t(irs::integer_traits<int>::const_max));
   uint32_t code;
 
-  MurmurHash3_x86_32(value, size, seed, &code);
+  // hash as much as possible if length greater than std::numeric_limits<int>::max
+  MurmurHash3_x86_32(value, int(length), seed, &code);
 
   return code;
 }

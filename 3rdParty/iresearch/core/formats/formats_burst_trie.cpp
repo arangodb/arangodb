@@ -163,7 +163,7 @@ bool read_field_features(
     if (id < feature_map.size()) {
       features.add(*feature_map[id]);
     } else {
-      IR_FRMT_ERROR("unknown feature id '%lu'", id);
+      IR_FRMT_ERROR("unknown feature id '" IR_SIZE_T_SPECIFIER "'", id);
       return false;
     }
   }
@@ -1796,3 +1796,7 @@ size_t field_reader::size() const {
 
 NS_END /* burst_trie */
 NS_END /* root */
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

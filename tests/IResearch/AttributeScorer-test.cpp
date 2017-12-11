@@ -178,7 +178,8 @@ void assertOrderSuccess(
   arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
   CHECK((trx.begin().ok()));
   arangodb::aql::ExecutionPlan plan(query.ast());
-  std::shared_ptr<arangodb::ViewIterator> itr(view.iteratorForCondition(&trx, &plan, &ExpressionContextMock::EMPTY, filterNode, var, &order));
+  std::shared_ptr<arangodb::ViewIterator> itr;
+  //std::shared_ptr<arangodb::ViewIterator> itr(view.iteratorForCondition(&trx, &plan, &ExpressionContextMock::EMPTY, filterNode, var, &order));
   CHECK((false == !itr));
 
   size_t next = 0;
@@ -306,236 +307,236 @@ TEST_CASE("IResearchAttributeScorerTest", "[iresearch][iresearch-scorer][iresear
   IResearchAttributeScorerSetup s;
   UNUSED(s);
 
-SECTION("test_query") {
-  static std::vector<std::string> const EMPTY;
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \
-    \"name\": \"testView\", \
-    \"type\": \"iresearch\", \
-    \"properties\": { \
-      \"links\": { } \
-    } \
-  }");
-  auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-  REQUIRE((nullptr != logicalCollection));
-  auto logicalView = vocbase.createView(viewJson->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* view = logicalView->getImplementation();
-  REQUIRE((false == !view));
-
-  auto links = arangodb::velocypack::Parser::fromJson("{ \
-    \"links\": { \"testCollection\": { \"includeAllFields\" : true } } \
-  }");
-
-  arangodb::Result res = logicalView->updateProperties(links->slice(), true, false);
-  CHECK(true == res.ok());
-  CHECK((false == logicalCollection->getIndexes().empty()));
-
-  // fill with test data
-  {
-    auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"key\": 1, \"testAttr\": \"A\" }");
-    auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"key\": 2, \"testAttr\": \"B\" }");
-    auto doc2 = arangodb::velocypack::Parser::fromJson("{ \"key\": 3, \"testAttr\": \"C\" }");
-    auto doc3 = arangodb::velocypack::Parser::fromJson("{ \"key\": 4, \"testAttr\": 1 }");
-    auto doc4 = arangodb::velocypack::Parser::fromJson("{ \"key\": 5, \"testAttr\": 2.71828 }");
-    auto doc5 = arangodb::velocypack::Parser::fromJson("{ \"key\": 6, \"testAttr\": 3.14159 }");
-    auto doc6 = arangodb::velocypack::Parser::fromJson("{ \"key\": 7, \"testAttr\": true }");
-    auto doc7 = arangodb::velocypack::Parser::fromJson("{ \"key\": 8, \"testAttr\": false }");
-    auto doc8 = arangodb::velocypack::Parser::fromJson("{ \"key\": 9, \"testAttr\": null }");
-    auto doc9 = arangodb::velocypack::Parser::fromJson("{ \"key\": 10, \"testAttr\": [ -1 ] }");
-    auto doc10 = arangodb::velocypack::Parser::fromJson("{ \"key\": 11, \"testAttr\": { \"a\": \"b\" } }");
-    auto doc11 = arangodb::velocypack::Parser::fromJson("{ \"key\": 12 }");
-
-    arangodb::OperationOptions options;
-    arangodb::ManagedDocumentResult tmpResult;
-    TRI_voc_tick_t tmpResultTick;
-    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-    CHECK((trx.begin().ok()));
-    CHECK((logicalCollection->insert(&trx, doc0->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    CHECK((logicalCollection->insert(&trx, doc1->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    CHECK((logicalCollection->insert(&trx, doc2->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    CHECK((logicalCollection->insert(&trx, doc3->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    CHECK((logicalCollection->insert(&trx, doc4->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    CHECK((logicalCollection->insert(&trx, doc5->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    CHECK((logicalCollection->insert(&trx, doc6->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    CHECK((logicalCollection->insert(&trx, doc7->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    CHECK((logicalCollection->insert(&trx, doc8->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    CHECK((logicalCollection->insert(&trx, doc9->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    CHECK((logicalCollection->insert(&trx, doc10->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    CHECK((logicalCollection->insert(&trx, doc11->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    CHECK((trx.commit().ok()));
-    dynamic_cast<arangodb::iresearch::IResearchView*>(view)->sync();
-  }
-
-  // query view
-  {
-    // ArangoDB default type sort order:
-    // null < bool < number < string < array/list < object/document
-
-    // string values
-    {
-      std::vector<size_t> const expected = { 9, 8, 7, 4, 5, 6, 1, 2, 3, 10, 11, 12 };
-      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' RETURN d";
-      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'] RETURN d";
-      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr RETURN d";
-
-      assertOrderSuccess(*logicalView, query0, "key", expected);
-      assertOrderSuccess(*logicalView, query1, "key", expected);
-      assertOrderSuccess(*logicalView, query2, "key", expected);
-    }
-
-    // array values
-    {
-      std::vector<size_t> const expected = { 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12 };
-      std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'][0] RETURN d";
-
-      assertOrderSuccess(*logicalView, query, "key", expected);
-    }
-
-    // object values
-    {
-      std::vector<size_t> const expected = { 11, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 };
-      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr']['a'] RETURN d";
-      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr.a RETURN d";
-
-      assertOrderSuccess(*logicalView, query0, "key", expected);
-      assertOrderSuccess(*logicalView, query1, "key", expected);
-    }
-
-    // via function (no precendence)
-    {
-      std::vector<size_t> const expected = { 9, 8, 7, 4, 5, 6, 1, 2, 3, 10, 11, 12 };
-      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`('testAttr') RETURN d";
-      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d['testAttr']) RETURN d";
-      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr) RETURN d";
-
-      assertOrderSuccess(*logicalView, query0, "key", expected);
-      assertOrderSuccess(*logicalView, query1, "key", expected);
-      assertOrderSuccess(*logicalView, query2, "key", expected);
-    }
-
-    // via function (with precendence)
-    {
-      std::vector<size_t> const expected0 = { 10, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12 };
-      std::vector<size_t> const expected1 = { 8, 7, size_t(-1), 1, 2, 3, 4, 5, 6, 9, 10, 11, 12 };
-      std::vector<size_t> const expected2 = { 8, 7, size_t(-1), 1, 2, 3, 4, 5, 6, 9, 10, 11, 12 };
-      std::vector<size_t> const expected3 = { 9, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12 };
-      std::vector<size_t> const expected4 = { 4, 5, 6, size_t(-1), 1, 2, 3, 7, 8, 9, 10, 11, 12 };
-      std::vector<size_t> const expected5 = { 11, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 };
-      std::vector<size_t> const expected6 = { 1, 2, 3, size_t(-1), 4, 5, 6, 7, 8, 9, 10, 11, 12 };
-      std::vector<size_t> const expected7 = { 12, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
-      std::vector<size_t> const expected8 = { 10, 8, 7, 9, 4, 5, 6, 11, 1, 2, 3, 12 };
-      std::vector<size_t> const expected9 = { 10, 8, 7, 9, 4, 5, 6, 11, 1, 2, 3, 12 };
-      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'array') RETURN d";
-      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'bool') RETURN d";
-      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'boolean') RETURN d";
-      std::string query3 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'null') RETURN d";
-      std::string query4 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'numeric') RETURN d";
-      std::string query5 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'object') RETURN d";
-      std::string query6 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'string') RETURN d";
-      std::string query7 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'unknown') RETURN d";
-      std::string query8 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'array', 'bool', 'null', 'numeric', 'object', 'string', 'unknown') RETURN d";
-      std::string query9 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'array', 'boolean', 'null', 'numeric', 'object', 'string', 'unknown') RETURN d";
-
-      assertOrderSuccess(*logicalView, query0, "key", expected0);
-      assertOrderSuccess(*logicalView, query1, "key", expected1);
-      assertOrderSuccess(*logicalView, query2, "key", expected2);
-      assertOrderSuccess(*logicalView, query3, "key", expected3);
-      assertOrderSuccess(*logicalView, query4, "key", expected4);
-      assertOrderSuccess(*logicalView, query5, "key", expected5);
-      assertOrderSuccess(*logicalView, query6, "key", expected6);
-      assertOrderSuccess(*logicalView, query7, "key", expected7);
-      assertOrderSuccess(*logicalView, query8, "key", expected8);
-      assertOrderSuccess(*logicalView, query9, "key", expected9);
-    }
-
-    // via function (with invalid precedence)
-    {
-      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, []) RETURN d";
-      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, {}) RETURN d";
-      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 42) RETURN d";
-      std::string query3 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'abc') RETURN d";
-
-      assertOrderFail(*logicalView, query0, TRI_ERROR_NO_ERROR);
-      assertOrderFail(*logicalView, query1, TRI_ERROR_NO_ERROR);
-      assertOrderFail(*logicalView, query2, TRI_ERROR_NO_ERROR);
-      assertOrderFail(*logicalView, query3, TRI_ERROR_NO_ERROR);
-    }
-  }
-
-  // query view ascending
-  {
-    // ArangoDB default type sort order:
-    // null < bool < number < string < array/list < object/document
-
-    // string values
-    {
-      std::vector<size_t> const expected = { 9, 8, 7, 4, 5, 6, 1, 2, 3, 10, 11, 12 };
-      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' ASC RETURN d";
-      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'] ASC RETURN d";
-      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr ASC RETURN d";
-
-      assertOrderSuccess(*logicalView, query0, "key", expected);
-      assertOrderSuccess(*logicalView, query1, "key", expected);
-      assertOrderSuccess(*logicalView, query2, "key", expected);
-    }
-
-    // array values
-    {
-      std::vector<size_t> const expected = { 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12 };
-      std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'][0] ASC RETURN d";
-
-      assertOrderSuccess(*logicalView, query, "key", expected);
-    }
-
-    // object values
-    {
-      std::vector<size_t> const expected =  { 11, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 };
-      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr']['a'] ASC RETURN d";
-      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr.a ASC RETURN d";
-
-      assertOrderSuccess(*logicalView, query0, "key", expected);
-      assertOrderSuccess(*logicalView, query1, "key", expected);
-    }
-  }
-
-  // query view descending
-  {
-    // ArangoDB default type sort order:
-    // null < bool < number < string < array/list < object/document
-
-    // string values
-    {
-      std::vector<size_t> const expected = { 12, 11, 10, 3, 2, 1, 6, 5, 4, 7, 8, 9 };
-      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' DESC RETURN d";
-      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'] DESC RETURN d";
-      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr DESC RETURN d";
-
-      assertOrderSuccess(*logicalView, query0, "key", expected);
-      assertOrderSuccess(*logicalView, query1, "key", expected);
-      assertOrderSuccess(*logicalView, query2, "key", expected);
-    }
-
-    // array values
-    {
-      std::vector<size_t> const expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 10 };
-      std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'][0] DESC RETURN d";
-
-      assertOrderSuccess(*logicalView, query, "key", expected);
-    }
-
-    // object values
-    {
-      std::vector<size_t> const expected =  { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 11 };
-      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr']['a'] DESC RETURN d";
-      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr.a DESC RETURN d";
-
-      assertOrderSuccess(*logicalView, query0, "key", expected);
-      assertOrderSuccess(*logicalView, query1, "key", expected);
-    }
-  }
-}
+//SECTION("test_query") {
+//  static std::vector<std::string> const EMPTY;
+//  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+//  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+//  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \
+//    \"name\": \"testView\", \
+//    \"type\": \"iresearch\", \
+//    \"properties\": { \
+//      \"links\": { } \
+//    } \
+//  }");
+//  auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+//  REQUIRE((nullptr != logicalCollection));
+//  auto logicalView = vocbase.createView(viewJson->slice(), 0);
+//  REQUIRE((false == !logicalView));
+//  auto* view = logicalView->getImplementation();
+//  REQUIRE((false == !view));
+//
+//  auto links = arangodb::velocypack::Parser::fromJson("{ \
+//    \"links\": { \"testCollection\": { \"includeAllFields\" : true } } \
+//  }");
+//
+//  arangodb::Result res = logicalView->updateProperties(links->slice(), true, false);
+//  CHECK(true == res.ok());
+//  CHECK((false == logicalCollection->getIndexes().empty()));
+//
+//  // fill with test data
+//  {
+//    auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"key\": 1, \"testAttr\": \"A\" }");
+//    auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"key\": 2, \"testAttr\": \"B\" }");
+//    auto doc2 = arangodb::velocypack::Parser::fromJson("{ \"key\": 3, \"testAttr\": \"C\" }");
+//    auto doc3 = arangodb::velocypack::Parser::fromJson("{ \"key\": 4, \"testAttr\": 1 }");
+//    auto doc4 = arangodb::velocypack::Parser::fromJson("{ \"key\": 5, \"testAttr\": 2.71828 }");
+//    auto doc5 = arangodb::velocypack::Parser::fromJson("{ \"key\": 6, \"testAttr\": 3.14159 }");
+//    auto doc6 = arangodb::velocypack::Parser::fromJson("{ \"key\": 7, \"testAttr\": true }");
+//    auto doc7 = arangodb::velocypack::Parser::fromJson("{ \"key\": 8, \"testAttr\": false }");
+//    auto doc8 = arangodb::velocypack::Parser::fromJson("{ \"key\": 9, \"testAttr\": null }");
+//    auto doc9 = arangodb::velocypack::Parser::fromJson("{ \"key\": 10, \"testAttr\": [ -1 ] }");
+//    auto doc10 = arangodb::velocypack::Parser::fromJson("{ \"key\": 11, \"testAttr\": { \"a\": \"b\" } }");
+//    auto doc11 = arangodb::velocypack::Parser::fromJson("{ \"key\": 12 }");
+//
+//    arangodb::OperationOptions options;
+//    arangodb::ManagedDocumentResult tmpResult;
+//    TRI_voc_tick_t tmpResultTick;
+//    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+//    CHECK((trx.begin().ok()));
+//    CHECK((logicalCollection->insert(&trx, doc0->slice(), tmpResult, options, tmpResultTick, false)).ok());
+//    CHECK((logicalCollection->insert(&trx, doc1->slice(), tmpResult, options, tmpResultTick, false)).ok());
+//    CHECK((logicalCollection->insert(&trx, doc2->slice(), tmpResult, options, tmpResultTick, false)).ok());
+//    CHECK((logicalCollection->insert(&trx, doc3->slice(), tmpResult, options, tmpResultTick, false)).ok());
+//    CHECK((logicalCollection->insert(&trx, doc4->slice(), tmpResult, options, tmpResultTick, false)).ok());
+//    CHECK((logicalCollection->insert(&trx, doc5->slice(), tmpResult, options, tmpResultTick, false)).ok());
+//    CHECK((logicalCollection->insert(&trx, doc6->slice(), tmpResult, options, tmpResultTick, false)).ok());
+//    CHECK((logicalCollection->insert(&trx, doc7->slice(), tmpResult, options, tmpResultTick, false)).ok());
+//    CHECK((logicalCollection->insert(&trx, doc8->slice(), tmpResult, options, tmpResultTick, false)).ok());
+//    CHECK((logicalCollection->insert(&trx, doc9->slice(), tmpResult, options, tmpResultTick, false)).ok());
+//    CHECK((logicalCollection->insert(&trx, doc10->slice(), tmpResult, options, tmpResultTick, false)).ok());
+//    CHECK((logicalCollection->insert(&trx, doc11->slice(), tmpResult, options, tmpResultTick, false)).ok());
+//    CHECK((trx.commit().ok()));
+//    dynamic_cast<arangodb::iresearch::IResearchView*>(view)->sync();
+//  }
+//
+//  // query view
+//  {
+//    // ArangoDB default type sort order:
+//    // null < bool < number < string < array/list < object/document
+//
+//    // string values
+//    {
+//      std::vector<size_t> const expected = { 9, 8, 7, 4, 5, 6, 1, 2, 3, 10, 11, 12 };
+//      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' RETURN d";
+//      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'] RETURN d";
+//      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr RETURN d";
+//
+//      assertOrderSuccess(*logicalView, query0, "key", expected);
+//      assertOrderSuccess(*logicalView, query1, "key", expected);
+//      assertOrderSuccess(*logicalView, query2, "key", expected);
+//    }
+//
+//    // array values
+//    {
+//      std::vector<size_t> const expected = { 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12 };
+//      std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'][0] RETURN d";
+//
+//      assertOrderSuccess(*logicalView, query, "key", expected);
+//    }
+//
+//    // object values
+//    {
+//      std::vector<size_t> const expected = { 11, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 };
+//      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr']['a'] RETURN d";
+//      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr.a RETURN d";
+//
+//      assertOrderSuccess(*logicalView, query0, "key", expected);
+//      assertOrderSuccess(*logicalView, query1, "key", expected);
+//    }
+//
+//    // via function (no precendence)
+//    {
+//      std::vector<size_t> const expected = { 9, 8, 7, 4, 5, 6, 1, 2, 3, 10, 11, 12 };
+//      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`('testAttr') RETURN d";
+//      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d['testAttr']) RETURN d";
+//      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr) RETURN d";
+//
+//      assertOrderSuccess(*logicalView, query0, "key", expected);
+//      assertOrderSuccess(*logicalView, query1, "key", expected);
+//      assertOrderSuccess(*logicalView, query2, "key", expected);
+//    }
+//
+//    // via function (with precendence)
+//    {
+//      std::vector<size_t> const expected0 = { 10, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12 };
+//      std::vector<size_t> const expected1 = { 8, 7, size_t(-1), 1, 2, 3, 4, 5, 6, 9, 10, 11, 12 };
+//      std::vector<size_t> const expected2 = { 8, 7, size_t(-1), 1, 2, 3, 4, 5, 6, 9, 10, 11, 12 };
+//      std::vector<size_t> const expected3 = { 9, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12 };
+//      std::vector<size_t> const expected4 = { 4, 5, 6, size_t(-1), 1, 2, 3, 7, 8, 9, 10, 11, 12 };
+//      std::vector<size_t> const expected5 = { 11, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 };
+//      std::vector<size_t> const expected6 = { 1, 2, 3, size_t(-1), 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+//      std::vector<size_t> const expected7 = { 12, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+//      std::vector<size_t> const expected8 = { 10, 8, 7, 9, 4, 5, 6, 11, 1, 2, 3, 12 };
+//      std::vector<size_t> const expected9 = { 10, 8, 7, 9, 4, 5, 6, 11, 1, 2, 3, 12 };
+//      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'array') RETURN d";
+//      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'bool') RETURN d";
+//      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'boolean') RETURN d";
+//      std::string query3 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'null') RETURN d";
+//      std::string query4 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'numeric') RETURN d";
+//      std::string query5 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'object') RETURN d";
+//      std::string query6 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'string') RETURN d";
+//      std::string query7 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'unknown') RETURN d";
+//      std::string query8 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'array', 'bool', 'null', 'numeric', 'object', 'string', 'unknown') RETURN d";
+//      std::string query9 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'array', 'boolean', 'null', 'numeric', 'object', 'string', 'unknown') RETURN d";
+//
+//      assertOrderSuccess(*logicalView, query0, "key", expected0);
+//      assertOrderSuccess(*logicalView, query1, "key", expected1);
+//      assertOrderSuccess(*logicalView, query2, "key", expected2);
+//      assertOrderSuccess(*logicalView, query3, "key", expected3);
+//      assertOrderSuccess(*logicalView, query4, "key", expected4);
+//      assertOrderSuccess(*logicalView, query5, "key", expected5);
+//      assertOrderSuccess(*logicalView, query6, "key", expected6);
+//      assertOrderSuccess(*logicalView, query7, "key", expected7);
+//      assertOrderSuccess(*logicalView, query8, "key", expected8);
+//      assertOrderSuccess(*logicalView, query9, "key", expected9);
+//    }
+//
+//    // via function (with invalid precedence)
+//    {
+//      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, []) RETURN d";
+//      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, {}) RETURN d";
+//      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 42) RETURN d";
+//      std::string query3 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'abc') RETURN d";
+//
+//      assertOrderFail(*logicalView, query0, TRI_ERROR_NO_ERROR);
+//      assertOrderFail(*logicalView, query1, TRI_ERROR_NO_ERROR);
+//      assertOrderFail(*logicalView, query2, TRI_ERROR_NO_ERROR);
+//      assertOrderFail(*logicalView, query3, TRI_ERROR_NO_ERROR);
+//    }
+//  }
+//
+//  // query view ascending
+//  {
+//    // ArangoDB default type sort order:
+//    // null < bool < number < string < array/list < object/document
+//
+//    // string values
+//    {
+//      std::vector<size_t> const expected = { 9, 8, 7, 4, 5, 6, 1, 2, 3, 10, 11, 12 };
+//      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' ASC RETURN d";
+//      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'] ASC RETURN d";
+//      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr ASC RETURN d";
+//
+//      assertOrderSuccess(*logicalView, query0, "key", expected);
+//      assertOrderSuccess(*logicalView, query1, "key", expected);
+//      assertOrderSuccess(*logicalView, query2, "key", expected);
+//    }
+//
+//    // array values
+//    {
+//      std::vector<size_t> const expected = { 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12 };
+//      std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'][0] ASC RETURN d";
+//
+//      assertOrderSuccess(*logicalView, query, "key", expected);
+//    }
+//
+//    // object values
+//    {
+//      std::vector<size_t> const expected =  { 11, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 };
+//      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr']['a'] ASC RETURN d";
+//      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr.a ASC RETURN d";
+//
+//      assertOrderSuccess(*logicalView, query0, "key", expected);
+//      assertOrderSuccess(*logicalView, query1, "key", expected);
+//    }
+//  }
+//
+//  // query view descending
+//  {
+//    // ArangoDB default type sort order:
+//    // null < bool < number < string < array/list < object/document
+//
+//    // string values
+//    {
+//      std::vector<size_t> const expected = { 12, 11, 10, 3, 2, 1, 6, 5, 4, 7, 8, 9 };
+//      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' DESC RETURN d";
+//      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'] DESC RETURN d";
+//      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr DESC RETURN d";
+//
+//      assertOrderSuccess(*logicalView, query0, "key", expected);
+//      assertOrderSuccess(*logicalView, query1, "key", expected);
+//      assertOrderSuccess(*logicalView, query2, "key", expected);
+//    }
+//
+//    // array values
+//    {
+//      std::vector<size_t> const expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 10 };
+//      std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'][0] DESC RETURN d";
+//
+//      assertOrderSuccess(*logicalView, query, "key", expected);
+//    }
+//
+//    // object values
+//    {
+//      std::vector<size_t> const expected =  { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 11 };
+//      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr']['a'] DESC RETURN d";
+//      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr.a DESC RETURN d";
+//
+//      assertOrderSuccess(*logicalView, query0, "key", expected);
+//      assertOrderSuccess(*logicalView, query1, "key", expected);
+//    }
+//  }
+//}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests

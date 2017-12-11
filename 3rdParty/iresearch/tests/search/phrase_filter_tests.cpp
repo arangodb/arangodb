@@ -295,7 +295,7 @@ class phrase_filter_test_case : public filter_test_case_base {
       size_t collect_count = 0;
       size_t finish_count = 0;
       irs::order ord;
-      auto& sort = ord.add<tests::sort::custom_sort>();
+      auto& sort = ord.add<tests::sort::custom_sort>(false);
       sort.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
         ++collect_count;
       };
@@ -520,7 +520,7 @@ class phrase_filter_test_case : public filter_test_case_base {
        .push_back("forward");
 
       irs::order ord;
-      auto& sort = ord.add<tests::sort::custom_sort>();
+      auto& sort = ord.add<tests::sort::custom_sort>(false);
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
         ASSERT_TRUE(
           irs::type_limits<irs::type_t::doc_id_t>::invalid() == dst

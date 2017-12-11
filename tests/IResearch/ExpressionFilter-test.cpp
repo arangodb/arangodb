@@ -208,7 +208,7 @@ struct custom_sort: public irs::sort {
 
   DECLARE_FACTORY_DEFAULT();
   custom_sort(): sort(custom_sort::type()) {}
-  virtual prepared::ptr prepare() const {
+  virtual prepared::ptr prepare(bool) const {
     return custom_sort::prepared::make<custom_sort::prepared>(*this);
   }
 };
@@ -359,7 +359,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     for (auto doc : arangodb::velocypack::ArrayIterator(testDataRoot)) {
       storedField.str = arangodb::iresearch::getStringRef(doc.get("name"));
       writer->insert([&storedField](irs::index_writer::document& doc) {
-        doc.insert<irs::Action::STORE>(storedField);
+        doc.insert(irs::action::store, storedField);
         return false; // break the loop
       });
     }
@@ -1095,7 +1095,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     size_t collector_collect_count = 0;
     size_t collector_finish_count = 0;
     size_t scorer_score_count = 0;
-    auto& sort = order.add<custom_sort>();
+    auto& sort = order.add<custom_sort>(false);
 
     sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
       ++collector_collect_count;

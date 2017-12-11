@@ -116,7 +116,7 @@ struct directory_mock : public ir::directory {
   ir::directory& impl_;
 }; // directory_mock 
 
-namespace templates {
+NS_BEGIN(templates)
 
 // ----------------------------------------------------------------------------
 // --SECTION--                               token_stream_payload implemntation
@@ -187,82 +187,72 @@ ir::token_stream& string_field::get_tokens() const {
   return stream_;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class europarl_doc_template
-/// @brief document template for europarl.subset.text
-//////////////////////////////////////////////////////////////////////////////
-class europarl_doc_template : public delim_doc_generator::doc_template {
- public:
-  typedef templates::text_field<ir::string_ref> text_field;
+// ----------------------------------------------------------------------------
+// --SECTION--                                            europarl_doc_template
+// ----------------------------------------------------------------------------
 
-  virtual void init() {
-    clear();
-    indexed.push_back(std::make_shared<tests::templates::string_field>("title"));
-    indexed.push_back(std::make_shared<text_field>("title_anl", false));
-    indexed.push_back(std::make_shared<text_field>("title_anl_pay", true));
-    indexed.push_back(std::make_shared<text_field>("body_anl", false));
-    indexed.push_back(std::make_shared<text_field>("body_anl_pay", true));
-    {
-      insert(std::make_shared<tests::long_field>());
-      auto& field = static_cast<tests::long_field&>(indexed.back());
-      field.name(ir::string_ref("date"));
-    }
-    insert(std::make_shared<tests::templates::string_field>("datestr"));
-    insert(std::make_shared<tests::templates::string_field>("body"));
-    {
-      insert(std::make_shared<tests::int_field>());
-      auto& field = static_cast<tests::int_field&>(indexed.back());
-      field.name(ir::string_ref("id"));
-    }
-    insert(std::make_shared<string_field>("idstr"));
+void europarl_doc_template::init() {
+  clear();
+  indexed.push_back(std::make_shared<tests::templates::string_field>("title"));
+  indexed.push_back(std::make_shared<text_field>("title_anl", false));
+  indexed.push_back(std::make_shared<text_field>("title_anl_pay", true));
+  indexed.push_back(std::make_shared<text_field>("body_anl", false));
+  indexed.push_back(std::make_shared<text_field>("body_anl_pay", true));
+  {
+    insert(std::make_shared<tests::long_field>());
+    auto& field = static_cast<tests::long_field&>(indexed.back());
+    field.name(irs::string_ref("date"));
   }
-
-  virtual void value(size_t idx, const std::string& value) {
-    static auto get_time = [](const std::string& src) {
-      std::istringstream ss(src);
-      std::tm tmb{};
-      char c;
-      ss >> tmb.tm_year >> c >> tmb.tm_mon >> c >> tmb.tm_mday;
-      return std::mktime( &tmb );
-    };
-
-    switch (idx) {
-      case 0: // title
-        title_ = value;
-        indexed.get<tests::templates::string_field>("title")->value(title_);
-        indexed.get<text_field>("title_anl")->value(title_);
-        indexed.get<text_field>("title_anl_pay")->value(title_);
-        break;
-      case 1: // dateA
-        indexed.get<tests::long_field>("date")->value(get_time(value));
-        indexed.get<tests::templates::string_field>("datestr")->value(value);
-        break;
-      case 2: // body
-        body_ = value;
-        indexed.get<tests::templates::string_field>("body")->value(body_);
-        indexed.get<text_field>("body_anl")->value(body_);
-        indexed.get<text_field>("body_anl_pay")->value(body_);
-        break;
-    }
+  insert(std::make_shared<tests::templates::string_field>("datestr"));
+  insert(std::make_shared<tests::templates::string_field>("body"));
+  {
+    insert(std::make_shared<tests::int_field>());
+    auto& field = static_cast<tests::int_field&>(indexed.back());
+    field.name(irs::string_ref("id"));
   }
+  insert(std::make_shared<string_field>("idstr"));
+}
 
-  virtual void end() {
-    ++idval_;
-    indexed.get<tests::int_field>("id")->value(idval_);
-    indexed.get<tests::templates::string_field>("idstr")->value(std::to_string(idval_));
+void europarl_doc_template::value(size_t idx, const std::string& value) {
+  static auto get_time = [](const std::string& src) {
+    std::istringstream ss(src);
+    std::tm tmb{};
+    char c;
+    ss >> tmb.tm_year >> c >> tmb.tm_mon >> c >> tmb.tm_mday;
+    return std::mktime( &tmb );
+  };
+
+  switch (idx) {
+    case 0: // title
+      title_ = value;
+      indexed.get<tests::templates::string_field>("title")->value(title_);
+      indexed.get<text_field>("title_anl")->value(title_);
+      indexed.get<text_field>("title_anl_pay")->value(title_);
+      break;
+    case 1: // dateA
+      indexed.get<tests::long_field>("date")->value(get_time(value));
+      indexed.get<tests::templates::string_field>("datestr")->value(value);
+      break;
+    case 2: // body
+      body_ = value;
+      indexed.get<tests::templates::string_field>("body")->value(body_);
+      indexed.get<text_field>("body_anl")->value(body_);
+      indexed.get<text_field>("body_anl_pay")->value(body_);
+      break;
   }
+}
 
-  virtual void reset() {
-    idval_ = 0;
-  }
+void europarl_doc_template::end() {
+  ++idval_;
+  indexed.get<tests::int_field>("id")->value(idval_);
+  indexed.get<tests::templates::string_field>("idstr")->value(std::to_string(idval_));
+}
 
- private:
-  std::string title_; // current title
-  std::string body_; // current body
-  ir::doc_id_t idval_ = 0;
-}; // europarl_doc_template
+void europarl_doc_template::reset() {
+  idval_ = 0;
+}
 
-} // templates
+NS_END // templates
 
 void generic_json_field_factory(
     tests::document& doc,
@@ -1761,7 +1751,7 @@ class index_test_case_base : public tests::index_test_base {
       irs::doc_id_t docs_count = 0;
       auto inserter = [&docs_count, &field](const irs::index_writer::document& doc) {
         if (docs_count % 2) {
-          doc.insert<irs::Action::STORE>(field);
+          doc.insert(irs::action::store, field);
         }
         return ++docs_count < MAX_DOCS;
       };
@@ -2546,7 +2536,7 @@ class index_test_case_base : public tests::index_test_base {
 
       irs::doc_id_t docs_count = 0;
       auto inserter = [&docs_count, &field](const irs::index_writer::document& doc) {
-        doc.insert<irs::Action::STORE>(field);
+        doc.insert(irs::action::store, field);
         return ++docs_count < MAX_DOCS;
       };
 
@@ -3240,7 +3230,7 @@ class index_test_case_base : public tests::index_test_base {
       } field;
 
       auto inserter = [&field](const irs::index_writer::document& doc) {
-        doc.insert<irs::Action::STORE>(field);
+        doc.insert(irs::action::store, field);
         return ++field.value < MAX_DOCS;
       };
 
@@ -3994,7 +3984,7 @@ class index_test_case_base : public tests::index_test_base {
       } field;
 
       auto inserter = [&field](const irs::index_writer::document& doc) {
-        doc.insert<irs::Action::STORE>(field);
+        doc.insert(irs::action::store, field);
         return ++field.value < MAX_DOCS;
       };
 
@@ -4897,7 +4887,7 @@ class index_test_case_base : public tests::index_test_base {
 
       auto inserter = [&inserted, &field](const irs::index_writer::document& doc) {
         if (field.value % 2 ) {
-          doc.insert<irs::Action::STORE>(field);
+          doc.insert(irs::action::store, field);
           ++inserted;
         }
         return ++field.value < MAX_DOCS;
@@ -5935,7 +5925,7 @@ class index_test_case_base : public tests::index_test_base {
       auto inserter = [&field, &names](irs::index_writer::document& doc) {
         for (auto& name : names) {
           field.name_ = name;
-          doc.insert<irs::Action::INDEX>(field);
+          doc.insert(irs::action::index, field);
         }
         return false; // break the loop
       };
@@ -6133,7 +6123,7 @@ class index_test_case_base : public tests::index_test_base {
       auto inserter = [&field, &names](irs::index_writer::document& doc) {
         for (auto& name : names) {
           field.name_ = name;
-          doc.insert<irs::Action::STORE>(field);
+          doc.insert(irs::action::store, field);
         }
         return false; // break the loop
       };
@@ -7401,7 +7391,7 @@ class index_test_case_base : public tests::index_test_base {
     auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
     size_t i = 0;
-    const size_t max = 7;
+    const size_t max = 8;
     bool states[max];
     std::fill(std::begin(states), std::end(states), true);
 
@@ -7410,48 +7400,54 @@ class index_test_case_base : public tests::index_test_base {
       switch (i) {
         case 0: { // doc0
           indexed_field indexed("indexed", "doc0");
-          state &= doc.insert<irs::Action::INDEX>(indexed);
+          state &= doc.insert(irs::action::index, indexed);
           stored_field stored("stored", "doc0");
-          state &= doc.insert<irs::Action::STORE>(stored);
+          state &= doc.insert(irs::action::store, stored);
           indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc0");
-          state &= doc.insert<irs::Action::INDEX_STORE>(indexed_and_stored);
+          state &= doc.insert(irs::action::index_store, indexed_and_stored);
         } break;
         case 1: { // doc1
           // indexed and stored fields can be indexed/stored only
           indexed_and_stored_field indexed("indexed", "doc1");
-          state &= doc.insert<irs::Action::INDEX>(indexed);
+          state &= doc.insert(irs::action::index, indexed);
           indexed_and_stored_field stored("stored", "doc1");
-          state &= doc.insert<irs::Action::STORE>(stored);
+          state &= doc.insert(irs::action::store, stored);
         } break;
         case 2: { // doc2 (will be dropped since it contains invalid stored field)
           indexed_and_stored_field indexed("indexed", "doc2");
-          state &= doc.insert<irs::Action::INDEX>(indexed);
+          state &= doc.insert(irs::action::index, indexed);
           stored_field stored("stored", "doc2", false);
-          state &= doc.insert<irs::Action::STORE>(stored);
+          state &= doc.insert(irs::action::store, stored);
         } break;
         case 3: { // doc3 (will be dropped since it contains invalid indexed field)
           indexed_field indexed("indexed", "doc3", false);
-          state &= doc.insert<irs::Action::INDEX>(indexed);
+          state &= doc.insert(irs::action::index, indexed);
           stored_field stored("stored", "doc3");
-          state &= doc.insert<irs::Action::STORE>(stored);
+          state &= doc.insert(irs::action::store, stored);
         } break;
         case 4: { // doc4 (will be dropped since it contains invalid indexed and stored field)
           indexed_and_stored_field indexed_and_stored("indexed", "doc4", false, false);
-          state &= doc.insert<irs::Action::INDEX_STORE>(indexed_and_stored);
+          state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc4");
-          state &= doc.insert<irs::Action::STORE>(stored);
+          state &= doc.insert(irs::action::store, stored);
         } break;
-        case 5: { // doc5
-          indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc5", false); // will not be stored, but will be indexed
-          state &= doc.insert<irs::Action::INDEX_STORE>(indexed_and_stored);
+        case 5: { // doc5 (will be dropped since it contains failed stored field)
+          indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc5", false); // will fail on store, but will pass on index
+          state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc5");
-          state &= doc.insert<irs::Action::STORE>(stored);
+          state &= doc.insert(irs::action::store, stored);
         } break;
-        case 6: { // doc6
-          indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc6", true, false); // will not be indexed, but will be stored
-          state &= doc.insert<irs::Action::INDEX_STORE>(indexed_and_stored);
+        case 6: { // doc6 (will be dropped since it contains failed indexed field)
+          indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc6", true, false); // will fail on index, but will pass on store
+          state &= doc.insert(irs::action::index_store, indexed_and_stored);
           stored_field stored("stored", "doc6");
-          state &= doc.insert<irs::Action::STORE>(stored);
+          state &= doc.insert(irs::action::store, stored);
+        } break;
+        case 7: { // valid insertion of last doc will mark bulk insert result as valid
+          indexed_and_stored_field indexed_and_stored("indexed_and_stored", "doc7", true, true); // will be indexed, and will be stored
+          state &= doc.insert(irs::action::index_store, indexed_and_stored);
+          stored_field stored("stored", "doc7");
+          state &= doc.insert(irs::action::store, stored);
         } break;
       }
 
@@ -7464,8 +7460,9 @@ class index_test_case_base : public tests::index_test_base {
     ASSERT_FALSE(states[2]); // skipped
     ASSERT_FALSE(states[3]); // skipped
     ASSERT_FALSE(states[4]); // skipped
-    ASSERT_TRUE(states[5]); // successfully inserted
-    ASSERT_TRUE(states[6]); // successfully inserted
+    ASSERT_FALSE(states[5]); // skipped
+    ASSERT_FALSE(states[6]); // skipped
+    ASSERT_TRUE(states[7]); // successfully inserted
 
     writer->commit();
 
@@ -7474,16 +7471,11 @@ class index_test_case_base : public tests::index_test_base {
       auto reader = ir::directory_reader::open(dir());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0];
-      ASSERT_EQ(7, reader->docs_count()); // we have 7 documents in total
-      ASSERT_EQ(4, reader->live_docs_count()); // 3 of which marked as deleted
+      ASSERT_EQ(8, reader->docs_count()); // we have 8 documents in total
+      ASSERT_EQ(3, reader->live_docs_count()); // 5 of which marked as deleted
 
-      std::unordered_set<std::string> expected_values { "doc0", "doc1", "doc5", "doc6" };
+      std::unordered_set<std::string> expected_values { "doc0", "doc1", "doc7" };
       std::unordered_set<std::string> actual_values;
-
-      auto visitor = [&actual_values](irs::doc_id_t doc, const irs::bytes_ref& value) {
-        return true;
-      };
-
       irs::bytes_ref value;
 
       const auto* column_reader = segment.column_reader("stored");

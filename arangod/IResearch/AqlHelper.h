@@ -23,6 +23,7 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/AqlValue.h"
+#include "Aql/SortCondition.h"
 #include "VelocyPackHelper.h"
 
 #include "utils/string.hpp"
@@ -109,6 +110,19 @@ inline bool parseValue(
   }
 
   return false;
+}
+
+template<typename Visitor>
+bool visit(arangodb::aql::SortCondition const& sort, Visitor const& visitor) {
+  for (size_t i = 0, size = sort.numAttributes(); i < size; ++i) {
+    auto entry = sort.field(i);
+
+    if (!visitor(std::get<0>(entry), std::get<1>(entry), std::get<2>(entry))) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -305,6 +319,12 @@ class ScopedAqlValue : private irs::util::noncopyable {
     return _node->isConstant()
       ? _node->numMembers()
       : _value.length();
+  }
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const {
+    _node->isConstant()
+      ? _node->toVelocyPackValue(builder)
+      : _value.toVelocyPack(nullptr, builder, false);
   }
 
  private:

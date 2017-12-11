@@ -32,7 +32,15 @@
   #pragma GCC diagnostic pop
 #endif
 
-#include <unicode/uclean.h> // for u_cleanup
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4229)
+#endif
+
+  #include <unicode/uclean.h> // for u_cleanup
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4229)
+#endif
 
 #include "gtest/gtest.h"
 #include "tests_config.hpp"
@@ -79,7 +87,7 @@ namespace tests {
     };
 
     test_sort():sort(test_sort::type()) {}
-    virtual sort::prepared::ptr prepare() const { return test_sort::prepared::make<test_sort::prepared>(); }
+    virtual sort::prepared::ptr prepare(bool) const { return test_sort::prepared::make<test_sort::prepared>(); }
   };
 
   DEFINE_SORT_TYPE(test_sort);
@@ -1165,7 +1173,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
       }
 
       direction.emplace_back(ascending, out.str());
-      buf.add<test_sort>();
+      buf.add<test_sort>(false);
 
       return true;
     };

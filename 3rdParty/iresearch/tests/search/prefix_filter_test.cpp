@@ -55,7 +55,7 @@ class prefix_filter_test_case : public filter_test_case_base {
 
       size_t collect_count = 0;
       size_t finish_count = 0;
-      auto& scorer = order.add<sort::custom_sort>();
+      auto& scorer = order.add<sort::custom_sort>(false);
       scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
         ++collect_count;
       };
@@ -76,7 +76,7 @@ class prefix_filter_test_case : public filter_test_case_base {
       costs_t costs{ docs.size() };
       ir::order order;
 
-      order.add<sort::frequency_sort>();
+      order.add<sort::frequency_sort>(false);
       check_query(ir::by_prefix().field("prefix"), order, docs, rdr);
     }
 
@@ -87,7 +87,7 @@ class prefix_filter_test_case : public filter_test_case_base {
 //      costs_t costs{ docs.size() };
 //      ir::order order;
 //
-//      order.add<sort::frequency_sort>();
+//      order.add<sort::frequency_sort>(false);
 //      check_query(ir::by_prefix().field("prefix").scored_terms_limit(1), order, docs, rdr);
 //    }
 //
@@ -97,7 +97,7 @@ class prefix_filter_test_case : public filter_test_case_base {
       costs_t costs{ docs.size() };
       ir::order order;
 
-      order.add<sort::frequency_sort>();
+      order.add<sort::frequency_sort>(false);
       check_query(ir::by_prefix().field("prefix").term("a"), order, docs, rdr);
     }
   }

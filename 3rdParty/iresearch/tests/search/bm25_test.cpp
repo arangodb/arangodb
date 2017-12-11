@@ -82,7 +82,84 @@ TEST_F(bm25_test, test_load) {
   auto scorer = irs::scorers::get("bm25", irs::string_ref::nil);
 
   ASSERT_NE(nullptr, scorer);
-  ASSERT_EQ(1, order.add(scorer).size());
+  ASSERT_EQ(1, order.add(true, scorer).size());
+}
+
+TEST_F(bm25_test, make_from_array) {
+  // default args
+  {
+    auto scorer = irs::scorers::get("bm25", irs::string_ref::nil);
+    ASSERT_NE(nullptr, scorer);
+    auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
+    ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
+    ASSERT_EQ(irs::bm25_sort::WITH_NORMS(), bm25.normalize());
+  }
+
+  // default args
+  {
+    auto scorer = irs::scorers::get("bm25", "[]");
+    ASSERT_NE(nullptr, scorer);
+    auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
+    ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
+    ASSERT_EQ(irs::bm25_sort::WITH_NORMS(), bm25.normalize());
+  }
+
+  // `k` argument
+  {
+    auto scorer = irs::scorers::get("bm25", "[ 1.5 ]");
+    ASSERT_NE(nullptr, scorer);
+    auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(1.5f, bm25.k());
+    ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
+    ASSERT_EQ(irs::bm25_sort::WITH_NORMS(), bm25.normalize());
+  }
+
+  // invalid `k` argument
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ \"1.5\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ \"abc\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ null]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ true ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ false ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ {} ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ [] ]"));
+
+  // `b` argument
+  {
+    auto scorer = irs::scorers::get("bm25", "[ 1.5, 1.7 ]");
+    ASSERT_NE(nullptr, scorer);
+    auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(1.5f, bm25.k());
+    ASSERT_EQ(1.7f, bm25.b());
+    ASSERT_EQ(irs::bm25_sort::WITH_NORMS(), bm25.normalize());
+  }
+
+  // invalid `b` argument
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, \"1.7\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, \"abc\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, null]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, true ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, false ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, {} ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, [] ]"));
+
+  // `with-norms` argument
+  {
+    auto scorer = irs::scorers::get("bm25", "[ 1.5, 1.7, false ]");
+    ASSERT_NE(nullptr, scorer);
+    auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(1.5f, bm25.k());
+    ASSERT_EQ(1.7f, bm25.b());
+    ASSERT_EQ(false, bm25.normalize());
+  }
+
+  // invalid `with-norms` argument
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, 1.7, \"false\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, 1.7, null]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, 1.7, 1 ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, 1.7, {} ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, 1.7, [] ]"));
 }
 
 TEST_F(bm25_test, test_normalize_features) {
@@ -90,7 +167,7 @@ TEST_F(bm25_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("bm25", irs::string_ref::nil);
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
+    auto prepared = scorer->prepare(true);
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
   }
@@ -99,7 +176,7 @@ TEST_F(bm25_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("bm25", "{\"with-norms\": true}");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
+    auto prepared = scorer->prepare(true);
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
   }
@@ -108,7 +185,7 @@ TEST_F(bm25_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("bm25", "{\"with-norms\": false}");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
+    auto prepared = scorer->prepare(true);
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
   }
@@ -131,7 +208,7 @@ TEST_F(bm25_test, test_query) {
 
   irs::order order;
 
-  order.add(irs::scorers::get("bm25", irs::string_ref::nil));
+  order.add(true, irs::scorers::get("bm25", irs::string_ref::nil));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -454,7 +531,7 @@ TEST_F(bm25_test, test_query_norms) {
 
   irs::order order;
 
-  order.add(irs::scorers::get("bm25", irs::string_ref::nil));
+  order.add(true, irs::scorers::get("bm25", irs::string_ref::nil));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -628,7 +705,7 @@ TEST_F(bm25_test, test_order) {
   query.field("field");
 
   iresearch::order ord;
-  ord.add<iresearch::bm25_sort>();
+  ord.add<iresearch::bm25_sort>(true);
   auto prepared_order = ord.prepare();
 
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {

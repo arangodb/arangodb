@@ -26,19 +26,21 @@
 
 #include "VocBase/voc-types.h"
 
-#include "search/filter.hpp"
-
-NS_BEGIN(iresearch)
-
-
-NS_END // iresearch
+#include "search/sort.hpp"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(aql)
 
-class SortCondition; // forward declaration
+class AstNode;
+class Variable;
 
 NS_END // aql
+
+NS_BEGIN(iresearch)
+
+struct QueryContext;
+
+NS_END // iresearch
 
 NS_BEGIN(transaction)
 
@@ -48,22 +50,15 @@ NS_END // transaction
 
 NS_BEGIN(iresearch)
 
-struct IResearchViewMeta; // forward declaration
-
 struct OrderFactory {
-  struct OrderContext {
-    std::vector<irs::stored_attribute::ptr>& attributes;
-    irs::order& order;
-  };
-
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief determine if the 'node' can be converted into an iresearch order
-  ///        if 'order' != nullptr then also append the iresearch order there
+  /// @brief determine if the 'node' can be converted into an iresearch scorer
+  ///        if 'scorer' != nullptr then also append build iresearch scorer there
   ////////////////////////////////////////////////////////////////////////////////
-  static bool order(
-    OrderContext* ctx,
-    arangodb::aql::SortCondition const& node,
-    IResearchViewMeta const& meta
+  static bool scorer(
+    irs::sort::ptr* scorer,
+    aql::AstNode const& node,
+    QueryContext const& ctx
   );
 }; // OrderFactory
 

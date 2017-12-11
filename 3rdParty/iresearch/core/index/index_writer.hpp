@@ -78,67 +78,42 @@ enum OPEN_MODE {
 /// @enum Action
 /// @brief defines how the inserting field should be processed
 //////////////////////////////////////////////////////////////////////////////
-enum class Action : uint32_t {
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief Field should be indexed only
-  /// @note Field must satisfy 'Field' concept
-  ////////////////////////////////////////////////////////////////////////////
-  INDEX = 1,
+NS_BEGIN(action)
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief Field should be stored only
-  /// @note Field must satisfy 'Attribute' concept
-  ////////////////////////////////////////////////////////////////////////////
-  STORE = 2,
+////////////////////////////////////////////////////////////////////////////
+/// @brief Field should be indexed only
+/// @note Field must satisfy 'Field' concept
+////////////////////////////////////////////////////////////////////////////
+struct index_t{};
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  static const index_t index = index_t();
+#else
+  CONSTEXPR const index_t index = index_t();
+#endif
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief Field should be indexed and stored
-  /// @note Field must satisfy 'Field' and 'Attribute' concepts
-  ////////////////////////////////////////////////////////////////////////////
-  INDEX_STORE = 3
-}; // Action
+////////////////////////////////////////////////////////////////////////////
+/// @brief Field should be indexed and stored
+/// @note Field must satisfy 'Field' and 'Attribute' concepts
+////////////////////////////////////////////////////////////////////////////
+struct index_store_t{};
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  static const index_store_t index_store = index_store_t();
+#else
+  CONSTEXPR const index_store_t index_store = index_store_t();
+#endif
 
-inline CONSTEXPR Action operator|(Action lhs, Action rhs) {
-  return enum_bitwise_or(lhs, rhs);
-}
+////////////////////////////////////////////////////////////////////////////
+/// @brief Field should be stored only
+/// @note Field must satisfy 'Attribute' concept
+////////////////////////////////////////////////////////////////////////////
+struct store_t{};
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  static const store_t store = store_t();
+#else
+  CONSTEXPR const store_t store = store_t();
+#endif
 
-inline CONSTEXPR Action operator&(Action lhs, Action rhs) {
-  return enum_bitwise_and(lhs, rhs);
-}
-
-NS_LOCAL
-
-template<Action action>
-struct action_traits {
-  template<typename Field>
-  static bool insert(segment_writer& writer, Field& field);
-}; // action_traits
-
-template<>
-struct action_traits<Action::INDEX> {
-  template<typename Field>
-  static bool insert(segment_writer& writer, Field& field) {
-    return writer.index(field);
-  }
-}; // action_traits
-
-template<>
-struct action_traits<Action::STORE> {
-  template<typename Field>
-  static bool insert(segment_writer& writer, Field& field) {
-    return writer.store(field);
-  }
-}; // action_traits
-
-template<>
-struct action_traits<Action::INDEX_STORE> {
-  template<typename Field>
-  static bool insert(segment_writer& writer, Field& field) {
-    return writer.index_and_store(field);
-  }
-}; // action_traits
-
-NS_END
+NS_END // action
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class index_writer 
@@ -157,9 +132,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief constructor
     ////////////////////////////////////////////////////////////////////////////
-    explicit document(segment_writer& writer) NOEXCEPT
-      : writer_(writer) {
-    }
+    explicit document(segment_writer& writer) NOEXCEPT: writer_(writer) {}
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief destructor
@@ -171,9 +144,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
     /// @note that in case if object is in ivalid state all further operations
     ///       will not take any effect
     ////////////////////////////////////////////////////////////////////////////
-    bool valid() const NOEXCEPT {
-      return writer_.valid();
-    }
+    bool valid() const NOEXCEPT { return writer_.valid(); }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief inserts the specified field into the document according to the
@@ -182,9 +153,19 @@ class IRESEARCH_API index_writer : util::noncopyable {
     /// @param field attribute to be inserted
     /// @return true, if field was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
-    template<Action ACTION, typename Field>
-    bool insert(Field& field) const {
-      return action_traits<ACTION>::insert(writer_, field);
+    template<typename Field>
+    bool insert(action::index_t, Field& field) const {
+      return writer_.index(field);
+    }
+
+    template<typename Field>
+    bool insert(action::index_store_t, Field& field) const {
+      return writer_.index_and_store(field);
+    }
+
+    template<typename Field>
+    bool insert(action::store_t, Field& field) const {
+      return writer_.store(field);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -195,10 +176,10 @@ class IRESEARCH_API index_writer : util::noncopyable {
     /// @param field attribute to be inserted
     /// @return true, if field was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
-    template<Action ACTION, typename Field>
-    bool insert(Field* field) const {
+    template<typename Action, typename Field>
+    bool insert(Action action, Field* field) const {
       assert(field);
-      return insert<ACTION>(*field);
+      return insert(action, *field);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -209,10 +190,10 @@ class IRESEARCH_API index_writer : util::noncopyable {
     /// @param end the end of the fields range
     /// @return true, if the range was successfully insterted
     ////////////////////////////////////////////////////////////////////////////
-    template<Action ACTION, typename Iterator>
-    bool insert(Iterator begin, Iterator end) const {
+    template<typename Action, typename Iterator>
+    bool insert(Action action, Iterator begin, Iterator end) const {
       for (; valid() && begin != end; ++begin) {
-        insert<ACTION>(*begin);
+        insert(action, *begin);
       }
       return valid();
     }

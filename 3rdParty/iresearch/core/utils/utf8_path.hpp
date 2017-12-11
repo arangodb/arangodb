@@ -40,15 +40,25 @@
 
 NS_ROOT
 
-class utf8_path {
+class IRESEARCH_API utf8_path {
  public:
+  typedef std::function<bool(const ::boost::filesystem::path::value_type* name)> directory_visitor;
+
   utf8_path(bool current_working_path = false);
+  utf8_path(const char* utf8_path);
+  utf8_path(const std::string& utf8_path);
+  utf8_path(const irs::string_ref& utf8_path);
+  utf8_path(const wchar_t* utf8_path);
+  utf8_path(const irs::basic_string_ref<wchar_t>& ucs2_path);
+  utf8_path(const std::wstring& ucs2_path);
   utf8_path(const ::boost::filesystem::path& path);
+  utf8_path& operator+=(const char* utf8_name);
   utf8_path& operator+=(const std::string& utf8_name);
   utf8_path& operator+=(const irs::string_ref& utf8_name);
   utf8_path& operator+=(const wchar_t* ucs2_name);
   utf8_path& operator+=(const irs::basic_string_ref<wchar_t>& ucs2_name);
   utf8_path& operator+=(const std::wstring& ucs2_name);
+  utf8_path& operator/=(const char* utf8_name);
   utf8_path& operator/=(const std::string& utf8_name);
   utf8_path& operator/=(const irs::string_ref& utf8_name);
   utf8_path& operator/=(const wchar_t* ucs2_name);
@@ -57,6 +67,7 @@ class utf8_path {
 
   bool chdir() const NOEXCEPT;
   bool exists(bool& result) const NOEXCEPT;
+  bool exists_directory(bool& result) const NOEXCEPT;
   bool exists_file(bool& result) const NOEXCEPT;
   bool file_size(uint64_t& result) const NOEXCEPT;
   bool mkdir() const NOEXCEPT;
@@ -64,6 +75,10 @@ class utf8_path {
   bool remove() const NOEXCEPT;
   bool rename(const utf8_path& destination) const NOEXCEPT;
   bool rmdir() const;
+  bool visit_directory(
+    const directory_visitor& visitor,
+    bool include_dot_dir = true
+  );
 
   const ::boost::filesystem::path::string_type& native() const NOEXCEPT;
   const ::boost::filesystem::path::value_type* c_str() const NOEXCEPT;

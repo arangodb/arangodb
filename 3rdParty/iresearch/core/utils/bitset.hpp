@@ -174,9 +174,10 @@ class bitset : util::noncopyable {
 
   void sanitize() NOEXCEPT {
     assert(bits_ <= capacity());
+    auto last_word_bits = bits_ % bits_required<word_t>();
 
-    if (!words_) {
-      return;
+    if (!last_word_bits) {
+      return; // no words or last word has all bits set
     }
 
     const auto mask = ~(~word_t(0) << (bits_ % bits_required<word_t>()));

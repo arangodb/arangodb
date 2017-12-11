@@ -103,7 +103,7 @@ protected:
 
     // create order
     iresearch::order ord;
-    ord.add<tests::sort::boost>();
+    ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
     // without boost
@@ -431,7 +431,7 @@ protected:
       size_t collect_count = 0;
       size_t finish_count = 0;
       iresearch::order ord;
-      auto& scorer = ord.add<sort::custom_sort>();
+      auto& scorer = ord.add<sort::custom_sort>(false);
       scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
         ++collect_count;
       };
