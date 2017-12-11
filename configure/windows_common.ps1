@@ -14,7 +14,17 @@ $PSDefaultParameterValues['*:ErrorAction']='Stop'
 
 $arango_source = split-path -parent $script_path
 
-$vcpath=$(Get-ItemProperty HKLM:\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\SxS\VC7)."$vc_version"
+$registry_base = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\SxS"
+
+if(Test-Path "${registry_base}\VC7") {
+    $vcpath=$(Get-ItemProperty "${registry_base}\VC7")."$vc_version"
+} elseif(Test-Path "${registry_base}\VS7") {
+    $vcpath=$(Get-ItemProperty "${registry_base}\VS7")."$vc_version"
+} else {
+    echo "unable to find VisualStudio Registry Key"
+    exit 1
+}
+
 $env:GYP_MSVS_OVERRIDE_PATH="${vcpath}\bin"
 $env:CC="${vcpath}\bin\cl.exe"
 $env:CXX="${vcpath}\bin\cl.exe"

@@ -3,7 +3,7 @@
 .SYNOPSIS
     Configures and builds ArangoDB
 .EXAMPLE
-    mkdir arango-build; cd arangod-build; ../arangodb/scripts/configure/<this_file> [-build] [cmake params]
+    mkdir arango-build; cd arangod-build; ../arangodb/configure/<this_file> [-build] [cmake params]
 #>
 param([switch] $build)
 if ($build) { $do_build = $TRUE } else { $do_build = $FALSE }

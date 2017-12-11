@@ -89,9 +89,12 @@ void Logger::setLogLevel(std::string const& levelName) {
     return;
   }
 
+  // if log level is "foo = bar", we better get rid of the whitespace
+  StringUtils::trimInPlace(v[0]);
   bool isGeneral = v.size() == 1;
 
   if (!isGeneral) {
+    StringUtils::trimInPlace(v[1]);
     l = v[1];
   }
 

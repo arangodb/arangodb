@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Thread.h"
 #include "Statistics/figures.h"
-#include "StatisticsWorker.h"
 
 namespace arangodb {
 namespace basics {
