@@ -21,11 +21,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/datetime.h"
+#include "lib/Basics/StringUtils.h"
 
+#include <boost/algorithm/string.hpp>
 #include <iostream>
 #include <vector>
+#include <regex>
+
 
 bool arangodb::basics::parse_dateTime(std::string const& dateTime, std::chrono::system_clock::time_point& date_tp) {
+
+    // static std::regex integer("^(\\+|-)?[0-9]+$"); // \\ is ECMA style
+
 //    std::cout << std::endl;
     using namespace date;
     using namespace std::chrono;
@@ -38,20 +45,27 @@ bool arangodb::basics::parse_dateTime(std::string const& dateTime, std::chrono::
     year y;
 
     std::string strDate = dateTime;
+    boost::algorithm::trim(strDate); // right left trim
     std::string strTime = "";
     std::string strOffset = "";
     std::string leftover = "";
     
     bool failed;
-    
-    if (strDate.back() == 'Z') {
+
+    // if(std::regex_match(strDate, integer)) { // system_time
+    //     date_tp = system_clock::time_point(milliseconds{
+    //         basics::StringUtils::int64(strDate)});
+    //     return true;
+    // }
+
+    if (strDate.back() == 'Z' || strDate.back() == 'z') {
         strDate.pop_back();
     }
 
-    if (strDate.find("T") != std::string::npos) { // split into ymd / time
+    if (strDate.find("T") != std::string::npos || strDate.find(" ") != std::string::npos) { // split into ymd / time
         std::vector<std::string> strs;
-        boost::split(strs, strDate, boost::is_any_of("T"));
-        
+        boost::split(strs, strDate, boost::is_any_of("T "));
+
         strDate = strs[0];
         strTime = strs[1];
      } // if
@@ -80,7 +94,7 @@ bool arangodb::basics::parse_dateTime(std::string const& dateTime, std::chrono::
             getline(in, leftover);
             
             if (failed || leftover.size()) {
-                // std::cout << "failed to parse\n";
+                std::cout << "failed to parse " << strDate << std::endl;
                 return false;
             } else {
                 date_tp = sys_days(ymd);

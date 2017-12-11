@@ -428,7 +428,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_ISO8601", ".|.,.,.,.,.,.", true,
        false, true, true});
   add({"DATE_DAYOFWEEK", ".", true, false, true,
-       true});
+       true, &Functions::DateDayOfWeek});
   add({"DATE_YEAR", ".", true, false, true, true});
   add({"DATE_MONTH", ".", true, false, true, true});
   add({"DATE_DAY", ".", true, false, true, true});

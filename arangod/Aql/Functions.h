@@ -167,7 +167,8 @@ struct Functions {
     // date
    static AqlValue DateNow(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
-
+   static AqlValue DateDayOfWeek(arangodb::aql::Query*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
 
 
    static AqlValue Passthru(arangodb::aql::Query*, transaction::Methods*,

@@ -27,6 +27,7 @@
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Aql/RegexCache.h"
+#include "Basics/datetime.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
@@ -1374,7 +1375,7 @@ AqlValue Functions::RegexReplace(arangodb::aql::Query* query,
 }
 
 
-
+#include <iostream>
 // DATE FUNCTIONS
 
 /// @brief function DATE_NOW
@@ -1393,7 +1394,37 @@ AqlValue Functions::DateNow(arangodb::aql::Query* query,
     //dur = duration_cast< duration<uint64_t, std::milli>>(system_clock::now().time_since_epoch() ) .count();
 }
 
+/// @brief function DATE_DAYOFWEEK
+AqlValue Functions::DateDayOfWeek(arangodb::aql::Query* query,
+                                  transaction::Methods* trx,
+                                  VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
 
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (!value.isString() && !value.isNumber() ) {
+    RegisterInvalidArgumentWarning(query, "DATE_DAYOFWEEK");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  system_clock::time_point tp;
+
+  if (value.isNumber()) {
+    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
+  } else {
+    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
+      std::cout << "cant parse :S\n";
+      RegisterWarning(query, "DATE_DAYOFWEEK",
+        TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  return AqlValue(AqlValueHintUInt(
+    static_cast<uint64_t>(unsigned(weekday(floor<days>(tp))))
+  ));
+}
 
 
 
