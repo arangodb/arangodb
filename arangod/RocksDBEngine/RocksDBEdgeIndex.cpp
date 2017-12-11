@@ -126,7 +126,7 @@ void RocksDBEdgeIndexIterator::reset() {
 
 bool RocksDBEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
-#ifdef USE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
 #else
   // Gracefully return in production code
@@ -229,7 +229,7 @@ bool RocksDBEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
 bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
                                          size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
-#ifdef USE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
 #else
   // Gracefully return in production code
@@ -447,7 +447,8 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
                                         RocksDBMethods* mthd,
                                         LocalDocumentId const& documentId,
-                                        VPackSlice const& doc) {
+                                        VPackSlice const& doc,
+                                        OperationMode mode) {
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
   auto fromToRef = StringRef(fromTo);
@@ -478,7 +479,8 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
 Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
                                         RocksDBMethods* mthd,
                                         LocalDocumentId const& documentId,
-                                        VPackSlice const& doc) {
+                                        VPackSlice const& doc,
+                                        OperationMode mode) {
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   auto fromToRef = StringRef(fromTo);
@@ -795,7 +797,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
         while (cc->isBusy()) {
           // We should wait here, the cache will reject
           // any inserts anyways.
-          usleep(10000);
+          std::this_thread::sleep_for(std::chrono::microseconds(10000));
         }
 
         auto entry = cache::CachedValue::construct(
@@ -841,7 +843,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
                          : transaction::helpers::extractFromFromDocument(doc);
         TRI_ASSERT(toFrom.isString());
         builder.add(toFrom);
-#ifdef USE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       } else {
         // Data Inconsistency.
         // We have a revision id without a document...

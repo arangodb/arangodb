@@ -61,6 +61,14 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
                                    "invalid traversal depth");
   }
   double v = node->getDoubleValue();
+  if (v > static_cast<double>(INT64_MAX)) {
+    // we cannot safely represent this value in an int64_t.
+    // which is already far bigger than we will ever traverse, so
+    // we can safely abort here and not care about uint64_t.
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+
   double intpart;
   if (modf(v, &intpart) != 0.0 || v < 0.0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
@@ -256,29 +264,6 @@ ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(
   return plan.release();
 }
 
-/// @brief clone the plan by recursively cloning starting from the root
-class CloneNodeAdder final : public WalkerWorker<ExecutionNode> {
-  ExecutionPlan* _plan;
-
- public:
-  bool success;
-
-  explicit CloneNodeAdder(ExecutionPlan* plan) : _plan(plan), success(true) {}
-
-  ~CloneNodeAdder() {}
-
-  bool before(ExecutionNode* node) override final {
-    // We need to catch exceptions because the walk has to finish
-    // and either register the nodes or delete them.
-    try {
-      _plan->registerNode(node);
-    } catch (...) {
-      success = false;
-    }
-    return false;
-  }
-};
-
 /// @brief clone an existing execution plan
 ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
   auto plan = std::make_unique<ExecutionPlan>(ast);
@@ -288,12 +273,6 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
   plan->_appliedRules = _appliedRules;
   plan->_isResponsibleForInitialize = _isResponsibleForInitialize;
 
-  CloneNodeAdder adder(plan.get());
-  plan->_root->walk(&adder);
-
-  if (!adder.success) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Could not clone plan");
-  }
   // plan->findVarUsage();
   // Let's not do it here, because supposedly the plan is modified as
   // the very next thing anyway!
@@ -611,6 +590,7 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
 ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->id() > 0);
+  TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   try {
     _ids.emplace(node->id(), node);

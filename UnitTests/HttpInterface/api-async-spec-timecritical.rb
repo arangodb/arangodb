@@ -9,9 +9,9 @@ describe ArangoDB do
   context "dealing with async requests:" do
 
 ################################################################################
-## checking methods 
+## checking methods
 ################################################################################
-    
+
     it "checks whether async=false returns status 202" do
       cmd = "/_api/version"
       doc = ArangoDB.log_get("#{prefix}-get-status", cmd, :headers => { "X-Arango-Async" => "false" })
@@ -29,7 +29,7 @@ describe ArangoDB do
       doc.headers.should_not have_key("x-arango-async-id")
       doc.response.body.should eq ""
     end
-    
+
     it "checks whether async=1 returns status 202" do
       cmd = "/_api/version"
       doc = ArangoDB.log_get("#{prefix}-get-status", cmd, :headers => { "X-Arango-Async" => "1" })
@@ -38,7 +38,7 @@ describe ArangoDB do
       doc.headers.should_not have_key("x-arango-async-id")
       doc.response.body.should_not be_nil
     end
-    
+
     it "checks whether HEAD returns status 202" do
       cmd = "/_api/version"
       doc = ArangoDB.log_head("#{prefix}-head-status", cmd, :headers => { "X-Arango-Async" => "true" })
@@ -47,7 +47,7 @@ describe ArangoDB do
       doc.headers.should_not have_key("x-arango-async-id")
       doc.response.body.should be_nil
     end
-    
+
     it "checks whether POST returns status 202" do
       cmd = "/_api/version"
       doc = ArangoDB.log_post("#{prefix}-head-status", cmd, :body => "", :headers => { "X-Arango-Async" => "true" })
@@ -56,7 +56,7 @@ describe ArangoDB do
       doc.headers.should_not have_key("x-arango-async-id")
       doc.response.body.should eq ""
     end
-    
+
     it "checks whether an invalid location returns status 202" do
       cmd = "/_api/not-existing"
       doc = ArangoDB.log_get("#{prefix}-get-non-existing", cmd, :headers => { "X-Arango-Async" => "true" })
@@ -65,7 +65,7 @@ describe ArangoDB do
       doc.headers.should_not have_key("x-arango-async-id")
       doc.response.body.should eq ""
     end
-    
+
     it "checks whether a failing action returns status 202" do
       cmd = "/_admin/execute"
       body = "fail();"
@@ -75,7 +75,7 @@ describe ArangoDB do
       doc.headers.should_not have_key("x-arango-async-id")
       doc.response.body.should eq ""
     end
-    
+
     it "checks the responses when the queue fills up" do
       cmd = "/_api/version"
 
@@ -97,7 +97,7 @@ describe ArangoDB do
       doc.headers["x-arango-async-id"].should match(/^\d+$/)
       doc.response.body.should eq ""
     end
-    
+
     it "checks whether job api returns 200 for ready job" do
       cmd = "/_api/version"
       doc = ArangoDB.log_get("#{prefix}-get-check-status-200", cmd, :headers => { "X-Arango-Async" => "store" })
@@ -107,9 +107,9 @@ describe ArangoDB do
       id = doc.headers["x-arango-async-id"]
       id.should match(/^\d+$/)
       doc.response.body.should eq ""
-     
+
       sleep 2
- 
+
       cmd = "/_api/job/" + id
       doc = ArangoDB.log_get("#{prefix}-get-check-status-200", cmd)
       doc.code.should eq(200)
@@ -131,15 +131,16 @@ describe ArangoDB do
     end
 
     it "checks whether job api returns 204 for non-ready job" do
-      cmd = "/_admin/sleep?duration=5"
-      doc = ArangoDB.log_get("#{prefix}-get-check-status-204", cmd, :headers => { "X-Arango-Async" => "store" })
+      cmd = "/_api/cursor";
+      body = '{"query": "FOR i IN 1..10 LET x = sleep(10.0) FILTER i == 5 RETURN 42"}'
+      doc = ArangoDB.log_post("#{prefix}-get-check-status-204", cmd, :body => body, :headers => { "X-Arango-Async" => "store" })
 
       doc.code.should eq(202)
       doc.headers.should have_key("x-arango-async-id")
       id = doc.headers["x-arango-async-id"]
       id.should match(/^\d+$/)
       doc.response.body.should eq ""
-      
+
       cmd = "/_api/job/" + id
       doc = ArangoDB.log_get("#{prefix}-get-check-status-204", cmd)
       doc.code.should eq(204)
@@ -155,27 +156,28 @@ describe ArangoDB do
       id = doc.headers["x-arango-async-id"]
       id.should match(/^\d+$/)
       doc.response.body.should eq ""
- 
+
       cmd = "/_api/job/123" + id + "123" # assume this id is invalid
       doc = ArangoDB.log_get("#{prefix}-get-check-status-404", cmd)
       doc.code.should eq(404)
     end
 
     it "checks whether job api returns done job in pending and done list" do
-      cmd = "/_admin/sleep?duration=5"
-      doc = ArangoDB.log_get("#{prefix}-get-check-done", cmd, :headers => { "X-Arango-Async" => "store" })
+      cmd = "/_api/cursor";
+      body = '{"query": "FOR i IN 1..10 LET x = sleep(10.0) FILTER i == 5 RETURN 42"}'
+      doc = ArangoDB.log_post("#{prefix}-get-check-done", cmd, :body => body, :headers => { "X-Arango-Async" => "store" })
 
       doc.code.should eq(202)
       doc.headers.should have_key("x-arango-async-id")
       id = doc.headers["x-arango-async-id"]
       id.should match(/^\d+$/)
       doc.response.body.should eq ""
-      
+
       cmd = "/_api/job/done"
       doc = ArangoDB.log_get("#{prefix}-get-check-done", cmd)
       doc.code.should eq(200)
       doc.parsed_response.should_not include(id)
-      
+
       cmd = "/_api/job/pending"
       doc = ArangoDB.log_get("#{prefix}-get-check-done", cmd)
       doc.code.should eq(200)
@@ -183,26 +185,27 @@ describe ArangoDB do
     end
 
     it "checks whether job api returns non-ready job in pending and done lists" do
-      cmd = "/_admin/sleep?duration=5"
-      doc = ArangoDB.log_get("#{prefix}-get-check-pending", cmd, :headers => { "X-Arango-Async" => "store" })
+      cmd = "/_api/cursor";
+      body = '{"query": "FOR i IN 1..10 LET x = sleep(10.0) FILTER i == 5 RETURN 42"}'
+      doc = ArangoDB.log_post("#{prefix}-get-check-pending", cmd, :body => body, :headers => { "X-Arango-Async" => "store" })
 
       doc.code.should eq(202)
       doc.headers.should have_key("x-arango-async-id")
       id = doc.headers["x-arango-async-id"]
       id.should match(/^\d+$/)
       doc.response.body.should eq ""
-      
+
       cmd = "/_api/job/pending"
       doc = ArangoDB.log_get("#{prefix}-get-check-pending", cmd)
       doc.code.should eq(200)
       doc.parsed_response.should include(id)
-      
+
       cmd = "/_api/job/done"
       doc = ArangoDB.log_get("#{prefix}-get-check-pending", cmd)
       doc.code.should eq(200)
       doc.parsed_response.should_not include(id)
     end
-    
+
     it "checks whether we can cancel an AQL query" do
       cmd = "/_api/cursor"
       body = '{"query": "for x in 1..1000 let a = sleep(0.5) filter x == 1 return x"}'
@@ -228,7 +231,7 @@ describe ArangoDB do
       doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-410", cmd)
       doc.code.should eq(410)
     end
-    
+
     it "checks whether we can cancel an AQL query" do
       cmd = "/_api/cursor"
       body = '{"query": "for x in 1..10000 for y in 1..10000 let a = sleep(0.01) filter x == 1 && y == 1 return x"}'

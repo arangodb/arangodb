@@ -147,8 +147,7 @@ void Constituent::termNoLock(term_t t) {
         FATAL_ERROR_EXIT();
       }
 
-      res = trx.finish(result.code);
-
+      res = trx.finish(result.errorNumber());
     }
   }
 }

@@ -470,7 +470,7 @@ function ReplicationLoggerSuite () {
       c.save({ "test": 1, "_key": "abc" });
 
       var tick = getLastLogTick();
-      c.truncate();
+      c.truncate({ compact: false });
 
       var entry = getLogEntries(tick, 2302);
       assertEqual(1, entry.length);
@@ -481,7 +481,7 @@ function ReplicationLoggerSuite () {
       c.save({ "test": 1, "_key": "abc" });
 
       tick = getLastLogTick();
-      c.truncate();
+      c.truncate({ compact: false });
 
       entry = getLogEntries(tick, 2302);
       assertNotEqual("0", entry[0].tid);
@@ -502,7 +502,7 @@ function ReplicationLoggerSuite () {
       }
 
       var tick = getLastLogTick();
-      c.truncate();
+      c.truncate({ compact: false });
       getLastLogTick();
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2302 ]);
 

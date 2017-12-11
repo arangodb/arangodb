@@ -152,8 +152,8 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid,
 
   auto context = [this]() -> std::string { return this->context(); };
 
-  _edgesFrom.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), indexBuckets, initialSize, context));
-  _edgesTo.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), indexBuckets, initialSize, context));
+  _edgesFrom.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), indexBuckets, static_cast<uint32_t>(initialSize), context));
+  _edgesTo.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), indexBuckets, static_cast<uint32_t>(initialSize), context));
 }
 
 /// @brief return a selectivity estimate for the index
@@ -218,17 +218,20 @@ void MMFilesEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 Result MMFilesEdgeIndex::insert(transaction::Methods* trx,
-                                LocalDocumentId const& documentId, VPackSlice const& doc,
-                                bool isRollback) {
+                                LocalDocumentId const& documentId,
+                                VPackSlice const& doc,
+                                OperationMode mode) {
   MMFilesSimpleIndexElement fromElement(buildFromElement(documentId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(documentId, doc));
 
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, 1);
-  _edgesFrom->insert(&context, fromElement, true, isRollback);
+  _edgesFrom->insert(&context, fromElement, true,
+                     mode == OperationMode::rollback);
 
   try {
-    _edgesTo->insert(&context, toElement, true, isRollback);
+    _edgesTo->insert(&context, toElement, true,
+                    mode == OperationMode::rollback);
   } catch (std::bad_alloc const&) {
     // roll back partial insert
     _edgesFrom->remove(&context, fromElement);
@@ -243,8 +246,9 @@ Result MMFilesEdgeIndex::insert(transaction::Methods* trx,
 }
 
 Result MMFilesEdgeIndex::remove(transaction::Methods* trx,
-                                LocalDocumentId const& documentId, VPackSlice const& doc,
-                                bool isRollback) {
+                                LocalDocumentId const& documentId,
+                                VPackSlice const& doc,
+                                OperationMode mode) {
   MMFilesSimpleIndexElement fromElement(buildFromElement(documentId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(documentId, doc));
 
@@ -256,7 +260,7 @@ Result MMFilesEdgeIndex::remove(transaction::Methods* trx,
     _edgesTo->remove(&context, toElement);
     return Result(TRI_ERROR_NO_ERROR);
   } catch (...) {
-    if (isRollback) {
+    if (mode == OperationMode::rollback) {
       return Result(TRI_ERROR_NO_ERROR);
     }
     return IndexResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, this);

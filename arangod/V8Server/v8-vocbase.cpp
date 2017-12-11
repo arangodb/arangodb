@@ -1248,7 +1248,7 @@ static void JS_QuerySleepAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   double const until = TRI_microtime() + n;
 
   while (TRI_microtime() < until) {
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
 
     if (query != nullptr) {
       if (query->killed()) {
@@ -1774,8 +1774,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     
   std::string const dbName = TRI_ObjectToString(args[0]);
   Result res = methods::Databases::create( dbName, users.slice(), options.slice());
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_V8_RETURN_TRUE();
@@ -1809,8 +1809,8 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const name = TRI_ObjectToString(args[0]);
   Result res = methods::Databases::drop(vocbase, name);
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
   
   TRI_V8_RETURN_TRUE();

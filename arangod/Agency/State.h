@@ -101,7 +101,7 @@ class State {
   bool has(index_t, term_t) const;
   
   /// @brief Get log entries by client Id
-  std::vector<std::vector<log_t>> inquire(query_t const&) const;
+  std::vector<index_t> inquire(query_t const&) const;
 
   /// @brief Get complete logged commands by lower and upper bounds.
   ///        Default: [first, last]

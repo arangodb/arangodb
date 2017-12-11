@@ -1233,6 +1233,66 @@ AstNode* Condition::collapse(AstNode const* node) {
   return newOperator;
 }
 
+void switchSidesInCompare(AstNode* node) {
+  // switch members of BINARY_LT/GT/LE/GE_NODES
+  // and change operator accordingly
+
+  auto first = node->getMemberUnchecked(0);
+  auto second = node->getMemberUnchecked(1);
+
+  node->changeMember(0,second);
+  node->changeMember(1,first);
+
+  switch(node->type) {
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+      node->type = NODE_TYPE_OPERATOR_BINARY_GT;
+      break;
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+      node->type = NODE_TYPE_OPERATOR_BINARY_LT;
+      break;
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+      node->type = NODE_TYPE_OPERATOR_BINARY_GE;
+      break;
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+      node->type = NODE_TYPE_OPERATOR_BINARY_LE;
+      break;
+    default:
+      LOG_TOPIC(ERR, Logger::QUERIES) << "normalize condition tries to swap children"
+                                      << "of wrong node type - this needs to be fixed";
+      TRI_ASSERT(false);
+  }
+}
+
+void normalizeCompare(AstNode* node) {
+  // Moves attribute access to the LHS of a comparison.
+  // If there are 2 attribute accesses it does a
+  // string compare of the access path and makes sure
+  // the one that compares less ends up on the LHS
+
+  if (node->type != NODE_TYPE_OPERATOR_BINARY_LE &&
+      node->type != NODE_TYPE_OPERATOR_BINARY_LT &&
+      node->type != NODE_TYPE_OPERATOR_BINARY_GE &&
+      node->type != NODE_TYPE_OPERATOR_BINARY_GT )
+  {
+    // no binary compare in node
+    return;
+  }
+
+  auto first = node->getMemberUnchecked(0);
+  auto second = node->getMemberUnchecked(1);
+
+  if (second->type == NODE_TYPE_ATTRIBUTE_ACCESS){
+    if (first->type != NODE_TYPE_ATTRIBUTE_ACCESS){
+      switchSidesInCompare(node);
+    } else {
+      //both are of type attribute access
+      if(first->toString() > second->toString()){
+        switchSidesInCompare(node);
+      }
+    }
+  }
+}
+
 /// @brief converts binary logical operators into n-ary operators
 AstNode* Condition::transformNode(AstNode* node) {
   if (node == nullptr) {
@@ -1390,10 +1450,12 @@ AstNode* Condition::transformNode(AstNode* node) {
       }
 
       return transformNode(newOperator);
-    } 
+    }
 
     node->changeMember(0, transformNode(sub));
   }
+
+  normalizeCompare(node);
 
   return node;
 }

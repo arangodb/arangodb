@@ -675,9 +675,8 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
     # shellcheck disable=SC2064
     trap "curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
 
-    if test -f "${SRC}/SYNCER_REV"; then
-        SYNCER_REV=$(cat "${SRC}/SYNCER_REV")
-    else
+    SYNCER_REV=$(grep "SYNCER_REV" "${SRC}/VERSIONS" |sed 's;.*"\([0-9a-zA-Z.]*\)".*;\1;')
+    if test "${SYNCER_REV}" == "latest"; then
         SYNCER_REV=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases?access_token=${OAUTH_TOKEN}" | \
                              grep tag_name | \
                              head -n 1 | \
@@ -717,6 +716,10 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
             rm -f "${FN}"
             curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" || \
                 ${SRC}/Installation/Jenkins/curl_time_machine.sh "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" "${FN}"
+            if ! test -s "${FN}" ; then
+                echo "failed to download syncer binary - aborting!"
+                exit 1
+            fi
             mv "${FN}" "${BUILD_DIR}/${TN}"
             ${MD5} < "${BUILD_DIR}/${TN}"  | ${SED} "s; .*;;" > "${BUILD_DIR}/${FN}-${SYNCER_REV}"
             OLD_MD5=$(cat "${BUILD_DIR}/${FN}-${SYNCER_REV}")
@@ -725,6 +728,9 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
         else
             echo "using already downloaded ${BUILD_DIR}/${FN}-${SYNCER_REV} MD5: ${OLD_MD5}"
         fi
+    else
+        echo "failed to find download URL for arangosync - aborting!"
+        exit 1
     fi
     # Log out again:
 
@@ -732,9 +738,8 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
 fi
 
 if test "${DOWNLOAD_STARTER}" == 1; then
-    if test -f "${SRC}/STARTER_REV"; then
-        STARTER_REV=$(cat "${SRC}/STARTER_REV")
-    else
+    STARTER_REV=$(grep "STARTER_REV"  "${SRC}/VERSIONS" |sed 's;.*"\([0-9a-zA-Z.]*\)".*;\1;')
+    if test "${STARTER_REV}" == "latest"; then
         # we utilize https://developer.github.com/v3/repos/ to get the newest release:
         STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
                              grep tag_name | \
@@ -771,6 +776,10 @@ if test "${DOWNLOAD_STARTER}" == 1; then
         if ! test -f "${BUILD_DIR}/${FN}-${STARTER_REV}"; then
             rm -f "${FN}"
             curl -LO "${STARTER_URL}"
+            if ! test -s "${FN}" ; then
+                echo "failed to download starter binary - aborting!"
+                exit 1
+            fi
             mv "${FN}" "${BUILD_DIR}/${TN}"
             ${MD5} < "${BUILD_DIR}/${TN}" | ${SED} "s; .*;;" > "${BUILD_DIR}/${FN}-${STARTER_REV}"
             chmod a+x "${BUILD_DIR}/${TN}"
@@ -779,6 +788,9 @@ if test "${DOWNLOAD_STARTER}" == 1; then
         else
             echo "using already downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: ${OLD_MD5}"
         fi
+    else
+        echo "failed to find download URL for arangodb starter - aborting!"
+        exit 1
     fi
     THIRDPARTY_BIN=("${THIRDPARTY_BIN}${BUILD_DIR}/${TN}")
 fi

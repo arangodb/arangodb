@@ -50,7 +50,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
                           (ep->_random ? transaction::Methods::CursorType::ANY
                                        : transaction::Methods::CursorType::ALL),
                           _mmdr.get(), false)) {
-  TRI_ASSERT(_cursor->successful());
+  TRI_ASSERT(_cursor->ok());
 }
 
 int EnumerateCollectionBlock::initialize() {
@@ -78,7 +78,7 @@ int EnumerateCollectionBlock::initialize() {
         if (endTime - now < waitInterval) {
           waitInterval = static_cast<unsigned long>(endTime - now);
         }
-        usleep((TRI_usleep_t)waitInterval);
+        std::this_thread::sleep_for(std::chrono::microseconds(waitInterval));
       }
       now = TRI_microtime();
       if (now > endTime) {

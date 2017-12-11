@@ -51,7 +51,7 @@
 // ugliness starts here ... this will go away if rocksdb adds pluggable write_controller.
 //  need either ROCKSDB_PLATFORM_POSIX or OS_WIN set before the <db/...> includes
 using namespace rocksdb;
-#ifndef WIN32
+#ifndef _WIN32
 #define ROCKSDB_PLATFORM_POSIX 1
 #else
 #define OS_WIN 1
@@ -91,6 +91,7 @@ public:
 
   static void AdjustThreadPriority(int Adjustment);
 
+  void StopThread();
 
 protected:
   void Startup(rocksdb::DB * db);

@@ -119,7 +119,7 @@ class Agent : public arangodb::Thread,
   read_ret_t read(query_t const&);
 
   /// @brief Inquire success of logs given clientIds
-  inquire_ret_t inquire(query_t const&);
+  write_ret_t inquire(query_t const&);
 
   /// @brief Attempt read/write transaction
   trans_ret_t transact(query_t const&) override;

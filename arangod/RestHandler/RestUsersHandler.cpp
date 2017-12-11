@@ -130,22 +130,41 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
       } else if (suffixes.size() == 3) {
         //_api/user/<user>/database/<dbname>
         // return specific database
-        AuthLevel lvl = authInfo->canUseDatabase(user, suffixes[2]);
+        bool configured = false;
+        std::string const& param = _request->value("configured", configured);
+        if (configured) {
+          configured = StringUtils::boolean(param);
+        }
+        AuthLevel lvl;
+        if (configured) {
+          lvl = authInfo->configuredDatabaseAuthLevel(user, suffixes[2]);
+        } else {
+          // return effective user rights
+          lvl = authInfo->canUseDatabase(user, suffixes[2]);
+        }
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
         generateOk(ResponseCode::OK, data.slice());
-
       } else if (suffixes.size() == 4) {
+        bool configured = false;
+        std::string const& param = _request->value("configured", configured);
+        if (configured) {
+          configured = StringUtils::boolean(param);
+        }
         //_api/user/<user>/database/<dbname>/<collection>
-        AuthLevel lvl =
-            authInfo->canUseCollection(user, suffixes[2], suffixes[3]);
+        AuthLevel lvl;
+        if (configured) {
+          lvl = authInfo->configuredCollectionAuthLevel(user, suffixes[2], suffixes[3]);
+        } else {
+          // return effective user rights
+          lvl = authInfo->canUseCollection(user, suffixes[2], suffixes[3]);
+        }
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
         generateOk(ResponseCode::OK, data.slice());
       } else {
         generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
       }
-
     } else if (suffixes[1] == "config") {
       //_api/user/<user>//config
       VPackBuilder data = authInfo->getConfigData(user);
@@ -192,14 +211,14 @@ void RestUsersHandler::generateDatabaseResult(AuthInfo* authInfo,
                 data.add(c->name(), VPackValue("undefined"));
               }
             });
-        lvl = authInfo->canUseCollection(user, vocbase->name(), "*");
+        lvl = authInfo->canUseCollectionNoLock(user, vocbase->name(), "*");
         data.add("*", VPackValue(convertFromAuthLevel(lvl)));
       } else if (lvl != AuthLevel::NONE) {  // hide db's without access
         data.add(vocbase->name(), VPackValue(str));
       }
     });
     if (full) {
-      AuthLevel lvl = authInfo->canUseDatabase(user, "*");
+      AuthLevel lvl = authInfo->canUseDatabaseNoLock(user, "*");
       data("*", VPackValue(VPackValueType::Object))(
           "permission", VPackValue(convertFromAuthLevel(lvl)))();
     }

@@ -105,7 +105,7 @@ void Agent::waitForThreadsStop() {
   while (_constituent.isRunning() || _compactor.isRunning() ||
          (_config.supervision() && _supervision.isRunning()) ||
          (_inception != nullptr && _inception->isRunning())) {
-    usleep(100000);
+    std::this_thread::sleep_for(std::chrono::microseconds(100000));
 
     // fail fatally after 5 mins:
     if (++counter >= 10 * 60 * 5) {
@@ -261,14 +261,17 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     // Update last acknowledged answer
     auto t = system_clock::now();
     std::chrono::duration<double> d = t - _lastAcked[peerId];
-    if (peerId != id() && d.count() > _config.minPing() * _config.timeoutMult()) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Last confirmation from peer "
-        << peerId << " was received more than minPing ago: " << d.count();
+    auto secsSince = d.count();
+    if (secsSince < 1.5e9 && peerId != id()
+        && secsSince > _config.minPing() * _config.timeoutMult()) {
+      LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Last confirmation from peer " << peerId
+        << " was received more than minPing ago: " << secsSince;
     }
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Setting _lastAcked["
-      << peerId << "] to time "
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Setting _lastAcked[" << peerId << "] to time "
       << std::chrono::duration_cast<std::chrono::microseconds>(
-          t.time_since_epoch()).count();
+        t.time_since_epoch()).count();
     _lastAcked[peerId] = t;
 
     if (index > _confirmed[peerId]) {  // progress this follower?
@@ -280,7 +283,6 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
       wakeupMainLoop();   // only necessary for non-empty callbacks
     }
   }
-
 
   duration<double> reportInTime = system_clock::now() - startTime;
   if (reportInTime.count() > 0.1) {
@@ -965,8 +967,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
 }
 
 
-inquire_ret_t Agent::inquire(query_t const& query) {
-  inquire_ret_t ret;
+write_ret_t Agent::inquire(query_t const& query) {
 
   // Note that we are leading (_constituent.leading()) if and only
   // if _constituent.leaderId == our own ID. Therefore, we do not have
@@ -974,45 +975,27 @@ inquire_ret_t Agent::inquire(query_t const& query) {
   // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
-    return inquire_ret_t(false, leader);
+    return write_ret_t(false, leader);
   }
+
+  write_ret_t ret;
   
   _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(ioLocker, _ioLock);
 
-  auto si = _state.inquire(query);
-
-  bool found = false;
-  auto builder = std::make_shared<VPackBuilder>();
-  {
-    VPackArrayBuilder b(builder.get());
-    for (auto const& i : si) {
-      VPackArrayBuilder bb(builder.get());
-      for (auto const& j : i) {
-        found = true;
-        VPackObjectBuilder bbb(builder.get());
-        builder->add("index", VPackValue(j.index));
-        builder->add("term", VPackValue(j.term));
-        builder->add("query", VPackSlice(j.entry->data()));
-      }
-    }
-  }
-  
-  ret = inquire_ret_t(true, id(), builder);
-
-  if (!found) {
-    return ret;
-  }
+  ret.indices = _state.inquire(query);
 
   // Check ongoing ones:
   for (auto const& s : VPackArrayIterator(query->slice())) {
     std::string ss = s.copyString();
     if (isTrxOngoing(ss)) {
-      ret.result->clear();
-      ret.result->add(VPackValue("ongoing"));
+      ret.indices.clear();
+      break;
     }
   }
 
+  ret.accepted = true;
+  
   return ret;
 }
 

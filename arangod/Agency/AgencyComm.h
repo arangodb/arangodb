@@ -226,8 +226,7 @@ class AgencyCommResult {
   ~AgencyCommResult() = default;
 
  public:
-  void set(int code, std::string const& message,
-           std::string const& clientId);
+  void set(int code, std::string const& message);
 
   bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
 
@@ -236,8 +235,6 @@ class AgencyCommResult {
   int httpCode() const;
 
   int errorCode() const;
-
-  std::string clientId() const;
 
   std::string errorMessage() const;
 
@@ -259,7 +256,6 @@ class AgencyCommResult {
   std::string _location;
   std::string _message;
   std::string _body;
-  std::string _realBody;
 
   std::unordered_map<std::string, AgencyCommResultEntry> _values;
   int _statusCode;
@@ -269,8 +265,6 @@ class AgencyCommResult {
  private:
   std::shared_ptr<velocypack::Builder> _vpack;
 
-public:
-  std::string _clientId;
 };
 
 // -----------------------------------------------------------------------------
@@ -290,6 +284,7 @@ public:
   virtual std::string getClientId() const = 0;
   
   virtual bool validate(AgencyCommResult const& result) const = 0;
+  virtual char const* typeName() const = 0;
   
 };
 
@@ -339,6 +334,7 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
   }
   
   virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyGeneralTransaction"; }
   std::string clientId;
 
 };
@@ -401,6 +397,7 @@ public:
   }
   
   virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyWriteTransaction"; }
 
   std::vector<AgencyPrecondition> preconditions;
   std::vector<AgencyOperation> operations;
@@ -461,6 +458,7 @@ public:
   }
   
   virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyTransientTransaction"; }
 
   std::vector<AgencyPrecondition> preconditions;
   std::vector<AgencyOperation> operations;
@@ -494,6 +492,7 @@ public:
   }
   
   virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyReadTransaction"; }
 
   std::vector<std::string> keys;
 
@@ -684,8 +683,7 @@ class AgencyComm {
   bool ensureStructureInitialized();
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
-                                    std::string const&, VPackSlice,
-                                    std::string const& clientId = std::string());
+                                    std::string const&, VPackSlice);
 
  private:
   bool lock(std::string const&, double, double,
@@ -694,8 +692,7 @@ class AgencyComm {
   bool unlock(std::string const&, arangodb::velocypack::Slice const&, double);
 
   AgencyCommResult send(httpclient::GeneralClientConnection*, rest::RequestType,
-                        double, std::string const&, std::string const&,
-                        std::string const& clientId = std::string());
+                        double, std::string const&, std::string const&);
 
   bool tryInitializeStructure();
 

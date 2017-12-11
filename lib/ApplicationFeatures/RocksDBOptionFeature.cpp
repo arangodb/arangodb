@@ -86,7 +86,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(std::max((size_t)2,
                                                      std::min(TRI_numberProcessors(), (size_t)8)));
-#ifdef WIN32
+#ifdef _WIN32
   // Windows code does not (yet) support lowering thread priority of
   //  compactions.  Therefore it is possible for rocksdb to use all
   //  CPU time on compactions.  Essential network communications can be lost.
@@ -119,7 +119,7 @@ void RocksDBOptionFeature::collectOptions(
 
   options->addOption("--rocksdb.transaction-lock-timeout",
                      "If positive, specifies the wait timeout in milliseconds when "
-                     " a transaction attempts to lock a document. Defaults is 1000. A negative value "
+                     " a transaction attempts to lock a document. A negative value "
                      "is not recommended as it can lead to deadlocks (0 = no waiting, < 0 no timeout)",
                      new Int64Parameter(&_transactionLockTimeout));
 

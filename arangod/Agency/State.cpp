@@ -123,7 +123,7 @@ bool State::persist(index_t index, term_t term,
     return false;
   }
 
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "persist done index=" << index
     << " term=" << term << " entry: " << entry.toJson() << " ok:" << res.ok();
@@ -197,7 +197,7 @@ bool State::persistconf(
     return false;
   }
   
-  res = trx.finish(confResult.code);
+  res = trx.finish(confResult.result);
   
   // Successful persistence affects local configuration ------------------------
   if (res.ok()) {
@@ -226,7 +226,11 @@ std::vector<index_t> State::logLeaderMulti(
       30000, "Agency syntax requires array of transactions [[<queries>]]");
   }
 
-  TRI_ASSERT(slice.length() == applicable.size());
+  if (slice.length() != applicable.size()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      30000, "Invalid transaction syntax");
+  }
+
   MUTEX_LOCKER(mutexLocker, _logLock); 
   
   TRI_ASSERT(!_log.empty()); // log must never be empty
@@ -966,7 +970,7 @@ bool State::loadOrPersistConfiguration() {
       FATAL_ERROR_EXIT();
     }
 
-    res = trx.finish(result.code);
+    res = trx.finish(result.result);
 
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Persisted configuration: " << doc.slice().toJson();
 
@@ -1016,7 +1020,6 @@ bool State::loadRemaining() {
       // Dummy fill missing entries (Not good at all.)
       index_t index(basics::StringUtils::uint64(
                       ii.get(StaticStrings::KeyString).copyString()));
-      term_t term(ii.get("term").getNumber<uint64_t>());
 
       // Ignore log entries, which are older than lastIndex:
       if (index >= lastIndex) {
@@ -1027,6 +1030,7 @@ bool State::loadRemaining() {
             std::make_shared<Buffer<uint8_t>>();
           VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
           buf->append(value.startAs<char const>(), value.byteSize());
+          term_t term(ii.get("term").getNumber<uint64_t>());
           for (index_t i = lastIndex+1; i < index; ++i) {
             LOG_TOPIC(WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
             _log.push_back(log_t(i, term, buf, std::string()));
@@ -1231,7 +1235,7 @@ bool State::persistCompactionSnapshot(index_t cind,
     }
 
     auto result = trx.insert("compact", store.slice(), _options);
-    res = trx.finish(result.code);
+    res = trx.finish(result.result);
 
     return res.ok();
   }
@@ -1288,9 +1292,9 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
     }
   }
 
-  MUTEX_LOCKER(guard, _configurationWriteLock);
-
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  
+  MUTEX_LOCKER(guard, _configurationWriteLock);
   SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
 
   Result res = trx.begin();
@@ -1299,12 +1303,12 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
   }
 
   auto result = trx.update("configuration", builder.slice(), _options);
-  if (!result.successful()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(result.code, result.errorMessage);
+  if (result.fail()) {
+    THROW_ARANGO_EXCEPTION(result.result);
   }
-  res = trx.finish(result.code);
+  res = trx.finish(result.result);
   if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    THROW_ARANGO_EXCEPTION(res);
   }
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Updated persisted agency configuration: "
     << builder.slice().toJson();
@@ -1352,7 +1356,7 @@ query_t State::allLogs() const {
 
 }
 
-std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
+std::vector<index_t> State::inquire(query_t const& query) const {
   if (!query->slice().isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
         20001, 
@@ -1360,31 +1364,31 @@ std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
         + ". We got " + query->toJson());
   }
   
-  std::vector<std::vector<log_t>> result;
+  std::vector<index_t> result;
   size_t pos = 0;
   
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
   for (auto const& i : VPackArrayIterator(query->slice())) {
-
+    
     if (!i.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
         210002, std::string("ClientIds must be strings. On position ")
-        + std::to_string(pos) + " we got " + i.toJson());
+        + std::to_string(pos++) + " we got " + i.toJson());
     }
-
-    std::vector<log_t> transactions;
+    
     auto ret = _clientIdLookupTable.equal_range(i.copyString());
+    index_t index = 0;
     for (auto it = ret.first; it != ret.second; ++it) {
       if (it->second < _log[0].index) {
         continue;
       }
-      transactions.push_back(_log.at(it->second-_cur));
+      if (index < _log.at(it->second-_cur).index) {
+        index = _log.at(it->second-_cur).index;
+      }
     }
-    result.push_back(transactions);
-
-    pos++;
+    result.push_back(index);
   }
-
+  
   return result;
 }
 

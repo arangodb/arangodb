@@ -28,16 +28,16 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var errors = arangodb.errors;
-var db = arangodb.db;
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const errors = arangodb.errors;
+const db = arangodb.db;
 
-var replication = require("@arangodb/replication");
-var console = require("console");
-var internal = require("internal");
-var masterEndpoint = arango.getEndpoint();
-var slaveEndpoint = ARGUMENTS[0];
+const replication = require("@arangodb/replication");
+const console = require("console");
+const internal = require("internal");
+const masterEndpoint = arango.getEndpoint();
+const slaveEndpoint = ARGUMENTS[0];
 
 const cn = "UnitTestsReplication";
 const cn2 = "UnitTestsReplication2";
@@ -836,11 +836,26 @@ function ReplicationOtherDBSuite() {
     // Flush wal to trigger replication
     internal.wal.flush(true, true);
 
+    const lastLogTick = replication.logger.state().state.lastLogTick;    
+
     // Section - Slave
     connectToSlave();
 
     // Give it some time to sync (eventually, should not do anything...)
-    internal.wait(6, false);
+    let i = 30;
+    while(i-- > 0) {
+      let state = replication.applier.state();
+      if (!state.running) {
+        console.log("slave is not running");
+        break;
+      }
+      if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
+          compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
+        console.log("slave has caught up");
+        break;
+      }
+      internal.sleep(0.5);
+    }
 
     // Now should still have empty collection
     assertEqual(0, collectionCount(cn));
@@ -868,8 +883,26 @@ function ReplicationOtherDBSuite() {
     db._create(cn);
     db._collection(cn).save(docs);
 
+    const lastLogTick = replication.logger.state().state.lastLogTick;
+
     // Section - Slave
     connectToSlave();
+
+    // Give it some time to sync (eventually, should not do anything...)
+    let i = 30;
+    while(i-- > 0) {
+      let state = replication.applier.state();
+      if (!state.running) {
+        console.log("slave is not running");
+        break;
+      }
+      if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
+          compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
+        console.log("slave has caught up");
+        break;
+      }
+      internal.sleep(0.5);
+    }
 
     // Now test if the Slave did replicate the new database directly...
     assertEqual(50, collectionCount(cn), 

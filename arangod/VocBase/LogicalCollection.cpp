@@ -1056,12 +1056,8 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 
   if (!_isLocal) {
     // We need to inform the cluster as well
-    int tmp = ClusterInfo::instance()->setCollectionPropertiesCoordinator(
+    return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
         _vocbase->name(), cid_as_string(), this);
-    if (tmp == TRI_ERROR_NO_ERROR) {
-      return {};
-    }
-    return {tmp, TRI_errno_string(tmp)};
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -1383,39 +1379,28 @@ Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string
 std::string LogicalCollection::generateGloballyUniqueId() const {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   
-  
   std::string result;
-  /*if (_vocbase->isSystem()) {
-    result.reserve(32);
-    result.append(StaticStrings::SystemDatabase);
-  } else {*/
   result.reserve(64);
 
-    //result.append(_vocbase->name());
-  //}
-  //result.push_back('/');
-  
   if (ServerState::isCoordinator(role)) {
     TRI_ASSERT(_planId != 0);
     result.append(std::to_string(_planId));
   } else if (ServerState::isDBServer(role)) {
     TRI_ASSERT(_planId != 0);
-    // we add the shard name to the collection. If we every
-    // replicate shards, we identify them clusterwide
+    // we add the shard name to the collection. If we ever
+    // replicate shards, we can identify them cluster-wide
     result.append(std::to_string(_planId));
     result.push_back('/');
     result.append(_name);
   } else {
-    if (!_vocbase->isSystem()) {
+    if (isSystem()) { // system collection can't be renamed
+      result.append(_name);
+    } else {
       std::string id = ServerState::instance()->getId();
       if (!id.empty()) {
         result.append(id);
         result.push_back('/');
       }
-    }
-    if (isSystem()) {
-      result.append(_name);
-    } else {
       result.append(std::to_string(_cid));
     }
   }

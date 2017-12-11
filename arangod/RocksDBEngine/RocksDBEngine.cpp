@@ -133,7 +133,17 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
   server->addFeature(new RocksDBRecoveryFinalizer(server));
 }
 
-RocksDBEngine::~RocksDBEngine() { delete _db; }
+RocksDBEngine::~RocksDBEngine() {
+  // turn off RocksDBThrottle, and release our pointers to it
+  if (nullptr != _listener.get()) {
+    _listener->StopThread();
+    _listener.reset();
+    _options.listeners.clear();
+  } // if
+
+  delete _db;
+  _db = nullptr;
+}
 
 // inherited from ApplicationFeature
 // ---------------------------------
@@ -355,9 +365,8 @@ void RocksDBEngine::start() {
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   _options.bloom_locality = 1;
 
-  // Commented out temporarily until the shutdown bug is fixed:
-  //std::shared_ptr<RocksDBThrottle> listener(new RocksDBThrottle);
-  //_options.listeners.push_back(listener);
+  _listener.reset(new RocksDBThrottle);
+  _options.listeners.push_back(_listener);
 
   // this is cfFamilies.size() + 2 ... but _option needs to be set before
   //  building cfFamilies
@@ -493,8 +502,8 @@ void RocksDBEngine::start() {
     FATAL_ERROR_EXIT();
   }
 
-  // mev
-  //listener->SetFamilies(cfHandles);
+  // give throttle access to families
+  _listener->SetFamilies(cfHandles);
 
   // set our column families
   RocksDBColumnFamily::_definitions = cfHandles[0];
@@ -586,7 +595,7 @@ void RocksDBEngine::stop() {
 
     // wait until background thread stops
     while (_backgroundThread->isRunning()) {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
     _backgroundThread.reset();
   }
@@ -1352,6 +1361,7 @@ void RocksDBEngine::pruneWalFiles() {
        /* no hoisting */) {
     // check if WAL file is expired
     if ((*it).second < TRI_microtime()) {
+      LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "deleting RocksDB WAL file '" << (*it).first << "'";
       auto s = _db->DeleteFile((*it).first);
       // apparently there is a case where a file was already deleted
       // but is still in _prunableWalFiles. In this case we get an invalid

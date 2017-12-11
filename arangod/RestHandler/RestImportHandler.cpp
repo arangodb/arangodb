@@ -868,11 +868,11 @@ bool RestImportHandler::createFromKeyValueList() {
 /// @brief perform the actual import (insert/update/replace) operations
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestImportHandler::performImport(SingleCollectionTransaction& trx,
-                                     RestImportResult& result,
-                                     std::string const& collectionName,
-                                     VPackBuilder const& babies, bool complete,
-                                     OperationOptions const& opOptions) {
+Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
+                                        RestImportResult& result,
+                                        std::string const& collectionName,
+                                        VPackBuilder const& babies, bool complete,
+                                        OperationOptions const& opOptions) {
   auto makeError = [&](size_t i, int res, VPackSlice const& slice,
                        RestImportResult& result) {
     VPackOptions options(VPackOptions::Defaults);
@@ -957,8 +957,8 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
             trx.replace(collectionName, updateReplace.slice(), opOptions);
       }
 
-      if (opResult.failed() && res.ok()) {
-        res = opResult.code;
+      if (opResult.fail() && res.ok()) {
+        res = opResult.result;
       }
 
       VPackSlice resultSlice = opResult.slice();
@@ -989,11 +989,11 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
     }
   }
   
-  if (opResult.failed() && res.ok()) {
-    res = opResult.code;
+  if (opResult.fail() && res.ok()) {
+    res = opResult.result;
   }
 
-  return res.errorNumber();
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

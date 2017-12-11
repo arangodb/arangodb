@@ -339,7 +339,7 @@ void RestCollectionHandler::handleCommandPut() {
 
           if (res.ok()) {
             OperationResult result = trx.truncate(coll->name(), opts);
-            res = trx.finish(result.code);
+            res = trx.finish(result.result);
           }
           if (res.ok()) {
             if (!coll->isLocal()) { // ClusterInfo::loadPlan eventually updates status
@@ -384,7 +384,7 @@ void RestCollectionHandler::handleCommandPut() {
           res = trx.begin();
           if (res.ok()) {
             OperationResult result = trx.rotateActiveJournal(coll->name(), OperationOptions());
-            res = trx.finish(result.code);
+            res = trx.finish(result.result);
           }
 
           builder.openObject();
@@ -495,9 +495,9 @@ void RestCollectionHandler::collectionRepresentation(
       THROW_ARANGO_EXCEPTION(res);
     }
     OperationResult opRes = trx.count(coll->name(), aggregateCount);
-    trx.finish(opRes.code);
-    if (!opRes.successful()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(opRes.code, opRes.errorMessage);
+    trx.finish(opRes.result);
+    if (opRes.fail()) {
+      THROW_ARANGO_EXCEPTION(opRes.result);
     }
     builder.add("count", opRes.slice());
   }

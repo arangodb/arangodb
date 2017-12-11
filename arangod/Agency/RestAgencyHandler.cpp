@@ -71,6 +71,16 @@ inline RestStatus RestAgencyHandler::reportUnknownMethod() {
   return RestStatus::DONE;
 }
 
+inline RestStatus RestAgencyHandler::reportMessage(
+  rest::ResponseCode code, std::string const& message) {
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << message;
+  Builder body;
+  { VPackObjectBuilder b(&body);
+    body.add("message", VPackValue(message)); }
+  generateResult(code, body.slice());
+  return RestStatus::DONE;
+}
+
 void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
   try {
     std::string url = Endpoint::uriForm(_agent->config().poolAt(leaderId)) +
@@ -79,13 +89,7 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
     _response->setHeaderNC(StaticStrings::Location, url);
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
   } catch (std::exception const& e) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("No leader"));
-    body.close();
-    generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is, "
-      "caught exception in redirectRequest: " << e.what();
+    reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
 }
 
@@ -100,46 +104,23 @@ RestStatus RestAgencyHandler::handleTransient() {
   try {
     query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << e.what() << " " << __FILE__ << ":" << __LINE__;
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue(e.what()));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // Need Array input
   if (!query->slice().isArray()) {
-    Builder body;
-    body.openObject();
-    body.add(
-      "message", VPackValue("Expecting array of arrays as body for writes"));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(
+      rest::ResponseCode::BAD, "Expecting array of arrays as body for writes");
   }
   
   // Empty request array
   if (query->slice().length() == 0) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("Empty request."));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, "Empty request");
   }
   
   // Leadership established?
   if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("No leader"));
-    body.close();
-    generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
   
   trans_ret_t ret;
@@ -147,37 +128,24 @@ RestStatus RestAgencyHandler::handleTransient() {
   try {
     ret = _agent->transient(query);
   } catch (std::exception const& e) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue(e.what()));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // We're leading and handling the request
   if (ret.accepted) {  
-
     generateResult(
       (ret.failed==0) ?
       rest::ResponseCode::OK : rest::ResponseCode::PRECONDITION_FAILED,
       ret.result->slice());
-      
   } else {            // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
-      Builder body;
-      body.openObject();
-      body.add("message", VPackValue("No leader"));
-      body.close();
-      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-      return RestStatus::DONE;
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
     } else {
       TRI_ASSERT(ret.redirect != _agent->id());
       redirectRequest(ret.redirect);
     }
   }
-
+  
   return RestStatus::DONE;
   
 }
@@ -251,46 +219,23 @@ RestStatus RestAgencyHandler::handleWrite() {
   try {
     query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << e.what() << " " << __FILE__ << ":" << __LINE__;
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue(e.what()));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // Need Array input
   if (!query->slice().isArray()) {
-    Builder body;
-    body.openObject();
-    body.add(
-      "message", VPackValue("Expecting array of arrays as body for writes"));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(
+      rest::ResponseCode::BAD, "Expecting array of arrays as body for writes");
   }
 
   // Empty request array
   if (query->slice().length() == 0) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("Empty request."));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, "Empty request.");
   }
 
   // Leadership established?
   if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("No leader"));
-    body.close();
-    generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
 
   // Do write
@@ -298,27 +243,21 @@ RestStatus RestAgencyHandler::handleWrite() {
   try {
     ret = _agent->write(query);
   } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Malformed write query " << query;
-    Builder body;
-    body.openObject();
-    body.add("message",
-             VPackValue(std::string("Malformed write query") + e.what()));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // We're leading and handling the request
   if (ret.accepted) {  
-
     bool found;
     std::string call_mode = _request->header("x-arangodb-agency-mode", found);
+
     if (!found) {
       call_mode = "waitForCommitted";
     }
     
     size_t precondition_failed = 0;
     size_t forbidden = 0;
+
     Builder body;
     body.openObject();
     Agent::raft_commit_t result = Agent::raft_commit_t::OK;
@@ -374,13 +313,7 @@ RestStatus RestAgencyHandler::handleWrite() {
     
   } else {            // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
-      Builder body;
-      body.openObject();
-      body.add("message", VPackValue("No leader"));
-      body.close();
-      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-      return RestStatus::DONE;
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
     } else {
       TRI_ASSERT(ret.redirect != _agent->id());
       redirectRequest(ret.redirect);
@@ -401,46 +334,23 @@ RestStatus RestAgencyHandler::handleTransact() {
   try {
     query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << e.what() << " " << __FILE__ << ":" << __LINE__;
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue(e.what()));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // Need Array input
   if (!query->slice().isArray()) {
-    Builder body;
-    body.openObject();
-    body.add(
-      "message", VPackValue("Expecting array of arrays as body for writes"));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(
+      rest::ResponseCode::BAD, "Expecting array of arrays as body for writes");
   }
 
   // Empty request array
   if (query->slice().length() == 0) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("Empty request."));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, "Empty request");
   }
 
   // Leadership established?
   if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("No leader"));
-    body.close();
-    generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
 
   // Do write
@@ -448,14 +358,7 @@ RestStatus RestAgencyHandler::handleTransact() {
   try {
     ret = _agent->transact(query);
   } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Malformed write query " << query;
-    Builder body;
-    body.openObject();
-    body.add(
-      "message", VPackValue(std::string("Malformed write query") + e.what()));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // We're leading and handling the request
@@ -472,13 +375,7 @@ RestStatus RestAgencyHandler::handleTransact() {
     
   } else {            // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
-      Builder body;
-      body.openObject();
-      body.add("message", VPackValue("No leader"));
-      body.close();
-      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-      return RestStatus::DONE;
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
     } else {
       TRI_ASSERT(ret.redirect != _agent->id());
       redirectRequest(ret.redirect);
@@ -507,39 +404,38 @@ RestStatus RestAgencyHandler::handleInquire() {
   
   // Leadership established?
   if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("No leader"));
-    body.close();
-    generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
   
-  inquire_ret_t ret;
+  write_ret_t ret;
   try {
     ret = _agent->inquire(query);
   } catch (std::exception const& e) {
-    generateError(
-      rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::SERVER_ERROR, e.what());
   }
   
   if (ret.accepted) {  // I am leading
+    Builder body;
+    bool failed = false;
+    { VPackObjectBuilder b(&body);
+      if (ret.indices.empty()) {
+        body.add("ongoing", VPackValue(true));
+      } else {
+        body.add(VPackValue("results"));
+        { VPackArrayBuilder bb(&body);
+          for (auto const& index : ret.indices) {
+            body.add(VPackValue(index));
+            failed = (failed || index == 0);
+          }}
 
-    generateResult(rest::ResponseCode::OK, ret.result->slice());
-    
+      }
+      body.add("inquired", VPackValue(true));
+    }
+    generateResult(failed ? rest::ResponseCode::PRECONDITION_FAILED :
+                   rest::ResponseCode::OK, body.slice());
   } else {  // Redirect to leader
-    
     if (_agent->leaderID() == NO_LEADER) {
-      Builder body;
-      body.openObject();
-      body.add("message", VPackValue("No leader"));
-      body.close();
-      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-      return RestStatus::DONE;
-      
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
     } else {
       TRI_ASSERT(ret.redirect != _agent->id());
       redirectRequest(ret.redirect);
@@ -555,22 +451,13 @@ RestStatus RestAgencyHandler::handleRead() {
     try {
       query = _request->toVelocyPackBuilderPtr();
     } catch (std::exception const& e) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << e.what() << " " << __FILE__ << ":" << __LINE__;
-      generateError(rest::ResponseCode::BAD, 400);
-      return RestStatus::DONE;
+      return reportMessage(rest::ResponseCode::BAD, e.what());
     }
 
     if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-      Builder body;
-      body.openObject();
-      body.add("message", VPackValue("No leader"));
-      body.close();
-      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-      return RestStatus::DONE;
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
     }
-
+    
     read_ret_t ret = _agent->read(query);
 
     if (ret.accepted) {  // I am leading
@@ -581,14 +468,7 @@ RestStatus RestAgencyHandler::handleRead() {
       }
     } else {  // Redirect to leader
       if (_agent->leaderID() == NO_LEADER) {
-        Builder body;
-        body.openObject();
-        body.add("message", VPackValue("No leader"));
-        body.close();
-        generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-        return RestStatus::DONE;
-
+        return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
       } else {
         TRI_ASSERT(ret.redirect != _agent->id());
         redirectRequest(ret.redirect);

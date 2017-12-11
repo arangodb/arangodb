@@ -160,7 +160,7 @@ void PregelFeature::cleanupAll() {
   for (auto it : _workers) {
     it.second->cancelGlobalStep(VPackSlice());
   }
-  usleep(1000 * 100);  // 100ms to send out cancel calls
+  std::this_thread::sleep_for(std::chrono::microseconds(1000 * 100));  // 100ms to send out cancel calls
   _workers.clear();
 }
 

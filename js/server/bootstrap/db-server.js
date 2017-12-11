@@ -57,11 +57,6 @@
       console.error('upgrade-database.js script failed!');
     }
 
-    // statistics can be turned off
-    if (internal.enableStatistics) {
-      require('@arangodb/statistics').startup();
-    }
-
     console.info('bootstrapped DB server %s', global.ArangoServerState.id());
   }
   return true;

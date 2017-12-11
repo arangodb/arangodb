@@ -88,6 +88,13 @@ class Index {
     TRI_IDX_TYPE_NO_ACCESS_INDEX
   };
 
+  // mode to signal how operation should behave
+  enum OperationMode {
+    normal,
+    internal,
+    rollback
+  };
+
  public:
   /// @brief return the index id
   inline TRI_idx_iid_t id() const { return _iid; }
@@ -227,7 +234,7 @@ class Index {
   /// attribute attribute, a Slice would be more flexible.
   double selectivityEstimate(
       arangodb::StringRef const* extra = nullptr) const;
-  
+
   virtual double selectivityEstimateLocal(
       arangodb::StringRef const* extra) const;
 
@@ -244,10 +251,14 @@ class Index {
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
-  virtual Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                     arangodb::velocypack::Slice const&, bool isRollback) = 0;
-  virtual Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                     arangodb::velocypack::Slice const&, bool isRollback) = 0;
+  virtual Result insert(transaction::Methods*,
+                        LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const&,
+                        OperationMode mode) = 0;
+  virtual Result remove(transaction::Methods*,
+                        LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const&,
+                        OperationMode mode) = 0;
 
   virtual void batchInsert(
       transaction::Methods*,
@@ -324,7 +335,7 @@ class Index {
   mutable bool _unique;
 
   mutable bool _sparse;
-  
+
   double _clusterSelectivity;
 };
 }

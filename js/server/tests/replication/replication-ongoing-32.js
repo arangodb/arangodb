@@ -869,6 +869,9 @@ function ReplicationOtherDBSuite() {
     // Section - Slave
     connectToSlave();
 
+    // Give it some time to sync (eventually, should not do anything...)
+    internal.wait(6, false);    
+
     // Now test if the Slave did replicate the new database directly...
     assertEqual(50, collectionCount(cn), 
     "The slave inserted the new collection data into the old one, it skipped the drop.");
