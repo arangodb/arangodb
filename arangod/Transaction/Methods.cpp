@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -705,7 +705,7 @@ Result transaction::Methods::begin() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction state");
   }
-  
+
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::RUNNING);
@@ -726,7 +726,7 @@ Result transaction::Methods::commit() {
     // transaction not created or not running
     return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on commit");
   }
-  
+
   ExecContext const* exe = ExecContext::CURRENT;
   if (exe != nullptr && !_state->isReadOnlyTransaction()) {
     bool cancelRW = !ServerState::writeOpsEnabled() && !exe->isSuperuser();
@@ -736,7 +736,7 @@ Result transaction::Methods::commit() {
   }
 
   CallbackInvoker invoker(this);
-  
+
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::COMMITTED);
@@ -1013,7 +1013,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   mmdr->addToBuilder(result, true);
   return Result(TRI_ERROR_NO_ERROR);
 }
-      
+
 /// @brief return one document from a collection, fast path
 ///        If everything went well the result will contain the found document
 ///        (as an external on single_server) and this function will return
@@ -1044,7 +1044,7 @@ Result transaction::Methods::documentFastPathLocal(
   return res;
 }
 
-static OperationResult errorCodeFromClusterResult(std::shared_ptr<VPackBuilder> const& resultBody, 
+static OperationResult errorCodeFromClusterResult(std::shared_ptr<VPackBuilder> const& resultBody,
                                                   int defaultErrorCode) {
   // read the error number from the response and use it if present
   if (resultBody != nullptr) {
@@ -1062,7 +1062,7 @@ static OperationResult errorCodeFromClusterResult(std::shared_ptr<VPackBuilder> 
       }
     }
   }
-  
+
   return OperationResult(defaultErrorCode);
 }
 
@@ -1123,7 +1123,7 @@ OperationResult transaction::Methods::clusterResultModify(
     // Fall through
     case rest::ResponseCode::ACCEPTED:
     case rest::ResponseCode::CREATED:
-      return OperationResult(Result(errorCode), resultBody->steal(), nullptr, 
+      return OperationResult(Result(errorCode), resultBody->steal(), nullptr,
                              responseCode == rest::ResponseCode::CREATED,
                              errorCounter);
     case rest::ResponseCode::BAD:
@@ -1148,7 +1148,7 @@ OperationResult transaction::Methods::clusterResultRemove(
           Result(responseCode == rest::ResponseCode::PRECONDITION_FAILED
               ? TRI_ERROR_ARANGO_CONFLICT
               : TRI_ERROR_NO_ERROR),
-          resultBody->steal(), nullptr, 
+          resultBody->steal(), nullptr,
           responseCode != rest::ResponseCode::ACCEPTED, errorCounter);
     case rest::ResponseCode::BAD:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
@@ -1335,15 +1335,17 @@ OperationResult transaction::Methods::insertCoordinator(
 
 /// @brief choose a timeout for synchronous replication, based on the
 /// number of documents we ship over
-static double chooseTimeout(size_t count) {
+static double chooseTimeout(size_t count, size_t total_bytes) {
   static bool timeoutQueried = false;
   static double timeoutFactor = 1.0;
+  static double timeoutPer4k = 0.1;
   static double lowerLimit = 0.5;
   if (!timeoutQueried) {
     // Multithreading is no problem here because these static variables
     // are only ever set once in the lifetime of the server.
     auto feature = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
     timeoutFactor = feature->syncReplTimeoutFactor();
+    timeoutPer4k = feature->syncReplTimeoutPer4k();
     timeoutQueried = true;
     auto feature2 = application_features::ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector");
     if (feature2->engineName() == arangodb::RocksDBEngine::EngineName) {
@@ -1355,6 +1357,12 @@ static double chooseTimeout(size_t count) {
   // per second (this is a low estimate), and use a low limit of 0.5s
   // and a high timeout of 120s
   double timeout = static_cast<double>(count / 2500);
+
+  // Really big documents need additional adjustment.  Using total size
+  //  of all messages to handle worst case scenario of contrained resource
+  //  processing all
+  timeout += (total_bytes / 4096) * timeoutPer4k;
+
   if (timeout < lowerLimit) {
     return lowerLimit * timeoutFactor;
   } else if (timeout > 120) {
@@ -1520,7 +1528,8 @@ OperationResult transaction::Methods::insertLocal(
         if (cc != nullptr) {
           // nullptr only happens on controlled shutdown
           size_t nrDone = 0;
-          size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
+          size_t nrGood = cc->performRequests(requests,
+                                              chooseTimeout(count, body->size()*followers->size()),
                                               nrDone, Logger::REPLICATION, false);
           if (nrGood < followers->size()) {
             // If any would-be-follower refused to follow there must be a
@@ -1867,7 +1876,8 @@ OperationResult transaction::Methods::modifyLocal(
                 path, body);
           }
           size_t nrDone = 0;
-          size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
+          size_t nrGood = cc->performRequests(requests,
+                                              chooseTimeout(count, body->size()*followers->size()),
                                               nrDone, Logger::REPLICATION, false);
           if (nrGood < followers->size()) {
             // If any would-be-follower refused to follow there must be a
@@ -2145,7 +2155,8 @@ OperationResult transaction::Methods::removeLocal(
                 body);
           }
           size_t nrDone = 0;
-          size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
+          size_t nrGood = cc->performRequests(requests,
+                                              chooseTimeout(count, body->size()*followers->size()),
                                               nrDone, Logger::REPLICATION, false);
           if (nrGood < followers->size()) {
             // If any would-be-follower refused to follow there must be a

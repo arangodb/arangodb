@@ -45,11 +45,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void start() override final;
   void beginShutdown() override final;
   void unprepare() override final;
-  
+
   std::vector<std::string> agencyEndpoints() const {
     return _agencyEndpoints;
   }
-
 
   std::string agencyPrefix() {
     return _agencyPrefix;
@@ -57,6 +56,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
   double syncReplTimeoutFactor() {
     return _syncReplTimeoutFactor;
+  }
+
+  double syncReplTimeoutPer4k() {
+    return _syncReplTimeoutPer4k;
   }
 
  private:
@@ -67,6 +70,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   uint32_t _systemReplicationFactor = 2;
   bool _createWaitsForSyncReplication = true;
   double _syncReplTimeoutFactor = 1.0;
+  double _syncReplTimeoutPer4k = 0.1;
 
  private:
   void reportRole(ServerState::RoleEnum);
@@ -79,7 +83,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string const agencyCallbacksPath() const {
     return "/_api/agency/agency-callbacks";
   };
-  
+
   std::string const clusterRestPath() const {
     return "/_api/cluster";
   };
