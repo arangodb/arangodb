@@ -205,14 +205,21 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
 
   // Wait until woken up through AgentCallback
   while (true) {
+
+    index_t commitIndex;
+    {
+      MUTEX_LOCKER(oLocker, _oLock);
+      commitIndex = _commitIndex;
+    }
+    
     /// success?
     CONDITION_LOCKER(guard, _waitForCV);
     if (leading()) {
-      if (lastCommitIndex != _commitIndex) {
+      if (lastCommitIndex != commitIndex) {
         // We restart the timeout computation if there has been progress:
         startTime = system_clock::now();
       }
-      lastCommitIndex = _commitIndex;
+      lastCommitIndex = commitIndex;
       if (lastCommitIndex >= index) {
         return Agent::raft_commit_t::OK;
       }
@@ -220,8 +227,8 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
       return Agent::raft_commit_t::UNKNOWN;
     }
 
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "waitFor: index: " << index <<
-      " _commitIndex: " << _commitIndex
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "waitFor: index: " << index << " _commitIndex: " << commitIndex
       << " _lastCommitIndex: " << lastCommitIndex << " startTime: "
       << timepointToString(startTime) << " now: "
       << timepointToString(system_clock::now());
@@ -352,11 +359,10 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
   }
 
   {
-    _tiLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(ioLocker, _ioLock);  // protects writing to _commitIndex as well
+    MUTEX_LOCKER(oLocker, _oLock);
     CONDITION_LOCKER(guard, _waitForCV);
-    _commitIndex = std::max(_commitIndex,
-                            std::min(leaderCommitIndex, lastIndex));
+    _commitIndex = std::max(
+      _commitIndex, std::min(leaderCommitIndex, lastIndex));
     _waitForCV.broadcast();
     if (_commitIndex >= _state.nextCompactionAfter()) {
       _compactor.wakeUp();
@@ -409,7 +415,13 @@ void Agent::sendAppendEntriesRPC() {
           << "Reading lastConfirmed took too long: " << lockTime.count();
       }
 
+      index_t commitIndex;
+      {
+        MUTEX_LOCKER(oLocker, _oLock);
+        commitIndex = _commitIndex;
+      }
       std::vector<log_t> unconfirmed = _state.get(lastConfirmed, lastConfirmed+99);
+      
 
       lockTime = system_clock::now() - startTime;
       if (lockTime.count() > 0.2) {
@@ -424,7 +436,7 @@ void Agent::sendAppendEntriesRPC() {
         CONDITION_LOCKER(guard, _waitForCV);
         LOG_TOPIC(ERR, Logger::AGENCY) << "Unexpected empty unconfirmed: "
           << "lastConfirmed=" << lastConfirmed << " commitIndex="
-          << _commitIndex;
+          << commitIndex;
       }
 
       TRI_ASSERT(!unconfirmed.empty());
@@ -490,7 +502,7 @@ void Agent::sendAppendEntriesRPC() {
         CONDITION_LOCKER(guard, _waitForCV);
         path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId="
              << id() << "&prevLogIndex=" << prevLogIndex
-             << "&prevLogTerm=" << prevLogTerm << "&leaderCommit=" << _commitIndex
+             << "&prevLogTerm=" << prevLogTerm << "&leaderCommit=" << commitIndex
              << "&senderTimeStamp=" << std::llround(readSystemClock() * 1000);
       }
       
@@ -596,13 +608,19 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
     return;
   }
 
+  index_t commitIndex;
+  {
+    MUTEX_LOCKER(oLocker, _oLock);
+    commitIndex = _commitIndex;
+  }
+  
   // RPC path
   std::stringstream path;
   {
     CONDITION_LOCKER(guard, _waitForCV);
     path << "/_api/agency_priv/appendEntries?term=" << _constituent.term()
          << "&leaderId=" << id() << "&prevLogIndex=0"
-         << "&prevLogTerm=0&leaderCommit=" << _commitIndex
+         << "&prevLogTerm=0&leaderCommit=" << commitIndex
          << "&senderTimeStamp=" << std::llround(readSystemClock() * 1000);
   }
 
@@ -656,21 +674,15 @@ void Agent::advanceCommitIndex() {
     
   term_t t = _constituent.term();
   {
-    _tiLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(_ioLocker, _ioLock);
-    index_t commitIndex;
-    {
-      CONDITION_LOCKER(guard, _waitForCV);
-      commitIndex = _commitIndex;
-    }
-    if (index > commitIndex) {
+    MUTEX_LOCKER(oLocker, _oLock);
+    if (index > _commitIndex) {
       LOG_TOPIC(TRACE, Logger::AGENCY)
-        << "Critical mass for commiting " << commitIndex + 1
+        << "Critical mass for commiting " << _commitIndex + 1
         << " through " << index << " to read db";
       // Change _readDB and _commitIndex atomically together:
       _readDB.applyLogEntries(
         _state.slices( /* inform others by callbacks */ 
-          commitIndex + 1, index), commitIndex, t, true);
+          _commitIndex + 1, index), _commitIndex, t, true);
 
       CONDITION_LOCKER(guard, _waitForCV);
       _commitIndex = index;
@@ -722,7 +734,8 @@ void Agent::load() {
 
   {
     _tiLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(guard, _ioLock);  // need this for callback to set _readDB
+    MUTEX_LOCKER(guard, _ioLock);  // need this for callback to set _spearhead
+    MUTEX_LOCKER(guard2, _oLock);  // need this for callback to set _readDB
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading persistent state.";
     if (!_state.loadCollections(vocbase, queryRegistry, _config.waitForSync())) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
@@ -1082,8 +1095,7 @@ read_ret_t Agent::read(query_t const& query) {
   }
 
   std::string leaderId = _constituent.leaderID(); 
-  _tiLock.assertNotLockedByCurrentThread();
-  MUTEX_LOCKER(ioLocker, _ioLock);
+  MUTEX_LOCKER(oLocker, _oLock);
 
   // Retrieve data from readDB
   auto result = std::make_shared<arangodb::velocypack::Builder>();
@@ -1144,6 +1156,7 @@ void Agent::run() {
 
       bool commenceService = false;
       {
+        MUTEX_LOCKER(oLocker, _oLock);
         CONDITION_LOCKER(guard2, _waitForCV);
         if (leading() && getPrepareLeadership() == 2 &&
             _commitIndex == _state.lastIndex()) {
@@ -1154,6 +1167,7 @@ void Agent::run() {
       if (commenceService) {
         _tiLock.assertNotLockedByCurrentThread();
         MUTEX_LOCKER(ioLocker, _ioLock);
+        MUTEX_LOCKER(oLocker, _oLock);
         _spearhead = _readDB;
         endPrepareLeadership();  // finally service can commence
       }
@@ -1261,11 +1275,16 @@ void Agent::lead() {
     // We cannot start sendAppendentries before first log index.
     // Any missing indices before _commitIndex were compacted.
     // DO NOT EDIT without understanding the consequences for sendAppendEntries!
+    index_t commitIndex;
+    {
+      MUTEX_LOCKER(oLocker, _oLock);
+      commitIndex = _commitIndex;
+    }
     CONDITION_LOCKER(guard, _waitForCV);
     MUTEX_LOCKER(tiLocker, _tiLock);
     for (auto& i : _confirmed) {
       if (i.first != id()) {
-        i.second = _commitIndex;
+        i.second = commitIndex;
       }
     }
   }
@@ -1408,6 +1427,7 @@ void Agent::rebuildDBs() {
 
   _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(ioLocker, _ioLock);
+  MUTEX_LOCKER(oLocker, _oLock);
 
   index_t lastCompactionIndex;
 
@@ -1475,6 +1495,7 @@ void Agent::compact() {
 
 /// Last commit index
 arangodb::consensus::index_t Agent::lastCommitted() const {
+  MUTEX_LOCKER(oLocker, _oLock);
   CONDITION_LOCKER(guard, _waitForCV);
   return _commitIndex;
 }
@@ -1490,14 +1511,13 @@ Store const& Agent::spearhead() const { return _spearhead; }
 /// a const reference
 /// the caller has to make sure the lock is actually held
 Store const& Agent::readDB() const { 
-  _ioLock.assertLockedByCurrentThread();
+  MUTEX_LOCKER(oLocker, _oLock);
   return _readDB; 
 }
 
 /// Get readdb
 arangodb::consensus::index_t Agent::readDB(Node& node) const {
-  _tiLock.assertNotLockedByCurrentThread();
-  MUTEX_LOCKER(ioLocker, _ioLock);
+  MUTEX_LOCKER(oLocker, _oLock);
   node = _readDB.get();
   CONDITION_LOCKER(guard, _waitForCV);
   return _commitIndex;
@@ -1521,15 +1541,15 @@ Store const& Agent::transient() const {
 /// Rebuild from persisted state
 void Agent::setPersistedState(VPackSlice const& compaction) {
   // Catch up with compacted state, this is only called at startup
-  _ioLock.assertLockedByCurrentThread();
   _spearhead = compaction.get("readDB");
   _readDB = compaction.get("readDB");
-
+  
   // Catch up with commit
   try {
+    MUTEX_LOCKER(oLocker, _oLock);
     CONDITION_LOCKER(guard, _waitForCV);
-    _commitIndex = arangodb::basics::StringUtils::uint64(
-      compaction.get("_key").copyString());
+    _commitIndex =
+      arangodb::basics::StringUtils::uint64(compaction.get("_key").copyString());
     _waitForCV.broadcast();
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
@@ -1683,8 +1703,7 @@ query_t Agent::buildDB(arangodb::consensus::index_t index) {
   }
  
   { 
-    _tiLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(ioLocker, _ioLock);
+    MUTEX_LOCKER(oLocker, _oLock);
     CONDITION_LOCKER(guard, _waitForCV);
     if (index > _commitIndex) {
       LOG_TOPIC(INFO, Logger::AGENCY)

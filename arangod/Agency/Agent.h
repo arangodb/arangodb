@@ -372,14 +372,18 @@ class Agent : public arangodb::Thread,
 
   /**< @brief RAFT consistency lock:
      _spearhead
-     _readDB
    */
   mutable arangodb::Mutex _ioLock;
 
-  /// Rules for the locks: This covers the following locks:
+  /**< @brief RAFT consistency lock:
+     _readDB and _commitIndex
+   */
+  mutable arangodb::Mutex _oLock;
+
+  /// Rules for writes and locks: This covers the following locks:
   ///    _ioLock (here)
-  ///    _logLock (in State)         _waiForCV (here)
-  ///    _tiLock (here)              _tiLock (here)
+  ///    _logLock (in State)         
+  ///    _tiLock (here)
   /// One may never acquire a log in this list whilst holding another one
   /// that appears further down on this list. This is to prevent deadlock.
   /// For _logLock: This is local to State and we make sure that the few
@@ -388,6 +392,11 @@ class Agent : public arangodb::Thread,
   /// For _ioLock: We put in assertions to ensure that when this lock is
   /// acquired we do not have the _tiLock.
 
+  /// Rules for reading and locks
+  ///    _oLock(here)
+  ///    _logLock(in State) _waiForCV (here)
+  /// _oLock guards the _readDB
+  
   // @brief guard _activator 
   mutable arangodb::Mutex _activatorLock;
 
