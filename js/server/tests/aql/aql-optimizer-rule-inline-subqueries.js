@@ -34,10 +34,6 @@ var isEqual = helper.isEqual;
 var db = require("@arangodb").db;
 var ruleName = "inline-subqueries";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
 function optimizerRuleTestSuite () {
   // various choices to control the optimizer: 
   var paramNone = { optimizer: { rules: [ "-all" ] } };
@@ -46,16 +42,8 @@ function optimizerRuleTestSuite () {
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
     },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
     },
@@ -86,7 +74,9 @@ function optimizerRuleTestSuite () {
         "FOR i IN [1,2,3] RETURN i",
         "LET a = [1,2,3] FOR i IN a RETURN i",
         "FOR i IN [1,2,3] LET x = (FOR j IN [1,2,3] RETURN j) RETURN x",
-        "FOR i IN (FOR j IN [1,2,3] COLLECT v = j INTO g RETURN [v, g]) RETURN i"
+        "FOR i IN (FOR j IN [1,2,3] COLLECT v = j INTO g RETURN [v, g]) RETURN i",
+        "FOR i IN [1,2,3] LET x = (FOR j IN [1,2,3] LIMIT 1 RETURN j) FOR k IN x RETURN k",
+        "FOR i IN [1,2,3] LET x = (FOR j IN [1,2,3] SORT j RETURN j) FOR k IN x RETURN k"
       ];
 
       queries.forEach(function(query) {
@@ -107,7 +97,9 @@ function optimizerRuleTestSuite () {
         "FOR i IN (FOR j IN [1,2,3] FILTER j > 1 RETURN j) FILTER i > 1 RETURN i",
         "FOR i IN (FOR j IN [1,2,3] FILTER j > 1 SORT j RETURN j) FILTER i > 1 RETURN i",
         "FOR i IN (FOR j IN [1,2,3] FILTER j > 1 SORT j RETURN j) FILTER i > 1 SORT i RETURN i",
-        "FOR i IN (FOR j IN [1,2,3] FILTER j > 1 RETURN j * 2) FILTER i > 1 RETURN i * 3"
+        "FOR i IN (FOR j IN [1,2,3] FILTER j > 1 RETURN j * 2) FILTER i > 1 RETURN i * 3",
+        "LET x = (FOR j IN [1,2,3] LIMIT 2 RETURN j) FOR k IN x RETURN k",
+        "LET x = (FOR j IN [1,2,3] SORT j RETURN j) FOR k IN x RETURN k"
       ];
 
       queries.forEach(function(query) {
@@ -152,7 +144,15 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN (FOR j IN [1,2,3] FILTER j > 1 RETURN j * 2) RETURN i", [ 4, 6 ] ],
         [ "FOR i IN (FOR j IN [1,2,3] FILTER j > 1 RETURN j * 2) FILTER i >= 6 RETURN i", [ 6 ] ],
         [ "FOR i IN (FOR j IN (FOR k IN [1,2,3] RETURN k) RETURN j * 2) RETURN i * 2", [ 4, 8, 12 ] ],
-        [ "FOR i IN (FOR j IN (FOR k IN [1,2,3,4] SORT k DESC LIMIT 3 RETURN k) LIMIT 2 RETURN j) RETURN i", [ 4, 3 ] ]
+        [ "FOR i IN (FOR j IN (FOR k IN [1,2,3,4] SORT k DESC LIMIT 3 RETURN k) LIMIT 2 RETURN j) RETURN i", [ 4, 3 ] ],
+        [ "LET x = (FOR j IN [1,2,3] LIMIT 2 RETURN j) FOR k IN x RETURN k", [ 1, 2 ] ],
+        [ "LET x = (FOR j IN [1,2,3] LIMIT 1, 2 RETURN j) FOR k IN x RETURN k", [ 2, 3 ] ],
+        [ "LET x = (FOR j IN [1,2,3,4] LIMIT 2 RETURN j) FOR k IN x LIMIT 1, 1 RETURN k", [ 2 ] ],
+        [ "LET x = (FOR j IN [1,2,3,4] LIMIT 1, 2 RETURN j) FOR k IN x LIMIT 1, 1 RETURN k", [ 3 ] ],
+        [ "LET x = (FOR j IN [1,2,3,4] RETURN j) FOR k IN x LIMIT 1, 1 RETURN k", [ 2 ] ],
+        [ "LET x = (FOR j IN [1,2,3,4] SORT j DESC RETURN j) FOR k IN x RETURN k", [ 4, 3, 2, 1 ] ],
+        [ "LET x = (FOR j IN [1,2,3,4] SORT j DESC LIMIT 2 RETURN j) FOR k IN x RETURN k", [ 4, 3 ] ],
+        [ "LET x = (FOR j IN [1,2,3,4] SORT j DESC LIMIT 2 RETURN j) FOR k IN x LIMIT 1 RETURN k", [ 4 ] ]
       ];
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query[0]);

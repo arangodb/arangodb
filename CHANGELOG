@@ -1,4 +1,7 @@
 v3.2.10 (2017-XX-XX)
+-------------------
+
+* fixed issue #3640: limit in subquery
 
 * UI: edge collections were wrongly added to from and to vertices select 
   box during graph creation
