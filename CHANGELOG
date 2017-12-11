@@ -1,5 +1,7 @@
 v3.2.10 (2017-XX-XX)
 
+* UI: fixed issue #3822: disabled name input field for system collections
+
 * UI: edge collections were wrongly added to from and to vertices select 
   box during graph creation
 
