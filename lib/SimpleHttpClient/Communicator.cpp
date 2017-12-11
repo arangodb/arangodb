@@ -304,7 +304,7 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
   curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
   curl_easy_setopt(handle, CURLOPT_VERBOSE, 1L);
   curl_easy_setopt(handle, CURLOPT_PROXY, "");
-  
+
   // the xfer/progress options are only used to handle request abortions
   curl_easy_setopt(handle, CURLOPT_NOPROGRESS, 0L);
   curl_easy_setopt(handle, CURLOPT_XFERINFOFUNCTION, Communicator::curlProgress);
@@ -383,8 +383,8 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
   }
 
   handleInProgress->_rip->_startTime = TRI_microtime();
- 
-  { 
+
+  {
     MUTEX_LOCKER(guard, _handlesLock);
     _handlesInProgress.emplace(newRequest._ticketId, std::move(handleInProgress));
   }
@@ -393,6 +393,7 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
 
 void Communicator::handleResult(CURL* handle, CURLcode rc) {
   // remove request in progress
+  double connectTime(0.0);
   curl_multi_remove_handle(_curl, handle);
 
   RequestInProgress* rip = nullptr;
@@ -409,6 +410,11 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   LOG_TOPIC(TRACE, Logger::COMMUNICATION)
       << prefix << "Curl rc is : " << rc << " after "
       << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
+  if (CURLE_OPERATION_TIMEDOUT == rc) {
+    curl_easy_getinfo(handle, CURLINFO_CONNECT_TIME, &connectTime);
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+      << prefix << "CURLINFO_CONNECT_TIME is " << connectTime;
+  } // if
   if (strlen(rip->_errorBuffer) != 0) {
     LOG_TOPIC(TRACE, Logger::COMMUNICATION)
         << prefix << "Curl error details: " << rip->_errorBuffer;
@@ -444,7 +450,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     case CURLE_OPERATION_TIMEDOUT:
     case CURLE_RECV_ERROR:
     case CURLE_GOT_NOTHING:
-      if (rip->_aborted) {
+      if (rip->_aborted || (CURLE_OPERATION_TIMEDOUT == rc && 0.0==connectTime)) {
         callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
       } else {
         callErrorFn(rip, TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
@@ -466,8 +472,8 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Curl return " << rc;
       callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
       break;
-  } 
-    
+  }
+
   _handlesInProgress.erase(rip->_ticketId);
 }
 
@@ -624,12 +630,12 @@ void Communicator::abortRequests() {
   }
 }
 
-// needs _handlesLock! 
+// needs _handlesLock!
 std::vector<RequestInProgress const*> Communicator::requestsInProgress() {
   _handlesLock.assertLockedByCurrentThread();
 
   std::vector<RequestInProgress const*> vec;
-    
+
   vec.reserve(_handlesInProgress.size());
 
   for (auto& handle : _handlesInProgress) {
@@ -641,7 +647,7 @@ std::vector<RequestInProgress const*> Communicator::requestsInProgress() {
   return vec;
 }
 
-// needs _handlesLock! 
+// needs _handlesLock!
 void Communicator::abortRequestInternal(Ticket ticketId) {
   _handlesLock.assertLockedByCurrentThread();
 

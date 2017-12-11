@@ -61,8 +61,8 @@ void MMFilesRestReplicationHandler::insertClient(
   bool found;
   std::string const& value = _request->value("serverId", found);
 
-  if (found) {
-    TRI_server_id_t serverId = (TRI_server_id_t)StringUtils::uint64(value);
+  if (found && !value.empty() && value != "none") {
+    TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
 
     if (serverId > 0) {
       _vocbase->updateReplicationClient(serverId, lastServedTick);
