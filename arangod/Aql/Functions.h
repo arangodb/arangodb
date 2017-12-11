@@ -50,7 +50,16 @@ typedef std::function<AqlValue(arangodb::aql::Query*, transaction::Methods*,
     FunctionImplementation;
 
 struct Functions {
-  protected:
+  
+ public:
+  /// @brief register warning
+  static void RegisterWarning(arangodb::aql::Query* query,
+                              char const* functionName, int code);
+  static void RegisterWarning(arangodb::aql::Query* query,
+                              char const* functionName, Result res);
+  /// @brief register usage of an invalid function argument
+  static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
+                                             char const* functionName);
 
   /// @brief validate the number of parameters
    static void ValidateParameters(VPackFunctionParameters const& parameters,
@@ -59,15 +68,6 @@ struct Functions {
 
    static void ValidateParameters(VPackFunctionParameters const& parameters,
                                   char const* function, int minParams);
-  
-   /// @brief register warning
-   static void RegisterWarning(arangodb::aql::Query* query,
-                               char const* functionName, int code);
-   static void RegisterWarning(arangodb::aql::Query* query,
-                               char const* functionName, Result res);
-   /// @brief register usage of an invalid function argument
-   static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
-                                              char const* functionName);
 
    /// @brief extract a function parameter from the arguments
    static AqlValue ExtractFunctionParameterValue(
@@ -214,14 +214,14 @@ struct Functions {
                                 VPackFunctionParameters const&);
    static AqlValue Outersection(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
+   static AqlValue Distance(arangodb::aql::Query*, transaction::Methods*,
+                            VPackFunctionParameters const&);
    static AqlValue GeoDistance(arangodb::aql::Query*, transaction::Methods*,
                                VPackFunctionParameters const&);
-   static AqlValue GeoContainsIntersect(arangodb::aql::Query* query,
-                                        transaction::Methods* trx,
-                                        VPackFunctionParameters const& parameters,
-                                        char const* func, bool contains);
    static AqlValue GeoContains(arangodb::aql::Query*, transaction::Methods*,
                                VPackFunctionParameters const&);
+   static AqlValue GeoCircleContains(arangodb::aql::Query*, transaction::Methods*,
+                                   VPackFunctionParameters const&);
    static AqlValue GeoIntersects(arangodb::aql::Query*, transaction::Methods*,
                                  VPackFunctionParameters const&);
    static AqlValue IsInPolygon(arangodb::aql::Query*, transaction::Methods*,

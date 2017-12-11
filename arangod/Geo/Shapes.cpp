@@ -40,7 +40,12 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
+Coordinate Coordinate::fromLatLng(S2LatLng const& ll) {
+  return Coordinate(ll.lat().degrees(), ll.lng().degrees());
+}
+
 Result ShapeContainer::parseCoordinates(VPackSlice const& json, bool geoJson) {
+  TRI_ASSERT(_data == nullptr);
   if (!json.isArray() || json.length() < 2) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
   }
@@ -57,7 +62,7 @@ Result ShapeContainer::parseCoordinates(VPackSlice const& json, bool geoJson) {
   _type = Type::S2_POINT;
   return TRI_ERROR_NO_ERROR;
 }
-
+/*
 Result ShapeContainer::parseGeoJson(VPackSlice const& json) {
   if (!json.isObject()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid GeoJson Object");
@@ -107,7 +112,7 @@ Result ShapeContainer::parseGeoJson(VPackSlice const& json) {
   }
 
   return Result(TRI_ERROR_BAD_PARAMETER, "unknown geo filter syntax");
-}
+}*/
 
 ShapeContainer::~ShapeContainer() { delete _data; }
 
@@ -121,6 +126,11 @@ void ShapeContainer::reset(S2Region* ptr, Type tt) {
   delete _data;
   _data = ptr;
   _type = tt;
+}
+
+void ShapeContainer::resetAsCap(geo::Coordinate const& c, double rad) {
+  S2LatLng ll = S2LatLng::FromDegrees(c.latitude, c.longitude);
+  reset(S2Cap::FromAxisAngle(ll.ToPoint(), S1Angle::Radians(rad)).Clone(), Type::S2_CAP);
 }
 
 bool ShapeContainer::isAreaEmpty() const {
@@ -144,6 +154,51 @@ bool ShapeContainer::isAreaEmpty() const {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
       break;
   }
+}
+
+geo::Coordinate ShapeContainer::centroid() const {
+  switch (_type) {
+    case ShapeContainer::Type::S2_POINT: {
+      S2Point const& c = (static_cast<S2PointRegion const*>(_data))->point();
+      return Coordinate(S2LatLng::Latitude(c).degrees(),
+                        S2LatLng::Longitude(c).degrees());
+    }
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      S2LatLng latLng = (static_cast<S2LatLngRect const*>(_data))->GetCenter();
+      return Coordinate::fromLatLng(latLng);
+    }
+    case ShapeContainer::Type::S2_CAP: {
+      S2Point const& c = (static_cast<S2Cap const*>(_data))->axis();
+      return Coordinate(S2LatLng::Latitude(c).degrees(),
+                        S2LatLng::Longitude(c).degrees());
+    }
+    case ShapeContainer::Type::S2_POLYLINE:{
+      S2Point const& c = (static_cast<S2Polyline const*>(_data))->GetCentroid();
+      return Coordinate(S2LatLng::Latitude(c).degrees(),
+                        S2LatLng::Longitude(c).degrees());
+    }
+    case ShapeContainer::Type::S2_POLYGON: {
+      S2Point c = (static_cast<S2Polygon const*>(_data))->GetCentroid();
+      return Coordinate(S2LatLng::Latitude(c).degrees(),
+                        S2LatLng::Longitude(c).degrees());
+    }
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      break;
+  }
+}
+
+double ShapeContainer::distanceFromCentroid(geo::Coordinate const& other) {
+  geo::Coordinate centroid = this->centroid();
+  double p1 = centroid.latitude * (M_PI / 180.0);
+  double p2 = other.latitude * (M_PI / 180.0);
+  double d1 = (other.latitude - centroid.latitude) * (M_PI / 180.0);
+  double d2 = (other.longitude - centroid.longitude) * (M_PI / 180.0);
+  double a = std::sin(d1 / 2.0) * std::sin(d1 / 2.0) +
+  std::cos(p1) * std::cos(p2) *
+  std::sin(d2 / 2.0) * std::sin(d2 / 2.0);
+  double c = 2.0 * std::atan2(std::sqrt(a), std::sqrt(1.0 - a));
+  return c * geo::kEarthRadiusInMeters;
 }
 
 bool ShapeContainer::contains(Coordinate const* cc) const {

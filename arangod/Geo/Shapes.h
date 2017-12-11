@@ -29,6 +29,7 @@
 #include <string>
 
 class S2Region;
+class S2LatLng;
 class S2LatLngRect;
 class S2Cap;
 class S2Polyline;
@@ -37,16 +38,21 @@ class S2Polygon;
 namespace arangodb {
 namespace geo {
 
-/// coordinate point on the sphere
+/// coordinate point on the sphere in DEGREES
 struct Coordinate {
   Coordinate(double lat, double lon) : latitude(lat), longitude(lon) {}
-  double latitude;   // in degrees
-  double longitude;  // in degrees
-
+  
+  static Coordinate fromLatLng(S2LatLng const&);
+  
+ public:
   std::string toString() const {
     return "(lat: " + std::to_string(latitude) + ", lon: " +
            std::to_string(longitude) + ")";
   }
+  
+public:
+  double latitude;   // in degrees
+  double longitude;  // in degrees
 };
 
 /// Thin wrapper around S2Region combined with
@@ -65,25 +71,31 @@ class ShapeContainer final {
   };
 
   ShapeContainer() : _data(nullptr), _type(Type::UNDEFINED) {}
-  ShapeContainer(std::unique_ptr<S2Region>&& ptr, Type tt)
+  /*ShapeContainer(std::unique_ptr<S2Region>&& ptr, Type tt)
       : _data(ptr.release()), _type(tt) {}
-  ShapeContainer(S2Region* ptr, Type tt) : _data(ptr), _type(tt) {}
+  ShapeContainer(S2Region* ptr, Type tt) : _data(ptr), _type(tt) {}*/
   ~ShapeContainer();
+  
+ public:
   
   /// Parses a coordinate pair
   Result parseCoordinates(velocypack::Slice const& json, bool geoJson);
-  Result parseGeoJson(velocypack::Slice const& json);
 
- public:
   void reset(std::unique_ptr<S2Region>&& ptr, Type tt);
   void reset(S2Region* ptr, Type tt);
+  void resetAsCap(geo::Coordinate const&, double);
   
   Type type() const { return _type; }
   bool isAreaType() const {
     return _type == Type::S2_POLYGON || _type == Type::S2_CAP || _type == Type::S2_LATLNGRECT;
   }
   
+  /// @brief is an empty shape (can be expensive)
   bool isAreaEmpty() const;
+  /// @brief centroid of this shape
+  geo::Coordinate centroid() const;
+  /// @brief distance from center in meters
+  double distanceFromCentroid(geo::Coordinate const&);
 
   bool contains(Coordinate const*) const;
   // bool contains(S2LatLngRect const&) const;
@@ -98,7 +110,7 @@ class ShapeContainer final {
   bool intersects(S2Polyline const*) const;
   bool intersects(S2Polygon const*) const;
   bool intersects(ShapeContainer const*) const;
-
+  
  private:
   S2Region* _data;
   Type _type;
