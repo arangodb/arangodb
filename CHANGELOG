@@ -1,3 +1,10 @@
+v3.3.rc8 (2017-XX-XX)
+---------------------
+
+* UI: fixed broken foxx configuration keys. Some valid configuration values
+  could not be edited via the ui.
+
+
 v3.3.rc7 (2017-12-07)
 ---------------------
 
