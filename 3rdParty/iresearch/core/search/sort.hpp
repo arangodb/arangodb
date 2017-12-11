@@ -478,9 +478,21 @@ class IRESEARCH_API order final {
     void prepare_score(byte_type* score) const;
 
     template<typename T>
-    const T& get(const byte_type* score, size_t i) const {
+    CONSTEXPR const T& get(const byte_type* score, size_t i) const NOEXCEPT {
       assert(sizeof(T) == order_[i].bucket->size());
       return reinterpret_cast<const T&>(*(score + order_[i].offset));
+    }
+
+    template<typename StringType, typename Traits = typename StringType::traits_type>
+    CONSTEXPR StringType to_string(const byte_type* score, size_t i) const NOEXCEPT {
+      typedef typename Traits::char_type char_type;
+
+      const auto& entry = order_[i];
+
+      return StringType(
+        reinterpret_cast<const char_type*>(score + entry.offset),
+        entry.bucket->size()
+      );
     }
 
   private:

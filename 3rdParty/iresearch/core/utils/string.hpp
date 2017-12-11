@@ -128,55 +128,57 @@ class basic_string_ref {
 
   static const basic_string_ref nil;
 
-  basic_string_ref() : data_( nullptr ), size_( 0 ) { }
-
-  /* Constructs a string reference object from a ref and a size. */
-  basic_string_ref( const basic_string_ref& ref, size_t size )
-    : data_( ref.data_ ),
-    size_( size ) {
-    assert( size <= ref.size_ );
+  CONSTEXPR basic_string_ref() NOEXCEPT
+    : data_(nullptr), size_(0) {
   }
 
-  /* Constructs a string reference object from a C string and a size. */
-  basic_string_ref( const char_type* s, size_t size )
-    : data_( s ),
-    size_( size ) { 
+  // Constructs a string reference object from a ref and a size.
+  basic_string_ref(const basic_string_ref& ref, size_t size) NOEXCEPT
+    : data_(ref.data_),
+    size_(size) {
+    assert(size <= ref.size_);
   }
 
-  /* Constructs a string reference object from a C string computing
-     the size with ``std::char_traits<Char>::length``. */
-  basic_string_ref( const char_type* s )
+  // Constructs a string reference object from a C string and a size.
+  CONSTEXPR basic_string_ref(const char_type* s, size_t size) NOEXCEPT
+    : data_(s), size_(size) {
+  }
+
+  // Constructs a string reference object from a C string computing
+  // the size with ``std::char_traits<Char>::length``.
+  CONSTEXPR basic_string_ref(const char_type* s) NOEXCEPT
     : data_(s), size_(s ? traits_type::length(s) : 0) {
   }
 
-  basic_string_ref(const std::basic_string<char_type>& s):
-    data_(s.c_str()), size_(s.size()) {
+  CONSTEXPR basic_string_ref(const std::basic_string<char_type>& s) NOEXCEPT
+    : data_(s.c_str()), size_(s.size()) {
   }
 
-  basic_string_ref(const std::basic_string<char_type>& str, size_t size):
-    data_(str.c_str()), size_(size) {
+  CONSTEXPR basic_string_ref(const std::basic_string<char_type>& str, size_t size) NOEXCEPT
+    : data_(str.c_str()), size_(size) {
   }
 
-  const char_type& operator[]( size_t i ) const {
-    assert( i < size_ );
+  const char_type& operator[](size_t i) const NOEXCEPT {
+    assert(i < size_);
     return data_[i];
   }
 
-  /* Returns the pointer to a C string. */
-  const char_type* c_str() const NOEXCEPT{ return data_; }
+  // Returns the pointer to a C string.
+  CONSTEXPR const char_type* c_str() const NOEXCEPT { return data_; }
 
-    /* Returns the string size. */
-  size_t size() const NOEXCEPT{ return size_; }
-  bool null() const NOEXCEPT{ return !data_; }
-  bool empty() const NOEXCEPT{ return null() || 0 == size_; }
-  const char_type* begin() const NOEXCEPT{ return data_; }
-  const char_type* end() const NOEXCEPT{ return data_ + size_; }
+  // Returns the string size.
+  CONSTEXPR size_t size() const NOEXCEPT { return size_; }
 
-  operator std::basic_string<char_type>() const {
+  CONSTEXPR bool null() const NOEXCEPT { return !data_; }
+  CONSTEXPR bool empty() const NOEXCEPT { return null() || 0 == size_; }
+  CONSTEXPR const char_type* begin() const NOEXCEPT{ return data_; }
+  CONSTEXPR const char_type* end() const NOEXCEPT{ return data_ + size_; }
+
+  CONSTEXPR operator std::basic_string<char_type>() const {
     return std::basic_string<char_type>(data_, size_);
   }
 
-  /* friends */
+  // friends
   friend int compare( const basic_string_ref& lhs, 
                       const char_type* rhs, 
                       size_t rhs_size ) {
