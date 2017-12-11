@@ -1,6 +1,9 @@
 devel
 -----
 
+* UI: fixed broken foxx configuration keys. Some valid configuration values
+  could not be edited via the ui.
+
 * UI: fixed disappearing of the navigation label in some case special case
 
 * fixed issue #3917: traversals with high maximal depth take extremely long
