@@ -4636,7 +4636,7 @@ struct GeoIndexInfo {
 
   // ============ Distance params ============
   
-  AstNode* distanceCenter;
+  AstNode const* distanceCenter;
   AstNode const* distanceCenterLat;
   AstNode const* distanceCenterLng;
   
@@ -4662,10 +4662,10 @@ struct GeoIndexInfo {
   AstNode const* limit = nullptr;
   
   // ============ Attributes accessed ============
-  std::vector<std::string> location;  // access path to location field
-  std::vector<std::string> longitude;  // access path to longitude
-  std::vector<std::string> latitude;   // access path to latitude
-  
+  AstNode const* locationVar = nullptr;// access to location field
+  AstNode const* latitudeVar = nullptr;// access path to longitude
+  AstNode const* longitudeVar = nullptr;// access path to latitude
+
   /// contains this node a valid condition
   bool valid = true;
 };
@@ -4716,8 +4716,10 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan,
       if (index->fields()[0] == attributeAccess1.second &&
           index->fields()[1] == attributeAccess2.second) {
         info.index = index;
-        TRI_AttributeNamesJoinNested(attributeAccess1.second, info.longitude, true);
-        TRI_AttributeNamesJoinNested(attributeAccess2.second, info.latitude, true);
+        info.latitudeVar = firstArg;
+        info.longitudeVar = secondArg;
+        /*TRI_AttributeNamesJoinNested(attributeAccess1.second, info.longitude, true);
+        TRI_AttributeNamesJoinNested(attributeAccess2.second, info.latitude, true);*/
         return true;
       }
     } else if ((isGeo1 || isS2) && fieldNum == 1) {
@@ -4736,8 +4738,10 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan,
       fields2.back().name += geoJson ? "[0]" : "[1]";
       if (fields1 == attributeAccess1.second && fields2 == attributeAccess2.second) {
         info.index = index;
-        TRI_AttributeNamesJoinNested(attributeAccess1.second, info.longitude, true);
-        TRI_AttributeNamesJoinNested(attributeAccess2.second, info.latitude, true);
+        info.latitudeVar = secondArg;
+        info.longitudeVar = firstArg;
+        /*TRI_AttributeNamesJoinNested(attributeAccess1.second, info.longitude, true);
+        TRI_AttributeNamesJoinNested(attributeAccess2.second, info.latitude, true);*/
         return true;
       }
     } // if isGeo 1 or 2
@@ -4776,7 +4780,8 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* arg, GeoIndexInf
       // check access paths of attributes in ast and those in index match
       if (index->fields()[0] == attributeAccess.second) {
         info.index = index;
-        TRI_AttributeNamesJoinNested(attributeAccess.second, info.location, true);
+        info.locationVar = arg;
+        //TRI_AttributeNamesJoinNested(attributeAccess.second, info.location, true);
         return true;
       }
     }
@@ -5036,43 +5041,49 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
 // contains all parameters required by the MMFilesGeoIndex
 std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
                                              GeoIndexInfo const& info) {
-  /*auto ast = plan->getAst();
-  AstNode* an = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-  if (info.distanceCenterLat && info.distanceCenterLng) { // legacy
-    TRI_ASSERT(info.isSorted);
-    TRI_ASSERT(info.ascending);
+  Ast* ast = plan->getAst();
+  AstNode* func = nullptr;
+  if (info.distanceCenterLat || info.distanceCenter) {
+    // create GEO_CENTER_CONTAINS
+    AstNode* args = ast->createNodeArray(3);
+    if (info.distanceCenterLat && info.distanceCenterLng) { // legacy
+      TRI_ASSERT(info.isSorted && info.ascending && info.limit != nullptr);
+      AstNode* array = ast->createNodeArray(2);
+      array->addMember(info.distanceCenterLng); // GeoJSON ordering
+      array->addMember(info.distanceCenterLat);
+      args->addMember(array);
+    } else {
+      TRI_ASSERT(info.distanceCenter);
+      TRI_ASSERT(info.isSorted);
+      args->addMember(info.distanceCenter);  // center location
+    }
     
-    auto varAstNode = ast->createNodeValueString(info.collection->name.c_str(),
-                                                 info.collection->name.size());
-    
-    auto args = ast->createNodeArray(info.within ? 4 : 3);
-    args->addMember(varAstNode);  // collection
-    args->addMember(info.distanceCenterLat);  // latitude
-    args->addMember(info.distanceCenterLng); // longitude
-  } else if (info.distanceCenter != nullptr) {
-    TRI_ASSERT(info.isSorted);
+    args->addMember(info.limit);
+    if (info.locationVar) {
+      args->addMember(info.locationVar);
+    } else {
+      TRI_ASSERT(info.latitudeVar && info.longitudeVar);
+      AstNode* array = ast->createNodeArray(2);
+      array->addMember(info.longitudeVar); // GeoJSON ordering
+      array->addMember(info.latitudeVar);
+      args->addMember(array);
+    }
+    func = ast->createNodeFunctionCall("GEO_CIRCLE_CONTAINS", args);
+  } else if (info.filterMode != geo::FilterType::NONE) { // TODO allow both?
+    // create GEO_CONTAINS / GEO_INTERSECTS
+    TRI_ASSERT(info.filterMask);
+    TRI_ASSERT(info.locationVar);
+    AstNode* args = ast->createNodeArray(2);
+    args->addMember(info.filterMask);
+    args->addMember(info.locationVar);
+    char const* fname = info.filterMode == geo::FilterType::CONTAINS ? "GEO_CONTAINS" : "GEO_INTERSECTS";
+    func = ast->createNodeFunctionCall(fname, args);
   }
   
-
-
-  AstNode* cond = nullptr;
-  if (info.within) {
-    // WITHIN
-    args->addMember(info.range);
-    auto lessValue = ast->createNodeValueBool(info.lessgreaterequal);
-    args->addMember(lessValue);
-    cond = ast->createNodeFunctionCall("WITHIN", args);
-  } else {
-    // NEAR
-    cond = ast->createNodeFunctionCall("NEAR", args);
-  }
-
-  TRI_ASSERT(cond != nullptr);
-
-  auto condition = std::make_unique<Condition>(ast);
-  condition->andCombine(cond);
-  condition->normalize(plan);
-  return condition;*/
+  auto cond = std::make_unique<Condition>(ast);
+  cond->andCombine(func);
+  cond->normalize(plan);
+  return cond;
 }
 
 /*void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info) {
@@ -5188,7 +5199,7 @@ bool applyGeoOptimization(ExecutionPlan* plan, GeoIndexInfo& info) {
     return false;
   }*/
 
-  std::unique_ptr<Condition> condition;//(buildGeoCondition(plan, first));
+  std::unique_ptr<Condition> condition(buildGeoCondition(plan, info));
 
   auto inode = new IndexNode(
       plan, plan->nextId(), info.collection->vocbase,
