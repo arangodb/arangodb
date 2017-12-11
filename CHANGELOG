@@ -1,6 +1,9 @@
 v3.2.10 (2017-XX-XX)
 -------------------
 
+* UI: fixed broken foxx configuration keys. Some valid configuration values
+  could not be edited via the ui.
+
 * fixed issue #3640: limit in subquery
 
 * UI: fixed issue #3822: disabled name input field for system collections
