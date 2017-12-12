@@ -24,6 +24,9 @@
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
+#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
+#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
+#endif
 #endif
 
 using namespace arangodb;

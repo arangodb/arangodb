@@ -23,10 +23,10 @@
 #ifndef ARANGOD_STATISTICS_STATISTICS_WORKER_H
 #define ARANGOD_STATISTICS_STATISTICS_WORKER_H 1
 
+#include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Statistics/figures.h"
 
-#include <string>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -38,47 +38,70 @@ class StatisticsWorker final : public Thread {
 
   ~StatisticsWorker() { shutdown(); }
   void run() override;
+  
+  void beginShutdown() override;
 
  private:
   // removes old statistics
-  void collectGarbage() const;
-  void _collectGarbage(std::string const& collection, double time) const;
+  void collectGarbage();
+  void collectGarbage(std::string const& collection, double time) const;
 
   // calculate per second statistics
-  void historian() const;
-  velocypack::Builder _computePerSeconds(velocypack::Slice const&,
-                                         velocypack::Slice const&,
-                                         std::string const&) const;
-  velocypack::Builder _generateRawStatistics(std::string const& clusterId,
-                                      double const& now) const;
+  void historian();
+  void computePerSeconds(velocypack::Builder& result,
+                         velocypack::Slice const& current,
+                         velocypack::Slice const& prev);
+  void generateRawStatistics(velocypack::Builder& result, double const& now);
 
   // calculate per 15 seconds statistics
-  void historianAverage() const;
-  velocypack::Builder _compute15Minute(double start,
-                                std::string const& clusterId) const;
+  void historianAverage();
+  void compute15Minute(velocypack::Builder& builder, double start);
 
   // create statistics collections
   void createCollections() const;
-  void _createCollection(std::string const&) const;
+  void createCollection(std::string const&) const;
 
-  std::shared_ptr<arangodb::velocypack::Builder> _lastEntry(
-      std::string const& collection, double start,
-      std::string const& clusterId) const;
-  velocypack::Builder _avgPercentDistributon(velocypack::Slice const&,
-                                             velocypack::Slice const&,
-                                             velocypack::Builder const&) const;
-  velocypack::Builder _fillDistribution(
+  std::shared_ptr<arangodb::velocypack::Builder> lastEntry(
+      std::string const& collection, double start) const;
+
+  void avgPercentDistributon(velocypack::Builder& result,
+                             velocypack::Slice const&,
+                             velocypack::Slice const&,
+                             velocypack::Builder const&) const;
+
+  velocypack::Builder fillDistribution(
       basics::StatisticsDistribution const& dist) const;
 
   // save one statistics object
-  void _saveSlice(velocypack::Slice const&, std::string const&) const;
+  void saveSlice(velocypack::Slice const&, std::string const&) const;
 
-  uint64_t const HISTORY_INTERVAL = 15 * 60;  // 15 min
-  uint64_t const INTERVAL = 10;               // 10 secs
+ private:
+  static constexpr uint64_t STATISTICS_INTERVAL = 10;    // 10 secs
+  static constexpr uint64_t GC_INTERVAL = 8 * 60;        //  8 mins
+  static constexpr uint64_t HISTORY_INTERVAL = 15 * 60;  // 15 mins
+  static constexpr double INTERVAL = 10.0;               // 10 secs
 
+  enum GarbageCollectionTask {
+    GC_STATS,
+    GC_STATS_RAW,
+    GC_STATS_15
+  };
+
+  GarbageCollectionTask _gcTask; // type of garbage collection task to run 
+  
+  arangodb::basics::ConditionVariable _cv;
   velocypack::Builder _bytesSentDistribution;
   velocypack::Builder _bytesReceivedDistribution;
   velocypack::Builder _requestTimeDistribution;
+ 
+  // builder object used to create bind variables. this is reused for each query 
+  std::shared_ptr<velocypack::Builder> _bindVars;
+
+  // a reusable builder to save a few memory allocations per statistics invocation
+  velocypack::Builder _rawBuilder;
+  velocypack::Builder _tempBuilder;
+  
+  std::string _clusterId;
 };
 }
 
