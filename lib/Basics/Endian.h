@@ -68,6 +68,7 @@ template<typename T> struct EndianTraits<T,2> {
 #elif _WIN32
     if(!isLittleEndian()) { ByteSwap(in); }
 #endif
+    return in;
   }
   inline static type letoh (type in) {
 #ifdef __APPLE__
