@@ -142,7 +142,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare(true);
+    auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
   }
@@ -151,7 +151,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("tfidf", "true");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare(true);
+    auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
   }
@@ -160,7 +160,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("tfidf", "{\"with-norms\": true}");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare(true);
+    auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
   }
@@ -169,7 +169,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("tfidf", "false");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare(true);
+    auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
   }
@@ -178,7 +178,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("tfidf", "{\"with-norms\": false}");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare(true);
+    auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
   }

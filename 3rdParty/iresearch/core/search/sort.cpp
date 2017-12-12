@@ -137,7 +137,7 @@ order::prepared order::prepare() const {
 
   size_t offset = 0;
   for (auto& entry : order_) {
-    pord.order_.emplace_back(entry.sort().prepare(entry.reverse()));
+    pord.order_.emplace_back(entry.sort().prepare(), entry.reverse());
     prepared::prepared_sort& psort = pord.order_.back();
     const sort::prepared& bucket = *psort.bucket;
     pord.features_ |= bucket.features();
@@ -275,11 +275,11 @@ bool order::prepared::less(const byte_type* lhs, const byte_type* rhs) const {
     auto& bucket = *(prepared_sort.bucket);
 
     if (bucket.less(lhs, rhs)) {
-      return true;
+      return !prepared_sort.reverse;
     }
 
     if (bucket.less(rhs, lhs)) {
-      return false;
+      return prepared_sort.reverse;
     }
 
     lhs += bucket.size();

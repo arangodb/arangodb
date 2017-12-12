@@ -329,13 +329,10 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
  public:
   DECLARE_FACTORY(prepared);
 
-  sort(float_t k, float_t b, bool normalize, bool reverse)
+  sort(float_t k, float_t b, bool normalize)
     : k_(k),
       b_(b),
       normalize_(normalize) {
-    static const std::function<bool(score_t, score_t)> greater = std::greater<score_t>();
-    static const std::function<bool(score_t, score_t)> less = std::less<score_t>();
-    less_ = reverse ? &greater : &less;
   }
 
   virtual const flags& features() const override {
@@ -386,7 +383,7 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
   }
 
   virtual bool less(const score_t& lhs, const score_t& rhs) const override {
-    return (*less_)(lhs, rhs);
+    return lhs < rhs;
   }
 
  private:
@@ -443,8 +440,8 @@ bm25_sort::bm25_sort(
 ): sort(bm25_sort::type()), k_(k), b_(b), normalize_(normalize) {
 }
 
-sort::prepared::ptr bm25_sort::prepare(bool reverse) const {
-  return bm25::sort::make<bm25::sort>(k_, b_, normalize_, reverse);
+sort::prepared::ptr bm25_sort::prepare() const {
+  return bm25::sort::make<bm25::sort>(k_, b_, normalize_);
 }
 
 NS_END // ROOT

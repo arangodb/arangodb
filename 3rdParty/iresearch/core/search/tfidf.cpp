@@ -222,10 +222,8 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
  public:
   DECLARE_FACTORY(prepared);
 
-  sort(bool normalize, bool reverse): normalize_(normalize) {
-    static const std::function<bool(score_t, score_t)> greater = std::greater<score_t>();
-    static const std::function<bool(score_t, score_t)> less = std::less<score_t>();
-    less_ = reverse ? &greater : &less;
+  sort(bool normalize) NOEXCEPT
+    : normalize_(normalize) {
   }
 
   virtual const flags& features() const override {
@@ -274,7 +272,7 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
   }
 
   virtual bool less(const score_t& lhs, const score_t& rhs) const override {
-    return (*less_)(lhs, rhs);
+    return lhs < rhs;
   }
 
  private:
@@ -329,8 +327,8 @@ tfidf_sort::tfidf_sort(bool normalize)
     normalize_(normalize) {
 }
 
-sort::prepared::ptr tfidf_sort::prepare(bool reverse) const {
-  return tfidf::sort::make<tfidf::sort>(normalize_, reverse);
+sort::prepared::ptr tfidf_sort::prepare() const {
+  return tfidf::sort::make<tfidf::sort>(normalize_);
 }
 
 NS_END // ROOT
