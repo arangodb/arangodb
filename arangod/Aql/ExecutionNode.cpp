@@ -573,9 +573,9 @@ ExecutionNode const* ExecutionNode::getLoop() const {
     auto type = node->getType();
 
     if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
-        type == ENUMERATE_LIST || type == SHORTEST_PATH ||
+        type == ENUMERATE_LIST || type == SHORTEST_PATH
 #ifdef USE_IRESEARCH
-        type == ENUMERATE_IRESEARCH_VIEW
+        || type == ENUMERATE_IRESEARCH_VIEW
 #endif
         ) {
       return node;

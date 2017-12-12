@@ -91,7 +91,7 @@ arangodb::aql::AqlValue noop(
     arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
     TRI_ERROR_NOT_IMPLEMENTED,
-    "Function is designed to use with IResearchView only"
+    "Function is designed to be used with IResearchView only"
   );
 }
 

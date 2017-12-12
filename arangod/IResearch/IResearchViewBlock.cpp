@@ -416,6 +416,7 @@ bool IResearchViewBlock::next(
     size_t limit) {
   TRI_ASSERT(_filter);
   bool done;
+  auto const numSorts = getViewNode(*this).sortCondition().size();
 
   for (size_t count = _reader.size(); _readerOffset < count; ) {
     done = false;
@@ -439,15 +440,20 @@ bool IResearchViewBlock::next(
         }
 
         // evaluate scores
+        TRI_ASSERT(!getViewNode(*this).sortCondition().empty());
         _scr->evaluate();
 
-        // FIXME copy scores (as strings + provide push custom sort to `SortNode`)
-        // registerId's are sequential
+        // copy scores, registerId's are sequential
         auto scoreRegs = curRegs;
-        for (size_t i = 0, size = getViewNode(*this).sortCondition().size(); i < size; ++i) {
-          auto const scoreValue = _order.get<float_t>(_scrVal.c_str(), i);
 
-          res.setValue(pos, ++scoreRegs, AqlValue(AqlValueHintDouble(scoreValue)));
+        for (size_t i = 0; i < numSorts; ++i) {
+          struct AqlStringValueTraits { typedef char char_type; };
+
+          res.setValue(
+            pos,
+            ++scoreRegs,
+            _order.to_string<AqlValue, AqlStringValueTraits>(_scrVal.c_str(), i)
+          );
         }
       }
 

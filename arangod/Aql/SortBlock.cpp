@@ -29,15 +29,78 @@
 
 using namespace arangodb::aql;
 
-SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
-    : ExecutionBlock(engine, en), _sortRegisters(), _stable(en->_stable), _mustFetchAll(true) {
-  for (auto const& p : en->_elements) {
-    auto it = en->getRegisterPlan()->varInfo.find(p.var->id);
-    TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
+#ifdef USE_IRESEARCH
+
+#include "IResearch/IResearchViewNode.h"
+#include "IResearch/IResearchOrderFactory.h"
+#include "IResearch/AqlHelper.h"
+
+void fillSortRegisters(
+    std::vector<std::tuple<RegisterId, bool, irs::sort::prepared::ptr>>& sortRegisters,
+    SortNode const& en
+) {
+  TRI_ASSERT(en.plan());
+  auto& execPlan = *en.plan();
+
+  auto const& elements = en.getElements();
+  sortRegisters.reserve(elements.size());
+  std::unordered_map<ExecutionNode const*, size_t> offsets(sortRegisters.capacity());
+
+  irs::sort::ptr comparer;
+
+  for (auto const& p : elements) {
+    auto const varId = p.var->id;
+    auto it = en.getRegisterPlan()->varInfo.find(varId);
+    TRI_ASSERT(it != en.getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-    _sortRegisters.emplace_back(
-        std::make_pair(it->second.registerId, p.ascending));
+    sortRegisters.emplace_back(it->second.registerId, p.ascending, nullptr);
+
+    auto const* setter = execPlan.getVarSetBy(varId);
+
+    if (setter && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == setter->getType()) {
+      // sort condition is covered by `IResearchViewNode`
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto const& viewNode = dynamic_cast<arangodb::iresearch::IResearchViewNode const&>(*setter);
+#else
+      auto const& viewNode = static_cast<arangodb::iresearch::IResearchViewNode const&>(*setter);
+#endif // ARANGODB_ENABLE_MAINTAINER_MODE
+
+      auto& offset = offsets[&viewNode];
+      auto* node = viewNode.sortCondition()[offset++].node;
+
+      if (arangodb::iresearch::OrderFactory::comparer(&comparer, *node)) {
+        std::get<2>(sortRegisters.back()) = comparer->prepare();
+      }
+    }
   }
+}
+
+#else
+
+void fillSortRegisters(
+    std::vector<std::tuple<RegisterId, bool>>& sortRegisters,
+    SortNode const& en
+) {
+  auto const& elements = en.getElements();
+  sortRegisters.reserve(elements.size());
+
+  for (auto const& p : elements) {
+    auto const varId = p.var->id;
+    auto it = en.getRegisterPlan()->varInfo.find(varId);
+    TRI_ASSERT(it != en.getRegisterPlan()->varInfo.end());
+    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    sortRegisters.emplace_back(it->second.registerId, p.ascending);
+}
+
+#endif // USE_IRESEARCH
+
+SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
+  : ExecutionBlock(engine, en),
+    _stable(en->_stable),
+    _mustFetchAll(true) {
+  TRI_ASSERT(en);
+  fillSortRegisters(_sortRegisters, *en);
 }
 
 SortBlock::~SortBlock() {}
@@ -235,14 +298,36 @@ void SortBlock::doSorting() {
 bool SortBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
                                         std::pair<size_t, size_t> const& b) const {
   for (auto const& reg : _sortRegisters) {
-    int cmp = AqlValue::Compare(
-        _trx, _buffer[a.first]->getValueReference(a.second, reg.first),
-        _buffer[b.first]->getValueReference(b.second, reg.first), true);
+    auto const& lhs = _buffer[a.first]->getValueReference(a.second, std::get<0>(reg));
+    auto const& rhs = _buffer[b.first]->getValueReference(b.second, std::get<0>(reg));
+
+#ifdef USE_IRESEARCH
+    auto& irsComparer = std::get<2>(reg);
+
+    if (irsComparer) {
+      arangodb::velocypack::ValueLength tmp;
+
+      auto const* lhsScore = reinterpret_cast<irs::byte_type const*>(lhs.slice().getString(tmp));
+      auto const* rhsScore = reinterpret_cast<irs::byte_type const*>(rhs.slice().getString(tmp));
+
+      if (irsComparer->less(lhsScore, rhsScore)) {
+        return std::get<1>(reg);
+      }
+
+      if (irsComparer->less(rhsScore, lhsScore)) {
+        return !std::get<1>(reg);
+      }
+
+      continue;
+    }
+#endif
+
+    int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
 
     if (cmp < 0) {
-      return reg.second;
+      return std::get<1>(reg);
     } else if (cmp > 0) {
-      return !reg.second;
+      return !std::get<1>(reg);
     }
   }
 

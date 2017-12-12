@@ -53,7 +53,7 @@ struct dummy_scorer: public irs::sort {
   DECLARE_SORT_TYPE() { static irs::sort::type_id type("TEST::TFIDF"); return type; }
   static ptr make(const irs::string_ref& args) { if (!validateArgs(args)) return nullptr; PTR_NAMED(dummy_scorer, ptr); return ptr; }
   dummy_scorer(): irs::sort(dummy_scorer::type()) { }
-  virtual sort::prepared::ptr prepare(bool) const override { return nullptr; }
+  virtual sort::prepared::ptr prepare() const override { return nullptr; }
 };
 
 /*static*/ std::function<bool(irs::string_ref const&)> dummy_scorer::validateArgs =

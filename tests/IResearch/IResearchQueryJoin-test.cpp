@@ -65,6 +65,7 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "search/scorers.hpp"
 #include "utils/utf8_path.hpp"
 
 #include <velocypack/Iterator.h>
@@ -72,6 +73,96 @@
 extern const char* ARGV0; // defined in main.cpp
 
 NS_LOCAL
+
+struct CustomScorer : public irs::sort {
+  struct Prepared: public irs::sort::prepared_base<float_t> {
+   public:
+    DECLARE_FACTORY(Prepared);
+
+    Prepared(float_t i)
+      : i(i) {
+    }
+
+    virtual void add(score_t& dst, const score_t& src) const override {
+      dst += src;
+    }
+
+    virtual irs::flags const& features() const override {
+      return irs::flags::empty_instance();
+    }
+
+    virtual bool less(const score_t& lhs, const score_t& rhs) const override {
+      return lhs < rhs;
+    }
+
+    virtual irs::sort::collector::ptr prepare_collector() const override {
+      return nullptr;
+    }
+
+    virtual void prepare_score(score_t& score) const override {
+      score = 0.f;
+    }
+
+    virtual irs::sort::scorer::ptr prepare_scorer(
+      irs::sub_reader const&,
+      irs::term_reader const&,
+      irs::attribute_store const&,
+      irs::attribute_view const&
+    ) const override {
+      struct Scorer : public irs::sort::scorer {
+        Scorer(size_t i) : i(i) { }
+
+        virtual void score(irs::byte_type* score_buf) override {
+          *reinterpret_cast<score_t*>(score_buf) = i;
+        }
+
+        float_t i;
+      };
+
+      return irs::sort::scorer::make<Scorer>(i);
+    }
+
+    float_t i;
+    bool reverse;
+  };
+
+  static ::iresearch::sort::type_id const& type() {
+    static ::iresearch::sort::type_id TYPE("customscorer");
+    return TYPE;
+  }
+
+  static irs::sort::ptr make(irs::string_ref const& args) {
+    if (args.null()) {
+      return std::make_shared<CustomScorer>(0.f);
+    }
+
+    // velocypack::Parser::fromJson(...) will throw exception on parse error
+    auto json = arangodb::velocypack::Parser::fromJson(args.c_str(), args.size());
+    auto slice = json ? json->slice() : arangodb::velocypack::Slice();
+
+    if (!slice.isArray()) {
+      return nullptr; // incorrect argument format
+    }
+
+    arangodb::velocypack::ArrayIterator itr(slice);
+
+    if (!itr.valid()) {
+      return nullptr;
+    }
+
+    return std::make_shared<CustomScorer>(itr.value().getNumber<size_t>());
+  }
+
+  CustomScorer(size_t i) : irs::sort(CustomScorer::type()), i(i) {}
+
+  virtual irs::sort::prepared::ptr prepare() const override {
+    return irs::memory::make_unique<Prepared>(i);
+  }
+
+  size_t i;
+}; // CustomScorer
+
+REGISTER_SCORER(CustomScorer);
 
 struct TestTermAttribute: public irs::term_attribute {
  public:
@@ -213,6 +304,12 @@ struct IResearchQuerySetup {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
+
+    // external function names must be registred in upper-case
+    // user defined functions have ':' in the external function name
+    // function arguments string format: requiredArg1[,requiredArg2]...[|optionalArg1[,optionalArg2]...]
+    arangodb::aql::Function customScorer("CUSTOMSCORER", ".|+", true, false, true, true);
+    arangodb::iresearch::addFunction(*arangodb::aql::AqlFunctionFeature::AQLFUNCTIONS, customScorer);
 
     auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
@@ -1063,6 +1160,53 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
       arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
       arangodb::velocypack::Slice(insertedDocsView[5].vpack())
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // dependent sort condition in inner loop + custom scorer
+  // (must recreate view iterator each loop iteration)
+  //
+  // FOR x IN 0..5
+  //   FOR d IN VIEW testView
+  //   FILTER d.seq == x
+  //   SORT customscorer(d,x)
+  // RETURN d;
+  {
+    std::string const query = "FOR x IN 0..5 FOR d IN VIEW testView FILTER d.seq == x SORT customscorer(d, x) DESC RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query,
+      {
+        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+      }
+    ));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[3].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[1].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);

@@ -102,7 +102,15 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief getVariablesSetHere
   std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final {
-    return {_outVariable};
+    std::vector<arangodb::aql::Variable const*> vars(1 + _sortCondition.size());
+
+    *std::transform(
+      _sortCondition.begin(), sortCondition().end(), vars.begin(),
+      [](IResearchSort const& sort) {
+        return sort.var;
+    }) = _outVariable;
+
+    return vars;
   }
 
   /// @brief return out variable
