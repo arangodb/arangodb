@@ -416,7 +416,7 @@ static AgencyCommResult CasWithResult(
   AgencyOperation write(key, AgencyValueOperationType::SET, newJson);
   write._ttl = 0; // no ttl
   if (oldValue.isNone()) { // for some reason this doesn't work
-    // precondition: the key must equal old value
+    // precondition: the key must be empty
     AgencyPrecondition pre(key, AgencyPrecondition::Type::EMPTY, true);
     AgencyGeneralTransaction trx(write, pre);
     return agency.sendTransactionWithFailover(trx, timeout);
@@ -544,10 +544,9 @@ void HeartbeatThread::runSingleServer() {
           VPackSlice const res = result.slice();
           TRI_ASSERT(res.length() == 1 && res[0].isObject());
           leaderSlice = res[0].get(AgencyCommManager::slicePath(leaderPath));
-          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader";
           TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader, current leader is: " << leaderSlice.copyString();
           // intentionally falls through to case 3
-          
         } else {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "got an unexpected agency error "
           << "code: " << result.httpCode() << " msg: " << result.errorMessage();
@@ -557,7 +556,7 @@ void HeartbeatThread::runSingleServer() {
       
       // Case 2: Current server is leader
       if (leaderSlice.compareString(_myId) == 0) {
-        LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Currently leader: " << _myId;
+        LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Current leader: " << _myId;
         
         if (applier->isRunning()) {
           applier->stopAndJoin();
@@ -588,8 +587,8 @@ void HeartbeatThread::runSingleServer() {
         // on this server may prevent us from being a proper follower. We wait for
         // all ongoing ops to stop, and make sure nothing is committed:
         // setting server mode to REDIRECT stops DDL ops and write transactions
-        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Detected leader to secondary change"
-                                           << " this might take a few seconds";
+        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Detected leader to secondary change, "
+                                           << "this might take a few seconds";
         Result res = GeneralServerFeature::JOB_MANAGER->clearAllJobs();
         if (res.fail()) {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "could not cancel all async jobs "
@@ -603,6 +602,9 @@ void HeartbeatThread::runSingleServer() {
         // configure applier for new endpoint
         if (applier->isRunning()) {
           applier->stopAndJoin();
+        }
+        while (applier->isShuttingDown()) {
+          usleep(50 * 1000);
         }
         
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
@@ -622,11 +624,12 @@ void HeartbeatThread::runSingleServer() {
         // but not initially
         Result r = syncer.run(false);
         if (r.fail()) {
-          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Initial sync from leader "
+          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "initial sync from leader "
           << "failed: " << r.errorMessage();
           continue; // try again next time
         }
         
+        LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "initial sync from leader finished";
         // steal the barrier from the syncer
         TRI_voc_tick_t barrierId = syncer.stealBarrier();
         TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
@@ -635,10 +638,10 @@ void HeartbeatThread::runSingleServer() {
         applier->forget();
         
         applier->reconfigure(config);
+        LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "now starting the applier from initial tick " << lastLogTick;
         applier->start(lastLogTick, true, barrierId);
         
-      } else if (!applier->isRunning()) {
-        
+      } else if (!applier->isRunning() && !applier->isShuttingDown()) {
         // try to restart the applier
         if (applier->hasState()) {
           Result error = applier->lastError();
@@ -648,7 +651,14 @@ void HeartbeatThread::runSingleServer() {
           } else if (error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) ||
                      error.isNot(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
             // restart applier if possible
-            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "restarting stopped applier...";
+            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "restarting stopped applier... ";
+            
+            VPackBuilder builder;
+            builder.openObject();
+            applier->toVelocyPack(builder);
+            builder.close();
+            LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "previous applier state was: " << builder.slice().toJson();
+
             applier->start(0, false, 0);
             continue; // check again next time
           } 
