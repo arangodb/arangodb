@@ -81,15 +81,19 @@ struct HealthRecord {
         version = 2;
         syncStatus = node("SyncStatus").getString();
         if (node.has("SyncTime")) {
-          lastAcked = node("LastAcked").getString();
           syncTime = node("SyncTime").getString();
+        }
+        if (node.has("LastAcked")) {
+          lastAcked = node("LastAcked").getString();
         }
       } else if (node.has("LastHeartbeatStatus")) {
         version = 1;
         syncStatus = node("LastHeartbeatStatus").getString();
         if (node.has("LastHeartbeatSent")) {
-          lastAcked = node("LastHeartbeatAcked").getString();
           syncTime = node("LastHeartbeatSent").getString();
+        }
+        if (node.has("LastHeartbeatAcked")) {
+          lastAcked = node("LastHeartbeatAcked").getString();
         }
       }
       if (node.has("Host")) {
