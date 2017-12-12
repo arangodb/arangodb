@@ -164,9 +164,9 @@ inline std::pair<uint64_t, const byte_type*> read_vlong(const byte_type* begin) 
   return std::make_pair(out, begin);
 }
 
-template<typename StringType>
+template<typename StringType, typename Traits = typename StringType::traits_type>
 StringType to_string(const byte_type* const begin) {
-  typedef typename StringType::traits_type::char_type char_type;
+  typedef typename Traits::char_type char_type;
 
   const auto res = read_vint(begin);
 

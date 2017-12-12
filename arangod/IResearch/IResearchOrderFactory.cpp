@@ -38,6 +38,8 @@
 
 NS_LOCAL
 
+arangodb::aql::AstNode const EMPTY_ARGS(arangodb::aql::NODE_TYPE_ARRAY);
+
 bool validateFuncArgs(
     arangodb::aql::AstNode const* args,
     arangodb::aql::Variable const& ref
@@ -145,10 +147,9 @@ bool fromFCall(
   return makeScorer(*scorer, scorerName, *args, ctx);
 }
 
-bool fromFCall(
-    irs::sort::ptr* scorer,
-    arangodb::aql::AstNode const& node,
-    arangodb::iresearch::QueryContext const& ctx
+bool nameFromFCall(
+    std::string& scorerName,
+    arangodb::aql::AstNode const& node
 ) {
   TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL == node.type);
   auto* fn = static_cast<arangodb::aql::Function*>(node.getData());
@@ -157,22 +158,38 @@ bool fromFCall(
     return false; // no function
   }
 
-  auto& name = fn->name;
-  std::string scorerName(name);
+  scorerName = fn->name;
 
   // convert name to lower case
   std::transform(
     scorerName.begin(), scorerName.end(), scorerName.begin(), ::tolower
   );
 
-  return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
+  return true;
 }
 
-bool fromFCallUser(
+bool fromFCall(
     irs::sort::ptr* scorer,
     arangodb::aql::AstNode const& node,
     arangodb::iresearch::QueryContext const& ctx
 ) {
+  std::string scorerName;
+
+  if (!nameFromFCall(scorerName, node)) {
+    return false;
+  }
+
+  return fromFCall(
+    scorer,
+    scorerName,
+    node.getMemberUnchecked(0),
+    ctx
+  );
+}
+
+bool nameFromFCallUser(
+    irs::string_ref& scorerName,
+    arangodb::aql::AstNode const& node) {
   TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL_USER == node.type);
 
   if (arangodb::aql::VALUE_TYPE_STRING != node.value.type
@@ -180,14 +197,26 @@ bool fromFCallUser(
     return false; // no function name
   }
 
+  return arangodb::iresearch::parseValue(scorerName, node);
+}
+
+bool fromFCallUser(
+    irs::sort::ptr* scorer,
+    arangodb::aql::AstNode const& node,
+    arangodb::iresearch::QueryContext const& ctx
+) {
   irs::string_ref scorerName;
 
-  if (!arangodb::iresearch::parseValue(scorerName, node)) {
-    // failed to extract function name
+  if (!nameFromFCallUser(scorerName, node)) {
     return false;
   }
 
-  return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
+  return fromFCall(
+    scorer,
+    scorerName,
+    node.getMemberUnchecked(0),
+    ctx
+  );
 }
 
 NS_END
@@ -214,6 +243,43 @@ NS_BEGIN(iresearch)
       // expressions except function calls
       return false;
   }
+}
+
+/*static*/ bool OrderFactory::comparer(
+    irs::sort::ptr* comparer,
+    aql::AstNode const& node
+) {
+  std::string buf;
+  irs::string_ref scorerName;
+
+  switch (node.type) {
+    case arangodb::aql::NODE_TYPE_FCALL: { // function call
+      if (!nameFromFCall(buf, node)) {
+        return false;
+      }
+
+      scorerName = buf;
+    } break;
+    case arangodb::aql::NODE_TYPE_FCALL_USER: { // user function call
+      if (!nameFromFCallUser(scorerName, node)) {
+        return false;
+      }
+    } break;
+    default:
+      // IResearch does not support any
+      // expressions except function calls
+      return false;
+  }
+
+  if (!comparer) {
+    // cheap shallow check
+    return irs::scorers::exists(scorerName);
+  }
+
+  // create scorer with default arguments
+  *comparer = irs::scorers::get(scorerName, irs::string_ref::nil);
+
+  return bool(*comparer);
 }
 
 NS_END // iresearch

@@ -66,11 +66,7 @@ struct boost : public iresearch::sort {
   class prepared: public iresearch::sort::prepared_base<iresearch::boost::boost_t> {
    public:
     DECLARE_FACTORY(prepared);
-    prepared(bool reverse) {
-      static const std::function<bool(score_t, score_t)> greater = std::greater<score_t>();
-      static const std::function<bool(score_t, score_t)> less = std::less<score_t>();
-      less_ = reverse ? &greater : &less;
-    }
+    prepared() { }
 
     virtual const iresearch::flags& features() const override {
       return iresearch::flags::empty_instance();
@@ -96,7 +92,7 @@ struct boost : public iresearch::sort {
     }
 
     virtual bool less(const score_t& lhs, const score_t& rhs) const override {
-      return (*less_)(lhs, rhs);
+      return std::less<score_t>()(lhs, rhs);
     }
 
    private:
@@ -108,8 +104,8 @@ struct boost : public iresearch::sort {
   DECLARE_FACTORY_DEFAULT();
   typedef iresearch::boost::boost_t score_t;
   boost() : sort(boost::type()) {}
-  virtual sort::prepared::ptr prepare(bool reverse) const {
-    return boost::prepared::make<boost::prepared>(reverse);
+  virtual sort::prepared::ptr prepare() const {
+    return boost::prepared::make<boost::prepared>();
   }
 }; // sort::boost
 
@@ -245,7 +241,7 @@ struct custom_sort: public irs::sort {
 
   DECLARE_FACTORY_DEFAULT();
   custom_sort(): sort(custom_sort::type()) {}
-  virtual prepared::ptr prepare(bool) const {
+  virtual prepared::ptr prepare() const {
     return custom_sort::prepared::make<custom_sort::prepared>(*this);
   }
 };
@@ -366,7 +362,7 @@ struct frequency_sort: public iresearch::sort {
 
   DECLARE_FACTORY_DEFAULT();
   frequency_sort(): sort(frequency_sort::type()) {}
-  virtual prepared::ptr prepare(bool) const {
+  virtual prepared::ptr prepare() const {
     return frequency_sort::prepared::make<frequency_sort::prepared>();
   }
 }; // sort::frequency_sort

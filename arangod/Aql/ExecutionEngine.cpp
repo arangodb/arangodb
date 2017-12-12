@@ -111,8 +111,9 @@ static ExecutionBlock* CreateBlock(
     }
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+      // FIXME better to replace switch with factory method
       TRI_ASSERT(engine);
-      auto const* viewNode = static_cast<iresearch::IResearchViewNode const*>(en);
+      auto const* viewNode = static_cast<arangodb::iresearch::IResearchViewNode const*>(en);
       return viewNode->createExecutionBlock(*engine);
     }
 #endif

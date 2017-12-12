@@ -60,6 +60,11 @@ struct OrderFactory {
     aql::AstNode const& node,
     QueryContext const& ctx
   );
+
+  static bool comparer(
+    irs::sort::ptr* scorer,
+    aql::AstNode const& node
+  );
 }; // OrderFactory
 
 NS_END // iresearch

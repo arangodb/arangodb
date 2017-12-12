@@ -30,7 +30,7 @@ TEST(scorers_tests, duplicate_register) {
     static ptr make(const irs::string_ref&) { return ptr(new dummy_scorer()); }
     dummy_scorer(): irs::sort(dummy_scorer::type()) { }
 
-    prepared::ptr prepare(bool) const { return nullptr; }
+    prepared::ptr prepare() const { return nullptr; }
   };
 
   ASSERT_FALSE(irs::scorers::exists("dummy_scorer"));

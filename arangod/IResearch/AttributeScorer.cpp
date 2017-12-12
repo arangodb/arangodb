@@ -60,8 +60,7 @@ class Prepared: public irs::sort::prepared_base<Score> {
   DECLARE_FACTORY(Prepared);
 
   Prepared(
-    size_t const (&order)[arangodb::iresearch::AttributeScorer::ValueType::eLast],
-    bool reverse
+    size_t const (&order)[arangodb::iresearch::AttributeScorer::ValueType::eLast]
   );
 
   virtual void add(score_t& dst, const score_t& src) const override;
@@ -87,11 +86,10 @@ class Prepared: public irs::sort::prepared_base<Score> {
 };
 
 Prepared::Prepared(
-    size_t const (&order)[arangodb::iresearch::AttributeScorer::ValueType::eLast],
-    bool reverse
+    size_t const (&order)[arangodb::iresearch::AttributeScorer::ValueType::eLast]
 ): _attr(attributes().emplace<arangodb::iresearch::attribute::AttributePath>()), // mark sort as requiring attribute path
    _nextOrder(arangodb::iresearch::AttributeScorer::ValueType::eLast + 1), // past default set values, +1 for values unasigned by AttributeScorer
-   _reverse(reverse),
+   _reverse(false),
    _trx(attributes().emplace<arangodb::iresearch::attribute::Transaction>()) { // mark sort as requiring transaction
   std::memcpy(_order, order, sizeof(order));
 }
@@ -478,8 +476,8 @@ AttributeScorer& AttributeScorer::orderNext(ValueType type) noexcept {
   return *this;
 }
 
-irs::sort::prepared::ptr AttributeScorer::prepare(bool reverse) const {
-  auto prepared = Prepared::make<Prepared>(_order, reverse);
+irs::sort::prepared::ptr AttributeScorer::prepare() const {
+  auto prepared = Prepared::make<Prepared>(_order );
 
   if (!prepared || _attribute.empty()) {
     return prepared; // attr should be set on Prepared instance

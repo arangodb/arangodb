@@ -76,7 +76,7 @@ struct DocIdScorer: public irs::sort {
   DECLARE_SORT_TYPE() { static irs::sort::type_id type("test_doc_id"); return type; }
   static ptr make(const irs::string_ref&) { PTR_NAMED(DocIdScorer, ptr); return ptr; }
   DocIdScorer(): irs::sort(DocIdScorer::type()) { }
-  virtual sort::prepared::ptr prepare(bool) const override { PTR_NAMED(Prepared, ptr); return ptr; }
+  virtual sort::prepared::ptr prepare() const override { PTR_NAMED(Prepared, ptr); return ptr; }
 
   struct Prepared: public irs::sort::prepared_base<uint64_t> {
     virtual void add(score_t& dst, const score_t& src) const override { dst = src; }

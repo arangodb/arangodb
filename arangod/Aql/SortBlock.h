@@ -28,6 +28,10 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/SortNode.h"
 
+#ifdef USE_IRESEARCH
+#include "search/sort.hpp"
+#endif // USE_IRESEARCH
+
 namespace arangodb {
 namespace transaction {
 class Methods;
@@ -52,6 +56,12 @@ class SortBlock final : public ExecutionBlock {
 
   /// @brief dosorting
  private:
+#ifdef USE_IRESEARCH
+    typedef std::tuple<RegisterId, bool, irs::sort::prepared::ptr> SortRegister;
+#else
+    typedef std::tuple<RegisterId, bool> SortRegister;
+#endif
+
   void doSorting();
 
   /// @brief OurLessThan
@@ -59,7 +69,7 @@ class SortBlock final : public ExecutionBlock {
    public:
     OurLessThan(transaction::Methods* trx,
                 std::deque<AqlItemBlock*>& buffer,
-                std::vector<std::pair<RegisterId, bool>>& sortRegisters)
+                std::vector<SortRegister>& sortRegisters)
         : _trx(trx),
           _buffer(buffer),
           _sortRegisters(sortRegisters) {}
@@ -70,12 +80,12 @@ class SortBlock final : public ExecutionBlock {
    private:
     transaction::Methods* _trx;
     std::deque<AqlItemBlock*>& _buffer;
-    std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
+    std::vector<SortRegister>& _sortRegisters;
   };
 
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)
-  std::vector<std::pair<RegisterId, bool>> _sortRegisters;
+  std::vector<SortRegister> _sortRegisters;
 
   /// @brief whether or not the sort should be stable
   bool _stable;
