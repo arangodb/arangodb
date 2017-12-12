@@ -46,7 +46,7 @@ inline bool isLittleEndian(){
   return rv;
 }
 
-template<typename T> inline void Byteswap (T& t) {
+template<typename T> inline void ByteSwap (T& t) {
   uint8_t* ptr = (uint8_t*)(&t);
   size_t bytes = sizeof(T);
   for(size_t i = 0; i < bytes/2; i ++ ) {
