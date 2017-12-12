@@ -45,10 +45,6 @@ function runSetup () {
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   v.properties(meta);
 
-  internal.wal.flush(true, true);
-  internal.debugSetFailAt("FlushThreadDisableAll");
-  internal.wait(2); // make sure failure point takes effect
-
   c.rename('UnitTestsRecoveryDummy2');
 
   c.save({ name: 'crashme' }, true);

@@ -735,6 +735,8 @@ IResearchView::IResearchView(
         return arangodb::Result(); // view no longer in recovery state
       }
 
+      verifyKnownCollections();
+
       if (_storePersisted) {
         LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
           << "starting persisted-sync sync for iResearch view '" << id() << "'";
@@ -2142,6 +2144,28 @@ void IResearchView::FlushCallbackUnregisterer::operator()(IResearchView* view) c
     flush->unregisterCallback(view);
   } catch (...) {
     // suppress all errors
+  }
+}
+
+void IResearchView::verifyKnownCollections() {
+  for (auto cid : _meta._collections) {
+    auto collection = _logicalView->vocbase()->lookupCollection(cid);
+    if (!collection) {
+      // collection no longer exists, drop it and move on
+      LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "collection " << cid << " no longer exists! removing from view "
+        << _logicalView->id();
+      drop(cid);
+    } else {
+      // see if the link still exists, otherwise drop and move on
+      auto link = findFirstMatchingLink(*collection, *this);
+      if (!link) {
+        LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "collection " << cid << " no longer linked! removing from view "
+          << _logicalView->id();
+        drop(cid);
+      }
+    }
   }
 }
 

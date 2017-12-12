@@ -538,6 +538,8 @@ class MMFilesCollection final : public PhysicalCollection {
                         MMFilesWalMarker const*, OperationOptions& options,
                         bool& waitForSync);
 
+  LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options) const;
+
  private:
   mutable arangodb::MMFilesDitches _ditches;
 
