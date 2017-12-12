@@ -22,6 +22,18 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4101)
+  #pragma warning(disable: 4267)
+#endif
+
+  #include <cmdline.h>
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4267)
+  #pragma warning(default: 4101)
+#endif
+
 #include "shared.hpp"
 #include "index-convert.hpp"
 #include "common.hpp"
@@ -29,8 +41,6 @@
 #include "formats/formats.hpp"
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
-
-#include <cmdline.h>
 
 NS_LOCAL
 

@@ -22,6 +22,28 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4101)
+  #pragma warning(disable: 4267)
+#endif
+
+  #include <cmdline.h>
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4267)
+  #pragma warning(default: 4101)
+#endif
+
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4229)
+#endif
+
+  #include <unicode/uclean.h> // for u_cleanup
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4229)
+#endif
+
 #include "index-search.hpp"
 #include "index-put.hpp"
 #include "utils/timer_utils.hpp"
@@ -30,9 +52,6 @@
 
 #include <unordered_map>
 #include <functional>
-
-#include <cmdline.h>
-#include <unicode/uclean.h> // u_cleanup
 
 typedef std::unordered_map<
   std::string,
