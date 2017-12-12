@@ -535,6 +535,7 @@ void RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize) {
     _numRemoves = 0;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _numLogdata = 0;
+    _numIntermediateCommits++;
 #endif
     createTransaction();
   }
