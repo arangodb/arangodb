@@ -549,8 +549,20 @@ void RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize) {
   // "transaction size" counters have reached their limit
   if (_options.intermediateCommitCount <= numOperations ||
       _options.intermediateCommitSize <= newSize) {
+    TRI_IF_FAILURE("FailBeforeIntermediateCommit") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    TRI_IF_FAILURE("SegfaultBeforeIntermediateCommit") {
+      TRI_SegfaultDebugging("SegfaultBeforeIntermediateCommit");
+    }
     // LOG_TOPIC(ERR, Logger::FIXME) << "INTERMEDIATE COMMIT!";
     internalCommit();
+    TRI_IF_FAILURE("FailAfterIntermediateCommit") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    TRI_IF_FAILURE("SegfaultAfterIntermediateCommit") {
+      TRI_SegfaultDebugging("SegfaultAfterIntermediateCommit");
+    }
     _lastUsedCollection = 0;
     _numInternal = 0;
     _numInserts = 0;

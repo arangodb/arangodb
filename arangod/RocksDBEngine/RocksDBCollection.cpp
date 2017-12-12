@@ -764,6 +764,13 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   }
 #endif
 
+  TRI_IF_FAILURE("FailAfterAllCommits") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  TRI_IF_FAILURE("SegfaultAfterAllCommits") {
+    TRI_SegfaultDebugging("SegfaultAfterAllCommits");
+  }
+
   if (found > 64 * 1024) {
     // also compact the ranges in order to speed up all further accesses
     // to the collection
