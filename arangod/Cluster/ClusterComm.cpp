@@ -644,14 +644,14 @@ ClusterCommResult const ClusterComm::wait(
 
   do {
     CONDITION_LOCKER(locker, somethingReceived);
-    match_good=false;
-    status_ready=false;
+    match_good = false;
+    status_ready = false;
 
     if (ticketId == 0) {
       i_erase = responses.end();
       for (i = responses.begin(); i != responses.end() && !status_ready; i++) {
         if (match(clientTransactionID, coordTransactionID, shardID, i->second.result.get())) {
-          match_good=true;
+          match_good = true;
           return_result = *i->second.result.get();
           status_ready = (CL_COMM_SUBMITTED != return_result.status);
           if (status_ready) {
@@ -689,21 +689,20 @@ ClusterCommResult const ClusterComm::wait(
       ClusterCommTimeout now = TRI_microtime();
       if (now < endTime || 0.0 == timeout) {
         // convert to microseconds, use 10 second safety poll if no timeout
-        uint64_t micros=(0.0 != timeout ? ((endTime - now)*1000000.0) : 10000000);
+        uint64_t micros = static_cast<uint64_t>(0.0 != timeout ? ((endTime - now) * 1000000.0) : 10000000);
         somethingReceived.wait(micros);
       } else {
         // time is up, leave
         return_result.operationID = ticketId;
         // does res.coordTransactionID need to be set here too?
         return_result.status = CL_COMM_TIMEOUT;
-        match_good=false;
+        match_good = false;
       } // else
     } // if
 
   } while(!status_ready && match_good);
 
   return return_result;
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -959,11 +958,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         // is in flight, this is possible, since we might have scheduled
         // a retry later than now and simply wait till then
         if (now < actionNeeded) {
-#ifdef _WIN32
-          usleep((unsigned long) ((actionNeeded - now) * 1000000));
-#else
-          usleep((useconds_t) ((actionNeeded - now) * 1000000));
-#endif
+          std::this_thread::sleep_for(std::chrono::microseconds((unsigned long long) ((actionNeeded - now) * 1000000.0)));
         }
         continue;
       }
@@ -1259,7 +1254,7 @@ void ClusterCommThread::run() {
   _cc->communicator()->abortRequests();
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "waiting for curl to stop remaining handles";
   while (_cc->communicator()->work_once() > 0) {
-    usleep(10);
+    std::this_thread::sleep_for(std::chrono::microseconds(10));
   }
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "stopped ClusterComm thread";

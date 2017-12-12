@@ -195,7 +195,7 @@ void HeartbeatThread::run() {
         // startup aborted
         return;
       } 
-      usleep(100000);
+      std::this_thread::sleep_for(std::chrono::microseconds(100000));
     }
   }
 
@@ -264,7 +264,7 @@ void HeartbeatThread::runDBServer() {
     if (!registered) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Couldn't register plan change in agency!";
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   }
 
@@ -410,12 +410,11 @@ void HeartbeatThread::runDBServer() {
 
 /// CAS a key in the agency, works only if it does not exist, result should
 /// contain the value of the written key.
-static AgencyCommResult CasWithResult(AgencyComm agency, std::string const& key,
-                                      VPackSlice const& oldValue,
-                                      VPackSlice const& newJson, double timeout) {
+static AgencyCommResult CasWithResult(
+  AgencyComm agency, std::string const& key, VPackSlice const& oldValue,
+  VPackSlice const& newJson, double timeout) {
   AgencyOperation write(key, AgencyValueOperationType::SET, newJson);
   write._ttl = 0; // no ttl
-  
   if (oldValue.isNone()) { // for some reason this doesn't work
     // precondition: the key must equal old value
     AgencyPrecondition pre(key, AgencyPrecondition::Type::EMPTY, true);
@@ -457,10 +456,10 @@ void HeartbeatThread::runSingleServer() {
     // like arguments greater than 1000000
     while (remain > 0.0) {
       if (remain >= 0.5) {
-        usleep(500000);
+        std::this_thread::sleep_for(std::chrono::microseconds(500000));
         remain -= 0.5;
       } else {
-        usleep(static_cast<TRI_usleep_t>(remain * 1000.0 * 1000.0));
+        std::this_thread::sleep_for(std::chrono::microseconds(uint64_t(remain * 1000.0 * 1000.0)));
         remain = 0.0;
       }
     }
@@ -536,13 +535,9 @@ void HeartbeatThread::runSingleServer() {
         
         if (result.successful()) { // sucessfull leadership takeover
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "All your base are belong to us";
-          if (applier->isRunning()) {
-            applier->stopAndJoin();
-          }
-          ServerState::instance()->setFoxxmaster(_myId);
-          ServerState::setServerMode(ServerState::Mode::DEFAULT);
-          continue; // nothing more to do here
-          
+          leaderSlice = myIdBuilder.slice();
+          // intentionally falls through to case 2
+
         } else if (result.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
           // we did not become leader, someone else is, response contains
           // current value in agency
@@ -601,7 +596,7 @@ void HeartbeatThread::runSingleServer() {
             << res.errorMessage();
         }
         // wait for everything to calm down for good measure
-        sleep(10);
+        std::this_thread::sleep_for(std::chrono::seconds(10));
       }
       
       if (applier->endpoint() != endpoint) {
@@ -612,12 +607,12 @@ void HeartbeatThread::runSingleServer() {
         
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
-        config._endpoint = endpoint;
-        config._autoResync = true;
-        config._autoResyncRetries = 3;
         if (config._jwt.empty()) {
           config._jwt = auth->jwtToken();
         }
+        config._endpoint = endpoint;
+        config._autoResync = true;
+        config._autoResyncRetries = 3;
         // TODO: how do we initially configure the applier
         
         // start initial synchronization
@@ -911,10 +906,10 @@ void HeartbeatThread::runCoordinator() {
       // like arguments greater than 1000000
       while (remain > 0.0) {
         if (remain >= 0.5) {
-          usleep(500000);
+          std::this_thread::sleep_for(std::chrono::microseconds(500000));
           remain -= 0.5;
         } else {
-          usleep((TRI_usleep_t)(remain * 1000.0 * 1000.0));
+          std::this_thread::sleep_for(std::chrono::microseconds(uint64_t(remain * 1000.0 * 1000.0)));
           remain = 0.0;
         }
       }
@@ -965,8 +960,8 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
   if (doSleep) {
     // Sleep a little longer, since this might be due to some synchronisation
     // of shards going on in the background
-    usleep(500000);
-    usleep(500000);
+    std::this_thread::sleep_for(std::chrono::microseconds(500000));
+    std::this_thread::sleep_for(std::chrono::microseconds(500000));
   }
   CONDITION_LOCKER(guard, _condition);
   _wasNotified = true;

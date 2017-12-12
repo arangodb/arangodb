@@ -445,10 +445,10 @@ void Scheduler::rebalanceThreads() {
       }
       // add an extra sleep so the system has a chance to recover and provide
       // the needed resources
-      usleep(20000);
+      std::this_thread::sleep_for(std::chrono::microseconds(20000));
     }
 
-    usleep(5000);
+    std::this_thread::sleep_for(std::chrono::microseconds(5000));
   }
 }
 
@@ -484,7 +484,7 @@ void Scheduler::shutdown() {
     // we can be quite generous here with waiting...
     // as we are in the shutdown already, we do not care if we need to wait for a
     // bit longer
-    usleep(20000); 
+    std::this_thread::sleep_for(std::chrono::microseconds(20000)); 
   }
 
   // remove all queued work descriptions in the work monitor first

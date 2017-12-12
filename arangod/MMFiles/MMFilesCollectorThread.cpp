@@ -1052,7 +1052,7 @@ int MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfile
     }
 
     // wait outside the mutex for the flag to be cleared
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 
   if (maxNumPendingOperations > 0 &&

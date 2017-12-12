@@ -1389,7 +1389,7 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
         }
         return status;
       }
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1)); 
       if (count >= 8) {
         TRI_ASSERT(external != nullptr); 
         killProcess(external, SIGKILL);

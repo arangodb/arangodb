@@ -200,7 +200,7 @@ bool RocksDBSettingsManager::lockForSync(bool force) {
       if (res) {
         break;
       }
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   } else {
     bool expected = false;

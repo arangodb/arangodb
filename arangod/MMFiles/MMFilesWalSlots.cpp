@@ -224,7 +224,7 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_vo
               return MMFilesWalSlotInfo(res);
             }
 
-            usleep(10 * 1000);
+            std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
             // try again in next iteration
           } else {
             TRI_ASSERT(_logfile != nullptr);
@@ -578,7 +578,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
             return res;
           }
 
-          usleep(10 * 1000);
+          std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
           // try again in next iteration
         } else {
           TRI_ASSERT(_logfile != nullptr);

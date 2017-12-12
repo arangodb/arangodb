@@ -74,7 +74,7 @@ apps/                   # the instance's application directory
 
 Documents in ArangoDB are JSON objects. These objects can be nested (to any depth) and may contain arrays. Each document is uniquely identified by its document handle.
 
-### Document ETag
+### Document Etag
 
 The document revision (`_rev` value) enclosed in double quotes. The revision is returned by several HTTP API methods in the Etag HTTP header.
 

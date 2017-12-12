@@ -176,7 +176,7 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
   while (_state.isShuttingDown()) {
     // another instance is still around
     writeLocker.unlock();
-    usleep(50 * 1000);
+    std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
     writeLocker.lock();
   }
 
@@ -209,7 +209,7 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
   }
   
   while (!_thread->hasStarted()) {
-    usleep(20000);
+    std::this_thread::sleep_for(std::chrono::microseconds(20000));
   }
   
   TRI_ASSERT(!_state.isRunning() && !_state.isShuttingDown());
@@ -257,7 +257,7 @@ bool ReplicationApplier::sleepIfStillActive(uint64_t sleepTime) {
     if (sleepChunk > sleepTime) {
       sleepChunk = sleepTime;
     }
-    usleep(static_cast<TRI_usleep_t>(sleepChunk));
+    std::this_thread::sleep_for(std::chrono::microseconds(sleepChunk));
     sleepTime -= sleepChunk;
   }
   
@@ -490,7 +490,7 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
   if (joinThread) {
     while (_state.isShuttingDown()) {
       writeLocker.unlock();
-      usleep(50 * 1000);
+      std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
       writeLocker.lock();
     }
     

@@ -223,16 +223,16 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
       reinterpret_cast<char const*>(marker) +
       MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
   uint8_t const* vpack = slice.begin();
-  
-  LocalDocumentId localDocumentId; 
+
+  LocalDocumentId localDocumentId;
   if (marker->getSize() == MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + slice.byteSize() + sizeof(LocalDocumentId::BaseType)) {
     // we do have a LocalDocumentId stored at the end of the marker
     uint8_t const* ptr = vpack + slice.byteSize();
     localDocumentId = LocalDocumentId(encoding::readNumber<LocalDocumentId::BaseType>(ptr, sizeof(LocalDocumentId::BaseType)));
-    //LOG_TOPIC(ERR, Logger::FIXME) << "OPEN: FOUND LOCALDOCUMENTID: " << localDocumentId.id(); 
+    //LOG_TOPIC(ERR, Logger::FIXME) << "OPEN: FOUND LOCALDOCUMENTID: " << localDocumentId.id();
   } else {
     localDocumentId = LocalDocumentId::create();
-    //LOG_TOPIC(ERR, Logger::FIXME) << "OPEN: FOUND NO LOCALDOCUMENTID: " << localDocumentId.id(); 
+    //LOG_TOPIC(ERR, Logger::FIXME) << "OPEN: FOUND NO LOCALDOCUMENTID: " << localDocumentId.id();
   }
 
   VPackSlice keySlice;
@@ -605,8 +605,7 @@ int MMFilesCollection::close() {
   while (_ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_DROP) ||
          _ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_RENAME) ||
          _ditches.contains(MMFilesDitch::TRI_DITCH_COMPACTION)) {
-    WRITE_UNLOCKER(unlocker, _logicalCollection->lock());
-    usleep(20000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 
   {
@@ -2563,7 +2562,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
-      usleep(static_cast<TRI_usleep_t>(waitTime));
+      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
       if (waitTime < 32) {
         waitTime *= 2;
       }
@@ -2676,7 +2675,7 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, double timeout) {
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
-      usleep(static_cast<TRI_usleep_t>(waitTime));
+      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
       if (waitTime < 32) {
         waitTime *= 2;
       }
@@ -2813,7 +2812,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
-  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options); 
+  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   //LOG_TOPIC(ERR, Logger::FIXME) << "INSERT. EFFECTIVE LOCALDOCUMENTID: " << documentId.id();
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
@@ -3267,7 +3266,7 @@ Result MMFilesCollection::update(
     ManagedDocumentResult& result, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
     ManagedDocumentResult& previous, VPackSlice const key) {
-  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options); 
+  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   //LOG_TOPIC(ERR, Logger::FIXME) << "UPDATE. EFFECTIVE LOCALDOCUMENTID: " << documentId.id();
 
   bool const isEdgeCollection =
@@ -3410,7 +3409,7 @@ Result MMFilesCollection::replace(
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
     ManagedDocumentResult& previous,
     VPackSlice const fromSlice, VPackSlice const toSlice) {
-  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options); 
+  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
   //LOG_TOPIC(ERR, Logger::FIXME) << "REPLACE. EFFECTIVE LOCALDOCUMENTID: " << documentId.id();
 
   bool const isEdgeCollection =

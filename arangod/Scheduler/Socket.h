@@ -29,6 +29,9 @@
 #include <boost/asio/serial_port_service.hpp>
 #include <boost/asio/ssl.hpp>
 
+#include <thread>
+#include <chrono>
+
 #include "Basics/StringBuffer.h"
 #include "Basics/asio-helper.h"
 #include "Logger/Logger.h"
@@ -82,7 +85,7 @@ bool doSslHandshake(T& socket) {
 	LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "forcefully shutting down connection after wait time";
 	break;
       } else {
-	usleep(10000);
+	std::this_thread::sleep_for(std::chrono::microseconds(10000));
       }
     }
 

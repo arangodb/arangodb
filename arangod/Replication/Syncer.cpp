@@ -174,18 +174,23 @@ Result Syncer::sendCreateBarrier(TRI_voc_tick_t minTick) {
   _barrierId = 0;
 
   std::string const url = ReplicationUrl + "/barrier";
-  std::string const body = "{\"ttl\":" + StringUtils::itoa(_barrierTtl) +
-                           ",\"tick\":\"" + StringUtils::itoa(minTick) + "\"}";
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("ttl", VPackValue(_barrierTtl));
+  builder.add("tick", VPackValue(std::to_string(minTick)));
+  builder.close();
+
+  std::string body = builder.slice().toJson();
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-      rest::RequestType::POST, url, body.c_str(), body.size()));
+      rest::RequestType::POST, url, body.data(), body.size()));
   
   if (hasFailed(response.get())) {
     return buildHttpError(response.get(), url);
   }
 
-  VPackBuilder builder;
+  builder.clear();
   Result r = parseResponse(builder, response.get());
   if (r.fail()) {
     return r;
@@ -225,7 +230,7 @@ Result Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->request(
-      rest::RequestType::PUT, url, body.c_str(), body.size()));
+      rest::RequestType::PUT, url, body.data(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     return Result(TRI_ERROR_REPLICATION_NO_RESPONSE);
@@ -392,7 +397,7 @@ Result Syncer::applyCollectionDumpMarker(
         return res;
       }
      
-      usleep(50000); 
+      std::this_thread::sleep_for(std::chrono::microseconds(50000)); 
       // retry
     }
   } else {
@@ -834,8 +839,9 @@ Result Syncer::buildHttpError(SimpleHttpResult* response, std::string const& url
 bool Syncer::simulate32Client() const {
   TRI_ASSERT(!_masterInfo._endpoint.empty() && _masterInfo._serverId != 0 &&
              _masterInfo._majorVersion != 0);
-  bool is33 = _masterInfo._majorVersion >= 3 &&
-              _masterInfo._minorVersion >= 3;
+  bool is33 = (_masterInfo._majorVersion > 3 ||
+               (_masterInfo._majorVersion == 3 &&
+                _masterInfo._minorVersion >= 3));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // allows us to test the old replication API
   return !is33 || _configuration._force32mode;

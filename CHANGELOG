@@ -1,6 +1,33 @@
 devel
 -----
 
+* UI: fixed disappearing of the navigation label in some case special case
+
+* fixed issue #3917: traversals with high maximal depth take extremely long
+  in planning phase.
+  
+* UI: fixed issue #3822: disabled name input field for system collections
+
+* fixed issue #3741: fix terminal color output in Windows 
+
+* UI: using default user database api during database creation now
+
+* UI: the graph viewer backend now picks one random start vertex of the
+  first 1000 documents instead of calling any(). The implementation of
+  any is known to scale bad on huge collections with rocksdb.
+
+* UI: added not found views for documents and collections
+
+* UI: edge collections were wrongly added to from and to vertices select box during graph creation
+
+* fixed issue #3640: limit in subquery
+
+* UI: the graph viewer now displays updated label values correctly.
+  Additionally the included node/edge editor now closes automatically
+	after a successful node/edge update.
+
+* UI: document/edge editor now remembering their modes (e.g. code or tree)
+
 * UI: optimized error messages for invalid graph definitions. Also fixed a
   graph renderer cleanrenderer cleanup error.
 

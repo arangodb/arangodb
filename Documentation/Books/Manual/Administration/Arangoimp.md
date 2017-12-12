@@ -65,7 +65,7 @@ specify a password, you will be prompted for one.
 Note that the collection (*users* in this case) must already exist or the import
 will fail. If you want to create a new collection with the import data, you need
 to specify the *--create-collection* option. Note that by default it will create
-a document collection and no ede collection.
+a document collection and no edge collection.
 
     > arangoimp --file "data.json" --type json --collection "users" --create-collection true
 

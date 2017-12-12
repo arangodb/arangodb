@@ -331,6 +331,8 @@ SET(ARANGOD_SOURCES
   Pregel/Recovery.cpp
   Pregel/Utils.cpp
   Pregel/Worker.cpp
+  Pregel/Worker-templates-native-types.cpp
+  Pregel/Worker-templates-algorithms.cpp
   Pregel/WorkerConfig.cpp
   Replication/DatabaseReplicationApplier.cpp
   Replication/GlobalReplicationApplier.cpp
@@ -424,6 +426,7 @@ SET(ARANGOD_SOURCES
   Statistics/RequestStatistics.cpp
   Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
+  Statistics/StatisticsWorker.cpp
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/PhysicalCollection.cpp
   StorageEngine/TransactionCollection.cpp

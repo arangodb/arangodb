@@ -21,6 +21,10 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 cd ${DIR}/..
 
+if ! test -d 3rdParty/arangodb-starter; then
+    MOREOPTS="${MOREOPTS} --downloadStarter"
+fi
+
 ./Installation/Jenkins/build.sh \
     standard \
     --rpath \
@@ -29,8 +33,8 @@ cd ${DIR}/..
     --snap \
     --buildDir build-${EP}snap \
     --targetDir /var/tmp/ \
-    --downloadStarter \
     --noopt \
+    ${MOREOPTS} \
     $@
 
 cd ${DIR}/..

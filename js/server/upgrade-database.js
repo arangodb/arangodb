@@ -699,20 +699,6 @@
       }
     });
 
-    // createStatistics
-    addTask({
-      name: 'createStatistics',
-      description: 'create statistics collections',
-
-      system: DATABASE_SYSTEM,
-      cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
-      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
-
-      task: function () {
-        return require('@arangodb/statistics').createStatisticsCollections();
-      }
-    });
-
     // createFrontend
     addTask({
       name: 'createFrontend',
@@ -775,7 +761,7 @@
       name: 'createJobsIndex',
       description: 'create index on attributes in _jobs collection',
 
-      system: DATABASE_SYSTEM,
+      system: DATABASE_ALL,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
       database: [DATABASE_INIT, DATABASE_UPGRADE],
 
@@ -825,7 +811,7 @@
       name: 'createAppsIndex',
       description: 'create index on attributes in _apps collection',
 
-      system: DATABASE_SYSTEM,
+      system: DATABASE_ALL,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
       database: [DATABASE_INIT, DATABASE_UPGRADE],
 

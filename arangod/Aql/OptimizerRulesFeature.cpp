@@ -163,11 +163,11 @@ void OptimizerRulesFeature::addRules() {
   // merge filters into traversals
   registerRule("optimize-traversals", optimizeTraversalsRule,
                OptimizerRule::optimizeTraversalsRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+
   // optimize unneccessary filters already applied by the traversal
   registerRule("remove-filter-covered-by-traversal", removeFiltersCoveredByTraversal,
                OptimizerRule::removeFiltersCoveredByTraversal_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+
   // optimize unneccessary filters already applied by the traversal. Only ever does something if previous
   // rule remove all filters using the path variable
   registerRule("remove-redundant-path-var", removeTraversalPathVariable,
@@ -221,12 +221,12 @@ void OptimizerRulesFeature::addRules() {
   // try to find sort blocks which are superseeded by indexes
   registerRule("use-index-for-sort", useIndexForSortRule,
                OptimizerRule::useIndexForSortRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+
   // sort in-values in filters (note: must come after
   // remove-filter-covered-by-index rule)
   registerRule("sort-in-values", sortInValuesRule, OptimizerRule::sortInValuesRule_pass6,
                DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-2",
                removeUnnecessaryCalculationsRule,
@@ -240,15 +240,19 @@ void OptimizerRulesFeature::addRules() {
   registerRule("patch-update-statements", patchUpdateStatementsRule,
                OptimizerRule::patchUpdateStatementsRule_pass9, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
-#ifdef USE_IRESEARCH  
+#ifdef USE_IRESEARCH
   // move filters and sort conditions into views
   registerRule("handle-views", arangodb::iresearch::handleViewsRule,
                OptimizerRule::handleViewsRule_pass6, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
 #endif
 
-  // patch update statements
+  // remove FILTER DISTANCE(...) and SORT DISTANCE(...)
   OptimizerRulesFeature::registerRule("geo-index-optimizer", geoIndexRule,
-                                      OptimizerRule::applyGeoIndexRule, false, true);
+                                      OptimizerRule::applyGeoIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+
+  // replace FOR v IN FULLTEXT(...) with an IndexNode and Limit
+  OptimizerRulesFeature::registerRule("fulltext-index-optimizer", fulltextIndexRule,
+                                      OptimizerRule::applyFulltextIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #if 0
@@ -330,7 +334,7 @@ char const* OptimizerRulesFeature::translateRule(int rule) {
 std::unordered_set<int> OptimizerRulesFeature::getDisabledRuleIds(
     std::vector<std::string> const& names) {
   std::unordered_set<int> disabled;
-                 
+
   // lookup ids of all disabled rules
   for (auto const& name : names) {
     if (name.empty()) {

@@ -65,6 +65,14 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
                                    "invalid traversal depth");
   }
   double v = node->getDoubleValue();
+  if (v > static_cast<double>(INT64_MAX)) {
+    // we cannot safely represent this value in an int64_t.
+    // which is already far bigger than we will ever traverse, so
+    // we can safely abort here and not care about uint64_t.
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+
   double intpart;
   if (modf(v, &intpart) != 0.0 || v < 0.0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,

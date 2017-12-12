@@ -118,7 +118,7 @@ template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Called ~Worker()";
   _state = WorkerState::DONE;
-  usleep(50000);  // 50ms wait for threads to die
+  std::this_thread::sleep_for(std::chrono::microseconds(50000));  // 50ms wait for threads to die
   delete _readCache;
   delete _writeCache;
   delete _writeCacheNextGSS;
@@ -777,17 +777,3 @@ void Worker<V, E, M>::_callConductorWithResponse(
     }
   }
 }
-
-// template types to create
-template class arangodb::pregel::Worker<int64_t, int64_t, int64_t>;
-template class arangodb::pregel::Worker<float, float, float>;
-template class arangodb::pregel::Worker<double, float, double>;
-// custom algorihm types
-template class arangodb::pregel::Worker<SCCValue, int8_t,
-                                        SenderMessage<uint64_t>>;
-template class arangodb::pregel::Worker<HITSValue, int8_t,
-                                        SenderMessage<double>>;
-template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
-template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
-template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
-template class arangodb::pregel::Worker<SLPAValue, int8_t, uint64_t>;

@@ -496,7 +496,7 @@ void MMFilesLogfileManager::unprepare() {
   if (_allocatorThread != nullptr) {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "stopping allocator thread";
     while (_allocatorThread->isRunning()) {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
     delete _allocatorThread;
     _allocatorThread = nullptr;
@@ -517,7 +517,7 @@ void MMFilesLogfileManager::unprepare() {
   if (_removerThread != nullptr) {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "stopping remover thread";
     while (_removerThread->isRunning()) {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
     delete _removerThread;
     _removerThread = nullptr;
@@ -531,7 +531,7 @@ void MMFilesLogfileManager::unprepare() {
       _collectorThread->forceStop();
       while (_collectorThread->isRunning()) {
         locker.unlock();
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
         locker.lock();
       }
       delete _collectorThread;
@@ -542,7 +542,7 @@ void MMFilesLogfileManager::unprepare() {
   if (_synchronizerThread != nullptr) {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "stopping synchronizer thread";
     while (_synchronizerThread->isRunning()) {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
     delete _synchronizerThread;
     _synchronizerThread = nullptr;
@@ -822,7 +822,7 @@ int MMFilesLogfileManager::waitForCollectorQueue(TRI_voc_cid_t cid, double timeo
 
     // sleep without holding the lock
     locker.unlock();
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
 
     if (TRI_microtime() > end) {
       return TRI_ERROR_LOCKED;
@@ -840,7 +840,7 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
   TRI_IF_FAILURE("LogfileManagerFlush") {
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   TRI_ASSERT(!_inRecovery);
 
   MMFilesWalLogfile::IdType lastOpenLogfileId;
@@ -937,7 +937,7 @@ bool MMFilesLogfileManager::waitForSync(double maxWait) {
     }
 
     // not everything was committed yet. wait a bit
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
 
     if (TRI_microtime() >= end) {
       // time's up!
@@ -1116,7 +1116,7 @@ std::vector<TRI_voc_tick_t> MMFilesLogfileManager::getLogfileBarriers() {
 // remove a specific logfile barrier
 bool MMFilesLogfileManager::removeLogfileBarrier(TRI_voc_tick_t id) {
   LogfileBarrier* logfileBarrier = nullptr;
-  
+
   {
     WRITE_LOCKER(barrierLock, _barriersLock);
 
@@ -1145,7 +1145,7 @@ TRI_voc_tick_t MMFilesLogfileManager::addLogfileBarrier(TRI_voc_tick_t databaseI
                                                         double ttl) {
   TRI_voc_tick_t id = TRI_NewTickServer();
   double expires = TRI_microtime() + ttl;
-  
+
   auto logfileBarrier = std::make_unique<LogfileBarrier>(id, databaseId, expires, minTick);
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "adding WAL logfile barrier "
                                         << logfileBarrier->id
@@ -1178,7 +1178,7 @@ bool MMFilesLogfileManager::extendLogfileBarrier(TRI_voc_tick_t id, double ttl,
   if (tick > 0 && tick > logfileBarrier->minTick) {
     // patch tick
     logfileBarrier->minTick = tick;
-  
+
     LOG_TOPIC(TRACE, Logger::REPLICATION)
         << "extending WAL logfile barrier " << logfileBarrier->id
         << ", minTick: " << logfileBarrier->minTick;
@@ -1205,7 +1205,7 @@ TRI_voc_tick_t MMFilesLogfileManager::getMinBarrierTick() {
       value = (std::min)(value, logfileBarrier->minTick);
     }
   }
-  
+
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "min barrier tick is " << value;
 
   return value;
@@ -1601,7 +1601,7 @@ MMFilesLogfileManagerState MMFilesLogfileManager::state() {
     if (application_features::ApplicationServer::isStopping()) {
       break;
     }
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator() ||
              state.lastCommittedTick > 0);
@@ -1756,7 +1756,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
       break;
     }
 
-    usleep(20000);
+    std::this_thread::sleep_for(std::chrono::microseconds(20000));
     // try again
   }
 
@@ -2055,7 +2055,7 @@ void MMFilesLogfileManager::stopMMFilesCollectorThread() {
       }
     }
 
-    usleep(50000);
+    std::this_thread::sleep_for(std::chrono::microseconds(50000));
   }
 
   _collectorThread->beginShutdown();

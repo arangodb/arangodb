@@ -193,3 +193,32 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
 ################################################################################
 
 set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
+
+set(STARTER_SOURCE "${PROJECT_SOURCE_DIR}/3rdParty/arangodb-starter/")
+set(STARTER_BUILD "${CMAKE_CURRENT_BINARY_DIR}/arangodb-starter/")
+set(STARTER_BINARY "${STARTER_BUILD}/arangodb${CMAKE_EXECUTABLE_SUFFIX}")
+if (EXISTS ${STARTER_SOURCE})
+  find_program(GO_COMMAND "go")
+  if (GO_COMMAND)
+    MESSAGE("-- building arangodb starter.")
+    ExternalProject_Add(arangodb_starter_build
+      SOURCE_DIR
+      ${STARTER_SOURCE}
+      CONFIGURE_COMMAND
+      ""
+      BINARY_DIR
+      ${STARTER_BUILD}
+      BUILD_COMMAND
+      $(MAKE) -f "${STARTER_SOURCE}Makefile" "NODOCKER=1" "BUILDDIR=${STARTER_BUILD}" "SCRIPTDIR=${STARTER_SOURCE}" local
+      LOG_INSTALL 1
+      INSTALL_DIR
+      ${CMAKE_INSTALL_BINDIR}
+      INSTALL_COMMAND
+      ${CMAKE_COMMAND} -E copy ${STARTER_BINARY} ${CMAKE_INSTALL_BINDIR}
+      )
+    list(APPEND THIRDPARTY_BIN ${STARTER_BINARY})
+    set(THIRDPARTY_BIN ${THIRDPARTY_BIN} PARENT_SCOPE)
+  else()
+    MESSAGE(WARNING "arangodb starter source present, but no go command to build it found.")
+  endif()
+endif()

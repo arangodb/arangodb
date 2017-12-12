@@ -255,7 +255,35 @@ Returns the job id.
 
     Function to pre-process a job's (validated) data before serializing it in the queue.
 
-  * **repeatTimes**: `Function` (Default: `0`)
+* **data**: `any`
+
+  Job data of the job; must be serializable to JSON.
+
+* **opts**: `object` (optional)
+
+  Object with any of the following properties:
+
+  * **success**: `Function` (optional)
+
+    Function to be called after the job has been completed successfully.
+
+  * **failure**: `Function` (optional)
+
+    Function to be called after the job has failed too many times.
+
+  * **delayUntil**: `number | Date` (Default: `Date.now()`)
+
+    Timestamp in milliseconds (or `Date` instance) until which the execution of the job should be delayed.
+
+  * **backOff**: `Function | number` (Default: `1000`)
+
+    See *script.backOff*.
+
+  * **maxFailures**: `number | Infinity` (Default: `0`):
+
+    See *script.maxFailures*.
+
+  * **repeatTimes**: `number | Function` (Default: `0`)
 
     If set to a positive number, the job will be repeated this many times (not counting recovery when using *maxFailures*). If set to a negative number or `Infinity`, the job will be repeated indefinitely. If set to `0` the job will not be repeated.
 
@@ -266,46 +294,6 @@ Returns the job id.
   * **repeatDelay**: `number` (Default: `0`)
 
     If the job is set to automatically repeat, this can be set to a non-negative value to set the number of milliseconds for which the job will be delayed before it is started again.
-
-* **data**: `any`
-
-  Job data of the job; must be serializable to JSON.
-
-* **opts**: `object` (optional)
-
-  Object with any of the following properties:
-
- * **success**: `Function` (optional)
-
-  Function to be called after the job has been completed successfully.
-
- * **failure**: `Function` (optional)
-
-  Function to be called after the job has failed too many times.
-
- * **delayUntil**: `number | Date` (Default: `Date.now()`)
-
-  Timestamp in milliseconds (or `Date` instance) until which the execution of the job should be delayed.
-
- * **backOff**: `Function | number` (Default: `1000`)
-
-  See *script.backOff*.
-
- * **maxFailures**: `number | Infinity` (Default: `0`):
-
-  See *script.maxFailures*.
-
- * **repeatTimes**: `Function` (Default: `0`)
-
-  See *script.repeatTimes*.
-
- * **repeatUntil**: `number | Date` (optional)
-
-  See *script.repeatUntil*.
-
- * **repeatDelay**: `number` (Default: `0`)
-
-  See *script.repeatDelay*.
 
 Note that if you pass a function for the *backOff* calculation, *success* callback or *failure* callback options the function will be serialized to the database as a string and therefore must not rely on any external scope or external variables.
 

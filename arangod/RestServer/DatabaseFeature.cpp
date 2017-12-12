@@ -180,7 +180,7 @@ void DatabaseManagerThread::run() {
           break;
         }
 
-        usleep(waitTime());
+        std::this_thread::sleep_for(std::chrono::microseconds(waitTime()));
 
         // The following is only necessary after a wait:
         auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
@@ -415,7 +415,7 @@ void DatabaseFeature::unprepare() {
     _databaseManager->beginShutdown();
 
     while (_databaseManager->isRunning()) {
-      usleep(5000);
+      std::this_thread::sleep_for(std::chrono::microseconds(5000));
     }
   }
 

@@ -710,7 +710,7 @@ Result transaction::Methods::begin() {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::RUNNING);
     }
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
   return _state->beginTransaction(_localHints);
@@ -718,9 +718,13 @@ Result transaction::Methods::begin() {
 
 /// @brief commit / finish the transaction
 Result transaction::Methods::commit() {
+  TRI_IF_FAILURE("TransactionCommitFail") {
+    return Result(TRI_ERROR_DEBUG);
+  }
+
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return TRI_ERROR_TRANSACTION_INTERNAL;
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on commit");
   }
   
   ExecContext const* exe = ExecContext::CURRENT;
@@ -737,7 +741,7 @@ Result transaction::Methods::commit() {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::COMMITTED);
     }
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
   return _state->commitTransaction(this);
@@ -747,7 +751,7 @@ Result transaction::Methods::commit() {
 Result transaction::Methods::abort() {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return TRI_ERROR_TRANSACTION_INTERNAL;
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on abort");
   }
 
   CallbackInvoker invoker(this);
@@ -757,7 +761,7 @@ Result transaction::Methods::abort() {
       _state->updateStatus(transaction::Status::ABORTED);
     }
 
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
   return _state->abortTransaction(this);
@@ -765,16 +769,7 @@ Result transaction::Methods::abort() {
 
 /// @brief finish a transaction (commit or abort), based on the previous state
 Result transaction::Methods::finish(int errorNum) {
-  if (errorNum == TRI_ERROR_NO_ERROR) {
-    // there was no previous error, so we'll commit
-    return this->commit();
-  }
-
-  // there was a previous error, so we'll abort
-  this->abort();
-
-  // return original error number
-  return errorNum;
+  return finish(Result(errorNum));
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
@@ -2840,7 +2835,7 @@ bool transaction::Methods::isLocked(LogicalCollection* document,
 Result transaction::Methods::lock(TRI_voc_cid_t cid,
                                   AccessMode::Type type) {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
-    return TRI_ERROR_TRANSACTION_INTERNAL;
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on lock");
   }
   TransactionCollection* trxColl = trxCollection(cid, type);
   TRI_ASSERT(trxColl != nullptr);
@@ -2851,7 +2846,7 @@ Result transaction::Methods::lock(TRI_voc_cid_t cid,
 Result transaction::Methods::unlock(TRI_voc_cid_t cid,
                                     AccessMode::Type type) {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
-    return TRI_ERROR_TRANSACTION_INTERNAL;
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on unlock");
   }
   TransactionCollection* trxColl = trxCollection(cid, type);
   TRI_ASSERT(trxColl != nullptr);

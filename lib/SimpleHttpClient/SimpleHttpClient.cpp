@@ -34,6 +34,9 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <thread>
+#include <chrono>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -173,7 +176,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
                 << " - retries left: " << (_params._maxRetries - tries);
     }
 
-    usleep(static_cast<TRI_usleep_t>(_params._retryWaitTime));
+    std::this_thread::sleep_for(std::chrono::microseconds(_params._retryWaitTime));
   }
 
   return result;

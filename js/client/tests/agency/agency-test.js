@@ -428,28 +428,29 @@ function agencyTestSuite () {
       var pre = [{},{"a":12},{"a":12}];
       cur += 2;
 
-      var wres = writeAndCheck([[query[0], pre[0], id[0]]]);
-      res = accessAgency("inquire",[id[0]]).bodyParsed;
-      assertEqual(res, {"results":[cur]});
-      assertEqual(res, wres);
+      var wres = accessAgency("write", [[query[0], pre[0], id[0]]]);
+      res = accessAgency("inquire",[id[0]]);
+      wres.bodyParsed.inquired = true;
+      assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
 
-      wres = writeAndCheck([[query[1], pre[1], id[0]]]);
-      res = accessAgency("inquire",[id[0]]).bodyParsed;
-      assertEqual(res, {"results":[++cur]});
-      assertEqual(res, wres);
-
+      wres = accessAgency("write", [[query[1], pre[1], id[0]]]);
+      res = accessAgency("inquire",[id[0]]);
+      assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
+      cur++;
+      
       wres = accessAgency("write",[[query[1], pre[1], id[2]]]);
       assertEqual(wres.statusCode,412);
       res = accessAgency("inquire",[id[2]]);
-      assertEqual(res.bodyParsed, {"results":[0]});
-      assertEqual(res, wres);
+      assertEqual(res.statusCode,412);
+      assertEqual(res.bodyParsed, {"results":[0],"inquired":true});
+      assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
 
       wres = accessAgency("write",[[query[0], pre[0], id[3]],
                                    [query[1], pre[1], id[3]]]);
       assertEqual(wres.statusCode,200);
       cur += 2;
       res = accessAgency("inquire",[id[3]]);
-      assertEqual(res.bodyParsed, {"results":[cur]});
+      assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
       assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
       assertEqual(res.statusCode,200);
 
@@ -460,7 +461,7 @@ function agencyTestSuite () {
       assertEqual(wres.statusCode,412);
       cur += 2;
       res = accessAgency("inquire",[id[4]]);
-      assertEqual(res.bodyParsed, {"results":[cur]});
+      assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
       assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
       assertEqual(res.statusCode,200);
       
@@ -470,7 +471,7 @@ function agencyTestSuite () {
       assertEqual(wres.statusCode,412);
       cur += 2;
       res = accessAgency("inquire",[id[5]]);
-      assertEqual(res.bodyParsed, {"results":[cur]});
+      assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
       assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
       assertEqual(res.statusCode,200);
       
@@ -480,21 +481,21 @@ function agencyTestSuite () {
       assertEqual(wres.statusCode,412);
       cur += 2;
       res = accessAgency("inquire",[id[6]]);
-      assertEqual(res.bodyParsed, {"results":[cur]});
+      assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
       assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[2]);
       assertEqual(res.statusCode,200);
       
       wres = accessAgency("write",[[query[2], pre[2], id[7]],
                                   [query[0], pre[0], id[8]],
                                   [query[1], pre[1], id[9]]]);
-      assertEqual(res.statusCode,200);
+      assertEqual(wres.statusCode,412);
       cur += 2;
       res = accessAgency("inquire",[id[7],id[8],id[9]]);
-      assertEqual(res, wres);
+      assertEqual(res.statusCode,412);
+      assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
 
     },
 
-    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test document/transaction assignment
 ////////////////////////////////////////////////////////////////////////////////
@@ -958,12 +959,70 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHugeTransactionPackage : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
       var huge = [];
       for (var i = 0; i < 20000; ++i) {
         huge.push([{"a":{"op":"increment"}}]);
       }
       writeAndCheck(huge);
       assertEqual(readAndCheck([["a"]]), [{"a":20000}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Huge transaction package, inc/dec
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionWithIncDec : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+      var trx = [];
+      for (var i = 0; i < 100; ++i) {
+        trx.push([{"a":{"op":"increment"}}]);
+        trx.push([{"a":{"op":"decrement"}}]);
+      }
+      writeAndCheck(trx);
+      assertEqual(readAndCheck([["a"]]), [{"a":0}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transaction, update of same key
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionUpdateSameKey : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+      var trx = [];
+      trx.push([{"a":"foo"}]);
+      trx.push([{"a":"bar"}]);
+      writeAndCheck(trx);
+      assertEqual(readAndCheck([["a"]]), [{"a":"bar"}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transaction, insert and remove of same key
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionInsertRemoveSameKey : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+      var trx = [];
+      trx.push([{"a":"foo"}]);
+      trx.push([{"a":{"op":"delete"}}]);
+      writeAndCheck(trx);
+      assertEqual(readAndCheck([["/a"]]), [{}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Huge transaction package, all different keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionDifferentKeys : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+      var huge = [], i;
+      for (i = 0; i < 100; ++i) {
+        huge.push([{["a" + i]:{"op":"increment"}}]);
+      }
+      writeAndCheck(huge);
+      for (i = 0; i < 100; ++i) {
+        assertEqual(readAndCheck([["a" + i]]), [{["a" + i]:1}]);
+      }
     }
   };
 }

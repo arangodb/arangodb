@@ -600,7 +600,7 @@ void RocksDBEngine::stop() {
 
     // wait until background thread stops
     while (_backgroundThread->isRunning()) {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
     _backgroundThread.reset();
   }
@@ -1419,6 +1419,7 @@ void RocksDBEngine::pruneWalFiles() {
        /* no hoisting */) {
     // check if WAL file is expired
     if ((*it).second < TRI_microtime()) {
+      LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "deleting RocksDB WAL file '" << (*it).first << "'";
       auto s = _db->DeleteFile((*it).first);
       // apparently there is a case where a file was already deleted
       // but is still in _prunableWalFiles. In this case we get an invalid
