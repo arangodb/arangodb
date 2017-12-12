@@ -57,65 +57,6 @@ DEFINE_ATTRIBUTE_TYPE(incompatible_attribute);
 incompatible_attribute::incompatible_attribute() NOEXCEPT {
 }
 
-struct directory_mock : public ir::directory {
-  directory_mock(ir::directory& impl) : impl_(impl) {}
-  using directory::attributes;
-  virtual irs::attribute_store& attributes() NOEXCEPT override {
-    return impl_.attributes();
-  }
-  virtual void close() NOEXCEPT override {
-    impl_.close();
-  }
-  virtual ir::index_output::ptr create(
-    const std::string& name
-  ) NOEXCEPT override {
-    return impl_.create(name);
-  }
-  virtual bool exists(
-    bool& result, const std::string& name
-  ) const NOEXCEPT override {
-    return impl_.exists(result, name);
-  }
-  virtual bool length(
-    uint64_t& result, const std::string& name
-  ) const NOEXCEPT override {
-    return impl_.length(result, name);
-  }
-  virtual bool visit(const ir::directory::visitor_f& visitor) const override {
-    return impl_.visit(visitor);
-  }
-  virtual ir::index_lock::ptr make_lock(
-    const std::string& name
-  ) NOEXCEPT override {
-    return impl_.make_lock(name);
-  }
-  virtual bool mtime(
-    std::time_t& result, const std::string& name
-  ) const NOEXCEPT override {
-    return impl_.mtime(result, name);
-  }
-  virtual ir::index_input::ptr open(
-    const std::string& name,
-    irs::IOAdvice advice
-  ) const NOEXCEPT override {
-    return impl_.open(name, advice);
-  }
-  virtual bool remove(const std::string& name) NOEXCEPT override {
-    return impl_.remove(name);
-  }
-  virtual bool rename(
-    const std::string& src, const std::string& dst
-  ) NOEXCEPT override {
-    return impl_.rename(src, dst);
-  }
-  virtual bool sync(const std::string& name) NOEXCEPT override {
-    return impl_.sync(name);
-  }
-
- private:
-  ir::directory& impl_;
-}; // directory_mock 
-
 NS_BEGIN(templates)
 
 // ----------------------------------------------------------------------------
@@ -888,7 +829,8 @@ class index_test_case_base : public tests::index_test_base {
           }
 
           csv_doc_template_t csv_doc_template;
-          tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');size_t doc_skip = update_skip;
+          tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+          size_t doc_skip = update_skip;
           size_t gen_skip = i;
 
           for(size_t count = 0;; ++count) {

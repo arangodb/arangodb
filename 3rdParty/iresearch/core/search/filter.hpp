@@ -159,7 +159,7 @@ class IRESEARCH_API filter {
   filter::prepared::ptr prepare(
       const index_reader& rdr,
       const order::prepared& ord,
-      const irs::attribute_view& ctx) const {
+      const attribute_view& ctx) const {
     return prepare(rdr, ord, irs::boost::no_boost(), ctx);
   }
 

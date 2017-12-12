@@ -85,6 +85,8 @@ TEST_F(tfidf_test, test_load) {
   ASSERT_EQ(1, order.add(true, scorer).size());
 }
 
+#ifndef IRESEARCH_DLL
+
 TEST_F(tfidf_test, make_from_bool) {
   // `with-norms` argument
   {
@@ -133,12 +135,14 @@ TEST_F(tfidf_test, make_from_array) {
   ASSERT_EQ(nullptr, irs::scorers::get("tfidf", "[ [] ]"));
 }
 
+#endif // IRESEARCH_DLL
+
 TEST_F(tfidf_test, test_normalize_features) {
   // default norms
   {
     auto scorer = irs::scorers::get("tfidf", irs::string_ref::nil);
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare(true);
+    auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
   }
@@ -147,7 +151,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("tfidf", "true");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare(true);
+    auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
   }
@@ -156,7 +160,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("tfidf", "{\"with-norms\": true}");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare(true);
+    auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
   }
@@ -165,7 +169,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("tfidf", "false");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare(true);
+    auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
   }
@@ -174,7 +178,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("tfidf", "{\"with-norms\": false}");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare(true);
+    auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
   }
@@ -620,7 +624,7 @@ TEST_F(tfidf_test, test_order) {
   }
 }
 
-#endif
+#endif // IRESEARCH_DLL
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

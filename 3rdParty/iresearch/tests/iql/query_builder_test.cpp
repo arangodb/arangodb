@@ -87,7 +87,7 @@ namespace tests {
     };
 
     test_sort():sort(test_sort::type()) {}
-    virtual sort::prepared::ptr prepare(bool) const { return test_sort::prepared::make<test_sort::prepared>(); }
+    virtual sort::prepared::ptr prepare() const { return test_sort::prepared::make<test_sort::prepared>(); }
   };
 
   DEFINE_SORT_TYPE(test_sort);

@@ -81,6 +81,8 @@ struct index_reader;
 struct sub_reader;
 struct term_reader;
 
+typedef bool (*score_less_f)(const byte_type* lhs, const byte_type* rhs);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sort
 /// @brief base class for all user-side sort entries
@@ -278,7 +280,7 @@ class IRESEARCH_API sort {
 
   const type_id& type() const { return *type_; }
 
-  virtual prepared::ptr prepare(bool reverse) const = 0;
+  virtual prepared::ptr prepare() const = 0;
 
  private:
   const type_id* type_;
@@ -290,11 +292,16 @@ class IRESEARCH_API sort {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API order final {
  public:
-  class entry : private util::noncopyable {
+  class entry {
    public:
-    entry(const sort::ptr& sort, bool reverse)
+    entry(const irs::sort::ptr& sort, bool reverse) NOEXCEPT
+      : sort_(sort), reverse_(reverse) {
+      assert(sort_);
+    }
+
+    entry(irs::sort::ptr&& sort, bool reverse) NOEXCEPT
       : sort_(std::move(sort)), reverse_(reverse) {
-      assert(sort);
+      assert(sort_);
     }
 
     entry(entry&& rhs) NOEXCEPT
@@ -365,12 +372,14 @@ class IRESEARCH_API order final {
   class IRESEARCH_API prepared final : private util::noncopyable {
    public:
     struct prepared_sort : private util::noncopyable {
-      explicit prepared_sort(sort::prepared::ptr&& bucket)
-        : bucket(std::move(bucket)), offset(0) {
+      explicit prepared_sort(sort::prepared::ptr&& bucket, bool reverse)
+        : bucket(std::move(bucket)), offset(0), reverse(reverse) {
       }
 
       prepared_sort(prepared_sort&& rhs) NOEXCEPT
-        : bucket(std::move(rhs.bucket)), offset(rhs.offset) {
+        : bucket(std::move(rhs.bucket)),
+          offset(rhs.offset),
+          reverse(rhs.reverse) {
         rhs.offset = 0;
       }
 
@@ -379,12 +388,14 @@ class IRESEARCH_API order final {
           bucket = std::move(rhs.bucket);
           offset = rhs.offset;
           rhs.offset = 0;
+          reverse = rhs.reverse;
         }
         return *this;
       }
 
       sort::prepared::ptr bucket;
       size_t offset;
+      bool reverse;
     }; // prepared_sort
 
     class IRESEARCH_API stats final : private util::noncopyable {
@@ -479,19 +490,23 @@ class IRESEARCH_API order final {
 
     template<typename T>
     CONSTEXPR const T& get(const byte_type* score, size_t i) const NOEXCEPT {
-      assert(sizeof(T) == order_[i].bucket->size());
+      #if !defined(__APPLE__) || defined(IRESEARCH_DEBUG) // MacOS can't handle asserts in non-debug CONSTEXPR functions
+        assert(sizeof(T) == order_[i].bucket->size());
+      #endif
       return reinterpret_cast<const T&>(*(score + order_[i].offset));
     }
 
-    template<typename StringType, typename Traits = typename StringType::traits_type>
-    CONSTEXPR StringType to_string(const byte_type* score, size_t i) const NOEXCEPT {
-      typedef typename Traits::char_type char_type;
-
-      const auto& entry = order_[i];
+    template<
+      typename StringType,
+      typename TraitsType = typename StringType::traits_type
+    > CONSTEXPR StringType to_string(
+        const byte_type* score, size_t i
+    ) const {
+      typedef typename TraitsType::char_type char_type;
 
       return StringType(
-        reinterpret_cast<const char_type*>(score + entry.offset),
-        entry.bucket->size()
+        reinterpret_cast<const char_type*>(score + order_[i].offset),
+        order_[i].bucket->size()
       );
     }
 

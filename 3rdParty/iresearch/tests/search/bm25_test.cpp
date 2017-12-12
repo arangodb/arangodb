@@ -85,6 +85,8 @@ TEST_F(bm25_test, test_load) {
   ASSERT_EQ(1, order.add(true, scorer).size());
 }
 
+#ifndef IRESEARCH_DLL
+
 TEST_F(bm25_test, make_from_array) {
   // default args
   {
@@ -162,12 +164,14 @@ TEST_F(bm25_test, make_from_array) {
   ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, 1.7, [] ]"));
 }
 
+#endif // IRESEARCH_DLL
+
 TEST_F(bm25_test, test_normalize_features) {
   // default norms
   {
     auto scorer = irs::scorers::get("bm25", irs::string_ref::nil);
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare(true);
+    auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
   }
@@ -176,7 +180,7 @@ TEST_F(bm25_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("bm25", "{\"with-norms\": true}");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare(true);
+    auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
   }
@@ -185,7 +189,7 @@ TEST_F(bm25_test, test_normalize_features) {
   {
     auto scorer = irs::scorers::get("bm25", "{\"with-norms\": false}");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare(true);
+    auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
   }
