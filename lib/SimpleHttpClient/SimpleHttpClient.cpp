@@ -60,7 +60,8 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
       _errorMessage(""),
       _nextChunkedSize(0),
       _method(rest::RequestType::GET),
-      _result(nullptr) {
+      _result(nullptr),
+      _aborted(false) {
   TRI_ASSERT(connection != nullptr);
 
   if (_connection->isConnected()) {
@@ -92,6 +93,11 @@ SimpleHttpClient::~SimpleHttpClient() {
 // -----------------------------------------------------------------------------
 // public methods
 // -----------------------------------------------------------------------------
+   
+void SimpleHttpClient::setAborted(bool value) noexcept {
+  _aborted.store(value, std::memory_order_release);
+  setInterrupted(value);
+}
 
 void SimpleHttpClient::setInterrupted(bool value) {
   if (_connection != nullptr) {
@@ -151,7 +157,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     std::unordered_map<std::string, std::string> const& headers) {
   SimpleHttpResult* result = nullptr;
   size_t tries = 0;
-
+  
   while (true) {
     TRI_ASSERT(result == nullptr);
 
@@ -165,6 +171,10 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     result = nullptr;
 
     if (tries++ >= _params._maxRetries) {
+      break;
+    }
+    
+    if (isAborted()) {
       break;
     }
 
@@ -380,6 +390,10 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
     }
 
     remainingTime = endTime - TRI_microtime();
+    if (isAborted()) {
+      setErrorMessage("Client request aborted");
+      break;
+    }
   }
 
   if (_state < FINISHED && _errorMessage.empty()) {

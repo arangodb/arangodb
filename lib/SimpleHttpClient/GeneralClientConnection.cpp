@@ -106,7 +106,6 @@ GeneralClientConnection* GeneralClientConnection::factory(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool GeneralClientConnection::connect() {
-  _isInterrupted = false;
   disconnect();
 
   if (_numConnectRetries < _connectRetries + 1) {
@@ -136,7 +135,6 @@ void GeneralClientConnection::disconnect() {
   }
 
   _isConnected = false;
-  _isInterrupted = false;
   _numConnectRetries = 0;
 }
 
