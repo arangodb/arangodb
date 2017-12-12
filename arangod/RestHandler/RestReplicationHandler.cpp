@@ -914,8 +914,6 @@ Result RestReplicationHandler::processRestoreCollection(
                                         AccessMode::Type::EXCLUSIVE);
         // to turn off waitForSync!
         trx.addHint(transaction::Hints::Hint::RECOVERY);
-        trx.addHint(transaction::Hints::Hint::READ_OWN_WRITES);
-
         res = trx.begin();
         if (!res.ok()) {
           return res;
