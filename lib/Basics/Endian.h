@@ -40,12 +40,8 @@
 namespace arangodb {
 namespace basics {
 
-inline bool isLittleEndian(){
-  int num = 42;
-  static bool rv = ( *(char *)&num == 42 );
-  return rv;
-}
-
+static constexpr bool isLittleEndian() {return true;}
+ 
 template<typename T> inline void ByteSwap (T& t) {
   uint8_t* ptr = (uint8_t*)(&t);
   size_t bytes = sizeof(T);
@@ -66,7 +62,7 @@ template<typename T> struct EndianTraits<T,2> {
 #elif __linux__
     return htole16(in);
 #elif _WIN32
-    if(!isLittleEndian()) { ByteSwap(in); }
+    ByteSwap(in);
 #endif
     return in;
   }
@@ -76,7 +72,7 @@ template<typename T> struct EndianTraits<T,2> {
 #elif __linux__
     return le16toh(in);
 #elif _WIN32
-    if(!isLittleEndian()) { ByteSwap(in); }
+    ByteSwap(in);
 #endif
     return in;
   }
@@ -90,7 +86,7 @@ template<typename T> struct EndianTraits<T,4> {
 #elif __linux__
     return htole32(in);
 #elif _WIN32
-    if(!isLittleEndian()) { ByteSwap(in); }
+    ByteSwap(in);
 #endif
     return in;
   }
@@ -100,7 +96,7 @@ template<typename T> struct EndianTraits<T,4> {
 #elif __linux__
     return le32toh(in);
 #elif _WIN32
-    if(!isLittleEndian()) { ByteSwap(in); }
+    ByteSwap(in);
 #endif
     return in;
   }
@@ -114,7 +110,7 @@ template<typename T> struct EndianTraits<T,8> {
 #elif __linux__
     return htole64(in);
 #elif _WIN32
-    if(!isLittleEndian()) { ByteSwap(in); }
+    ByteSwap(in);
 #endif
     return in;
   }
@@ -124,7 +120,7 @@ template<typename T> struct EndianTraits<T,8> {
 #elif __linux__
     return le64toh(in);
 #elif _WIN32
-    if(!isLittleEndian()) { ByteSwap(in); }
+    ByteSwap(in);
 #endif
     return in;
   }
