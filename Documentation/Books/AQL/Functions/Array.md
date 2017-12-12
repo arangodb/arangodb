@@ -199,6 +199,9 @@ Return whether *search* is contained in *array*. Optionally return the position.
   *false* otherwise. If *returnIndex* is enabled, the position of the match is
   returned (positions start at 0), or *-1* if it's not found.
 
+To determine if or at which position a string occurs in another string, see the
+[CONTAINS() string function](String.md#contains).
+
 ### PUSH()
 
 `PUSH(anyArray, value, unique) → newArray`

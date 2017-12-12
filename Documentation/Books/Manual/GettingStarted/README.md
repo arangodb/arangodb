@@ -35,7 +35,9 @@ startup parameters, installation in a cluster and so on, see
 [Installing](Installing/README.md).
 
 {% hint 'info' %}
-Want help? Read more about [**consulting, training and developer support**](https://www.arangodb.com/subscriptions/)
+ArangoDB offers two [**storage engines**](../Architecture/StorageEngines.md):
+MMFiles and RocksDB. Choose the one which suits your needs best in the
+installation process or on first startup.
 {% endhint %}
 
 ### Securing the installation
