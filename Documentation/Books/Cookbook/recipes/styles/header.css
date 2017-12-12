@@ -1,0 +1,255 @@
+/* Design fix because of the header */
+@import url(https://fonts.googleapis.com/css?family=Roboto:400,500,300,700);
+
+body {
+  overflow: hidden;
+  font-family: Roboto, Helvetica, sans-serif;
+  background: #444444;
+}
+
+.book .book-header h1 a, .book .book-header h1 a:hover {
+  display: none;
+}
+
+/* GOOGLE START */
+
+.google-search #gsc-iw-id1{
+  border: none !important;
+}
+
+.google-search .gsst_b {
+  position: relative;
+  top: 10px;
+  left: -25px;
+  width: 1px;
+}
+
+.gsst_a .gscb_a {
+  color: #c01a07 !important;
+}
+
+.google-search input {
+  background-color: #fff !important;
+  font-family: Roboto, Helvetica, sans-serif;
+  font-size: 10pt !important;
+  padding-left: 5px !important; 
+  float: right;
+  position: relative;
+  top: 8px;
+  width: 100% !important;
+  height: 30px !important;
+}
+
+.google-search input:active {
+}
+
+.google-search {
+  margin-right: 10px;
+  margin-left: 10px !important;
+  float: right !important;
+}
+
+.google-search td, 
+.google-search table, 
+.google-search tr, 
+.google-search th {
+  background-color: #444444 !important;
+}
+
+.google-search .gsc-input-box,
+.google-search .gsc-input-box input {
+  border-radius: 3px !important;
+  width: 200px;
+}
+
+.gsc-branding-text,
+.gsc-branding-img,
+.gsc-user-defined-text {
+  display: none !important;
+}
+
+.google-search .gsc-input-box input {
+  font-size: 16px !important;
+}
+
+.google-search .gsc-search-button {
+  display: none !important;
+}
+
+.google-search .gsc-control-cse {
+  padding: 10px !important;
+}
+
+.google-search > div {
+  float: left !important;
+  width: 200px !important;
+}
+
+/* GOOGLE END */
+
+.book-summary,
+.book-body {
+  margin-top: 48px;
+}
+
+.arangodb-logo, .arangodb-logo-small {
+  display: inline;
+  float: left;
+  padding-top: 12px;
+  margin-left: 10px;
+}
+
+.arangodb-logo img {
+  height: 23px;
+}
+
+.arangodb-logo-small {
+  display: none;
+}
+
+.arangodb-version-switcher {
+  width: 65px;
+  height: 44px;
+  margin-left: 16px;
+  float: left;
+  display: inline;
+  font-weight: bold;
+  color: #fff;
+  background-color: inherit;
+  border: 0;
+}
+
+.arangodb-version-switcher option {
+  background-color: white;
+  color: black;
+}
+
+
+.arangodb-header {
+  position: fixed;
+  width: 100%;
+  height: 48px;
+  z-index: 1;
+}
+
+.arangodb-header .socialIcons-googlegroups a img {
+  position: relative;
+  height: 14px;
+  top: 3px;
+}
+
+.arangodb-navmenu {
+  display: block;
+  float: right;
+  margin: 0;
+  padding: 0;
+}
+
+.arangodb-navmenu li {
+  display: block;
+  float: left;
+}
+
+.arangodb-navmenu li a {
+  display: block;
+  float: left;
+  padding: 0 10px;
+  line-height: 48px;
+  font-size: 16px;
+  font-weight: 400;
+  color: #fff;
+  text-decoration: none;
+  font-family: Roboto, Helvetica, sans-serif;
+}
+
+.arangodb-navmenu li.active-tab a, .arangodb-navmenu li a:hover {
+  background-color: #88A049 !important;
+}
+
+.downloadIcon {
+  margin-right: 10px;
+}
+
+/** simple responsive updates **/
+
+@media screen and (max-width: 1000px) {
+  .arangodb-logo {
+    margin-left: 10px;
+  }
+
+  .google-search {
+    margin-right: 5px !important;
+  }
+
+  .downloadIcon {
+    margin-right: 0;
+  }
+  
+  .socialIcons {
+    display: none !important;
+  }
+}
+
+
+@media screen and (max-width: 800px) {
+
+  .google-search,
+  .google-search .gsc-input-box,
+  .google-search .gsc-input-box input {
+    width: 130px !important;
+  }
+
+  .arangodb-navmenu li a {
+    font-size: 15px;
+    padding: 0 7px;
+  }
+
+  .arangodb-logo {
+    display: none;
+  }
+
+  .arangodb-logo-small {
+    display: inline;
+    margin-left: 10px;
+  }
+
+  .arangodb-logo-small img {
+    height: 20px;
+  }
+
+  .arangodb-version-switcher {
+    margin: 0;
+  }
+
+}
+
+@media screen and (max-width: 530px) {
+  .arangodb-version-switcher,
+  .downloadIcon {
+    display: none !important;
+  }
+
+  .google-search,
+  .google-search .gsc-input-box,
+  .google-search .gsc-input-box input {
+    width: 24px !important;
+  }
+
+  .google-search .gsc-input-box input[style] {
+    background: url(https://docs.arangodb.com/assets/searchIcon.png) left center no-repeat rgb(255, 255, 255) !important;
+  }
+
+  .google-search .gsc-input-box input:focus {
+    width: 200px !important;
+    position: relative;
+    left: -176px;
+    background-position: -9999px -9999px !important;
+  }
+
+}
+
+@media screen and (max-width: 330px) {
+  .arangodb-logo-small, .google-search {
+    display: none;
+  }
+}
