@@ -231,7 +231,11 @@ TransactionalCache::TransactionalCache(Cache::ConstructionGuard guard,
 
 TransactionalCache::~TransactionalCache() {
   if (!_shutdown) {
-    shutdown();
+    try {
+      shutdown();
+    } catch (...) {
+      // no exceptions allowed here
+    }
   }
 }
 

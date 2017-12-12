@@ -57,7 +57,7 @@ struct HealthRecord {
 
   HealthRecord(
     std::string const& sn, std::string const& ep, std::string const& ho) :
-    shortName(sn), endpoint(ep), hostId(ho) {}
+    shortName(sn), endpoint(ep), hostId(ho), version(0) {}
 
   HealthRecord(Node const& node) {
     *this = node;
@@ -81,15 +81,19 @@ struct HealthRecord {
         version = 2;
         syncStatus = node("SyncStatus").getString();
         if (node.has("SyncTime")) {
-          lastAcked = node("LastAcked").getString();
           syncTime = node("SyncTime").getString();
+        }
+        if (node.has("LastAcked")) {
+          lastAcked = node("LastAcked").getString();
         }
       } else if (node.has("LastHeartbeatStatus")) {
         version = 1;
         syncStatus = node("LastHeartbeatStatus").getString();
         if (node.has("LastHeartbeatSent")) {
-          lastAcked = node("LastHeartbeatAcked").getString();
           syncTime = node("LastHeartbeatSent").getString();
+        }
+        if (node.has("LastHeartbeatAcked")) {
+          lastAcked = node("LastHeartbeatAcked").getString();
         }
       }
       if (node.has("Host")) {
@@ -105,6 +109,7 @@ struct HealthRecord {
     status = other.status;
     endpoint = other.endpoint;
     hostId = other.hostId;
+    version = other.version;
     return *this;
   }
 

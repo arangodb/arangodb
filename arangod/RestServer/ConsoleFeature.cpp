@@ -74,7 +74,7 @@ void ConsoleFeature::unprepare() {
   int iterations = 0;
 
   while (_consoleThread->isRunning() && ++iterations < 30) {
-    usleep(100 * 1000);  // spin while console is still needed
+    std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));  // spin while console is still needed
   }
 
   std::cout << std::endl << TRI_BYE_MESSAGE << std::endl;

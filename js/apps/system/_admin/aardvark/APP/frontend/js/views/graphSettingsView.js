@@ -286,7 +286,13 @@
     },
 
     checkColor: function () {
-      this.saveGraphSettings(null, true);
+      if (!this.lastConfigChange) {
+        this.saveGraphSettings(null, true);
+      } else {
+        if ((new Date() - this.lastConfigChange > 750)) {
+          this.saveGraphSettings(null, true);
+        }
+      }
     },
 
     saveGraphSettings: function (event, color, nodeStart, overwrite, silent, userCallback) {
@@ -335,6 +341,7 @@
         }
 
         var callback = function () {
+          self.lastConfigChange = new Date();
           if (window.App.graphViewer) {
             // no complete rerender needed
             // LAYOUT

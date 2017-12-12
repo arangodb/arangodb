@@ -712,12 +712,19 @@ int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
 
   Result res = trx.begin();
 
-  if (!res.ok()) {
+  if (res.fail()) {
     return -1;
   }
 
-  auto document = trx.documentCollection();
-  return static_cast<int64_t>(document->numberDocuments(&trx));
+  OperationResult result = trx.count(col->name(), false);
+  if (result.result.fail()) {
+    return -1;
+  }
+  VPackSlice s = result.slice();
+  if (!s.isNumber()) {
+    return -1;
+  }
+  return s.getNumber<int64_t>();
 }
 
 /// @brief handle the information about a collection
@@ -899,7 +906,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     }
 
     Result res;
-
+    
     if (incremental && getSize(col) > 0) {
       res = handleCollectionSync(col, StringUtils::itoa(masterCid), masterName, _masterInfo._lastLogTick);
     } else {

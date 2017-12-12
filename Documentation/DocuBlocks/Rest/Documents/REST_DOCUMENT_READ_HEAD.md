@@ -13,14 +13,14 @@ The handle of the document.
 
 @RESTHEADERPARAM{If-None-Match,string,optional}
 If the "If-None-Match" header is given, then it must contain exactly one
-ETag. If the current document revision is not equal to the specified ETag,
+Etag. If the current document revision is not equal to the specified Etag,
 an *HTTP 200* response is returned. If the current document revision is
-identical to the specified ETag, then an *HTTP 304* is returned.
+identical to the specified Etag, then an *HTTP 304* is returned.
 
 @RESTHEADERPARAM{If-Match,string,optional}
 If the "If-Match" header is given, then it must contain exactly one
-ETag. The document is returned, if it has the same revision as the
-given ETag. Otherwise a *HTTP 412* is returned.
+Etag. The document is returned, if it has the same revision as the
+given Etag. Otherwise a *HTTP 412* is returned.
 
 @RESTDESCRIPTION
 Like *GET*, but only returns the header fields and not the body. You
@@ -42,7 +42,7 @@ is returned if the document or collection was not found
 @RESTRETURNCODE{412}
 is returned if an "If-Match" header is given and the found
 document has a different version. The response will also contain the found
-document's current revision in the *ETag* header.
+document's current revision in the *Etag* header.
 
 @EXAMPLES
 

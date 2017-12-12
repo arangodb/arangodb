@@ -14,7 +14,7 @@
   * [Basics and Terminology](Document/AddressAndEtag.md)
   * [Working with Documents](Document/WorkingWithDocuments.md)
 * [Edges](Edge/README.md)
-  * [Address and ETag](Edge/AddressAndEtag.md)
+  * [Address and Etag](Edge/AddressAndEtag.md)
   * [Working with Edges](Edge/WorkingWithEdges.md)
 * [General Graph](Gharial/README.md)
   * [Management](Gharial/Management.md)
