@@ -169,7 +169,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
 // create a rocksdb transaction. will only be called for write transactions
 void RocksDBTransactionState::createTransaction() {
-  TRI_ASSERT(!_rocksTransaction);
   TRI_ASSERT(!isReadOnlyTransaction());
 
   // start rocks transaction
