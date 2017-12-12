@@ -510,6 +510,10 @@ IResearchView::sptr IResearchLink::updateView(
   return previous;
 }
 
+const IResearchView* IResearchLink::view() const {
+  return _view.get();
+}
+
 int EnhanceJsonIResearchLink(
   VPackSlice const definition,
   VPackBuilder& builder,

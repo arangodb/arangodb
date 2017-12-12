@@ -129,7 +129,8 @@ void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
 void IResearchRocksDBLink::writeRocksWalMarker() {
   RocksDBLogValue logValue = RocksDBLogValue::IResearchLinkDrop(
       Index::_collection->vocbase()->id(),
-      Index::_collection->cid(), IResearchLink::_view->id(),
+      Index::_collection->cid(),
+      view() ? view()->id() : 0, // 0 == invalid TRI_voc_cid_t according to transaction::Methods
       Index::_iid);
 
   rocksdb::WriteBatch batch;
@@ -144,8 +145,8 @@ void IResearchRocksDBLink::writeRocksWalMarker() {
 }
 
 NS_END      // iresearch
-    NS_END  // arangodb
+NS_END  // arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION-- END-OF-FILE
+// -----------------------------------------------------------------------------
