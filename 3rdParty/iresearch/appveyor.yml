@@ -11,7 +11,7 @@ build:
 
 environment:
   BOOST_VERSION: default
-  CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
+  CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DMSVC_BUILD_THREADS=8
   CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
   matrix:
   ############################################################################

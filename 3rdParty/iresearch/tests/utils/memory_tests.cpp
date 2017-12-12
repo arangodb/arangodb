@@ -26,6 +26,7 @@
 #include "utils/memory.hpp"
 #include "utils/timer_utils.hpp"
 
+#include <fstream>
 #include <list>
 #include <set>
 #include <map>
@@ -45,6 +46,20 @@ struct shared_base {
 };
 
 struct shared : shared_base { };
+
+class memory_pool_allocator_test: public test_base {
+  virtual void SetUp() {
+    // Code here will be called immediately after the constructor (right before each test).
+
+    test_base::SetUp();
+  }
+
+  virtual void TearDown() {
+    // Code here will be called immediately after each test (right before the destructor).
+
+    test_base::TearDown();
+  }
+};
 
 NS_END // LOCAL
 
@@ -166,7 +181,7 @@ TEST(memory_pool_test, allocate_deallocate) {
   ASSERT_EQ(1024, pool.next_size()); // log2_grow by default
 }
 
-TEST(memory_pool_allocator_test, allocate_deallocate) {
+TEST_F(memory_pool_allocator_test, allocate_deallocate) {
   size_t ctor_calls = 0;
   size_t dtor_calls = 0;
 
@@ -198,7 +213,7 @@ TEST(memory_pool_allocator_test, allocate_deallocate) {
   alloc.deallocate(p, 1);
 }
 
-TEST(memory_pool_allocator_test, profile_std_map) {
+TEST_F(memory_pool_allocator_test, profile_std_map) {
   struct test_data {
     test_data(size_t i)
       : a(i), b(i), c(i), d(i) {
@@ -357,10 +372,15 @@ TEST(memory_pool_allocator_test, profile_std_map) {
     }
   }
 
-  flush_timers(std::cout);
+  auto path = fs::path(test_dir()).append("profile_memory_pool_allocator.log");
+  std::ofstream out(path.native());
+
+  flush_timers(out);
+  out.close();
+  std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
 }
 
-TEST(memory_pool_allocator_test, profile_std_multimap) {
+TEST_F(memory_pool_allocator_test, profile_std_multimap) {
   struct test_data {
     test_data(size_t i)
       : a(i), b(i), c(i), d(i) {
@@ -548,10 +568,15 @@ TEST(memory_pool_allocator_test, profile_std_multimap) {
     }
   }
 
-  flush_timers(std::cout);
+  auto path = fs::path(test_dir()).append("profile_memory_pool_allocator.log");
+  std::ofstream out(path.native());
+
+  flush_timers(out);
+  out.close();
+  std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
 }
 
-TEST(memory_pool_allocator_test, profile_std_list) {
+TEST_F(memory_pool_allocator_test, profile_std_list) {
   struct test_data {
     test_data(size_t i)
       : a(i), b(i), c(i), d(i) {
@@ -684,10 +709,15 @@ TEST(memory_pool_allocator_test, profile_std_list) {
     }
   }
 
-  flush_timers(std::cout);
+  auto path = fs::path(test_dir()).append("profile_memory_pool_allocator.log");
+  std::ofstream out(path.native());
+
+  flush_timers(out);
+  out.close();
+  std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
 }
 
-TEST(memory_pool_allocator_test, profile_std_set) {
+TEST_F(memory_pool_allocator_test, profile_std_set) {
   struct test_data {
     test_data(size_t i)
       : a(i), b(i), c(i), d(i) {
@@ -846,10 +876,15 @@ TEST(memory_pool_allocator_test, profile_std_set) {
     }
   }
 
-  flush_timers(std::cout);
+  auto path = fs::path(test_dir()).append("profile_memory_pool_allocator.log");
+  std::ofstream out(path.native());
+
+  flush_timers(out);
+  out.close();
+  std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
 }
 
-TEST(memory_pool_allocator_test, allocate_unique) {
+TEST_F(memory_pool_allocator_test, allocate_unique) {
   size_t ctor_calls = 0;
   size_t dtor_calls = 0;
 
@@ -886,7 +921,7 @@ TEST(memory_pool_allocator_test, allocate_unique) {
   ASSERT_EQ(1, dtor_calls);
 }
 
-TEST(memory_pool_allocator_test, allocate_shared) {
+TEST_F(memory_pool_allocator_test, allocate_shared) {
   size_t ctor_calls = 0;
   size_t dtor_calls = 0;
 
@@ -964,3 +999,7 @@ TEST(memory_pool_allocator_test, allocate_shared) {
     ASSERT_EQ(1, dtor_calls);
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

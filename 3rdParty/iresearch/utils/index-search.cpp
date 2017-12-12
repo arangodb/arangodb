@@ -32,6 +32,28 @@
   #pragma GCC diagnostic pop
 #endif
 
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4101)
+  #pragma warning(disable: 4267)
+#endif
+
+  #include <cmdline.h>
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4267)
+  #pragma warning(default: 4101)
+#endif
+
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4229)
+#endif
+
+  #include <unicode/uclean.h> // for u_cleanup
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4229)
+#endif
+
 #include "common.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -47,13 +69,9 @@
 #include "utils/memory_pool.hpp"
 
 #include <boost/chrono.hpp>
-#include <unicode/uclean.h>
-
 #include <random>
 #include <fstream>
 #include <iostream>
-
-#include <cmdline.h>
 
 // std::regex support only starting from GCC 4.9
 #if !defined(__GNUC__) || (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ > 8))
@@ -176,7 +194,7 @@ struct SearchTask : public Task {
 
         for (auto& segment : reader) { // iterate segments
             irs::order order;
-            order.add<irs::bm25_sort>(irs::string_ref::nil);
+            order.add<irs::bm25_sort>(true, irs::string_ref::nil);
             auto prepared_order = order.prepare();
             auto docs = prepared->execute(segment, prepared_order); // query segment
             const irs::score* score = docs->attributes().get<iresearch::score>().get();
@@ -351,7 +369,7 @@ class TaskSource {
         //        static const std::regex minShouldMatchPattern(" \\+minShouldMatch=(\\d+)($| )");
 
         irs::order order;
-        order.add<irs::bm25_sort>(irs::string_ref::nil);
+        order.add<irs::bm25_sort>(true, irs::string_ref::nil);
         auto ord = order.prepare();
 
         for (auto& line : lines) {
@@ -866,7 +884,7 @@ int search(
     SCOPED_TIMER("Order build time");
     irs::order sort;
 
-    sort.add(scr);
+    sort.add(true, scr);
     order = sort.prepare();
   }
 
@@ -1028,10 +1046,8 @@ int search(
             
             while (docs->next()) {
               ++doc_count;
-
-              if (score) {
-                score->evaluate();
-              }
+              assert(score); // score must exist for any ordered doc_iterator::next() == true
+              score->evaluate();
 
 #ifdef IRESEARCH_COMPLEX_SCORING
               sorted.emplace(

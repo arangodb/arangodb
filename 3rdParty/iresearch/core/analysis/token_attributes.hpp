@@ -192,7 +192,27 @@ class IRESEARCH_API position : public attribute {
 
   position() = default;
 
-  bool next() const { return impl_->next(); }
+  explicit operator bool() const NOEXCEPT { return bool(impl_); }
+
+  const attribute_view& attributes() const NOEXCEPT {
+    assert(impl_);
+    return impl_->attributes();
+  }
+
+  void clear() {
+    assert(impl_);
+    impl_->clear();
+  }
+
+  impl* get() NOEXCEPT { return impl_.get(); }
+  const impl* get() const NOEXCEPT { return impl_.get(); }
+
+  bool next() const {
+    assert(impl_);
+    return impl_->next();
+  }
+
+  void reset(impl::ptr&& impl = nullptr) NOEXCEPT { impl_ = std::move(impl); }
 
   value_t seek(value_t target) const {
     struct skewed_comparer: std::less<value_t> {
@@ -207,31 +227,9 @@ class IRESEARCH_API position : public attribute {
     return impl_->value();
   }
 
-  value_t value() const { return impl_->value(); }
-
-  void clear() {
+  value_t value() const {
     assert(impl_);
-    impl_->clear();
-  }
-
-  void reset(impl::ptr&& impl = nullptr) NOEXCEPT {
-    impl_ = std::move(impl);
-  }
-
-  explicit operator bool() const NOEXCEPT {
-    return impl_.get();
-  }
-
-  impl* get() NOEXCEPT {
-    return impl_.get();
-  }
-
-  const impl* get() const NOEXCEPT {
-    return impl_.get();
-  }
-
-  const attribute_view& attributes() const NOEXCEPT {
-    return impl_->attributes();
+    return impl_->value();
   }
 
  private:

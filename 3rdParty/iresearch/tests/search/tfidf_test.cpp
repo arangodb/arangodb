@@ -85,6 +85,8 @@ TEST_F(tfidf_test, test_load) {
   ASSERT_EQ(1, order.add(true, scorer).size());
 }
 
+#ifndef IRESEARCH_DLL
+
 TEST_F(tfidf_test, make_from_bool) {
   // `with-norms` argument
   {
@@ -132,6 +134,8 @@ TEST_F(tfidf_test, make_from_array) {
   ASSERT_EQ(nullptr, irs::scorers::get("tfidf", "[ {} ]"));
   ASSERT_EQ(nullptr, irs::scorers::get("tfidf", "[ [] ]"));
 }
+
+#endif // IRESEARCH_DLL
 
 TEST_F(tfidf_test, test_normalize_features) {
   // default norms
@@ -620,7 +624,7 @@ TEST_F(tfidf_test, test_order) {
   }
 }
 
-#endif
+#endif // IRESEARCH_DLL
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

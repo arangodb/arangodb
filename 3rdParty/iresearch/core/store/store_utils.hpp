@@ -166,8 +166,14 @@ inline std::pair<uint64_t, const byte_type*> read_vlong(const byte_type* begin) 
 
 template<typename StringType>
 StringType to_string(const byte_type* const begin) {
+  typedef typename StringType::traits_type::char_type char_type;
+
   const auto res = read_vint(begin);
-  return StringType(reinterpret_cast<const typename StringType::traits_type::char_type*>(res.second), res.first);
+
+  return StringType(
+    reinterpret_cast<const char_type*>(res.second),
+    res.first
+  );
 }
 
 ////////////////////////////////////////////////////////////////////////////////

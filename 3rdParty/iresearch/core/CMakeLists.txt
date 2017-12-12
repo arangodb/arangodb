@@ -87,6 +87,7 @@ set(IResearch_core_sources
   ./index/postings.cpp
   ./index/segment_reader.cpp 
   ./index/segment_writer.cpp 
+  ./index/transaction_store.cpp
   ./iql/parser.cc
   ./iql/parser_common.cpp
   ./iql/parser_context.cpp
@@ -163,6 +164,7 @@ set(IResearch_core_headers
   ./index/iterators.hpp
   ./index/segment_reader.hpp
   ./index/segment_writer.hpp
+  ./index/transaction_store.hpp
   ./index/index_writer.hpp
   ./iql/parser_common.hpp
   ./iql/parser_context.hpp

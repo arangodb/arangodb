@@ -52,28 +52,99 @@ struct term_attribute;
 
 NS_END // NS_ROOT
 
-namespace ir = iresearch;
-
 NS_BEGIN(tests)
+
+class directory_mock: public irs::directory {
+ public:
+  directory_mock(irs::directory& impl): impl_(impl) {}
+
+  using directory::attributes;
+
+  virtual irs::attribute_store& attributes() NOEXCEPT override {
+    return impl_.attributes();
+  }
+
+  virtual void close() NOEXCEPT override { impl_.close(); }
+
+  virtual irs::index_output::ptr create(
+    const std::string& name
+  ) NOEXCEPT override {
+    return impl_.create(name);
+  }
+
+  virtual bool exists(
+    bool& result, const std::string& name
+  ) const NOEXCEPT override {
+    return impl_.exists(result, name);
+  }
+
+  virtual bool length(
+    uint64_t& result, const std::string& name
+  ) const NOEXCEPT override {
+    return impl_.length(result, name);
+  }
+
+  virtual irs::index_lock::ptr make_lock(
+    const std::string& name
+  ) NOEXCEPT override {
+    return impl_.make_lock(name);
+  }
+
+  virtual bool mtime(
+    std::time_t& result, const std::string& name
+  ) const NOEXCEPT override {
+    return impl_.mtime(result, name);
+  }
+
+  virtual irs::index_input::ptr open(
+    const std::string& name,
+    irs::IOAdvice advice
+  ) const NOEXCEPT override {
+    return impl_.open(name, advice);
+  }
+
+  virtual bool remove(const std::string& name) NOEXCEPT override {
+    return impl_.remove(name);
+  }
+
+  virtual bool rename(
+    const std::string& src, const std::string& dst
+  ) NOEXCEPT override {
+    return impl_.rename(src, dst);
+  }
+
+  virtual bool sync(const std::string& name) NOEXCEPT override {
+    return impl_.sync(name);
+  }
+
+  virtual bool visit(const irs::directory::visitor_f& visitor) const override {
+    return impl_.visit(visitor);
+  }
+
+ private:
+  irs::directory& impl_;
+}; // directory_mock
 
 class index_test_base : public virtual test_base {
  protected:
-  virtual ir::directory* get_directory() = 0;
-  virtual ir::format::ptr get_codec() = 0;
+  virtual irs::directory* get_directory() = 0;
+  virtual irs::format::ptr get_codec() = 0;
 
-  ir::directory& dir() const { return *dir_; }
-  ir::format::ptr codec() { return codec_; }
+  irs::directory& dir() const { return *dir_; }
+  irs::format::ptr codec() { return codec_; }
   const index_t& index() const { return index_; }
 
-  ir::index_writer::ptr open_writer(ir::OPEN_MODE mode = ir::OPEN_MODE::OM_CREATE) {
-    return ir::index_writer::make(*dir_, codec_, mode);
+  irs::index_writer::ptr open_writer(
+      irs::OPEN_MODE mode = irs::OPEN_MODE::OM_CREATE
+  ) {
+    return irs::index_writer::make(*dir_, codec_, mode);
   }
 
-  ir::directory_reader open_reader() {
-    return ir::directory_reader::open(*dir_, codec_);
+  irs::directory_reader open_reader() {
+    return irs::directory_reader::open(*dir_, codec_);
   }
 
-  void assert_index(const ir::flags& features, size_t skip = 0) const {
+  void assert_index(const irs::flags& features, size_t skip = 0) const {
     tests::assert_index(dir(), codec_, index(), features, skip);
   }
 
@@ -97,22 +168,33 @@ class index_test_base : public virtual test_base {
     u_cleanup(); // release/free all memory used by ICU
   }
 
-  void write_segment( ir::index_writer& writer, tests::index_segment& segment, tests::doc_generator_base& gen ) {
+  void write_segment(
+      irs::index_writer& writer,
+      tests::index_segment& segment,
+      tests::doc_generator_base& gen
+  ) {
     // add segment
-    const document* doc;
-    while ((doc = gen.next())) {
-      segment.add(doc->indexed.begin(), doc->indexed.end());
-      insert(writer, doc->indexed.begin(), doc->indexed.end(), doc->stored.begin(), doc->stored.end());
+    const document* src;
+
+    while ((src = gen.next())) {
+      segment.add(src->indexed.begin(), src->indexed.end());
+      ASSERT_TRUE(writer.insert([src](irs::index_writer::document& doc)->bool {
+        doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
+        doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
+        return false;
+      }));
     }
   }
 
-  void add_segment(ir::index_writer& writer, tests::doc_generator_base& gen) {
+  void add_segment(irs::index_writer& writer, tests::doc_generator_base& gen) {
     index_.emplace_back();
     write_segment(writer, index_.back(), gen);
     writer.commit();
   }
 
-  void add_segments(ir::index_writer& writer, std::vector<doc_generator_base::ptr>& gens) {
+  void add_segments(
+      irs::index_writer& writer, std::vector<doc_generator_base::ptr>& gens
+  ) {
     for (auto& gen : gens) {
       index_.emplace_back();
       write_segment(writer, index_.back(), *gen);
@@ -120,15 +202,18 @@ class index_test_base : public virtual test_base {
     writer.commit();
   }
 
-  void add_segment(tests::doc_generator_base& gen, ir::OPEN_MODE mode = ir::OPEN_MODE::OM_CREATE) {
+  void add_segment(
+      tests::doc_generator_base& gen,
+      irs::OPEN_MODE mode = irs::OPEN_MODE::OM_CREATE
+  ) {
     auto writer = open_writer(mode);
     add_segment(*writer, gen);
   }
 
- private: 
+ private:
   index_t index_;
-  ir::directory::ptr dir_;
-  ir::format::ptr codec_;
+  irs::directory::ptr dir_;
+  irs::format::ptr codec_;
 }; // index_test_base
 
 NS_BEGIN(templates)
@@ -137,9 +222,9 @@ NS_BEGIN(templates)
 /// @class token_stream_payload
 /// @brief token stream wrapper which sets payload equal to term value
 //////////////////////////////////////////////////////////////////////////////
-class token_stream_payload : public ir::token_stream {
+class token_stream_payload: public irs::token_stream {
  public:
-  explicit token_stream_payload(ir::token_stream* impl);
+  explicit token_stream_payload(irs::token_stream* impl);
   bool next(); 
 
   const irs::attribute_view& attributes() const NOEXCEPT {
@@ -147,9 +232,9 @@ class token_stream_payload : public ir::token_stream {
   }
 
  private:
-  const ir::term_attribute* term_;
-  ir::payload pay_;
-  ir::token_stream* impl_;
+  const irs::term_attribute* term_;
+  irs::payload pay_;
+  irs::token_stream* impl_;
 }; // token_stream_payload
 
 //////////////////////////////////////////////////////////////////////////////
@@ -160,12 +245,11 @@ template<typename T>
 class text_field : public tests::field_base {
  public:
   text_field(
-      const ir::string_ref& name, 
-      bool payload = false)
-      : token_stream_(ir::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":[]}")) {
+      const irs::string_ref& name, bool payload = false
+  ): token_stream_(irs::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":[]}")) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
-         throw ir::illegal_state();
+         throw irs::illegal_state();
       }
       pay_stream_.reset(new token_stream_payload(token_stream_.get()));
     }
@@ -173,14 +257,12 @@ class text_field : public tests::field_base {
   }
 
   text_field(
-      const ir::string_ref& name, 
-      const T& value,
-      bool payload = false)
-      : token_stream_(ir::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":[]}")),
-      value_(value) {
+      const irs::string_ref& name, const T& value, bool payload = false
+  ): token_stream_(irs::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":[]}")),
+     value_(value) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
-        throw ir::illegal_state();
+        throw irs::illegal_state();
       }
       pay_stream_.reset(new token_stream_payload(token_stream_.get()));
     }
@@ -193,28 +275,28 @@ class text_field : public tests::field_base {
       value_(std::move(other.value_)) {
   }
 
-  ir::string_ref value() const { return value_; }
+  irs::string_ref value() const { return value_; }
   void value(const T& value) { value = value; }
   void value(T&& value) { value_ = std::move(value); }
 
-  const ir::flags& features() const {
-    static ir::flags features{ 
-      iresearch::frequency::type(), iresearch::position::type(), 
-      iresearch::offset::type(), iresearch::payload::type() 
+  const irs::flags& features() const {
+    static irs::flags features{
+      iresearch::frequency::type(), iresearch::position::type(),
+      iresearch::offset::type(), iresearch::payload::type()
     };
     return features;
   }
 
-  ir::token_stream& get_tokens() const {
+  irs::token_stream& get_tokens() const {
     token_stream_->reset(value_);
 
     return pay_stream_
-      ? static_cast<ir::token_stream&>(*pay_stream_)
+      ? static_cast<irs::token_stream&>(*pay_stream_)
       : *token_stream_;
   }
 
  private:
-  virtual bool write(ir::data_output&) const { return false; }
+  virtual bool write(irs::data_output&) const { return false; }
 
   static std::locale& get_locale() {
     static auto locale = iresearch::locale_utils::locale(nullptr, true);
@@ -222,7 +304,7 @@ class text_field : public tests::field_base {
   }
 
   std::unique_ptr<token_stream_payload> pay_stream_;
-  ir::analysis::analyzer::ptr token_stream_;
+  irs::analysis::analyzer::ptr token_stream_;
   T value_;
 }; // text_field
 
@@ -232,19 +314,26 @@ class text_field : public tests::field_base {
 //////////////////////////////////////////////////////////////////////////////
 class string_field : public tests::field_base {
  public:
-  string_field(const irs::string_ref& name, const irs::flags& extra_features = irs::flags::empty_instance());
-  string_field(const irs::string_ref& name, const irs::string_ref& value, const irs::flags& extra_features = irs::flags::empty_instance());
+  string_field(
+    const irs::string_ref& name,
+    const irs::flags& extra_features = irs::flags::empty_instance()
+  );
+  string_field(
+    const irs::string_ref& name,
+    const irs::string_ref& value,
+    const irs::flags& extra_features = irs::flags::empty_instance()
+  );
 
-  void value(const ir::string_ref& str);
-  ir::string_ref value() const { return value_; }
+  void value(const irs::string_ref& str);
+  irs::string_ref value() const { return value_; }
 
-  virtual const ir::flags& features() const override;
-  virtual ir::token_stream& get_tokens() const override;
-  virtual bool write(ir::data_output& out) const override;
+  virtual const irs::flags& features() const override;
+  virtual irs::token_stream& get_tokens() const override;
+  virtual bool write(irs::data_output& out) const override;
 
  private:
   irs::flags features_;
-  mutable ir::string_token_stream stream_;
+  mutable irs::string_token_stream stream_;
   std::string value_;
 }; // string_field
 

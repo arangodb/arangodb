@@ -290,11 +290,16 @@ class IRESEARCH_API sort {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API order final {
  public:
-  class entry : private util::noncopyable {
+  class entry {
    public:
-    entry(const sort::ptr& sort, bool reverse)
+    entry(const irs::sort::ptr& sort, bool reverse) NOEXCEPT
+      : sort_(sort), reverse_(reverse) {
+      assert(sort_);
+    }
+
+    entry(irs::sort::ptr&& sort, bool reverse) NOEXCEPT
       : sort_(std::move(sort)), reverse_(reverse) {
-      assert(sort);
+      assert(sort_);
     }
 
     entry(entry&& rhs) NOEXCEPT
@@ -478,9 +483,22 @@ class IRESEARCH_API order final {
     void prepare_score(byte_type* score) const;
 
     template<typename T>
-    const T& get(const byte_type* score, size_t i) const {
-      assert(sizeof(T) == order_[i].bucket->size());
+    CONSTEXPR const T& get(const byte_type* score, size_t i) const NOEXCEPT {
+      #if !defined(__APPLE__) || defined(IRESEARCH_DEBUG) // MacOS can't handle asserts in non-debug CONSTEXPR functions
+        assert(sizeof(T) == order_[i].bucket->size());
+      #endif
       return reinterpret_cast<const T&>(*(score + order_[i].offset));
+    }
+
+    template<typename StringType>
+    CONSTEXPR StringType to_string(
+        const byte_type* score, size_t i
+    ) const NOEXCEPT {
+      typedef typename StringType::traits_type::char_type char_type;
+      return StringType(
+        reinterpret_cast<const char_type*>(score + order_[i].offset),
+        order_[i].bucket->size()
+      );
     }
 
   private:

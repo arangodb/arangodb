@@ -85,6 +85,8 @@ TEST_F(bm25_test, test_load) {
   ASSERT_EQ(1, order.add(true, scorer).size());
 }
 
+#ifndef IRESEARCH_DLL
+
 TEST_F(bm25_test, make_from_array) {
   // default args
   {
@@ -161,6 +163,8 @@ TEST_F(bm25_test, make_from_array) {
   ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, 1.7, {} ]"));
   ASSERT_EQ(nullptr, irs::scorers::get("bm25", "[ 1.5, 1.7, [] ]"));
 }
+
+#endif // IRESEARCH_DLL
 
 TEST_F(bm25_test, test_normalize_features) {
   // default norms

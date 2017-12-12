@@ -32,6 +32,28 @@
   #pragma GCC diagnostic pop
 #endif
 
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4101)
+  #pragma warning(disable: 4267)
+#endif
+
+  #include <cmdline.h>
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4267)
+  #pragma warning(default: 4101)
+#endif
+
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4229)
+#endif
+
+  #include <unicode/uclean.h> // for u_cleanup
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4229)
+#endif
+
 #include "index-put.hpp"
 #include "common.hpp"
 #include "index/index_writer.hpp"
@@ -41,12 +63,8 @@
 #include "analysis/token_attributes.hpp"
 
 #include <boost/chrono.hpp>
-#include <unicode/uclean.h>
-
 #include <fstream>
 #include <iostream>
-
-#include <cmdline.h>
 
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
   #define snprintf _snprintf
@@ -450,11 +468,11 @@ int put(
           doc.fill(&(buf[i]));
 
           for (auto& field: doc.elements) {
-            builder.insert<irs::Action::INDEX>(*field);
+            builder.insert(irs::action::index, *field);
           }
 
           for (auto& field : doc.store) {
-            builder.insert<irs::Action::STORE>(*field);
+            builder.insert(irs::action::store, *field);
           }
 
           return ++i < buf.size();
