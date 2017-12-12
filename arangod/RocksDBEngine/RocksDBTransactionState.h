@@ -112,10 +112,10 @@ class RocksDBTransactionState final : public TransactionState {
   RocksDBMethods* rocksdbMethods();
 
   /// @brief insert a snapshot into a (not yet started) transaction.
-  ///        Only ever valid on a read-only transaction
+  ///        Only ever valid on a trx in CREATED state
   void donateSnapshot(rocksdb::Snapshot const* snap);
-  /// @brief steal snapshot of this transaction. Only ever valid on a
-  ///        read-only transaction
+  /// @brief steal snapshot of this transaction.
+  /// Does not work on a single operation
   rocksdb::Snapshot const* stealSnapshot();
   
   /// @brief Rocksdb sequence number of snapshot. Works while trx
@@ -147,13 +147,18 @@ class RocksDBTransactionState final : public TransactionState {
   void returnRocksDBKey(RocksDBKey* key);
 
  private:
+  /// @brief create a new rocksdb transaction
   void createTransaction();
+  /// @brief delete transaction, snapshot and cache trx
+  void cleanupTransaction() noexcept;
+  /// @brief internally commit a transaction
   arangodb::Result internalCommit();
+  /// @brief check sizes and call internalCommit if too big
   void checkIntermediateCommit(uint64_t newSize);
 
  private:
   /// @brief rocksdb transaction may be null for read only transactions
-  std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
+  rocksdb::Transaction* _rocksTransaction;
   /// @brief rocksdb snapshot, is null if _rocksTransaction is set
   rocksdb::Snapshot const* _snapshot;
   /// @brief write options used
