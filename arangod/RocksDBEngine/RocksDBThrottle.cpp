@@ -247,6 +247,10 @@ void RocksDBThrottle::SetThrottleWriteRate(std::chrono::microseconds Micros,
     SetThrottle();
   } // if
 
+  LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+    << "SetThrottleWriteRate: Micros " << Micros.count()
+    << ", Keys " << Keys << ", Bytes " << Bytes << ", IsLevel0 " << IsLevel0;
+
   return;
 } // RocksDBThrottle::SetThrottleWriteRate
 
@@ -262,6 +266,9 @@ void RocksDBThrottle::ThreadLoop() {
     _threadRunning.store(true);
     _threadCondvar.signal();
   } // lock
+
+  LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+    << "ThreadLoop() started";
 
   while(_threadRunning.load()) {
     //
@@ -287,6 +294,9 @@ void RocksDBThrottle::ThreadLoop() {
       } //if
     } // lock
   } // while
+
+  LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+    << "ThreadLoop() ended";
 
 } // RocksDBThrottle::ThreadLoop
 
@@ -382,6 +392,10 @@ void RocksDBThrottle::RecalculateThrottle() {
       if (temp_rate<1)
         temp_rate=1;   // throttle must always have an effect
 
+      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+        << "RecalculateThrottle(): old " << _throttleBps
+        << ", new " << temp_rate;
+
       _throttleBps=temp_rate;
 
       // prepare for next interval
@@ -390,10 +404,17 @@ void RocksDBThrottle::RecalculateThrottle() {
       // never had a valid throttle, and have first hint now
       _throttleBps=new_throttle;
 
+      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+        << "RecalculateThrottle(): first " << _throttleBps;
+
       _firstThrottle=false;
     }  // else if
 
-    SetThrottle();
+    // This SetThrottle() call currently occurs without holding the
+    //  rocksdb db mutex.  Not safe, seen likely crash from it.
+    //  Add back only if this becomes a pluggable WriteController with
+    //  access to db mutex.
+    // SetThrottle();
 
   } // !no_data && unlock _threadMutex
 
@@ -413,7 +434,9 @@ void RocksDBThrottle::SetThrottle() {
     // this routine can get called before _internalRocksDB is set
     if (nullptr != _internalRocksDB) {
       // inform write_controller_ of our new rate
-      if (1<_throttleBps) {
+      //  (column_family.cc RecalculateWriteStallConditions() makes assumptions
+      //   that could force a divide by zero if _throttleBps is less than four ... using 100 for safety)
+      if (100<_throttleBps) {
         // hard casting away of "const" ...
         if (((WriteController&)_internalRocksDB->write_controller()).max_delayed_write_rate() < _throttleBps) {
           ((WriteController&)_internalRocksDB->write_controller()).set_max_delayed_write_rate(_throttleBps);
