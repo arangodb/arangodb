@@ -2147,8 +2147,20 @@ void IResearchView::FlushCallbackUnregisterer::operator()(IResearchView* view) c
   }
 }
 
-void IResearchView::verifyKnownCollections() {
+std::unordered_set<TRI_voc_cid_t> IResearchView::gatherCollectionIds() {
+  std::unordered_set<TRI_voc_cid_t> ids;
+
   for (auto cid : _meta._collections) {
+    ids.emplace(cid);
+  }
+
+  // TODO: gather ids from backing store
+
+  return ids;
+}
+
+void IResearchView::verifyKnownCollections() {
+  for (auto cid : gatherCollectionIds()) {
     auto collection = _logicalView->vocbase()->lookupCollection(cid);
     if (!collection) {
       // collection no longer exists, drop it and move on
