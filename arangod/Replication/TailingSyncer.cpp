@@ -850,6 +850,8 @@ Result TailingSyncer::run() {
     return Result(TRI_ERROR_INTERNAL);
   }
   
+  setAborted(false);
+
   TRI_DEFER(sendRemoveBarrier());
   uint64_t shortTermFailsInRow = 0;
   
@@ -925,8 +927,6 @@ retry:
   
   if (res.fail()) {
     // stop ourselves
-    _applier->stop(res);
-    
     if (res.is(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) ||
         res.is(TRI_ERROR_REPLICATION_NO_START_TICK)) {
       if (res.is(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
@@ -963,8 +963,11 @@ retry:
         saveApplierState();
       }
       
+      setAborted(false);
+      
       if (!_configuration._autoResync) {
         LOG_TOPIC(INFO, Logger::REPLICATION) << "Auto resync disabled, applier will stop";
+        _applier->stop(res);
         return res;
       }
       
@@ -991,6 +994,7 @@ retry:
         }
         
         // always abort if we get here
+        _applier->stop(res);
         return res;
       }
 
@@ -1029,6 +1033,7 @@ retry:
       }
     }
     
+    _applier->stop(res);
     return res;
   }
   
@@ -1047,6 +1052,10 @@ void TailingSyncer::getLocalState() {
   if (!foundState) {
     // no state file found, so this is the initialization
     _applier->_state._serverId = _masterInfo._serverId;
+    if (_useTick && _initialTick > 0) {
+      _applier->_state._lastProcessedContinuousTick = _initialTick - 1;
+      _applier->_state._lastAppliedContinuousTick = _initialTick - 1;
+    }
     _applier->persistState(true);
     return;
   }
@@ -1457,7 +1466,7 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   
   uint64_t processedMarkers = 0;
   Result r = applyLog(response.get(), firstRegularTick, processedMarkers, ignoreCount);
-  
+ 
   // cppcheck-suppress *
   if (processedMarkers > 0) {
     worked = true;
@@ -1479,6 +1488,11 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
     if (_ongoingTransactions.empty() &&
         _applier->_state._safeResumeTick == 0) {
       _applier->_state._safeResumeTick = tick;
+    }
+    
+    if (_ongoingTransactions.empty() && 
+        _applier->_state._lastAppliedContinuousTick == 0) {
+      _applier->_state._lastAppliedContinuousTick = _applier->_state._lastProcessedContinuousTick;
     }
     
     if (!_hasWrittenState) {
