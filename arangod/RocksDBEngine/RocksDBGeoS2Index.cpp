@@ -267,9 +267,8 @@ RocksDBGeoS2Index::RocksDBGeoS2Index(TRI_idx_iid_t iid,
       _longitude.emplace_back(it.name);
     }
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "RocksDBGeoIndex can only be created with one or two fields.");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+        "RocksDBGeoS2Index can only be created with one or two fields.");
   }
   TRI_ASSERT(_variant != IndexVariant::NONE);
 }

@@ -4632,13 +4632,16 @@ struct GeoIndexInfo {
   /// selected index
   std::shared_ptr<Index> index;
   
-  std::vector<AstNode const*> expressionsToRemove;
+  /// Filter calculations to modify
+  std::map<FilterNode*, Expression*> filtersToModify;
+  SortNode* sortToModify;
+  std::set<AstNode const*> nodesToRemove;
 
   // ============ Distance params ============
   
-  AstNode const* distanceCenter;
-  AstNode const* distanceCenterLat;
-  AstNode const* distanceCenterLng;
+  AstNode const* distanceCenter = nullptr;
+  AstNode const* distanceCenterLat = nullptr;
+  AstNode const* distanceCenterLng = nullptr;
   
   AstNode const* minDistance = nullptr;
   bool minInclusive = false;
@@ -4729,10 +4732,10 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan,
       VPackBuilder builder;
       index->toVelocyPack(builder,true,false);
       bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
-      bool legacy = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "legacy", false);
+      /*bool legacy = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "legacy", false);
       if (isS2 && !legacy) {
         continue; // only allowed for legacy use
-      }
+      }*/
       
       fields1.back().name += geoJson ? "[1]" : "[0]";
       fields2.back().name += geoJson ? "[0]" : "[1]";
@@ -4801,17 +4804,19 @@ static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode, GeoI
     if (distanceFuncArgCheck(plan, fargs->getMemberUnchecked(0), fargs->getMemberUnchecked(1), info)) {
       info.distanceCenterLat = fargs->getMemberUnchecked(2);
       info.distanceCenterLng = fargs->getMemberUnchecked(3);
-      return false;
+      return true;
     } else if (distanceFuncArgCheck(plan, fargs->getMemberUnchecked(2), fargs->getMemberUnchecked(3), info)) {
       info.distanceCenterLat = fargs->getMemberUnchecked(0);
       info.distanceCenterLng = fargs->getMemberUnchecked(1);
-      return false;
+      return true;
     }
   } else if (fargs->numMembers() == 2 && (func->name == "GEO_DISTANCE")) {
     if (geoFuncArgCheck(plan, fargs->getMember(0), info)) {
       info.distanceCenter = fargs->getMemberUnchecked(1);
+      return true;
     } else if (geoFuncArgCheck(plan, fargs->getMember(1), info)) {
       info.distanceCenter = fargs->getMemberUnchecked(0);
+      return true;
     }
   }
   return false;
@@ -4835,9 +4840,9 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
   AstNode const* collArg = fargs->getMemberUnchecked(0);
   AstNode const* latArg = fargs->getMemberUnchecked(1);
   AstNode const* lngArg = fargs->getMemberUnchecked(2);
-  AstNode const* limitArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
+  AstNode const* rangeArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
   if (!isValueTypeCollection(collArg) || !isValueTypeNumber(latArg) ||
-      !isValueTypeNumber(lngArg) || (limitArg != nullptr && !isValueTypeNumber(limitArg))) {
+      !isValueTypeNumber(lngArg) || (rangeArg != nullptr && !isValueTypeNumber(rangeArg))) {
     return false;
   }
   
@@ -4857,11 +4862,11 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
     info.ascending = true;
     info.distanceCenterLat = latArg;
     info.distanceCenterLat = lngArg;
-    if (limitArg != nullptr) {
+    if (rangeArg != nullptr) {
       if (func->name == "NEAR") {
-        info.limit = limitArg;
+        info.limit = rangeArg;
       } else if (func->name == "WITHIN") {
-        info.maxDistance = limitArg;
+        info.maxDistance = rangeArg;
         info.maxInclusive = true;
       }
     }
@@ -4930,13 +4935,13 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
         checkDistanceFunc(plan, first, info)) {
       info.maxDistance = second;
       info.maxInclusive = lessequal;
-      info.expressionsToRemove.push_back(node);
+      info.nodesToRemove.insert(node);
       return true;
     } else if (second->type == NODE_TYPE_FCALL && isValueOrReference(first) &&
                checkDistanceFunc(plan, second, info)) {
       info.minDistance = second;
       info.minInclusive = lessequal;
-      info.expressionsToRemove.push_back(node);
+      info.nodesToRemove.insert(node);
       return true;
     }
     return false;
@@ -5000,12 +5005,12 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
       return;
     }
   } else if (node->getType() == EN::FILTER) {
+    FilterNode* fn = static_cast<FilterNode*>(node);
     // filter nodes always have one input variable
-    auto varsUsedHere = static_cast<FilterNode*>(node)->getVariablesUsedHere();
+    auto varsUsedHere = fn->getVariablesUsedHere();
     TRI_ASSERT(varsUsedHere.size() == 1); // does the optimizer do this?
     // now check who introduced our variable
-    auto variable = varsUsedHere[0];
-    ExecutionNode* setter = plan->getVarSetBy(variable->id);
+    ExecutionNode* setter = plan->getVarSetBy(varsUsedHere[0]->id);
     if (setter == nullptr || setter->getType() != EN::CALCULATION) {
       return;
     }
@@ -5015,19 +5020,24 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
       return;
     }
     
-    size_t orsInBranch;
-    AstNodeType parentType = NODE_TYPE_ROOT;
+    std::vector<AstNodeType> parents; // parents and current node
+    size_t orsInBranch = 0;
     Ast::traverseReadOnly(expr->node(),
                           [&](AstNode const* node, void*){ // pre
-                              parentType = node->type;
+                            parents.push_back(node->type);
                             if (Ast::IsOrOperatorType(node->type)) {
                               orsInBranch++;
                             }
                           }, [&](AstNode const* node, void*) { // visit
-                            if (orsInBranch == 0 && Ast::IsAndOperatorType(parentType)) {
-                              checkGeoFilterExpression(plan, node, info);
+                            size_t pl = parents.size();
+                            if (orsInBranch == 0 && (pl == 1 || Ast::IsAndOperatorType(parents[pl-2]))) {
+                              // do not visit below OR or into <=, <, >, >= expressions
+                              if (checkGeoFilterExpression(plan, node, info)) {
+                                info.filtersToModify.emplace(fn, expr);
+                              }
                             }
                           }, [&](AstNode const* node, void*) { // post
+                            parents.pop_back();
                             if (Ast::IsOrOperatorType(node->type)) {
                               orsInBranch--;
                             }
@@ -5045,20 +5055,22 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
   AstNode* func = nullptr;
   if (info.distanceCenterLat || info.distanceCenter) {
     // create GEO_CENTER_CONTAINS
+    TRI_ASSERT(info.maxDistance != nullptr);
     AstNode* args = ast->createNodeArray(3);
     if (info.distanceCenterLat && info.distanceCenterLng) { // legacy
-      TRI_ASSERT(info.isSorted && info.ascending && info.limit != nullptr);
+      TRI_ASSERT(!info.distanceCenter);
+      // info.isSorted && info.ascending &&
       AstNode* array = ast->createNodeArray(2);
       array->addMember(info.distanceCenterLng); // GeoJSON ordering
       array->addMember(info.distanceCenterLat);
       args->addMember(array);
     } else {
       TRI_ASSERT(info.distanceCenter);
-      TRI_ASSERT(info.isSorted);
+      TRI_ASSERT(!info.distanceCenterLat && !info.distanceCenterLng);
       args->addMember(info.distanceCenter);  // center location
     }
     
-    args->addMember(info.limit);
+    args->addMember(info.maxDistance);
     if (info.locationVar) {
       args->addMember(info.locationVar);
     } else {
@@ -5086,121 +5098,12 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
   return cond;
 }
 
-/*void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info) {
-  if (info.expressionParent && info.executionNodeType == EN::FILTER) {
-    auto ast = plan->getAst();
-    CalculationNode* newNode = nullptr;
-    Expression* expr =
-        new Expression(plan, ast, static_cast<CalculationNode*>(info.setter)
-                                ->expression()
-                                ->nodeForModification()
-                                ->clone(ast));
-
-    try {
-      newNode = new CalculationNode(
-          plan, plan->nextId(), expr,
-          static_cast<CalculationNode*>(info.setter)->outVariable());
-    } catch (...) {
-      delete expr;
-      throw;
-    }
-
-    plan->registerNode(newNode);
-    plan->replaceNode(info.setter, newNode);
-
-    bool done = false;
-
-    // Modifies the node in the following way: checks if a binary and node has
-    // a child that is a filter condition. if so it replaces the node with the
-    // other child effectively deleting the filter condition.
-    AstNode* modified = ast->traverseAndModify(
-        newNode->expression()->nodeForModification(),
-        [&done](AstNode* node, void*) {
-          if (done) {
-            return node;
-          }
-          if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-            for (std::size_t i = 0; i < node->numMembers(); i++) {
-              if (isGeoFilterExpression(node->getMemberUnchecked(i), node)) {
-                done = true;
-                //select the other node - not the member containing the error message
-                return node->getMemberUnchecked(i ? 0 : 1);
-              }
-            }
-          }
-          return node;
-        },
-        nullptr);
-
-    if (modified != newNode->expression()->node()){
-      newNode->expression()->replaceNode(modified);
-    }
-
-    if (done) {
-      return;
-    }
-
-    auto replaceInfo = iterativePreorderWithCondition(
-        EN::FILTER, newNode->expression()->nodeForModification(),
-        &isGeoFilterExpression);
-
-    if (newNode->expression()->nodeForModification() ==
-        replaceInfo.expressionParent) {
-      if (replaceInfo.expressionParent->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-        for (std::size_t i = 0; i < replaceInfo.expressionParent->numMembers();
-             ++i) {
-          if (replaceInfo.expressionParent->getMember(i) != replaceInfo.expressionNode) {
-            newNode->expression()->replaceNode( replaceInfo.expressionParent->getMember(i));
-            return;
-          }
-        }
-      }
-    }
-
-    // else {
-    //  // COULD BE IMPROVED
-    //  if(replaceInfo.expressionParent->type == NODE_TYPE_OPERATOR_BINARY_AND){
-    //    // delete ast node - we would need the parent of expression parent to
-    //    delete the node
-    //    // we do not have it available here so we just replace the node
-    //    with true return;
-    //  }
-    //}
-
-    // fallback
-    auto replacement = ast->createNodeValueBool(true);
-    for (std::size_t i = 0; i < replaceInfo.expressionParent->numMembers();
-         ++i) {
-      if (replaceInfo.expressionParent->getMember(i) ==
-          replaceInfo.expressionNode) {
-        replaceInfo.expressionParent->removeMemberUnchecked(i);
-        replaceInfo.expressionParent->addMember(replacement);
-      }
-    }
-  }
-}*/
-
 // applys the optimization for a candidate
 bool applyGeoOptimization(ExecutionPlan* plan, GeoIndexInfo& info) {
   TRI_ASSERT(info.collection != nullptr);
   TRI_ASSERT(info.index);
-  /*if (!first && !second) {
-    return false;
-  }*
-
-  if (!first) {
-    first = std::move(second);
-    second.invalidate();
-  }*/
-
-  // We are not allowed to be a inner loop
-  /*if (first.executionNodeType == EN::SORT &&
-      first.collectionNode->isInInnerLoop()) {
-    return false;
-  }*/
 
   std::unique_ptr<Condition> condition(buildGeoCondition(plan, info));
-
   auto inode = new IndexNode(
       plan, plan->nextId(), info.collection->vocbase,
       info.collection, info.collectionNodeOutVar,
@@ -5209,28 +5112,34 @@ bool applyGeoOptimization(ExecutionPlan* plan, GeoIndexInfo& info) {
       condition.get(), false);
   plan->registerNode(inode);
   condition.release();
-
   plan->replaceNode(info.collectionNodeToReplace, inode);
-
-  /*replaceGeoCondition(plan, first);
-  replaceGeoCondition(plan, second);
-
-  // if executionNode is sort OR a filter without further sub conditions
-  // the node can be unlinked
-  auto unlinkNode = [&](GeoIndexInfo& info) {
-    if (info && !info.expressionParent) {
-      if (!arangodb::ServerState::instance()->isCoordinator() ||
-          info.executionNodeType == EN::FILTER) {
-        plan->unlinkNode(info.executionNode);
-      } else if (info.executionNodeType == EN::SORT) {
-        // make sure sort is not reinserted in cluster
-        static_cast<SortNode*>(info.executionNode)->_reinsertInCluster = false;
-      }
+  
+  // remove expressions covered by our index
+  Ast* ast = plan->getAst();
+  for (std::pair<FilterNode*, Expression*> const& pair : info.filtersToModify) {
+    AstNode* root = pair.second->nodeForModification();
+    AstNode* newNode = Ast::traverseAndModify(root,
+                                              [&](AstNode const* node, void*) -> bool {
+                                                return node == root || Ast::IsAndOperatorType(node->type);
+                                              },
+                           [&](AstNode* node, void*) -> AstNode* {
+                             if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+                               for (std::size_t i = 0; i < node->numMembers(); ++i) {
+                                 if (info.nodesToRemove.find(node->getMemberUnchecked(i)) != info.nodesToRemove.end()) {
+                                   return node->getMemberUnchecked(i ? 0 : 1);
+                                 }
+                               }
+                             } else if (info.nodesToRemove.find(node) != info.nodesToRemove.end()) {
+                               return node == root ? nullptr : ast->createNodeValueBool(true);
+                             }
+                             return node;
+                           }, [&](AstNode const* node, void*) {}, nullptr);
+    if (newNode == nullptr) {
+      plan->unlinkNode(pair.first);
+    } else if (newNode != root) {
+      pair.second->replaceNode(newNode);
     }
-  };
-
-  unlinkNode(first);
-  unlinkNode(second);*/
+  }
 
   // signal that plan has been changed
   return true;

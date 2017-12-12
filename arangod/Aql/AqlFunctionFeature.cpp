@@ -413,14 +413,16 @@ void AqlFunctionFeature::addDocumentFunctions() {
 void AqlFunctionFeature::addGeoFunctions() {
   // geo functions
   add({"DISTANCE", ".,.,.,.", true, false, true, true,
-       &Functions::GeoDistance});
+       &Functions::Distance});
   add({"WITHIN_RECTANGLE", "h.,.,.,.,.", false,
        true, false, true});
   add({"IS_IN_POLYGON", ".,.|.", true, true, true,
       true, &Functions::IsInPolygon});
+  add({"GEO_DISTANCE", ".,.", true, false, true,
+    true, &Functions::GeoDistance});
   add({"GEO_CONTAINS", ".,.", true, false, true,
     true, &Functions::GeoContains});
-  add({"GEO_CIRCLE_CONTAINS", ".,.", true, false, true,
+  add({"GEO_CIRCLE_CONTAINS", ".,.,.", true, false, true,
     true, &Functions::GeoCircleContains});
   add({"GEO_INTERSECTS", ".,.", true, false, true,
     true, &Functions::GeoIntersects});

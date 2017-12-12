@@ -130,10 +130,9 @@ class RocksDBGeoS2Index final : public arangodb::RocksDBIndex {
  private:
   /// @brief immutable region coverer parameters
   geo::RegionCoverParams _coverParams;
-
   /// @brief the type of geo we support
   IndexVariant _variant;
-
+  
   /// @brief attribute paths
   std::vector<std::string> _location;
   std::vector<std::string> _latitude;
