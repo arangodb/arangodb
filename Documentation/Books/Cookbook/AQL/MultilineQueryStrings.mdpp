@@ -110,7 +110,7 @@ The template string variant that uses `aql` is both convenient and safe. Interna
 will turn the substituted values into bind parameters. The query string and the bind parameter
 values will be returned separately, so the result of `query` above will be something like:
 
-```js 
+```js
 { 
   "query" : "FOR doc IN collection FILTER doc.value == @value0 RETURN doc", 
   "bindVars" : { 

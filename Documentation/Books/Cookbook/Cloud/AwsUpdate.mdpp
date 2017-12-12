@@ -1,4 +1,4 @@
-#Updating an ArangoDB Image on AWS
+# Updating an ArangoDB Image on AWS
 
 If you run an ArangoDB on AWS and used the provided [AMI in the AWS Marketplace](https://aws.amazon.com/marketplace/search/results/ref=dtl_navgno_search_box?page=1&searchTerms=arangodb), you at some point want to update to the latest release.
 The process to submit and publish a new ArangoDB image to the marketplace takes some time and you might not find the latest release in the marketplace store yet. 

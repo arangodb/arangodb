@@ -12,7 +12,7 @@ With the latest version of the Java driver of ArangoDB an object called `BaseDoc
 
 The structure is very simple: It only has four attributes:
 
-``` java
+```java
 public class BaseDocument {
 
     long documentRevision;
@@ -37,7 +37,7 @@ The map can contain values of the following types:
 
 To retrieve a document is similar to the known procedure, except that you use `_BaseDocument_` as type.
  
-``` java
+```java
 DocumentEntity<BaseDocument> myObject = driver.getDocument(myDocument.getDocumentHandle(), BaseDocument.class);
 ```
 

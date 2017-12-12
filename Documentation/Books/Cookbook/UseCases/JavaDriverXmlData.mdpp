@@ -11,7 +11,8 @@ Since version 2.7.2 the aragodb-java-driver supports writing `createDocumentRaw(
 With [JsonML](http://www.jsonml.org/) you can convert a XML string into a JSON string and back to XML again.
 
 Converting XML into JSON with JsonML example:
-``` java
+
+```java
 String string = "<recipe name=\"bread\" prep_time=\"5 mins\" cook_time=\"3 hours\"> "
 		+ "<title>Basic bread</title> "
 		+ "<ingredient amount=\"8\" unit=\"dL\">Flour</ingredient> "
@@ -33,8 +34,9 @@ JSONObject jsonObject = JSONML.toJSONObject(string);
 System.out.println(jsonObject.toString());
 ```
 
-The converted JSON string: 
-``` json
+The converted JSON string:
+
+```json
 {
    "prep_time" : "5 mins",
    "name" : "bread",
@@ -133,20 +135,25 @@ The converted JSON string:
 
 
 Saving the converted JSON to ArangoDB example:
-``` java
+
+```java
 DocumentEntity<String> entity = arangoDriver.createDocumentRaw(
                 "testCollection",
                 jsonObject.toString(), true,false);
 String documentHandle = entity.getDocumentHandle();
 ```
+
 Reading the stored JSON as a string and convert it back to XML example:
-``` java
+
+```java
 String rawJsonString = arangoDriver.getDocumentRaw(documentHandle, null, null);
 String xml = JSONML.toString(rawJsonString);
 System.out.println(xml);
 ```
+
 Example output:
-``` xml
+
+```xml
 <recipe _id="RawDocument/6834407522" _key="6834407522" _rev="6834407522"
          cook_time="3 hours" name="bread" prep_time="5 mins">
   <title>Basic bread</title>
@@ -165,10 +172,12 @@ Example output:
   </instructions>
 </recipe>
 ```
+
 **Note:** The [fields mandatory to ArangoDB documents](https://docs.arangodb.com/2.8/Documents/index.html) are added; If they break your XML schema you have to remove them.
 
 Query raw data example:
-``` java
+
+```java
 String queryString = "FOR t IN TestCollection FILTER t.cook_time == '3 hours' RETURN t";
 CursorRawResult cursor = arangoDriver.executeAqlQueryRaw(queryString, null, null);
 Iterator<String> iter = cursor.iterator();

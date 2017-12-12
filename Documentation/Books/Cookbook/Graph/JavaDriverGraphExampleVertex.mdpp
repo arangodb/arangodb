@@ -6,7 +6,7 @@
 
 You want to retrieve information out of a graph using an object<T> as example vertex, and the object contains primitive datatypes such as 'int' or 'char'. E. g. you have a graph "myGraph" with vertices that are objects of the following class...
 
-``` java
+```java
 public class MyObject {
 
     private String name;
@@ -27,7 +27,7 @@ public class MyObject {
 
 ... and edges of:
 
-``` java
+```java
 public class MyEdge {
 
     private String desc;
@@ -45,7 +45,7 @@ public class MyEdge {
 ```
 
 To retrieve all edges from vertices with a given name (e. g. "Bob") and arbitrary age the method   
-``` java
+```java
 arangoDriver.graphGetEdgeCursorByExample("myGraph", MyEdge.class, myVertexExample)
 ```
 can not be used, because primitive datatypes (like 'int') can not be set to null (all attributes that are not null will be used as filter criteria). 
@@ -62,7 +62,7 @@ CursorEntity<MyEdge> cursor = arangoDriver.graphGetEdgeCursorByExample("myGraph"
 
 Vice versa it's no problem to retrieve all edges of vertices that have been set to a certain age (e. g. 42):
 
-``` java
+```java
 MyObject myVertexExample = new MyObject(null, 42);
 CursorEntity<MyEdge> cursor = arangoDriver.graphGetEdgeCursorByExample("myGraph", MyEdge.class, myVertexExample)
 ```

@@ -67,7 +67,7 @@ FOR doc IN myCollection
   SORT RAND()
   LIMIT 10
   RETURN doc
-``` 
+```
 
 The `COLLECT` clause is an easy mechanism to run an aggregate analysis on some attribute. Let's
 say we wanted to verify the data distribution inside the `status` attribute. In this case we

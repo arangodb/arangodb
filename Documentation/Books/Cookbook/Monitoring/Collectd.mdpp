@@ -1,6 +1,6 @@
-#Monitoring ArangoDB using collectd
+# Monitoring ArangoDB using collectd
 
-##Problem
+## Problem
 
 The ArangoDB web interface shows a nice summary of the current state. I want to see similar numbers in my monitoring system so I can analyze the system usage post mortem or send alarms on failure.
 

@@ -36,7 +36,7 @@ The syntax is slightly different but mapping should be simple:
 
 Examples have to be transformed into AQL filter statements.
 How to do this please read the GRAPH_VERTICES section
-in [Migrating GRAPH_* Functions from 2.8 or earlier to 3.0](MigratingGraphFunctionsTo3.html).
+in [Migrating GRAPH&lowbar;* Functions from 2.8 or earlier to 3.0](MigratingGraphFunctionsTo3.html).
 Apply these filters on the edge variable `e`.
 
 #### Option incluceVertices
@@ -77,7 +77,7 @@ NOTE: The direction cannot be given as a bindParameter any more it has to be har
 
 Examples have to be transformed into AQL filter statements.
 How to do this please read the GRAPH_VERTICES section
-in [Migrating GRAPH_* Functions from 2.8 or earlier to 3.0](MigratingGraphFunctionsTo3.html).
+in [Migrating GRAPH&lowbar;* Functions from 2.8 or earlier to 3.0](MigratingGraphFunctionsTo3.html).
 Apply these filters on the edge variable `e` which is the second return variable of the traversal statement.
 
 However this is a bit more complicated as it interferes with the global uniqueness check.

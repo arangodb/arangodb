@@ -27,7 +27,7 @@ will work if authentication is turned off.
 
 When connected, you can create a new user account with the following command:
 
-``` 
+```
 arangosh> require("org/arangodb/users").save("myuser", "mypasswd");
 ```
 
@@ -36,7 +36,7 @@ the command like this may store the password literally in ArangoShell's history.
 
 To avoid that, use a dynamically created password, e.g.:
 
-``` 
+```
 arangosh> passwd = require("internal").genRandomAlphaNumbers(20);
 arangosh> require("org/arangodb/users").save("myuser", passwd);
 ```
@@ -48,7 +48,7 @@ While there, you probably want to change the password of the default `root` user
 Otherwise one will be able to connect with the default `root` user and its
 empty password. The following commands change the `root` user's password:
 
-``` 
+```
 arangosh> passwd = require("internal").genRandomAlphaNumbers(20);
 arangosh> require("org/arangodb/users").update("root", passwd);
 ```

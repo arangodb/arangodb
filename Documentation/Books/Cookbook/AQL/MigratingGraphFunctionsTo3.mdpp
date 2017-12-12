@@ -190,7 +190,7 @@ Here we first have to now the vertex collections of the graph.
 
 // NEW
 [..] FOR v IN vertices [..] 
-````
+```
 
 NOTE: The `@graphName` is not required anymore, we may have to adjust bindParameters.
 
@@ -213,7 +213,7 @@ FOR v IN UNION( // We start a UNION
   (FOR v IN vertices3 RETURN v)
 ) // Finish with the UNION
 [..] 
-````
+```
 
 NOTE: If you have any more domain knowledge of your graph apply it at this point to identify which
 collections are actually relevant as this `UNION` is a rather expensive operation.

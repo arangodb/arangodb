@@ -45,7 +45,7 @@ An pattern often seen to counteract this is trying to quote and escape potential
 unsafe input values before putting them into query strings. This may work in some situations,
 but it's easy to overlook something or get it subtly wrong:
 
-```js 
+```js
 /* we're sanitzing now, but it's still evil ! */
 var value = req.params("searchValue").replace(/'/g, '');
 ...
@@ -70,7 +70,7 @@ query = "FOR doc IN collection FILTER doc.value == '" + value + "' && doc.type =
 If an attacker inserted `\` for parameter `value` and ` || true REMOVE doc IN collection //` for 
 parameter `type`, then the effective query would become
 
-```    
+```
 FOR doc IN collection FILTER doc.value == '\' && doc.type == ' || true REMOVE doc IN collection //' RETURN doc
 ```
 
