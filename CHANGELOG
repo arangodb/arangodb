@@ -6,6 +6,9 @@ v3.2.10 (2017-XX-XX)
 * UI: edge collections were wrongly added to from and to vertices select 
   box during graph creation
 
+* fixed issue #3917: traversals with high maximal depth take extremely long
+  in planning phase.
+
 * fix equality comparison for MMFiles documents in AQL functions UNIQUE 
   and UNION_DISTINCT
 
