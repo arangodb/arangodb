@@ -605,6 +605,7 @@ int MMFilesCollection::close() {
   while (_ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_DROP) ||
          _ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_RENAME) ||
          _ditches.contains(MMFilesDitch::TRI_DITCH_COMPACTION)) {
+    WRITE_UNLOCKER(unlocker, _logicalCollection->lock());
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 
