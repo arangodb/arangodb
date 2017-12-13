@@ -257,7 +257,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((7U == slice.length()));
+    CHECK((6U == slice.length()));
     CHECK((!slice.hasKey("links"))); // for persistence so no links
     CHECK((meta.init(slice, error, logicalView) && expectedMeta == meta));
   }
@@ -282,7 +282,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((8U == slice.length()));
+    CHECK((7U == slice.length()));
     CHECK((slice.hasKey("links")));
     CHECK((meta.init(slice, error, logicalView) && expectedMeta == meta));
   }
@@ -313,7 +313,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((7U == slice.length()));
+    CHECK((6U == slice.length()));
     CHECK((!slice.hasKey("links"))); // for persistence so no links
     CHECK((meta.init(slice, error, logicalView) && expectedMeta == meta));
   }
@@ -338,7 +338,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((8U == slice.length()));
+    CHECK((7U == slice.length()));
     CHECK((meta.init(slice, error, logicalView) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -1404,7 +1404,7 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((8U == slice.length()));
+      CHECK((7U == slice.length()));
       CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
@@ -1432,7 +1432,7 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((8U == slice.length()));
+      CHECK((7U == slice.length()));
       CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
@@ -1477,7 +1477,7 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((8U == slice.length()));
+      CHECK((7U == slice.length()));
       CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
@@ -1525,7 +1525,7 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((8U == slice.length()));
+      CHECK((7U == slice.length()));
       CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
@@ -1595,7 +1595,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((8U == slice.length()));
+    CHECK((7U == slice.length()));
     CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -1633,7 +1633,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((8U == slice.length()));
+    CHECK((7U == slice.length()));
     CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -1671,7 +1671,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((8U == slice.length()));
+    CHECK((7U == slice.length()));
     CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -1749,7 +1749,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((8U == slice.length()));
+    CHECK((7U == slice.length()));
     CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -1819,7 +1819,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((8U == slice.length()));
+    CHECK((7U == slice.length()));
     CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -1873,7 +1873,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((8U == slice.length()));
+    CHECK((7U == slice.length()));
     CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -1974,7 +1974,7 @@ SECTION("test_update_partial") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((8U == slice.length()));
+      CHECK((7U == slice.length()));
       CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
@@ -2000,7 +2000,7 @@ SECTION("test_update_partial") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((8U == slice.length()));
+      CHECK((7U == slice.length()));
       CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
@@ -2037,7 +2037,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((8U == slice.length()));
+    CHECK((7U == slice.length()));
     CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -2076,7 +2076,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((8U == slice.length()));
+    CHECK((7U == slice.length()));
     CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");

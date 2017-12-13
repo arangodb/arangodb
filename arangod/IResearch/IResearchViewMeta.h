@@ -57,7 +57,7 @@ NS_BEGIN(iresearch)
 /// @brief metadata describing the IResearch view
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchViewMeta {
-  struct CommitBaseMeta {
+  struct CommitMeta {
     class ConsolidationPolicy {
      public:
       struct Hash {
@@ -96,28 +96,17 @@ struct IResearchViewMeta {
     typedef std::vector<ConsolidationPolicy> ConsolidationPolicies;
 
     size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
-    ConsolidationPolicies _consolidationPolicies;
-
-    bool operator==(CommitBaseMeta const& other) const noexcept;
-  };
-
-  struct CommitBulkMeta: public CommitBaseMeta {
-    size_t _commitIntervalBatchSize; // issue commit after <count> records bulk indexed
-    bool operator==(CommitBulkMeta const& other) const noexcept;
-    bool operator!=(CommitBulkMeta const& other) const noexcept;
-  };
-
-  struct CommitItemMeta: public CommitBaseMeta {
     size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
     size_t _commitTimeoutMsec; // try to commit as much as possible before <timeout> milliseconds (0 == disable)
-    bool operator==(CommitItemMeta const& other) const noexcept;
-    bool operator!=(CommitItemMeta const& other) const noexcept;
+    ConsolidationPolicies _consolidationPolicies;
+
+    bool operator==(CommitMeta const& other) const noexcept;
+    bool operator!=(CommitMeta const& other) const noexcept;
   };
 
   struct Mask {
     bool _collections;
-    bool _commitBulk;
-    bool _commitItem;
+    bool _commit;
     bool _dataPath;
     bool _locale;
     bool _threadsMaxIdle;
@@ -126,8 +115,7 @@ struct IResearchViewMeta {
   };
 
   std::unordered_set<TRI_voc_cid_t> _collections; // known collection IDs having links to this view
-  CommitBulkMeta _commitBulk;
-  CommitItemMeta _commitItem;
+  CommitMeta _commit;
   std::string _dataPath; // data file path
   std::locale _locale; // locale used for ordering processed attribute names
   size_t _threadsMaxIdle; // maximum idle number of threads for single-run tasks

@@ -342,7 +342,7 @@ class IResearchView final: public arangodb::ViewImplementation,
     std::vector<PolicyState> _consolidationPolicies;
 
     SyncState() noexcept;
-    SyncState(IResearchViewMeta::CommitBaseMeta const& meta);
+    SyncState(IResearchViewMeta::CommitMeta const& meta);
   };
 
   struct TidStore {

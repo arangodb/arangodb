@@ -680,7 +680,7 @@ IResearchView::SyncState::SyncState() noexcept
 }
 
 IResearchView::SyncState::SyncState(
-    IResearchViewMeta::CommitBaseMeta const& meta
+    IResearchViewMeta::CommitMeta const& meta
 ): SyncState() {
   _cleanupIntervalStep = meta._cleanupIntervalStep;
 
@@ -825,7 +825,7 @@ IResearchView::IResearchView(
         _commitIntervalMsecRemainder(std::numeric_limits<size_t>::max()),
         _commitTimeoutMsec(0) {
       }
-      State(IResearchViewMeta::CommitItemMeta const& meta)
+      State(IResearchViewMeta::CommitMeta const& meta)
         : SyncState(meta),
           _asyncMetaRevision(0), // '0' differs from IResearchView constructor above
           _commitIntervalMsecRemainder(std::numeric_limits<size_t>::max()),
@@ -839,14 +839,14 @@ IResearchView::IResearchView(
     for(;;) {
       // sleep until timeout
       {
-        SCOPED_LOCK_NAMED(mutex, lock); // for '_meta._commitItem._commitIntervalMsec'
+        SCOPED_LOCK_NAMED(mutex, lock); // for '_meta._commit._commitIntervalMsec'
         SCOPED_LOCK_NAMED(_asyncMutex, asyncLock); // aquire before '_asyncTerminate' check
 
         if (_asyncTerminate.load()) {
           break;
         }
 
-        if (!_meta._commitItem._commitIntervalMsec) {
+        if (!_meta._commit._commitIntervalMsec) {
           lock.unlock(); // do not hold read lock while waiting on condition
           _asyncCondition.wait(asyncLock); // wait forever
           continue;
@@ -854,7 +854,7 @@ IResearchView::IResearchView(
 
         auto startTime = std::chrono::system_clock::now();
         auto endTime = startTime
-          + std::chrono::milliseconds(std::min(state._commitIntervalMsecRemainder, _meta._commitItem._commitIntervalMsec))
+          + std::chrono::milliseconds(std::min(state._commitIntervalMsecRemainder, _meta._commit._commitIntervalMsec))
           ;
 
         lock.unlock(); // do not hold read lock while waiting on condition
@@ -879,7 +879,7 @@ IResearchView::IResearchView(
       // reload state if required
       if (_asyncMetaRevision.load() != state._asyncMetaRevision) {
         SCOPED_LOCK(mutex);
-        state = State(_meta._commitItem);
+        state = State(_meta._commit);
         state._asyncMetaRevision = _asyncMetaRevision.load();
       }
 
@@ -1393,7 +1393,7 @@ int IResearchView::insert(
     return TRI_ERROR_NO_ERROR; // nothing to index
   }
 
-  auto insert = [&body, cid, documentId] (irs::index_writer::document& doc) {
+  auto insert = [&body, cid, documentId](irs::index_writer::document& doc)->bool {
     insertDocument(doc, body, cid, documentId.id());
 
     return false; // break the loop
@@ -1451,31 +1451,12 @@ int IResearchView::insert(
     store = &(storeItr.first->second._store);
   }
 
-  size_t commitBatch;
-  SyncState state;
-
-  {
-    ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex); // '_meta' can be asynchronously updated
-
-    auto& commitMeta = _meta._commitBulk;
-
-    commitBatch = commitMeta._commitIntervalBatchSize;
-    state = SyncState(commitMeta);
-  }
-
   TRI_ASSERT(store);
 
-  if (!commitBatch) {
-    // commit all documents in a single transaction
-    commitBatch = irs::integer_traits<size_t>::const_max;
-  }
-
-  size_t batchCount = 0;
   auto begin = batch.begin();
   auto const end = batch.end();
   FieldIterator body;
-  TRI_voc_rid_t rid = 0;
+  TRI_voc_rid_t rid;
 
   // find first valid document
   while (!body.valid() && begin != end) {
@@ -1485,10 +1466,10 @@ int IResearchView::insert(
   }
 
   if (!body.valid()) {
-    return sync(state) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL; // nothing to index
+    return TRI_ERROR_NO_ERROR; // nothing to index
   }
 
-  auto batchInsert = [&meta, &batchCount, &body, &rid, &begin, end, cid, commitBatch] (irs::index_writer::document& doc) mutable {
+  auto insert = [&meta, &begin, &end, &body, cid, &rid](irs::index_writer::document& doc)->bool {
     insertDocument(doc, body, cid, rid);
 
     // find next valid document
@@ -1498,41 +1479,29 @@ int IResearchView::insert(
       ++begin;
 
       if (body.valid()) {
-        return ++batchCount < commitBatch;
+        return true; // next document available
       }
     }
 
     return false; // break the loop
   };
 
-  do {
-    if (batchCount >= commitBatch) {
-      if (!sync(state)) {
-        return TRI_ERROR_INTERNAL;
-      }
-
-      batchCount = 0;
+  try {
+    if (!store->_writer->insert(insert)) {
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+        << "failed inserting batch into iResearch view '" << id() << "', collection '" << cid;
+      return TRI_ERROR_INTERNAL;
     }
 
-    try {
-      if (!store->_writer->insert(batchInsert)) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-          << "failed inserting batch into iResearch view '" << id() << "', collection '" << cid;
-        return TRI_ERROR_INTERNAL;
-      }
-    } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-        << "caught exception while inserting batch into iResearch view '" << id() << "', collection '" << cid << e.what();
-      IR_EXCEPTION();
-    } catch (...) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-        << "caught exception while inserting batch into iResearch view '" << id() << "', collection '" << cid;
-      IR_EXCEPTION();
-    }
-  } while (begin != end);
-
-  if (!sync(state)) {
-    return TRI_ERROR_INTERNAL;
+    store->_writer->commit(); // no need to consolidate if batch size is set correctly
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while inserting batch into iResearch view '" << id() << "', collection '" << cid << e.what();
+    IR_EXCEPTION();
+  } catch (...) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while inserting batch into iResearch view '" << id() << "', collection '" << cid;
+    IR_EXCEPTION();
   }
 
   return TRI_ERROR_NO_ERROR;

@@ -35,14 +35,14 @@
 NS_LOCAL
 
 bool equalConsolidationPolicies(
-  arangodb::iresearch::IResearchViewMeta::CommitBaseMeta::ConsolidationPolicies const& lhs,
-  arangodb::iresearch::IResearchViewMeta::CommitBaseMeta::ConsolidationPolicies const& rhs
+  arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicies const& lhs,
+  arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicies const& rhs
 ) noexcept {
   if (lhs.size() != rhs.size()) {
     return false;
   }
 
-  typedef arangodb::iresearch::IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy ConsolidationPolicy;
+  typedef arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicy ConsolidationPolicy;
   struct PtrEquals {
     bool operator()(ConsolidationPolicy const * const& lhs, ConsolidationPolicy const * const& rhs) const {
       return *lhs == *rhs;
@@ -73,11 +73,11 @@ bool equalConsolidationPolicies(
   return true;
 }
 
-bool initCommitBaseMeta(
-  arangodb::iresearch::IResearchViewMeta::CommitBaseMeta& meta,
+bool initCommitMeta(
+  arangodb::iresearch::IResearchViewMeta::CommitMeta& meta,
   arangodb::velocypack::Slice const& slice,
   std::string& errorField,
-  arangodb::iresearch::IResearchViewMeta::CommitBaseMeta const& defaults
+  arangodb::iresearch::IResearchViewMeta::CommitMeta const& defaults
 ) noexcept {
   bool tmpSeen;
 
@@ -85,7 +85,31 @@ bool initCommitBaseMeta(
     // optional size_t
     static const std::string fieldName("cleanupIntervalStep");
 
-    if (!arangodb::iresearch::getNumber(meta._cleanupIntervalStep, slice, fieldName, tmpSeen, meta._cleanupIntervalStep)) {
+    if (!arangodb::iresearch::getNumber(meta._cleanupIntervalStep, slice, fieldName, tmpSeen, defaults._cleanupIntervalStep)) {
+      errorField = fieldName;
+
+      return false;
+    }
+  }
+
+  {
+    // optional size_t
+    static const std::string fieldName("commitIntervalMsec");
+    bool tmpBool;
+
+    if (!arangodb::iresearch::getNumber(meta._commitIntervalMsec, slice, fieldName, tmpBool, defaults._commitIntervalMsec)) {
+      errorField = fieldName;
+
+      return false;
+    }
+  }
+
+  {
+    // optional size_t
+    static const std::string fieldName("commitTimeoutMsec");
+    bool tmpBool;
+
+    if (!arangodb::iresearch::getNumber(meta._commitTimeoutMsec, slice, fieldName, tmpBool, defaults._commitTimeoutMsec)) {
       errorField = fieldName;
 
       return false;
@@ -118,7 +142,7 @@ bool initCommitBaseMeta(
           return false;
         }
 
-        typedef arangodb::iresearch::IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy ConsolidationPolicy;
+        typedef arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicy ConsolidationPolicy;
 
         static const std::unordered_map<std::string, ConsolidationPolicy::Type> policies = {
           { "bytes", ConsolidationPolicy::Type::BYTES },
@@ -175,17 +199,19 @@ bool initCommitBaseMeta(
   return true;
 }
 
-bool jsonCommitBaseMeta(
+bool jsonCommitMeta(
   arangodb::velocypack::Builder& builder,
-  arangodb::iresearch::IResearchViewMeta::CommitBaseMeta const& meta
+  arangodb::iresearch::IResearchViewMeta::CommitMeta const& meta
 ) {
   if (!builder.isOpenObject()) {
     return false;
   }
 
   builder.add("cleanupIntervalStep", arangodb::velocypack::Value(meta._cleanupIntervalStep));
+  builder.add("commitIntervalMsec", arangodb::velocypack::Value(meta._commitIntervalMsec));
+  builder.add("commitTimeoutMsec", arangodb::velocypack::Value(meta._commitTimeoutMsec));
 
-  typedef arangodb::iresearch::IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy ConsolidationPolicy;
+  typedef arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicy ConsolidationPolicy;
   struct ConsolidationPolicyHash { size_t operator()(ConsolidationPolicy::Type const& value) const { return size_t(value); } }; // for GCC compatibility
   static const std::unordered_map<ConsolidationPolicy::Type, std::string, ConsolidationPolicyHash> policies = {
     { ConsolidationPolicy::Type::BYTES, "bytes" },
@@ -231,8 +257,8 @@ NS_END
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-size_t IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::Hash::operator()(
-    IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy const& value
+size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::Hash::operator()(
+    IResearchViewMeta::CommitMeta::ConsolidationPolicy const& value
 ) const {
   auto step = value.intervalStep();
   auto threshold = value.threshold();
@@ -244,8 +270,8 @@ size_t IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::Hash::operator()(
     ;
 }
 
-IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::ConsolidationPolicy(
-    IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::Type type,
+IResearchViewMeta::CommitMeta::ConsolidationPolicy::ConsolidationPolicy(
+    IResearchViewMeta::CommitMeta::ConsolidationPolicy::Type type,
     size_t intervalStep,
     float threshold
 ): _intervalStep(intervalStep), _threshold(threshold), _type(type) {
@@ -269,20 +295,20 @@ IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::ConsolidationPolicy(
   }
 }
 
-IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::ConsolidationPolicy(
-    IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy const& other
+IResearchViewMeta::CommitMeta::ConsolidationPolicy::ConsolidationPolicy(
+    IResearchViewMeta::CommitMeta::ConsolidationPolicy const& other
 ) {
   *this = other;
 }
 
-IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::ConsolidationPolicy(
-    IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy&& other
+IResearchViewMeta::CommitMeta::ConsolidationPolicy::ConsolidationPolicy(
+    IResearchViewMeta::CommitMeta::ConsolidationPolicy&& other
 ) noexcept {
   *this = std::move(other);
 }
 
-IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy& IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::operator=(
-    IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy const& other
+IResearchViewMeta::CommitMeta::ConsolidationPolicy& IResearchViewMeta::CommitMeta::ConsolidationPolicy::operator=(
+    IResearchViewMeta::CommitMeta::ConsolidationPolicy const& other
 ) {
   if (this != &other) {
     _intervalStep = other._intervalStep;
@@ -294,8 +320,8 @@ IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy& IResearchViewMeta::Commi
   return *this;
 }
 
-IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy& IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::operator=(
-    IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy&& other
+IResearchViewMeta::CommitMeta::ConsolidationPolicy& IResearchViewMeta::CommitMeta::ConsolidationPolicy::operator=(
+    IResearchViewMeta::CommitMeta::ConsolidationPolicy&& other
 ) noexcept {
   if (this != &other) {
     _intervalStep = std::move(other._intervalStep);
@@ -307,8 +333,8 @@ IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy& IResearchViewMeta::Commi
   return *this;
 }
 
-bool IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::operator==(
-    IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy const& other
+bool IResearchViewMeta::CommitMeta::ConsolidationPolicy::operator==(
+    IResearchViewMeta::CommitMeta::ConsolidationPolicy const& other
 ) const noexcept {
   return _type == other._type
     && _intervalStep == other._intervalStep
@@ -316,8 +342,8 @@ bool IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::operator==(
     ;
 }
 
-/*static*/ const IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy& IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::DEFAULT(
-    IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::Type type
+/*static*/ const IResearchViewMeta::CommitMeta::ConsolidationPolicy& IResearchViewMeta::CommitMeta::ConsolidationPolicy::DEFAULT(
+    IResearchViewMeta::CommitMeta::ConsolidationPolicy::Type type
 ) {
   switch (type) {
     case Type::BYTES:
@@ -347,67 +373,40 @@ bool IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::operator==(
   }
 }
 
-size_t IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::intervalStep() const noexcept {
+size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::intervalStep() const noexcept {
   return _intervalStep;
 }
 
-irs::index_writer::consolidation_policy_t const& IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::policy() const noexcept {
+irs::index_writer::consolidation_policy_t const& IResearchViewMeta::CommitMeta::ConsolidationPolicy::policy() const noexcept {
   return _policy;
 }
 
-float IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::threshold() const noexcept {
+float IResearchViewMeta::CommitMeta::ConsolidationPolicy::threshold() const noexcept {
   return _threshold;
 }
 
-IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::Type IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::type() const noexcept {
+IResearchViewMeta::CommitMeta::ConsolidationPolicy::Type IResearchViewMeta::CommitMeta::ConsolidationPolicy::type() const noexcept {
   return _type;
 }
 
-bool IResearchViewMeta::CommitBaseMeta::operator==(
-  CommitBaseMeta const& other
+bool IResearchViewMeta::CommitMeta::operator==(
+  CommitMeta const& other
 ) const noexcept {
-  if (_cleanupIntervalStep != other._cleanupIntervalStep) {
-    return false; // values do not match
-  }
-
-  if (!equalConsolidationPolicies(_consolidationPolicies, other._consolidationPolicies)) {
-    return false; // values do not match
-  }
-
-  return true;
+  return _cleanupIntervalStep == other._cleanupIntervalStep
+      && _commitIntervalMsec == other._commitIntervalMsec
+      && _commitTimeoutMsec == other._commitTimeoutMsec
+      && equalConsolidationPolicies(_consolidationPolicies, other._consolidationPolicies);
 }
 
-bool IResearchViewMeta::CommitBulkMeta::operator==(
-  CommitBulkMeta const& other
-) const noexcept {
-  return _commitIntervalBatchSize == other._commitIntervalBatchSize
-    && *static_cast<CommitBaseMeta const*>(this) == other;
-}
-
-bool IResearchViewMeta::CommitBulkMeta::operator!=(
-  CommitBulkMeta const& other
-) const noexcept {
-  return !(*this == other);
-}
-
-bool IResearchViewMeta::CommitItemMeta::operator==(
-  CommitItemMeta const& other
-) const noexcept {
-  return _commitIntervalMsec == other._commitIntervalMsec
-    && _commitTimeoutMsec == other._commitTimeoutMsec
-    && *static_cast<CommitBaseMeta const*>(this) == other;
-}
-
-bool IResearchViewMeta::CommitItemMeta::operator!=(
-  CommitItemMeta const& other
+bool IResearchViewMeta::CommitMeta::operator!=(
+  CommitMeta const& other
   ) const noexcept {
   return !(*this == other);
 }
 
 IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
   : _collections(mask),
-    _commitBulk(mask),
-    _commitItem(mask),
+    _commit(mask),
     _dataPath(mask),
     _locale(mask),
     _threadsMaxIdle(mask),
@@ -419,19 +418,13 @@ IResearchViewMeta::IResearchViewMeta()
     _locale(std::locale::classic()),
     _threadsMaxIdle(5),
     _threadsMaxTotal(5) {
-  _commitBulk._cleanupIntervalStep = 10;
-  _commitBulk._commitIntervalBatchSize = 10000;
-  _commitBulk._consolidationPolicies.emplace_back(CommitBaseMeta::ConsolidationPolicy::DEFAULT(CommitBaseMeta::ConsolidationPolicy::Type::BYTES));
-  _commitBulk._consolidationPolicies.emplace_back(CommitBaseMeta::ConsolidationPolicy::DEFAULT(CommitBaseMeta::ConsolidationPolicy::Type::BYTES_ACCUM));
-  _commitBulk._consolidationPolicies.emplace_back(CommitBaseMeta::ConsolidationPolicy::DEFAULT(CommitBaseMeta::ConsolidationPolicy::Type::COUNT));
-  _commitBulk._consolidationPolicies.emplace_back(CommitBaseMeta::ConsolidationPolicy::DEFAULT(CommitBaseMeta::ConsolidationPolicy::Type::FILL));
-  _commitItem._cleanupIntervalStep = 10;
-  _commitItem._commitIntervalMsec = 60 * 1000;
-  _commitItem._commitTimeoutMsec = 5 * 1000;
-  _commitItem._consolidationPolicies.emplace_back(CommitBaseMeta::ConsolidationPolicy::DEFAULT(CommitBaseMeta::ConsolidationPolicy::Type::BYTES));
-  _commitItem._consolidationPolicies.emplace_back(CommitBaseMeta::ConsolidationPolicy::DEFAULT(CommitBaseMeta::ConsolidationPolicy::Type::BYTES_ACCUM));
-  _commitItem._consolidationPolicies.emplace_back(CommitBaseMeta::ConsolidationPolicy::DEFAULT(CommitBaseMeta::ConsolidationPolicy::Type::COUNT));
-  _commitItem._consolidationPolicies.emplace_back(CommitBaseMeta::ConsolidationPolicy::DEFAULT(CommitBaseMeta::ConsolidationPolicy::Type::FILL));
+  _commit._cleanupIntervalStep = 10;
+  _commit._commitIntervalMsec = 60 * 1000;
+  _commit._commitTimeoutMsec = 5 * 1000;
+  _commit._consolidationPolicies.emplace_back(CommitMeta::ConsolidationPolicy::DEFAULT(CommitMeta::ConsolidationPolicy::Type::BYTES));
+  _commit._consolidationPolicies.emplace_back(CommitMeta::ConsolidationPolicy::DEFAULT(CommitMeta::ConsolidationPolicy::Type::BYTES_ACCUM));
+  _commit._consolidationPolicies.emplace_back(CommitMeta::ConsolidationPolicy::DEFAULT(CommitMeta::ConsolidationPolicy::Type::COUNT));
+  _commit._consolidationPolicies.emplace_back(CommitMeta::ConsolidationPolicy::DEFAULT(CommitMeta::ConsolidationPolicy::Type::FILL));
 }
 
 IResearchViewMeta::IResearchViewMeta(IResearchViewMeta const& defaults) {
@@ -445,8 +438,7 @@ IResearchViewMeta::IResearchViewMeta(IResearchViewMeta&& other) noexcept {
 IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexcept {
   if (this != &other) {
     _collections = std::move(other._collections);
-    _commitBulk = std::move(other._commitBulk);
-    _commitItem = std::move(other._commitItem);
+    _commit = std::move(other._commit);
     _dataPath = std::move(other._dataPath);
     _locale = std::move(other._locale);
     _threadsMaxIdle = std::move(other._threadsMaxIdle);
@@ -459,8 +451,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
 IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) {
   if (this != &other) {
     _collections = other._collections;
-    _commitBulk = other._commitBulk;
-    _commitItem = other._commitItem;
+    _commit = other._commit;
     _dataPath = other._dataPath;
     _locale = other._locale;
     _threadsMaxIdle = other._threadsMaxIdle;
@@ -475,11 +466,7 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
     return false; // values do not match
   }
 
-  if (_commitBulk != other._commitBulk) {
-    return false; // values do not match
-  }
-
-  if (_commitItem != other._commitItem) {
+  if (_commit != other._commit) {
     return false; // values do not match
   }
 
@@ -569,12 +556,12 @@ bool IResearchViewMeta::init(
 
   {
     // optional jSON object
-    static const std::string fieldName("commitBulk");
+    static const std::string fieldName("commit");
 
-    mask->_commitBulk = slice.hasKey(fieldName);
+    mask->_commit = slice.hasKey(fieldName);
 
-    if (!mask->_commitBulk) {
-      _commitBulk = defaults._commitBulk;
+    if (!mask->_commit) {
+      _commit = defaults._commit;
     } else {
       auto field = slice.get(fieldName);
 
@@ -584,72 +571,9 @@ bool IResearchViewMeta::init(
         return false;
       }
 
-      {
-        // optional size_t
-        static const std::string subFieldName("commitIntervalBatchSize");
-        bool tmpBool;
-
-        if (!getNumber(_commitBulk._commitIntervalBatchSize, field, subFieldName, tmpBool, defaults._commitBulk._commitIntervalBatchSize)) {
-          errorField = fieldName + "=>" + subFieldName;
-
-          return false;
-        }
-      }
-
       std::string errorSubField;
 
-      if (!initCommitBaseMeta(_commitBulk, field, errorSubField, defaults._commitBulk)) {
-        errorField = fieldName + "=>" + errorSubField;
-
-        return false;
-      }
-    }
-  }
-
-  {
-    // optional jSON object
-    static const std::string fieldName("commitItem");
-
-    mask->_commitItem = slice.hasKey(fieldName);
-
-    if (!mask->_commitItem) {
-      _commitItem = defaults._commitItem;
-    } else {
-      auto field = slice.get(fieldName);
-
-      if (!field.isObject()) {
-        errorField = fieldName;
-
-        return false;
-      }
-
-      {
-        // optional size_t
-        static const std::string subFieldName("commitIntervalMsec");
-        bool tmpBool;
-
-        if (!getNumber(_commitItem._commitIntervalMsec, field, subFieldName, tmpBool, defaults._commitItem._commitIntervalMsec)) {
-          errorField = fieldName + "=>" + subFieldName;
-
-          return false;
-        }
-      }
-
-      {
-        // optional size_t
-        static const std::string subFieldName("commitTimeoutMsec");
-        bool tmpBool;
-
-        if (!getNumber(_commitItem._commitTimeoutMsec, field, subFieldName, tmpBool, defaults._commitItem._commitTimeoutMsec)) {
-          errorField = fieldName + "=>" + subFieldName;
-
-          return false;
-        }
-      }
-
-      std::string errorSubField;
-
-      if (!initCommitBaseMeta(_commitItem, field, errorSubField, defaults._commitItem)) {
+      if (!initCommitMeta(_commit, field, errorSubField, defaults._commit)) {
         errorField = fieldName + "=>" + errorSubField;
 
         return false;
@@ -754,37 +678,18 @@ bool IResearchViewMeta::json(
     builder.add("collections", subBuilder.slice());
   }
 
-  if ((!ignoreEqual || _commitBulk != ignoreEqual->_commitBulk) && (!mask || mask->_commitBulk)) {
+  if ((!ignoreEqual || _commit != ignoreEqual->_commit) && (!mask || mask->_commit)) {
     arangodb::velocypack::Builder subBuilder;
 
     {
       arangodb::velocypack::ObjectBuilder subBuilderWrapper(&subBuilder);
 
-      subBuilderWrapper->add("commitIntervalBatchSize", arangodb::velocypack::Value(_commitBulk._commitIntervalBatchSize));
-
-      if (!jsonCommitBaseMeta(*(subBuilderWrapper.builder), _commitBulk)) {
+      if (!jsonCommitMeta(*(subBuilderWrapper.builder), _commit)) {
         return false;
       }
     }
 
-    builder.add("commitBulk", subBuilder.slice());
-  }
-
-  if ((!ignoreEqual || _commitItem != ignoreEqual->_commitItem) && (!mask || mask->_commitItem)) {
-    arangodb::velocypack::Builder subBuilder;
-
-    {
-      arangodb::velocypack::ObjectBuilder subBuilderWrapper(&subBuilder);
-
-      subBuilderWrapper->add("commitIntervalMsec", arangodb::velocypack::Value(_commitItem._commitIntervalMsec));
-      subBuilderWrapper->add("commitTimeoutMsec", arangodb::velocypack::Value(_commitItem._commitTimeoutMsec));
-
-      if (!jsonCommitBaseMeta(*(subBuilderWrapper.builder), _commitItem)) {
-        return false;
-      }
-    }
-
-    builder.add("commitItem", subBuilder.slice());
+    builder.add("commit", subBuilder.slice());
   }
 
   if ((!ignoreEqual || _dataPath != ignoreEqual->_dataPath) && (!mask || mask->_dataPath) && !_dataPath.empty()) {
