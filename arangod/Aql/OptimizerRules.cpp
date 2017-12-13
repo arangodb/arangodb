@@ -4456,14 +4456,12 @@ static bool isValueTypeCollection(AstNode const* node) {
 }
 
 static bool isValueTypeString(AstNode const* node) {
-  return (node->type == NODE_TYPE_VALUE && node->value.type == VALUE_TYPE_STRING) ||
-  node->type == NODE_TYPE_REFERENCE;
+  return (node->type == NODE_TYPE_VALUE && node->value.type == VALUE_TYPE_STRING);
 }
 
 static bool isValueTypeNumber(AstNode const* node) {
   return (node->type == NODE_TYPE_VALUE && (node->value.type == VALUE_TYPE_INT ||
-                                            node->value.type == VALUE_TYPE_DOUBLE)) ||
-         node->type == NODE_TYPE_REFERENCE;
+                                            node->value.type == VALUE_TYPE_DOUBLE));
 }
 
 static bool applyFulltextOptimization(EnumerateListNode* elnode,
@@ -4548,27 +4546,20 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   condition->andCombine(cond);
   condition->normalize(plan);
   
-  auto indexNode = new IndexNode(plan, plan->nextId(), vocbase,
-                                 coll, elnode->outVariable(),
-                                 std::vector<transaction::Methods::IndexHandle>{
-                                   transaction::Methods::IndexHandle{index}},
-                                 condition.get(), false);
-  plan->registerNode(indexNode);
+  auto inode = new IndexNode(plan, plan->nextId(), vocbase,
+                             coll, elnode->outVariable(),
+                             std::vector<transaction::Methods::IndexHandle>{
+                               transaction::Methods::IndexHandle{index}},
+                             condition.get(), false);
+  plan->registerNode(inode);
   condition.release();
-  plan->replaceNode(elnode, indexNode);
+  plan->replaceNode(elnode, inode);
   
   if (limitArg != nullptr && limitNode == nullptr) { // add LIMIT
     size_t limit = static_cast<size_t>(limitArg->getIntValue());
     limitNode = new LimitNode(plan, plan->nextId(), 0, limit);
     plan->registerNode(limitNode);
-    auto parents = indexNode->getParents(); // Intentional copy
-    for (ExecutionNode* parent : parents) {
-      if (!parent->replaceDependency(indexNode, limitNode)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "Could not replace dependencies of an old node");
-      }
-    }
-    limitNode->addDependency(indexNode);
+    plan->insertAfter(inode, limitNode);
   }
   return true;
 }
@@ -4662,7 +4653,7 @@ struct GeoIndexInfo {
   //AstNode* filterFunctionNode = nullptr;
   
   // ============ Limit Info ============
-  AstNode const* limit = nullptr;
+  size_t actualLimit = SIZE_MAX;
   
   // ============ Attributes accessed ============
   AstNode const* locationVar = nullptr;// access to location field
@@ -4832,8 +4823,8 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
   auto func = static_cast<Function const*>(funcNode->getData());
   // WITHIN(coll, latitude, longitude, radius)
   // NEAR(coll, latitude, longitude, limit)
-  if ((func->name != "WITHIN" && func->name != "NEAR") || fargs->numMembers() != 4 ||
-       fargs->numMembers() != 3) {
+  if ((func->name != "WITHIN" && func->name != "NEAR") ||
+      (fargs->numMembers() != 4 && fargs->numMembers() != 3)) {
     return false;
   }
   
@@ -4846,6 +4837,7 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
     return false;
   }
   
+  // NEAR and WITHIN just use the first geoindex found
   aql::Collections* colls = plan->getAst()->query()->collections();
   info.collection = colls->add(collArg->getString(), AccessMode::Type::READ);
   for (auto const& idx : info.collection->getCollection()->getIndexes()) {
@@ -4861,10 +4853,10 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
     info.isSorted = true;
     info.ascending = true;
     info.distanceCenterLat = latArg;
-    info.distanceCenterLat = lngArg;
+    info.distanceCenterLng = lngArg;
     if (rangeArg != nullptr) {
       if (func->name == "NEAR") {
-        info.limit = rangeArg;
+        info.actualLimit = rangeArg->getIntValue();
       } else if (func->name == "WITHIN") {
         info.maxDistance = rangeArg;
         info.maxInclusive = true;
@@ -4894,6 +4886,15 @@ static bool checkEnumerateListNode(ExecutionPlan* plan, EnumerateListNode* el, G
   if (checkLegacyGeoFunc(plan, expr->node(), info)) {
     info.collectionNodeToReplace = el;
     info.collectionNodeOutVar = el->outVariable();
+    TRI_ASSERT(info.index && info.index->fields().size() <= 2);
+    Ast* ast = plan->getAst(); // we need to create this ourselves
+    auto const& fields = info.index->fields();
+    if (fields.size() == 1) {
+      info.locationVar = ast->createNodeAccess(info.collectionNodeOutVar, fields[0]);
+    } else {
+      info.latitudeVar = ast->createNodeAccess(info.collectionNodeOutVar, fields[0]);
+      info.longitudeVar = ast->createNodeAccess(info.collectionNodeOutVar, fields[1]);
+    }
     return true;
   }
   return false;
@@ -5050,12 +5051,11 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
 // builds a condition that can be used with the index interface and
 // contains all parameters required by the MMFilesGeoIndex
 std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
-                                             GeoIndexInfo const& info) {
+                                             GeoIndexInfo& info) {
   Ast* ast = plan->getAst();
   AstNode* func = nullptr;
   if (info.distanceCenterLat || info.distanceCenter) {
     // create GEO_CENTER_CONTAINS
-    TRI_ASSERT(info.maxDistance != nullptr);
     AstNode* args = ast->createNodeArray(3);
     if (info.distanceCenterLat && info.distanceCenterLng) { // legacy
       TRI_ASSERT(!info.distanceCenter);
@@ -5069,8 +5069,16 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
       TRI_ASSERT(!info.distanceCenterLat && !info.distanceCenterLng);
       args->addMember(info.distanceCenter);  // center location
     }
+    // maxDistance is only null if NEAR or WITHIN
+    TRI_ASSERT(info.maxDistance != nullptr ||
+               info.isSorted && info.ascending);
     
-    args->addMember(info.maxDistance);
+    if (info.maxDistance) {
+      args->addMember(info.maxDistance);
+    } else {
+      args->addMember(ast->createNodeValueDouble(geo::kEarthRadiusInMeters));
+    }
+    
     if (info.locationVar) {
       args->addMember(info.locationVar);
     } else {
@@ -5099,7 +5107,7 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
 }
 
 // applys the optimization for a candidate
-bool applyGeoOptimization(ExecutionPlan* plan, GeoIndexInfo& info) {
+bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* limitNode, GeoIndexInfo& info) {
   TRI_ASSERT(info.collection != nullptr);
   TRI_ASSERT(info.index);
 
@@ -5140,6 +5148,12 @@ bool applyGeoOptimization(ExecutionPlan* plan, GeoIndexInfo& info) {
       pair.second->replaceNode(newNode);
     }
   }
+  
+  if (info.actualLimit < SIZE_MAX && limitNode == nullptr) { // add LIMIT
+    limitNode = new LimitNode(plan, plan->nextId(), 0, info.actualLimit);
+    plan->registerNode(limitNode);
+    plan->insertAfter(inode, limitNode);
+  }
 
   // signal that plan has been changed
   return true;
@@ -5150,13 +5164,14 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
                                  OptimizerRule const* rule) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  bool modified = false;
+  bool mod = false;
   // inspect each return node and work upwards to SingletonNode
   plan->findEndNodes(nodes, true);
 
   for (ExecutionNode* node : nodes) {
     GeoIndexInfo info;
     ExecutionNode* current = node;
+    LimitNode* limit = nullptr;
 
     while (current) {
       switch (current->getType()) {
@@ -5165,6 +5180,9 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
           identifyGeoOptimizationCandidate(plan.get(), current, info);
           break;
         }
+        case EN::LIMIT: // collect this so we can use it
+          limit = static_cast<LimitNode*>(current);
+          break;
         case EN::ENUMERATE_LIST:{
           EnumerateListNode* el = static_cast<EnumerateListNode*>(current);
           checkEnumerateListNode(plan.get(), el, info);
@@ -5172,7 +5190,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
         }
         case EN::ENUMERATE_COLLECTION: {
           if (info && info.collectionNodeToReplace == current) {
-            modified = modified || applyGeoOptimization(plan.get(), info);
+            mod = mod || applyGeoOptimization(plan.get(), limit, info);
           }
           break;
         }
@@ -5188,5 +5206,5 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     }
   }
 
-  opt->addPlan(std::move(plan), rule, modified);
+  opt->addPlan(std::move(plan), rule, mod);
 }

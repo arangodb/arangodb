@@ -225,6 +225,10 @@ class Ast {
 
   /// @brief create an AST reference node
   AstNode* createNodeReference(Variable const*);
+  
+  /// @brief create an AST variable access
+  AstNode* createNodeAccess(Variable const*,
+                            std::vector<basics::AttributeName> const&);
 
   /// @brief create an AST parameter node
   AstNode* createNodeParameter(char const*, size_t);
