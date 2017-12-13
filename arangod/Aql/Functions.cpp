@@ -1445,16 +1445,48 @@ AqlValue Functions::DateYear(arangodb::aql::Query* query,
     tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
   } else {
     if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_YEAR",
-      TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      RegisterWarning(query, "DATE_YEAR", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
   }
 
   return AqlValue(AqlValueHintInt(
     int( year_month_day(floor<days>(tp)).year() )
-));
+  ));
 }
+
+/// @brief function DATE_MONTH
+AqlValue Functions::DateMonth(arangodb::aql::Query* query,
+                              transaction::Methods* trx,
+                              VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (!value.isString() && !value.isNumber() ) {
+    RegisterInvalidArgumentWarning(query, "DATE_MONTH");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  system_clock::time_point tp;
+
+  if (value.isNumber()) {
+    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
+  } else {
+    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
+      RegisterWarning(query, "DATE_MONTH", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  return AqlValue(AqlValueHintUInt(
+    static_cast<uint64_t>(unsigned(year_month_day(floor<days>(tp)).month()))
+  ));
+}
+
+
+
 
 
 

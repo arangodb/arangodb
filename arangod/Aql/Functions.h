@@ -171,6 +171,8 @@ struct Functions {
                                  VPackFunctionParameters const&);
    static AqlValue DateYear(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
+   static AqlValue DateMonth(arangodb::aql::Query*, transaction::Methods*,
+                             VPackFunctionParameters const&);
 
 
    static AqlValue Passthru(arangodb::aql::Query*, transaction::Methods*,
