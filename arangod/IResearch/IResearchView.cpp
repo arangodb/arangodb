@@ -1475,7 +1475,7 @@ int IResearchView::insert(
   auto begin = batch.begin();
   auto const end = batch.end();
   FieldIterator body;
-  TRI_voc_rid_t rid;
+  TRI_voc_rid_t rid = 0;
 
   // find first valid document
   while (!body.valid() && begin != end) {
@@ -2191,35 +2191,27 @@ void IResearchView::FlushCallbackUnregisterer::operator()(IResearchView* view) c
   }
 }
 
-std::unordered_set<TRI_voc_cid_t> IResearchView::gatherCollectionIds() {
-  std::unordered_set<TRI_voc_cid_t> ids;
-
-  for (auto cid : _meta._collections) {
-    ids.emplace(cid);
-  }
-
-  // TODO: gather ids from backing store
-
-  return ids;
-}
-
 void IResearchView::verifyKnownCollections() {
-  for (auto cid : gatherCollectionIds()) {
-    auto collection = _logicalView->vocbase()->lookupCollection(cid);
-    if (!collection) {
-      // collection no longer exists, drop it and move on
-      LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "collection " << cid << " no longer exists! removing from view "
-        << _logicalView->id();
-      drop(cid);
-    } else {
-      // see if the link still exists, otherwise drop and move on
-      auto link = findFirstMatchingLink(*collection, *this);
-      if (!link) {
+  std::unordered_set<TRI_voc_cid_t> ids;
+  bool success = appendKnownCollections(ids);
+  if (success) {
+    for (auto cid : ids) {
+      auto collection = _logicalView->vocbase()->lookupCollection(cid);
+      if (!collection) {
+        // collection no longer exists, drop it and move on
         LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
-          << "collection " << cid << " no longer linked! removing from view "
+          << "collection " << cid << " no longer exists! removing from view "
           << _logicalView->id();
         drop(cid);
+      } else {
+        // see if the link still exists, otherwise drop and move on
+        auto link = findFirstMatchingLink(*collection, *this);
+        if (!link) {
+          LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "collection " << cid << " no longer linked! removing from view "
+            << _logicalView->id();
+          drop(cid);
+        }
       }
     }
   }
