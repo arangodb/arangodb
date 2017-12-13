@@ -563,6 +563,9 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   std::string const colName(collection->name());
 
   double startTime = TRI_microtime();
+      
+  CONDITIONAL_READ_LOCKER(readLocker, _inventoryLock,
+                          basics::ConditionalLocking::DoNotLock);
 
   // do not acquire these locks instantly
   CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock,
@@ -571,13 +574,24 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
                            basics::ConditionalLocking::DoNotLock);
 
   while (true) {
+    TRI_ASSERT(!readLocker.isLocked());
     TRI_ASSERT(!writeLocker.isLocked());
     TRI_ASSERT(!locker.isLocked());
 
-    // block until we have acquired this lock
-    writeLocker.lock();
-    // we now have the one lock
+    if (!readLocker.tryLock()) {
+      goto retry;
+    }
+    
+    // we now have the inventory lock
+    TRI_ASSERT(readLocker.isLocked());
 
+    // try next lock
+    if (!writeLocker.tryLock()) {
+      readLocker.unlock();
+      goto retry;
+    }
+    
+    // we now have the inventory lock and the collections lock
     TRI_ASSERT(writeLocker.isLocked());
 
     if (locker.tryLock()) {
@@ -587,10 +601,13 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
     // unlock the write locker so we don't block other operations
     writeLocker.unlock();
+    readLocker.unlock();
 
     TRI_ASSERT(!writeLocker.isLocked());
     TRI_ASSERT(!locker.isLocked());
+    TRI_ASSERT(!readLocker.isLocked());
 
+retry:
     if (timeout >= 0.0 && TRI_microtime() > startTime + timeout) {
       events::DropCollection(colName, TRI_ERROR_LOCK_TIMEOUT);
       return TRI_ERROR_LOCK_TIMEOUT;
@@ -601,6 +618,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 
+  TRI_ASSERT(readLocker.isLocked());
   TRI_ASSERT(writeLocker.isLocked());
   TRI_ASSERT(locker.isLocked());
 
@@ -1115,12 +1133,7 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
 
   while (true) {
     DropState state = DROP_EXIT;
-    int res;
-    {
-      READ_LOCKER(readLocker, _inventoryLock);
-
-      res = dropCollectionWorker(collection, state, timeout);
-    }
+    int res = dropCollectionWorker(collection, state, timeout);
 
     if (state == DROP_PERFORM) {
       if (engine->inRecovery()) {
