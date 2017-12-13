@@ -672,6 +672,7 @@ bool appendKnownCollections(
       set.emplace(cid);
     }
   }
+
   return true;
 }
 
