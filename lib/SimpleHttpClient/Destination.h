@@ -27,12 +27,11 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
-class Endpoint;
-
 namespace communicator {
 class Destination {
  public:
   explicit Destination(std::string const& url) : _url(url) {}
+  explicit Destination(std::string&& url) : _url(std::move(url)) {}
 
  public:
   std::string const& url() const { return _url; }

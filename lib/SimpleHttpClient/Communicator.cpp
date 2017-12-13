@@ -163,11 +163,15 @@ Communicator::~Communicator() {
   ::curl_global_cleanup();
 }
 
-Ticket Communicator::addRequest(Destination destination,
-                                std::unique_ptr<GeneralRequest> request,
-                                Callbacks callbacks, Options options) {
+Ticket Communicator::nextTicket() {
   uint64_t id = NEXT_TICKET_ID.fetch_add(1, std::memory_order_seq_cst);
+  return Ticket{id};
+}
 
+void Communicator::addRequest(Ticket const& id,
+                              Destination const& destination,
+                              std::unique_ptr<GeneralRequest> request,
+                              Callbacks callbacks, Options options) {
   {
     TRI_ASSERT(request != nullptr);
     MUTEX_LOCKER(guard, _newRequestsLock);
@@ -187,8 +191,6 @@ Ticket Communicator::addRequest(Destination destination,
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "Couldn't wake up pipe. numBytes was " + std::to_string(numBytes);
   }
-
-  return Ticket{id};
 }
 
 int Communicator::work_once() {
