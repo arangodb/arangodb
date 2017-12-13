@@ -28,6 +28,18 @@
 #include "Basics/Common.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#define ARANGO_ENABLE_DEADLOCK_DETECTION
+#if defined(__SANITIZE_THREAD__)
+// Avoid fals positives with ThreadSanitizer
+#  undef ARANGO_ENABLE_DEADLOCK_DETECTION
+#elif defined(__has_feature)
+#  if __has_feature(thread_sanitizer)
+#    undef ARANGO_ENABLE_DEADLOCK_DETECTION
+#  endif
+#endif
+#endif
+
+#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
 #include "Basics/Thread.h"
 #endif
 
@@ -52,7 +64,7 @@ class Mutex {
   
   // assert that the mutex is locked by the current thread. will do
   // nothing in non-maintainer mode and will do nothing for non-posix locks
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
   void assertLockedByCurrentThread();
   void assertNotLockedByCurrentThread();
 #else
@@ -64,7 +76,7 @@ class Mutex {
 
   std::mutex _mutex;
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
   TRI_tid_t _holder;
 #endif
 };

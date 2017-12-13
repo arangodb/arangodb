@@ -63,7 +63,7 @@ Transaction* TransactionManager::begin(bool readOnly) {
   return tx;
 }
 
-void TransactionManager::end(Transaction* tx) {
+void TransactionManager::end(Transaction* tx) noexcept {
   TRI_ASSERT(tx != nullptr);
   lock();
 

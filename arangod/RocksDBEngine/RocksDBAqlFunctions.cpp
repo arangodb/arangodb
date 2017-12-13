@@ -23,7 +23,9 @@
 #include "RocksDBAqlFunctions.h"
 
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Collection.h"
 #include "Aql/Function.h"
+#include "Aql/Query.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBGeoIndex.h"
 #include "StorageEngine/TransactionState.h"
@@ -52,31 +54,25 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   ValidateParameters(parameters, "FULLTEXT", 3, 4);
 
   AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
-
   if (!collectionValue.isString()) {
     RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
-
-  std::string const collectionName(collectionValue.slice().copyString());
-
+  std::string const cname(collectionValue.slice().copyString());
+  
   AqlValue attribute = ExtractFunctionParameterValue(trx, parameters, 1);
-
   if (!attribute.isString()) {
     RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
-
-  std::string attributeName(attribute.slice().copyString());
+  std::string const attributeName(attribute.slice().copyString());
 
   AqlValue queryValue = ExtractFunctionParameterValue(trx, parameters, 2);
-
   if (!queryValue.isString()) {
     RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
-
-  std::string queryString = queryValue.slice().copyString();
+  std::string const queryString = queryValue.slice().copyString();
 
   size_t maxResults = 0;  // 0 means "all results"
   if (parameters.size() >= 4) {
@@ -93,12 +89,11 @@ AqlValue RocksDBAqlFunctions::Fulltext(
     }
   }
 
-  auto resolver = trx->resolver();
-  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(collectionName);
-  trx->addCollectionAtRuntime(cid, collectionName);
-
+  // add the collection to the query for proper cache handling
+  query->collections()->add(cname, AccessMode::Type::READ);
+  TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(cname);
+  trx->addCollectionAtRuntime(cid, cname);
   LogicalCollection* collection = trx->documentCollection(cid);
-
   if (collection == nullptr) {
     RegisterWarning(query, "FULLTEXT", TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return AqlValue(AqlValueHintNull());
