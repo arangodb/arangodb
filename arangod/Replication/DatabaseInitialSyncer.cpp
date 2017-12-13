@@ -504,8 +504,8 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
     res = trx.commit();
     
     std::string const progress2 =
-        "fetched master collection dump for collection '" + collectionName +
-        "', type: " + typeString + ", id " + cid + ", batch " +
+        "fetched master collection dump for collection '" + coll->name() +
+        "', type: " + typeString + ", id " + leaderColl + ", batch " +
         StringUtils::itoa(batch) +
         ", markers processed: " + StringUtils::itoa(markersProcessed) +
         ", bytes received: " + StringUtils::itoa(bytesReceived);
