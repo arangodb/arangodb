@@ -1368,13 +1368,6 @@ int IResearchView::insert(
     return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction id required
   }
 
-  FieldIterator body(doc, meta);
-
-  if (!body.valid()) {
-    // nothing to index
-    return TRI_ERROR_NO_ERROR;
-  }
-
   DataStore* store;
 
   if (_inRecovery) {
@@ -1393,6 +1386,12 @@ int IResearchView::insert(
   }
 
   TRI_ASSERT(store);
+
+  FieldIterator body(doc, meta);
+
+  if (!body.valid()) {
+    return TRI_ERROR_NO_ERROR; // nothing to index
+  }
 
   auto insert = [&body, cid, documentId] (irs::index_writer::document& doc) {
     insertDocument(doc, body, cid, documentId.id());
@@ -1476,17 +1475,37 @@ int IResearchView::insert(
   auto begin = batch.begin();
   auto const end = batch.end();
   FieldIterator body;
+  TRI_voc_rid_t rid;
 
-  auto batchInsert = [&meta, &batchCount, &body, &begin, end, cid, commitBatch] (irs::index_writer::document& doc) mutable {
+  // find first valid document
+  while (!body.valid() && begin != end) {
     body.reset(begin->second, meta);
-    // FIXME: what if the body is empty?
+    rid = begin->first.id();
+    ++begin;
+  }
 
-    insertDocument(doc, body, cid, begin->first.id());
+  if (!body.valid()) {
+    return sync(state) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL; // nothing to index
+  }
 
-    return ++begin != end && ++batchCount < commitBatch;
+  auto batchInsert = [&meta, &batchCount, &body, &rid, &begin, end, cid, commitBatch] (irs::index_writer::document& doc) mutable {
+    insertDocument(doc, body, cid, rid);
+
+    // find next valid document
+    while (begin != end) {
+      body.reset(begin->second, meta);
+      rid = begin->first.id();
+      ++begin;
+
+      if (body.valid()) {
+        return ++batchCount < commitBatch;
+      }
+    }
+
+    return false; // break the loop
   };
 
-  while (begin != end) {
+  do {
     if (batchCount >= commitBatch) {
       if (!sync(state)) {
         return TRI_ERROR_INTERNAL;
@@ -1510,7 +1529,7 @@ int IResearchView::insert(
         << "caught exception while inserting batch into iResearch view '" << id() << "', collection '" << cid;
       IR_EXCEPTION();
     }
-  }
+  } while (begin != end);
 
   if (!sync(state)) {
     return TRI_ERROR_INTERNAL;

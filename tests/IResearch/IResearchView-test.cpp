@@ -179,6 +179,8 @@ struct IResearchViewSetup {
       TRI_GetTempPath())/=
       (std::string("arangodb_tests.") + std::to_string(TRI_microtime()))
     ).utf8();
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    const_cast<std::string&>(dbPathFeature->directory()) = testFilesystemPath;
 
     long systemError;
     std::string systemErrorStr;
@@ -824,13 +826,10 @@ SECTION("test_open") {
   }
 
   auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
-  auto& origDirectory = dbPathFeature->directory();
-  std::shared_ptr<arangodb::DatabasePathFeature> originalDirectory(
-    dbPathFeature,
-    [origDirectory](arangodb::DatabasePathFeature* ptr)->void {
-      const_cast<std::string&>(ptr->directory()) = origDirectory;
-    }
-  );
+  auto origDirectory = dbPathFeature->directory();
+  auto restoreDirectory = irs::make_finally([dbPathFeature, &origDirectory]()->void{
+    const_cast<std::string&>(dbPathFeature->directory()) = origDirectory;
+  });
 
   // relative data path
   {
