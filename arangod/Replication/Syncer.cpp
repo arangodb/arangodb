@@ -521,6 +521,10 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
       }
       SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
                                       guard.collection()->cid(), AccessMode::Type::WRITE);
+    
+      // already locked by guard above
+      trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+
       Result res = trx.begin();
       if (!res.ok()) {
         return res;
@@ -620,6 +624,9 @@ Result Syncer::createIndex(VPackSlice const& slice) {
 
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
                                     guard.collection()->cid(), AccessMode::Type::WRITE);
+
+    // already locked by guard above
+    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
     Result res = trx.begin();
 

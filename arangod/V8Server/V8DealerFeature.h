@@ -131,19 +131,17 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   V8Context* buildContext(size_t id);
   V8Context* pickFreeContextForGc();
   void shutdownContext(V8Context* context);
-  void unblockContextsModification();
+  void unblockDynamicContextCreation();
   void loadJavaScriptFileInternal(std::string const& file, V8Context* context,
                                   VPackBuilder* builder);
   bool loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file, V8Context* context, VPackBuilder* builder);
-  void enterContextInternal(TRI_vocbase_t* vocbase, V8Context* context, bool allowUseDatabase);
-  void enterLockedContext(TRI_vocbase_t*, V8Context*, bool allowUseDatabase);
+  void prepareLockedContext(TRI_vocbase_t*, V8Context*, bool allowUseDatabase);
   void exitContextInternal(V8Context*);
-  void exitLockedContext(V8Context*);
+  void cleanupLockedContext(V8Context*);
   void applyContextUpdate(V8Context* context);
   void shutdownContexts();
 
  private:
-  std::atomic<bool> _ok;
   std::atomic<uint64_t> _nextId;
 
   std::unique_ptr<Thread> _gcThread;
@@ -152,10 +150,10 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   basics::ConditionVariable _contextCondition;
   std::vector<V8Context*> _contexts;
-  std::vector<V8Context*> _freeContexts;
+  std::vector<V8Context*> _idleContexts;
   std::vector<V8Context*> _dirtyContexts;
   std::unordered_set<V8Context*> _busyContexts;
-  size_t _contextsModificationBlockers;
+  size_t _dynamicContextCreationBlockers;
 
   JSLoader _startupLoader;
 
