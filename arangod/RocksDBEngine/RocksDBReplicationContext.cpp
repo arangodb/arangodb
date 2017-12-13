@@ -85,9 +85,9 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
   if (!_trx || !_guard || (_guard->database() != vocbase)) {
     rocksdb::Snapshot const* snap = nullptr;
     if (_trx) {
-      _trx->abort();
       auto state = RocksDBTransactionState::toState(_trx.get());
       snap = state->stealSnapshot();
+      _trx->abort();
       _trx.reset();
     }
     
