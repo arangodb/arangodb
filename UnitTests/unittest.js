@@ -133,10 +133,18 @@ function resultsToXml (results, baseName, cluster, isRocksDb) {
           }
 
           if (!seen) {
-            xml.elem('testcase', {
-              name: 'all_tests_in_' + xmlName,
-              time: 0 + current.duration
-            }, true);
+            if (failuresFound === 0) {
+              xml.elem('testcase', {
+                name: 'all_tests_in_' + xmlName,
+                time: 0 + current.duration
+              }, true);
+            } else {
+              xml.elem('testcase', {
+                name: 'all_tests_in_' + xmlName,
+                failures: failuresFound,
+                time: 0 + current.duration
+              }, true);
+            }
           }
 
           xml.elem('/testsuite');
