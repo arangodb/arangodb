@@ -620,6 +620,10 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
     }
     this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
   }
+  
+  if (hasFailed(response.get())) {
+    return buildHttpError(response.get(), url);
+  }
 
   VPackBuilder builder;
   Result r = parseResponse(builder, response.get());
