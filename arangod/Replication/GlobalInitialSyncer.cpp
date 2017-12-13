@@ -62,6 +62,8 @@ Result GlobalInitialSyncer::run(bool incremental) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
   
+  setAborted(false);
+  
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state";
   Result r = getMasterState();
     
@@ -69,9 +71,9 @@ Result GlobalInitialSyncer::run(bool incremental) {
     return r;
   }
   
-  if (_masterInfo._majorVersion > 3 ||
+  if (_masterInfo._majorVersion < 3 ||
       (_masterInfo._majorVersion == 3 && _masterInfo._minorVersion < 3)) {
-    char const* msg = "global replication is not supported with a master <  ArangoDB 3.3";
+    char const* msg = "global replication is not supported with a master < ArangoDB 3.3";
     LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
     return Result(TRI_ERROR_INTERNAL, msg);
   }
