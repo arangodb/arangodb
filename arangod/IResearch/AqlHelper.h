@@ -32,6 +32,12 @@
 #ifndef ARANGOD_IRESEARCH__AQL_HELPER_H
 #define ARANGOD_IRESEARCH__AQL_HELPER_H 1
 
+#if defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #if (__GNUC__ >= 7)
+    #pragma GCC diagnostic ignored "-Wimplicit-fallthrough=0"
+  #endif
+#endif
 
 NS_BEGIN(arangodb)
 
@@ -584,3 +590,10 @@ NS_END // arangodb
 
 #endif // ARANGOD_IRESEARCH__AQL_HELPER_H
 
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

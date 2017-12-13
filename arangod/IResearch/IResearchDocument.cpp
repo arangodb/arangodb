@@ -580,6 +580,23 @@ void FieldIterator::next() {
   return RID_FIELD;
 }
 
+/* static */ bool DocumentPrimaryKey::decode(
+    uint64_t& buf, const irs::bytes_ref& value
+) {
+  if (sizeof(uint64_t) != value.size()) {
+    return false;
+  }
+
+  buf = *reinterpret_cast<uint64_t const*>(value.c_str());
+
+  // convert from little endian
+  if (irs::numeric_utils::is_big_endian()) {
+    buf = Swap8Bytes(buf);
+  }
+
+  return true;
+}
+
 /* static */ irs::bytes_ref DocumentPrimaryKey::encode(uint64_t& value) {
   // ensure little endian
   if (irs::numeric_utils::is_big_endian()) {
@@ -617,6 +634,44 @@ bool DocumentPrimaryKey::write(irs::data_output& out) const {
   );
 
   return true;
+}
+
+bool appendKnownCollections(
+    std::unordered_set<TRI_voc_cid_t>& set,
+    const irs::index_reader& reader
+) {
+  for(auto& segment: reader) {
+    auto* term_reader = segment.field(CID_FIELD);
+
+    if (!term_reader) {
+      LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+        << "failed to get term reader for the 'cid' column while collecting CIDs for IResearch reader";
+
+      return false;
+    }
+
+    auto term_itr = term_reader->iterator();
+
+    if (!term_itr) {
+      LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+        << "failed to get term iterator for the 'cid' column while collecting CIDs for IResearch reader ";
+
+      return false;
+    }
+
+    while(term_itr->next()) {
+      TRI_voc_cid_t cid;
+
+      if (!DocumentPrimaryKey::decode(cid, term_itr->value())) {
+        LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+          << "failed to decode CID while collecting CIDs for IResearch reader";
+
+        return false;
+      }
+
+      set.emplace(cid);
+    }
+  }
 }
 
 NS_END // iresearch

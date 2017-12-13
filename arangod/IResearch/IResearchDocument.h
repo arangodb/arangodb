@@ -242,9 +242,17 @@ class DocumentPrimaryKey {
   static irs::string_ref const& CID(); // stored collection id column
   static irs::string_ref const& RID(); // stored revision id column
 
-  // Encodes the specified value in a proper way
-  // and retuns corresponding encoded representation
-  // Note, that the provided value may change
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief decodes the specified value in a proper way into 'buf'
+  /// @return success
+  ////////////////////////////////////////////////////////////////////////////////
+  static bool decode(uint64_t& buf, const irs::bytes_ref& value);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief encodes the specified value in a proper way
+  /// @return retuns corresponding encoded representation
+  /// @note the provided value may be modified
+  ////////////////////////////////////////////////////////////////////////////////
   static irs::bytes_ref encode(uint64_t& value);
 
   DocumentPrimaryKey() = default;
@@ -264,6 +272,10 @@ class DocumentPrimaryKey {
   // FIXME: define storage format (LE or BE)
   uint64_t _keys[2]{}; // TRI_voc_cid_t + TRI_voc_rid_t
 }; // DocumentPrimaryKey
+
+bool appendKnownCollections(
+  std::unordered_set<TRI_voc_cid_t>& set, const irs::index_reader& reader
+);
 
 NS_END // iresearch
 NS_END // arangodb
