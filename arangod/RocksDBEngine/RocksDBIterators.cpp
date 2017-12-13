@@ -283,9 +283,6 @@ RocksDBSortedAllIterator::RocksDBSortedAllIterator(
     : IndexIterator(collection, trx, mmdr, index),
       _trx(trx),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      _index(index),
-#endif
       _cmp(index->comparator()) {
  
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);

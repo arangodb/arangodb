@@ -227,7 +227,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
 
     auto args = ast->createNodeArray();
     args->addMember(originalArg);
-    auto sorted = ast->createNodeFunctionCall("SORTED_UNIQUE", args);
+    auto sorted = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args);
 
     auto outVar = ast->variables()->createTemporaryVariable();
     ExecutionNode* calculationNode = nullptr;
@@ -4540,7 +4540,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   if (limitArg != nullptr) {
     args->addMember(limitArg);
   }
-  AstNode* cond = ast->createNodeFunctionCall("FULLTEXT", args);
+  AstNode* cond = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("FULLTEXT"), args);
   TRI_ASSERT(cond != nullptr);
   auto condition = std::make_unique<Condition>(ast);
   condition->andCombine(cond);
@@ -5088,7 +5088,7 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
       array->addMember(info.latitudeVar);
       args->addMember(array);
     }
-    func = ast->createNodeFunctionCall("GEO_CIRCLE_CONTAINS", args);
+    func = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("GEO_CIRCLE_CONTAINS"), args);
   } else if (info.filterMode != geo::FilterType::NONE) { // TODO allow both?
     // create GEO_CONTAINS / GEO_INTERSECTS
     TRI_ASSERT(info.filterMask);
@@ -5097,7 +5097,7 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
     args->addMember(info.filterMask);
     args->addMember(info.locationVar);
     char const* fname = info.filterMode == geo::FilterType::CONTAINS ? "GEO_CONTAINS" : "GEO_INTERSECTS";
-    func = ast->createNodeFunctionCall(fname, args);
+    func = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR(fname), args);
   }
   
   auto cond = std::make_unique<Condition>(ast);

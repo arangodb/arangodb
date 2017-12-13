@@ -120,9 +120,6 @@ class RocksDBSortedAllIterator final : public IndexIterator {
   transaction::Methods* _trx;
   RocksDBKeyBounds const _bounds;
   std::unique_ptr<rocksdb::Iterator> _iterator;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  RocksDBPrimaryIndex const* _index;
-#endif
   rocksdb::Comparator const* _cmp;
 };
 }
