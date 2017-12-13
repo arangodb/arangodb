@@ -47,21 +47,21 @@ int main(int argc, char* argv[]) {
     context.installHup();
 
     std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
-        argv[0], "Usage: arangoimp [<options>]", "For more information use:", BIN_DIRECTORY));
+        argv[0], "Usage: arangoimport [<options>]", "For more information use:", BIN_DIRECTORY));
 
     ApplicationServer server(options, BIN_DIRECTORY);
 
     int ret;
 
     server.addFeature(new ClientFeature(&server));
-    server.addFeature(new ConfigFeature(&server, "arangoimp"));
+    server.addFeature(new ConfigFeature(&server, "arangoimport"));
     server.addFeature(new ImportFeature(&server, &ret));
     server.addFeature(new LoggerFeature(&server, false));
     server.addFeature(new RandomFeature(&server));
     server.addFeature(new ShellColorsFeature(&server));
     server.addFeature(new ShutdownFeature(&server, {"Import"}));
     server.addFeature(new SslFeature(&server));
-    server.addFeature(new TempFeature(&server, "arangoimp"));
+    server.addFeature(new TempFeature(&server, "arangoimport"));
     server.addFeature(new VersionFeature(&server));
 
     try {
@@ -72,11 +72,11 @@ int main(int argc, char* argv[]) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "arangoimp terminated because of an unhandled exception: " << ex.what();
+        << "arangoimport terminated because of an unhandled exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "arangoimp terminated because of an unhandled exception of unknown type";
+        << "arangoimport terminated because of an unhandled exception of unknown type";
       ret = EXIT_FAILURE;
     }
 

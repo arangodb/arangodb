@@ -81,7 +81,7 @@ function config (options) {
     'arangod',
     'arangobench',
     'arangodump',
-    'arangoimp',
+    'arangoimport',
     'arangorestore',
     'arangoexport',
     'arangosh',
