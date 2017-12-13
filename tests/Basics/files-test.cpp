@@ -124,9 +124,11 @@ SECTION("tst_copyfile") {
   CHECK("" == FileUtils::slurp(dest));
 
   // copy over an existing target file
+  FileUtils::remove(source);
   FileUtils::spit(source, std::string("foobar"), false);
   CHECK(false == TRI_CopyFile(source, dest, error));
   
+  FileUtils::remove(source);
   FileUtils::remove(dest);
   FileUtils::spit(source, std::string("foobar"), false);
   CHECK(true == TRI_CopyFile(source, dest, error));
@@ -137,8 +139,8 @@ SECTION("tst_copyfile") {
   for (size_t i = 0; i < 10; ++i) {
     value += value;
   }
-  std::cout << "VALUE SIZE: " << value.size();
  
+  FileUtils::remove(source);
   FileUtils::remove(dest);
   FileUtils::spit(source, value, false);
   CHECK(true == TRI_CopyFile(source, dest, error));
@@ -147,7 +149,7 @@ SECTION("tst_copyfile") {
 
   // copy file slightly larger than copy buffer
   std::string value2(128 * 1024 + 1, 'x');
-  std::cout << "VALUE2 SIZE: " << value2.size();
+  FileUtils::remove(source);
   FileUtils::remove(dest);
   FileUtils::spit(source, value2, false);
   CHECK(true == TRI_CopyFile(source, dest, error));
