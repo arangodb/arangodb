@@ -1366,7 +1366,7 @@ def buildEdition(os, edition, maintainer) {
         logExceptionStage(os, logFile, logFile, exc)
 
         def msg = exc.toString()
-
+        
         if (os == 'linux' || os == 'mac') {
             sh "echo \"${msg}\" >> ${logFile}"
         }
