@@ -1395,6 +1395,7 @@ std::string LogicalCollection::generateGloballyUniqueId() const {
     result.append(std::to_string(_planId));
   } else if (ServerState::isDBServer(role)) {
     TRI_ASSERT(_planId != 0);
+    result.append("c");
     // we add the shard name to the collection. If we ever
     // replicate shards, we can identify them cluster-wide
     result.append(std::to_string(_planId));
