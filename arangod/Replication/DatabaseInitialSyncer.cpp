@@ -79,13 +79,16 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
   if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
+  
+  Result res = vocbase()->replicationApplier()->preventStart();
 
-  int res = vocbase()->replicationApplier()->preventStart();
-  if (res != TRI_ERROR_NO_ERROR) {
-    return Result(res);
+  if (res.fail()) {
+    return res;
   }
 
   TRI_DEFER(vocbase()->replicationApplier()->allowStart());
+  
+  setAborted(false);
 
   try {
     setProgress("fetching master state");
@@ -499,6 +502,15 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
     }
 
     res = trx.commit();
+    
+    std::string const progress2 =
+        "fetched master collection dump for collection '" + collectionName +
+        "', type: " + typeString + ", id " + cid + ", batch " +
+        StringUtils::itoa(batch) +
+        ", markers processed: " + StringUtils::itoa(markersProcessed) +
+        ", bytes received: " + StringUtils::itoa(bytesReceived);
+
+    setProgress(progress2);
 
     if (!res.ok()) {
       return res;
@@ -608,13 +620,17 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
     }
     this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
   }
+  
+  if (hasFailed(response.get())) {
+    return buildHttpError(response.get(), url);
+  }
 
   VPackBuilder builder;
   Result r = parseResponse(builder, response.get());
 
   if (r.fail()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                  _masterInfo._endpoint + url + ": response is no object");
+                  _masterInfo._endpoint + url + ": " + r.errorMessage());
   }
 
   VPackSlice const slice = builder.slice();

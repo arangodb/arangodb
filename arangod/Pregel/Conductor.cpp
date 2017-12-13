@@ -598,12 +598,12 @@ int Conductor::_initializeWorkers(std::string const& suffix,
       std::shared_ptr<IWorker> w =
           PregelFeature::instance()->worker(_executionNumber);
       if (!w) {
-        PregelFeature::instance()->addWorker(
-            AlgoRegistry::createWorker(_vocbaseGuard.database(), b.slice()),
-            _executionNumber);
+        TRI_vocbase_t *vocbase = _vocbaseGuard.database();
+        std::unique_ptr<IWorker> w(AlgoRegistry::createWorker(vocbase, b.slice()));
+        PregelFeature::instance()->addWorker(w.get(), _executionNumber);
+        w.release()->setupWorker();
       } else {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
             "Worker with this execution number already exists.");
       }
       return TRI_ERROR_NO_ERROR;
