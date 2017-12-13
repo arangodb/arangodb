@@ -68,7 +68,7 @@ function runArangodRecovery (instanceInfo, options, script, setup, count) {
 
     args = Object.assign(args, options.extraArgs);
 
-    instanceInfo.recoveryArgv = toArgv(args).concat(['--server.rest-server', 'false']);
+    instanceInfo.recoveryArgv = toArgv(args).concat(['--server.rest-server', 'false', '--replication.auto-start', 'true']);
   }
 
   let argv = instanceInfo.recoveryArgv;
