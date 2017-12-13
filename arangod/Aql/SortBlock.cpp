@@ -35,8 +35,42 @@ using namespace arangodb::aql;
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/AqlHelper.h"
 
+namespace {
+
+int compareIResearchScores(
+    irs::sort::prepared const* comparer,
+    arangodb::transaction::Methods*,
+    AqlValue const& lhs,
+    AqlValue const& rhs
+) {
+  arangodb::velocypack::ValueLength tmp;
+
+  auto const* lhsScore = reinterpret_cast<irs::byte_type const*>(lhs.slice().getString(tmp));
+  auto const* rhsScore = reinterpret_cast<irs::byte_type const*>(rhs.slice().getString(tmp));
+
+  if (comparer->less(lhsScore, rhsScore)) {
+    return -1;
+  }
+
+  if (comparer->less(rhsScore, lhsScore)) {
+    return 1;
+  }
+
+  return 0;
+}
+
+int compareAqlValues(
+    irs::sort::prepared const*,
+    arangodb::transaction::Methods* trx,
+    AqlValue const& lhs,
+    AqlValue const& rhs) {
+  return AqlValue::Compare(
+    reinterpret_cast<arangodb::transaction::Methods*>(trx), lhs, rhs, true
+  );
+}
+
 void fillSortRegisters(
-    std::vector<std::tuple<RegisterId, bool, irs::sort::prepared::ptr>>& sortRegisters,
+    std::vector<SortRegister>& sortRegisters,
     SortNode const& en
 ) {
   TRI_ASSERT(en.plan());
@@ -53,7 +87,7 @@ void fillSortRegisters(
     auto it = en.getRegisterPlan()->varInfo.find(varId);
     TRI_ASSERT(it != en.getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-    sortRegisters.emplace_back(it->second.registerId, p.ascending, nullptr);
+    sortRegisters.emplace_back(it->second.registerId, p.ascending, nullptr, &compareAqlValues);
 
     auto const* setter = execPlan.getVarSetBy(varId);
 
@@ -70,16 +104,59 @@ void fillSortRegisters(
       auto* node = viewNode.sortCondition()[offset++].node;
 
       if (arangodb::iresearch::OrderFactory::comparer(&comparer, *node)) {
-        std::get<2>(sortRegisters.back()) = comparer->prepare();
+        auto& reg = sortRegisters.back();
+        std::get<2>(reg) = comparer->prepare(); // set score comparer
+        std::get<3>(reg) = &compareIResearchScores; // set comparator
       }
     }
   }
 }
 
+/// @brief OurLessThan
+class OurLessThan {
+ public:
+  OurLessThan(
+      arangodb::transaction::Methods* trx,
+      std::deque<AqlItemBlock*>& buffer,
+      std::vector<SortRegister>& sortRegisters) noexcept
+    : _trx(trx),
+      _buffer(buffer),
+      _sortRegisters(sortRegisters) {
+  }
+
+  bool operator()(std::pair<size_t, size_t> const& a,
+                  std::pair<size_t, size_t> const& b) const {
+    for (auto const& reg : _sortRegisters) {
+      auto const& lhs = _buffer[a.first]->getValueReference(a.second, std::get<0>(reg));
+      auto const& rhs = _buffer[b.first]->getValueReference(b.second, std::get<0>(reg));
+
+      auto const comparator = std::get<3>(reg);
+      TRI_ASSERT(comparator);
+
+      int const cmp = (*comparator)(std::get<2>(reg).get(), _trx, lhs, rhs);
+
+      if (cmp < 0) {
+        return std::get<1>(reg);
+      } else if (cmp > 0) {
+        return !std::get<1>(reg);
+      }
+    }
+
+    return false;
+  }
+
+ private:
+  arangodb::transaction::Methods* _trx;
+  std::deque<AqlItemBlock*>& _buffer;
+  std::vector<SortRegister>& _sortRegisters;
+};
+
+}
+
 #else
 
 void fillSortRegisters(
-    std::vector<std::tuple<RegisterId, bool>>& sortRegisters,
+    std::vector<SortRegister>& sortRegisters,
     SortNode const& en
 ) {
   auto const& elements = en.getElements();
@@ -91,7 +168,42 @@ void fillSortRegisters(
     TRI_ASSERT(it != en.getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     sortRegisters.emplace_back(it->second.registerId, p.ascending);
+  }
 }
+
+/// @brief OurLessThan
+class OurLessThan {
+ public:
+  OurLessThan(arangodb::transaction::Methods* trx,
+              std::deque<AqlItemBlock*>& buffer,
+              std::vector<SortRegister>& sortRegisters)
+      : _trx(trx),
+        _buffer(buffer),
+        _sortRegisters(sortRegisters) {}
+
+  bool operator()(std::pair<size_t, size_t> const& a,
+                  std::pair<size_t, size_t> const& b) const {
+    for (auto const& reg : _sortRegisters) {
+      auto const& lhs = _buffer[a.first]->getValueReference(a.second, std::get<0>(reg));
+      auto const& rhs = _buffer[b.first]->getValueReference(b.second, std::get<0>(reg));
+
+      int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+
+      if (cmp < 0) {
+        return std::get<1>(reg);
+      } else if (cmp > 0) {
+        return !std::get<1>(reg);
+      }
+    }
+
+    return false;
+  }
+
+ private:
+  arangodb::transaction::Methods* _trx;
+  std::deque<AqlItemBlock*>& _buffer;
+  std::vector<SortRegister>& _sortRegisters;
+};
 
 #endif // USE_IRESEARCH
 
@@ -293,43 +405,4 @@ void SortBlock::doSorting() {
     delete x;
   }
   DEBUG_END_BLOCK();  
-}
-
-bool SortBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
-                                        std::pair<size_t, size_t> const& b) const {
-  for (auto const& reg : _sortRegisters) {
-    auto const& lhs = _buffer[a.first]->getValueReference(a.second, std::get<0>(reg));
-    auto const& rhs = _buffer[b.first]->getValueReference(b.second, std::get<0>(reg));
-
-#ifdef USE_IRESEARCH
-    auto& irsComparer = std::get<2>(reg);
-
-    if (irsComparer) {
-      arangodb::velocypack::ValueLength tmp;
-
-      auto const* lhsScore = reinterpret_cast<irs::byte_type const*>(lhs.slice().getString(tmp));
-      auto const* rhsScore = reinterpret_cast<irs::byte_type const*>(rhs.slice().getString(tmp));
-
-      if (irsComparer->less(lhsScore, rhsScore)) {
-        return std::get<1>(reg);
-      }
-
-      if (irsComparer->less(rhsScore, lhsScore)) {
-        return !std::get<1>(reg);
-      }
-
-      continue;
-    }
-#endif
-
-    int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
-
-    if (cmp < 0) {
-      return std::get<1>(reg);
-    } else if (cmp > 0) {
-      return !std::get<1>(reg);
-    }
-  }
-
-  return false;
 }
