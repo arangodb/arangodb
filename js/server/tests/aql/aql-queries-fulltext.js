@@ -28,19 +28,20 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var db = require("@arangodb").db;
-var jsunity = require("jsunity");
-var errors = require("@arangodb").errors;
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
-var assertQueryError = helper.assertQueryError;
+const db = require("@arangodb").db;
+const jsunity = require("jsunity");
+const errors = require("@arangodb").errors;
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
+const assertQueryError = helper.assertQueryError;
+const assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlFulltextTestSuite () {
-  var cn = "UnitTestsAhuacatlFulltext";
+  const cn = "UnitTestsAhuacatlFulltext";
   var fulltext;
 
   return {
@@ -151,9 +152,9 @@ function ahuacatlFulltextTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNonIndexed : function () {
-//      assertQueryError(errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, "RETURN FULLTEXT(" + fulltext.name() + ", 'bang', 'search')"); 
-//      assertQueryError(errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, "RETURN FULLTEXT(" + fulltext.name() + ", 'texts', 'foo')"); 
-//      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "RETURN FULLTEXT(NotExistingFooCollection, 'text', 'foo')"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, "RETURN FULLTEXT(" + fulltext.name() + ", 'bang', 'search')"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, "RETURN FULLTEXT(" + fulltext.name() + ", 'texts', 'foo')"); 
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "RETURN FULLTEXT(NotExistingFooCollection, 'text', 'foo')"); 
     }
 
   };
