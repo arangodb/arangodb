@@ -49,6 +49,9 @@
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
+#include "index/directory_reader.hpp"
+#include "index/index_writer.hpp"
+#include "store/memory_directory.hpp"
 
 NS_LOCAL
 
@@ -1482,6 +1485,66 @@ SECTION("FieldIterator_nullptr_tokenizer") {
 
     tokenizer->reset(irs::string_ref::nil); // ensure that acquired 'tokenizer' will not be optimized out
   }
+}
+
+SECTION("DocumentPrimaryKey_encode_decode") {
+  uint64_t src = 42;
+  auto encoded = arangodb::iresearch::DocumentPrimaryKey::encode(src);
+
+  CHECK((sizeof(uint64_t) == encoded.size()));
+  uint64_t dst;
+
+  CHECK((arangodb::iresearch::DocumentPrimaryKey::decode(dst, encoded)));
+  CHECK((42 == dst));
+
+  // check failure on null
+  CHECK((!arangodb::iresearch::DocumentPrimaryKey::decode(dst, irs::bytes_ref::nil)));
+
+  // check failure on incorrect size
+  CHECK((!arangodb::iresearch::DocumentPrimaryKey::decode(dst, irs::ref_cast<irs::byte_type>(irs::string_ref("abcdefghijklmnopqrstuvwxyz")))));
+}
+
+SECTION("test_appendKnownCollections") {
+  irs::memory_directory dir;
+  auto writer = irs::index_writer::make(
+    dir, irs::formats::get("1_0"), irs::OM_CREATE
+  );
+  REQUIRE(writer);
+  writer->commit();
+
+  // check failure for empty since no such field
+  {
+    auto reader = irs::directory_reader::open(dir);
+    REQUIRE((reader));
+    CHECK((0 == reader->docs_count()));
+
+    std::unordered_set<TRI_voc_rid_t> actual;
+    CHECK((!arangodb::iresearch::appendKnownCollections(actual, reader)));
+  }
+
+  TRI_voc_cid_t cid = 42;
+  arangodb::iresearch::Field field;
+  arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
+
+  writer->insert([&field](irs::index_writer::document& doc)->bool{
+    CHECK((doc.insert(irs::action::index, field)));
+    return false; // break the loop
+  });
+  writer->commit();
+
+  auto reader = irs::directory_reader::open(dir);
+  REQUIRE((reader));
+  CHECK((1 == reader->docs_count()));
+
+  std::unordered_set<TRI_voc_rid_t> expected = { 42 };
+  std::unordered_set<TRI_voc_rid_t> actual;
+  CHECK((arangodb::iresearch::appendKnownCollections(actual, reader)));
+
+  for (auto& cid: expected) {
+    CHECK((1 == actual.erase(cid)));
+  }
+
+  CHECK((actual.empty()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

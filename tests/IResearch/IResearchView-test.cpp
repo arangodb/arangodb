@@ -630,6 +630,14 @@ SECTION("test_insert") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
 
+    // validate cid count
+    {
+      std::unordered_set<TRI_voc_cid_t> actual;
+      CHECK((0 == view->linkCount()));
+      CHECK((view->appendKnownCollections(actual)));
+      CHECK((actual.empty()));
+    }
+
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
@@ -649,6 +657,20 @@ SECTION("test_insert") {
     CHECK((trx.begin().ok()));
     auto reader = view->snapshot(trx);
     CHECK((4 == reader.docs_count()));
+
+    // validate cid count
+    {
+      std::unordered_set<TRI_voc_cid_t> expected = { 1 };
+      std::unordered_set<TRI_voc_cid_t> actual;
+      CHECK((0 == view->linkCount()));
+      CHECK((view->appendKnownCollections(actual)));
+
+      for (auto& cid: expected) {
+        CHECK((1 == actual.erase(cid)));
+      }
+
+      CHECK((actual.empty()));
+    }
   }
 
   // not in recovery (with waitForSync)
@@ -1075,11 +1097,36 @@ SECTION("test_register_link") {
     REQUIRE((false == !view));
 
     CHECK((0 == view->linkCount()));
+
+    {
+      std::unordered_set<TRI_voc_cid_t> expected = { 123 };
+      std::unordered_set<TRI_voc_cid_t> actual = { 123 };
+      CHECK((view->appendKnownCollections(actual)));
+
+      for (auto& cid: expected) {
+        CHECK((1 == actual.erase(cid)));
+      }
+
+      CHECK((actual.empty()));
+    }
+
     persisted = false;
     auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((true == persisted));
     CHECK((false == !link));
     CHECK((1 == view->linkCount()));
+
+    {
+      std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
+      std::unordered_set<TRI_voc_cid_t> actual = { 123 };
+      CHECK((view->appendKnownCollections(actual)));
+
+      for (auto& cid: expected) {
+        CHECK((1 == actual.erase(cid)));
+      }
+
+      CHECK((actual.empty()));
+    }
   }
 
   // known link
@@ -1092,16 +1139,54 @@ SECTION("test_register_link") {
     REQUIRE((false == !view));
 
     CHECK((1 == view->linkCount()));
+
+    {
+      std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
+      std::unordered_set<TRI_voc_cid_t> actual = { 123 };
+      CHECK((view->appendKnownCollections(actual)));
+
+      for (auto& cid: expected) {
+        CHECK((1 == actual.erase(cid)));
+      }
+
+      CHECK((actual.empty()));
+    }
+
     persisted = false;
     auto link0 = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((false == persisted));
     CHECK((false == !link0));
     CHECK((1 == view->linkCount()));
+
+    {
+      std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
+      std::unordered_set<TRI_voc_cid_t> actual = { 123 };
+      CHECK((view->appendKnownCollections(actual)));
+
+      for (auto& cid: expected) {
+        CHECK((1 == actual.erase(cid)));
+      }
+
+      CHECK((actual.empty()));
+    }
+
     persisted = false;
     auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((false == persisted));
     CHECK((true == !link1));
     CHECK((1 == view->linkCount()));
+
+    {
+      std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
+      std::unordered_set<TRI_voc_cid_t> actual = { 123 };
+      CHECK((view->appendKnownCollections(actual)));
+
+      for (auto& cid: expected) {
+        CHECK((1 == actual.erase(cid)));
+      }
+
+      CHECK((actual.empty()));
+    }
   }
 }
 
@@ -1132,6 +1217,19 @@ SECTION("test_unregister_link") {
     CHECK((false == logicalCollection->getIndexes().empty()));
 
     CHECK((1 == view->linkCount()));
+
+    {
+      std::unordered_set<TRI_voc_cid_t> expected = { 100 };
+      std::unordered_set<TRI_voc_cid_t> actual = { };
+      CHECK((view->appendKnownCollections(actual)));
+
+      for (auto& cid: expected) {
+        CHECK((1 == actual.erase(cid)));
+      }
+
+      CHECK((actual.empty()));
+    }
+
     CHECK((nullptr != vocbase->lookupCollection("testCollection")));
 
     auto before = StorageEngineMock::inRecoveryResult;
@@ -1142,6 +1240,13 @@ SECTION("test_unregister_link") {
     CHECK((false == persisted));
     CHECK((nullptr == vocbase->lookupCollection("testCollection")));
     CHECK((0 == view->linkCount()));
+
+    {
+      std::unordered_set<TRI_voc_cid_t> actual = { };
+      CHECK((view->appendKnownCollections(actual)));
+      CHECK((actual.empty()));
+    }
+
     CHECK((false == !vocbase->lookupView("testView")));
     CHECK((TRI_ERROR_NO_ERROR == vocbase->dropView("testView")));
     CHECK((true == !vocbase->lookupView("testView")));
@@ -1165,12 +1270,32 @@ SECTION("test_unregister_link") {
     CHECK((false == logicalCollection->getIndexes().empty()));
 
     CHECK((1 == view->linkCount()));
+
+    {
+      std::unordered_set<TRI_voc_cid_t> expected = { 100 };
+      std::unordered_set<TRI_voc_cid_t> actual = { };
+      CHECK((view->appendKnownCollections(actual)));
+
+      for (auto& cid: expected) {
+        CHECK((1 == actual.erase(cid)));
+      }
+
+      CHECK((actual.empty()));
+    }
+
     CHECK((nullptr != vocbase->lookupCollection("testCollection")));
     persisted = false;
     CHECK((TRI_ERROR_NO_ERROR == vocbase->dropCollection(logicalCollection, true, -1)));
     CHECK((true == persisted));
     CHECK((nullptr == vocbase->lookupCollection("testCollection")));
     CHECK((0 == view->linkCount()));
+
+    {
+      std::unordered_set<TRI_voc_cid_t> actual = { };
+      CHECK((view->appendKnownCollections(actual)));
+      CHECK((actual.empty()));
+    }
+
     CHECK((false == !vocbase->lookupView("testView")));
     CHECK((TRI_ERROR_NO_ERROR == vocbase->dropView("testView")));
     CHECK((true == !vocbase->lookupView("testView")));

@@ -931,6 +931,31 @@ IResearchView::~IResearchView() {
   }
 }
 
+bool IResearchView::appendKnownCollections(
+    std::unordered_set<TRI_voc_cid_t>& set
+) const {
+  CompoundReader reader(_mutex); // will aquire read-lock since members can be asynchronously updated
+
+  reader.add(_memoryNode->_store._reader);
+  SCOPED_LOCK(_toFlush->_readMutex);
+  reader.add(_toFlush->_store._reader);
+
+  if (_storePersisted) {
+    reader.add(_storePersisted._reader);
+  }
+
+  set.insert(_meta._collections.begin(), _meta._collections.end());
+
+  if (arangodb::iresearch::appendKnownCollections(set, reader)) {
+    return true;
+  }
+
+  LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+    << "failed to collect CIDs for IResearch view '" << id() << "'";
+
+  return false;
+}
+
 bool IResearchView::cleanup(size_t maxMsec /*= 0*/) {
   arangodb::iresearch::ReadMutex mutex(_mutex);
   auto thresholdSec = TRI_microtime() + maxMsec/1000.0;
