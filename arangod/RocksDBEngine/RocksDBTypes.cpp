@@ -184,7 +184,7 @@ char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
       return "ViewDrop";
     case arangodb::RocksDBLogType::ViewChange:
       return "ViewChange";
-    case arangodb::RocksDBLogType::ViewChange:
+    case arangodb::RocksDBLogType::ViewRename:
       return "ViewRename";
 #ifdef USE_IRESEARCH
     case arangodb::RocksDBLogType::IResearchLinkDrop:
