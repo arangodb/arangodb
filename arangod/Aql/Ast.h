@@ -344,7 +344,11 @@ class Ast {
                                   AstNode const*, AstNode const*);
 
   /// @brief create an AST function call node
-  AstNode* createNodeFunctionCall(char const*, AstNode const*);
+  AstNode* createNodeFunctionCall(char const* functionName, AstNode const* arguments) {
+    return createNodeFunctionCall(functionName, strlen(functionName), arguments);
+  }
+
+  AstNode* createNodeFunctionCall(char const* functionName, size_t length, AstNode const* arguments);
 
   /// @brief create an AST range node
   AstNode* createNodeRange(AstNode const*, AstNode const*);
@@ -512,9 +516,9 @@ public:
   static void traverseReadOnly(AstNode const*,
                                std::function<void(AstNode const*, void*)>,
                                void*);
-private:
+ private:
   /// @brief normalize a function name
-  std::pair<std::string, bool> normalizeFunctionName(char const*);
+  std::pair<std::string, bool> normalizeFunctionName(char const* functionName, size_t length);
 
   /// @brief create a node of the specified type
   AstNode* createNode(AstNodeType);
