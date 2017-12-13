@@ -166,11 +166,6 @@ class ExecutionPlan {
   void findEndNodes(SmallVector<ExecutionNode*>& result,
                     bool enterSubqueries) const;
 
-/// @brief check linkage
-#if 0
-  void checkLinkage();
-#endif
-
   /// @brief determine and set _varsUsedLater and _valid and _varSetBy
   void findVarUsage();
 
