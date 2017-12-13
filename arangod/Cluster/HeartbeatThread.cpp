@@ -604,7 +604,7 @@ void HeartbeatThread::runSingleServer() {
           applier->stopAndJoin();
         }
         while (applier->isShuttingDown()) {
-          usleep(50 * 1000);
+          std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
         }
         
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
