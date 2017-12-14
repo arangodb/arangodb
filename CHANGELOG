@@ -1,5 +1,42 @@
-v3.2.9 (2017-XX-XX)
+v3.2.10 (2017-XX-XX)
 -------------------
+
+* fixed snapshots becoming potentially invalid after intermediate commits in 
+  the RocksDB engine
+
+* backport agency inquire API changes
+
+* fixed issue #3822: Field validation error in ArangoDB UI - Minor
+
+* UI: fixed disappearing of the navigation label in some cases
+
+* fixed issue #3640: limit in subquery
+
+* UI: edge collections were wrongly added to from and to vertices select 
+  box during graph creation
+
+* fixed issue #3741: fix terminal color output in Windows 
+
+* fixed issue #3917: traversals with high maximal depth take extremely long
+  in planning phase.
+
+* fix equality comparison for MMFiles documents in AQL functions UNIQUE 
+  and UNION_DISTINCT
+
+
+v3.2.9 (2017-12-04)
+-------------------
+
+* under certain conditions, replication could stop. Now fixed by adding an 
+  equality check for requireFromPresent tick value
+
+* fixed locking for replication context info in RocksDB engine
+  this fixes undefined behavior when parallel requests are made to the
+  same replication context
+
+* UI: added not found views for documents and collections
+
+* fixed issue #3858: Foxx queues stuck in 'progress' status
 
 * allow compilation of ArangoDB source code with g++ 7
 
@@ -7,7 +44,7 @@ v3.2.9 (2017-XX-XX)
 
 * fixed a deadlock in user privilege/permission change routine
 
-* fixed a deadlock on server shutdown 
+* fixed a deadlock on server shutdown
 
 * fixed some collection locking issues in MMFiles engine
 
@@ -25,11 +62,12 @@ v3.2.9 (2017-XX-XX)
 * fix removal of failed cluster nodes via web interface
 
 * back port of ClusterComm::wait fix in devel
-  among other things this fixes too eager dropping of other followers in case 
+  among other things this fixes too eager dropping of other followers in case
   one of the followers does not respond in time
-  
+
 * transact interface in agency should not be inquired as of now
 
+* inquiry tests and blocking of inquiry on AgencyGeneralTransaction
 
 v3.2.8 (2017-11-18)
 -------------------

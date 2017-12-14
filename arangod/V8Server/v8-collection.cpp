@@ -2784,8 +2784,6 @@ static void JS_TruncateVocbaseCol(
       transaction::V8Context::Create(collection->vocbase(), true),
                                   collection->cid(), AccessMode::Type::EXCLUSIVE);
 
-  trx.addHint(transaction::Hints::Hint::READ_OWN_WRITES);
-
   Result res = trx.begin();
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);

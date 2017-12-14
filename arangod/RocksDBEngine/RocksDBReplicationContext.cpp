@@ -150,6 +150,9 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   if (res != TRI_ERROR_NO_ERROR) {
     return RocksDBReplicationResult(res, _lastTick);
   }
+  if (!_iter) {
+    return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized", _lastTick);
+  }
 
   // set type
   int type = REPLICATION_MARKER_DOCUMENT;  // documents
