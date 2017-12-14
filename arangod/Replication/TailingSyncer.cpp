@@ -852,7 +852,7 @@ Result TailingSyncer::run() {
   }
   
   setAborted(false);
-
+    
   TRI_DEFER(sendRemoveBarrier());
   uint64_t shortTermFailsInRow = 0;
   
@@ -900,7 +900,7 @@ retry:
     // we either got a connection or an error
     break;
   }
-  
+    
   if (res.ok()) {
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
     try {
@@ -918,7 +918,14 @@ retry:
   
   if (res.fail()) {
     // stop ourselves
+    {
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+      _applier->_state._totalRequests++;
+      getLocalState();
+    }
+
     _applier->stop(res);
+    
     return res;
   }
   
@@ -1049,7 +1056,7 @@ void TailingSyncer::getLocalState() {
   bool const foundState = _applier->loadState();
   _applier->_state._totalRequests = oldTotalRequests;
   _applier->_state._totalFailedConnects = oldTotalFailedConnects;
-  
+    
   if (!foundState) {
     // no state file found, so this is the initialization
     _applier->_state._serverId = _masterInfo._serverId;
