@@ -1353,13 +1353,9 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
   // processing all
   timeout += (totalBytes / 4096) * ReplicationTimeoutFeature::timeoutPer4k;
 
-LOG_TOPIC(ERR, Logger::FIXME) << "TIMEOUT1: " << timeout;
-LOG_TOPIC(ERR, Logger::FIXME) << "TIMEOUT2: " << ReplicationTimeoutFeature::lowerLimit << ", TIMEOUTFACTOR: " << ReplicationTimeoutFeature::timeoutFactor;
   if (timeout < ReplicationTimeoutFeature::lowerLimit) {
-LOG_TOPIC(ERR, Logger::FIXME) << "EFFECTIVE TIMEOUT: " << (ReplicationTimeoutFeature::lowerLimit * ReplicationTimeoutFeature::timeoutFactor);
     return ReplicationTimeoutFeature::lowerLimit * ReplicationTimeoutFeature::timeoutFactor;
   } 
-LOG_TOPIC(ERR, Logger::FIXME) << "EFFECTIVE TIMEOUT: " << ((std::min)(120.0, timeout) * ReplicationTimeoutFeature::timeoutFactor);
   return (std::min)(120.0, timeout) * ReplicationTimeoutFeature::timeoutFactor;
 }
 
