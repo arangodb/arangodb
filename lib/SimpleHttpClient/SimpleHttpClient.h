@@ -323,6 +323,10 @@ class SimpleHttpClient {
                                   int* errorCode = nullptr);
 
   SimpleHttpClientParams& params() { return _params; };
+  
+  bool isAborted() const noexcept { return _aborted.load(std::memory_order_acquire); }
+
+  void setAborted(bool value) noexcept;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -484,6 +488,8 @@ class SimpleHttpClient {
   rest::RequestType _method;
 
   SimpleHttpResult* _result;
+  
+  std::atomic<bool> _aborted;
 
   // empty map, used for headers
   static std::unordered_map<std::string, std::string> const NO_HEADERS;

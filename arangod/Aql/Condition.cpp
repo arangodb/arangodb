@@ -397,7 +397,17 @@ std::pair<bool, bool> Condition::findIndexes(
 
   transaction::Methods* trx = _ast->query()->trx();
 
-  size_t const itemsInIndex = node->collection()->count(trx);
+  size_t itemsInIndex;
+  if (!collectionName.empty() && collectionName[0] == '_' &&
+      collectionName.substr(0, 11) == "_statistics") {
+    // use hard-coded number of items in index, because we are dealing with
+    // the statistics collection here. this saves a roundtrip to the DB servers
+    // for statistics queries that do not need a fully accurate collection count
+    itemsInIndex = 1024;
+  } else {
+    // actually count number of items in index
+    itemsInIndex = node->collection()->count(trx);
+  }
   if (_root == nullptr) {
     size_t dummy;
     return trx->getIndexForSortCondition(collectionName, sortCondition,

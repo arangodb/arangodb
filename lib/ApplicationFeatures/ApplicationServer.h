@@ -134,9 +134,13 @@ class ApplicationServer {
   }
 
   static bool isPrepared() {
-    return server != nullptr && (server->_state == ServerState::IN_START ||
-                                 server->_state == ServerState::IN_WAIT ||
-                                 server->_state == ServerState::IN_STOP);
+    if (server != nullptr) {
+      ServerState tmp = server->_state.load(std::memory_order_relaxed);
+      return tmp == ServerState::IN_START ||
+             tmp == ServerState::IN_WAIT ||
+             tmp == ServerState::IN_STOP;
+    }
+    return false;
   }
 
   // returns the feature with the given name if known
@@ -291,7 +295,7 @@ class ApplicationServer {
 
  private:
   // the current state
-  ServerState _state = ServerState::UNINITIALIZED;
+  std::atomic<ServerState> _state;
 
   // the shared program options
   std::shared_ptr<options::ProgramOptions> _options;
