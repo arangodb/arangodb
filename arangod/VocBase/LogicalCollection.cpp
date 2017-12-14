@@ -1392,6 +1392,7 @@ std::string LogicalCollection::generateGloballyUniqueId() const {
   result.reserve(64);
   if (ServerState::isCoordinator(role)) {
     TRI_ASSERT(_planId != 0);
+    result.append("c");
     result.append(std::to_string(_planId));
   } else if (ServerState::isDBServer(role)) {
     TRI_ASSERT(_planId != 0);
