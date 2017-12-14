@@ -1,3 +1,9 @@
+v3.3.rc8 (2017-XX-XX)
+---------------------
+
+* UI: coordinators and db servers are now in sorted order (ascending)
+
+
 v3.3.rc7 (2017-12-07)
 ---------------------
 
