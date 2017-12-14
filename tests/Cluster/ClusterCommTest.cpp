@@ -192,6 +192,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     id_first = testme.getResponse(0).result->operationID;
     id_other = testme.getResponse(1).result->operationID;
 
+    startTime = TRI_microtime();
     std::future<void> f1(std::async(std::launch::async, [&]{
           timespec ts={0,15000000};
 #if defined(_WIN32)
@@ -204,7 +205,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
         } // lambda
         ));
 
-    startTime = TRI_microtime();
     result = testme.wait("", transId, 0, "", 0.1);
     endTime = TRI_microtime();
     diff = endTime - startTime;
@@ -214,6 +214,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     f1.get();
 
     // do second time to get other response
+    startTime = TRI_microtime();
     std::future<void> f2(std::async(std::launch::async, [&]{
           timespec ts={0, 30000000};
 #if defined(_WIN32)
@@ -226,7 +227,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
         } // lambda
         ));
 
-    startTime = TRI_microtime();
     result = testme.wait("", transId, 0, "", 0.1);
     endTime = TRI_microtime();
     diff = endTime - startTime;
@@ -249,6 +249,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     id_first = testme.getResponse(0).result->operationID;
     id_other = testme.getResponse(1).result->operationID;
 
+    startTime = TRI_microtime();
     std::future<void> f3(std::async(std::launch::async, [&]{
           timespec ts={0,15000000};
 #if defined(_WIN32)
@@ -261,7 +262,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
         } // lambda
         ));
 
-    startTime = TRI_microtime();
     result = testme.wait("", transId, 0, "", 0.1);
     endTime = TRI_microtime();
     diff = endTime - startTime;
@@ -271,6 +271,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     f3.get();
 
     // do second time to get other response
+    startTime = TRI_microtime();
     std::future<void> f4(std::async(std::launch::async, [&]{
           timespec ts={0, 30000000};
 #if defined(_WIN32)
@@ -283,7 +284,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
         } // lambda
         ));
 
-    startTime = TRI_microtime();
     result = testme.wait("", transId, 0, "", 0.1);
     endTime = TRI_microtime();
     diff = endTime - startTime;
@@ -294,6 +294,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
 
     // infinite wait
     id_first = testme.addSimpleRequest(transId, CL_COMM_SUBMITTED);
+    startTime = TRI_microtime();
     std::future<void> f5(std::async(std::launch::async, [&]{
           timespec ts={0, 500000000};  //0.5 seconds
 #if defined(_WIN32)
@@ -306,7 +307,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
         } // lambda
         ));
 
-    startTime = TRI_microtime();
     result = testme.wait("", transId, 0, "", 0.0);
     endTime = TRI_microtime();
     diff = endTime - startTime;

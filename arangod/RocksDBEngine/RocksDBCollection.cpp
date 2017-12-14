@@ -756,7 +756,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
-  if (mthd->countInBounds(documentBounds, true)) {
+  if (state->numIntermediateCommits() == 0 &&
+      mthd->countInBounds(documentBounds, true)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "deletion check in collection truncate "
                                    "failed - not all documents have been "
@@ -1627,7 +1628,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 
     mdr.setManagedAfterStringUsage(documentId);
   } else {
-    LOG_TOPIC(ERR, Logger::FIXME)
+    LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
         << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();
@@ -1689,7 +1690,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 
     cb(documentId, VPackSlice(value.data()));
   } else {
-    LOG_TOPIC(ERR, Logger::FIXME)
+    LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
         << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();

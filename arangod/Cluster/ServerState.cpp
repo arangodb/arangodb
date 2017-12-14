@@ -826,7 +826,7 @@ bool ServerState::storeRole(RoleEnum role) {
       AgencyComm comm; // should not throw anything
       AgencyCommResult res = comm.sendTransactionWithFailover(*trx.get(), 1.0);
       if (!res.successful()) {
-          return false;
+        return false;
       }
     } catch (...) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << __FUNCTION__

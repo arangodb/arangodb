@@ -291,14 +291,12 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
-  if (col == nullptr) {
+  arangodb::LogicalCollection* coll = resolveCollection(vocbase, slice);
+  if (coll == nullptr) {
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   
-  TRI_voc_cid_t cid = col->cid();
-  bool isSystem = col->isSystem();
-  
+  bool isSystem = coll->isSystem();
   // extract "data"
   VPackSlice const doc = slice.get("data");
 
@@ -339,7 +337,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
         StringUtils::uint64(transactionId.c_str(), transactionId.size()));
   }
 
-  if (tid > 0) {
+  if (tid > 0) { // part of a transaction
     auto it = _ongoingTransactions.find(tid);
 
     if (it == _ongoingTransactions.end()) {
@@ -352,16 +350,14 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
       return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION, std::string("unexpected transaction ") + StringUtils::itoa(tid));
     }
 
-    trx->addCollectionAtRuntime(cid, "", AccessMode::Type::EXCLUSIVE);
-  
-    std::string collectionName = trx->name(cid);
-    Result r = applyCollectionDumpMarker(*trx, collectionName, type, old, doc);
+    trx->addCollectionAtRuntime(coll->cid(), coll->name(), AccessMode::Type::EXCLUSIVE);
+    Result r = applyCollectionDumpMarker(*trx, coll, type, old, doc);
 
     if (r.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
       // ignore unique constraint violations for system collections
       r.reset();
     }
-    if (r.ok() && collectionName == TRI_COL_NAME_USERS) {
+    if (r.ok() && coll->name() == TRI_COL_NAME_USERS) {
       _usersModified = true;
     }
 
@@ -371,7 +367,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   // standalone operation
   // update the apply tick for all standalone operations
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(vocbase), cid,
+      transaction::StandaloneContext::Create(vocbase), coll->cid(),
       AccessMode::Type::EXCLUSIVE);
 
   if (_supportsSingleOperations) {
@@ -387,7 +383,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
   std::string collectionName = trx.name();
     
-  res = applyCollectionDumpMarker(trx, collectionName, type, old, doc);
+  res = applyCollectionDumpMarker(trx, coll, type, old, doc);
   if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
     // ignore unique constraint violations for system collections
     res.reset();
@@ -854,6 +850,8 @@ Result TailingSyncer::run() {
     return Result(TRI_ERROR_INTERNAL);
   }
   
+  setAborted(false);
+    
   TRI_DEFER(sendRemoveBarrier());
   uint64_t shortTermFailsInRow = 0;
   
@@ -901,7 +899,7 @@ retry:
     // we either got a connection or an error
     break;
   }
-  
+    
   if (res.ok()) {
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
     try {
@@ -919,7 +917,14 @@ retry:
   
   if (res.fail()) {
     // stop ourselves
+    {
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+      _applier->_state._totalRequests++;
+      getLocalState();
+    }
+
     _applier->stop(res);
+    
     return res;
   }
   
@@ -929,8 +934,6 @@ retry:
   
   if (res.fail()) {
     // stop ourselves
-    _applier->stop(res);
-    
     if (res.is(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) ||
         res.is(TRI_ERROR_REPLICATION_NO_START_TICK)) {
       if (res.is(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
@@ -967,8 +970,11 @@ retry:
         saveApplierState();
       }
       
+      setAborted(false);
+      
       if (!_configuration._autoResync) {
         LOG_TOPIC(INFO, Logger::REPLICATION) << "Auto resync disabled, applier will stop";
+        _applier->stop(res);
         return res;
       }
       
@@ -995,6 +1001,7 @@ retry:
         }
         
         // always abort if we get here
+        _applier->stop(res);
         return res;
       }
 
@@ -1033,6 +1040,7 @@ retry:
       }
     }
     
+    _applier->stop(res);
     return res;
   }
   
@@ -1047,10 +1055,14 @@ void TailingSyncer::getLocalState() {
   bool const foundState = _applier->loadState();
   _applier->_state._totalRequests = oldTotalRequests;
   _applier->_state._totalFailedConnects = oldTotalFailedConnects;
-  
+    
   if (!foundState) {
     // no state file found, so this is the initialization
     _applier->_state._serverId = _masterInfo._serverId;
+    if (_useTick && _initialTick > 0) {
+      _applier->_state._lastProcessedContinuousTick = _initialTick - 1;
+      _applier->_state._lastAppliedContinuousTick = _initialTick - 1;
+    }
     _applier->persistState(true);
     return;
   }
@@ -1461,7 +1473,7 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   
   uint64_t processedMarkers = 0;
   Result r = applyLog(response.get(), firstRegularTick, processedMarkers, ignoreCount);
-  
+ 
   // cppcheck-suppress *
   if (processedMarkers > 0) {
     worked = true;
@@ -1483,6 +1495,11 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
     if (_ongoingTransactions.empty() &&
         _applier->_state._safeResumeTick == 0) {
       _applier->_state._safeResumeTick = tick;
+    }
+    
+    if (_ongoingTransactions.empty() && 
+        _applier->_state._lastAppliedContinuousTick == 0) {
+      _applier->_state._lastAppliedContinuousTick = _applier->_state._lastProcessedContinuousTick;
     }
     
     if (!_hasWrittenState) {
