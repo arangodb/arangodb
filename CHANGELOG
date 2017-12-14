@@ -1,6 +1,9 @@
 v3.3.rc8 (2017-XX-XX)
 ---------------------
 
+* UI: pressing the return key inside a select2 box no longer triggers the modals
+  success function
+
 * UI: coordinators and db servers are now in sorted order (ascending)
 
 
