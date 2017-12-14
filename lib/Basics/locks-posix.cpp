@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "locks.h"
+#include <thread>
+#include <chrono>
 
 #ifdef TRI_HAVE_POSIX_THREADS
 
@@ -92,7 +94,7 @@ again:
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "too many read-locks on read-write lock";
       complained = true;
     }
-    usleep(BUSY_LOCK_DELAY);
+    std::this_thread::sleep_for(std::chrono::microseconds(BUSY_LOCK_DELAY));
 #ifdef TRI_HAVE_SCHED_H
     // let other threads do things
     sched_yield();

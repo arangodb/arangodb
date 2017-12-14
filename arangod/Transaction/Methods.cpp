@@ -710,7 +710,7 @@ Result transaction::Methods::begin() {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::RUNNING);
     }
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
   return _state->beginTransaction(_localHints);
@@ -718,9 +718,13 @@ Result transaction::Methods::begin() {
 
 /// @brief commit / finish the transaction
 Result transaction::Methods::commit() {
+  TRI_IF_FAILURE("TransactionCommitFail") {
+    return Result(TRI_ERROR_DEBUG);
+  }
+
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return TRI_ERROR_TRANSACTION_INTERNAL;
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on commit");
   }
   
   ExecContext const* exe = ExecContext::CURRENT;
@@ -737,7 +741,7 @@ Result transaction::Methods::commit() {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::COMMITTED);
     }
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
   return _state->commitTransaction(this);
@@ -747,7 +751,7 @@ Result transaction::Methods::commit() {
 Result transaction::Methods::abort() {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return TRI_ERROR_TRANSACTION_INTERNAL;
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on abort");
   }
 
   CallbackInvoker invoker(this);
@@ -757,7 +761,7 @@ Result transaction::Methods::abort() {
       _state->updateStatus(transaction::Status::ABORTED);
     }
 
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
   return _state->abortTransaction(this);
@@ -765,16 +769,7 @@ Result transaction::Methods::abort() {
 
 /// @brief finish a transaction (commit or abort), based on the previous state
 Result transaction::Methods::finish(int errorNum) {
-  if (errorNum == TRI_ERROR_NO_ERROR) {
-    // there was no previous error, so we'll commit
-    return this->commit();
-  }
-
-  // there was a previous error, so we'll abort
-  this->abort();
-
-  // return original error number
-  return errorNum;
+  return finish(Result(errorNum));
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
@@ -824,18 +819,18 @@ OperationResult transaction::Methods::anyLocal(
   if (cid == 0) {
     throwCollectionNotFound(collectionName.c_str());
   }
-
+  
   pinData(cid);  // will throw when it fails
-
-  Result res = lock(cid, AccessMode::Type::READ);
-
-  if (!res.ok()) {
-    return OperationResult(res);
-  }
-
+  
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
+  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
+
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+    return OperationResult(lockResult);
+  }
+  
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr, false);
@@ -844,13 +839,15 @@ OperationResult transaction::Methods::anyLocal(
     resultBuilder.add(slice);
   });
 
-  resultBuilder.close();
+  if (lockResult.is(TRI_ERROR_LOCKED)) {
+    Result res = unlockRecursive(cid, AccessMode::Type::READ);
 
-  res = unlock(cid, AccessMode::Type::READ);
-
-  if (!res.ok()) {
-    return OperationResult(res);
+    if (!res.ok()) {
+      return OperationResult(res);
+    }
   }
+  
+  resultBuilder.close();
 
   return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
 }
@@ -939,21 +936,25 @@ void transaction::Methods::invokeOnAllElements(
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   TransactionCollection* trxCol = trxCollection(cid, AccessMode::Type::READ);
-  LogicalCollection* logical = documentCollection(trxCol);
-  TRI_ASSERT(logical != nullptr);
-  _transactionContextPtr->pinData(logical);
+  LogicalCollection* collection = documentCollection(trxCol);
+  TRI_ASSERT(collection != nullptr);
+  _transactionContextPtr->pinData(collection);
 
-  Result res = trxCol->lock(AccessMode::Type::READ, _state->nestingLevel());
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
+  Result lockResult = trxCol->lockRecursive(AccessMode::Type::READ, _state->nestingLevel());
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+    THROW_ARANGO_EXCEPTION(lockResult);
   }
+  
+  TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
-  logical->invokeOnAllElements(this, callback);
+  collection->invokeOnAllElements(this, callback);
 
-  res = trxCol->unlock(AccessMode::Type::READ, _state->nestingLevel());
+  if (lockResult.is(TRI_ERROR_LOCKED)) {
+    Result res = trxCol->unlockRecursive(AccessMode::Type::READ, _state->nestingLevel());
 
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
   }
 }
 
@@ -1713,12 +1714,12 @@ OperationResult transaction::Methods::modifyLocal(
 
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
-  Result res = lock(cid, AccessMode::Type::WRITE);
+  Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
 
-  if (!res.ok()) {
-    return OperationResult(res);
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+    return OperationResult(lockResult);
   }
-
+  
   VPackBuilder resultBuilder;  // building the complete result
   TRI_voc_tick_t maxTick = 0;
 
@@ -1780,6 +1781,7 @@ OperationResult transaction::Methods::modifyLocal(
 
   bool multiCase = newValue.isArray();
   std::unordered_map<int, size_t> errorCounter;
+  Result res;
   if (multiCase) {
     {
       VPackArrayBuilder guard(&resultBuilder);
@@ -2233,15 +2235,15 @@ OperationResult transaction::Methods::allLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
 
   pinData(cid);  // will throw when it fails
-
-  Result res = lock(cid, AccessMode::Type::READ);
-
-  if (!res.ok()) {
-    return OperationResult(res);
-  }
-
+  
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
+
+  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
+
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+    return OperationResult(lockResult);
+  }
 
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
@@ -2256,13 +2258,15 @@ OperationResult transaction::Methods::allLocal(
   };
   cursor->allDocuments(cb);
 
-  resultBuilder.close();
+  if (lockResult.is(TRI_ERROR_LOCKED)) {
+    Result res = unlockRecursive(cid, AccessMode::Type::READ);
 
-  res = unlock(cid, AccessMode::Type::READ);
-
-  if (res.ok()) {
-    return OperationResult(res);
+    if (res.ok()) {
+      return OperationResult(res);
+    }
   }
+  
+  resultBuilder.close();
 
   return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
 }
@@ -2322,19 +2326,25 @@ OperationResult transaction::Methods::truncateLocal(
 
   pinData(cid);  // will throw when it fails
 
-  Result res = lock(cid, AccessMode::Type::WRITE);
+  Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
 
-  if (!res.ok()) {
-    return OperationResult(res);
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+    return OperationResult(lockResult);
   }
+  
+  TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
   try {
     collection->truncate(this, options);
   } catch (basics::Exception const& ex) {
-    unlock(cid, AccessMode::Type::WRITE);
+    if (lockResult.is(TRI_ERROR_LOCKED)) {
+      unlockRecursive(cid, AccessMode::Type::WRITE);
+    }
     return OperationResult(Result(ex.code(), ex.what()));
   } catch (std::exception const& ex) {
-    unlock(cid, AccessMode::Type::WRITE);
+    if (lockResult.is(TRI_ERROR_LOCKED)) {
+      unlockRecursive(cid, AccessMode::Type::WRITE);
+    }
     return OperationResult(Result(TRI_ERROR_INTERNAL, ex.what()));
   }
 
@@ -2405,7 +2415,10 @@ OperationResult transaction::Methods::truncateLocal(
     }
   }
 
-  res = unlock(cid, AccessMode::Type::WRITE);
+  Result res;
+  if (lockResult.is(TRI_ERROR_LOCKED)) {
+    res = unlockRecursive(cid, AccessMode::Type::WRITE);
+  }
 
   return OperationResult(res);
 }
@@ -2485,18 +2498,22 @@ OperationResult transaction::Methods::countLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
-  Result res = lock(cid, AccessMode::Type::READ);
+  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
 
-  if (!res.ok()) {
-    return OperationResult(res);
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+    return OperationResult(lockResult);
   }
+  
+  TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
   uint64_t num = collection->numberDocuments(this);
 
-  res = unlock(cid, AccessMode::Type::READ);
+  if (lockResult.is(TRI_ERROR_LOCKED)) {
+    Result res = unlockRecursive(cid, AccessMode::Type::READ);
 
-  if (!res.ok()) {
-    return OperationResult(res);
+    if (!res.ok()) {
+      return OperationResult(res);
+    }
   }
 
   VPackBuilder resultBuilder;
@@ -2837,25 +2854,25 @@ bool transaction::Methods::isLocked(LogicalCollection* document,
 }
 
 /// @brief read- or write-lock a collection
-Result transaction::Methods::lock(TRI_voc_cid_t cid,
-                                  AccessMode::Type type) {
+Result transaction::Methods::lockRecursive(TRI_voc_cid_t cid,
+                                           AccessMode::Type type) {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
-    return TRI_ERROR_TRANSACTION_INTERNAL;
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on lock");
   }
   TransactionCollection* trxColl = trxCollection(cid, type);
   TRI_ASSERT(trxColl != nullptr);
-  return trxColl->lock(type, _state->nestingLevel());
+  return Result(trxColl->lockRecursive(type, _state->nestingLevel()));
 }
 
 /// @brief read- or write-unlock a collection
-Result transaction::Methods::unlock(TRI_voc_cid_t cid,
-                                    AccessMode::Type type) {
+Result transaction::Methods::unlockRecursive(TRI_voc_cid_t cid,
+                                             AccessMode::Type type) {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
-    return TRI_ERROR_TRANSACTION_INTERNAL;
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on unlock");
   }
   TransactionCollection* trxColl = trxCollection(cid, type);
   TRI_ASSERT(trxColl != nullptr);
-  return trxColl->unlock(type, _state->nestingLevel());
+  return Result(trxColl->unlockRecursive(type, _state->nestingLevel()));
 }
 
 /// @brief get list of indexes for a collection

@@ -489,7 +489,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
         return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED;
       }
 
-      usleep(collectionStatusPollInterval());
+      std::this_thread::sleep_for(std::chrono::microseconds(collectionStatusPollInterval()));
     }
 
     return loadCollection(collection, status, false);
@@ -598,7 +598,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
     // sleep for a while
     std::this_thread::yield();
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -1073,7 +1073,7 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection,
           break;
         }
         // sleep without lock
-        usleep(collectionStatusPollInterval());
+        std::this_thread::sleep_for(std::chrono::microseconds(collectionStatusPollInterval()));
       }
       // if we get here, the status has changed
       return unloadCollection(collection, force);
@@ -1118,7 +1118,6 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
     int res;
     {
       READ_LOCKER(readLocker, _inventoryLock);
-
       res = dropCollectionWorker(collection, state, timeout);
     }
 
@@ -1138,7 +1137,7 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
 
     // try again in next iteration
     TRI_ASSERT(state == DROP_AGAIN);
-    usleep(collectionStatusPollInterval());
+    std::this_thread::sleep_for(std::chrono::microseconds(collectionStatusPollInterval()));
   }
 }
 
@@ -1207,7 +1206,7 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
 
     // sleep for a while
     std::this_thread::yield();
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -1465,7 +1464,7 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
 
     // sleep for a while
     std::this_thread::yield();
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 
   TRI_ASSERT(writeLocker.isLocked());

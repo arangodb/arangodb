@@ -226,7 +226,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
 
     auto args = ast->createNodeArray();
     args->addMember(originalArg);
-    auto sorted = ast->createNodeFunctionCall("SORTED_UNIQUE", args);
+    auto sorted = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args);
 
     auto outVar = ast->variables()->createTemporaryVariable();
     ExecutionNode* calculationNode = nullptr;
@@ -4305,6 +4305,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
     // check if subquery contains a COLLECT node with an INTO variable
     bool eligible = true;
+    bool containsLimitOrSort = false;
     auto current = subqueryNode->getSubquery();
     TRI_ASSERT(current != nullptr);
 
@@ -4314,6 +4315,9 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           eligible = false;
           break;
         }
+      } else if (current->getType() == EN::LIMIT ||
+                 current->getType() == EN::SORT) {
+        containsLimitOrSort = true;
       }
       current = current->getFirstDependency();
     }
@@ -4331,6 +4335,12 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
     // now check where the subquery is used
     while (current->hasParent()) {
       if (current->getType() == EN::ENUMERATE_LIST) {
+        if (current->isInInnerLoop() && containsLimitOrSort) {
+          // exit the loop
+          current = nullptr;
+          break;
+        }
+
         // we're only interested in FOR loops...
         auto listNode = static_cast<EnumerateListNode*>(current);
 
@@ -4436,6 +4446,153 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+static bool isValueTypeString(AstNode* node) {
+  return (node->type == NODE_TYPE_VALUE && node->value.type == VALUE_TYPE_STRING) ||
+  node->type == NODE_TYPE_REFERENCE;
+}
+
+static bool isValueTypeNumber(AstNode* node) {
+  return (node->type == NODE_TYPE_VALUE && (node->value.type == VALUE_TYPE_INT ||
+                                            node->value.type == VALUE_TYPE_DOUBLE)) ||
+         node->type == NODE_TYPE_REFERENCE;
+}
+
+static bool applyFulltextOptimization(EnumerateListNode* elnode,
+                                      LimitNode* limitNode, ExecutionPlan* plan) {
+  std::vector<Variable const*> varsUsedHere = elnode->getVariablesUsedHere();
+  TRI_ASSERT(varsUsedHere.size() == 1);
+  // now check who introduced our variable
+  ExecutionNode* node = plan->getVarSetBy(varsUsedHere[0]->id);
+  if (node->getType() != EN::CALCULATION) {
+    return false;
+  }
+  
+  CalculationNode* calcNode = static_cast<CalculationNode*>(node);
+  Expression* expr = calcNode->expression();
+  // the expression must exist and it must have an astNode
+  if (expr->node() == nullptr) {
+    return false;// not the right type of node
+  }
+  AstNode* flltxtNode = expr->nodeForModification();
+  if (flltxtNode->type != NODE_TYPE_FCALL) {
+    return false;
+  }
+  
+  // get the ast node of the expression
+  auto func = static_cast<Function const*>(flltxtNode->getData());
+  // we're looking for "FULLTEXT()", which is a function call
+  // with a parameters array with collection, attribute, query, limit
+  if (func->name != "FULLTEXT" || flltxtNode->numMembers() != 1) {
+    return false;
+  }
+  AstNode* fargs = flltxtNode->getMember(0);
+  if (fargs->numMembers() != 3 && fargs->numMembers() != 4) {
+    return false;
+  }
+  
+  AstNode* collArg = fargs->getMember(0);
+  AstNode* attrArg = fargs->getMember(1);
+  AstNode* queryArg = fargs->getMember(2);
+  AstNode* limitArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
+  if ((collArg->type != NODE_TYPE_COLLECTION && collArg->type != NODE_TYPE_VALUE) ||
+      !isValueTypeString(attrArg) || !isValueTypeString(queryArg) ||
+      (limitArg != nullptr && !isValueTypeNumber(limitArg))) {
+    return false;
+  }
+  
+  std::string name = collArg->getString();
+  TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
+  aql::Collections* colls = plan->getAst()->query()->collections();
+  aql::Collection const* coll = colls->add(name, AccessMode::Type::READ);
+  std::vector<basics::AttributeName> field;
+  TRI_ParseAttributeString(attrArg->getString(), field, /*allowExpansion*/false);
+  if (field.empty()) {
+    return false;
+  }
+  
+  //check for suitiable indexes
+  std::shared_ptr<LogicalCollection> logical = coll->getCollection();
+  std::shared_ptr<arangodb::Index> index;
+  for (auto idx : logical->getIndexes()) {
+    if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      TRI_ASSERT(idx->fields().size() == 1);
+      if (basics::AttributeName::isIdentical(idx->fields()[0], field, false)) {
+        index = idx;
+        break;
+      }
+    }
+  }
+  if (!index) { // no index found
+    return false;
+  }
+  
+  Ast* ast = plan->getAst();  
+  AstNode* args = ast->createNodeArray(2);
+  args->addMember(ast->clone(collArg));  // only so createNodeFunctionCall doesn't throw
+  args->addMember(attrArg);
+  args->addMember(queryArg);
+  if (limitArg != nullptr) {
+    args->addMember(limitArg);
+  }
+  AstNode* cond = ast->createNodeFunctionCall("FULLTEXT", args);
+  TRI_ASSERT(cond != nullptr);
+  auto condition = std::make_unique<Condition>(ast);
+  condition->andCombine(cond);
+  condition->normalize(plan);
+  
+  auto indexNode = new IndexNode(plan, plan->nextId(), vocbase,
+                                 coll, elnode->outVariable(),
+                                 std::vector<transaction::Methods::IndexHandle>{
+                                   transaction::Methods::IndexHandle{index}},
+                                 condition.get(), false);
+  plan->registerNode(indexNode);
+  condition.release();
+  plan->replaceNode(elnode, indexNode);
+
+  if (limitArg != nullptr && limitNode == nullptr) { // add LIMIT
+    size_t limit = static_cast<size_t>(limitArg->getIntValue());
+    limitNode = new LimitNode(plan, plan->nextId(), 0, limit);
+    plan->registerNode(limitNode);
+    auto parents = indexNode->getParents(); // Intentional copy
+    for (ExecutionNode* parent : parents) {
+      if (!parent->replaceDependency(indexNode, limitNode)) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "Could not replace dependencies of an old node");
+      }
+    }
+    limitNode->addDependency(indexNode);
+  }
+  return true;
+}
+
+void arangodb::aql::fulltextIndexRule(Optimizer* opt,
+                                      std::unique_ptr<ExecutionPlan> plan,
+                                      OptimizerRule const* rule) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  bool modified = false;
+  // inspect each return node and work upwards to SingletonNode
+  plan->findEndNodes(nodes, true);
+  
+  for (ExecutionNode* node : nodes) {
+    ExecutionNode* current = node;
+    LimitNode* limit = nullptr; // maybe we have an existing LIMIT x,y
+    while (current) {
+      if (current->getType() == EN::ENUMERATE_LIST) {
+        EnumerateListNode* elnode = static_cast<EnumerateListNode*>(current);
+        modified = modified || applyFulltextOptimization(elnode, limit, plan.get());
+        break;
+      } else if (current->getType() == EN::LIMIT) {
+        limit = static_cast<LimitNode*>(current);
+      }
+      current = current->getFirstDependency();  // inspect next node
+    }
+  }
+  
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+
 struct GeoIndexInfo {
   operator bool() const { return distanceNode && valid; }
   void invalidate() { valid = false; }
@@ -4478,10 +4635,6 @@ struct GeoIndexInfo {
 
 // candidate checking
 
-AstNode* isValueOrRefNode(AstNode* node) {
-  // TODO - implement me
-  return node;
-}
 
 // contains the AstNode* distanceNode a distance function?
 // if so return a valid GeoIndexInfo object
@@ -4551,11 +4704,11 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent) {
 
   rv = eval_stuff(dist_first, lessEqual,
                   isDistanceFunction(first, expressionParent),
-                  isValueOrRefNode(second));
+                  second);
   if (!rv) {
     rv = eval_stuff(dist_first, lessEqual,
                     isDistanceFunction(second, expressionParent),
-                    isValueOrRefNode(first));
+                    first);
   }
 
   if (rv) {
@@ -4830,10 +4983,10 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
     args->addMember(info.range);
     auto lessValue = ast->createNodeValueBool(info.lessgreaterequal);
     args->addMember(lessValue);
-    cond = ast->createNodeFunctionCall("WITHIN", args);
+    cond = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("WITHIN"), args);
   } else {
     // NEAR
-    cond = ast->createNodeFunctionCall("NEAR", args);
+    cond = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("NEAR"), args);
   }
 
   TRI_ASSERT(cond != nullptr);
@@ -4873,13 +5026,14 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info) {
     // other child effectively deleting the filter condition.
     AstNode* modified = ast->traverseAndModify(
         newNode->expression()->nodeForModification(),
-        [&done](AstNode* node, void* data) {
+        [&done, &info](AstNode* node, void* data) {
           if (done) {
             return node;
           }
           if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
             for (std::size_t i = 0; i < node->numMembers(); i++) {
-              if (isGeoFilterExpression(node->getMemberUnchecked(i), node)) {
+              if (node == info.expressionNode &&
+                  isGeoFilterExpression(node->getMemberUnchecked(i), node)) {
                 done = true;
                 //select the other node - not the member containing the error message
                 return node->getMemberUnchecked(i ? 0 : 1);

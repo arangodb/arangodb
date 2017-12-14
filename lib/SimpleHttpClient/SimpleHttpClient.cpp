@@ -34,6 +34,9 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <thread>
+#include <chrono>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -60,7 +63,8 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
       _errorMessage(""),
       _nextChunkedSize(0),
       _method(rest::RequestType::GET),
-      _result(nullptr) {
+      _result(nullptr),
+      _aborted(false) {
   TRI_ASSERT(connection != nullptr);
 
   if (_connection->isConnected()) {
@@ -92,6 +96,11 @@ SimpleHttpClient::~SimpleHttpClient() {
 // -----------------------------------------------------------------------------
 // public methods
 // -----------------------------------------------------------------------------
+   
+void SimpleHttpClient::setAborted(bool value) noexcept {
+  _aborted.store(value, std::memory_order_release);
+  setInterrupted(value);
+}
 
 void SimpleHttpClient::setInterrupted(bool value) {
   if (_connection != nullptr) {
@@ -151,7 +160,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     std::unordered_map<std::string, std::string> const& headers) {
   SimpleHttpResult* result = nullptr;
   size_t tries = 0;
-
+  
   while (true) {
     TRI_ASSERT(result == nullptr);
 
@@ -167,13 +176,17 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     if (tries++ >= _params._maxRetries) {
       break;
     }
+    
+    if (isAborted()) {
+      break;
+    }
 
     if (!_params._retryMessage.empty() && (_params._maxRetries - tries) > 0) {
       LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT) << "" << _params._retryMessage
                 << " - retries left: " << (_params._maxRetries - tries);
     }
 
-    usleep(static_cast<TRI_usleep_t>(_params._retryWaitTime));
+    std::this_thread::sleep_for(std::chrono::microseconds(_params._retryWaitTime));
   }
 
   return result;
@@ -380,6 +393,10 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
     }
 
     remainingTime = endTime - TRI_microtime();
+    if (isAborted()) {
+      setErrorMessage("Client request aborted");
+      break;
+    }
   }
 
   if (_state < FINISHED && _errorMessage.empty()) {

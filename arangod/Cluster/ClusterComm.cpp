@@ -632,11 +632,16 @@ ClusterCommResult const ClusterComm::wait(
 
   ResponseIterator i, i_erase;
   AsyncResponse response;
-  ClusterCommResult return_result;
   bool match_good, status_ready;
   ClusterCommTimeout endTime = TRI_microtime() + timeout;
 
   TRI_ASSERT(timeout >= 0.0);
+  
+  // if we cannot find the sought operation, we will return the status
+  // DROPPED. if we get into the timeout while waiting, we will still return
+  // CL_COMM_TIMEOUT.
+  ClusterCommResult return_result;
+  return_result.status = CL_COMM_DROPPED;
 
   // tell scheduler that we are waiting:
   JobGuard guard{SchedulerFeature::SCHEDULER};
@@ -644,14 +649,14 @@ ClusterCommResult const ClusterComm::wait(
 
   do {
     CONDITION_LOCKER(locker, somethingReceived);
-    match_good=false;
-    status_ready=false;
+    match_good = false;
+    status_ready = false;
 
     if (ticketId == 0) {
       i_erase = responses.end();
       for (i = responses.begin(); i != responses.end() && !status_ready; i++) {
         if (match(clientTransactionID, coordTransactionID, shardID, i->second.result.get())) {
-          match_good=true;
+          match_good = true;
           return_result = *i->second.result.get();
           status_ready = (CL_COMM_SUBMITTED != return_result.status);
           if (status_ready) {
@@ -665,10 +670,12 @@ ClusterCommResult const ClusterComm::wait(
         responses.erase(i_erase);
       } // if
     } else {
+      TRI_ASSERT(ticketId != 0);
       i = responses.find(ticketId);
 
       if (i != responses.end()) {
         return_result = *i->second.result.get();
+        TRI_ASSERT(return_result.operationID == ticketId);
         status_ready = (CL_COMM_SUBMITTED != return_result.status);
         match_good = true;
         if (status_ready) {
@@ -689,21 +696,20 @@ ClusterCommResult const ClusterComm::wait(
       ClusterCommTimeout now = TRI_microtime();
       if (now < endTime || 0.0 == timeout) {
         // convert to microseconds, use 10 second safety poll if no timeout
-        uint64_t micros=(0.0 != timeout ? ((endTime - now)*1000000.0) : 10000000);
+        uint64_t micros = static_cast<uint64_t>(0.0 != timeout ? ((endTime - now) * 1000000.0) : 10000000);
         somethingReceived.wait(micros);
       } else {
         // time is up, leave
         return_result.operationID = ticketId;
         // does res.coordTransactionID need to be set here too?
         return_result.status = CL_COMM_TIMEOUT;
-        match_good=false;
+        match_good = false;
       } // else
     } // if
 
   } while(!status_ready && match_good);
 
   return return_result;
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -890,9 +896,9 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
 
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
-  ClusterCommTimeout startTime = TRI_microtime();
+  ClusterCommTimeout const startTime = TRI_microtime();
+  ClusterCommTimeout const endTime = startTime + timeout;
   ClusterCommTimeout now = startTime;
-  ClusterCommTimeout endTime = startTime + timeout;
 
   std::vector<ClusterCommTimeout> dueTime;
   for (size_t i = 0; i < requests.size(); ++i) {
@@ -939,6 +945,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                 requests[i].headerFields, nullptr, localTimeout, false,
                 2.0);
 
+            TRI_ASSERT(opId != 0);
             opIDtoIndex.insert(std::make_pair(opId, i));
             // It is possible that an error occurs right away, we will notice
             // below after wait(), though, and retry in due course.
@@ -948,6 +955,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         }
       }
 
+      TRI_ASSERT(actionNeeded >= now);
       auto res = wait("", coordinatorTransactionID, 0, "", actionNeeded - now);
       // wait could have taken some time, so we need to update now now
       now = TRI_microtime();
@@ -959,11 +967,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         // is in flight, this is possible, since we might have scheduled
         // a retry later than now and simply wait till then
         if (now < actionNeeded) {
-#ifdef _WIN32
-          usleep((unsigned long) ((actionNeeded - now) * 1000000));
-#else
-          usleep((useconds_t) ((actionNeeded - now) * 1000000));
-#endif
+          std::this_thread::sleep_for(std::chrono::microseconds((unsigned long long) ((actionNeeded - now) * 1000000.0)));
         }
         continue;
       }
@@ -998,7 +1002,8 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         nrDone++;
         if (res.answer_code == rest::ResponseCode::OK ||
             res.answer_code == rest::ResponseCode::CREATED ||
-            res.answer_code == rest::ResponseCode::ACCEPTED) {
+            res.answer_code == rest::ResponseCode::ACCEPTED ||
+            res.answer_code == rest::ResponseCode::NO_CONTENT) {
           nrGood++;
         }
         LOG_TOPIC(TRACE, Logger::CLUSTER) << "ClusterComm::performRequests: "
@@ -1011,6 +1016,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         // the operation, in which we have to flush ClusterInfo:
         ClusterInfo::instance()->loadCurrent();
         requests[index].result = res;
+        now = TRI_microtime();
 
         // In this case we will retry:
         double tryAgainAfter = now - startTime;
@@ -1259,7 +1265,7 @@ void ClusterCommThread::run() {
   _cc->communicator()->abortRequests();
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "waiting for curl to stop remaining handles";
   while (_cc->communicator()->work_once() > 0) {
-    usleep(10);
+    std::this_thread::sleep_for(std::chrono::microseconds(10));
   }
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "stopped ClusterComm thread";

@@ -31,12 +31,13 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Cluster/AgencyCallbackRegistry.h"
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -375,17 +376,17 @@ class ClusterInfo {
   /// @brief set collection properties in coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  int setCollectionPropertiesCoordinator(std::string const& databaseName,
-                                         std::string const& collectionID,
-                                         LogicalCollection const*);
+  Result setCollectionPropertiesCoordinator(std::string const& databaseName,
+                                            std::string const& collectionID,
+                                            LogicalCollection const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set collection status in coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  int setCollectionStatusCoordinator(std::string const& databaseName,
-                                     std::string const& collectionID,
-                                     TRI_vocbase_col_status_e status);
+  Result setCollectionStatusCoordinator(std::string const& databaseName,
+                                        std::string const& collectionID,
+                                        TRI_vocbase_col_status_e status);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.

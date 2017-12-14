@@ -1627,7 +1627,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 
     mdr.setManagedAfterStringUsage(documentId);
   } else {
-    LOG_TOPIC(ERR, Logger::FIXME)
+    LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
         << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();
@@ -1689,7 +1689,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 
     cb(documentId, VPackSlice(value.data()));
   } else {
-    LOG_TOPIC(ERR, Logger::FIXME)
+    LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
         << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();
@@ -1745,7 +1745,7 @@ int RocksDBCollection::lockWrite(double timeout) {
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
-      usleep(static_cast<TRI_usleep_t>(waitTime));
+      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
       if (waitTime < 32) {
         waitTime *= 2;
       }
@@ -1796,7 +1796,7 @@ int RocksDBCollection::lockRead(double timeout) {
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
-      usleep(static_cast<TRI_usleep_t>(waitTime));
+      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
       if (waitTime < 32) {
         waitTime *= 2;
       }

@@ -13,13 +13,13 @@ The handle of the document.
 
 @RESTHEADERPARAM{If-None-Match,string,optional}
 If the "If-None-Match" header is given, then it must contain exactly one
-ETag. The document is returned, if it has a different revision than the
-given ETag. Otherwise an *HTTP 304* is returned.
+Etag. The document is returned, if it has a different revision than the
+given Etag. Otherwise an *HTTP 304* is returned.
 
 @RESTHEADERPARAM{If-Match,string,optional}
 If the "If-Match" header is given, then it must contain exactly one
-ETag. The document is returned, if it has the same revision as the
-given ETag. Otherwise a *HTTP 412* is returned.
+Etag. The document is returned, if it has the same revision as the
+given Etag. Otherwise a *HTTP 412* is returned.
 
 @RESTDESCRIPTION
 Returns the document identified by *document-handle*. The returned
@@ -65,7 +65,7 @@ Use a document handle:
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Use a document handle and an etag:
+Use a document handle and an Etag:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentIfNoneMatch}
     var cn = "products";

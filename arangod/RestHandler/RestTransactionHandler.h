@@ -24,6 +24,7 @@
 #ifndef ARANGOD_REST_HANDLER_REST_TRANSACTION_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_TRANSACTION_HANDLER_H 1
 
+#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 

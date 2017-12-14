@@ -78,7 +78,7 @@ const compare = function(masterFunc, slaveInitFunc, slaveCompareFunc, incrementa
   connectToSlave();
 
   slaveInitFunc(state);
-  internal.wait(1, false);
+  internal.wait(0.1, false);
 
   var syncResult = replication.syncCollection(cn, {
     endpoint: masterEndpoint,
@@ -313,7 +313,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 5000; ++i) {
             c.save({
@@ -372,7 +377,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._createEdgeCollection(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 100; ++i) {
             c.save(cn + "/test" + i, cn + "/test" + (i % 10), {
@@ -427,7 +437,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._createEdgeCollection(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 200; ++i) {
             c.save(
@@ -545,7 +560,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
@@ -579,7 +599,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
@@ -607,7 +632,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 5000; ++i) {
             c.save({
@@ -641,7 +671,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 5000; ++i) {
             c.save({
@@ -681,7 +716,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 500; ++i) {
             c.save({
@@ -721,7 +761,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 500; ++i) {
             c.save({
@@ -761,7 +806,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 6000; ++i) {
             c.save({
@@ -801,7 +851,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 6000; ++i) {
             c.save({
@@ -842,7 +897,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 5000; ++i) {
             c.save({
@@ -884,7 +944,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 5000; ++i) {
             c.save({
@@ -925,7 +990,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 5000; ++i) {
             c.save({
@@ -965,7 +1035,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 5000; ++i) {
             c.save({
@@ -1007,7 +1082,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 5000; ++i) {
             c.save({
@@ -1051,7 +1131,12 @@ function BaseTestConfig() {
         },
         function(state) {
           // already create the collection on the slave
-          var c = db._create(cn);
+          replication.syncCollection(cn, {
+            endpoint: masterEndpoint,
+            incremental: false
+          });
+          var c = db._collection(cn);
+          c.truncate(); // but empty it
 
           for (var i = 0; i < 5000; ++i) {
             c.save({
@@ -1175,7 +1260,6 @@ function ReplicationIncrementalKeyConflict() {
 
     setUp : function() {
       connectToMaster();
-
       db._drop(cn);
     },
 
@@ -1306,7 +1390,6 @@ function ReplicationIncrementalKeyConflict() {
 
 jsunity.run(ReplicationSuite);
 jsunity.run(ReplicationOtherDBSuite);
-// TODO: activate this test once it works
 jsunity.run(ReplicationIncrementalKeyConflict);
 
 return jsunity.done();
