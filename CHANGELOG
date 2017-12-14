@@ -56,8 +56,6 @@ devel
   vertex which is perfectly valid, but it may be a n issue on the data model, so users
   can directly see it on the query now and do not "by accident" have to check the LOG output.
 
-* potential fix for issue #3562: Document WITHIN_RECTANGLE not found
-
 * introduce `enforceReplicationFactor` attribute for creating collections:
   this optional parameter controls if the coordinator should bail out during collection
   creation if there are not enough DBServers available for the desired `replicationFactor`.
