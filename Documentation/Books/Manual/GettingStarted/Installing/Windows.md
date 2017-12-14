@@ -79,7 +79,7 @@ database directory [to the new default paths](#custom-install-paths). Upgrading
 will keep your old data, password and choice of storage engine as it is.
 Switching to the RocksDB storage engine requires a
 [export](../../Administration/Arangoexport.md) and
-[reimport](../../Administration/Arangoimp.md) of your data.
+[reimport](../../Administration/Arangoimport.md) of your data.
 
 Starting
 --------
@@ -101,7 +101,7 @@ business. Have fun!` at the end of its output.
 We now wish to check that the installation is working correctly and to do this
 we will be using the administration web interface. Execute *arangod.exe* if you
 have not already done so, then open up your web browser and point it to the
-page: 
+page:
 
     http://127.0.0.1:8529/
 
