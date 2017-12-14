@@ -177,4 +177,6 @@ variable, as if it was part of the location document. The value is divided
 by 1000 in the example query, to convert the unit to kilometers, simply to
 make it better readable.
 
-<!-- Geo cursor -->
+<!-- Geo cursor
+https://www.arangodb.com/using-arangodb-geo-index-cursor-via-aql/
+-->

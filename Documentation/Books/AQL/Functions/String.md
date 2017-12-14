@@ -101,6 +101,9 @@ CONTAINS("foobarbaz", "ba", true) // 3
 CONTAINS("foobarbaz", "horse", true) // -1
 ```
 
+To determine if or at which position a value is included in an array, see the
+[POSITION() array function](Array.md#position).
+
 ### COUNT()
 
 This is an alias for [LENGTH()](#length).
