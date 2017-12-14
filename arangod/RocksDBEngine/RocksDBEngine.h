@@ -87,6 +87,9 @@ class RocksDBEngine final : public StorageEngine {
   void beginShutdown() override;
   void stop() override;
   void unprepare() override;
+  
+  // minimum timeout for the synchronous replication
+  double minimumSyncReplicationTimeout() const override { return 1.0; }
 
   bool supportsDfdb() const override { return false; }
   bool useRawDocumentPointers() override { return false; }
@@ -143,8 +146,7 @@ class RocksDBEngine final : public StorageEngine {
                                           bool doSync) override;
   Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                         arangodb::LogicalCollection* col,
-                        std::string const& keysId, std::string const& cid,
-                        std::string const& collectionName, TRI_voc_tick_t maxTick) override;
+                        std::string const& keysId) override;
   Result createLoggerState(TRI_vocbase_t* vocbase,
                            velocypack::Builder& builder) override;
   Result createTickRanges(velocypack::Builder& builder) override;

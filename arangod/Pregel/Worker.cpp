@@ -79,39 +79,6 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
     _messageBatchSize = 5000;
   }
   _initializeMessageCaches();
-
-  std::function<void()> callback = [this] {
-    VPackBuilder package;
-    package.openObject();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
-    package.add(Utils::vertexCountKey,
-                VPackValue(_graphStore->localVertexCount()));
-    package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
-    package.close();
-    _callConductor(Utils::finishedStartupPath, package);
-  };
-
-  if (_config.lazyLoading()) {
-    // TODO maybe lazy loading needs to be performed on another thread too
-    std::set<std::string> activeSet = _algorithm->initialActiveSet();
-    if (activeSet.size() == 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "There needs to be one active vertice");
-    }
-    for (std::string const& documentID : activeSet) {
-      _graphStore->loadDocument(&_config, documentID);
-    }
-    callback();
-  } else {
-    // initialization of the graphstore might take an undefined amount
-    // of time. Therefore this is performed asynchronous
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->post(
-        [this, callback] { _graphStore->loadShards(&_config, callback); });
-  }
 }
 
 template <typename V, typename E, typename M>
@@ -165,6 +132,43 @@ void Worker<V, E, M>::_initializeMessageCaches() {
           new ArrayOutCache<M>(&_config, _messageFormat.get()));
       incoming.release();
     }
+  }
+}
+
+// @brief load the initial worker data, call conductor eventually
+template <typename V, typename E, typename M>
+void Worker<V, E, M>::setupWorker() {
+  std::function<void()> callback = [this] {
+    VPackBuilder package;
+    package.openObject();
+    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+    package.add(Utils::executionNumberKey,
+                VPackValue(_config.executionNumber()));
+    package.add(Utils::vertexCountKey,
+                VPackValue(_graphStore->localVertexCount()));
+    package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
+    package.close();
+    _callConductor(Utils::finishedStartupPath, package);
+  };
+  
+  if (_config.lazyLoading()) {
+    // TODO maybe lazy loading needs to be performed on another thread too
+    std::set<std::string> activeSet = _algorithm->initialActiveSet();
+    if (activeSet.size() == 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "There needs to be one active vertice");
+    }
+    for (std::string const& documentID : activeSet) {
+      _graphStore->loadDocument(&_config, documentID);
+    }
+    callback();
+  } else {
+    // initialization of the graphstore might take an undefined amount
+    // of time. Therefore this is performed asynchronous
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    scheduler->post(
+                    [this, callback] { _graphStore->loadShards(&_config, callback); });
   }
 }
 

@@ -23,6 +23,7 @@
 
 #include "V8Context.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 
 #include <v8.h>
@@ -136,4 +137,12 @@ bool transaction::V8Context::isEmbedded() {
 std::shared_ptr<transaction::V8Context> transaction::V8Context::Create(
     TRI_vocbase_t* vocbase, bool embeddable) {
   return std::make_shared<transaction::V8Context>(vocbase, embeddable);
+}
+      
+std::shared_ptr<transaction::Context> transaction::V8Context::CreateWhenRequired(
+    TRI_vocbase_t* vocbase, bool embeddable) {
+  if (v8::Isolate::GetCurrent() != nullptr) {
+    return Create(vocbase, embeddable);
+  }
+  return transaction::StandaloneContext::Create(vocbase);
 }

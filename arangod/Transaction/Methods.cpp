@@ -37,6 +37,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
@@ -819,18 +820,18 @@ OperationResult transaction::Methods::anyLocal(
   if (cid == 0) {
     throwCollectionNotFound(collectionName.c_str());
   }
-
+  
   pinData(cid);  // will throw when it fails
-
-  Result res = lock(cid, AccessMode::Type::READ);
-
-  if (!res.ok()) {
-    return OperationResult(res);
-  }
-
+  
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
+  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
+
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+    return OperationResult(lockResult);
+  }
+  
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr, false);
@@ -839,13 +840,15 @@ OperationResult transaction::Methods::anyLocal(
     resultBuilder.add(slice);
   });
 
-  resultBuilder.close();
+  if (lockResult.is(TRI_ERROR_LOCKED)) {
+    Result res = unlockRecursive(cid, AccessMode::Type::READ);
 
-  res = unlock(cid, AccessMode::Type::READ);
-
-  if (!res.ok()) {
-    return OperationResult(res);
+    if (!res.ok()) {
+      return OperationResult(res);
+    }
   }
+  
+  resultBuilder.close();
 
   return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
 }
@@ -934,21 +937,25 @@ void transaction::Methods::invokeOnAllElements(
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   TransactionCollection* trxCol = trxCollection(cid, AccessMode::Type::READ);
-  LogicalCollection* logical = documentCollection(trxCol);
-  TRI_ASSERT(logical != nullptr);
-  _transactionContextPtr->pinData(logical);
+  LogicalCollection* collection = documentCollection(trxCol);
+  TRI_ASSERT(collection != nullptr);
+  _transactionContextPtr->pinData(collection);
 
-  Result res = trxCol->lock(AccessMode::Type::READ, _state->nestingLevel());
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
+  Result lockResult = trxCol->lockRecursive(AccessMode::Type::READ, _state->nestingLevel());
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+    THROW_ARANGO_EXCEPTION(lockResult);
   }
+  
+  TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
-  logical->invokeOnAllElements(this, callback);
+  collection->invokeOnAllElements(this, callback);
 
-  res = trxCol->unlock(AccessMode::Type::READ, _state->nestingLevel());
+  if (lockResult.is(TRI_ERROR_LOCKED)) {
+    Result res = trxCol->unlockRecursive(AccessMode::Type::READ, _state->nestingLevel());
 
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
   }
 }
 
@@ -1335,41 +1342,25 @@ OperationResult transaction::Methods::insertCoordinator(
 
 /// @brief choose a timeout for synchronous replication, based on the
 /// number of documents we ship over
-static double chooseTimeout(size_t count, size_t total_bytes) {
-  static bool timeoutQueried = false;
-  static double timeoutFactor = 1.0;
-  static double timeoutPer4k = 0.1;
-  static double lowerLimit = 0.5;
-  if (!timeoutQueried) {
-    // Multithreading is no problem here because these static variables
-    // are only ever set once in the lifetime of the server.
-    auto feature = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
-    timeoutFactor = feature->syncReplTimeoutFactor();
-    timeoutPer4k = feature->syncReplTimeoutPer4k();
-    timeoutQueried = true;
-    auto feature2 = application_features::ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector");
-    if (feature2->engineName() == arangodb::RocksDBEngine::EngineName) {
-      lowerLimit = 1.0;
-    }
-  }
-
+static double chooseTimeout(size_t count, size_t totalBytes) {
   // We usually assume that a server can process at least 2500 documents
   // per second (this is a low estimate), and use a low limit of 0.5s
   // and a high timeout of 120s
   double timeout = static_cast<double>(count / 2500);
 
-  // Really big documents need additional adjustment.  Using total size
-  //  of all messages to handle worst case scenario of contrained resource
-  //  processing all
-  timeout += (total_bytes / 4096) * timeoutPer4k;
+  // Really big documents need additional adjustment. Using total size
+  // of all messages to handle worst case scenario of constrained resource
+  // processing all
+  timeout += (totalBytes / 4096) * ReplicationTimeoutFeature::timeoutPer4k;
 
-  if (timeout < lowerLimit) {
-    return lowerLimit * timeoutFactor;
-  } else if (timeout > 120) {
-    return 120.0 * timeoutFactor;
-  } else {
-    return timeout * timeoutFactor;
-  }
+LOG_TOPIC(ERR, Logger::FIXME) << "TIMEOUT1: " << timeout;
+LOG_TOPIC(ERR, Logger::FIXME) << "TIMEOUT2: " << ReplicationTimeoutFeature::lowerLimit << ", TIMEOUTFACTOR: " << ReplicationTimeoutFeature::timeoutFactor;
+  if (timeout < ReplicationTimeoutFeature::lowerLimit) {
+LOG_TOPIC(ERR, Logger::FIXME) << "EFFECTIVE TIMEOUT: " << (ReplicationTimeoutFeature::lowerLimit * ReplicationTimeoutFeature::timeoutFactor);
+    return ReplicationTimeoutFeature::lowerLimit * ReplicationTimeoutFeature::timeoutFactor;
+  } 
+LOG_TOPIC(ERR, Logger::FIXME) << "EFFECTIVE TIMEOUT: " << ((std::min)(120.0, timeout) * ReplicationTimeoutFeature::timeoutFactor);
+  return (std::min)(120.0, timeout) * ReplicationTimeoutFeature::timeoutFactor;
 }
 
 /// @brief create one or multiple documents in a collection, local
@@ -1717,12 +1708,12 @@ OperationResult transaction::Methods::modifyLocal(
 
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
-  Result res = lock(cid, AccessMode::Type::WRITE);
+  Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
 
-  if (!res.ok()) {
-    return OperationResult(res);
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+    return OperationResult(lockResult);
   }
-
+  
   VPackBuilder resultBuilder;  // building the complete result
   TRI_voc_tick_t maxTick = 0;
 
@@ -1784,6 +1775,7 @@ OperationResult transaction::Methods::modifyLocal(
 
   bool multiCase = newValue.isArray();
   std::unordered_map<int, size_t> errorCounter;
+  Result res;
   if (multiCase) {
     {
       VPackArrayBuilder guard(&resultBuilder);
@@ -2239,15 +2231,15 @@ OperationResult transaction::Methods::allLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
 
   pinData(cid);  // will throw when it fails
-
-  Result res = lock(cid, AccessMode::Type::READ);
-
-  if (!res.ok()) {
-    return OperationResult(res);
-  }
-
+  
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
+
+  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
+
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+    return OperationResult(lockResult);
+  }
 
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
@@ -2262,13 +2254,15 @@ OperationResult transaction::Methods::allLocal(
   };
   cursor->allDocuments(cb);
 
-  resultBuilder.close();
+  if (lockResult.is(TRI_ERROR_LOCKED)) {
+    Result res = unlockRecursive(cid, AccessMode::Type::READ);
 
-  res = unlock(cid, AccessMode::Type::READ);
-
-  if (res.ok()) {
-    return OperationResult(res);
+    if (res.ok()) {
+      return OperationResult(res);
+    }
   }
+  
+  resultBuilder.close();
 
   return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
 }
@@ -2328,19 +2322,25 @@ OperationResult transaction::Methods::truncateLocal(
 
   pinData(cid);  // will throw when it fails
 
-  Result res = lock(cid, AccessMode::Type::WRITE);
+  Result lockResult = lockRecursive(cid, AccessMode::Type::WRITE);
 
-  if (!res.ok()) {
-    return OperationResult(res);
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+    return OperationResult(lockResult);
   }
+  
+  TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
   try {
     collection->truncate(this, options);
   } catch (basics::Exception const& ex) {
-    unlock(cid, AccessMode::Type::WRITE);
+    if (lockResult.is(TRI_ERROR_LOCKED)) {
+      unlockRecursive(cid, AccessMode::Type::WRITE);
+    }
     return OperationResult(Result(ex.code(), ex.what()));
   } catch (std::exception const& ex) {
-    unlock(cid, AccessMode::Type::WRITE);
+    if (lockResult.is(TRI_ERROR_LOCKED)) {
+      unlockRecursive(cid, AccessMode::Type::WRITE);
+    }
     return OperationResult(Result(TRI_ERROR_INTERNAL, ex.what()));
   }
 
@@ -2411,7 +2411,10 @@ OperationResult transaction::Methods::truncateLocal(
     }
   }
 
-  res = unlock(cid, AccessMode::Type::WRITE);
+  Result res;
+  if (lockResult.is(TRI_ERROR_LOCKED)) {
+    res = unlockRecursive(cid, AccessMode::Type::WRITE);
+  }
 
   return OperationResult(res);
 }
@@ -2491,18 +2494,22 @@ OperationResult transaction::Methods::countLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
-  Result res = lock(cid, AccessMode::Type::READ);
+  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
 
-  if (!res.ok()) {
-    return OperationResult(res);
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
+    return OperationResult(lockResult);
   }
+  
+  TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
   uint64_t num = collection->numberDocuments(this);
 
-  res = unlock(cid, AccessMode::Type::READ);
+  if (lockResult.is(TRI_ERROR_LOCKED)) {
+    Result res = unlockRecursive(cid, AccessMode::Type::READ);
 
-  if (!res.ok()) {
-    return OperationResult(res);
+    if (!res.ok()) {
+      return OperationResult(res);
+    }
   }
 
   VPackBuilder resultBuilder;
@@ -2843,25 +2850,25 @@ bool transaction::Methods::isLocked(LogicalCollection* document,
 }
 
 /// @brief read- or write-lock a collection
-Result transaction::Methods::lock(TRI_voc_cid_t cid,
-                                  AccessMode::Type type) {
+Result transaction::Methods::lockRecursive(TRI_voc_cid_t cid,
+                                           AccessMode::Type type) {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on lock");
   }
   TransactionCollection* trxColl = trxCollection(cid, type);
   TRI_ASSERT(trxColl != nullptr);
-  return trxColl->lock(type, _state->nestingLevel());
+  return Result(trxColl->lockRecursive(type, _state->nestingLevel()));
 }
 
 /// @brief read- or write-unlock a collection
-Result transaction::Methods::unlock(TRI_voc_cid_t cid,
-                                    AccessMode::Type type) {
+Result transaction::Methods::unlockRecursive(TRI_voc_cid_t cid,
+                                             AccessMode::Type type) {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on unlock");
   }
   TransactionCollection* trxColl = trxCollection(cid, type);
   TRI_ASSERT(trxColl != nullptr);
-  return trxColl->unlock(type, _state->nestingLevel());
+  return Result(trxColl->unlockRecursive(type, _state->nestingLevel()));
 }
 
 /// @brief get list of indexes for a collection

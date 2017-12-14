@@ -21,19 +21,29 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CollectionKeys.h"
-#include "VocBase/ticks.h"
+#ifndef ARANGOD_CLUSTER_REPLICATION_TIMEOUT_FEATURE_H
+#define ARANGOD_CLUSTER_REPLICATION_TIMEOUT_FEATURE_H 1
 
-using namespace arangodb;
+#include "Basics/Common.h"
 
-CollectionKeys::CollectionKeys(TRI_vocbase_t* vocbase, double ttl)
-    : _vocbase(vocbase),
-      _collection(nullptr),
-      _id(0),
-      _ttl(ttl),
-      _expires(0.0),
-      _isDeleted(false),
-      _isUsed(false) {
-  _id = TRI_NewTickServer();
-  _expires = TRI_microtime() + _ttl;
+#include "ApplicationFeatures/ApplicationFeature.h"
+
+namespace arangodb {
+
+class ReplicationTimeoutFeature : public application_features::ApplicationFeature {
+ public:
+  explicit ReplicationTimeoutFeature(application_features::ApplicationServer*);
+
+ public:
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  
+ public:
+  static double timeoutFactor;
+  static double timeoutPer4k;
+  static double lowerLimit;
+};
+
 }
+
+#endif

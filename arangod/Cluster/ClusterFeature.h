@@ -54,14 +54,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return _agencyPrefix;
   }
 
-  double syncReplTimeoutFactor() {
-    return _syncReplTimeoutFactor;
-  }
-
-  double syncReplTimeoutPer4k() {
-    return _syncReplTimeoutPer4k;
-  }
-
  private:
   std::vector<std::string> _agencyEndpoints;
   std::string _agencyPrefix;
@@ -69,8 +61,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myAddress;
   uint32_t _systemReplicationFactor = 2;
   bool _createWaitsForSyncReplication = true;
-  double _syncReplTimeoutFactor = 1.0;
-  double _syncReplTimeoutPer4k = 0.1;
 
  private:
   void reportRole(ServerState::RoleEnum);
