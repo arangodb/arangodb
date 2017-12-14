@@ -68,8 +68,7 @@ class RocksDBReplicationContext {
 
   // creates new transaction/snapshot
   void bind(TRI_vocbase_t*);
-  int bindCollection(TRI_vocbase_t *,
-                     std::string const& collectionName);
+  int bindCollection(TRI_vocbase_t*, std::string const& collectionIdentifier);
 
   // returns inventory
   std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>

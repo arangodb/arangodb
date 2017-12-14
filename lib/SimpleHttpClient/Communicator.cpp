@@ -127,7 +127,7 @@ static int dumb_socketpair(SOCKET socks[2], int make_overlapped) {
 }
 #endif
 
-std::atomic_uint_fast64_t NEXT_TICKET_ID(static_cast<uint64_t>(0));
+std::atomic_uint_fast64_t NEXT_TICKET_ID(static_cast<uint64_t>(1));
 std::vector<char> urlDotSeparators{'/', '#', '?'};
 }
 

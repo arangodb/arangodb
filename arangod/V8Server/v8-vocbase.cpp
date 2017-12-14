@@ -1387,7 +1387,12 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
     // check if the collection is from the same database
     if (collection != nullptr && collection->vocbase() == vocbase) {
-      TRI_vocbase_col_status_e status = collection->getStatusLocked();
+      // we cannot use collection->getStatusLocked() here, because we
+      // have no idea who is calling us (db[...]). The problem is that
+      // if we are called from within a JavaScript transaction, the
+      // caller may have already acquired the collection's status lock
+      // with that transaction. if we now lock again, we may deadlock!
+      TRI_vocbase_col_status_e status = collection->status();
       TRI_voc_cid_t cid = collection->cid();
       uint32_t internalVersion = collection->internalVersion();
 

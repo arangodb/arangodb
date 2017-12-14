@@ -26,10 +26,9 @@
 
 using namespace arangodb;
 
-CollectionKeys::CollectionKeys(TRI_vocbase_t* vocbase, std::string const& name, double ttl)
+CollectionKeys::CollectionKeys(TRI_vocbase_t* vocbase, double ttl)
     : _vocbase(vocbase),
       _collection(nullptr),
-      _name(name),
       _id(0),
       _ttl(ttl),
       _expires(0.0),

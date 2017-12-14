@@ -47,13 +47,12 @@ std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
 
   if (_masterInfo._majorVersion < 3 ||
       (_masterInfo._majorVersion == 3 && _masterInfo._minorVersion <= 2)) {
-    std::string err = "You need >= 3.3 to perform replication of entire server";
+    std::string err = "You need >= 3.3 to perform the replication of an entire server";
     LOG_TOPIC(ERR, Logger::REPLICATION) << err;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, err);
   }
   return TailingSyncer::WalAccessUrl + "/" + command + "?global=true&";
 }
-
 
 /// @brief save the current applier state
 Result GlobalTailingSyncer::saveApplierState() {
