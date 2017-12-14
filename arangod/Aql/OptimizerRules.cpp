@@ -4307,6 +4307,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
     // check if subquery contains a COLLECT node with an INTO variable
     bool eligible = true;
+    bool containsLimitOrSort = false;
     auto current = subqueryNode->getSubquery();
     TRI_ASSERT(current != nullptr);
 
@@ -4316,6 +4317,9 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           eligible = false;
           break;
         }
+      } else if (current->getType() == EN::LIMIT ||
+                 current->getType() == EN::SORT) {
+        containsLimitOrSort = true;
       }
       current = current->getFirstDependency();
     }
@@ -4333,6 +4337,12 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
     // now check where the subquery is used
     while (current->hasParent()) {
       if (current->getType() == EN::ENUMERATE_LIST) {
+        if (current->isInInnerLoop() && containsLimitOrSort) {
+          // exit the loop
+          current = nullptr;
+          break;
+        }
+
         // we're only interested in FOR loops...
         auto listNode = static_cast<EnumerateListNode*>(current);
 
