@@ -169,11 +169,11 @@ while test -z "${OAUTH_REPLY}"; do
 done
 OAUTH_TOKEN=$(echo "$OAUTH_REPLY" | \
                      grep '"token"'  |\
-                     sed -e 's;.*": *";;' -e 's;".*;;'
+                     ${SED} -e 's;.*": *";;' -e 's;".*;;'
            )
 OAUTH_ID=$(echo "$OAUTH_REPLY" | \
                   grep '"id"'  |\
-                  sed -e 's;.*": *;;' -e 's;,;;'
+                  ${SED} -e 's;.*": *;;' -e 's;,;;'
         )
 
 # shellcheck disable=SC2064
@@ -192,20 +192,20 @@ if test -z "${SYNCER_REV}"; then
     exit 1
 fi
 
-sed -i VERSIONS -e "s;SYNCER_REV.*;SYNCER_REV \"${SYNCER_REV}\";"
+${SED} -i VERSIONS -e "s;SYNCER_REV.*;SYNCER_REV \"${SYNCER_REV}\";"
 
 GITSHA=$(git log -n1 --pretty='%h')
 if git describe --exact-match --tags "${GITSHA}"; then
     GITARGS=$(git describe --exact-match --tags "${GITSHA}")
     echo "I'm on tag: ${GITARGS}"
 else
-    GITARGS=$(git branch --no-color| grep '^\*' | sed "s;\* *;;")
+    GITARGS=$(git branch --no-color| grep '^\*' | ${SED} "s;\* *;;")
     if echo "$GITARGS" |grep -q ' '; then
         GITARGS=devel
     fi
     echo "I'm on Branch: ${GITARGS}"
 fi
-(cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
+(cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS})
 
 
 
@@ -216,10 +216,10 @@ VERSION_PACKAGE="1"
 
 # shellcheck disable=SC2002
 cat CMakeLists.txt \
-    | sed -e "s~set(ARANGODB_VERSION_MAJOR.*~set(ARANGODB_VERSION_MAJOR      \"$VERSION_MAJOR\")~" \
-    | sed -e "s~set(ARANGODB_VERSION_MINOR.*~set(ARANGODB_VERSION_MINOR      \"$VERSION_MINOR\")~" \
-    | sed -e "s~set(ARANGODB_VERSION_REVISION.*~set(ARANGODB_VERSION_REVISION   \"$VERSION_REVISION\")~" \
-    | sed -e "s~set(ARANGODB_PACKAGE_REVISION.*~set(ARANGODB_PACKAGE_REVISION   \"$VERSION_PACKAGE\")~" \
+    | ${SED} -e "s~set(ARANGODB_VERSION_MAJOR.*~set(ARANGODB_VERSION_MAJOR      \"$VERSION_MAJOR\")~" \
+    | ${SED} -e "s~set(ARANGODB_VERSION_MINOR.*~set(ARANGODB_VERSION_MINOR      \"$VERSION_MINOR\")~" \
+    | ${SED} -e "s~set(ARANGODB_VERSION_REVISION.*~set(ARANGODB_VERSION_REVISION   \"$VERSION_REVISION\")~" \
+    | ${SED} -e "s~set(ARANGODB_PACKAGE_REVISION.*~set(ARANGODB_PACKAGE_REVISION   \"$VERSION_PACKAGE\")~" \
           > CMakeLists.txt.tmp
 
 mv CMakeLists.txt.tmp CMakeLists.txt
@@ -263,7 +263,7 @@ STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/rele
                          grep tag_name | \
                          head -n 1 | \
                          ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;')
-sed -i VERSIONS -e "s;STARTER_REV.*;STARTER_REV \"${STARTER_REV}\";"
+${SED} -i VERSIONS -e "s;STARTER_REV.*;STARTER_REV \"${STARTER_REV}\";"
 
 git add -f \
     README \
