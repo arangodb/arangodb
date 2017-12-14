@@ -1,16 +1,16 @@
-shell> curl -X DELETE --header 'If-Match: "_WDRv21q--B"' --dump - http://localhost:8529/_api/document/products/10825
+shell> curl -X DELETE --header 'If-Match: "_WDSlrO---_"' --dump - http://localhost:8529/_api/document/products/10863
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">412</span> Precondition Failed
-content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_WDRv21q--_"</span>
 x-content-type-options: nosniff
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+etag: <span class="hljs-string">"_WDSlrN6--_"</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">412</span>, 
   <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1200</span>, 
   <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"precondition failed"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10825"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10825"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WDRv21q--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10863"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10863"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WDSlrN6--_"</span> 
 }

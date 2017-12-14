@@ -3,6 +3,8 @@ v3.3.0 (2012-12-14)
 
 * release version
 
+* added a missing try/catch block in the supervision thread
+
 
 v3.3.rc7 (2017-12-07)
 ---------------------

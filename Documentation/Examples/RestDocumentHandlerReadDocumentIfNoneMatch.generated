@@ -1,2 +1,2 @@
-shell> curl --header 'If-None-Match: "_WDRv3c6--_"' --dump - http://localhost:8529/_api/document/products/11110
+shell> curl --header 'If-None-Match: "_WDSlucS--_"' --dump - http://localhost:8529/_api/document/products/11150
 

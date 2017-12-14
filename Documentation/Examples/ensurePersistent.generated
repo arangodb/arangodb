@@ -4,7 +4,7 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"first"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/17922"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/18001"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"persistent"</span>, 
@@ -13,31 +13,31 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17925"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17925"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WDRwEaa--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/18004"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"18004"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WDSmec2--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17929"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17929"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WDRwEae--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/18008"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"18008"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WDSmec6--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"John"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17932"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17932"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WDRwEai--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/18011"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"18011"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WDSmed---_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17935"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17935"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WDRwEai--B"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/18014"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"18014"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WDSmed---B"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17938"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17938"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WDRwEam---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/18017"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"18017"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WDSmedC--_"</span> 
 }

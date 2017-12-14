@@ -602,7 +602,7 @@ void Supervision::run() {
 
     while (!this->isStopping()) {
 
-      {
+      try {
         MUTEX_LOCKER(locker, _lock);
       
         // Get bunch of job IDs from agency for future jobs
@@ -637,7 +637,14 @@ void Supervision::run() {
             break;
           }
         }
+      } catch (std::exception const& ex) {
+        // catch error but go on
+        LOG_TOPIC(WARN, Logger::SUPERVISION) << "caught exception in Supervision: " << ex.what();
+      } catch (...) {
+        // catch error but go on
+        LOG_TOPIC(WARN, Logger::SUPERVISION) << "caught unknown exception in Supervision";
       }
+
       _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
     }
   }
