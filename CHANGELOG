@@ -1,6 +1,8 @@
 v3.2.10 (2017-XX-XX)
 -------------------
 
+* UI: fixed disappearing of the navigation label in some cases
+
 * fixed issue #3640: limit in subquery
 
 * UI: edge collections were wrongly added to from and to vertices select 
