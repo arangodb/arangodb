@@ -82,8 +82,6 @@ v3.3.rc1 (2017-11-17)
   vertex which is perfectly valid, but it may be a n issue on the data model, so users
   can directly see it on the query now and do not "by accident" have to check the LOG output.
 
-* potential fix for issue #3562: Document WITHIN_RECTANGLE not found
-
 * make the ArangoShell refill its collection cache when a yet-unknown collection
   is first accessed. This fixes the following problem:
 
