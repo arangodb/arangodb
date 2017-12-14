@@ -1,7 +1,12 @@
 devel
 -----
 
-* UI: fixed disappearing of the navigation label in some case special case
+* UI: pressing the return key inside a select2 box no longer triggers the modals
+  success function
+
+* UI: coordinators and db servers are now in sorted order (ascending)
+
+* UI: fixed disappearing of the navigation label in some cases
 
 * fixed issue #3917: traversals with high maximal depth take extremely long
   in planning phase.
