@@ -74,7 +74,7 @@ config_t::config_t(
     _lock() {}
 
 config_t::config_t(config_t const& other) { 
-  READ_LOCKER(readLocker, other._lock);
+  // will call operator=, which will ensure proper locking
   *this = other; 
 }
 

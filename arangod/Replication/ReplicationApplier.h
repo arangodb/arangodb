@@ -61,6 +61,9 @@ class ReplicationApplier {
   
   /// @brief test if the replication applier is running
   bool isRunning() const;
+  
+  /// @brief test if the replication applier is shutting down
+  bool isShuttingDown() const;
 
   /// @brief set the applier state to stopped
   void markThreadStopped();
@@ -109,7 +112,7 @@ class ReplicationApplier {
   std::string endpoint() const;
 
   /// @brief block the replication applier from starting
-  int preventStart();
+  Result preventStart();
   
   /// @brief whether or not autostart option was set
   bool autoStart() const;
@@ -124,7 +127,7 @@ class ReplicationApplier {
   void stopInitialSynchronization(bool value);
 
   /// @brief unblock the replication applier from starting
-  int allowStart();
+  void allowStart();
 
   /// @brief register an applier error
   void setError(arangodb::Result const&);
