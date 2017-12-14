@@ -123,7 +123,6 @@ struct CustomScorer : public irs::sort {
     }
 
     float_t i;
-    bool reverse;
   };
 
   static ::iresearch::sort::type_id const& type() {
