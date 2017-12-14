@@ -122,9 +122,8 @@ IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
     return createWorker(vocbase, new algos::SLPA(userParams), body);
   } else if (algorithm == "dmid") {
     return createWorker(vocbase, new algos::DMID(userParams), body);
-  } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "Unsupported Algorithm");
-  }
-  return nullptr;
-};
+  } 
+    
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                 "Unsupported algorithm");
+}

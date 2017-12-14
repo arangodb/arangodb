@@ -12,13 +12,17 @@ There are two slightly different syntaxes for traversals in AQL, one for
 ### Working with named graphs
 
 ```
+[WITH collection1[, collection2[, ...collectionN]]]
 FOR vertex[, edge[, path]]
   IN [min[..max]]
   OUTBOUND|INBOUND|ANY startVertex
   GRAPH graphName
   [OPTIONS options]
 ```
-
+- `WITH`: optional for single server instances, but required for
+  [graph traversals in a cluster](#graph-traversals-in-a-cluster).
+  - **collections** (collection, *repeatable*): list of collections that will
+    be involved in the traversal
 - `FOR`: emits up to three variables:
   - **vertex** (object): the current vertex in a traversal
   - **edge** (object, *optional*): the current edge in a traversal
@@ -76,6 +80,7 @@ FOR vertex[, edge[, path]]
 ### Working with collection sets
 
 ```
+[WITH collection1[, collection2[, ...collectionN]]]
 FOR vertex[, edge[, path]]
   IN [min[..max]]
   OUTBOUND|INBOUND|ANY startVertex
@@ -113,13 +118,13 @@ collection in your traversal.
 ### Graph traversals in a cluster
 
 Due to the nature of graphs, edges may reference vertices from arbitrary
-collections. Following the path can thus involve documents from various
+collections. Following the paths can thus involve documents from various
 collections and it's not possible to predict which will be visited in a
 traversal. Hence, which collections need to be locked can only be determined
 at run time. Deadlocks may occur under certain circumstances.
 
 Please consider to use the [`WITH` statement](../Operations/With.md) to
-specify the collections you expect to be involved. 
+specify the collections you expect to be involved.
 
 Using filters and the explainer to extrapolate the costs
 --------------------------------------------------------

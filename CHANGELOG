@@ -1,7 +1,12 @@
 devel
 -----
 
-* UI: fixed disappearing of the navigation label in some case special case
+* UI: pressing the return key inside a select2 box no longer triggers the modals
+  success function
+
+* UI: coordinators and db servers are now in sorted order (ascending)
+
+* UI: fixed disappearing of the navigation label in some cases
 
 * fixed issue #3917: traversals with high maximal depth take extremely long
   in planning phase.
@@ -55,8 +60,6 @@ devel
   The situation is not desired as an ERROR as ArangoDB can store edges pointing to non-existing
   vertex which is perfectly valid, but it may be a n issue on the data model, so users
   can directly see it on the query now and do not "by accident" have to check the LOG output.
-
-* potential fix for issue #3562: Document WITHIN_RECTANGLE not found
 
 * introduce `enforceReplicationFactor` attribute for creating collections:
   this optional parameter controls if the coordinator should bail out during collection
