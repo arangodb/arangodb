@@ -51,8 +51,7 @@ Only command line options with a value should be set within the configuration
 file. Command line options which act as flags should be entered on the command
 line when starting the server.
 
-Whitespace in the configuration file is ignored. Each option is specified on a
-separate line in the form
+Each option is specified on a separate line in the form:
 
 ```js
 key = value
@@ -79,6 +78,19 @@ So you see in general `--section.param value` translates to
 param=value 
 ```
 
+{% hint 'warning' %}
+Whitespace around `=` is ignored in the configuration file. Do not put spaces
+around additional `=` in the parameter value however. The following example
+shows the correct way to specify a log level of `trace` for the topic `startup`:
+
+```js
+log.level = startup=trace
+```
+
+Note that there is no whitespace between `startup` and `=`, and also not `=`
+and `trace`.
+{% endhint %}
+
 Where one section may occur multiple times, and the last occurance of `param`
 will become the final value. In case of parameters being vectors, multiple
 occurance adds another item to the vector. Vectors can be identified by the
@@ -104,4 +116,4 @@ or
 --configuration none
 ```
 
-When starting up the server. Note that, the word *none* is case-insensitive.
+when starting up the server. Note that, the word *none* is case-insensitive.

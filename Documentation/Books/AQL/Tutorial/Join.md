@@ -69,7 +69,7 @@ Importing traits
 ----------------
 
 Below you find the traits data. Follow the pattern shown in
-[Creating documents](CRUD.md#create-documents) to import it:
+[Create documents](CRUD.md#create-documents) to import it:
 
 - Create a document collection *Traits*
 - Assign the data to a variable in AQL, `LET data = [ ... ]`
