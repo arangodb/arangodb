@@ -155,13 +155,13 @@ if (USE_JEMALLOC)
 endif ()
 
 ################################################################################
-## arangoimp
+## arangoimport
 ################################################################################
 
 if (MSVC AND NOT(SKIP_PACKAGING))
-  generate_product_version(ProductVersionFiles_arangoimp
-    NAME arangoimp
-    FILE_DESCRIPTION ${ARANGO_IMP_FRIENDLY_STRING}
+  generate_product_version(ProductVersionFiles_arangoimport
+    NAME arangoimport
+    FILE_DESCRIPTION ${ARANGO_IMPORT_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
@@ -170,19 +170,19 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
-add_executable(${BIN_ARANGOIMP}
-  ${ProductVersionFiles_arangoimp}
+add_executable(${BIN_ARANGOIMPORT}
+  ${ProductVersionFiles_arangoimport}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
   Import/ImportFeature.cpp
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
-  Import/arangoimp.cpp
+  Import/arangoimport.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
   V8Client/ArangoClientHelper.cpp
 )
 
-target_link_libraries(${BIN_ARANGOIMP}
+target_link_libraries(${BIN_ARANGOIMPORT}
   ${LIB_ARANGO}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
@@ -191,21 +191,26 @@ target_link_libraries(${BIN_ARANGOIMP}
 )
 
 install(
-  TARGETS ${BIN_ARANGOIMP}
+  TARGETS ${BIN_ARANGOIMPORT}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install_config(arangoimp)
+install_config(arangoimport)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangoimp zlibstatic v8_build) # v8_build includes ICU build
+  add_dependencies(arangoimport zlibstatic v8_build) # v8_build includes ICU
+                                                     # build
 else ()
-  add_dependencies(arangoimp zlibstatic) # v8_build includes ICU build
+  add_dependencies(arangoimport zlibstatic) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangoimp jemalloc)
+  add_dependencies(arangoimport jemalloc)
 endif ()
 
+install_command_alias(${BIN_ARANGOIMPORT}
+  ${CMAKE_INSTALL_BINDIR}
+  arangoimp
+)
 ################################################################################
 ## arangorestore
 ################################################################################
