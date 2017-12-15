@@ -25,6 +25,7 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_STORAGE_ENGINE_MOCK_H 1
 
 #include "Basics/Result.h"
+#include "Basics/StringRef.h"
 #include "Indexes/IndexIterator.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -55,6 +56,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   TRI_idx_iid_t lastId;
   std::string physicalPath;
   std::deque<std::pair<arangodb::velocypack::Builder, bool>> documents; // std::pair<jSON, valid>, deque -> pointers remain valid
+  std::unordered_map<arangodb::StringRef, arangodb::LocalDocumentId> keyToDoc;
 
   PhysicalCollectionMock(arangodb::LogicalCollection* collection, arangodb::velocypack::Slice const& info);
   virtual PhysicalCollection* clone(arangodb::LogicalCollection*) const override;

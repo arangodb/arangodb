@@ -82,7 +82,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
       std::unique_ptr<VPackBuilder>&& keys
   ) : IndexIterator(collection, trx, mmdr, index),
       _map(map),
-      _begin(_map.end()),
+      _begin(_map.begin()),
       _end(_map.end()),
       _keys(std::move(keys)),
       _keysIt(_keys->slice()) {
@@ -93,13 +93,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
   }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) {
-    while (limit && _keysIt.valid()) {
-      while (_begin != _end) {
-        cb(_begin->second);
-        ++_begin;
-        --limit;
-      }
-
+    while (limit && _begin != _end && _keysIt.valid()) {
       auto key = _keysIt.value();
 
       if (key.isObject()) {
@@ -107,6 +101,12 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
       }
 
       std::tie(_begin, _end) = _map.equal_range(key.toString());
+
+      while (limit && _begin != _end) {
+        cb(_begin->second);
+        ++_begin;
+        --limit;
+      }
 
       ++_keysIt;
     }
@@ -116,6 +116,8 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
 
   void reset() override {
     _keysIt.reset();
+    _begin = _map.begin();
+    _end = _map.end();
   }
 
  private:
@@ -658,6 +660,13 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
   documents.emplace_back(std::move(builder), true);
   arangodb::LocalDocumentId docId(documents.size()); // always > 0
 
+  auto const insertedDoc = documents.back().first.slice();
+  auto const keySlice = arangodb::transaction::helpers::extractKeyFromDocument(insertedDoc);
+
+  if (!keySlice.isNone() && keySlice.isString()) {
+    keyToDoc.emplace(arangodb::StringRef(keySlice), docId);
+  }
+
   result.setUnmanaged(documents.back().first.data(), docId);
 
   for (auto& index : _indexes) {
@@ -729,8 +738,26 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
 
 arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*, arangodb::StringRef const& key, arangodb::ManagedDocumentResult& result, bool) {
   before();
-  TRI_ASSERT(false);
-  return TRI_ERROR_INTERNAL;
+
+  auto const it = keyToDoc.find(key);
+
+  if (it == keyToDoc.end()) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  auto const docId = it->second;
+
+  if (docId > documents.size()) {
+    return false;
+  }
+
+  auto const doc = documents[docId - 1]; // 'docId' always > 0
+
+  arangodb::velocypack::Slice sl(doc.first.data());
+
+  result.setUnmanaged(doc.first.data(), docId);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*, arangodb::velocypack::Slice const& key, arangodb::ManagedDocumentResult& result, bool) {
