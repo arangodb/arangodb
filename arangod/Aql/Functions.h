@@ -175,6 +175,8 @@ struct Functions {
                              VPackFunctionParameters const&);
    static AqlValue DateDay(arangodb::aql::Query*, transaction::Methods*,
                            VPackFunctionParameters const&);
+   static AqlValue DateHour(arangodb::aql::Query*, transaction::Methods*,
+                            VPackFunctionParameters const&);
 
 
 

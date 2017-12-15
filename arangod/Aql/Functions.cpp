@@ -1515,7 +1515,35 @@ AqlValue Functions::DateDay(arangodb::aql::Query* query,
   ));
 }
 
+/// @brief function DATE_HOUR
+AqlValue Functions::DateHour(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
 
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (!value.isString() && !value.isNumber() ) {
+    RegisterInvalidArgumentWarning(query, "DATE_DAY");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  system_clock::time_point tp;
+
+  if (value.isNumber()) {
+    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
+  } else {
+    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
+      RegisterWarning(query, "DATE_MONTH", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  uint64_t hours = make_time(tp - floor<days>(tp)).hours().count();
+
+  return AqlValue(AqlValueHintUInt(hours));
+}
 
 
 

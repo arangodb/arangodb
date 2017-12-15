@@ -473,21 +473,35 @@ function ahuacatlDateFunctionsTestSuite () {
 /// @brief test date_hour function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDateHourInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_HOUR()");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_HOUR(1, 1)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_HOUR(null)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_HOUR(false)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_HOUR([])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_HOUR({})");
+    testDateHourInvalid() {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_HOUR())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_HOUR()))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_HOUR(1, 1))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_HOUR(1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_HOUR(null))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_HOUR(null)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_HOUR(null))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_HOUR(null)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_HOUR(false))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_HOUR(false)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_HOUR([]))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_HOUR([])))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_HOUR({}))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_HOUR({})))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test date_hour function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDateHour : function () {
-      var values = [
+    testDateHour() {
+      const values = [
         [ "2000-04-29", 0 ],
         [ "2000-04-29Z", 0 ],
         [ "2012-02-12 13:24:12", 13 ],
@@ -545,8 +559,8 @@ function ahuacatlDateFunctionsTestSuite () {
       ];
 
       values.forEach(function (value) {
-        var actual = getQueryResults("RETURN DATE_HOUR(@value)", { value: value[0] });
-        assertEqual([ value[1] ], actual);
+        assertEqual([ value[1] ], getQueryResults('RETURN NOOPT(DATE_HOUR(@value))', { value: value[0] }));
+        assertEqual([ value[1] ], getQueryResults('RETURN NOOPT(V8(DATE_HOUR(@value)))', { value: value[0] }));
       }); 
     },
 
