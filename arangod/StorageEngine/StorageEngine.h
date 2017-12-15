@@ -370,10 +370,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                                 arangodb::LogicalCollection* col,
-                                std::string const& keysId,
-                                std::string const& cid,
-                                std::string const& collectionName,
-                                TRI_voc_tick_t maxTick) = 0;
+                                std::string const& keysId) = 0;
   virtual Result createLoggerState(TRI_vocbase_t* vocbase,
                                    velocypack::Builder& builder) = 0;
   virtual Result createTickRanges(velocypack::Builder& builder) = 0;

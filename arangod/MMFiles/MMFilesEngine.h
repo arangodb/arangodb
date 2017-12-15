@@ -102,8 +102,7 @@ class MMFilesEngine final : public StorageEngine {
                                           bool doSync) override;
   Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                         arangodb::LogicalCollection* col,
-                        std::string const& keysId, std::string const& cid,
-                        std::string const& collectionName, TRI_voc_tick_t maxTick) override;
+                        std::string const& keysId) override;
 
   Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) override;
   Result createTickRanges(VPackBuilder& builder) override;

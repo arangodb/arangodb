@@ -45,6 +45,7 @@
 #include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -88,6 +89,8 @@ struct IResearchLinkSetup {
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread
+
+    arangodb::ServerIdFeature::setId(12345);
 
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);

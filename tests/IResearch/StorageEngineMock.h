@@ -127,10 +127,10 @@ class TransactionCollectionMock: public arangodb::TransactionCollection {
   virtual bool hasOperations() const override;
   virtual bool isLocked() const override;
   virtual bool isLocked(arangodb::AccessMode::Type type, int nestingLevel) const override;
-  virtual int lock() override;
-  virtual int lock(arangodb::AccessMode::Type type, int nestingLevel) override;
+  virtual int lockRecursive() override;
+  virtual int lockRecursive(arangodb::AccessMode::Type type, int nestingLevel) override;
   virtual void release() override;
-  virtual int unlock(arangodb::AccessMode::Type, int nestingLevel) override;
+  virtual int unlockRecursive(arangodb::AccessMode::Type, int nestingLevel) override;
   virtual int updateUsage(arangodb::AccessMode::Type accessType, int nestingLevel) override;
   virtual void unuse(int nestingLevel) override;
   virtual int use(int nestingLevel) override;
@@ -192,7 +192,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& result) override;
   virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(int& result) override;
   virtual int getViews(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result) override;
-  virtual arangodb::Result handleSyncKeys(arangodb::DatabaseInitialSyncer&, arangodb::LogicalCollection*, std::string const&, std::string const&, std::string const&, TRI_voc_tick_t) override;
+  virtual arangodb::Result handleSyncKeys(arangodb::DatabaseInitialSyncer&, arangodb::LogicalCollection*, std::string const& keysId) override;
   virtual bool inRecovery() override;
   virtual arangodb::Result lastLogger(TRI_vocbase_t*, std::shared_ptr<arangodb::transaction::Context>, uint64_t, uint64_t, std::shared_ptr<VPackBuilder>&) override;
   virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) override;

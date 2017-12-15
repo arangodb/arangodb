@@ -36,7 +36,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "Transaction/StandaloneContext.h"
+#include "Transaction/V8Context.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8/v8-conv.h"
@@ -80,8 +80,8 @@ void Collections::enumerate(
 }
 
 Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
-                                  std::string const& name,
-                                  FuncCallback func) {
+                                    std::string const& name,
+                                    FuncCallback func) {
   if (name.empty()) {
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
@@ -242,7 +242,7 @@ Result Collections::load(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 #endif
   }
 
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
   SingleCollectionTransaction trx(ctx, coll->cid(), AccessMode::Type::READ);
 
   Result res = trx.begin();
@@ -282,7 +282,7 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
 
   std::unique_ptr<SingleCollectionTransaction> trx;
   if (!ServerState::instance()->isCoordinator()) {
-    auto ctx = transaction::StandaloneContext::Create(coll->vocbase());
+    auto ctx = transaction::V8Context::CreateWhenRequired(coll->vocbase(), true);
     trx.reset(new SingleCollectionTransaction(ctx, coll->cid(),
                                               AccessMode::Type::READ));
     trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
@@ -321,7 +321,7 @@ Result Collections::updateProperties(LogicalCollection* coll,
     auto info = ci->getCollection(coll->dbName(), coll->cid_as_string());
     return info->updateProperties(props, false);
   } else {
-    auto ctx = transaction::StandaloneContext::Create(coll->vocbase());
+    auto ctx = transaction::V8Context::CreateWhenRequired(coll->vocbase(), false);
     SingleCollectionTransaction trx(ctx, coll->cid(),
                                     AccessMode::Type::EXCLUSIVE);
     Result res = trx.begin();
@@ -486,7 +486,7 @@ Result Collections::warmup(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
     return warmupOnCoordinator(vocbase->name(), cid);
   }
 
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
   SingleCollectionTransaction trx(ctx, coll->cid(), AccessMode::Type::READ);
   Result res = trx.begin();
   if (res.fail()) {
@@ -522,15 +522,18 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
 
   if (ServerState::instance()->isCoordinator()) {
     return revisionOnCoordinator(databaseName, cid, rid);
-  } else {
-    auto ctx = transaction::StandaloneContext::Create(vocbase);
-    SingleCollectionTransaction trx(ctx, coll->cid(),
-                                    AccessMode::Type::READ);
-    Result res = trx.begin();
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-    rid = coll->revision(&trx);
-    return TRI_ERROR_NO_ERROR;
+  } 
+  
+  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
+  SingleCollectionTransaction trx(ctx, coll->cid(),
+                                  AccessMode::Type::READ);
+  
+  Result res = trx.begin();
+  
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
+
+  rid = coll->revision(&trx);
+  return TRI_ERROR_NO_ERROR;
 }

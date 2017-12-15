@@ -1260,7 +1260,6 @@ function ReplicationIncrementalKeyConflict() {
 
     setUp : function() {
       connectToMaster();
-
       db._drop(cn);
     },
 
@@ -1391,7 +1390,6 @@ function ReplicationIncrementalKeyConflict() {
 
 jsunity.run(ReplicationSuite);
 jsunity.run(ReplicationOtherDBSuite);
-// TODO: activate this test once it works
 jsunity.run(ReplicationIncrementalKeyConflict);
 
 return jsunity.done();

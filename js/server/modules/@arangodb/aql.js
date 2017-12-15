@@ -4318,7 +4318,8 @@ function AQL_FULLTEXT (collection, attribute, query, limit) {
   var idx = INDEX_FULLTEXT(COLLECTION(collection, 'FULLTEXT'), attribute);
 
   if (idx === null) {
-    THROW('FULLTEXT', INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
+    WARN('FULLTEXT', INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
+    return null;
   }
 
   // Just start a simple query
