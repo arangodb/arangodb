@@ -27,7 +27,9 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
+#include "VocBase/KeyGenerator.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "IResearch/ExpressionFilter.h"
@@ -71,6 +73,9 @@ namespace tests {
 void init(bool withICU /*= false*/) {
   static singleton_t singleton;
   SINGLETON = &singleton;
+
+  arangodb::ServerIdFeature::setId(12345);
+  arangodb::KeyGenerator::Initialize();
 
   if (withICU) {
     // initialize ICU, required for Utf8Helper which is used by the optimizer

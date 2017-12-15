@@ -90,8 +90,6 @@ struct IResearchLinkSetup {
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread
 
-    arangodb::ServerIdFeature::setId(12345);
-
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
     }
