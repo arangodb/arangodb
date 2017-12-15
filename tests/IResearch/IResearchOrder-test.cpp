@@ -59,7 +59,7 @@ struct dummy_scorer: public irs::sort {
 /*static*/ std::function<bool(irs::string_ref const&)> dummy_scorer::validateArgs =
   [](irs::string_ref const&)->bool { return true; };
 
-REGISTER_SCORER(dummy_scorer);
+REGISTER_SCORER_TEXT(dummy_scorer, dummy_scorer::make);
 
 void assertOrder(
     bool parseOk,

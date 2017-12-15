@@ -390,7 +390,9 @@ char const* text_token_stream::STOPWORD_PATH_ENV_VARIABLE = "IRESEARCH_TEXT_STOP
 // -----------------------------------------------------------------------------
 
 DEFINE_ANALYZER_TYPE_NAMED(text_token_stream, "text");
-REGISTER_ANALYZER(text_token_stream);
+REGISTER_ANALYZER_JSON(text_token_stream, text_token_stream::make);
+REGISTER_ANALYZER_TEXT(text_token_stream, text_token_stream::make);
+// FIXME TODO split into separate functions for text and jSON formats
 /*static*/ analyzer::ptr text_token_stream::make(const string_ref& args) {
   // try to parse 'args' as a jSON config
   try {

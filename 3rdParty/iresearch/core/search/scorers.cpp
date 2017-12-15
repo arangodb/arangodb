@@ -66,8 +66,8 @@ NS_ROOT
 
 /*static*/ void scorers::init() {
   #ifndef IRESEARCH_DLL
-    REGISTER_SCORER(iresearch::tfidf_sort);
-    REGISTER_SCORER(iresearch::bm25_sort);
+    REGISTER_SCORER_JSON(irs::bm25_sort, irs::bm25_sort::make); // match bm25.cpp
+    REGISTER_SCORER_JSON(irs::tfidf_sort, irs::tfidf_sort::make); // match tfidf.cpp
   #endif
 }
 
@@ -87,6 +87,7 @@ NS_ROOT
 
 scorer_registrar::scorer_registrar(
     const sort::type_id& type,
+    const irs::text_format::type_id& args_format,
     sort::ptr(*factory)(const irs::string_ref& args),
     const char* source /*= nullptr*/
 ) {

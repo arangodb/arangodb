@@ -103,7 +103,7 @@ struct DocIdScorer: public irs::sort {
   };
 };
 
-REGISTER_SCORER(DocIdScorer);
+REGISTER_SCORER_TEXT(DocIdScorer, DocIdScorer::make);
 
 // vocbase shutodown() must be exlicitly called or dropped collections are not deallocated
 struct VocbaseWrapper {

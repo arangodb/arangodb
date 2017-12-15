@@ -396,7 +396,7 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
 NS_END // bm25
 
 DEFINE_SORT_TYPE_NAMED(iresearch::bm25_sort, "bm25");
-REGISTER_SCORER(iresearch::bm25_sort);
+REGISTER_SCORER_JSON(irs::bm25_sort, irs::bm25_sort::make);
 
 DEFINE_FACTORY_DEFAULT(irs::bm25_sort);
 

@@ -26,6 +26,7 @@
 
 #include "shared.hpp"
 #include "analyzer.hpp"
+#include "utils/text_format.hpp"
 
 NS_ROOT
 NS_BEGIN(analysis)
@@ -49,7 +50,8 @@ class IRESEARCH_API analyzer_registrar {
  public:
   analyzer_registrar(
     const analyzer::type_id& type,
-    analyzer::ptr(*factory)(const iresearch::string_ref& args),
+    const irs::text_format::type_id& args_format,
+    analyzer::ptr(*factory)(const irs::string_ref& args),
     const char* source = nullptr
   );
   operator bool() const NOEXCEPT;
@@ -57,9 +59,14 @@ class IRESEARCH_API analyzer_registrar {
   bool registered_;
 };
 
-#define REGISTER_ANALYZER__(analyzer_name, line, source) static iresearch::analysis::analyzer_registrar analyzer_registrar ## _ ## line(analyzer_name::type(), &analyzer_name::make, source)
-#define REGISTER_ANALYZER_EXPANDER__(analyzer_name, file, line) REGISTER_ANALYZER__(analyzer_name, line, file ":" TOSTRING(line))
-#define REGISTER_ANALYZER(analyzer_name) REGISTER_ANALYZER_EXPANDER__(analyzer_name, __FILE__, __LINE__)
+#define REGISTER_ANALYZER__(analyzer_name, args_format, factory, line, source) static iresearch::analysis::analyzer_registrar analyzer_registrar ## _ ## line(analyzer_name::type(), args_format, &factory, source)
+#define REGISTER_ANALYZER_EXPANDER__(analyzer_name, args_format, factory, file, line) REGISTER_ANALYZER__(analyzer_name, args_format, factory, line, file ":" TOSTRING(line))
+#define REGISTER_ANALYZER(analyzer_name, args_format, factory) REGISTER_ANALYZER_EXPANDER__(analyzer_name, args_format, factory, __FILE__, __LINE__)
+#define REGISTER_ANALYZER_CSV(analyzer_name, factory) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::csv, factory)
+#define REGISTER_ANALYZER_JSON(analyzer_name, factory) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::json, factory)
+#define REGISTER_ANALYZER_TEXT(analyzer_name, factory) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::text, factory)
+#define REGISTER_ANALYZER_XML(analyzer_name, factory) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::xml, factory)
+#define REGISTER_ANALYZER_TYPED(analyzer_name, args_format) REGISTER_ANALYZER(analyzer_name, args_format, analyzer_name::make)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               convinience methods

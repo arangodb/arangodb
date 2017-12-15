@@ -37,11 +37,31 @@ TEST(scorers_tests, duplicate_register) {
   ASSERT_EQ(nullptr, irs::scorers::get("dummy_scorer", irs::string_ref::nil));
 
   static bool initial_expected = true;
-  irs::scorer_registrar initial(dummy_scorer::type(), &dummy_scorer::make);
-  ASSERT_EQ(!initial_expected, !initial);
+  irs::scorer_registrar initial0(dummy_scorer::type(), irs::text_format::csv, &dummy_scorer::make);
+  irs::scorer_registrar initial1(dummy_scorer::type(), irs::text_format::json, &dummy_scorer::make);
+  irs::scorer_registrar initial2(dummy_scorer::type(), irs::text_format::text, &dummy_scorer::make);
+  irs::scorer_registrar initial3(dummy_scorer::type(), irs::text_format::xml, &dummy_scorer::make);
+  ASSERT_EQ(!initial_expected, !initial0);
+  /* FIXME TODO enable once type diferentiation is supported
+  ASSERT_EQ(!initial_expected, !initial1);
+  ASSERT_EQ(!initial_expected, !initial2);
+  ASSERT_EQ(!initial_expected, !initial3);
+  */
+
   initial_expected = false; // next test iteration will not be able to register the same scorer
-  irs::scorer_registrar duplicate(dummy_scorer::type(), &dummy_scorer::make);
-  ASSERT_TRUE(!duplicate);
+  irs::scorer_registrar duplicate0(dummy_scorer::type(), irs::text_format::csv, &dummy_scorer::make);
+  irs::scorer_registrar duplicate1(dummy_scorer::type(), irs::text_format::json, &dummy_scorer::make);
+  irs::scorer_registrar duplicate2(dummy_scorer::type(), irs::text_format::text, &dummy_scorer::make);
+  irs::scorer_registrar duplicate3(dummy_scorer::type(), irs::text_format::xml, &dummy_scorer::make);
+  ASSERT_TRUE(!duplicate0);
+  ASSERT_TRUE(!duplicate1);
+  ASSERT_TRUE(!duplicate2);
+  ASSERT_TRUE(!duplicate3);
+
   ASSERT_TRUE(irs::scorers::exists("dummy_scorer"));
   ASSERT_NE(nullptr, irs::scorers::get("dummy_scorer", irs::string_ref::nil));
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

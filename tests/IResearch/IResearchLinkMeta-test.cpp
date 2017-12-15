@@ -69,7 +69,7 @@ private:
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(EmptyTokenizer, "empty");
-REGISTER_ANALYZER(EmptyTokenizer);
+REGISTER_ANALYZER_TEXT(EmptyTokenizer, EmptyTokenizer::make);
 
 NS_END
 

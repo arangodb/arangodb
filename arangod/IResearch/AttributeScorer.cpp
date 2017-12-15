@@ -330,7 +330,8 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 DEFINE_SORT_TYPE_NAMED(AttributeScorer, ATTRIBUTE_SCORER_NAME);
-REGISTER_SCORER(AttributeScorer);
+REGISTER_SCORER_JSON(AttributeScorer, AttributeScorer::make);
+REGISTER_SCORER_TEXT(AttributeScorer, AttributeScorer::make);
 
 /*static*/ irs::sort::ptr AttributeScorer::make(
     std::vector<irs::stored_attribute::ptr>& storedAttrBuf,
@@ -355,6 +356,7 @@ REGISTER_SCORER(AttributeScorer);
   return ptr;
 }
 
+// FIXME TODO split into separate functions for text and jSON formats
 /*static*/ irs::sort::ptr AttributeScorer::make(const irs::string_ref& args) {
   try {
     PTR_NAMED(AttributeScorer, ptr);

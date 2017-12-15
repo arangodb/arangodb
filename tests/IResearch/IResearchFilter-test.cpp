@@ -120,7 +120,7 @@ class TestAnalyzer: public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestCharAnalyzer");
-REGISTER_ANALYZER(TestAnalyzer);
+REGISTER_ANALYZER_TEXT(TestAnalyzer, TestAnalyzer::make);
 
 std::string mangleBool(std::string name) {
   arangodb::iresearch::kludge::mangleBool(name);

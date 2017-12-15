@@ -78,7 +78,7 @@ class EmptyTokenizer: public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(EmptyTokenizer, "iresearch-document-empty");
-REGISTER_ANALYZER(EmptyTokenizer);
+REGISTER_ANALYZER_TEXT(EmptyTokenizer, EmptyTokenizer::make);
 
 class InvalidTokenizer: public irs::analysis::analyzer {
  public:
@@ -108,7 +108,7 @@ class InvalidTokenizer: public irs::analysis::analyzer {
 bool InvalidTokenizer::returnNullFromMake = false;
 
 DEFINE_ANALYZER_TYPE_NAMED(InvalidTokenizer, "iresearch-document-invalid");
-REGISTER_ANALYZER(InvalidTokenizer);
+REGISTER_ANALYZER_TEXT(InvalidTokenizer, InvalidTokenizer::make);
 
 std::string mangleBool(std::string name) {
   arangodb::iresearch::kludge::mangleBool(name);

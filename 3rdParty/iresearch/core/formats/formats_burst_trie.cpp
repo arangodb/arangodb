@@ -89,6 +89,13 @@
 
 #include <cassert>
 
+#if defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #if (__GNUC__ >= 7)
+    #pragma GCC diagnostic ignored "-Wimplicit-fallthrough=0"
+  #endif
+#endif
+
 NS_ROOT
 
 NS_BEGIN(burst_trie)
@@ -1796,6 +1803,10 @@ size_t field_reader::size() const {
 
 NS_END /* burst_trie */
 NS_END /* root */
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
