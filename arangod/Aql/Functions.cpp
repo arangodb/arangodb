@@ -1425,7 +1425,7 @@ AqlValue Functions::DateDayOfWeek(arangodb::aql::Query* query,
   ));
 }
 
-/// @brief function DATE_DAYOFWEEK
+/// @brief function DATE_YEAR
 AqlValue Functions::DateYear(arangodb::aql::Query* query,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
@@ -1505,7 +1505,7 @@ AqlValue Functions::DateDay(arangodb::aql::Query* query,
     tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
   } else {
     if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_MONTH", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      RegisterWarning(query, "DATE_DAY", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
   }
@@ -1525,7 +1525,7 @@ AqlValue Functions::DateHour(arangodb::aql::Query* query,
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isString() && !value.isNumber() ) {
-    RegisterInvalidArgumentWarning(query, "DATE_DAY");
+    RegisterInvalidArgumentWarning(query, "DATE_HOUR");
     return AqlValue(AqlValueHintNull());
   }
 
@@ -1535,7 +1535,7 @@ AqlValue Functions::DateHour(arangodb::aql::Query* query,
     tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
   } else {
     if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_MONTH", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      RegisterWarning(query, "DATE_HOUR", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
   }
@@ -1543,6 +1543,36 @@ AqlValue Functions::DateHour(arangodb::aql::Query* query,
   uint64_t hours = make_time(tp - floor<days>(tp)).hours().count();
 
   return AqlValue(AqlValueHintUInt(hours));
+}
+
+/// @brief function DATE_MINUTE
+AqlValue Functions::DateMinute(arangodb::aql::Query* query,
+                               transaction::Methods* trx,
+                               VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (!value.isString() && !value.isNumber() ) {
+    RegisterInvalidArgumentWarning(query, "DATE_MINUTE");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  system_clock::time_point tp;
+
+  if (value.isNumber()) {
+    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
+  } else {
+    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
+      RegisterWarning(query, "DATE_MINUTE", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  uint64_t minutes = make_time(tp - floor<days>(tp)).minutes().count();
+
+  return AqlValue(AqlValueHintUInt(minutes));
 }
 
 
