@@ -89,8 +89,8 @@ public:
 
   /// @brief register tasks, only run once on startup
   static void registerTasks();
-  static void runTasks(UpgradeArgs const&, uint32_t clusterFlag,
-                       uint32_t dbFlag);
+  static void runTasks(UpgradeArgs const&, VersionResult vInfi,
+                       uint32_t clusterFlag, uint32_t dbFlag);
 
   /*
   /// @brief system database only

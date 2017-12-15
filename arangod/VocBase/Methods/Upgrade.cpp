@@ -41,7 +41,7 @@
 using namespace arangodb;
 using namespace arangodb::methods;
 
-UpgradeResult methods::Upgrade::database(UpgradeArgs const&) {
+UpgradeResult methods::Upgrade::database(UpgradeArgs const& args) {
   uint32_t clusterFlag = 0;
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   if (ServerState::isSingleServer(role)) {
@@ -57,6 +57,12 @@ UpgradeResult methods::Upgrade::database(UpgradeArgs const&) {
       clusterFlag = Flags::CLUSTER_LOCAL;
     }
   }
+  
+  VersionResult vInfo = Version::check(args.vocbase);
+  
+  
+  runTasks(args, vInfo, clusterFlag, <#uint32_t dbFlag#>)
+  
 }
 
 /// @brief register tasks, only run once on startup
@@ -145,13 +151,14 @@ void methods::Upgrade::registerTasks() {
           &UpgradeTasks::setupAppBundles);
 }
 
-void methods::Upgrade::runTasks(UpgradeArgs const& args, uint32_t clusterFlag,
+void methods::Upgrade::runTasks(UpgradeArgs const& args,
+                                VersionResult vinfo,
+                                uint32_t clusterFlag,
                                 uint32_t dbFlag) {
   TRI_ASSERT(args.vocbase != nullptr);
   TRI_ASSERT(clusterFlag != 0 && dbFlag != 0);
   
   bool isLocal = clusterFlag == CLUSTER_NONE || clusterFlag == CLUSTER_LOCAL;
-  VersionResult vInfo = Version::check(args.vocbase);
   
   // execute all tasks
   for (Task const& t : _tasks) {
@@ -195,5 +202,7 @@ void methods::Upgrade::runTasks(UpgradeArgs const& args, uint32_t clusterFlag,
   if (isLocal) {
     methods::Version::write(args.vocbase, vInfo.tasks);
   }
+  
+  return vInfo;
 }
 
