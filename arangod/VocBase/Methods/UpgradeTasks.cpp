@@ -113,7 +113,9 @@ void UpgradeTasks::addDefaultUsers(TRI_vocbase_t* vocbase,
   for (VPackSlice slice : VPackArrayIterator(users)) {
     std::string user = VelocyPackHelper::getStringValue(slice, "username",
                                                         StaticStrings::Empty);
-    TRI_ASSERT(!user.empty());
+    if (user.empty()) {
+      continue;
+    }
     std::string passwd = VelocyPackHelper::getStringValue(slice, "passwd", "");
     bool active = VelocyPackHelper::getBooleanValue(slice, "active", true);
     VPackSlice extra = slice.get("extra");
