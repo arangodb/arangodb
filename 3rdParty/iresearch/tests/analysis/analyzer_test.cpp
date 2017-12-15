@@ -82,10 +82,10 @@ TEST_F(analyzer_test, duplicate_register) {
   };
 
   static bool initial_expected = true;
-  irs::analysis::analyzer_registrar initial(dummy_analyzer::type(), &dummy_analyzer::make);
+  irs::analysis::analyzer_registrar initial(dummy_analyzer::type(), irs::text_format::text, &dummy_analyzer::make);
   ASSERT_EQ(!initial_expected, !initial);
   initial_expected = false; // next test iteration will not be able to register the same analyzer
-  irs::analysis::analyzer_registrar duplicate(dummy_analyzer::type(), &dummy_analyzer::make);
+  irs::analysis::analyzer_registrar duplicate(dummy_analyzer::type(), irs::text_format::text, &dummy_analyzer::make);
   ASSERT_TRUE(!duplicate);
 }
 

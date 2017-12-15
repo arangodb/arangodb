@@ -184,7 +184,7 @@ SECTION("test_defaults") {
   // valid link creation
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
+    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"iresearch\", \"view\": 42 }");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 42, \"type\": \"iresearch\" }");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -236,7 +236,7 @@ SECTION("test_defaults") {
   // ensure jSON is still valid after unload()
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
+    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"iresearch\", \"view\": 42 }");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 42, \"type\": \"iresearch\" }");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -309,7 +309,7 @@ SECTION("test_write") {
   auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"ghi\": \"jkl\" }");
   std::string dataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("test_write")).utf8();
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": 42, \"includeAllFields\": true }");
+  auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"iresearch\", \"view\": 42, \"includeAllFields\": true }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \
     \"id\": 42, \

@@ -62,8 +62,9 @@ NS_BEGIN(analysis)
 
 /*static*/ void analyzers::init() {
   #ifndef IRESEARCH_DLL
-    REGISTER_ANALYZER(irs::analysis::delimited_token_stream);
-    REGISTER_ANALYZER(iresearch::analysis::text_token_stream);
+    REGISTER_ANALYZER_TEXT(irs::analysis::delimited_token_stream, irs::analysis::delimited_token_stream::make);  // match delimited_token_stream.cpp
+    REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, irs::analysis::text_token_stream::make); // match text_token_stream.cpp
+    REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, irs::analysis::text_token_stream::make); // match text_token_stream.cpp
   #endif
 }
 
@@ -83,7 +84,8 @@ NS_BEGIN(analysis)
 
 analyzer_registrar::analyzer_registrar(
     const analyzer::type_id& type,
-    analyzer::ptr(*factory)(const iresearch::string_ref& args),
+    const irs::text_format::type_id& args_format,
+    analyzer::ptr(*factory)(const irs::string_ref& args),
     const char* source /*= nullptr*/
 ) {
   irs::string_ref source_ref(source);

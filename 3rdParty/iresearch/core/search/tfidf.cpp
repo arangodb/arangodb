@@ -283,7 +283,7 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
 NS_END // tfidf 
 
 DEFINE_SORT_TYPE_NAMED(iresearch::tfidf_sort, "tfidf");
-REGISTER_SCORER(iresearch::tfidf_sort);
+REGISTER_SCORER_JSON(irs::tfidf_sort, irs::tfidf_sort::make);
 
 DEFINE_FACTORY_DEFAULT(irs::tfidf_sort);
 

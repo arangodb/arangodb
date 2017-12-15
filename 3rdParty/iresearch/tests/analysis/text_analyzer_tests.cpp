@@ -225,8 +225,8 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   {
     // there is no Snowball stemmer for Chinese
     std::locale locale = localeGenerator.generate("zh_CN.UTF-8");
-    std::string sDataASCII = "running";
-    std::string data(sDataASCII);
+    std::wstring sDataUCS2 = L"\u4ECA\u5929\u4E0B\u5348\u7684\u592A\u9633\u5F88\u6E29\u6696\u3002";
+    std::string data(boost::locale::conv::utf_to_utf<char>(sDataUCS2));
     text_token_stream stream(locale, emptySet);
 
     ASSERT_TRUE(stream.reset(data));
@@ -240,7 +240,17 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
 
     ASSERT_TRUE(pStream->next());
-    ASSERT_EQ("running", std::string((char*)(pValue->value().c_str()), pValue->value().size()));
+    ASSERT_EQ(L"\u4ECA\u5929", boost::locale::conv::utf_to_utf<wchar_t>(pValue->value().c_str(), pValue->value().c_str() + pValue->value().size()));
+    ASSERT_TRUE(pStream->next());
+    ASSERT_EQ(L"\u4E0B\u5348", boost::locale::conv::utf_to_utf<wchar_t>(pValue->value().c_str(), pValue->value().c_str() + pValue->value().size()));
+    ASSERT_TRUE(pStream->next());
+    ASSERT_EQ(L"\u7684", boost::locale::conv::utf_to_utf<wchar_t>(pValue->value().c_str(), pValue->value().c_str() + pValue->value().size()));
+    ASSERT_TRUE( pStream->next());
+    ASSERT_EQ(L"\u592A\u9633", boost::locale::conv::utf_to_utf<wchar_t>(pValue->value().c_str(), pValue->value().c_str() + pValue->value().size()));
+    ASSERT_TRUE(pStream->next());
+    ASSERT_EQ(L"\u5F88", boost::locale::conv::utf_to_utf<wchar_t>(pValue->value().c_str(), pValue->value().c_str() + pValue->value().size()));
+    ASSERT_TRUE(pStream->next());
+    ASSERT_EQ(L"\u6E29\u6696", boost::locale::conv::utf_to_utf<wchar_t>(pValue->value().c_str(), pValue->value().c_str() + pValue->value().size()));
     ASSERT_FALSE(pStream->next());
   }
 

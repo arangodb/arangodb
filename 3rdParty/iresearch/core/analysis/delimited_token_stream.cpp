@@ -97,7 +97,7 @@ NS_ROOT
 NS_BEGIN(analysis)
 
 DEFINE_ANALYZER_TYPE_NAMED(delimited_token_stream, "delimited");
-REGISTER_ANALYZER(delimited_token_stream);
+REGISTER_ANALYZER_TEXT(delimited_token_stream, delimited_token_stream::make);
 
 delimited_token_stream::delimited_token_stream(const string_ref& args)
   : analyzer(delimited_token_stream::type()),

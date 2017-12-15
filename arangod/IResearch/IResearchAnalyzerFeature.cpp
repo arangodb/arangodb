@@ -81,7 +81,7 @@ class IdentityTokenizer: public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(IdentityTokenizer, IDENTITY_TOKENIZER_NAME);
-REGISTER_ANALYZER(IdentityTokenizer);
+REGISTER_ANALYZER_TEXT(IdentityTokenizer, IdentityTokenizer::make);
 
 /*static*/ irs::analysis::analyzer::ptr IdentityTokenizer::make(irs::string_ref const& args) {
   PTR_NAMED(IdentityTokenizer, ptr);

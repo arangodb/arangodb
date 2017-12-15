@@ -161,7 +161,7 @@ struct CustomScorer : public irs::sort {
   size_t i;
 }; // CustomScorer
 
-REGISTER_SCORER(CustomScorer);
+REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 
 struct TestTermAttribute: public irs::term_attribute {
  public:
@@ -225,7 +225,7 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
-REGISTER_ANALYZER(TestDelimAnalyzer);
+REGISTER_ANALYZER_TEXT(TestDelimAnalyzer, TestDelimAnalyzer::make);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

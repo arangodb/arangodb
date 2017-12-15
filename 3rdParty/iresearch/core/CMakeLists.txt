@@ -131,6 +131,7 @@ set(IResearch_core_sources
   ./utils/index_utils.cpp
   ./utils/math_utils.cpp 
   ./utils/memory.cpp
+  ./utils/text_format.cpp
   ./utils/version_utils.cpp
   ./utils/utf8_path.cpp
   ./utils/locale_utils.cpp
@@ -217,6 +218,7 @@ set(IResearch_core_headers
   ./utils/register.hpp
   ./utils/std.hpp
   ./utils/string.hpp
+  ./utils/text_format.cpp
   ./utils/timer_utils.cpp
   ./utils/log.hpp
   ./utils/thread_utils.hpp

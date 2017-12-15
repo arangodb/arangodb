@@ -26,6 +26,7 @@
 
 #include "shared.hpp"
 #include "sort.hpp"
+#include "utils/text_format.hpp"
 
 NS_ROOT
 
@@ -48,6 +49,7 @@ class IRESEARCH_API scorer_registrar {
  public:
   scorer_registrar(
     const sort::type_id& type,
+    const irs::text_format::type_id& args_format,
     sort::ptr(*factory)(const irs::string_ref& args),
     const char* source = nullptr
   );
@@ -56,9 +58,14 @@ class IRESEARCH_API scorer_registrar {
   bool registered_;
 };
 
-#define REGISTER_SCORER__(scorer_name, line, source) static ::iresearch::scorer_registrar scorer_registrar ## _ ## line(scorer_name::type(), &scorer_name::make, source)
-#define REGISTER_SCORER_EXPANDER__(scorer_name, file, line) REGISTER_SCORER__(scorer_name, line, file ":" TOSTRING(line))
-#define REGISTER_SCORER(scorer_name) REGISTER_SCORER_EXPANDER__(scorer_name, __FILE__, __LINE__)
+#define REGISTER_SCORER__(scorer_name, args_format, factory, line, source) static ::iresearch::scorer_registrar scorer_registrar ## _ ## line(scorer_name::type(), args_format, &factory, source)
+#define REGISTER_SCORER_EXPANDER__(scorer_name, args_format, factory, file, line) REGISTER_SCORER__(scorer_name, args_format, factory, line, file ":" TOSTRING(line))
+#define REGISTER_SCORER(scorer_name, args_format, factory) REGISTER_SCORER_EXPANDER__(scorer_name, args_format, factory, __FILE__, __LINE__)
+#define REGISTER_SCORER_CSV(scorer_name, factory) REGISTER_SCORER(scorer_name, ::iresearch::text_format::csv, factory)
+#define REGISTER_SCORER_JSON(scorer_name, factory) REGISTER_SCORER(scorer_name, ::iresearch::text_format::json, factory)
+#define REGISTER_SCORER_TEXT(scorer_name, factory) REGISTER_SCORER(scorer_name, ::iresearch::text_format::text, factory)
+#define REGISTER_SCORER_XML(scorer_name, factory) REGISTER_SCORER(scorer_name, ::iresearch::text_format::xml, factory)
+#define REGISTER_SCORER_TYPED(scorer_name, args_format) REGISTER_SCORER(scorer_name, args_format, scorer_name::make)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               convinience methods

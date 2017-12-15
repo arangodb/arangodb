@@ -332,6 +332,7 @@ class transaction_store_tests: public test_base {
     }
 
     ASSERT_TRUE(skip_docs_count_check || parsed_docs_count == indexed_docs_count);
+    ASSERT_TRUE(!num_update_threads || column); // at least some updates took place if update enabled
     ASSERT_TRUE(!num_update_threads || updated_docs_count); // at least some updates took place if update enabled
   }
 
@@ -1482,6 +1483,165 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
         ASSERT_EQ(docs_count, expected_id);
       }
     }
+  }
+}
+
+TEST_F(transaction_store_tests, clear_store) {
+  irs::transaction_store store;
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"), &tests::generic_json_field_factory
+  );
+  tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
+  tests::document const* doc3 = gen.next();
+
+  // initial insert into store
+  {
+    irs::store_writer writer(store);
+    ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
+      doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
+      doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+      return false;
+    }));
+    ASSERT_TRUE(writer.commit());
+  }
+
+  // check documents
+  {
+    auto reader = store.reader();
+    ASSERT_EQ(1, reader.size());
+    ASSERT_EQ(2, reader.docs_count()); // +1 for invalid doc
+    ASSERT_EQ(1, reader.live_docs_count());
+    irs::bytes_ref actual_value;
+    auto& segment = *(reader.begin());
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = termItr->postings(irs::flags());
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  auto query_doc3 = irs::iql::query_builder().build("name==C", std::locale::classic());
+  irs::store_writer writer0(store); // writer for generation #0
+
+  // modifications that should not apply because of call to clear()
+  {
+    ASSERT_TRUE(writer0.insert([doc2](irs::store_writer::document& doc)->bool {
+      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      return false;
+    }));
+    writer0.remove(*query_doc3.filter);
+  }
+
+  store.clear();
+
+  // check documents (empty)
+  {
+    auto reader = store.reader();
+    ASSERT_EQ(1, reader.size());
+    ASSERT_EQ(0, reader.docs_count());
+    ASSERT_EQ(0, reader.live_docs_count());
+  }
+
+  // add documents for generation one (matching removals from #0)
+  {
+    irs::store_writer writer(store);
+
+    ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
+      doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
+      doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+      return false;
+    }));
+    ASSERT_TRUE(writer.commit());
+  }
+
+  // check documents
+  {
+    auto reader = store.reader();
+    ASSERT_EQ(1, reader.size());
+    ASSERT_EQ(4, reader.docs_count()); // +1 for invalid doc
+    ASSERT_EQ(1, reader.live_docs_count());
+    irs::bytes_ref actual_value;
+    auto& segment = *(reader.begin());
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = termItr->postings(irs::flags());
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  ASSERT_FALSE(writer0.commit());
+
+  // check documents
+  {
+    auto reader = store.reader();
+    ASSERT_EQ(1, reader.size());
+    ASSERT_EQ(4, reader.docs_count()); // +1 for invalid doc
+    ASSERT_EQ(1, reader.live_docs_count());
+    irs::bytes_ref actual_value;
+    auto& segment = *(reader.begin());
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = termItr->postings(irs::flags());
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_FALSE(docsItr->next());
+  }
+
+  // test with same midifications that did not apply before
+  {
+    irs::store_writer writer(store); // writer for generation #0
+
+    ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
+      doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
+      doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+      return false;
+    }));
+    writer.remove(std::move(query_doc3.filter));
+    ASSERT_TRUE(writer.commit());
+  }
+
+  // check documents
+  {
+    auto reader = store.reader();
+    ASSERT_EQ(1, reader.size());
+    ASSERT_EQ(5, reader.docs_count()); // +1 for invalid doc
+    ASSERT_EQ(1, reader.live_docs_count());
+    irs::bytes_ref actual_value;
+    auto& segment = *(reader.begin());
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = termItr->postings(irs::flags());
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_TRUE(values(docsItr->value(), actual_value));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
+    ASSERT_FALSE(docsItr->next());
   }
 }
 
@@ -4793,6 +4953,78 @@ TEST_F(transaction_store_tests, segment_flush) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
+    }
+  }
+
+  // validate doc_id reuse after flush
+  {
+    auto dir_writer = irs::index_writer::make(dir, codec, irs::OPEN_MODE::OM_CREATE);
+    irs::transaction_store store;
+
+    // rolled back insert
+    {
+      irs::store_writer writer(store);
+
+      ASSERT_TRUE(writer.insert([doc1](irs::store_writer::document& doc)->bool {
+        doc.insert(irs::action::index, doc1->indexed.begin(), doc1->indexed.end());
+        doc.insert(irs::action::store, doc1->stored.begin(), doc1->stored.end());
+        return false;
+      }));
+    }
+
+    // commited insert (after rolled back to be highest doc_id)
+    {
+      irs::store_writer writer(store);
+
+      ASSERT_TRUE(writer.insert([doc2](irs::store_writer::document& doc)->bool {
+        doc.insert(irs::action::index, doc2->indexed.begin(), doc2->indexed.end());
+        doc.insert(irs::action::store, doc2->stored.begin(), doc2->stored.end());
+        return false;
+      }));
+      ASSERT_TRUE(writer.commit());
+    }
+
+    // check intial docs count in store
+    {
+      auto reader = store.reader();
+      ASSERT_EQ(1, reader.size());
+      ASSERT_EQ(3, reader.docs_count()); // +1 for invalid doc
+      ASSERT_EQ(1, reader.live_docs_count());
+    }
+
+    ASSERT_TRUE(store.flush(*dir_writer));
+
+    // validate doc_id count
+    {
+      auto reader = store.reader();
+      ASSERT_EQ(1, reader.size());
+      ASSERT_EQ(0, reader.docs_count());
+      ASSERT_EQ(0, reader.live_docs_count());
+    }
+
+    // instert two documents again
+    {
+      irs::store_writer writer(store);
+
+      ASSERT_TRUE(writer.insert([doc3](irs::store_writer::document& doc)->bool {
+        doc.insert(irs::action::index, doc3->indexed.begin(), doc3->indexed.end());
+        doc.insert(irs::action::store, doc3->stored.begin(), doc3->stored.end());
+        return false;
+      }));
+      ASSERT_TRUE(writer.insert([doc4](irs::store_writer::document& doc)->bool {
+        doc.insert(irs::action::index, doc4->indexed.begin(), doc4->indexed.end());
+        doc.insert(irs::action::store, doc4->stored.begin(), doc4->stored.end());
+        return false;
+      }));
+      ASSERT_TRUE(writer.commit());
+    }
+
+    // validate that flushed doc_ids get reused (total docs count does not grow)
+    {
+      auto reader = store.reader();
+      ASSERT_EQ(1, reader.size());
+      ASSERT_EQ(3, reader.docs_count()); // +1 for invalid doc (same as above)
+      ASSERT_EQ(2, reader.live_docs_count());
     }
   }
 }
