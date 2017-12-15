@@ -58,6 +58,8 @@ let optionsDocumentation = [
   '                   conjunction with `server`.',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
+  '   - `minPort`: minimum port number to use',
+  '   - `maxPort`: maximum port number to use',
   '   - `dbServers`: number of DB-Servers to use',
   '   - `coordinators`: number coordinators to use',
   '   - `agency`: if set to true agency tests are done',
