@@ -179,7 +179,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
     ExecContext const* exe = ExecContext::CURRENT;
     AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
     if (ServerState::instance()->isCoordinator()) {
-      std::unique_ptr<LogicalCollection> col =
+      std::shared_ptr<LogicalCollection> col =
           ClusterMethods::createCollectionOnCoordinator(
               collectionType, vocbase, infoSlice, false,
               createWaitsForSyncReplication, enforceReplicationFactor);
@@ -198,7 +198,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       }
       
       // reload otherwise collection might not be in yet
-      func(col.release());
+      func(col.get());
     } else {
       arangodb::LogicalCollection* col = vocbase->createCollection(infoSlice);
       TRI_ASSERT(col != nullptr);

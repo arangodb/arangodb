@@ -1933,28 +1933,6 @@ bool TRI_UpgradeDatabase(TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run upgrade check
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_CheckDatabaseVersion(TRI_vocbase_t* vocbase,
-                             v8::Handle<v8::Context> context) {
-  auto isolate = context->GetIsolate();
-  v8::HandleScope scope(isolate);
-  TRI_GET_GLOBALS();
-  TRI_vocbase_t* orig = v8g->_vocbase;
-  v8g->_vocbase = vocbase;
-
-  auto startupLoader = V8DealerFeature::DEALER->startupLoader();
-  v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(
-      isolate, isolate->GetCurrentContext(), "server/check-version.js");
-  int code = (int)TRI_ObjectToInt64(result);
-
-  v8g->_vocbase = orig;
-
-  return code;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check if we are in the enterprise edition
 ////////////////////////////////////////////////////////////////////////////////
 

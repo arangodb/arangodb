@@ -262,10 +262,6 @@ void RestCollectionHandler::handleCommandPost() {
         collectionRepresentation(builder, coll->name(), /*showProperties*/ true,
                                  /*showFigures*/ false, /*showCount*/ false,
                                  /*aggregateCount*/ false);
-        
-        if (!coll->isLocal()) { // FIXME: this is crappy design
-          delete coll;
-        }
       });
   
   if (res.ok()) {

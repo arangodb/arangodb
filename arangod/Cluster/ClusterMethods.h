@@ -273,7 +273,7 @@ class ClusterMethods {
   // Note that this returns a newly allocated object and ownership is
   // transferred
   // to the caller, which is expressed by the returned unique_ptr.
-  static std::unique_ptr<LogicalCollection> createCollectionOnCoordinator(
+  static std::shared_ptr<LogicalCollection> createCollectionOnCoordinator(
       TRI_col_type_e collectionType, TRI_vocbase_t* vocbase,
       arangodb::velocypack::Slice parameters,
       bool ignoreDistributeShardsLikeErrors,
@@ -287,7 +287,7 @@ class ClusterMethods {
 /// @brief Persist collection in Agency and trigger shard creation process
 ////////////////////////////////////////////////////////////////////////////////
 
-  static std::unique_ptr<LogicalCollection> persistCollectionInAgency(
+  static std::shared_ptr<LogicalCollection> persistCollectionInAgency(
     LogicalCollection* col, bool ignoreDistributeShardsLikeErrors,
     bool waitForSyncReplication, bool enforceReplicationFactor,
     arangodb::velocypack::Slice parameters);

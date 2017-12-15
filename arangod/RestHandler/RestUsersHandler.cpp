@@ -182,7 +182,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
   return RestStatus::DONE;
 }
 
-/// generate response for /_api/user/database?full=true/false
+/// generate response for /_api/user/<user>/database?full=true/false
 void RestUsersHandler::generateDatabaseResult(AuthInfo* authInfo,
                                               std::string const& user,
                                               bool full) {

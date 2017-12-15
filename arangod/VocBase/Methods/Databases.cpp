@@ -40,6 +40,7 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-dispatcher.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/Methods/Upgrade.h"
 
 #include <v8.h>
 #include <velocypack/Builder.h>
@@ -267,6 +268,8 @@ arangodb::Result Databases::create(std::string const& dbName,
             entry.grantCollection(dbName, "*", AuthLevel::RW);
           });
     }
+    
+    methods::Upgrade::database(UpgradeArgs{});
 
     V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
     if (ctx == nullptr) {
