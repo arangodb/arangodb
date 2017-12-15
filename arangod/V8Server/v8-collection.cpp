@@ -2017,9 +2017,9 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint64_t en = pregel::PregelFeature::instance()->createExecutionNumber();
   auto c = std::make_unique<pregel::Conductor>(en, vocbase, paramVertices, edgeColls,
                                                algorithm, paramBuilder.slice());
-  pregel::PregelFeature::instance()->addConductor(c.get(), en);
-  c->start();
-  c.release();
+  pregel::PregelFeature::instance()->addConductor(std::move(c), en);
+  TRI_ASSERT(pregel::PregelFeature::instance()->conductor(en));
+  pregel::PregelFeature::instance()->conductor(en)->start();
 
   TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(en)));
   TRI_V8_TRY_CATCH_END
