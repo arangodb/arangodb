@@ -1,6 +1,6 @@
 
 @startDocuBlock JSF_get_api_tasks
-@brief Retrieves  one currently active server task
+@brief Retrieves one currently active server task
 
 @RESTHEADER{GET /_api/tasks/{id}, Fetch one task with id}
 
@@ -8,7 +8,7 @@
 The id of the task to fetch.
 
 @RESTDESCRIPTION
-fetches one existing tasks on the server specified by *id*
+fetches one existing task on the server specified by *id*
 
 @RESTRETURNCODE{200}
 The requested task
@@ -17,16 +17,17 @@ The requested task
 
 Fetching a single task by its id
 @EXAMPLE_ARANGOSH_RUN{RestTasksListOne}
-    var url = "/_api/tasks/statistics-average-collector";
+    var url = "/_api/tasks";
+    var response = logCurlRequest('POST', url, JSON.stringify({ id: "testTask", command: "console.log('Hello from task!');", offset: 10000 }));
 
-    var response = logCurlRequest('GET', url);
+    var response = logCurlRequest('GET', url + "/testTask");
 
     assert(response.code === 200);
     logJsonResponse(response);
 
 @END_EXAMPLE_ARANGOSH_RUN
 
-trying to fetch a non-existing task
+Trying to fetch a non-existing task
 @EXAMPLE_ARANGOSH_RUN{RestTasksListNonExisting}
     var url = "/_api/tasks/non-existing-task";
 

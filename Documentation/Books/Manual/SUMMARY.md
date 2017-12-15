@@ -149,7 +149,7 @@
     * [Configuration](Administration/Arangosh/Configuration.md)
     # relocate file?
     * [Details](GettingStarted/Arangosh.md)
-  * [Arangoimp](Administration/Arangoimp.md)
+  * [Arangoimport](Administration/Arangoimport.md)
   * [Arangodump](Administration/Arangodump.md)
   * [Arangorestore](Administration/Arangorestore.md)
   * [Arangoexport](Administration/Arangoexport.md)
