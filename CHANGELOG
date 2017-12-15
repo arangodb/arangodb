@@ -1,6 +1,10 @@
 devel
 -----
 
+* Truncate in RocksDB will now do intermediate commits every 10.000 documents
+  if truncate fails or the server crashes during this operation all deletes
+  that have been commited so far are persisted.
+
 * UI: fixed disappearing of the navigation label in some case special case
 
 * fixed issue #3917: traversals with high maximal depth take extremely long
