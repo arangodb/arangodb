@@ -59,6 +59,8 @@ let optionsDocumentation = [
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
   '   - `iresearch`: if set to true enable the iResearch-related tests',
+  '   - `minPort`: minimum port number to use',
+  '   - `maxPort`: maximum port number to use',
   '   - `dbServers`: number of DB-Servers to use',
   '   - `coordinators`: number coordinators to use',
   '   - `agency`: if set to true agency tests are done',

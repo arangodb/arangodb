@@ -755,7 +755,7 @@ int StorageEngineMock::getViews(TRI_vocbase_t* vocbase, arangodb::velocypack::Bu
   return TRI_ERROR_INTERNAL;
 }
 
-arangodb::Result StorageEngineMock::handleSyncKeys(arangodb::DatabaseInitialSyncer&, arangodb::LogicalCollection*, std::string const&, std::string const&, std::string const&, TRI_voc_tick_t) {
+arangodb::Result StorageEngineMock::handleSyncKeys(arangodb::DatabaseInitialSyncer&, arangodb::LogicalCollection*, std::string const&) {
   TRI_ASSERT(false);
   return arangodb::Result();
 }
@@ -901,12 +901,12 @@ bool TransactionCollectionMock::isLocked(arangodb::AccessMode::Type type, int ne
   return lockType == type;
 }
 
-int TransactionCollectionMock::lock() {
+int TransactionCollectionMock::lockRecursive() {
   TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;
 }
 
-int TransactionCollectionMock::lock(arangodb::AccessMode::Type type, int nestingLevel) {
+int TransactionCollectionMock::lockRecursive(arangodb::AccessMode::Type type, int nestingLevel) {
   lockType = type;
 
   return TRI_ERROR_NO_ERROR;
@@ -919,7 +919,7 @@ void TransactionCollectionMock::release() {
   }
 }
 
-int TransactionCollectionMock::unlock(arangodb::AccessMode::Type type, int nestingLevel) {
+int TransactionCollectionMock::unlockRecursive(arangodb::AccessMode::Type type, int nestingLevel) {
   if (lockType != type) {
     return TRI_ERROR_BAD_PARAMETER;
   }

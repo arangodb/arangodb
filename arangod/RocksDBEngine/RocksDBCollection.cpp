@@ -1627,7 +1627,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 
     mdr.setManagedAfterStringUsage(documentId);
   } else {
-    LOG_TOPIC(ERR, Logger::FIXME)
+    LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
         << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();
@@ -1689,7 +1689,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 
     cb(documentId, VPackSlice(value.data()));
   } else {
-    LOG_TOPIC(ERR, Logger::FIXME)
+    LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
         << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();

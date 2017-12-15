@@ -122,7 +122,7 @@ std::shared_ptr<VPackBuilder> Ast::toVelocyPack(bool verbose) const {
   return builder;
 }
 
-/// @brief destroy the AST
+/// @brief add an operation to the AST
 void Ast::addOperation(AstNode* node) {
   TRI_ASSERT(_root != nullptr);
 
@@ -857,6 +857,7 @@ AstNode* Ast::createNodeValueInt(int64_t value) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_INT);
   node->setIntValue(value);
+  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
 
   return node;
 }
@@ -866,6 +867,7 @@ AstNode* Ast::createNodeValueDouble(double value) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_DOUBLE);
   node->setDoubleValue(value);
+  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
 
   return node;
 }
@@ -886,6 +888,7 @@ AstNode* Ast::createNodeValueString(char const* value, size_t length) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_STRING);
   node->setStringValue(value, length);
+  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
 
   return node;
 }
@@ -1264,13 +1267,13 @@ AstNode* Ast::createNodeShortestPath(
 }
 
 /// @brief create an AST function call node
-AstNode* Ast::createNodeFunctionCall(char const* functionName,
+AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
                                      AstNode const* arguments) {
   if (functionName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  auto normalized = normalizeFunctionName(functionName);
+  auto normalized = normalizeFunctionName(functionName, length);
 
   AstNode* node;
 
@@ -2963,7 +2966,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
         auto countArgs = createNodeArray();
         countArgs->addMember(createNodeValueString(arg->getStringValue(),
                                                    arg->getStringLength()));
-        return createNodeFunctionCall("COLLECTION_COUNT", countArgs);
+        return createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("COLLECTION_COUNT"), countArgs);
       }
     }
   } else if (func->name == "IS_NULL") {
@@ -3197,6 +3200,11 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
   }
 
   if (slice.isNumber()) {
+    if (slice.isSmallInt() || slice.isInt()) {
+      // integer value
+      return createNodeValueInt(slice.getInt());
+    }
+    // floating point value
     return createNodeValueDouble(slice.getNumber<double>());
   }
 
@@ -3411,10 +3419,10 @@ void Ast::traverseReadOnly(AstNode const* node,
 }
 
 /// @brief normalize a function name
-std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name) {
+std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name, size_t length) {
   TRI_ASSERT(name != nullptr);
 
-  std::string functionName(name);
+  std::string functionName(name, length);
   // convert name to upper case
   std::transform(functionName.begin(), functionName.end(), functionName.begin(), ::toupper);
 

@@ -707,7 +707,7 @@ MMFilesWalSlotInfo MMFilesLogfileManager::allocate(uint32_t size) {
 
 // allocate space in a logfile for later writing
 MMFilesWalSlotInfo MMFilesLogfileManager::allocate(TRI_voc_tick_t databaseId,
-                                  TRI_voc_cid_t collectionId, uint32_t size) {
+                                                   TRI_voc_cid_t collectionId, uint32_t size) {
   TRI_ASSERT(size >= sizeof(MMFilesMarker));
 
   if (!_allowWrites) {
@@ -771,10 +771,10 @@ MMFilesWalSlotInfoCopy MMFilesLogfileManager::allocateAndWrite(MMFilesWalMarker 
 // memcpy the data into the WAL region and return the filled slot
 // to the WAL logfile manager
 MMFilesWalSlotInfoCopy MMFilesLogfileManager::writeSlot(MMFilesWalSlotInfo& slotInfo,
-                                       MMFilesWalMarker const* marker,
-                                       bool wakeUpSynchronizer,
-                                       bool waitForSyncRequested,
-                                       bool waitUntilSyncDone) {
+                                                        MMFilesWalMarker const* marker,
+                                                        bool wakeUpSynchronizer,
+                                                        bool waitForSyncRequested,
+                                                        bool waitUntilSyncDone) {
   TRI_ASSERT(slotInfo.slot != nullptr);
   TRI_ASSERT(marker != nullptr);
 
@@ -2220,6 +2220,9 @@ int MMFilesLogfileManager::inspectLogfiles() {
 
   // update the tick with the max tick we found in the WAL
   TRI_UpdateTickServer(_recoverState->lastTick);
+
+  // return the lock here to ensure proper locking order
+  writeLocker.unlock();
 
   TRI_ASSERT(_slots != nullptr);
   // set the last ticks we found in existing logfile data

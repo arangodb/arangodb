@@ -1118,7 +1118,6 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
     int res;
     {
       READ_LOCKER(readLocker, _inventoryLock);
-
       res = dropCollectionWorker(collection, state, timeout);
     }
 

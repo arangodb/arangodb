@@ -167,6 +167,10 @@ void PregelFeature::cleanupAll() {
 void PregelFeature::handleConductorRequest(std::string const& path,
                                            VPackSlice const& body,
                                            VPackBuilder& outBuilder) {
+  if (SchedulerFeature::SCHEDULER->isStopping()) {
+    return; // shutdown ongoing
+  }
+  
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
   if (!sExecutionNum.isInteger()) {
     LOG_TOPIC(ERR, Logger::PREGEL) << "Invalid execution number";
@@ -191,37 +195,43 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
                                         std::string const& path,
                                         VPackSlice const& body,
                                         VPackBuilder& outBuilder) {
+  if (SchedulerFeature::SCHEDULER->isStopping()) {
+    return; // shutdown ongoing
+  }
+  
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
   if (!sExecutionNum.isInteger()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "Worker not found, invalid execution number");
   }
   uint64_t exeNum = sExecutionNum.getUInt();
-
+  std::shared_ptr<IWorker> w = Instance->worker(exeNum);
+  
   // create a new worker instance if necessary
-  if (path == Utils::startExecutionPath || path == Utils::startRecoveryPath) {
-    std::shared_ptr<IWorker> w = Instance->worker(exeNum);
+  if (path == Utils::startExecutionPath) {
+    if (w) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+                                     TRI_ERROR_INTERNAL,
+                                     "Worker with this execution number already exists.");
+    }
+    Instance->addWorker(AlgoRegistry::createWorker(vocbase, body), exeNum);
+    Instance->worker(exeNum)->setupWorker(); // will call conductor
+    return;
+  } else if (path == Utils::startRecoveryPath) {
     if (!w) {
       Instance->addWorker(AlgoRegistry::createWorker(vocbase, body), exeNum);
-    } else if (path == Utils::startExecutionPath) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL,
-          "Worker with this execution number already exists.");
     }
-    if (path == Utils::startRecoveryPath) {
-      w->startRecovery(body);
-    }
-  }
-  std::shared_ptr<IWorker> w = Instance->worker(exeNum);
-  if (!w) {
+    Instance->worker(exeNum)->startRecovery(body);
+    return;
+  } else if (!w) {
+    // any other call should have a working worker instance
     LOG_TOPIC(WARN, Logger::PREGEL) << "Handling " << path << "worker "
-                                    << exeNum << " does not exist";
-    THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_INTERNAL,
-        "Handling request %s, but worker %lld does not exist.", path.c_str(),
-        exeNum);
+    << exeNum << " does not exist";
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
+                                  "Handling request %s, but worker %lld does not exist.", path.c_str(),
+                                  exeNum);
   }
-
+  
   if (path == Utils::prepareGSSPath) {
     w->prepareGlobalStep(body, outBuilder);
   } else if (path == Utils::startGSSPath) {

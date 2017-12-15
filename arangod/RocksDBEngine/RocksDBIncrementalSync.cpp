@@ -350,10 +350,9 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 
 Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                              arangodb::LogicalCollection* col,
-                             std::string const& keysId, std::string const& cid,
-                             std::string const& collectionName, TRI_voc_tick_t maxTick) {
+                             std::string const& keysId) {
   std::string progress =
-      "collecting local keys for collection '" + collectionName + "'";
+      "collecting local keys for collection '" + col->name() + "'";
   syncer.setProgress(progress);
 
   if (syncer.checkAborted()) {
@@ -368,7 +367,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
   std::string url =
       baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize);
-  progress = "fetching remote keys chunks for collection '" + collectionName +
+  progress = "fetching remote keys chunks for collection '" + col->name() +
              "' from " + url;
   syncer.setProgress(progress);
   auto const headers = syncer.createHeaders();
@@ -451,9 +450,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           VPackSlice doc(mmdr.vpack());
           VPackSlice key = doc.get(StaticStrings::KeyString);
           if (key.compareString(lowKey.data(), lowKey.length()) < 0) {
-            trx.remove(collectionName, doc, options);
+            trx.remove(col->name(), doc, options);
           } else if (key.compareString(highKey.data(), highKey.length()) > 0) {
-            trx.remove(collectionName, doc, options);
+            trx.remove(col->name(), doc, options);
           }
         },
         UINT64_MAX);
@@ -499,7 +498,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       syncer.sendExtendBarrier();
 
       progress = "processing keys chunk " + std::to_string(currentChunkId) +
-                 " for collection '" + collectionName + "'";
+                 " for collection '" + col->name() + "'";
       syncer.setProgress(progress);
 
       // read remote chunk
@@ -538,7 +537,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
       if (cmp1 < 0) {
         // smaller values than lowKey mean they don't exist remotely
-        trx.remove(collectionName, key, options);
+        trx.remove(col->name(), key, options);
         return;
       } else if (cmp1 >= 0 && cmp2 <= 0) {
         // we only need to hash we are in the range
