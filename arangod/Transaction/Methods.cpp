@@ -820,9 +820,9 @@ OperationResult transaction::Methods::anyLocal(
   if (cid == 0) {
     throwCollectionNotFound(collectionName.c_str());
   }
-  
+
   pinData(cid);  // will throw when it fails
-  
+
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
@@ -831,7 +831,7 @@ OperationResult transaction::Methods::anyLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-  
+
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr, false);
@@ -847,7 +847,7 @@ OperationResult transaction::Methods::anyLocal(
       return OperationResult(res);
     }
   }
-  
+
   resultBuilder.close();
 
   return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
@@ -945,7 +945,7 @@ void transaction::Methods::invokeOnAllElements(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     THROW_ARANGO_EXCEPTION(lockResult);
   }
-  
+
   TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
   collection->invokeOnAllElements(this, callback);
@@ -1346,7 +1346,7 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
   // We usually assume that a server can process at least 2500 documents
   // per second (this is a low estimate), and use a low limit of 0.5s
   // and a high timeout of 120s
-  double timeout = static_cast<double>(count / 2500);
+  double timeout = count / 2500.0;
 
   // Really big documents need additional adjustment. Using total size
   // of all messages to handle worst case scenario of constrained resource
@@ -1355,7 +1355,7 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
 
   if (timeout < ReplicationTimeoutFeature::lowerLimit) {
     return ReplicationTimeoutFeature::lowerLimit * ReplicationTimeoutFeature::timeoutFactor;
-  } 
+  }
   return (std::min)(120.0, timeout) * ReplicationTimeoutFeature::timeoutFactor;
 }
 
@@ -1709,7 +1709,7 @@ OperationResult transaction::Methods::modifyLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-  
+
   VPackBuilder resultBuilder;  // building the complete result
   TRI_voc_tick_t maxTick = 0;
 
@@ -2227,7 +2227,7 @@ OperationResult transaction::Methods::allLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
 
   pinData(cid);  // will throw when it fails
-  
+
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
@@ -2257,7 +2257,7 @@ OperationResult transaction::Methods::allLocal(
       return OperationResult(res);
     }
   }
-  
+
   resultBuilder.close();
 
   return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
@@ -2323,7 +2323,7 @@ OperationResult transaction::Methods::truncateLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-  
+
   TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
   try {
@@ -2495,7 +2495,7 @@ OperationResult transaction::Methods::countLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-  
+
   TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
   uint64_t num = collection->numberDocuments(this);
