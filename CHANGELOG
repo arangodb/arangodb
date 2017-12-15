@@ -1,6 +1,15 @@
 v3.2.10 (2017-XX-XX)
 -------------------
 
+* fixed snapshots becoming potentially invalid after intermediate commits in 
+  the RocksDB engine
+
+* backport agency inquire API changes
+
+* fixed issue #3822: Field validation error in ArangoDB UI - Minor
+
+* UI: fixed disappearing of the navigation label in some cases
+
 * fixed issue #3640: limit in subquery
 
 * UI: fixed issue #3822: disabled name input field for system collections
