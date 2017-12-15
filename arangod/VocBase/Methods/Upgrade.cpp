@@ -48,14 +48,19 @@ UpgradeResult Upgrade::clusterBootstrap(TRI_vocbase_t* system) {
   // no actually used here
   uint32_t cc = Version::current();
   VersionResult vinfo = {VersionResult::VERSION_MATCH, cc, cc, {}};
+  uint32_t clusterFlag = Flags::CLUSTER_COORDINATOR_GLOBAL;
+  if (ServerState::instance()->isDBServer()) {
+    clusterFlag = Flags::CLUSTER_DB_SERVER_LOCAL;
+  }
+  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
+  
   VPackSlice params = VPackSlice::emptyObjectSlice();
-  return runTasks(system, vinfo, params, Flags::CLUSTER_COORDINATOR_GLOBAL,
+  return runTasks(system, vinfo, params, clusterFlag,
                   Upgrade::Flags::DATABASE_INIT);
 }
 /// corresponding to local-database.js
 UpgradeResult Upgrade::create(TRI_vocbase_t* vocbase,
-                              velocypack::Slice const& users) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
+                              VPackSlice const& users) {
   TRI_ASSERT(users.isArray());
 
   uint32_t clusterFlag = 0;

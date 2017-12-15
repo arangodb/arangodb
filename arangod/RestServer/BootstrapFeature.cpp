@@ -122,34 +122,18 @@ static void raceForClusterBootstrap() {
     }
     
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
-    VPackSlice const users = VPackSlice::emptyArraySlice();
-    methods::UpgradeResult upgradeRes = methods::Upgrade::create(vocbase, users);
+    auto upgradeRes = methods::Upgrade::clusterBootstrap(vocbase);
     if (upgradeRes.fail()) {
       LOG_TOPIC(ERR, Logger::STARTUP) << "Problems with cluster bootstrap, "
       << "marking as not successful.";
-      
-      
-      
       agency.removeValues(boostrapKey, false);
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
-    } // TODO else
-
-    VPackBuilder builder;
-    V8DealerFeature::DEALER->loadJavaScriptFileInDefaultContext(
-        vocbase, "server/bootstrap/cluster-bootstrap.js", &builder);
-
-    VPackSlice jsresult = builder.slice();
-    if (!jsresult.isTrue()) {
-      
-      if (!jsresult.isNone()) {
-        LOG_TOPIC(ERR, Logger::STARTUP) << "Returned value: "
-          << jsresult.toJson();
-      } else {
-        LOG_TOPIC(ERR, Logger::STARTUP) << "Empty returned value.";
-      }
-      
     }
+    
+    // become Foxxmater, ignore result
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "Write Foxxmaster";
+    agency.setValue("Current/Foxxmaster", b.slice(), 0);
     
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Creating the root user";
     AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
@@ -216,9 +200,15 @@ void BootstrapFeature::start() {
         }
       }
     } else if (ServerState::isDBServer(role)) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/bootstrap/db-server.js";
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running bootstrap";
       // only run the JavaScript in V8 context #0.
-      V8DealerFeature::DEALER->loadJavaScriptFileInDefaultContext(vocbase, "server/bootstrap/db-server.js", nullptr);
+      //V8DealerFeature::DEALER->loadJavaScriptFileInDefaultContext(vocbase, "server/bootstrap/db-server.js", nullptr);
+    
+      auto upgradeRes = methods::Upgrade::clusterBootstrap(vocbase);
+      if (upgradeRes.fail()) {
+        LOG_TOPIC(ERR, Logger::STARTUP) << "Problem during startup";
+      }
+    
     } else {
       TRI_ASSERT(false);
     }
@@ -263,7 +253,6 @@ void BootstrapFeature::start() {
       AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
     }
   }
-  
   
   if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
     // simon: is set to correct value in the heartbeat thread

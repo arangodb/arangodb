@@ -202,7 +202,7 @@ void UpgradeTasks::setupApps(TRI_vocbase_t* vocbase, VPackSlice const&) {
   createSystemCollection(vocbase, "_apps");
 }
 void UpgradeTasks::createAppsIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  createIndex(vocbase, "_jobs", Index::TRI_IDX_TYPE_HASH_INDEX, {"mount"},
+  createIndex(vocbase, "_apps", Index::TRI_IDX_TYPE_HASH_INDEX, {"mount"},
               /*unique*/ true, /*sparse*/ true);
 }
 void UpgradeTasks::setupAppBundles(TRI_vocbase_t* vocbase, VPackSlice const&) {

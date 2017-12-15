@@ -1904,35 +1904,6 @@ static void JS_AuthenticationEnabled(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run version check
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_UpgradeDatabase(TRI_vocbase_t* vocbase,
-                         v8::Handle<v8::Context> context) {
-  auto isolate = context->GetIsolate();
-
-  v8::HandleScope scope(isolate);
-  TRI_GET_GLOBALS();
-  TRI_vocbase_t* orig = v8g->_vocbase;
-  v8g->_vocbase = vocbase;
-
-  auto startupLoader = V8DealerFeature::DEALER->startupLoader();
-
-  v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(
-      isolate, isolate->GetCurrentContext(), "server/upgrade-database.js");
-
-  bool ok = TRI_ObjectToBoolean(result);
-
-  if (!ok) {
-    vocbase->setState(TRI_vocbase_t::State::FAILED_VERSION);
-  }
-
-  v8g->_vocbase = orig;
-
-  return ok;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check if we are in the enterprise edition
 ////////////////////////////////////////////////////////////////////////////////
 
