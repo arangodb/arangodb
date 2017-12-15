@@ -1,6 +1,8 @@
 v3.2.10 (2017-XX-XX)
 -------------------
 
+* UI: improved the behavior during collection creation in a cluster environment
+
 * fixed snapshots becoming potentially invalid after intermediate commits in 
   the RocksDB engine
 
