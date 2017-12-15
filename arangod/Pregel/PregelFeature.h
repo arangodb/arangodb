@@ -48,10 +48,10 @@ class PregelFeature final : public application_features::ApplicationFeature {
   void beginShutdown() override final;
 
   uint64_t createExecutionNumber();
-  void addConductor(Conductor* const exec, uint64_t executionNumber);
+  void addConductor(std::unique_ptr<Conductor>&&, uint64_t executionNumber);
   std::shared_ptr<Conductor> conductor(uint64_t executionNumber);
 
-  void addWorker(IWorker* const worker, uint64_t executionNumber);
+  void addWorker(std::unique_ptr<IWorker>&&, uint64_t executionNumber);
   std::shared_ptr<IWorker> worker(uint64_t executionNumber);
 
   void cleanupConductor(uint64_t executionNumber);

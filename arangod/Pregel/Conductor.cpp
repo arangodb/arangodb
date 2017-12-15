@@ -607,25 +607,30 @@ int Conductor::_initializeWorkers(std::string const& suffix,
 
     // only on single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
-      std::shared_ptr<IWorker> w =
-          PregelFeature::instance()->worker(_executionNumber);
-      if (!w) {
-        TRI_vocbase_t* vocbase = _vocbaseGuard.database();
-        std::unique_ptr<IWorker> w(AlgoRegistry::createWorker(vocbase, b.slice()));
-        TRI_ASSERT(w != nullptr);
-        PregelFeature::instance()->addWorker(w.get(), _executionNumber);
-        w.release()->setupWorker();
-      } else {
+      PregelFeature* feature = PregelFeature::instance();
+      
+      std::shared_ptr<IWorker> worker = feature->worker(_executionNumber);
+      if (worker) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-            "a worker with this execution number already exists.");
+                                       "a worker with this execution number already exists.");
       }
-      return TRI_ERROR_NO_ERROR;
+      
+      TRI_vocbase_t* vocbase = _vocbaseGuard.database();
+      auto created = AlgoRegistry::createWorker(vocbase, b.slice());
+      TRI_ASSERT(created.get() != nullptr);
+      PregelFeature::instance()->addWorker(std::move(created), _executionNumber);
+      worker = PregelFeature::instance()->worker(_executionNumber);
+      TRI_ASSERT (worker);
+      worker->setupWorker();
+      
+    } else {
+      auto body = std::make_shared<std::string const>(b.toJson());
+      requests.emplace_back("server:" + server, rest::RequestType::POST, path,
+                            body);
+      LOG_TOPIC(DEBUG, Logger::PREGEL) << "Initializing Server " << server;
     }
 
-    auto body = std::make_shared<std::string const>(b.toJson());
-    requests.emplace_back("server:" + server, rest::RequestType::POST, path,
-                          body);
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Initializing Server " << server;
+    return TRI_ERROR_NO_ERROR;
   }
 
   std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
