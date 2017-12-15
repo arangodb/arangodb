@@ -1456,7 +1456,7 @@ int IResearchView::insert(
   auto begin = batch.begin();
   auto const end = batch.end();
   FieldIterator body;
-  TRI_voc_rid_t rid;
+  TRI_voc_rid_t rid = 0; // initialize to an arbitary value to avoid compile warning
 
   // find first valid document
   while (!body.valid() && begin != end) {
