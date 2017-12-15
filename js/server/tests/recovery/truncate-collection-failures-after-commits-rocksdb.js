@@ -78,6 +78,14 @@ const recoverySuite = function () {
     },
 
     // Test that the HashIndex remains intact but empty.
+    testPrimaryIndex: () => {
+      let q = `FOR x IN @@c RETURN x._key`;
+      let res = db._query(q, {"@c": colName}).toArray();
+      assertEqual(res.length, 0);
+    },
+
+
+    // Test that the HashIndex remains intact but empty.
     testHashIndex: () => {
       let q = `FOR x IN @@c FILTER x.value == @i RETURN x`;
       for (let i = 0; i < 250; ++i) {
