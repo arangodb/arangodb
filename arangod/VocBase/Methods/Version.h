@@ -50,9 +50,9 @@ struct VersionResult {
   /// @brief status code
   StatusCode status;
   /// @brief current server version
-  uint32_t serverVersion;
+  uint64_t serverVersion;
   /// @brief version in VERSION file on disk
-  uint32_t databaseVersion;
+  uint64_t databaseVersion;
   /// @brief tasks that were executed
   std::map<std::string, bool> tasks;
 };
@@ -61,7 +61,7 @@ struct VersionResult {
 /// Replaces ugrade-database.js for good
 struct Version {
   /// @brief "(((major * 100) + minor) * 100) + patch"
-  static uint32_t current();
+  static uint64_t current();
   /// @brief read the VERSION file for a database
   static VersionResult check(TRI_vocbase_t*);
   /// @brief write a VERSION file including all tasks

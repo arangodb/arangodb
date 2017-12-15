@@ -23,6 +23,7 @@
 #include "Version.h"
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
+#include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -38,9 +39,9 @@
 using namespace arangodb;
 using namespace arangodb::methods;
 
-static uint32_t parseVersion(char const* str, size_t len) {
-  uint32_t result = 0;
-  uint32_t tmp = 0;
+static uint64_t parseVersion(char const* str, size_t len) {
+  uint64_t result = 0;
+  uint64_t tmp = 0;
   for (size_t i = 0; i < len; i++) {
     char c = str[i];
     if ('0' <= c && c <= '9') {
@@ -53,7 +54,7 @@ static uint32_t parseVersion(char const* str, size_t len) {
 }
 
 /// @brief "(((major * 100) + minor) * 100) + patch"
-uint32_t Version::current() {
+uint64_t Version::current() {
   return parseVersion(ARANGODB_VERSION, strlen(ARANGODB_VERSION));
 }
 
@@ -63,6 +64,7 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
 
   std::string versionFile = engine->versionFilename(vocbase->id());
   if (!basics::FileUtils::exists(versionFile)) {
+    sleep(5);
     LOG_TOPIC(WARN, Logger::STARTUP) << "VERSION file not found: "
                                      << versionFile;
     return VersionResult{VersionResult::NO_VERSION_FILE, 0, 0, {}};
@@ -74,7 +76,7 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
     return VersionResult{VersionResult::CANNOT_READ_VERSION_FILE, 0, 0, {}};
   }
 
-  uint32_t lastVersion = UINT32_MAX;
+  uint64_t lastVersion = UINT64_MAX;
   std::map<std::string, bool> tasks;
 
   try {
@@ -86,7 +88,7 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
       return VersionResult{VersionResult::CANNOT_PARSE_VERSION_FILE, 0, 0,
                            tasks};
     }
-    lastVersion = versionVals.get("version").getNumber<uint32_t>();
+    lastVersion = versionVals.get("version").getUInt();
     VPackSlice run = versionVals.get("tasks");
     if (!run.isNone() || !run.isObject()) {
       return VersionResult{VersionResult::CANNOT_PARSE_VERSION_FILE, 0, 0,
@@ -126,4 +128,28 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
   }
 
   return res;
+}
+
+void Version::write(TRI_vocbase_t* vocbase,
+                    std::map<std::string, bool> tasks) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  
+  std::string versionFile = engine->versionFilename(vocbase->id());
+  TRI_ASSERT(!versionFile.empty());
+  
+  VPackOptions opts;
+  opts.buildUnindexedObjects = true;
+  VPackBuilder builder(&opts);
+  builder.openObject(true);
+  builder.add("version", VPackValue(Version::current()));
+  builder.add("tasks", VPackValue(VPackValueType::Object));
+  for (auto const& task : tasks) {
+    builder.add(task.first, VPackValue(task.second));
+  }
+  builder.close();
+  builder.close();
+  
+  std::string json = builder.slice().toJson();
+  basics::FileUtils::spit(versionFile, json.c_str(), json.length());
 }

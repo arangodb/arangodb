@@ -441,7 +441,7 @@ arangodb::Result Indexes::createIndex(LogicalCollection* coll, Index::IndexType 
   VPackBuilder props;
   props.openObject();
   props.add("type", VPackValue(Index::oldtypeName(type)));
-  props.openArray();
+  props.add("fields", VPackValue(VPackValueType::Array));
   for (std::string const& field : fields) {
     props.add(VPackValue(field));
   }
@@ -451,7 +451,7 @@ arangodb::Result Indexes::createIndex(LogicalCollection* coll, Index::IndexType 
   props.close();
   
   VPackBuilder ignored;
-  return ensureIndexCoordinator(coll, props.slice(), true, ignored);
+  return ensureIndex(coll, props.slice(), true, ignored);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

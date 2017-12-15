@@ -103,6 +103,11 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   cluster->forceDisable();
 }
 
+void UpgradeFeature::prepare() {
+  // need to register tasks before creating any database
+  methods::Upgrade::registerTasks();
+}
+
 void UpgradeFeature::start() {
   auto init =
       ApplicationServer::getFeature<InitDatabaseFeature>("InitDatabase");
@@ -169,9 +174,7 @@ void UpgradeFeature::upgradeDatabase() {
     TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
     TRI_ASSERT(vocbase != nullptr);
     
-    VPackSlice const users = VPackSlice::emptyArraySlice();
-    methods::UpgradeResult res = methods::Upgrade::database(methods::UpgradeArgs{vocbase, users,
-                                                            /*isUpgrade*/_upgrade});
+    methods::UpgradeResult res = methods::Upgrade::startup(vocbase, _upgrade);
     if (res.fail()) {
       char const* typeName = "initialization";
       switch (res.type) {

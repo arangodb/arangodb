@@ -23,7 +23,9 @@
 #ifndef ARANGOD_VOC_BASE_API_UPGRADE_TASKS_H
 #define ARANGOD_VOC_BASE_API_UPGRADE_TASKS_H 1
 
-#include "VocBase/Methods/Upgrade.h"
+#include <velocypack/Slice.h>
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace methods {
@@ -31,22 +33,22 @@ namespace methods {
 /// Code to create and initialize databases
 /// Replaces ugrade-database.js for good
 struct UpgradeTasks {
-  static void setupGraphs(UpgradeArgs const&);
-  static void setupUsers(UpgradeArgs const&);
-  static void createUsersIndex(UpgradeArgs const&);
-  static void addDefaultUsers(UpgradeArgs const&);
-  static void updateUserModels(UpgradeArgs const&);
-  static void createModules(UpgradeArgs const&);
-  static void createRouting(UpgradeArgs const&);
-  static void insertRedirections(UpgradeArgs const&);
-  static void setupAqlFunctions(UpgradeArgs const&);
-  static void createFrontend(UpgradeArgs const&);
-  static void setupQueues(UpgradeArgs const&);
-  static void setupJobs(UpgradeArgs const&);
-  static void createJobsIndex(UpgradeArgs const&);
-  static void setupApps(UpgradeArgs const&);
-  static void createAppsIndex(UpgradeArgs const&);
-  static void setupAppBundles(UpgradeArgs const&);
+  static void setupGraphs(TRI_vocbase_t*, velocypack::Slice const&);
+  static void setupUsers(TRI_vocbase_t*, velocypack::Slice const&);
+  static void createUsersIndex(TRI_vocbase_t*, velocypack::Slice const&);
+  static void addDefaultUsers(TRI_vocbase_t*, velocypack::Slice const&);
+  static void updateUserModels(TRI_vocbase_t*, velocypack::Slice const&);
+  static void createModules(TRI_vocbase_t*, velocypack::Slice const&);
+  static void createRouting(TRI_vocbase_t*, velocypack::Slice const&);
+  static void insertRedirections(TRI_vocbase_t*, velocypack::Slice const&);
+  static void setupAqlFunctions(TRI_vocbase_t*, velocypack::Slice const&);
+  static void createFrontend(TRI_vocbase_t*, velocypack::Slice const&);
+  static void setupQueues(TRI_vocbase_t*, velocypack::Slice const&);
+  static void setupJobs(TRI_vocbase_t*, velocypack::Slice const&);
+  static void createJobsIndex(TRI_vocbase_t*, velocypack::Slice const&);
+  static void setupApps(TRI_vocbase_t*, velocypack::Slice const&);
+  static void createAppsIndex(TRI_vocbase_t*, velocypack::Slice const&);
+  static void setupAppBundles(TRI_vocbase_t*, velocypack::Slice const&);
 };
 }
 }
