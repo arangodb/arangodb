@@ -49,7 +49,7 @@
 
 #include <iostream>
 
-namespace {
+NS_LOCAL
 
 inline arangodb::iresearch::IResearchViewNode const& getViewNode(
     arangodb::iresearch::IResearchViewBlockBase const& block
@@ -75,10 +75,10 @@ inline arangodb::aql::RegisterId getRegister(
     : it->second.registerId;
   }
 
-}
+NS_END // NS_LOCAL
 
-namespace arangodb {
-namespace iresearch {
+NS_BEGIN(arangodb)
+NS_BEGIN(iresearch)
 
 using namespace arangodb::aql;
 
@@ -447,12 +447,10 @@ bool IResearchViewBlock::next(
         auto scoreRegs = curRegs;
 
         for (size_t i = 0; i < numSorts; ++i) {
-          struct AqlStringValueTraits { typedef char char_type; };
-
           res.setValue(
             pos,
             ++scoreRegs,
-            _order.to_string<AqlValue, AqlStringValueTraits>(_scrVal.c_str(), i)
+            _order.to_string<AqlValue, std::char_traits<char>>(_scrVal.c_str(), i)
           );
         }
       }
@@ -755,5 +753,9 @@ size_t IResearchViewOrderedBlock::skip(uint64_t limit) {
   return skipped;
 }
 
-} // iresearch
-} // arangodb
+NS_END // iresearch
+NS_END // arangodb
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
