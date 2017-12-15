@@ -1,6 +1,8 @@
 devel
 -----
 
+* UI: improved the behavior during collection creation in a cluster environment
+
 * UI: pressing the return key inside a select2 box no longer triggers the modals
   success function
 
