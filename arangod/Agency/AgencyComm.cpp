@@ -819,7 +819,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 
   AgencyOperation operation(key, AgencyValueOperationType::SET,
                             builder.slice());
-  operation._ttl = static_cast<uint32_t>(ttl);
+  operation._ttl = static_cast<uint64_t>(ttl);
   AgencyWriteTransaction transaction(operation);
 
   return sendTransactionWithFailover(transaction);
@@ -829,7 +829,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
                                       arangodb::velocypack::Slice const& slice,
                                       double ttl) {
   AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
-  operation._ttl = static_cast<uint32_t>(ttl);
+  operation._ttl = static_cast<uint64_t>(ttl);
   AgencyWriteTransaction transaction(operation);
 
   return sendTransactionWithFailover(transaction);
@@ -839,7 +839,7 @@ AgencyCommResult AgencyComm::setTransient(std::string const& key,
                                       arangodb::velocypack::Slice const& slice,
                                       double ttl) {
   AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
-  operation._ttl = static_cast<uint32_t>(ttl);
+  operation._ttl = static_cast<uint64_t>(ttl);
   AgencyTransientTransaction transaction(operation);
 
   return sendTransactionWithFailover(transaction);
@@ -938,7 +938,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   AgencyPrecondition precondition(key, AgencyPrecondition::Type::EMPTY,
                                   !prevExist);
   if (ttl >= 0.0) {
-    operation._ttl = static_cast<uint32_t>(ttl);
+    operation._ttl = static_cast<uint64_t>(ttl);
   }
 
   VPackBuilder preBuilder;
@@ -963,7 +963,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   AgencyPrecondition precondition(key, AgencyPrecondition::Type::VALUE,
                                   oldBuilder.slice());
   if (ttl >= 0.0) {
-    operation._ttl = static_cast<uint32_t>(ttl);
+    operation._ttl = static_cast<uint64_t>(ttl);
   }
 
   AgencyWriteTransaction transaction(operation, precondition);
