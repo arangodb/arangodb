@@ -605,8 +605,9 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     b.close();
     b.close();
 
-    // only on single server
+    // hack for singke serveronly on single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
+      TRI_ASSERT(vertexMap.size() == 1);
       PregelFeature* feature = PregelFeature::instance();
       
       std::shared_ptr<IWorker> worker = feature->worker(_executionNumber);
@@ -622,6 +623,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
       worker = PregelFeature::instance()->worker(_executionNumber);
       TRI_ASSERT (worker);
       worker->setupWorker();
+      return TRI_ERROR_NO_ERROR;
       
     } else {
       auto body = std::make_shared<std::string const>(b.toJson());
@@ -629,8 +631,6 @@ int Conductor::_initializeWorkers(std::string const& suffix,
                             body);
       LOG_TOPIC(DEBUG, Logger::PREGEL) << "Initializing Server " << server;
     }
-
-    return TRI_ERROR_NO_ERROR;
   }
 
   std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
