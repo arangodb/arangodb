@@ -719,7 +719,7 @@ void Constituent::run() {
             double diff = TRI_microtime() - _lastHeartbeatSeen;
             LOG_TOPIC(TRACE, Logger::AGENCY) << "last heartbeat: " << diff << "sec ago";
         
-            isTimeout = (static_cast<int32_t>(M * diff) > randTimeout);
+            isTimeout = (static_cast<int64_t>(M * diff) > randTimeout);
           }
         }
 
