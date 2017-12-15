@@ -27,6 +27,7 @@
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/IndexIterator.h"
+#include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Utils/OperationOptions.h"
@@ -35,8 +36,363 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
+#include "Transaction/Helpers.h"
+#include "Aql/AstNode.h"
 
 NS_LOCAL
+
+/// @brief hard-coded vector of the index attributes
+/// note that the attribute names must be hard-coded here to avoid an init-order
+/// fiasco with StaticStrings::FromString etc.
+std::vector<std::vector<arangodb::basics::AttributeName>> const IndexAttributes{
+  {arangodb::basics::AttributeName("_from", false)},
+  {arangodb::basics::AttributeName("_to", false)}
+};
+
+/// @brief add a single value node to the iterator's keys
+void handleValNode(
+    VPackBuilder* keys,
+    arangodb::aql::AstNode const* valNode
+) {
+  if (!valNode->isStringValue() || valNode->getStringLength() == 0) {
+    return;
+  }
+
+  keys->openObject();
+  keys->add(arangodb::StaticStrings::IndexEq,
+            VPackValuePair(valNode->getStringValue(),
+                           valNode->getStringLength(), VPackValueType::String));
+  keys->close();
+
+  TRI_IF_FAILURE("EdgeIndex::collectKeys") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+}
+
+class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
+ public:
+  typedef std::unordered_multimap<std::string, arangodb::LocalDocumentId> Map;
+
+  EdgeIndexIteratorMock(
+      arangodb::LogicalCollection* collection,
+      arangodb::transaction::Methods* trx,
+      arangodb::ManagedDocumentResult* mmdr,
+      arangodb::Index const* index,
+      Map const& map,
+      std::unique_ptr<VPackBuilder>&& keys
+  ) : IndexIterator(collection, trx, mmdr, index),
+      _map(map),
+      _begin(_map.end()),
+      _end(_map.end()),
+      _keys(std::move(keys)),
+      _keysIt(_keys->slice()) {
+  }
+
+  char const* typeName() const override {
+    return "edge-index-iterator-mock";
+  }
+
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) {
+    while (limit && _keysIt.valid()) {
+      while (_begin != _end) {
+        cb(_begin->second);
+        ++_begin;
+        --limit;
+      }
+
+      auto key = _keysIt.value();
+
+      if (key.isObject()) {
+        key = key.get(arangodb::StaticStrings::IndexEq);
+      }
+
+      std::tie(_begin, _end) = _map.equal_range(key.toString());
+
+      ++_keysIt;
+    }
+
+    return _begin != _end || _keysIt.valid();
+  }
+
+  void reset() override {
+    _keysIt.reset();
+  }
+
+ private:
+  Map const& _map;
+  Map::const_iterator _begin;
+  Map::const_iterator _end;
+  std::unique_ptr<VPackBuilder> _keys;
+  arangodb::velocypack::ArrayIterator _keysIt;
+}; // EdgeIndexIteratorMock
+
+class EdgeIndexMock final : public arangodb::Index {
+ public:
+  static std::shared_ptr<arangodb::Index> make(
+      TRI_idx_iid_t iid,
+      arangodb::LogicalCollection* collection,
+      arangodb::velocypack::Slice const& definition
+  ) {
+    auto const typeSlice = definition.get("type");
+
+    if (typeSlice.isNone()) {
+      return nullptr;
+    }
+
+    auto const type = arangodb::iresearch::getStringRef(typeSlice);
+
+    if (type != "edge") {
+      return nullptr;
+    }
+
+    return std::make_shared<EdgeIndexMock>(iid, collection);
+  }
+
+  IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }
+
+  char const* typeName() const override { return "edge"; }
+
+  bool allowExpansion() const override { return false; }
+
+  bool canBeDropped() const override { return false; }
+
+  bool isSorted() const override { return false; }
+
+  bool hasSelectivityEstimate() const override { return false; }
+
+  size_t memory() const override { return sizeof(EdgeIndexMock); }
+
+  bool hasBatchInsert() const override { return false; }
+
+  void load() override {}
+  void unload() override {}
+
+  void toVelocyPack(
+      VPackBuilder& builder,
+      bool withFigures,
+      bool forPersistence
+  ) const {
+    builder.openObject();
+    Index::toVelocyPack(builder, withFigures, forPersistence);
+    // hard-coded
+    builder.add("unique", VPackValue(false));
+    builder.add("sparse", VPackValue(false));
+    builder.close();
+  }
+
+  void toVelocyPackFigures(VPackBuilder& builder) const {
+    Index::toVelocyPackFigures(builder);
+
+    builder.add("from", VPackValue(VPackValueType::Object));
+    //_edgesFrom->appendToVelocyPack(builder);
+    builder.close();
+
+    builder.add("to", VPackValue(VPackValueType::Object));
+    //_edgesTo->appendToVelocyPack(builder);
+    builder.close();
+  }
+
+  arangodb::Result insert(
+      arangodb::transaction::Methods*,
+      arangodb::LocalDocumentId const& documentId,
+      arangodb::velocypack::Slice const& doc,
+      OperationMode
+  ) {
+    if (!doc.isObject()) {
+      return { TRI_ERROR_INTERNAL };
+    }
+
+    VPackSlice const fromValue(arangodb::transaction::helpers::extractFromFromDocument(doc));
+
+    if (!fromValue.isString()) {
+      return { TRI_ERROR_INTERNAL };
+    }
+
+    VPackSlice const toValue(arangodb::transaction::helpers::extractToFromDocument(doc));
+
+    if (!toValue.isString()) {
+      return { TRI_ERROR_INTERNAL };
+    }
+
+    _edgesFrom.emplace(fromValue.toString(), documentId);
+    _edgesTo.emplace(toValue.toString(), documentId);
+
+    return {}; // ok
+  }
+
+  arangodb::Result remove(
+      arangodb::transaction::Methods*,
+      arangodb::LocalDocumentId const&,
+      arangodb::velocypack::Slice const& doc,
+      OperationMode
+  ) {
+    if (!doc.isObject()) {
+      return { TRI_ERROR_INTERNAL };
+    }
+
+    VPackSlice const fromValue(arangodb::transaction::helpers::extractFromFromDocument(doc));
+
+    if (!fromValue.isString()) {
+      return { TRI_ERROR_INTERNAL };
+    }
+
+    VPackSlice const toValue(arangodb::transaction::helpers::extractToFromDocument(doc));
+
+    if (!toValue.isString()) {
+      return { TRI_ERROR_INTERNAL };
+    }
+
+    _edgesFrom.erase(fromValue.toString());
+    _edgesTo.erase(toValue.toString());
+
+    return {}; // ok
+  }
+
+  bool supportsFilterCondition(
+      arangodb::aql::AstNode const* node,
+      arangodb::aql::Variable const* reference,
+      size_t itemsInIndex,
+      size_t& estimatedItems,
+      double& estimatedCost
+  ) const {
+    arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
+
+    return matcher.matchOne(
+      this, node, reference, itemsInIndex, estimatedItems, estimatedCost
+    );
+  }
+
+  arangodb::IndexIterator* iteratorForCondition(
+      arangodb::transaction::Methods* trx,
+      arangodb::ManagedDocumentResult* mmdr,
+      arangodb::aql::AstNode const* node,
+      arangodb::aql::Variable const*,
+      bool
+  ) {
+    TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
+
+    TRI_ASSERT(node->numMembers() == 1);
+
+    auto comp = node->getMember(0);
+
+    // assume a.b == value
+    auto attrNode = comp->getMember(0);
+    auto valNode = comp->getMember(1);
+
+    if (attrNode->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // got value == a.b  -> flip sides
+      std::swap(attrNode, valNode);
+    }
+    TRI_ASSERT(attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+
+    if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      // a.b == value
+      return createEqIterator(trx, mmdr, attrNode, valNode);
+    }
+
+    if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      // a.b IN values
+      if (!valNode->isArray()) {
+        // a.b IN non-array
+        return new arangodb::EmptyIndexIterator(_collection, trx, mmdr, this);
+      }
+
+      return createInIterator(trx, mmdr, attrNode, valNode);
+    }
+
+    // operator type unsupported
+    return new arangodb::EmptyIndexIterator(_collection, trx, mmdr, this);
+  }
+
+  arangodb::aql::AstNode* specializeCondition(
+      arangodb::aql::AstNode* node,
+      arangodb::aql::Variable const* reference
+  ) const {
+    arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
+
+    return matcher.specializeOne(this, node, reference);
+  }
+
+  EdgeIndexMock(
+      TRI_idx_iid_t iid,
+      arangodb::LogicalCollection* collection
+  ) : arangodb::Index(iid, collection, {
+        {arangodb::basics::AttributeName(arangodb::StaticStrings::FromString, false)},
+        {arangodb::basics::AttributeName(arangodb::StaticStrings::ToString, false)}
+      }, true, false) {
+  }
+
+  arangodb::IndexIterator* createEqIterator(
+      arangodb::transaction::Methods* trx,
+      arangodb::ManagedDocumentResult* mmdr,
+      arangodb::aql::AstNode const* attrNode,
+      arangodb::aql::AstNode const* valNode) const {
+    // lease builder, but immediately pass it to the unique_ptr so we don't leak
+    arangodb::transaction::BuilderLeaser builder(trx);
+    std::unique_ptr<VPackBuilder> keys(builder.steal());
+    keys->openArray();
+
+    handleValNode(keys.get(), valNode);
+    TRI_IF_FAILURE("EdgeIndex::noIterator") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    keys->close();
+
+    // _from or _to?
+    bool const isFrom = (attrNode->stringEquals(arangodb::StaticStrings::FromString));
+
+    return new EdgeIndexIteratorMock(
+      _collection,
+      trx,
+      mmdr,
+      this,
+      isFrom ? _edgesFrom : _edgesTo,
+      std::move(keys)
+    );
+  }
+
+  /// @brief create the iterator
+  arangodb::IndexIterator* createInIterator(
+      arangodb::transaction::Methods* trx,
+      arangodb::ManagedDocumentResult* mmdr,
+      arangodb::aql::AstNode const* attrNode,
+      arangodb::aql::AstNode const* valNode) const {
+    // lease builder, but immediately pass it to the unique_ptr so we don't leak
+    arangodb::transaction::BuilderLeaser builder(trx);
+    std::unique_ptr<VPackBuilder> keys(builder.steal());
+    keys->openArray();
+
+    size_t const n = valNode->numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      handleValNode(keys.get(), valNode->getMemberUnchecked(i));
+      TRI_IF_FAILURE("EdgeIndex::iteratorValNodes") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
+
+    TRI_IF_FAILURE("EdgeIndex::noIterator") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    keys->close();
+
+    // _from or _to?
+    bool const isFrom = (attrNode->stringEquals(arangodb::StaticStrings::FromString));
+
+    return new EdgeIndexIteratorMock(
+      _collection,
+      trx,
+      mmdr,
+      this,
+      isFrom ? _edgesFrom : _edgesTo,
+      std::move(keys)
+    );
+  }
+
+  /// @brief the hash table for _from
+  EdgeIndexIteratorMock::Map _edgesFrom;
+  /// @brief the hash table for _to
+  EdgeIndexIteratorMock::Map _edgesTo;
+}; // EdgeIndexMock
 
 class IndexMock final : public arangodb::Index {
  public:
@@ -185,11 +541,20 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
     }
   }
 
-  auto index = arangodb::iresearch::IResearchMMFilesLink::make(++lastId, _logicalCollection, info);
+  auto const type = arangodb::iresearch::getStringRef(info.get("type"));
+
+  std::shared_ptr<arangodb::Index> index;
+
+  if (type == "edge") {
+    index = EdgeIndexMock::make(++lastId, _logicalCollection, info);
+  } else if (type == "iresearch") {
+    index = arangodb::iresearch::IResearchMMFilesLink::make(++lastId, _logicalCollection, info);
+  }
 
   if (!index) {
     return nullptr;
   }
+
 
   boost::asio::io_service ioService;
   auto poster = [&ioService](std::function<void()> fn) -> void {
