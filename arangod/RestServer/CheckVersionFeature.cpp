@@ -80,10 +80,6 @@ void CheckVersionFeature::validateOptions(
   DatabaseFeature* databaseFeature =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
   databaseFeature->enableCheckVersion();
-
-  /*V8DealerFeature* v8dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  v8dealer->setMaximumContexts(1);*/
 }
 
 void CheckVersionFeature::start() {

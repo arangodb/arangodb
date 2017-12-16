@@ -30,11 +30,6 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-globals.h"
-#include "V8Server/V8Context.h"
-#include "V8Server/V8DealerFeature.h"
-#include "V8Server/v8-vocbase.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/Methods/Upgrade.h"
 

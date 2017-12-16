@@ -585,30 +585,6 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
   }
 }
 
-void V8DealerFeature::loadJavaScriptFileInDefaultContext(TRI_vocbase_t* vocbase,
-    std::string const& file, VPackBuilder* builder) {
-  // find context with id 0
-    
-  alreadyLockedInThread = true;
-  TRI_DEFER(alreadyLockedInThread = false);
-
-  // enter context #0
-  V8Context* context = enterContext(vocbase, true, 0);
-  
-  if (context == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not acquire default V8 context");
-  }
-
-  TRI_DEFER(exitContext(context));
-  
-  try {
-    loadJavaScriptFileInternal(file, context, builder);
-  } catch (...) {
-    LOG_TOPIC(WARN, Logger::V8) << "caught exception while executing JavaScript file '" << file << "' in context #" << context->id();
-    throw;
-  }
-}
-
 void V8DealerFeature::startGarbageCollection() {
   TRI_ASSERT(_gcThread == nullptr);
   _gcThread.reset(new V8GcThread(this));
