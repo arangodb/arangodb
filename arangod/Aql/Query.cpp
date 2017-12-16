@@ -95,10 +95,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _killed(false),
       _isModificationQuery(false) {
     
-  if (_queryString.empty()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_EMPTY);
-  }
-
   AqlFeature* aql = AqlFeature::lease();
   if (aql == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
