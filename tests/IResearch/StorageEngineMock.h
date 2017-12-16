@@ -156,6 +156,8 @@ class StorageEngineMock: public arangodb::StorageEngine {
   std::vector<std::unique_ptr<TRI_vocbase_t>> vocbases; // must allocate on heap because TRI_vocbase_t does not have a 'noexcept' move constructor
 
   StorageEngineMock();
+  double minimumSyncReplicationTimeout() const override { return 1.0; }
+
   virtual arangodb::WalAccess const* walAccess() const override;
   virtual bool useRawDocumentPointers() override { return false; }
   virtual void addAqlFunctions() override;
