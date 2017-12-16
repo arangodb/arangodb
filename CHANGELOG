@@ -1,6 +1,8 @@
 devel
 -----
 
+* UI: improved the behavior during collection creation in a cluster environment
+
 * UI: fixed broken foxx configuration keys. Some valid configuration values
   could not be edited via the ui.
 
