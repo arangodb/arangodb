@@ -23,6 +23,7 @@
 
 #include "Syncer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
@@ -67,6 +68,8 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
       _barrierTtl(600),
       _barrierUpdateTime(0),
       _isChildSyncer(false) {
+  
+  MUTEX_LOCKER(locker, _clientMutex);
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
   if (!_configuration._database.empty()) {
@@ -124,6 +127,7 @@ Syncer::~Syncer() {
   } catch (...) {
   }
 
+  MUTEX_LOCKER(locker, _clientMutex);
   // shutdown everything properly
   delete _client;
   delete _connection;
@@ -267,6 +271,14 @@ Result Syncer::sendRemoveBarrier() {
   }
 }
 
+void Syncer::setAborted(bool value) {
+  MUTEX_LOCKER(locker, _clientMutex);
+
+  if (_client != nullptr) {
+    _client->setAborted(value);
+  }
+}
+
 /// @brief extract the collection id from VelocyPack
 TRI_voc_cid_t Syncer::getCid(VPackSlice const& slice) const {
   return VelocyPackHelper::extractIdValue(slice);
@@ -368,11 +380,15 @@ arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
     return nullptr;
   }
   // extract optional "cname"
-  return getCollectionByIdOrName(vocbase, cid, getCName(slice));
+  std::string cname = getCName(slice);
+  if (cname.empty()) {
+    cname = arangodb::basics::VelocyPackHelper::getStringValue(slice, "name", "");
+  }
+  return getCollectionByIdOrName(vocbase, cid, cname);
 }
 
 Result Syncer::applyCollectionDumpMarker(
-    transaction::Methods& trx, std::string const& collectionName,
+    transaction::Methods& trx, LogicalCollection* coll,
     TRI_replication_operation_e type, VPackSlice const& old, 
     VPackSlice const& slice) {
 
@@ -380,7 +396,7 @@ Result Syncer::applyCollectionDumpMarker(
     decltype(_configuration._lockTimeoutRetries) tries = 0;
 
     while (true) {
-      Result res = applyCollectionDumpMarkerInternal(trx, collectionName, type, old, slice);
+      Result res = applyCollectionDumpMarkerInternal(trx, coll, type, old, slice);
 
       if (res.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
         return res;
@@ -396,13 +412,13 @@ Result Syncer::applyCollectionDumpMarker(
       // retry
     }
   } else {
-    return applyCollectionDumpMarkerInternal(trx, collectionName, type, old, slice);
+    return applyCollectionDumpMarkerInternal(trx, coll, type, old, slice);
   }
 }
 
 /// @brief apply the data from a collection dump or the continuous log
 Result Syncer::applyCollectionDumpMarkerInternal(
-      transaction::Methods& trx, std::string const& collectionName,
+      transaction::Methods& trx, LogicalCollection* coll,
       TRI_replication_operation_e type, VPackSlice const& old, 
       VPackSlice const& slice) {
 
@@ -419,11 +435,11 @@ Result Syncer::applyCollectionDumpMarkerInternal(
 
     try {
       // try insert first
-      OperationResult opRes = trx.insert(collectionName, slice, options); 
+      OperationResult opRes = trx.insert(coll->name(), slice, options); 
 
       if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
         // perform an update
-        opRes = trx.replace(collectionName, slice, options); 
+        opRes = trx.replace(coll->name(), slice, options);
       }
    
       return Result(opRes.result);
@@ -446,7 +462,7 @@ Result Syncer::applyCollectionDumpMarkerInternal(
       if (!_leaderId.empty()) {
         options.isSynchronousReplicationFrom = _leaderId;
       }
-      OperationResult opRes = trx.remove(collectionName, old, options);
+      OperationResult opRes = trx.remove(coll->name(), old, options);
 
       if (opRes.ok() ||
           opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
@@ -505,6 +521,10 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
       }
       SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
                                       guard.collection()->cid(), AccessMode::Type::WRITE);
+    
+      // already locked by guard above
+      trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+
       Result res = trx.begin();
       if (!res.ok()) {
         return res;
@@ -604,6 +624,9 @@ Result Syncer::createIndex(VPackSlice const& slice) {
 
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
                                     guard.collection()->cid(), AccessMode::Type::WRITE);
+
+    // already locked by guard above
+    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
     Result res = trx.begin();
 
@@ -834,8 +857,8 @@ Result Syncer::buildHttpError(SimpleHttpResult* response, std::string const& url
 bool Syncer::simulate32Client() const {
   TRI_ASSERT(!_masterInfo._endpoint.empty() && _masterInfo._serverId != 0 &&
              _masterInfo._majorVersion != 0);
-  bool is33 = _masterInfo._majorVersion >= 3 &&
-              _masterInfo._minorVersion >= 3;
+  bool is33 = (_masterInfo._majorVersion > 3 ||
+               (_masterInfo._majorVersion >= 3 && _masterInfo._minorVersion >= 3));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // allows us to test the old replication API
   return !is33 || _configuration._force32mode;

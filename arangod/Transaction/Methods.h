@@ -67,6 +67,7 @@ class BaseEngine;
 namespace transaction {
 class CallbackInvoker;
 class Context;
+struct Options;
 }
 
 /// @brief forward declarations
@@ -80,8 +81,6 @@ class TransactionState;
 class TransactionCollection;
 
 namespace transaction {
-struct Options;
-  
 #ifdef USE_ENTERPRISE
   #define ENTERPRISE_VIRT virtual
 #else
@@ -497,10 +496,10 @@ class Methods {
   Result addCollection(std::string const&, AccessMode::Type);
 
   /// @brief read- or write-lock a collection
-  ENTERPRISE_VIRT Result lock(TRI_voc_cid_t, AccessMode::Type);
+  ENTERPRISE_VIRT Result lockRecursive(TRI_voc_cid_t, AccessMode::Type);
 
   /// @brief read- or write-unlock a collection
-  ENTERPRISE_VIRT Result unlock(TRI_voc_cid_t, AccessMode::Type);
+  ENTERPRISE_VIRT Result unlockRecursive(TRI_voc_cid_t, AccessMode::Type);
 
  private:
 

@@ -83,6 +83,11 @@ class RocksDBTransactionState final : public TransactionState {
   uint64_t numInserts() const { return _numInserts; }
   uint64_t numUpdates() const { return _numUpdates; }
   uint64_t numRemoves() const { return _numRemoves; }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  uint64_t numIntermediateCommits() const {
+    return _numIntermediateCommits;
+  };
+#endif
 
   /// @brief reset previous log state after a rollback to safepoint
   void resetLogState() { _lastUsedCollection = 0; }
@@ -112,10 +117,10 @@ class RocksDBTransactionState final : public TransactionState {
   RocksDBMethods* rocksdbMethods();
 
   /// @brief insert a snapshot into a (not yet started) transaction.
-  ///        Only ever valid on a read-only transaction
+  ///        Only ever valid on a trx in CREATED state
   void donateSnapshot(rocksdb::Snapshot const* snap);
-  /// @brief steal snapshot of this transaction. Only ever valid on a
-  ///        read-only transaction
+  /// @brief steal snapshot of this transaction.
+  /// Does not work on a single operation
   rocksdb::Snapshot const* stealSnapshot();
   
   /// @brief Rocksdb sequence number of snapshot. Works while trx
@@ -147,13 +152,18 @@ class RocksDBTransactionState final : public TransactionState {
   void returnRocksDBKey(RocksDBKey* key);
 
  private:
+  /// @brief create a new rocksdb transaction
   void createTransaction();
+  /// @brief delete transaction, snapshot and cache trx
+  void cleanupTransaction() noexcept;
+  /// @brief internally commit a transaction
   arangodb::Result internalCommit();
+  /// @brief check sizes and call internalCommit if too big
   void checkIntermediateCommit(uint64_t newSize);
 
  private:
   /// @brief rocksdb transaction may be null for read only transactions
-  std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
+  rocksdb::Transaction* _rocksTransaction;
   /// @brief rocksdb snapshot, is null if _rocksTransaction is set
   rocksdb::Snapshot const* _snapshot;
   /// @brief write options used
@@ -178,6 +188,7 @@ class RocksDBTransactionState final : public TransactionState {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// store the number of log entries in WAL
   uint64_t _numLogdata = 0;
+  uint64_t _numIntermediateCommits = 0;
 #endif
   SmallVector<RocksDBKey*, 32>::allocator_type::arena_type _arena;
   SmallVector<RocksDBKey*, 32> _keys;

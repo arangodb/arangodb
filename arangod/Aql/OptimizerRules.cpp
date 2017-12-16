@@ -226,7 +226,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
 
     auto args = ast->createNodeArray();
     args->addMember(originalArg);
-    auto sorted = ast->createNodeFunctionCall("SORTED_UNIQUE", args);
+    auto sorted = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args);
 
     auto outVar = ast->variables()->createTemporaryVariable();
     ExecutionNode* calculationNode = nullptr;
@@ -4840,10 +4840,10 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
     args->addMember(info.range);
     auto lessValue = ast->createNodeValueBool(info.lessgreaterequal);
     args->addMember(lessValue);
-    cond = ast->createNodeFunctionCall("WITHIN", args);
+    cond = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("WITHIN"), args);
   } else {
     // NEAR
-    cond = ast->createNodeFunctionCall("NEAR", args);
+    cond = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("NEAR"), args);
   }
 
   TRI_ASSERT(cond != nullptr);
@@ -4883,13 +4883,14 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info) {
     // other child effectively deleting the filter condition.
     AstNode* modified = ast->traverseAndModify(
         newNode->expression()->nodeForModification(),
-        [&done](AstNode* node, void* data) {
+        [&done, &info](AstNode* node, void* data) {
           if (done) {
             return node;
           }
           if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
             for (std::size_t i = 0; i < node->numMembers(); i++) {
-              if (isGeoFilterExpression(node->getMemberUnchecked(i), node)) {
+              if (node == info.expressionNode &&
+                  isGeoFilterExpression(node->getMemberUnchecked(i), node)) {
                 done = true;
                 //select the other node - not the member containing the error message
                 return node->getMemberUnchecked(i ? 0 : 1);

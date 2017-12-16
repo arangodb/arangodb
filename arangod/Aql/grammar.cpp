@@ -3260,7 +3260,7 @@ yyreduce:
 #line 1116 "Aql/grammar.y" /* yacc.c:1646  */
     {
       auto list = static_cast<AstNode const*>(parser->popStack());
-      (yyval.node) = parser->ast()->createNodeFunctionCall("LIKE", list);
+      (yyval.node) = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), list);
     }
 #line 3266 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
@@ -3415,7 +3415,7 @@ yyreduce:
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-2].node));
       arguments->addMember((yyvsp[0].node));
-      (yyval.node) = parser->ast()->createNodeFunctionCall("LIKE", arguments);
+      (yyval.node) = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), arguments);
     }
 #line 3421 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
@@ -3426,7 +3426,7 @@ yyreduce:
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-2].node));
       arguments->addMember((yyvsp[0].node));
-      (yyval.node) = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments);
+      (yyval.node) = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments);
     }
 #line 3432 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
@@ -3437,7 +3437,7 @@ yyreduce:
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-2].node));
       arguments->addMember((yyvsp[0].node));
-      AstNode* node = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments);
+      AstNode* node = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments);
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, node);
     }
 #line 3444 "Aql/grammar.cpp" /* yacc.c:1646  */

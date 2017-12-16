@@ -957,7 +957,7 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       allowDropSystem = TRI_ObjectToBoolean(args[0]);
     }
   }
-  
+ 
   Result res = methods::Collections::drop(vocbase, collection,
                                           allowDropSystem, timeout);
   if (res.fail()) {
@@ -2467,14 +2467,14 @@ static void JS_StatusVocbaseCol(
       std::shared_ptr<LogicalCollection> const ci =
           ClusterInfo::instance()->getCollection(databaseName,
                                                  collection->cid_as_string());
-      TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->getStatusLocked()));
+      TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->status()));
     } catch (...) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)TRI_VOC_COL_STATUS_DELETED));
     }
   }
   // intentionally falls through
-
-  TRI_vocbase_col_status_e status = collection->getStatusLocked();
+  
+  TRI_vocbase_col_status_e status = collection->status();
 
   TRI_V8_RETURN(v8::Number::New(isolate, (int)status));
   TRI_V8_TRY_CATCH_END
