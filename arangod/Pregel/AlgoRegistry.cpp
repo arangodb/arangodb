@@ -75,12 +75,12 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
 }
 
 template <typename V, typename E, typename M>
-IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase,
+std::unique_ptr<IWorker> AlgoRegistry::createWorker(TRI_vocbase_t* vocbase,
                                     Algorithm<V, E, M>* algo, VPackSlice body) {
-  return new Worker<V, E, M>(vocbase, algo, body);
+  return std::make_unique<Worker<V, E, M>>(vocbase, algo, body);
 }
 
-IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
+std::unique_ptr<IWorker> AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
   VPackSlice algoSlice = body.get(Utils::algorithmKey);
   if (!algoSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
