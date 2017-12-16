@@ -36,6 +36,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryValue-test.cpp
     IResearch/IResearchQueryJoin-test.cpp
     IResearch/IResearchQueryAggregate-test.cpp
+    IResearch/IResearchQueryTraversal-test.cpp
     IResearch/ExpressionFilter-test.cpp
     IResearch/StorageEngineMock.cpp
     IResearch/ExpressionContextMock.cpp

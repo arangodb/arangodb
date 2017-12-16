@@ -660,13 +660,6 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
   documents.emplace_back(std::move(builder), true);
   arangodb::LocalDocumentId docId(documents.size()); // always > 0
 
-  auto const insertedDoc = documents.back().first.slice();
-  auto const keySlice = arangodb::transaction::helpers::extractKeyFromDocument(insertedDoc);
-
-  if (!keySlice.isNone() && keySlice.isString()) {
-    keyToDoc.emplace(arangodb::StringRef(keySlice), docId);
-  }
-
   result.setUnmanaged(documents.back().first.data(), docId);
 
   for (auto& index : _indexes) {
@@ -739,25 +732,29 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
 arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*, arangodb::StringRef const& key, arangodb::ManagedDocumentResult& result, bool) {
   before();
 
-  auto const it = keyToDoc.find(key);
+  for (size_t i = documents.size(); i; --i) {
+    auto& entry = documents[i - 1];
 
-  if (it == keyToDoc.end()) {
-    return TRI_ERROR_INTERNAL;
+    if (!entry.second) {
+      continue; // removed document
+    }
+
+    auto& doc = entry.first;
+    auto const keySlice = doc.slice().get(arangodb::StaticStrings::KeyString);
+
+    if (!keySlice.isString()) {
+      continue;
+    }
+
+    arangodb::StringRef const docKey(keySlice);
+
+    if (key == docKey) {
+      result.setUnmanaged(doc.data(), arangodb::LocalDocumentId(i));
+      return arangodb::Result(TRI_ERROR_NO_ERROR);
+    }
   }
 
-  auto const docId = it->second;
-
-  if (docId > documents.size()) {
-    return false;
-  }
-
-  auto const doc = documents[docId - 1]; // 'docId' always > 0
-
-  arangodb::velocypack::Slice sl(doc.first.data());
-
-  result.setUnmanaged(doc.first.data(), docId);
-
-  return TRI_ERROR_NO_ERROR;
+  return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
 arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*, arangodb::velocypack::Slice const& key, arangodb::ManagedDocumentResult& result, bool) {
