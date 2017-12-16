@@ -201,9 +201,7 @@ void BootstrapFeature::start() {
       }
     } else if (ServerState::isDBServer(role)) {
       LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running bootstrap";
-      // only run the JavaScript in V8 context #0.
-      //V8DealerFeature::DEALER->loadJavaScriptFileInDefaultContext(vocbase, "server/bootstrap/db-server.js", nullptr);
-    
+
       auto upgradeRes = methods::Upgrade::clusterBootstrap(vocbase);
       if (upgradeRes.fail()) {
         LOG_TOPIC(ERR, Logger::STARTUP) << "Problem during startup";

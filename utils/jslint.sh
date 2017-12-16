@@ -30,7 +30,6 @@ if [ "x$@" == "x" ] ; then
     ./js/common/modules/jsunity.js \
     ./js/client/client.js \
     ./js/server/server.js \
-    ./js/server/upgrade-database.js \
     \
   "
   if [ -d ./enterprise ] ; then
