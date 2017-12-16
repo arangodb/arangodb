@@ -98,11 +98,13 @@ void UpgradeTasks::setupUsers(TRI_vocbase_t* vocbase, VPackSlice const&) {
   createSystemCollection(vocbase, "_users");
 }
 void UpgradeTasks::createUsersIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
+  TRI_ASSERT(vocbase->isSystem());
   createIndex(vocbase, "_users", Index::TRI_IDX_TYPE_HASH_INDEX, {"user"},
               /*unique*/ true, /*sparse*/ true);
 }
 void UpgradeTasks::addDefaultUsers(TRI_vocbase_t* vocbase,
                                    VPackSlice const& params) {
+  TRI_ASSERT(!vocbase->isSystem());
   TRI_ASSERT(params.isObject());
   VPackSlice users = params.get("users");
   if (!users.isArray()) {
@@ -129,6 +131,7 @@ void UpgradeTasks::addDefaultUsers(TRI_vocbase_t* vocbase,
   }
 }
 void UpgradeTasks::updateUserModels(TRI_vocbase_t* vocbase, VPackSlice const&) {
+  TRI_ASSERT(vocbase->isSystem());
   // TODO isn't this done on the fly ?
 }
 void UpgradeTasks::createModules(TRI_vocbase_t* vocbase, VPackSlice const& s) {

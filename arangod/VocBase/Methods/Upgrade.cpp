@@ -45,8 +45,7 @@ std::vector<Upgrade::Task> Upgrade::_tasks;
 
 /// corresponding to cluster-bootstrap.js
 UpgradeResult Upgrade::clusterBootstrap(TRI_vocbase_t* system) {
-  // no actually used here
-  uint32_t cc = Version::current();
+  uint32_t cc = Version::current(); // not actually used here
   VersionResult vinfo = {VersionResult::VERSION_MATCH, cc, cc, {}};
   uint32_t clusterFlag = Flags::CLUSTER_COORDINATOR_GLOBAL;
   if (ServerState::instance()->isDBServer()) {
@@ -58,8 +57,9 @@ UpgradeResult Upgrade::clusterBootstrap(TRI_vocbase_t* system) {
   return runTasks(system, vinfo, params, clusterFlag,
                   Upgrade::Flags::DATABASE_INIT);
 }
+
 /// corresponding to local-database.js
-UpgradeResult Upgrade::create(TRI_vocbase_t* vocbase,
+UpgradeResult Upgrade::createDB(TRI_vocbase_t* vocbase,
                               VPackSlice const& users) {
   TRI_ASSERT(users.isArray());
 
@@ -85,7 +85,7 @@ UpgradeResult Upgrade::create(TRI_vocbase_t* vocbase,
   params.add("users", users);
   params.close();
 
-  // no actually used here
+  // will write version file with this number
   uint32_t cc = Version::current();
   VersionResult vinfo = {VersionResult::VERSION_MATCH, cc, cc, {}};
   return runTasks(vocbase, vinfo, params.slice(), clusterFlag,
@@ -97,6 +97,7 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t* vocbase, bool upgrade) {
   if (ServerState::instance()->isSingleServer()) {
     clusterFlag = Flags::CLUSTER_NONE;
   }
+  uint32_t dbflag = upgrade ? Flags::DATABASE_UPGRADE : Flags::DATABASE_INIT;
 
   VersionResult vinfo = Version::check(vocbase);
   if (vinfo.status == VersionResult::DOWNGRADE_NEEDED) {
@@ -139,14 +140,14 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t* vocbase, bool upgrade) {
       case VersionResult::CANNOT_READ_VERSION_FILE:
       case VersionResult::NO_SERVER_VERSION: {
         std::string msg =
-            std::string("error during") + (upgrade ? "upgrade" : "startup");
+            std::string("error during ") + (upgrade ? "upgrade" : "startup");
         return UpgradeResult(TRI_ERROR_INTERNAL, msg, vinfo.status);
       }
       case VersionResult::NO_VERSION_FILE:
+        LOG_TOPIC(DEBUG, Logger::STARTUP) << "No VERSION file found";
         if (upgrade) {
-          LOG_TOPIC(FATAL, Logger::STARTUP)
-              << "Cannot upgrade without VERSION file";
-          return UpgradeResult(TRI_ERROR_INTERNAL, vinfo.status);
+          // VERSION file does not exist, we are running on a new database
+          dbflag = DATABASE_INIT;
         }
         break;
       default:
@@ -154,7 +155,9 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t* vocbase, bool upgrade) {
     }
   }
 
-  uint32_t dbflag = upgrade ? Flags::DATABASE_UPGRADE : Flags::DATABASE_INIT;
+  // should not do anything on VERSION_MATCH, and init the database
+  // with all tasks if they were not executed yet. Tasks not listed
+  // in the "tasks" attribute will be executed automatically
   VPackSlice const params = VPackSlice::emptyObjectSlice();
   return runTasks(vocbase, vinfo, params, clusterFlag, dbflag);
 }
@@ -253,9 +256,11 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t* vocbase,
   TRI_ASSERT(vocbase != nullptr);
   TRI_ASSERT(clusterFlag != 0 && dbFlag != 0);
   TRI_ASSERT(!_tasks.empty()); // forgot to call registerTask!!
-
+  // needs to run in superuser scope, otherwise we get errors
+  ExecContextScope scope(ExecContext::superuser());
+  // only local should actually write a VERSION file
   bool isLocal = clusterFlag == CLUSTER_NONE || clusterFlag == CLUSTER_LOCAL;
-
+  
   // execute all tasks
   for (Task const& t : _tasks) {
     // check for system database

@@ -48,6 +48,7 @@ static uint64_t parseVersion(char const* str, size_t len) {
       tmp = tmp * 10 + static_cast<size_t>(c - '0');
     } else if (c == '.') {
       result = result * 100 + tmp;
+      tmp = 0;
     }  // ignore other characters
   }
   return result + tmp;
@@ -83,13 +84,14 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
         velocypack::Parser::fromJson(versionInfo);
     VPackSlice versionVals = parsed->slice();
     if (!versionVals.isObject() || !versionVals.get("version").isNumber()) {
-      LOG_TOPIC(ERR, Logger::STARTUP) << "Invalud VERSION file " << versionInfo;
+      LOG_TOPIC(ERR, Logger::STARTUP) << "Cannot parse VERSION file " << versionInfo;
       return VersionResult{VersionResult::CANNOT_PARSE_VERSION_FILE, 0, 0,
                            tasks};
     }
     lastVersion = versionVals.get("version").getUInt();
     VPackSlice run = versionVals.get("tasks");
-    if (!run.isNone() || !run.isObject()) {
+    if (run.isNone() || !run.isObject()) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << "Invalid VERSION file " << versionInfo;
       return VersionResult{VersionResult::CANNOT_PARSE_VERSION_FILE, 0, 0,
                            tasks};
     }

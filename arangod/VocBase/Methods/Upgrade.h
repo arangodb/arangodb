@@ -36,6 +36,7 @@ class UpgradeFeature;
 namespace methods {
 
 struct UpgradeResult : Result {
+  UpgradeResult() : Result(), type(VersionResult::INVALID) {}
   UpgradeResult(int err, VersionResult::StatusCode s) : Result(err), type(s) {}
   UpgradeResult(int err, std::string const& msg, VersionResult::StatusCode s)
       : Result(err, msg), type(s) {}
@@ -79,7 +80,7 @@ struct Upgrade {
   static UpgradeResult clusterBootstrap(TRI_vocbase_t* system);
   /// @brief create a database
   /// corresponding to local-database.js
-  static UpgradeResult create(TRI_vocbase_t*, velocypack::Slice const&);
+  static UpgradeResult createDB(TRI_vocbase_t*, velocypack::Slice const&);
   /// @brief executed on startup
   /// @param upgrade  Perform an actual upgrade
   /// Corresponds to upgrade-database.js

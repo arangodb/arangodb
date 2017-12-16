@@ -38,6 +38,7 @@ namespace methods {
 /// Originally from js/server/database-version.js
 struct VersionResult {
   enum StatusCode : int {
+    INVALID = 0,
     VERSION_MATCH = 1,
     UPGRADE_NEEDED = 2,
     DOWNGRADE_NEEDED = 3,

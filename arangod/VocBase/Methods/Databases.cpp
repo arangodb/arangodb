@@ -213,6 +213,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     return Result(TRI_ERROR_INTERNAL);
   }
 
+  UpgradeResult upgradeRes;
   if (ServerState::instance()->isCoordinator()) {
     if (!TRI_vocbase_t::IsAllowedName(false, dbName)) {
       return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
@@ -271,44 +272,11 @@ arangodb::Result Databases::create(std::string const& dbName,
     }
 
     TRI_ASSERT(sanitizedUsers.slice().isArray());
-    UpgradeResult upgradeRes =
-        methods::Upgrade::create(vocbase, sanitizedUsers.slice());
-    if (upgradeRes.ok()) {
-      TRI_ExpireFoxxQueueDatabaseCache(databaseFeature->systemDatabase());
-    } else {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Could not create database "
-                                    << upgradeRes.errorMessage();
-    }
-    return upgradeRes;
+    upgradeRes = methods::Upgrade::createDB(vocbase, sanitizedUsers.slice());
 
-    /*V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
-    if (ctx == nullptr) {
-      return Result(TRI_ERROR_INTERNAL, "could not acquire V8 context");
-    }
-    TRI_DEFER(V8DealerFeature::DEALER->exitContext(ctx));
-    v8::Isolate* isolate = ctx->_isolate;
-    v8::HandleScope scope(isolate);
-    TRI_GET_GLOBALS();
-
-    // now run upgrade and copy users into context
-    v8::Handle<v8::Object> userVar = v8::Object::New(ctx->_isolate);
-    userVar->Set(TRI_V8_ASCII_STRING(isolate, "users"),
-                 TRI_VPackToV8(isolate, sanitizedUsers.slice()));
-    isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING(isolate, "UPGRADE_ARGS"), userVar);
-
-    // initalize database
-    bool allowUseDatabase = v8g->_allowUseDatabase;
-    v8g->_allowUseDatabase = true;
-    // execute script
-    V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
-        isolate, isolate->GetCurrentContext(),
-        "server/bootstrap/coordinator-database.js");
-    v8g->_allowUseDatabase = allowUseDatabase;*/
-
-  } else {
-    // options for database (currently only allows setting "id" for testing
-    // purposes)
+  } else { // Single, DBServer, Agency
+    // options for database (currently only allows setting "id"
+    // for testing purposes)
     TRI_voc_tick_t id = 0;
     if (options.hasKey("id")) {
       id = options.get("id").getUInt();
@@ -333,67 +301,23 @@ arangodb::Result Databases::create(std::string const& dbName,
           });
     }
 
-    UpgradeResult upgradeRes =
-        methods::Upgrade::create(vocbase, sanitizedUsers.slice());
-    if (upgradeRes.ok()) {
-      TRI_ExpireFoxxQueueDatabaseCache(databaseFeature->systemDatabase());
-    } else {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Could not create database "
-                                    << upgradeRes.errorMessage();
-    }
+    upgradeRes = methods::Upgrade::createDB(vocbase, sanitizedUsers.slice());
+  }
+  
+  if (upgradeRes.fail()) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "Could not create database "
+    << upgradeRes.errorMessage();
     return upgradeRes;
-
-    /*V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
-    if (ctx == nullptr) {
-      return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
+  }
+  
+  // Entirely Foxx related:
+  if (ServerState::instance()->isSingleServerOrCoordinator()) {
+    try {
+      TRI_ExpireFoxxQueueDatabaseCache(databaseFeature->systemDatabase());
+    } catch(...) {
+      // it is of no real importance if cache invalidation fails, because
+      // the cache entry has a ttl
     }
-    TRI_DEFER(V8DealerFeature::DEALER->exitContext(ctx));
-    v8::Isolate* isolate = ctx->_isolate;
-    v8::HandleScope scope(isolate);
-
-    // copy users into context
-    TRI_ASSERT(sanitizedUsers.slice().isArray());
-    v8::Handle<v8::Object> userVar = v8::Object::New(ctx->_isolate);
-    userVar->Set(TRI_V8_ASCII_STRING(isolate, "users"),
-                 TRI_VPackToV8(isolate, sanitizedUsers.slice()));
-    isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING(isolate, "UPGRADE_ARGS"), userVar);
-
-    // switch databases
-    {
-      TRI_GET_GLOBALS();
-      TRI_vocbase_t* orig = v8g->_vocbase;
-      TRI_ASSERT(orig != nullptr);
-
-      v8g->_vocbase = vocbase;
-
-      // initalize database
-      try {
-        V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
-            isolate, isolate->GetCurrentContext(),
-            "server/bootstrap/local-database.js");
-        if (v8g->_vocbase == vocbase) {
-          // decrease the reference-counter only if we are coming back with the
-          // same database
-          vocbase->release();
-        }
-
-        // and switch back
-        v8g->_vocbase = orig;
-      } catch (...) {
-        if (v8g->_vocbase == vocbase) {
-          // decrease the reference-counter only if we are coming back with the
-          // same database
-          vocbase->release();
-        }
-
-        // and switch back
-        v8g->_vocbase = orig;
-
-        return Result(TRI_ERROR_INTERNAL,
-                      "Could not execute local-database.js");
-      }
-    }*/
   }
 
   return Result();
