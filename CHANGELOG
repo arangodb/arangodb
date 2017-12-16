@@ -1,6 +1,9 @@
 devel
 -----
 
+* UI: fixed broken foxx configuration keys. Some valid configuration values
+  could not be edited via the ui.
+
 * UI: pressing the return key inside a select2 box no longer triggers the modals
   success function
 
