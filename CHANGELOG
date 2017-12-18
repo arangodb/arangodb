@@ -3,6 +3,10 @@ v3.2.10 (2017-XX-XX)
 
 * UI: improved the behavior during collection creation in a cluster environment
 
+* UI: the graph viewer backend now picks one random start vertex of the
+  first 1000 documents instead of calling any(). The implementation of
+  any is known to scale bad on huge collections with rocksdb.
+
 * fixed snapshots becoming potentially invalid after intermediate commits in 
   the RocksDB engine
 
