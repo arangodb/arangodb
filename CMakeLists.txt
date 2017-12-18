@@ -766,7 +766,7 @@ endif()
 # IResearch
 # ------------------------------------------------------------------------------
 
-option(USE_IRESEARCH ON)
+option(USE_IRESEARCH OFF)
 
 if(USE_IRESEARCH)
   add_definitions("-DUSE_IRESEARCH=1")
