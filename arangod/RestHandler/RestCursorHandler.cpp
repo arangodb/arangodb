@@ -112,6 +112,10 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   auto options = std::make_shared<VPackBuilder>(buildOptions(slice));
   VPackValueLength l;
   char const* queryString = querySlice.getString(l);
+  
+  if (l == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_EMPTY);
+  }
 
   arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString(queryString, static_cast<size_t>(l)),
                              bindVarsBuilder, options,
