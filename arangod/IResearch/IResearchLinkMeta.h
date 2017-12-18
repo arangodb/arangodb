@@ -72,7 +72,7 @@ struct IResearchLinkMeta {
     bool _includeAllFields;
     bool _nestListValues;
     bool _tokenizers;
-    Mask(bool mask = false) noexcept;
+    explicit Mask(bool mask = false) noexcept;
   };
 
   typedef UnorderedRefKeyMap<char, UniqueHeapInstance<IResearchLinkMeta>> Fields;

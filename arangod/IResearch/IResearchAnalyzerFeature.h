@@ -79,7 +79,7 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     uint64_t _refCount; // number of references held to this pool across reboots
     irs::string_ref _type; // IResearch analyzer name
 
-    AnalyzerPool(irs::string_ref const& name);
+    explicit AnalyzerPool(irs::string_ref const& name);
     bool init(
       irs::string_ref const& type,
       irs::string_ref const& properties,
@@ -88,7 +88,9 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     void setKey(irs::string_ref const& type);
   };
 
-  IResearchAnalyzerFeature(application_features::ApplicationServer* server);
+  explicit IResearchAnalyzerFeature(
+    application_features::ApplicationServer* server
+  );
 
   std::pair<AnalyzerPool::ptr, bool> emplace(
     irs::string_ref const& name,

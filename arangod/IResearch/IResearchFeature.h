@@ -36,7 +36,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
 
   static std::string const& name();
 
-  IResearchFeature(application_features::ApplicationServer* server);
+  explicit IResearchFeature(application_features::ApplicationServer* server);
 
   void beginShutdown() override;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;

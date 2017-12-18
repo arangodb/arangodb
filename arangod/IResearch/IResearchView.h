@@ -82,7 +82,7 @@ struct IResearchLinkMeta;
 struct AsyncValid {
   irs::async_utils::read_write_mutex _mutex; // read-lock to prevent flag modification
   bool _valid; // do not need atomic because need to hold lock anyway
-  AsyncValid(bool valid): _valid(valid) {}
+  explicit AsyncValid(bool valid): _valid(valid) {}
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,7 +122,7 @@ class CompoundReader final : public irs::index_reader {
 
   class IteratorImpl final : public irs::index_reader::reader_iterator_impl {
    public:
-    IteratorImpl(SubReadersType::const_iterator const& itr)
+    explicit IteratorImpl(SubReadersType::const_iterator const& itr)
       : _itr(itr) {
     }
 
@@ -334,7 +334,10 @@ class IResearchView final: public arangodb::ViewImplementation,
       size_t _intervalStep;
 
       std::shared_ptr<irs::index_writer::consolidation_policy_t> _policy;
-      PolicyState(size_t intervalStep, std::shared_ptr<irs::index_writer::consolidation_policy_t> policy);
+      PolicyState(
+        size_t intervalStep,
+        const std::shared_ptr<irs::index_writer::consolidation_policy_t>& policy
+      );
     };
 
     size_t _cleanupIntervalCount;
@@ -342,7 +345,7 @@ class IResearchView final: public arangodb::ViewImplementation,
     std::vector<PolicyState> _consolidationPolicies;
 
     SyncState() noexcept;
-    SyncState(IResearchViewMeta::CommitMeta const& meta);
+    explicit SyncState(IResearchViewMeta::CommitMeta const& meta);
   };
 
   struct TidStore {

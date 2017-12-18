@@ -64,7 +64,7 @@ std::vector<arangodb::iresearch::IResearchSort> buildSort(
         node = node->getMember(0);
       }
 
-      if (NODE_TYPE_REFERENCE == node->type) {
+      if (node && NODE_TYPE_REFERENCE == node->type) {
         var = reinterpret_cast<Variable const*>(node->getData());
       }
     } else {

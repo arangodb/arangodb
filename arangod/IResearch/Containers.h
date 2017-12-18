@@ -186,7 +186,8 @@ class UnorderedRefKeyMap:
     friend UnorderedRefKeyMap;
     typename MapType::const_iterator _itr;
 
-    ConstIterator(typename MapType::const_iterator const& itr): _itr(itr) {}
+    explicit ConstIterator(typename MapType::const_iterator const& itr)
+      : _itr(itr) {}
   };
 
   class Iterator {
@@ -214,7 +215,7 @@ class UnorderedRefKeyMap:
     friend UnorderedRefKeyMap;
     typename MapType::iterator _itr;
 
-    Iterator(typename MapType::iterator const& itr): _itr(itr) {}
+    explicit Iterator(typename MapType::iterator const& itr): _itr(itr) {}
   };
 
   UnorderedRefKeyMap() {}

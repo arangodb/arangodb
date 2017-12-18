@@ -111,7 +111,7 @@ struct IResearchViewMeta {
     bool _locale;
     bool _threadsMaxIdle;
     bool _threadsMaxTotal;
-    Mask(bool mask = false) noexcept;
+    explicit Mask(bool mask = false) noexcept;
   };
 
   std::unordered_set<TRI_voc_cid_t> _collections; // known collection IDs having links to this view

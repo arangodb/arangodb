@@ -228,7 +228,7 @@ void ensureConfigCollection(TRI_vocbase_t& vocbase) {
       vocbase.createCollection(arangodb::velocypack::Parser::fromJson(json)->slice());
     } catch(arangodb::basics::Exception& e) {
       if (TRI_ERROR_ARANGO_DUPLICATE_NAME != e.code()) {
-        throw e;
+        throw;
       }
     }
   }

@@ -323,7 +323,7 @@ arangodb::Result updateLinks(
       arangodb::iresearch::IResearchLink const* _link = nullptr;
       size_t _linkDefinitionsOffset;
       bool _valid = true;
-      State(size_t collectionsToLockOffset)
+      explicit State(size_t collectionsToLockOffset)
         : State(collectionsToLockOffset, std::numeric_limits<size_t>::max()) {}
       State(size_t collectionsToLockOffset, size_t linkDefinitionsOffset)
         : _collectionsToLockOffset(collectionsToLockOffset), _linkDefinitionsOffset(linkDefinitionsOffset) {}
@@ -670,7 +670,7 @@ IResearchView::MemoryStore::MemoryStore() {
 
 IResearchView::SyncState::PolicyState::PolicyState(
     size_t intervalStep,
-    std::shared_ptr<irs::index_writer::consolidation_policy_t> policy
+    const std::shared_ptr<irs::index_writer::consolidation_policy_t>& policy
 ): _intervalCount(0), _intervalStep(intervalStep), _policy(policy) {
 }
 
@@ -825,7 +825,7 @@ IResearchView::IResearchView(
         _commitIntervalMsecRemainder(std::numeric_limits<size_t>::max()),
         _commitTimeoutMsec(0) {
       }
-      State(IResearchViewMeta::CommitMeta const& meta)
+      explicit State(IResearchViewMeta::CommitMeta const& meta)
         : SyncState(meta),
           _asyncMetaRevision(0), // '0' differs from IResearchView constructor above
           _commitIntervalMsecRemainder(std::numeric_limits<size_t>::max()),
