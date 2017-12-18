@@ -702,7 +702,7 @@ void Constituent::run() {
         LOG_TOPIC(TRACE, Logger::AGENCY)
           << "Random timeout: " << randTimeout << ", wait: " << randWait;
 
-        if (randWait > 0.0) {
+        if (randWait > 0) {
           CONDITION_LOCKER(guardv, _cv);
           _cv.wait(randWait);
         }
