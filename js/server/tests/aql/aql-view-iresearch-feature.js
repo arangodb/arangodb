@@ -1,3 +1,6 @@
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertUndefined, assertEqual, assertTrue, assertFalse, AQL_EXECUTE */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -43,7 +46,7 @@ function iResearchFeatureAqlTestSuite () {
     testDefaultAnalyzers : function() {
       // invalid
       {
-        var result = AQL_EXECUTE(
+        let result = AQL_EXECUTE(
           "RETURN TOKENS('a quick brown fox jumps', 'invalid')",
           null,
           { }
@@ -54,7 +57,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_de
       {
-        var result = AQL_EXECUTE(
+        let result = AQL_EXECUTE(
           "RETURN TOKENS('a quick brown fox jumps', 'text_de')",
           null,
           { }
@@ -67,7 +70,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_en
       {
-        var result = AQL_EXECUTE(
+        let result = AQL_EXECUTE(
           "RETURN TOKENS('a quick brown fox jumps', 'text_en')",
           null,
           { }
@@ -80,7 +83,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_es
       {
-        var result = AQL_EXECUTE(
+        let result = AQL_EXECUTE(
           "RETURN TOKENS('a quick brown fox jumps', 'text_es')",
           null,
           { }
@@ -93,7 +96,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_fi
       {
-        var result = AQL_EXECUTE(
+        let result = AQL_EXECUTE(
           "RETURN TOKENS('a quick brown fox jumps', 'text_fi')",
           null,
           { }
@@ -106,7 +109,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_fr
       {
-        var result = AQL_EXECUTE(
+        let result = AQL_EXECUTE(
           "RETURN TOKENS('a quick brown fox jumps', 'text_fr')",
           null,
           { }
@@ -119,7 +122,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_it
       {
-        var result = AQL_EXECUTE(
+        let result = AQL_EXECUTE(
           "RETURN TOKENS('a quick brown fox jumps', 'text_it')",
           null,
           { }
@@ -132,7 +135,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_nl
       {
-        var result = AQL_EXECUTE(
+        let result = AQL_EXECUTE(
           "RETURN TOKENS('a quick brown fox jumps', 'text_nl')",
           null,
           { }
@@ -145,7 +148,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_no
       {
-        var result = AQL_EXECUTE(
+        let result = AQL_EXECUTE(
           "RETURN TOKENS('a quick brown fox jumps', 'text_no')",
           null,
           { }
@@ -158,7 +161,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_pt
       {
-        var result = AQL_EXECUTE(
+        let result = AQL_EXECUTE(
           "RETURN TOKENS('a quick brown fox jumps', 'text_pt')",
           null,
           { }
@@ -171,7 +174,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_ru
       {
-        var result = AQL_EXECUTE(
+        let result = AQL_EXECUTE(
           "RETURN TOKENS('a quick brown fox jumps', 'text_ru')",
           null,
           { }
@@ -184,7 +187,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_sv
       {
-        var result = AQL_EXECUTE(
+        let result = AQL_EXECUTE(
           "RETURN TOKENS('a quick brown fox jumps', 'text_sv')",
           null,
           { }
@@ -197,7 +200,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_zh (codepoints)
       {
-        var result = AQL_EXECUTE(
+        let result = AQL_EXECUTE(
            "RETURN TOKENS('ArangoDB \u662F\u4E00\u4E2A\u591A\u6A21\u578B\u6570\u636E\u5E93\u3002', 'text_zh')",
           null,
           { }
@@ -211,7 +214,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // text_zh (unicode)
       {
-        var result = AQL_EXECUTE(
+        let result = AQL_EXECUTE(
           "RETURN TOKENS('ArangoDB 是一个多模型数据库。', 'text_zh')",
           null,
           { }
