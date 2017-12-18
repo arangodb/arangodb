@@ -1,0 +1,14 @@
+[
+  {"name":"A","value":1},
+  {"name":"B","value":100},
+  {"name":"C","value":1000},
+  {"name":"D","value":10000},
+  {"name":"E","value":10000.123},
+  {"name":"F","value":10000.456},
+  {"name":"G","value":10005},
+  {"name":"H","value":20007},
+  {"name":"I","value":-30000},
+  {"name":"K","value":-10004},
+  {"name":"L","value":-123},
+  {"name":"M","value":-456}
+]

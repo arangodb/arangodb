@@ -26,6 +26,12 @@
 using namespace arangodb;
 using namespace arangodb::velocypack;
 
+namespace arangodb {
+namespace rest {
+class RestHandler;
+}
+}
+   
 void WorkMonitor::run() { TRI_ASSERT(false); }
 
 bool WorkMonitor::cancelAql(WorkDescription* desc) {
@@ -52,4 +58,16 @@ void WorkMonitor::clearAllHandlers() {
 bool WorkMonitor::clearWorkDescriptions() {
   TRI_ASSERT(false);
   return false;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  HandlerWorkStack
+// -----------------------------------------------------------------------------
+HandlerWorkStack::HandlerWorkStack(std::shared_ptr<arangodb::rest::RestHandler> handler)
+  : _handler(handler) {
+  TRI_ASSERT(false);
+}
+
+HandlerWorkStack::~HandlerWorkStack() {
+  TRI_ASSERT(false);
 }

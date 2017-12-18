@@ -49,6 +49,8 @@ cluster-init*/**
 p/
 
 core
+!3rdParty/iresearch/core
+!core.h
 TAGS
 
 CPackConfig.cmake
@@ -113,6 +115,7 @@ npm-debug.log
 
 /log-*
 data-*
+databases
 cluster-init
 
 datafile-*.db

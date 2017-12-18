@@ -58,6 +58,7 @@ let optionsDocumentation = [
   '                   conjunction with `server`.',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
+  '   - `iresearch`: if set to true enable the iResearch-related tests',
   '   - `minPort`: minimum port number to use',
   '   - `maxPort`: maximum port number to use',
   '   - `dbServers`: number of DB-Servers to use',
@@ -117,6 +118,7 @@ const optionsDefaults = {
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
+  'iresearch':false,
   'jsonReply': false,
   'loopEternal': false,
   'loopSleepSec': 1,
@@ -564,4 +566,3 @@ exports.unitTest = unitTest;
 exports.internalMembers = internalMembers;
 exports.testFuncs = testFuncs;
 exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
-

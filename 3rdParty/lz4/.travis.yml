@@ -1,0 +1,151 @@
+language: c
+matrix:
+  fast_finish: true
+  include:
+    # OS X Mavericks
+    - os: osx
+      install:
+        - export CC=clang
+      env: Ubu=OS_X_Mavericks Cmd='make -C tests test-lz4 MOREFLAGS="-Werror -Wconversion -Wno-sign-conversion" && CFLAGS=-m32 make -C tests clean test-lz4-contentSize' COMPILER=clang
+
+    # Container-based 12.04 LTS Server Edition 64 bit (doesn't support 32-bit includes)
+    - os: linux
+      sudo: false
+      env: Ubu=12.04cont Cmd='make -C tests test-lz4 test-lz4c test-fullbench' COMPILER=cc
+
+    - os: linux
+      sudo: false
+      env: Ubu=12.04cont Cmd='make -C tests test-frametest test-fuzzer' COMPILER=cc
+
+    - os: linux
+      sudo: false
+      env: Ubu=12.04cont Cmd="make gpptest && make clean examples && make clean cmake && make clean travis-install && make clean clangtest" COMPILER=cc
+
+
+    # 14.04 LTS Server Edition 64 bit
+    - env: Ubu=14.04 Cmd='make -C tests test MOREFLAGS=-mx32' COMPILER=cc
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          packages:
+            - libc6-dev-i386
+            - gcc-multilib
+
+    # presume clang >= v3.9.0
+    - env: Ubu=14.04 Cmd='make usan MOREFLAGS=-Wcomma -Werror' COMPILER=clang
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          packages:
+            - clang
+
+    - env: Ubu=14.04 Cmd='make c_standards && make -C tests test-lz4 test-mem' COMPILER=cc
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          packages:
+            - valgrind
+
+    - env: Ubu=14.04 Cmd='make -C tests test-lz4c32 test-fullbench32 versionsTest' COMPILER=cc
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          packages:
+            - python3
+            - libc6-dev-i386
+            - gcc-multilib
+
+    - env: Ubu=14.04 Cmd='make -C tests test-frametest32 test-fuzzer32' COMPILER=cc
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          packages:
+            - libc6-dev-i386
+            - gcc-multilib
+
+    - env: Ubu=14.04 Cmd='make c_standards CC=gcc-6 && make -C tests test-lz4 CC=gcc-6 MOREFLAGS=-Werror' COMPILER=gcc-6
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-6
+
+    - env: Ubu=14.04 Cmd='make platformTest CC=arm-linux-gnueabi-gcc QEMU_SYS=qemu-arm-static && make platformTest CC=aarch64-linux-gnu-gcc QEMU_SYS=qemu-aarch64-static' COMPILER=arm-linux-gnueabi-gcc
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          packages:
+            - qemu-system-arm
+            - qemu-user-static
+            - gcc-arm-linux-gnueabi
+            - libc6-dev-armel-cross
+            - gcc-aarch64-linux-gnu
+            - libc6-dev-arm64-cross
+
+    - env: Ubu=14.04 Cmd='make -C tests test-lz4 clean test-lz4c32 CC=gcc-5 MOREFLAGS=-Werror' COMPILER=gcc-5
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - libc6-dev-i386
+            - gcc-multilib
+            - gcc-5
+            - gcc-5-multilib
+
+    - env: Ubu=14.04 Cmd='make -C tests test-lz4 CC=clang-3.8' COMPILER=clang-3.8
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.8
+          packages:
+            - clang-3.8
+
+    - env: Ubu=14.04 Cmd='make platformTest CC=powerpc-linux-gnu-gcc QEMU_SYS=qemu-ppc-static && make platformTest CC=powerpc-linux-gnu-gcc QEMU_SYS=qemu-ppc64-static MOREFLAGS=-m64' COMPILER=powerpc-linux-gnu-gcc
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          packages:
+            - qemu-system-ppc
+            - qemu-user-static
+            - gcc-powerpc-linux-gnu
+
+    - env: Ubu=14.04 Cmd='make staticAnalyze' COMPILER=clang
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          packages:
+            - clang
+
+    - env: Ubu=14.04 Cmd='make clean all CC=gcc-4.4 MOREFLAGS=-Werror && make clean && CFLAGS=-fPIC LDFLAGS="-pie -fPIE -D_FORTIFY_SOURCE=2" make -C programs' COMPILER=gcc-4.4
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - libc6-dev-i386
+            - gcc-multilib
+            - gcc-4.4
+
+script:
+  - echo Cmd=$Cmd
+  - $COMPILER -v
+  - sh -c "$Cmd"
