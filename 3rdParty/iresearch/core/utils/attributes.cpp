@@ -44,6 +44,10 @@ NS_ROOT
 // --SECTION--                                                attribute::type_id
 // -----------------------------------------------------------------------------
 
+/*static*/ bool attribute::type_id::exists(const string_ref& name) {
+  return attribute_register::instance().get(name);
+}
+
 /*static*/ const attribute::type_id* attribute::type_id::get(
     const string_ref& name) {
   return attribute_register::instance().get(name);

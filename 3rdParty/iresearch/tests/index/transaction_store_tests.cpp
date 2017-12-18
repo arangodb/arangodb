@@ -5240,7 +5240,7 @@ TEST_F(transaction_store_tests, read_reopen) {
   ASSERT_EQ(2, reader.docs_count()); // +1 for invalid doc
   ASSERT_EQ(1, reader.size());
   ASSERT_NE(reader.begin(), reader.end());
-  ASSERT_EQ(nullptr, &*reader.end());
+  ASSERT_TRUE(nullptr == &*(reader.end()));
 
   // read 1st generation (via new reader)
   {
@@ -5250,7 +5250,7 @@ TEST_F(transaction_store_tests, read_reopen) {
     ASSERT_EQ(1, reader0.size());
     ASSERT_NE(reader0.begin(), reader0.end());
     ASSERT_NE(&*(reader.begin()), &*(reader0.begin()));
-    ASSERT_EQ(nullptr, &*(reader0.end()));
+    ASSERT_TRUE(nullptr == &*(reader0.end()));
   }
 
   // read 1st generation (via reopen)
@@ -5284,7 +5284,7 @@ TEST_F(transaction_store_tests, read_reopen) {
     ASSERT_EQ(1, reader0.size());
     ASSERT_NE(reader0.begin(), reader0.end());
     ASSERT_NE(&*(reader.begin()), &*(reader0.begin()));
-    ASSERT_EQ(nullptr, &*(reader0.end()));
+    ASSERT_TRUE(nullptr == &*(reader0.end()));
   }
 }
 

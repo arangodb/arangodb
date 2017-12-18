@@ -76,17 +76,46 @@ using namespace tests;
 
 TEST_F(analyzer_test, duplicate_register) {
   struct dummy_analyzer: public irs::analysis::analyzer {
+    irs::attribute_view attrs_;
     DECLARE_ANALYZER_TYPE() { static irs::analysis::analyzer::type_id type("dummy_analyzer"); return type; }
-    static ptr make(const irs::string_ref&) { return nullptr; }
+    static ptr make(const irs::string_ref&) { return ptr(new dummy_analyzer()); }
     dummy_analyzer(): irs::analysis::analyzer(dummy_analyzer::type()) { }
+    virtual const irs::attribute_view& attributes() const NOEXCEPT override { return attrs_; }
+    virtual bool next() override { return false; }
+    virtual bool reset(const irs::string_ref&) override { return false; }
   };
 
   static bool initial_expected = true;
-  irs::analysis::analyzer_registrar initial(dummy_analyzer::type(), irs::text_format::text, &dummy_analyzer::make);
-  ASSERT_EQ(!initial_expected, !initial);
+
+  // check required for tests with repeat (static maps are not cleared between runs)
+  if (initial_expected) {
+    ASSERT_FALSE(irs::analysis::analyzers::exists("dummy_analyzer"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::string_ref::nil));
+
+    irs::analysis::analyzer_registrar initial0(dummy_analyzer::type(), irs::text_format::csv, &dummy_analyzer::make);
+    irs::analysis::analyzer_registrar initial1(dummy_analyzer::type(), irs::text_format::json, &dummy_analyzer::make);
+    irs::analysis::analyzer_registrar initial2(dummy_analyzer::type(), irs::text_format::text, &dummy_analyzer::make);
+    irs::analysis::analyzer_registrar initial3(dummy_analyzer::type(), irs::text_format::xml, &dummy_analyzer::make);
+    ASSERT_EQ(!initial_expected, !initial0);
+    /* FIXME TODO enable once type diferentiation is supported
+    ASSERT_EQ(!initial_expected, !initial1);
+    ASSERT_EQ(!initial_expected, !initial2);
+    ASSERT_EQ(!initial_expected, !initial3);
+    */
+  }
+
   initial_expected = false; // next test iteration will not be able to register the same analyzer
-  irs::analysis::analyzer_registrar duplicate(dummy_analyzer::type(), irs::text_format::text, &dummy_analyzer::make);
-  ASSERT_TRUE(!duplicate);
+  irs::analysis::analyzer_registrar duplicate0(dummy_analyzer::type(), irs::text_format::csv, &dummy_analyzer::make);
+  irs::analysis::analyzer_registrar duplicate1(dummy_analyzer::type(), irs::text_format::json, &dummy_analyzer::make);
+  irs::analysis::analyzer_registrar duplicate2(dummy_analyzer::type(), irs::text_format::text, &dummy_analyzer::make);
+  irs::analysis::analyzer_registrar duplicate3(dummy_analyzer::type(), irs::text_format::xml, &dummy_analyzer::make);
+  ASSERT_TRUE(!duplicate0);
+  ASSERT_TRUE(!duplicate1);
+  ASSERT_TRUE(!duplicate2);
+  ASSERT_TRUE(!duplicate3);
+
+  ASSERT_TRUE(irs::analysis::analyzers::exists("dummy_analyzer"));
+  ASSERT_NE(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::string_ref::nil));
 }
 
 TEST_F(analyzer_test, test_load) {
@@ -124,3 +153,7 @@ TEST_F(analyzer_test, test_load) {
   ASSERT_EQ(nullptr, iresearch::analysis::analyzers::get("text", "{{\"locale\":\"en\", \"ignored_words\":\"abc\"}}"));
   ASSERT_EQ(nullptr, iresearch::analysis::analyzers::get("text", "{{\"locale\":\"en\", \"ignored_words\":[1, 2, 3]}}"));
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

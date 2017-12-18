@@ -53,6 +53,10 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
+/*static*/ bool analyzers::exists(const string_ref& name) {
+  return analyzer_register::instance().get(name);
+}
+
 /*static*/ analyzer::ptr analyzers::get(
   const string_ref& name, const string_ref& args
 ) {

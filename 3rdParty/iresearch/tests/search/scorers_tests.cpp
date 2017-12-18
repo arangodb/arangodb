@@ -33,20 +33,24 @@ TEST(scorers_tests, duplicate_register) {
     prepared::ptr prepare() const { return nullptr; }
   };
 
-  ASSERT_FALSE(irs::scorers::exists("dummy_scorer"));
-  ASSERT_EQ(nullptr, irs::scorers::get("dummy_scorer", irs::string_ref::nil));
-
   static bool initial_expected = true;
-  irs::scorer_registrar initial0(dummy_scorer::type(), irs::text_format::csv, &dummy_scorer::make);
-  irs::scorer_registrar initial1(dummy_scorer::type(), irs::text_format::json, &dummy_scorer::make);
-  irs::scorer_registrar initial2(dummy_scorer::type(), irs::text_format::text, &dummy_scorer::make);
-  irs::scorer_registrar initial3(dummy_scorer::type(), irs::text_format::xml, &dummy_scorer::make);
-  ASSERT_EQ(!initial_expected, !initial0);
-  /* FIXME TODO enable once type diferentiation is supported
-  ASSERT_EQ(!initial_expected, !initial1);
-  ASSERT_EQ(!initial_expected, !initial2);
-  ASSERT_EQ(!initial_expected, !initial3);
-  */
+
+  // check required for tests with repeat (static maps are not cleared between runs)
+  if (initial_expected) {
+    ASSERT_FALSE(irs::scorers::exists("dummy_scorer"));
+    ASSERT_EQ(nullptr, irs::scorers::get("dummy_scorer", irs::string_ref::nil));
+
+    irs::scorer_registrar initial0(dummy_scorer::type(), irs::text_format::csv, &dummy_scorer::make);
+    irs::scorer_registrar initial1(dummy_scorer::type(), irs::text_format::json, &dummy_scorer::make);
+    irs::scorer_registrar initial2(dummy_scorer::type(), irs::text_format::text, &dummy_scorer::make);
+    irs::scorer_registrar initial3(dummy_scorer::type(), irs::text_format::xml, &dummy_scorer::make);
+    ASSERT_EQ(!initial_expected, !initial0);
+    /* FIXME TODO enable once type diferentiation is supported
+    ASSERT_EQ(!initial_expected, !initial1);
+    ASSERT_EQ(!initial_expected, !initial2);
+    ASSERT_EQ(!initial_expected, !initial3);
+    */
+  }
 
   initial_expected = false; // next test iteration will not be able to register the same scorer
   irs::scorer_registrar duplicate0(dummy_scorer::type(), irs::text_format::csv, &dummy_scorer::make);

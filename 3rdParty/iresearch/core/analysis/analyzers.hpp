@@ -75,6 +75,11 @@ class IRESEARCH_API analyzer_registrar {
 class IRESEARCH_API analyzers {
  public:
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief checks whether an analyzer with the specified name is registered
+  ////////////////////////////////////////////////////////////////////////////////
+  static bool exists(const string_ref& name);
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief find an analyzer by name, or nullptr if not found
   ///        indirect call to <class>::make(...)
   ///        requires use of DECLARE_FACTORY_DEFAULT() in class definition

@@ -82,11 +82,22 @@ TEST(attributes_tests, duplicate_register) {
   };
 
   static bool initial_expected = true;
-  irs::attribute_registrar initial(dummy_attribute::type());
-  ASSERT_EQ(!initial_expected, !initial);
+
+  // check required for tests with repeat (static maps are not cleared between runs)
+  if (initial_expected) {
+    ASSERT_FALSE(irs::attribute::type_id::exists("dummy_attribute"));
+    ASSERT_EQ(nullptr, irs::attribute::type_id::get("dummy_attribute"));
+
+    irs::attribute_registrar initial(dummy_attribute::type());
+    ASSERT_EQ(!initial_expected, !initial);
+  }
+
   initial_expected = false; // next test iteration will not be able to register the same attribute
   irs::attribute_registrar duplicate(dummy_attribute::type());
   ASSERT_TRUE(!duplicate);
+
+  ASSERT_TRUE(irs::attribute::type_id::exists("dummy_attribute"));
+  ASSERT_NE(nullptr, irs::attribute::type_id::get("dummy_attribute"));
 }
 
 TEST(attributes_tests, store_ctor) {
