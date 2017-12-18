@@ -4391,7 +4391,7 @@ doc_iterator::ptr postings_reader::iterator(
     doc_in_.get(), pos_in_.get(), pay_in_.get() 
   );
 
-  return MOVE_WORKAROUND_MSVC2013(it);
+  return MSVC2013_MOVE_WORKAROUND(it);
 }
 
 // ----------------------------------------------------------------------------
