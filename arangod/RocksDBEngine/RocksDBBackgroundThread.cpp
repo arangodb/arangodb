@@ -24,9 +24,9 @@
 #include "Basics/ConditionLocker.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "Utils/CursorRepository.h"
 
 using namespace arangodb;
@@ -52,16 +52,20 @@ void RocksDBBackgroundThread::run() {
       guard.wait(static_cast<uint64_t>(_interval * 1000000.0));
     }
 
+    if (_engine->inRecovery()) {
+      continue;
+    }
+
     try {
       if (!isStopping()) {
-        _engine->counterManager()->sync(false);
+        _engine->settingsManager()->sync(false);
       }
 
       bool force = isStopping();
       _engine->replicationManager()->garbageCollect(force);
 
       TRI_voc_tick_t minTick = rocksutils::latestSequenceNumber();
-      auto cmTick = _engine->counterManager()->earliestSeqNeeded();
+      auto cmTick = _engine->settingsManager()->earliestSeqNeeded();
       if (cmTick < minTick) {
         minTick = cmTick;
       }
@@ -92,5 +96,5 @@ void RocksDBBackgroundThread::run() {
           << "caught unknown exception in rocksdb background";
     }
   }
-  _engine->counterManager()->sync(true);  // final write on shutdown
+  _engine->settingsManager()->sync(true);  // final write on shutdown
 }

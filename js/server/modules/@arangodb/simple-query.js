@@ -448,15 +448,8 @@ SimpleQueryFulltext.prototype.execute = function () {
     attribute: this._attribute,
     query: this._query
   };
-  let query;
-  let limit = parseInt((this._skip || 0) + (this._limit || 0), 10);  
-  if (limit > 0) {
-    bindVars.limit = limit;
-    query = 'FOR doc IN FULLTEXT(@@collection, @attribute, @query, @limit) ' +
+  let query = 'FOR doc IN FULLTEXT(@@collection, @attribute, @query) ' +
               limitString(this._skip, this._limit) + ' RETURN doc';
-  } else {
-    query = 'FOR doc IN FULLTEXT(@@collection, @attribute, @query) RETURN doc';
-  }
   documents = require('internal').db._query({ query, bindVars}).toArray();
 
   this._execution = new GeneralArrayCursor(documents);

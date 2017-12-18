@@ -1,6 +1,7 @@
 #define CATCH_CONFIG_RUNNER
 #include "catch.hpp"
 #include "ApplicationFeatures/ShellColorsFeature.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Logger/LogAppender.h"
 #include "Random/RandomGenerator.h"
@@ -14,9 +15,11 @@ int main(int argc, char* argv[]) {
   arangodb::Logger::initialize(false);
   arangodb::LogAppender::addAppender("-"); 
 
+  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_SINGLE);
+
   arangodb::ShellColorsFeature sc(nullptr);
   sc.prepare();
-  
+
   int result = Catch::Session().run( argc, argv );
   arangodb::Logger::shutdown();
   // global clean-up...

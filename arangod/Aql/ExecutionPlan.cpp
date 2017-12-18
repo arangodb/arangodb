@@ -47,6 +47,10 @@
 #include "Graph/TraverserOptions.h"
 #include "VocBase/AccessMode.h"
 
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewNode.h"
+#endif
+
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
@@ -656,6 +660,23 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     }
     en = registerNode(new EnumerateCollectionNode(
         this, nextId(), _ast->query()->vocbase(), collection, v, false));
+#ifdef USE_IRESEARCH
+  } else if (expression->type == NODE_TYPE_VIEW) {
+    // second operand is a view
+    std::string const viewName = expression->getString();
+    auto vocbase = _ast->query()->vocbase();
+    auto view = vocbase->lookupView(viewName);
+
+    if (view == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "no view for EnumerateView");
+    }
+
+    en = registerNode(
+      new iresearch::IResearchViewNode(
+        this, nextId(), vocbase, view, v, nullptr, {}
+    ));
+#endif
   } else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(expression->getData());

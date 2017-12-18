@@ -1,0 +1,7 @@
+[package]
+name = "testapp"
+version = "0.1.0"
+authors = ["Jakob Demler <jdemler@curry-software.com>"]
+build = "build.rs"
+
+[dependencies]

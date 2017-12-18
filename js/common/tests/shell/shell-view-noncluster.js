@@ -113,6 +113,41 @@ function ViewSuite () {
     },
 
     ////////////////////////////////////////////////////////////////////////////
+    /// @brief rename (duplicate)
+    ////////////////////////////////////////////////////////////////////////////
+    testErrorHandlingRenameDuplicate : function () {
+      try {
+        db._createView("abc", "logger", {});
+        var v = db._createView("def", "logger", {});
+        v.rename("abc");
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err.errorNum);
+        var abc = db._view("abc");
+        abc.drop();
+        var def = db._view("def");
+        def.drop();
+      }
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief rename (illegal)
+    ////////////////////////////////////////////////////////////////////////////
+    testErrorHandlingRenameIllegal : function () {
+      try {
+        var v = db._createView("abc", "logger", {});
+        v.rename("@bc!");
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+        var abc = db._view("abc");
+        abc.drop();
+      }
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
     /// @brief get non-existent
     ////////////////////////////////////////////////////////////////////////////
     testErrorHandlingGetMissing : function () {
@@ -214,6 +249,25 @@ function ViewSuite () {
       assertEqual(abc.name(), "abc");
       assertEqual(abc.type(), "logger");
       assertEqual(props.level, "TRACE");
+
+      abc.drop();
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief rename view
+    ////////////////////////////////////////////////////////////////////////////
+    testRename : function () {
+      var abc = db._createView("abc", "logger", {"level": "WARN"});
+      assertEqual(abc.name(), "abc");
+
+      abc.rename("def");
+      assertEqual(abc.name(), "def");
+
+      abc.rename("def");
+      assertEqual(abc.name(), "def");
+
+      abc.rename("abc");
+      assertEqual(abc.name(), "abc");
 
       abc.drop();
     }

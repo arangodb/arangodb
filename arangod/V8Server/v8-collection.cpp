@@ -924,7 +924,7 @@ static void JS_BinaryDocumentVocbaseCol(
 static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
   if (vocbase == nullptr || vocbase->isDangling()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -937,7 +937,7 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   PREVENT_EMBEDDED_TRANSACTION();
-  
+
   bool allowDropSystem = false;
   double timeout = -1.0;  // forever, unless specified otherwise
   if (args.Length() > 0) {
@@ -957,7 +957,7 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       allowDropSystem = TRI_ObjectToBoolean(args[0]);
     }
   }
- 
+  
   Result res = methods::Collections::drop(vocbase, collection,
                                           allowDropSystem, timeout);
   if (res.fail()) {
@@ -1260,7 +1260,7 @@ static void JS_GetFollowers(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
   if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -1278,7 +1278,7 @@ static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
@@ -1376,7 +1376,7 @@ static void JS_PropertiesVocbaseCol(
   bool const isModification = (args.Length() != 0);
   if (isModification) {
     v8::Handle<v8::Value> par = args[0];
-    
+
     if (par->IsObject()) {
       VPackBuilder builder;
       {
@@ -1439,15 +1439,15 @@ static void JS_RenameVocbaseCol(
   if (args.Length() > 1) {
     doOverride = TRI_ObjectToBoolean(args[1]);
   }
-  
+
   PREVENT_EMBEDDED_TRANSACTION();
-  
+
   arangodb::LogicalCollection* collection =
   TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-  
+
   Result res = methods::Collections::rename(collection, name, doOverride);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2017,9 +2017,9 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint64_t en = pregel::PregelFeature::instance()->createExecutionNumber();
   auto c = std::make_unique<pregel::Conductor>(en, vocbase, paramVertices, edgeColls,
                                                algorithm, paramBuilder.slice());
-  pregel::PregelFeature::instance()->addConductor(c.get(), en);
-  c->start();
-  c.release();
+  pregel::PregelFeature::instance()->addConductor(std::move(c), en);
+  TRI_ASSERT(pregel::PregelFeature::instance()->conductor(en));
+  pregel::PregelFeature::instance()->conductor(en)->start();
 
   TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(en)));
   TRI_V8_TRY_CATCH_END
@@ -2428,7 +2428,7 @@ static void JS_TruncateVocbaseCol(
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-  
+
   auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(ctx, collection->cid(), AccessMode::Type::EXCLUSIVE);
 
@@ -2552,7 +2552,7 @@ static void JS_CollectionVocbase(
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("_collection(<name>|<identifier>)");
   }
-  
+
   v8::Handle<v8::Value> val = args[0];
   std::string const name = TRI_ObjectToString(val);
   arangodb::LogicalCollection const* collection = nullptr;
@@ -2573,7 +2573,7 @@ static void JS_CollectionVocbase(
   if (collection == nullptr) {
     TRI_V8_RETURN_NULL();
   }
-  
+
   // check authentication after ensuring the collection exists
   if (ExecContext::CURRENT != nullptr &&
       !ExecContext::CURRENT->canUseCollection(collection->name(), AuthLevel::RO)) {
@@ -2851,7 +2851,7 @@ static void JS_WarmupVocbaseCol(
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-  
+
   TRI_vocbase_t* vocbase = collection->vocbase();
   Result res = methods::Collections::warmup(vocbase, collection);
   if (res.fail()) {

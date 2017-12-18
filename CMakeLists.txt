@@ -762,6 +762,18 @@ endif()
 ## 3RD PARTY
 ################################################################################
 
+# ------------------------------------------------------------------------------
+# IResearch
+# ------------------------------------------------------------------------------
+
+option(USE_IRESEARCH OFF)
+
+if(USE_IRESEARCH)
+  add_definitions("-DUSE_IRESEARCH=1")
+
+  set(LIB_ARANGO_IRESEARCH arango_iresearch)
+endif()
+
 # 3rdParty exports:
 #
 # V8_VERSION
