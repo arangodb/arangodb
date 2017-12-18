@@ -23,6 +23,8 @@
 #include "Collections.h"
 #include "Basics/Common.h"
 
+#include "Aql/Query.h"
+#include "Aql/QueryRegistry.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -33,14 +35,17 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/V8Context.h"
+#include "Utils/OperationCursor.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -533,3 +538,51 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
+/// @brief Helper implementation similar to ArangoCollection.all() in v8
+Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cName,
+                        DocCallback cb) {
+  
+  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
+  SingleCollectionTransaction trx(ctx, cName, AccessMode::Type::READ);
+  Result res = trx.begin();
+  if (res.fail()) {
+    return res;
+  }
+  
+  // Implement it like this to stay close to the original
+  if (ServerState::instance()->isCoordinator()) {
+    auto empty = std::make_shared<VPackBuilder>();
+    arangodb::aql::Query query(false, vocbase,
+                               aql::QueryString("FOR r IN " + cName +" RETURN r"),
+                               empty, empty, arangodb::aql::PART_MAIN);
+    query.injectTransaction(&trx);
+    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+    TRI_ASSERT(queryRegistry != nullptr);
+    aql::QueryResult queryResult = query.execute(queryRegistry);
+    res = queryResult.code;
+    if (queryResult.code == TRI_ERROR_NO_ERROR) { // just ignore errors
+      VPackSlice array = queryResult.result->slice();
+      for (VPackSlice doc : VPackArrayIterator(array)) {
+        cb(doc.resolveExternal());
+      }
+    }
+  } else {
+    
+    ManagedDocumentResult mmdr;
+    // We directly read the entire cursor. so batchsize == limit
+    std::unique_ptr<OperationCursor> opCursor =
+    trx.indexScan(cName, transaction::Methods::CursorType::ALL, &mmdr, false);
+    if (!opCursor->hasMore()) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+    
+    // copy default options
+    VPackOptions resultOptions = VPackOptions::Defaults;
+    resultOptions.customTypeHandler = ctx->orderCustomTypeHandler().get();
+    opCursor->allDocuments([&](LocalDocumentId const& token, VPackSlice doc) {
+      cb(doc.resolveExternal());
+    });    
+  }
+  return trx.finish(res);
+;
+}

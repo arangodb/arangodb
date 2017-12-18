@@ -22,7 +22,6 @@
 
 #include "UpgradeTasks.h"
 #include "Basics/Common.h"
-
 #include "Agency/AgencyComm.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -142,22 +141,44 @@ void UpgradeTasks::createRouting(TRI_vocbase_t* vocbase, VPackSlice const&) {
 }
 void UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
                                       VPackSlice const&) {
+  std::vector<std::string> toRemove; // remove in a different trx
+  auto cb = [&toRemove] (VPackSlice const& doc) {
+    TRI_ASSERT(doc.isObject());
+    VPackSlice url = doc.get("url"), action = doc.get("action");
+    if (url.isObject() && action.isObject() && action.get("options").isObject()) {
+      VPackSlice v = action.get("options").get("destination");
+      if (v.isString()) {
+        std::string path = v.copyString();
+        if (path.find("_admin/html") != std::string::npos ||
+            path.find("_admin/aardvark") != std::string::npos) {
+          toRemove.push_back(doc.get(StaticStrings::KeyString).copyString());
+        }
+      }
+    }
+  };
+  Result res = methods::Collections::all(vocbase, "_routing", cb);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, "_routing", AccessMode::Type::WRITE);
-  Result res = trx.begin();
+  res = trx.begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
+  }
+  OperationOptions opts;
+  opts.waitForSync = true;
+  for (std::string const& key :toRemove) {
+    VPackBuilder b;
+    b(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
+    trx.remove("_routing", b.slice(), opts); // check results
   }
 
   std::vector<std::string> paths = {"/", "/_admin/html",
                                     "/_admin/html/index.html"};
-  std::string destination =
-      "/_db/" + vocbase->name() + "/_admin/aardvark/index.html";
-  OperationOptions ops;
-  ops.waitForSync = true;
+  std::string dest = "/_db/" + vocbase->name() + "/_admin/aardvark/index.html";
   OperationResult opres;
-
-  // FIXME: first, check for "old" redirects
   for (std::string const& path : paths) {
     VPackBuilder bb;
     bb.openObject();
@@ -166,12 +187,12 @@ void UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
     bb.add("do", VPackValue("@arangodb/actions/redirectRequest"));
     bb.add("options", VPackValue(VPackValueType::Object));
     bb.add("permanently", VPackSlice::trueSlice());
-    bb.add("destination", VPackValue(destination));
+    bb.add("destination", VPackValue(dest));
     bb.close();
     bb.close();
     bb.add("priority", VPackValue(-1000000));
     bb.close();
-    opres = trx.insert("_routing", bb.slice(), ops);
+    opres = trx.insert("_routing", bb.slice(), opts);
     if (opres.fail()) {
       THROW_ARANGO_EXCEPTION(opres.result);
     }
