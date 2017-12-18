@@ -372,9 +372,9 @@ class MMFilesEngine final : public StorageEngine {
   std::string viewDirectory(TRI_voc_tick_t databaseId,
                             TRI_voc_cid_t viewId) const;
 
-  virtual TRI_voc_tick_t currentTick() const;
-  virtual TRI_voc_tick_t releasedTick() const;
-  virtual void releaseTick(TRI_voc_tick_t);
+  TRI_voc_tick_t currentTick() const override;
+  TRI_voc_tick_t releasedTick() const override;
+  void releaseTick(TRI_voc_tick_t override);
 
  private:
   velocypack::Builder getReplicationApplierConfiguration(std::string const& filename, int& status);

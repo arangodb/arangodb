@@ -263,9 +263,9 @@ class RocksDBEngine final : public StorageEngine {
   void pruneWalFiles();
 
   // management methods for synchronizing with external persistent stores
-  virtual TRI_voc_tick_t currentTick() const;
-  virtual TRI_voc_tick_t releasedTick() const;
-  virtual void releaseTick(TRI_voc_tick_t);
+  TRI_voc_tick_t currentTick() const override;
+  TRI_voc_tick_t releasedTick() const override;
+  void releaseTick(TRI_voc_tick_t) override;
 
  private:
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key, int& status);

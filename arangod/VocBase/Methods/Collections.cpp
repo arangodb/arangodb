@@ -547,31 +547,31 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
 Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cName,
                         DocCallback cb) {
   
-  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-  SingleCollectionTransaction trx(ctx, cName, AccessMode::Type::READ);
-  Result res = trx.begin();
-  if (res.fail()) {
-    return res;
-  }
-  
   // Implement it like this to stay close to the original
   if (ServerState::instance()->isCoordinator()) {
     auto empty = std::make_shared<VPackBuilder>();
-    arangodb::aql::Query query(false, vocbase,
-                               aql::QueryString("FOR r IN " + cName +" RETURN r"),
+    std::string q = "FOR r IN " + cName +" RETURN r";
+    arangodb::aql::Query query(false, vocbase, aql::QueryString(q),
                                empty, empty, arangodb::aql::PART_MAIN);
-    query.injectTransaction(&trx);
     auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
     TRI_ASSERT(queryRegistry != nullptr);
     aql::QueryResult queryResult = query.execute(queryRegistry);
-    res = queryResult.code;
+    Result res = queryResult.code;
     if (queryResult.code == TRI_ERROR_NO_ERROR) { // just ignore errors
       VPackSlice array = queryResult.result->slice();
       for (VPackSlice doc : VPackArrayIterator(array)) {
         cb(doc.resolveExternal());
       }
     }
+    return res;
   } else {
+    auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
+    SingleCollectionTransaction trx(ctx, cName, AccessMode::Type::READ);
+    Result res = trx.begin();
+    if (res.fail()) {
+      return res;
+    }
+    
     ManagedDocumentResult mmdr;
     // We directly read the entire cursor. so batchsize == limit
     std::unique_ptr<OperationCursor> opCursor =
@@ -585,7 +585,7 @@ Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cName,
     resultOptions.customTypeHandler = ctx->orderCustomTypeHandler().get();
     opCursor->allDocuments([&](LocalDocumentId const& token, VPackSlice doc) {
       cb(doc.resolveExternal());
-    });    
+    });
+    return trx.finish(res);
   }
-  return trx.finish(res);
 }
