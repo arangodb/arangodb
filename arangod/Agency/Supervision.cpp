@@ -411,7 +411,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     //  it has arrived before trying to use it
     if (LEAF == _snapshot(targetShortID + serverID + "/ShortName").type()) {
 
-      shortName = _snapshot(targetShortID + serverID + "/Shortname").getString();
+      shortName = _snapshot(targetShortID + serverID + "/ShortName").getString();
 
       // Endpoint
       std::string endpoint;
@@ -637,10 +637,10 @@ void Supervision::run() {
             try {
               doChecks();
             } catch (std::exception const& e) {
-              LOG_TOPIC(ERR, Logger::SUPERVISION) << e.what() << " " << __FILE__ << __LINE__;
+              LOG_TOPIC(ERR, Logger::SUPERVISION) << e.what() << " " << __FILE__ << " " << __LINE__;
             } catch (...) {
               LOG_TOPIC(ERR, Logger::SUPERVISION) <<
-                "Supervision::doChecks() generated an uncaught exception";
+                "Supervision::doChecks() generated an uncaught exception.";
             }
           }
         }
@@ -1007,7 +1007,7 @@ void Supervision::getUniqueIds() {
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::SUPERVISION)
         << "Failed to acquire job IDs from agency: "
-        << e.what() << __FILE__ << __LINE__;
+        << e.what() << __FILE__ << " " << __LINE__;
     }
   }
 
