@@ -36,6 +36,8 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/V8Context.h"
 #include "Utils/OperationCursor.h"
@@ -87,8 +89,8 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
                                     FuncCallback func) {
   if (name.empty()) {
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  } 
-  
+  }
+
   ExecContext const* exec = ExecContext::CURRENT;
   if (ServerState::instance()->isCoordinator()) {
     try {
@@ -111,7 +113,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
     }
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-  
+
   LogicalCollection* coll = vocbase->lookupCollection(name);
   if (coll != nullptr) {
     // check authentication after ensuring the collection exists
@@ -155,10 +157,10 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
-  
+
   TRI_ASSERT(vocbase && !vocbase->isDangling());
   TRI_ASSERT(properties.isObject());
-  
+
   /*VPackBuilder defaultProps;
   defaultProps.openObject();
   defaultProps.add("shardKeys", VPackSlice::emptyObjectSlice());
@@ -170,7 +172,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
   defaultProps.add("replicationFactor", VPackValue(0));
   defaultProps.add("servers", VPackValue(""));
   defaultProps.close();*/
-    
+
   VPackBuilder builder;
   builder.openObject();
   builder.add("type", VPackValue(static_cast<int>(collectionType)));
@@ -201,7 +203,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
               entry.grantCollection(vocbase->name(), name, AuthLevel::RW);
             });
       }
-      
+
       // reload otherwise collection might not be in yet
       func(col.get());
     } else {
@@ -293,7 +295,7 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
     // These are only relevant for cluster
     ignoreKeys.insert({"distributeShardsLike", "isSmart", "numberOfShards",
                        "replicationFactor", "shardKeys"});
-    
+
     if (res.fail()) {
       return res;
     }
@@ -436,7 +438,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 
 Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
                          bool allowDropSystem, double timeout) {
-  
+
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if  (!exec->canUseDatabase(vocbase->name(), AuthLevel::RW) ||
@@ -497,7 +499,10 @@ Result Collections::warmup(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
   }
 
   auto idxs = coll->getIndexes();
-  auto queue = std::make_shared<basics::LocalTaskQueue>();
+  auto poster = [](std::function<void()> fn) -> void {
+    SchedulerFeature::SCHEDULER->post(fn);
+  };
+  auto queue = std::make_shared<basics::LocalTaskQueue>(poster);
   for (auto& idx : idxs) {
     idx->warmup(&trx, queue);
   }
@@ -515,11 +520,11 @@ Result Collections::warmup(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 Result Collections::revisionId(TRI_vocbase_t* vocbase,
                                LogicalCollection* coll,
                                TRI_voc_rid_t& rid) {
-  
+
   TRI_ASSERT(coll != nullptr);
   std::string const databaseName(coll->dbName());
   std::string const cid = coll->cid_as_string();
-  
+
   if (ServerState::instance()->isCoordinator()) {
     return revisionOnCoordinator(databaseName, cid, rid);
   } 
@@ -567,7 +572,6 @@ Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cName,
       }
     }
   } else {
-    
     ManagedDocumentResult mmdr;
     // We directly read the entire cursor. so batchsize == limit
     std::unique_ptr<OperationCursor> opCursor =
@@ -584,5 +588,4 @@ Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cName,
     });    
   }
   return trx.finish(res);
-;
 }

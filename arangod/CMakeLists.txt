@@ -39,6 +39,67 @@ if (USE_MAINTAINER_MODE AND NOT MSVC)
 endif ()
 
 ################################################################################
+## IResearch
+################################################################################
+
+if (USE_IRESEARCH)
+  find_package(IResearch REQUIRED)
+
+  add_library(${LIB_ARANGO_IRESEARCH}
+    STATIC
+    IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
+    IResearch/AttributeScorer.cpp IResearch/AttributeScorer.h
+    IResearch/Containers.cpp IResearch/Containers.h
+    IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
+    IResearch/IResearchAttributes.cpp IResearch/IResearchAttributes.h
+    IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
+    IResearch/IResearchLink.cpp IResearch/IResearchLink.h
+    IResearch/IResearchLinkMeta.cpp IResearch/IResearchLinkMeta.h
+    IResearch/IResearchMMFilesLink.cpp IResearch/IResearchMMFilesLink.h
+    IResearch/IResearchRocksDBLink.cpp IResearch/IResearchRocksDBLink.h
+    IResearch/IResearchRocksDBRecoveryHelper.cpp
+    IResearch/IResearchRocksDBRecoveryHelper.h
+    IResearch/IResearchView.cpp IResearch/IResearchView.h
+    IResearch/IResearchViewOptimizerRules.cpp IResearch/IResearchViewOptimizerRules.h
+    IResearch/IResearchViewNode.cpp IResearch/IResearchViewNode.h
+    IResearch/IResearchViewBlock.cpp IResearch/IResearchViewBlock.h
+    IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
+    IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
+    IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
+    IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
+    IResearch/IResearchOrderFactory.cpp IResearch/IResearchOrderFactory.h
+    IResearch/SystemDatabaseFeature.cpp IResearch/SystemDatabaseFeature.h
+    IResearch/VelocyPackHelper.cpp IResearch/VelocyPackHelper.h
+    IResearch/ExpressionFilter.cpp IResearch/ExpressionFilter.h
+    IResearch/AqlHelper.cpp IResearch/AqlHelper.h
+  )
+
+  target_include_directories(${LIB_ARANGO_IRESEARCH}
+    PUBLIC ${Boost_INCLUDE_DIR} # for boost/lockfree/queue.hpp from WorkMonitor.h
+    PUBLIC ${IRESEARCH_INCLUDE}
+  )
+
+  if(MSVC)
+    set(IRESEARCH_TARGET_DEPENDENCY iresearch-static-scrt) # use static + staticCRT to match ArangoDB
+  else()
+    set(IRESEARCH_TARGET_DEPENDENCY iresearch-static) # use static to match ArangoDB
+  endif()
+
+  target_link_libraries(${LIB_ARANGO_IRESEARCH}
+    ${IRESEARCH_TARGET_DEPENDENCY}
+    boost_filesystem # required by iResearch
+    boost_locale # required by iResearch
+  )
+
+  add_dependencies(${LIB_ARANGO_IRESEARCH}
+    ${IRESEARCH_TARGET_DEPENDENCY}
+    v8_build # for ICU required by iResearch
+  )
+else()
+  set(LIB_ARANGO_IRESEARCH "")
+endif ()
+
+################################################################################
 ## arangod
 ################################################################################
 
@@ -335,6 +396,7 @@ SET(ARANGOD_SOURCES
   RestServer/EndpointFeature.cpp
   RestServer/FeatureCacheFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
+  RestServer/FlushFeature.cpp
   RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
   RestServer/LockfileFeature.cpp
@@ -386,6 +448,7 @@ SET(ARANGOD_SOURCES
   Utils/CursorRepository.cpp
   Utils/DatabaseGuard.cpp
   Utils/ExecContext.cpp
+  Utils/FlushThread.cpp
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
   Utils/WorkMonitorArangod.cpp
@@ -444,6 +507,7 @@ target_link_libraries(arangoserver
   ${MSVC_LIBS}
   ${V8_LIBS}
   ${ROCKSDB_LIBS}
+  ${LIB_ARANGO_IRESEARCH}
   boost_boost
   boost_system
   ${SYSTEM_LIBRARIES}
@@ -482,9 +546,9 @@ install(
 install_config(arangod)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangod zlibstatic v8_build)
+  add_dependencies(arangod zlibstatic v8_build ${LIB_ARANGO_IRESEARCH})
 else ()
-  add_dependencies(arangod zlibstatic)
+  add_dependencies(arangod zlibstatic ${LIB_ARANGO_IRESEARCH})
 endif ()
 
 if (USE_JEMALLOC)

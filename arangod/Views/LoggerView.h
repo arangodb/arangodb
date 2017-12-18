@@ -59,12 +59,31 @@ class LoggerView final : public ViewImplementation {
                                     bool partialUpdate, bool doSync) override;
 
   /// @brief export properties
-  void getPropertiesVPack(velocypack::Builder&) const override;
+  void getPropertiesVPack(velocypack::Builder&, bool) const override;
 
   /// @brief opens an existing view
   void open() override;
 
+  /// @brief drops an existing view
   void drop() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief this method will be called at query execution, when the AQL query
+  /// engine requests data from the view.
+  ///
+  /// It will get the specialized filter condition and the sort condition from
+  /// the previous calls. It must return a ViewIterator which the AQL query
+  /// engine will use for fetching results from the view.
+  //////////////////////////////////////////////////////////////////////////////
+  virtual ViewIterator* iteratorForCondition(
+      transaction::Methods* trx,
+      arangodb::aql::ExecutionPlan* plan,
+      arangodb::aql::ExpressionContext* ctx,
+      arangodb::aql::Variable const* reference,
+      arangodb::aql::AstNode const* filterCondition,
+      arangodb::aql::SortCondition const* sortCondition) {
+    return nullptr;
+  }
 
  private:
   // example data

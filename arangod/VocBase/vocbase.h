@@ -288,6 +288,10 @@ struct TRI_vocbase_t {
                  TRI_voc_tick_t, 
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
+  /// @brief renames a view
+  int renameView(std::shared_ptr<arangodb::LogicalView> view,
+                 std::string const& newName);
+
   /// @brief renames a collection
   int renameCollection(arangodb::LogicalCollection* collection,
                        std::string const& newName, bool doOverride);

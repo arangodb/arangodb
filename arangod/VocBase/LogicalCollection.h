@@ -304,7 +304,15 @@ class LogicalCollection {
 
   Result insert(transaction::Methods*, velocypack::Slice const,
                 ManagedDocumentResult& result, OperationOptions&,
-                TRI_voc_tick_t&, bool, TRI_voc_tick_t& revisionId);
+                TRI_voc_tick_t&, bool lock, TRI_voc_tick_t& revisionId);
+  // convenience function for downwards-compatibility
+  Result insert(transaction::Methods* trx, velocypack::Slice const slice,
+                ManagedDocumentResult& result, OperationOptions& options,
+                TRI_voc_tick_t& resultMarkerTick, bool lock) {
+    TRI_voc_tick_t unused;
+    return insert(trx, slice, result, options, resultMarkerTick, lock, unused);
+  }
+
   Result update(transaction::Methods*, velocypack::Slice const,
                 ManagedDocumentResult& result, OperationOptions&,
                 TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,

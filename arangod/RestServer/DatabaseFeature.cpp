@@ -139,11 +139,11 @@ void DatabaseManagerThread::run() {
           // not possible that another thread has seen this very database
           // and tries to free it at the same time!
         }
-  
+
         if (database->type() != TRI_VOCBASE_TYPE_COORDINATOR) {
           // regular database
           // ---------------------------
-  
+
           TRI_ASSERT(!database->isSystem());
 
           // remove apps directory for database
@@ -161,8 +161,8 @@ void DatabaseManagerThread::run() {
               TRI_RemoveDirectory(path.c_str());
             }
           }
-         
-          try { 
+
+          try {
             engine->dropDatabase(database);
           } catch (std::exception const& ex) {
             LOG_TOPIC(ERR, Logger::FIXME) << "dropping database '" << database->name() << "' failed: " << ex.what();
@@ -291,16 +291,16 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           &_check30Revisions,
           std::unordered_set<std::string>{"true", "false", "fail"}));
 
-  // the following option was removed in 3.2 
+  // the following option was removed in 3.2
   // index-creation is now automatically parallelized via the Boost ASIO thread pool
   options->addObsoleteOption(
       "--database.index-threads",
       "threads to start for parallel background index creation", true);
-  
+
   // the following options were removed in 3.2
-  options->addObsoleteOption("--database.revision-cache-chunk-size", 
+  options->addObsoleteOption("--database.revision-cache-chunk-size",
       "chunk size (in bytes) for the document revisions cache", true);
-  options->addObsoleteOption("--database.revision-cache-target-size", 
+  options->addObsoleteOption("--database.revision-cache-target-size",
       "total target size (in bytes) for the document revisions cache", true);
 }
 
@@ -387,7 +387,24 @@ void DatabaseFeature::beginShutdown() {
   }
 }
 
-void DatabaseFeature::stop() {}
+void DatabaseFeature::stop() {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    // iterate over all databases
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+
+    vocbase->processCollections([](LogicalCollection* collection) { 
+      // no one else must modify the collection's status while we are in here
+      collection->executeWhileStatusWriteLocked([collection]() {
+        collection->close(); 
+      });
+    }, true);
+  }
+}
 
 void DatabaseFeature::unprepare() {
   // close all databases
@@ -427,6 +444,24 @@ void DatabaseFeature::unprepare() {
 void DatabaseFeature::recoveryDone() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
+  TRI_ASSERT(engine && !engine->inRecovery());
+
+  // '_pendingRecoveryCallbacks' will not change because !StorageEngine.inRecovery()
+  for (auto& entry: _pendingRecoveryCallbacks) {
+    auto result = entry();
+
+    if (!result.ok()) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+                << "recovery failure due to error from callback, error '"
+                << TRI_errno_string(result.errorNumber()) << "' message: "
+                << result.errorMessage();
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+    }
+  }
+
+  _pendingRecoveryCallbacks.clear();
+
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
@@ -440,10 +475,27 @@ void DatabaseFeature::recoveryDone() {
     engine->recoveryDone(vocbase);
 
     ReplicationFeature* replicationFeature =
-        ApplicationServer::getFeature<ReplicationFeature>("Replication");
+        static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
 
-    replicationFeature->startApplier(vocbase);
+    if (replicationFeature != nullptr) {
+      replicationFeature->startApplier(vocbase);
+    }
   }
+}
+
+Result DatabaseFeature::registerPostRecoveryCallback(
+    std::function<Result()>&& callback
+) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
+  if (!engine || !engine->inRecovery()) {
+    return callback(); // if no engine then can't be in recovery
+  }
+
+  // do not need a lock since single-thread access during recovery
+  _pendingRecoveryCallbacks.emplace_back(std::move(callback));
+
+  return Result();
 }
 
 /// @brief create a new database
@@ -586,9 +638,11 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       engine->recoveryDone(vocbase.get());
     
       ReplicationFeature* replicationFeature =
-          ApplicationServer::getFeature<ReplicationFeature>("Replication");
+        static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
 
-      replicationFeature->startApplier(vocbase.get());
+      if (replicationFeature != nullptr) {
+        replicationFeature->startApplier(vocbase.get());
+      }
 
       // increase reference counter
       bool result = vocbase->use();
@@ -717,8 +771,8 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
     _databasesLists = newLists;
     _databasesProtector.scan();
     delete oldLists;
-       
-    TRI_ASSERT(!vocbase->isSystem()); 
+
+    TRI_ASSERT(!vocbase->isSystem());
     bool result = vocbase->markAsDropped();
     TRI_ASSERT(result);
 
@@ -1080,7 +1134,7 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> fun
   if (ServerState::instance()->isCoordinator()) {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
-    
+
     for (auto& p : theLists->_coordinatorDatabases) {
       TRI_vocbase_t* vocbase = p.second;
       // iterate over all databases
@@ -1091,7 +1145,7 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> fun
   } else {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
-    
+
     for (auto& p : theLists->_databases) {
       TRI_vocbase_t* vocbase = p.second;
       // iterate over all databases
@@ -1122,8 +1176,8 @@ void DatabaseFeature::updateContexts() {
         TRI_InitV8Queries(isolate, context);
         TRI_InitV8Cluster(isolate, context);
         TRI_InitV8Agency(isolate, context);
-      
-        StorageEngine* engine = EngineSelectorFeature::ENGINE; 
+
+        StorageEngine* engine = EngineSelectorFeature::ENGINE;
         TRI_ASSERT(engine != nullptr); // Engine not loaded. Startup broken
         engine->addV8Functions();
       },
@@ -1133,7 +1187,11 @@ void DatabaseFeature::updateContexts() {
 void DatabaseFeature::closeDatabases() {
   // stop the replication appliers so all replication transactions can end
   ReplicationFeature* replicationFeature =
-      ApplicationServer::getFeature<ReplicationFeature>("Replication");
+      static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
+
+  if (replicationFeature == nullptr) {
+    return;
+  }
 
   MUTEX_LOCKER(mutexLocker,
                _databasesMutex);  // Only one should do this at a time
@@ -1418,4 +1476,3 @@ void DatabaseFeature::enableDeadlockDetection() {
     vocbase->_deadlockDetector.enabled(true);
   }
 }
-

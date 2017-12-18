@@ -68,7 +68,7 @@ function recoverySuite () {
     // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testViews: function () {
+    testViewRecreate: function () {
       var v2 = db._view('UnitTestsRecovery1');
       assertEqual(v2.name(), 'UnitTestsRecovery1');
       assertEqual(v2.type(), 'logger');
