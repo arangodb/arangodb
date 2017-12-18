@@ -117,11 +117,11 @@ class Ast {
   inline Scopes* scopes() { return &_scopes; }
 
   /// @brief track the write collection
-  inline void addWriteCollection(AstNode const* node) {
+  inline void addWriteCollection(AstNode const* node, bool isExclusiveAccess) {
     TRI_ASSERT(node->type == NODE_TYPE_COLLECTION ||
                node->type == NODE_TYPE_PARAMETER);
 
-    _writeCollections.emplace_back(node);
+    _writeCollections.emplace_back(node, isExclusiveAccess);
   }
 
   /// @brief whether or not function calls may access collection documents
@@ -550,7 +550,7 @@ public:
   std::vector<AstNode*> _queries;
 
   /// @brief which collection is going to be modified in the query
-  std::vector<AstNode const*> _writeCollections;
+  std::vector<std::pair<AstNode const*, bool>> _writeCollections;
 
   /// @brief whether or not function calls may access collection data
   bool _functionsMayAccessDocuments;

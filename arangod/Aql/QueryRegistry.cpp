@@ -66,9 +66,8 @@ QueryRegistry::~QueryRegistry() {
 }
 
 /// @brief insert
-void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
+void QueryRegistry::insert(QueryId id, Query* query, double ttl, bool isPrepared) {
   TRI_ASSERT(query != nullptr);
-  TRI_ASSERT(query->trx() != nullptr);
   auto vocbase = query->vocbase();
 
   WRITE_LOCKER(writeLocker, _lock);
@@ -87,6 +86,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
     p->_id = id;
     p->_query = query;
     p->_isOpen = false;
+    p->_prepared = isPrepared;
     p->_timeToLive = ttl;
     p->_expires = TRI_microtime() + ttl;
     m->second.emplace(id, p.get());
@@ -96,7 +96,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
                          _queries.find(vocbase->name())->second.end());
 
     // If we have set _noLockHeaders, we need to unset it:
-    if (CollectionLockState::_noLockHeaders != nullptr) {
+    if (query->engine() != nullptr && CollectionLockState::_noLockHeaders != nullptr) {
       if (CollectionLockState::_noLockHeaders == query->engine()->lockedShards()) {
         CollectionLockState::_noLockHeaders = nullptr;
       }
@@ -130,9 +130,14 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
         TRI_ERROR_INTERNAL, "query with given vocbase and id is already open");
   }
   qi->_isOpen = true;
+ 
+  if (!qi->_prepared) {
+    qi->_prepared = true;
+    qi->_query->prepare(this, 0);
+  }
 
   // If we had set _noLockHeaders, we need to reset it:
-  if (qi->_query->engine()->lockedShards() != nullptr) {
+  if (qi->_query->engine() != nullptr && qi->_query->engine()->lockedShards() != nullptr) {
     if (CollectionLockState::_noLockHeaders == nullptr) {
       // std::cout << "Setting _noLockHeaders\n";
       CollectionLockState::_noLockHeaders = qi->_query->engine()->lockedShards();
@@ -164,9 +169,14 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "query with given vocbase and id is not open");
   }
+  
+  if (!qi->_prepared) {
+    qi->_prepared = true;
+    qi->_query->prepare(this, 0);
+  }
 
   // If we have set _noLockHeaders, we need to unset it:
-  if (CollectionLockState::_noLockHeaders != nullptr) {
+  if (qi->_query->engine() != nullptr && CollectionLockState::_noLockHeaders != nullptr) {
     if (CollectionLockState::_noLockHeaders ==
         qi->_query->engine()->lockedShards()) {
       // std::cout << "Resetting _noLockHeaders to nullptr\n";
@@ -210,13 +220,18 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
     qi->_query->killed(true);
     return;
   }
+  
+  if (!qi->_prepared) {
+    qi->_prepared = true;
+    qi->_query->prepare(this, 0);
+  }
 
   // If the query is open, we can delete it right away, if not, we need
   // to register the transaction with the current context and adjust
   // the debugging counters for transactions:
   if (!qi->_isOpen) {
     // If we had set _noLockHeaders, we need to reset it:
-    if (qi->_query->engine()->lockedShards() != nullptr) {
+    if (qi->_query->engine() != nullptr && qi->_query->engine()->lockedShards() != nullptr) {
       if (CollectionLockState::_noLockHeaders == nullptr) {
         CollectionLockState::_noLockHeaders = qi->_query->engine()->lockedShards();
       } else {
