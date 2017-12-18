@@ -109,10 +109,11 @@ void PregelFeature::beginShutdown() {
   Instance = nullptr;
 }
 
-void PregelFeature::addConductor(Conductor* const c, uint64_t executionNumber) {
+void PregelFeature::addConductor(std::unique_ptr<Conductor>&& c, uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   //_executions.
-  _conductors.emplace(executionNumber, std::shared_ptr<Conductor>(c));
+  _conductors.emplace(executionNumber, std::shared_ptr<Conductor>(c.get()));
+  c.release();
 }
 
 std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
@@ -121,9 +122,10 @@ std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
   return it != _conductors.end() ? it->second : nullptr;
 }
 
-void PregelFeature::addWorker(IWorker* const w, uint64_t executionNumber) {
+void PregelFeature::addWorker(std::unique_ptr<IWorker>&& w, uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
-  _workers.emplace(executionNumber, std::shared_ptr<IWorker>(w));
+  _workers.emplace(executionNumber, std::shared_ptr<IWorker>(w.get()));
+  w.release();
 }
 
 std::shared_ptr<IWorker> PregelFeature::worker(uint64_t executionNumber) {
