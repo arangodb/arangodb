@@ -586,14 +586,24 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
     std::unique_lock<std::mutex> lock(mutex);
     auto task = [&mutex, &cond]()->void { std::lock_guard<std::mutex> lock(mutex); cond.notify_all(); };
 
+    ASSERT_EQ(0, pool.threads());
     pool.run(std::move(task));
+    ASSERT_EQ(1, pool.threads());
 
     std::condition_variable cond2;
     std::mutex mutex2;
     std::unique_lock<std::mutex> lock2(mutex2);
-    std::thread thread1([&pool, &mutex2, &cond2]()->void { pool.stop(); std::lock_guard<std::mutex> lock(mutex2); cond2.notify_all(); });
-    std::thread thread2([&pool, &mutex2, &cond2]()->void { pool.stop(); std::lock_guard<std::mutex> lock(mutex2); cond2.notify_all(); });
-    ASSERT_EQ(std::cv_status::timeout, cond2.wait_for(lock2, std::chrono::milliseconds(8000))); // assume thread blocks in 8000ms (7000ms is not enough for MSVC2015@appveyor, 6000ms is not enough for MSVC2017@jenkins)
+    std::atomic<bool> stop(false);
+    std::thread thread1([&pool, &mutex2, &cond2, &stop]()->void { pool.stop(); stop = true; std::lock_guard<std::mutex> lock(mutex2); cond2.notify_all(); });
+    std::thread thread2([&pool, &mutex2, &cond2, &stop]()->void { pool.stop(); stop = true; std::lock_guard<std::mutex> lock(mutex2); cond2.notify_all(); });
+
+    auto result = cond.wait_for(lock2, std::chrono::milliseconds(1000));
+
+    // MSVC 2017.3 and 2017.4 optimized code seems to sporadically notify condition variables without explicit request
+    MSVC2017_OPTIMIZED_WORKAROUND(while(!stop && result == std::cv_status::no_timeout) result = cond2.wait_for(lock2, std::chrono::milliseconds(1000)));
+
+    ASSERT_EQ(std::cv_status::timeout, result);
+    // ^^^ expecting timeout because pool should block indefinitely
     lock2.unlock();
     ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000)));
     thread1.join();

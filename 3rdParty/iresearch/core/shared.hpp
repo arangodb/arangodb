@@ -88,8 +88,19 @@
 // performance problems on other compilers since
 // 'return std::move(x)' prevents such compiler
 // optimizations like 'copy elision'
-#ifndef MOVE_WORKAROUND_MSVC2013
-#define MOVE_WORKAROUND_MSVC2013(x) x
+#ifndef MSVC2013_MOVE_WORKAROUND
+  #define MSVC2013_MOVE_WORKAROUND(x) x
+#endif
+
+// hook for MSVC2017.3 and MSVC2017.4 optimized code
+// these versions produce incorrect code when inlining optimizations are enabled
+#if defined(_MSC_VER) \
+    && !defined(_DEBUG) \
+    && (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) \
+        || ((_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547)))
+  #define MSVC2017_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
+#else
+  #define MSVC2017_OPTIMIZED_WORKAROUND(...)
 #endif
 
 // hook for MSVC-only code
