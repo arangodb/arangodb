@@ -434,7 +434,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_DAY", ".", true, false, true, true, &Functions::DateDay});
   add({"DATE_HOUR", ".", true, false, true, true, &Functions::DateHour});
   add({"DATE_MINUTE", ".", true, false, true, true, &Functions::DateMinute});
-  add({"DATE_SECOND", ".", true, false, true, true});
+  add({"DATE_SECOND", ".", true, false, true, true, &Functions::DateSecond});
   add({"DATE_MILLISECOND", ".", true, false,
        true, true});
   add({"DATE_DAYOFYEAR", ".", true, false, true,

@@ -654,21 +654,32 @@ function ahuacatlDateFunctionsTestSuite () {
 /// @brief test date_second function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDateSecondInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_SECOND()");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_SECOND(1, 1)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_SECOND(null)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_SECOND(false)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_SECOND([])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_SECOND({})");
+    testDateSecondInvalid() {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_SECOND())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_SECOND()))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_SECOND(1, 1))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_SECOND(1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SECOND(null))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SECOND(null)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SECOND(false))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SECOND(false)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SECOND([]))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SECOND([])))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SECOND({}))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SECOND({})))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test date_second function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDateSecond : function () {
-      var values = [
+    testDateSecond() {
+      const values = [
         [ "2000-04-29Z", 0 ],
         [ "2012-02-12 13:24:12Z", 12 ],
         [ "2012-02-12 23:59:59.991Z", 59 ],
