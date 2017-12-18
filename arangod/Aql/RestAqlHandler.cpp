@@ -100,18 +100,6 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   auto query = std::make_unique<Query>(false, _vocbase, planBuilder, options,
                                       (part == "main" ? PART_MAIN : PART_DEPENDENT));
   
-  try {
-    query->prepare(_queryRegistry, 0);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query: " << ex.what();
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN, ex.what());
-    return;
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN);
-    return;
-  }
-
   // Now the query is ready to go, store it in the registry and return:
   double ttl = 600.0;
   bool found;
@@ -122,10 +110,9 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   }
 
   _qId = TRI_NewTickServer();
-  auto transactionContext = query->trx()->transactionContext().get();
 
   try {
-    _queryRegistry->insert(_qId, query.get(), ttl);
+    _queryRegistry->insert(_qId, query.get(), ttl, false);
     query.release();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not keep query in registry";
@@ -146,7 +133,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
     return;
   }
 
-  sendResponse(rest::ResponseCode::ACCEPTED, answerBody.slice(), transactionContext);
+  sendResponse(rest::ResponseCode::ACCEPTED, answerBody.slice());
 }
 
 // POST method for /_api/aql/parse (internal)
@@ -313,18 +300,6 @@ void RestAqlHandler::createQueryFromString() {
   auto query = std::make_unique<Query>(false, _vocbase, QueryString(queryString),
                          bindVars, options,
                          (part == "main" ? PART_MAIN : PART_DEPENDENT));
-  
-  try {
-    query->prepare(_queryRegistry, 0);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query: " << ex.what();
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN, ex.what());
-    return;
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to instantiate the query";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN);
-    return;
-  }
 
   // Now the query is ready to go, store it in the registry and return:
   double ttl = 600.0;
@@ -335,11 +310,10 @@ void RestAqlHandler::createQueryFromString() {
     ttl = arangodb::basics::StringUtils::doubleDecimal(ttlstring);
   }
 
-  auto transactionContext = query->trx()->transactionContext().get();
   _qId = TRI_NewTickServer();
 
   try {
-    _queryRegistry->insert(_qId, query.get(), ttl);
+    _queryRegistry->insert(_qId, query.get(), ttl, false);
     query.release();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not keep query in registry";
@@ -360,7 +334,7 @@ void RestAqlHandler::createQueryFromString() {
     return;
   }
 
-  sendResponse(rest::ResponseCode::ACCEPTED, answerBody.slice(), transactionContext);
+  sendResponse(rest::ResponseCode::ACCEPTED, answerBody.slice());
 }
 
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
@@ -919,4 +893,12 @@ void RestAqlHandler::sendResponse(
     transaction::Context* transactionContext) {
   resetResponse(code);
   writeResult(slice, *(transactionContext->getVPackOptionsForDump()));
+}
+// Send slice as result with the given response type.
+void RestAqlHandler::sendResponse(
+    rest::ResponseCode code, VPackSlice const slice) {
+  resetResponse(code);
+  VPackOptions options = VPackOptions::Defaults;
+  options.escapeUnicode = true;
+  writeResult(slice, options);
 }

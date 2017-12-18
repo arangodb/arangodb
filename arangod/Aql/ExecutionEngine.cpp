@@ -1168,7 +1168,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           id = TRI_NewTickServer();
 
           try {
-            queryRegistry->insert(id, engine->getQuery(), 600.0);
+            queryRegistry->insert(id, engine->getQuery(), 600.0, true);
           } catch (...) {
             delete engine->getQuery();
             // This deletes the new query as well as the engine
