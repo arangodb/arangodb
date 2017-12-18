@@ -98,7 +98,7 @@ void FlushFeature::stop() {
 
   if (_flushThread != nullptr) {
     while (_flushThread->isRunning()) {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
     _isRunning.store(false);
