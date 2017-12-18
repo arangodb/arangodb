@@ -255,6 +255,12 @@ class MMFilesEngine final : public StorageEngine {
   arangodb::Result renameCollection(TRI_vocbase_t* vocbase,
                                     arangodb::LogicalCollection const*,
                                     std::string const& oldName) override;
+  
+  // asks the storage engine to persist renaming of a view
+  // This will write a renameMarker if not in recovery
+  arangodb::Result renameView(TRI_vocbase_t* vocbase,
+                              std::shared_ptr<arangodb::LogicalView> view,
+                              std::string const& oldName) override;
 
   // asks the storage engine to create an index as specified in the VPack
   // Slice object and persist the creation info. The database id, collection id
@@ -365,6 +371,10 @@ class MMFilesEngine final : public StorageEngine {
 
   std::string viewDirectory(TRI_voc_tick_t databaseId,
                             TRI_voc_cid_t viewId) const;
+
+  virtual TRI_voc_tick_t currentTick() const;
+  virtual TRI_voc_tick_t releasedTick() const;
+  virtual void releaseTick(TRI_voc_tick_t);
 
  private:
   velocypack::Builder getReplicationApplierConfiguration(std::string const& filename, int& status);
@@ -488,6 +498,9 @@ class MMFilesEngine final : public StorageEngine {
   /// @brief Local wal access abstraction
   std::unique_ptr<MMFilesWalAccess> _walAccess;
   std::vector<std::pair<std::string, std::string>> _deleted;
+
+  arangodb::basics::ReadWriteLock mutable _releaseLock;
+  TRI_voc_tick_t _releasedTick;
 
   arangodb::basics::ReadWriteLock mutable _pathsLock;
   std::unordered_map<TRI_voc_tick_t,

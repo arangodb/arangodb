@@ -45,6 +45,8 @@
   * [Geo](Functions/Geo.md)
   * [Fulltext](Functions/Fulltext.md)
   * [Miscellaneous](Functions/Miscellaneous.md)
+* [Views](Views/README.md)
+  * [IResearch](Views/IResearch.md)
 * [Graphs](Graphs/README.md)
   * [Traversals explained](Graphs/TraversalsExplained.md)
   * [Traversals](Graphs/Traversals.md)

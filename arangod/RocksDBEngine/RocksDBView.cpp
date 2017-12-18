@@ -32,6 +32,7 @@
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -76,13 +77,23 @@ void RocksDBView::getPropertiesVPack(velocypack::Builder& result,
 void RocksDBView::open() {}
 
 void RocksDBView::drop() {
-  auto db = rocksutils::globalRocksDB();
+  VPackBuilder builder;
+  builder.openObject();
+  _logicalView->toVelocyPack(builder, true, true);
+  builder.close();
+  RocksDBLogValue logValue = RocksDBLogValue::ViewDrop(
+      _logicalView->vocbase()->id(), _logicalView->id(), builder.slice());
+
   RocksDBKey key;
   key.constructView(_logicalView->vocbase()->id(), _logicalView->id());
 
-  rocksdb::WriteOptions options;  // TODO: check which options would make sense
-  auto status = rocksutils::convertStatus(
-      db->Delete(options, RocksDBColumnFamily::definitions(), key.string()));
+  rocksdb::WriteBatch batch;
+  rocksdb::WriteOptions wo;  // TODO: check which options would make sense
+  auto db = rocksutils::globalRocksDB();
+
+  batch.PutLogData(logValue.slice());
+  batch.Delete(RocksDBColumnFamily::definitions(), key.string());
+  auto status = rocksutils::convertStatus(db->Write(wo, &batch));
   if (!status.ok()) {
     THROW_ARANGO_EXCEPTION(status.errorNumber());
   }

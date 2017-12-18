@@ -2,10 +2,53 @@ foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
 
+################################################################################
+## IResearch
+################################################################################
+
+if (USE_IRESEARCH)
+  set(IRESEARCH_TESTS_SOURCES
+    IResearch/common.cpp
+#    IResearch/AttributeScorer-test.cpp
+    IResearch/Containers-test.cpp
+    IResearch/IResearchAnalyzerFeature-test.cpp
+    IResearch/IResearchFeature-test.cpp
+    IResearch/IResearchLink-test.cpp
+    IResearch/IResearchLinkMeta-test.cpp
+    IResearch/IResearchOrder-test.cpp
+    IResearch/IResearchView-test.cpp
+    IResearch/IResearchViewMeta-test.cpp
+    IResearch/IResearchDocument-test.cpp
+    IResearch/IResearchFilter-test.cpp
+    IResearch/IResearchQueryAnd-test.cpp
+    IResearch/IResearchQueryBooleanTerm-test.cpp
+    IResearch/IResearchQueryComplexBoolean-test.cpp
+    IResearch/IResearchQueryExists-test.cpp
+    IResearch/IResearchQueryIn-test.cpp
+    IResearch/IResearchQueryNullTerm-test.cpp
+    IResearch/IResearchQueryNumericTerm-test.cpp
+    IResearch/IResearchQueryOr-test.cpp
+    IResearch/IResearchQueryPhrase-test.cpp
+    IResearch/IResearchQuerySelectAll-test.cpp
+    IResearch/IResearchQueryStartsWith-test.cpp
+    IResearch/IResearchQueryStringTerm-test.cpp
+    IResearch/IResearchQueryTokens-test.cpp
+    IResearch/IResearchQueryValue-test.cpp
+    IResearch/IResearchQueryJoin-test.cpp
+    IResearch/IResearchQueryAggregate-test.cpp
+    IResearch/IResearchQueryTraversal-test.cpp
+    IResearch/ExpressionFilter-test.cpp
+    IResearch/StorageEngineMock.cpp
+    IResearch/ExpressionContextMock.cpp
+    IResearch/VelocyPackHelper-test.cpp
+  )
+endif ()
+
 # linking is a dark art...workmonitordummy is somehow necessary
 add_executable(
   arangodbtests
 #  ../lib/Basics/WorkMonitorDummy.cpp
+  ${CMAKE_SOURCE_DIR}/arangod/RestServer/FlushFeature.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
   Agency/FailedFollowerTest.cpp
@@ -64,6 +107,7 @@ add_executable(
   RocksDBEngine/TypeConversionTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
   VocBase/AuthInfoTest.cpp
+  ${IRESEARCH_TESTS_SOURCES}
   main.cpp
 )
 
@@ -82,3 +126,21 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/catch
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit
 )
+
+if (USE_IRESEARCH)
+  find_package(OpenSSL REQUIRED)
+  list(APPEND IRESEARCH_LIB_RESOURCES
+    "${LIB_EAY_DEBUG_DLL}"
+    "${SSL_EAY_DEBUG_DLL}"
+    "${LIB_EAY_RELEASE_DLL}"
+    "${SSL_EAY_RELEASE_DLL}"
+  )
+
+  foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
+    add_custom_command(
+      TARGET arangodbtests POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:arangodbtests>"
+      COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests>
+    )
+  endforeach()
+endif()

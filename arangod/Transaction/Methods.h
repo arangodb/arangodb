@@ -147,7 +147,9 @@ class Methods {
   };
 
   /// @brief register a callback for transaction commit or abort
-  void registerCallback(std::function<void(arangodb::transaction::Methods* trx)> const& onFinish) { _onFinish = onFinish; }
+  void registerCallback(std::function<void(arangodb::transaction::Methods* trx)> const& cb) {
+    _callbacks.emplace_back(cb);
+  }
 
   /// @brief return database of transaction
   TRI_vocbase_t* vocbase() const;
@@ -596,7 +598,7 @@ class Methods {
 
   /// @brief optional callback function that will be called on transaction
   /// commit or abort
-  std::function<void(arangodb::transaction::Methods* trx)> _onFinish;
+  std::vector<std::function<void(arangodb::transaction::Methods* trx)>> _callbacks;
 };
 
 class CallbackInvoker {
