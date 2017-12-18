@@ -4465,7 +4465,7 @@ static bool isValueTypeNumber(AstNode const* node) {
 }
 
 static bool applyFulltextOptimization(EnumerateListNode* elnode,
-                                      LimitNode* limitNode, ExecutionPlan* plan) {
+                                      LimitNode* ln, ExecutionPlan* plan) {
   std::vector<Variable const*> varsUsedHere = elnode->getVariablesUsedHere();
   TRI_ASSERT(varsUsedHere.size() == 1);
   // now check who introduced our variable
@@ -4555,11 +4555,15 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   condition.release();
   plan->replaceNode(elnode, inode);
   
-  if (limitArg != nullptr && limitNode == nullptr) { // add LIMIT
+  if (limitArg != nullptr) { // add LIMIT
     size_t limit = static_cast<size_t>(limitArg->getIntValue());
-    limitNode = new LimitNode(plan, plan->nextId(), 0, limit);
-    plan->registerNode(limitNode);
-    plan->insertAfter(inode, limitNode);
+    if (ln == nullptr) {
+      ln = new LimitNode(plan, plan->nextId(), 0, limit);
+      plan->registerNode(ln);
+      plan->insertAfter(inode, ln);
+    } else if (limit < ln->limit()) {
+      ln->setLimit(limit);
+    }
   }
   return true;
 }
@@ -4934,12 +4938,16 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
   auto eval = [&](AstNode const* first, AstNode const* second, bool lessequal) -> bool{
     if (first->type == NODE_TYPE_FCALL && isValueOrReference(second) &&
         checkDistanceFunc(plan, first, info)) {
+      TRI_ASSERT(info.index);
       info.maxDistance = second;
       info.maxInclusive = lessequal;
       info.nodesToRemove.insert(node);
       return true;
     } else if (second->type == NODE_TYPE_FCALL && isValueOrReference(first) &&
                checkDistanceFunc(plan, second, info)) {
+      if (info.index->type() != Index::TRI_IDX_TYPE_S2_INDEX) {
+        return false;
+      }
       info.minDistance = second;
       info.minInclusive = lessequal;
       info.nodesToRemove.insert(node);
@@ -5107,7 +5115,7 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
 }
 
 // applys the optimization for a candidate
-bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* limitNode, GeoIndexInfo& info) {
+static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln, GeoIndexInfo& info) {
   TRI_ASSERT(info.collection != nullptr);
   TRI_ASSERT(info.index);
 
@@ -5149,10 +5157,14 @@ bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* limitNode, GeoIndexInf
     }
   }
   
-  if (info.actualLimit < SIZE_MAX && limitNode == nullptr) { // add LIMIT
-    limitNode = new LimitNode(plan, plan->nextId(), 0, info.actualLimit);
-    plan->registerNode(limitNode);
-    plan->insertAfter(inode, limitNode);
+  if (info.actualLimit < SIZE_MAX) { // add LIMIT
+    if (ln == nullptr) {
+      ln = new LimitNode(plan, plan->nextId(), 0, info.actualLimit);
+      plan->registerNode(ln);
+      plan->insertAfter(inode, ln);
+    } else if (info.actualLimit < ln->limit()) {
+      ln->setLimit(info.actualLimit);
+    }
   }
 
   // signal that plan has been changed
@@ -5176,13 +5188,15 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     while (current) {
       switch (current->getType()) {
         case EN::FILTER:
-        case EN::SORT: {
+        case EN::SORT:
           identifyGeoOptimizationCandidate(plan.get(), current, info);
           break;
-        }
         case EN::LIMIT: // collect this so we can use it
           limit = static_cast<LimitNode*>(current);
           break;
+        case EN::INDEX:
+        case EN::COLLECT:
+          info.invalidate();
         case EN::ENUMERATE_LIST:{
           EnumerateListNode* el = static_cast<EnumerateListNode*>(current);
           checkEnumerateListNode(plan.get(), el, info);
@@ -5194,10 +5208,6 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
           }
           break;
         }
-
-        case EN::INDEX:
-        case EN::COLLECT:
-          info.invalidate();
         default:
           break;// skip
       }
