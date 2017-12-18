@@ -544,20 +544,24 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
 }
 
 /// @brief Helper implementation similar to ArangoCollection.all() in v8
-Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cName,
+Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cname,
                         DocCallback cb) {
   
   // Implement it like this to stay close to the original
   if (ServerState::instance()->isCoordinator()) {
     auto empty = std::make_shared<VPackBuilder>();
-    std::string q = "FOR r IN " + cName +" RETURN r";
-    arangodb::aql::Query query(false, vocbase, aql::QueryString(q),
-                               empty, empty, arangodb::aql::PART_MAIN);
+    std::string q = "FOR r IN @@coll RETURN r";
+    auto binds = std::make_shared<VPackBuilder>();
+    binds->openObject();
+    binds->add("@coll", VPackValue(cname));
+    binds->close();
+    arangodb::aql::Query query(false, vocbase, aql::QueryString(q), binds,
+                               std::make_shared<VPackBuilder>(), arangodb::aql::PART_MAIN);
     auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
     TRI_ASSERT(queryRegistry != nullptr);
     aql::QueryResult queryResult = query.execute(queryRegistry);
     Result res = queryResult.code;
-    if (queryResult.code == TRI_ERROR_NO_ERROR) { // just ignore errors
+    if (queryResult.code == TRI_ERROR_NO_ERROR) {
       VPackSlice array = queryResult.result->slice();
       for (VPackSlice doc : VPackArrayIterator(array)) {
         cb(doc.resolveExternal());
@@ -566,7 +570,7 @@ Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cName,
     return res;
   } else {
     auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-    SingleCollectionTransaction trx(ctx, cName, AccessMode::Type::READ);
+    SingleCollectionTransaction trx(ctx, cname, AccessMode::Type::READ);
     Result res = trx.begin();
     if (res.fail()) {
       return res;
@@ -575,7 +579,7 @@ Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cName,
     ManagedDocumentResult mmdr;
     // We directly read the entire cursor. so batchsize == limit
     std::unique_ptr<OperationCursor> opCursor =
-    trx.indexScan(cName, transaction::Methods::CursorType::ALL, &mmdr, false);
+    trx.indexScan(cname, transaction::Methods::CursorType::ALL, &mmdr, false);
     if (!opCursor->hasMore()) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }

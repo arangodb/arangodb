@@ -73,7 +73,7 @@ struct Collections {
                            TRI_voc_rid_t& rid);
   
   /// @brief Helper implementation similar to ArangoCollection.all() in v8
-  static Result all(TRI_vocbase_t*, std::string const& cName, DocCallback);
+  static Result all(TRI_vocbase_t*, std::string const& cname, DocCallback);
 };
 #ifdef USE_ENTERPRISE
   Result ULColCoordinatorEnterprise(std::string const& databaseName,
