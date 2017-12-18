@@ -451,9 +451,7 @@ int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
 
   {
     MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
-    TRI_ASSERT(!_operationsQueueInUse);
-
-    if (_operationsQueue.empty()) {
+    if (_operationsQueueInUse || _operationsQueue.empty()) {
       // nothing to do
       return TRI_ERROR_NO_ERROR;
     }
@@ -588,40 +586,47 @@ void MMFilesCollectorThread::clearQueuedOperations() {
         break;
       }
     }
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 
+  try {
+    for (auto& it : _operationsQueue) {
+      auto& operations = it.second;
+      TRI_ASSERT(!operations.empty());
 
-  for (auto& it : _operationsQueue) {
-    auto& operations = it.second;
-    TRI_ASSERT(!operations.empty());
+      for (auto const& cache : operations) {
+        {
+          arangodb::DatabaseGuard dbGuard(cache->databaseId);
+          TRI_vocbase_t* vocbase = dbGuard.database();
+          TRI_ASSERT(vocbase != nullptr);
 
-    for (auto const& cache : operations) {
-      {
-        arangodb::DatabaseGuard dbGuard(cache->databaseId);
-        TRI_vocbase_t* vocbase = dbGuard.database();
-        TRI_ASSERT(vocbase != nullptr);
+          arangodb::CollectionGuard collectionGuard(vocbase, cache->collectionId,
+                                                    true);
+          arangodb::LogicalCollection* collection = collectionGuard.collection();
 
-        arangodb::CollectionGuard collectionGuard(vocbase, cache->collectionId,
-                                                  true);
-        arangodb::LogicalCollection* collection = collectionGuard.collection();
+          TRI_ASSERT(collection != nullptr);
 
-        TRI_ASSERT(collection != nullptr);
+          auto physical =
+            static_cast<MMFilesCollection*>(collection->getPhysical());
+          TRI_ASSERT(physical != nullptr);
 
-        auto physical =
-          static_cast<MMFilesCollection*>(collection->getPhysical());
-        TRI_ASSERT(physical != nullptr);
+          physical->decreaseUncollectedLogfileEntries(
+              cache->totalOperationsCount);
+        }
+        _numPendingOperations -= cache->operations->size();
+        _logfileManager->decreaseCollectQueueSize(cache->logfile);
 
-        physical->decreaseUncollectedLogfileEntries(
-            cache->totalOperationsCount);
+        delete cache;
       }
-      _numPendingOperations -= cache->operations->size();
-      _logfileManager->decreaseCollectQueueSize(cache->logfile);
 
-      delete cache;
+      it.second.clear();
     }
-
-    it.second.clear();
+  } catch (...) {
+    // must clear the inuse flag here
+    MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
+    TRI_ASSERT(_operationsQueueInUse); // used by us
+    _operationsQueueInUse = false;
+    throw;
   }
 
 
