@@ -77,6 +77,7 @@ bool MMFilesPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t
     return false;
   }
   while (_iterator.valid() && limit > 0) {
+    // TODO: use version that hands in an existing mmdr
     MMFilesSimpleIndexElement result =
         _index->lookupKey(_trx, _iterator.value());
     _iterator.next();
@@ -361,26 +362,12 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequentialReverse(
 }
 
 /// @brief adds a key/element to the index
-/// returns a status code, and *found will contain a found element (if any)
 Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
                                       VPackSlice const& doc,
                                       OperationMode mode) {
-  ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, 1);
-  MMFilesSimpleIndexElement element(buildKeyElement(documentId, doc));
-
-  int res = _primaryIndex->insert(&context, element);
-
-  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-    std::string existingId(doc.get(StaticStrings::KeyString).copyString());
-    if (mode == OperationMode::internal) {
-      return IndexResult(res, std::move(existingId));
-    }
-    return IndexResult(res, this, existingId);
-  }
-
-  return IndexResult(res, this);
+  ManagedDocumentResult mmdr;
+  return insertKey(trx, documentId, doc, mmdr, mode);
 }
 
 Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
@@ -391,6 +378,9 @@ Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
   IndexLookupContext context(trx, _collection, &mmdr, 1);
   MMFilesSimpleIndexElement element(buildKeyElement(documentId, doc));
 
+// TODO: we can pass in a special IndexLookupContext which has some more on the information 
+// about the to-be-inserted document. this way we can spare one lookup in 
+// IsEqualElementElementByKey
   int res = _primaryIndex->insert(&context, element);
 
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
@@ -404,13 +394,21 @@ Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
   return IndexResult(res, this);
 }
 
-/// @brief removes an key/element from the index
+/// @brief removes a key/element from the index
+Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
+                                      LocalDocumentId const& documentId,
+                                      VPackSlice const& doc,
+                                      OperationMode mode) {
+  ManagedDocumentResult mmdr;
+  return removeKey(trx, documentId, doc, mmdr, mode);
+}
+
 Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
                                       LocalDocumentId const&,
                                       VPackSlice const& doc,
+                                      ManagedDocumentResult& mmdr,
                                       OperationMode mode) {
-  ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, 1);
+  IndexLookupContext context(trx, _collection, &mmdr, 1);
 
   VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(doc));
   MMFilesSimpleIndexElement found =
@@ -421,24 +419,6 @@ Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
   }
 
   return Result();
-}
-
-Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
-                                      LocalDocumentId const&,
-                                      VPackSlice const& doc,
-                                      ManagedDocumentResult& mmdr,
-                                      OperationMode mode) {
-  IndexLookupContext context(trx, _collection, &mmdr, 1);
-
-  VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(doc));
-  MMFilesSimpleIndexElement found =
-      _primaryIndex->removeByKey(&context, keySlice.begin());
-
-  if (!found) {
-    return IndexResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, this);
-  }
-
-  return Result(TRI_ERROR_NO_ERROR);
 }
 
 /// @brief resizes the index

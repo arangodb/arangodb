@@ -3332,11 +3332,6 @@ Result MMFilesCollection::update(
     operation.setDocumentIds(MMFilesDocumentDescriptor(oldDocumentId, oldDoc.begin()),
                              MMFilesDocumentDescriptor(documentId, newDoc.begin()));
 
-    if (oldRevisionId == revisionId) {
-      // update with same revision id => can happen if isRestore = true
-      result.reset();
-    }
-
     res = updateDocument(trx, revisionId, oldDocumentId, oldDoc, documentId,
                          newDoc, operation, marker, options,
                          options.waitForSync);
@@ -3465,11 +3460,6 @@ Result MMFilesCollection::replace(
     operation.setDocumentIds(MMFilesDocumentDescriptor(oldDocumentId, oldDoc.begin()),
                              MMFilesDocumentDescriptor(documentId, newDoc.begin()));
 
-    if (oldDocumentId == documentId) {
-      // update with same revision id => can happen if isRestore = true
-      result.reset();
-    }
-
     res = updateDocument(trx, revisionId, oldDocumentId, oldDoc, documentId,
                          newDoc, operation, marker, options,
                          options.waitForSync);
@@ -3486,14 +3476,7 @@ Result MMFilesCollection::replace(
   if (res.fail()) {
     operation.revert(trx);
   } else {
-    if (oldDocumentId == documentId) {
-      // update with same revision id => can happen if isRestore = true
-      result.reset();
-    }
-    uint8_t const* vpack = lookupDocumentVPack(documentId);
-    if (vpack != nullptr) {
-      result.setUnmanaged(vpack, documentId);
-    }
+    result.setManaged(newDoc.begin(), documentId);
 
     if (options.waitForSync) {
       // store the tick that was used for writing the new document
@@ -3851,7 +3834,7 @@ Result MMFilesCollection::updateDocument(
                                       options.indexOperationMode);
 
   if (res.fail()) {
-    // re-enter the document in case of failure, ignore errors during rollback
+    // re-insert the document in case of failure, ignore errors during rollback
     insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
                            Index::OperationMode::rollback);
     return res;
@@ -3870,8 +3853,9 @@ Result MMFilesCollection::updateDocument(
     return res;
   }
 
-  // update the index element (primary index only - other index have been
+  // update the index element (primary index only - other indexes have been
   // adjusted)
+  // TODO: pass key into this function so it does not have to be looked up again
   VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(newDoc));
   MMFilesSimpleIndexElement* element =
       primaryIndex()->lookupKeyRef(trx, keySlice);
@@ -3883,11 +3867,9 @@ Result MMFilesCollection::updateDocument(
 
   operation.indexed();
 
-  if (oldDocumentId != newDocumentId) {
-    try {
-      removeLocalDocumentId(oldDocumentId, true);
-    } catch (...) {
-    }
+  try {
+    removeLocalDocumentId(oldDocumentId, true);
+  } catch (...) {
   }
 
   TRI_IF_FAILURE("UpdateDocumentNoOperation") {

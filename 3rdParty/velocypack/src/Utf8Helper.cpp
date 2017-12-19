@@ -55,14 +55,13 @@ static const uint8_t states[] = {
 
 bool Utf8Helper::isValidUtf8(uint8_t const* p, ValueLength len) {
   uint8_t const* end = p + len;
-  
   uint8_t state = ValidChar;
+
   while (p < end) {
-    state = states[256 + state * 16 + states[*p]];
+    state = states[256 + state * 16 + states[*p++]];
     if (state == InvalidChar) {
       return false;
     }
-    ++p;
   }
 
   return (state == ValidChar);

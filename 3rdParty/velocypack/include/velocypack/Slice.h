@@ -425,13 +425,13 @@ class Slice {
       throw Exception(Exception::InvalidValueType, "Expecting type Object");
     }
 
-    Slice key = getNthKey(index, false);
+    Slice key = getNthKeyUntranslated(index);
     return Slice(key.start() + key.byteSize());
   }
   
   // extract the nth value from an Object
   Slice getNthValue(ValueLength index) const {
-    Slice key = getNthKey(index, false);
+    Slice key = getNthKeyUntranslated(index);
     return Slice(key.start() + key.byteSize());
   }
 
@@ -923,6 +923,12 @@ class Slice {
   // extract the nth member from an Object, note that this is the nth
   // entry in the hash table for types 0x0b to 0x0e
   Slice getNthKey(ValueLength index, bool translate) const;
+
+  // extract the nth member from an Object, no translation
+  inline Slice getNthKeyUntranslated(ValueLength index) const {
+    VELOCYPACK_ASSERT(type() == ValueType::Object);
+    return Slice(_start + getNthOffset(index));
+  }
 
   // get the offset for the nth member from a compact Array or Object type
   ValueLength getNthOffsetFromCompact(ValueLength index) const;

@@ -73,6 +73,11 @@ struct MMFilesPrimaryIndexHelper {
   inline bool IsEqualElementElement(void* userData,
                                     MMFilesSimpleIndexElement const& left,
                                     MMFilesSimpleIndexElement const& right) const {
+    return (left.localDocumentId() == right.localDocumentId());
+    if (left.localDocumentId() != right.localDocumentId()) {
+      // TODO: check if we have many collisions here
+      return false;
+    }
     IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
     TRI_ASSERT(context != nullptr);
 
@@ -86,7 +91,18 @@ struct MMFilesPrimaryIndexHelper {
   inline bool IsEqualElementElementByKey(void* userData,
                                          MMFilesSimpleIndexElement const& left,
                                          MMFilesSimpleIndexElement const& right) const {
-    return IsEqualElementElement(userData, left, right);
+    if (left.hash() != right.hash()) {
+      // TODO: check if we have many collisions here
+      return false;
+    }
+    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    TRI_ASSERT(context != nullptr);
+
+    VPackSlice l = left.slice(context);
+    VPackSlice r = right.slice(context);
+    TRI_ASSERT(l.isString());
+    TRI_ASSERT(r.isString());
+    return l.equals(r);
   }
 };
 

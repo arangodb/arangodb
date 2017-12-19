@@ -36,12 +36,11 @@ static inline size_t JSONStringCopyInline(uint8_t* dst, uint8_t const* src,
   // Stop at the first control character or backslash or double quote.
   // Report the number of bytes copied. May copy less bytes, for example
   // for alignment reasons.
-  size_t count = limit;
-  while (count > 0 && *src >= 32 && *src != '\\' && *src != '"') {
+  uint8_t const* end = src + limit;
+  while (src < end && *src >= 32 && *src != '\\' && *src != '"') {
     *dst++ = *src++;
-    count--;
   }
-  return limit - count;
+  return limit - (end - src);
 }
 
 size_t JSONStringCopyC(uint8_t* dst, uint8_t const* src, size_t limit);
