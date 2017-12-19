@@ -411,7 +411,7 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type,
   TRI_ASSERT(physical != nullptr);
 
   LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;
-  if (!AccessMode::isExclusive(type)) {
+  if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be releasing the collection's RW lock in
     // write mode
     physical->unlockWrite();
