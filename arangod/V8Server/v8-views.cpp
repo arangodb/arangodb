@@ -400,6 +400,7 @@ static void JS_PropertiesViewVocbase(
   // check if we want to change some parameters
   if (isModification) {
     v8::Handle<v8::Value> par = args[0];
+    bool partialUpdate = true; // partial update by default
 
     if (par->IsObject()) {
       VPackBuilder builder;
@@ -409,6 +410,14 @@ static void JS_PropertiesViewVocbase(
         TRI_V8_THROW_EXCEPTION(res);
       }
 
+      if (args.Length() > 1) {
+        if (!args[1]->IsBoolean()) {
+          TRI_V8_THROW_EXCEPTION_PARAMETER("<partialUpdate> must be a boolean");
+        }
+
+        partialUpdate = args[1]->ToBoolean()->Value();
+      }
+
       VPackSlice const slice = builder.slice();
 
       // try to write new parameter to file
@@ -416,7 +425,7 @@ static void JS_PropertiesViewVocbase(
           application_features::ApplicationServer::getFeature<DatabaseFeature>(
               "Database")
               ->forceSyncProperties();
-      arangodb::Result updateRes = view->updateProperties(slice, true, doSync);
+      auto updateRes = view->updateProperties(slice, partialUpdate, doSync);
 
       if (!updateRes.ok()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(updateRes.errorNumber(),
