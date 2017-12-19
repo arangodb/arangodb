@@ -539,7 +539,7 @@ class ClusterComm {
  protected:  // protected members are for unit test purposes
 
   /// @brief Constructor for test cases.
-  ClusterComm(bool);
+  explicit ClusterComm(bool);
 
   // code below this point used to be "private".  now "protected" to
   //  enable unit test wrapper class

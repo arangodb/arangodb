@@ -88,7 +88,7 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       if (mmColl->isFullyCollected()) {
         break;
       }
-      usleep(SleepTime);
+      std::this_thread::sleep_for(std::chrono::microseconds(SleepTime));
     }
   }
 

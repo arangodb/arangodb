@@ -43,6 +43,7 @@ ReplicationApplierState::ReplicationApplierState()
       _totalRequests(0),
       _totalFailedConnects(0),
       _totalEvents(0),
+      _totalResyncs(0),
       _skippedOperations(0) {
   _progressTime[0] = '\0';
 }
@@ -69,6 +70,7 @@ ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierSt
   _totalRequests = other._totalRequests;
   _totalFailedConnects = other._totalFailedConnects;
   _totalEvents = other._totalEvents;
+  _totalResyncs = other._totalResyncs;
   _skippedOperations = other._skippedOperations;
 
   return *this;
@@ -90,6 +92,7 @@ void ReplicationApplierState::reset(bool resetState) {
   _totalRequests = 0;
   _totalFailedConnects = 0;
   _totalEvents = 0;
+  _totalResyncs = 0;
   _skippedOperations = 0;
   
   if (resetState) {
@@ -143,6 +146,7 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
     result.add("totalRequests", VPackValue(_totalRequests));
     result.add("totalFailedConnects", VPackValue(_totalFailedConnects));
     result.add("totalEvents", VPackValue(_totalEvents));
+    result.add("totalResyncs", VPackValue(_totalResyncs));
     result.add("totalOperationsExcluded", VPackValue(_skippedOperations));
 
     // lastError

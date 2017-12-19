@@ -28,6 +28,10 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewOptimizerRules.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::aql;
@@ -54,6 +58,11 @@ OptimizerRulesFeature::OptimizerRulesFeature(
 
 void OptimizerRulesFeature::prepare() {
   addRules();
+}
+
+void OptimizerRulesFeature::unprepare() {
+  _ruleLookup.clear();
+  _rules.clear();
 }
 
 /// @brief register a rule
@@ -154,11 +163,11 @@ void OptimizerRulesFeature::addRules() {
   // merge filters into traversals
   registerRule("optimize-traversals", optimizeTraversalsRule,
                OptimizerRule::optimizeTraversalsRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+
   // optimize unneccessary filters already applied by the traversal
   registerRule("remove-filter-covered-by-traversal", removeFiltersCoveredByTraversal,
                OptimizerRule::removeFiltersCoveredByTraversal_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+
   // optimize unneccessary filters already applied by the traversal. Only ever does something if previous
   // rule remove all filters using the path variable
   registerRule("remove-redundant-path-var", removeTraversalPathVariable,
@@ -212,12 +221,12 @@ void OptimizerRulesFeature::addRules() {
   // try to find sort blocks which are superseeded by indexes
   registerRule("use-index-for-sort", useIndexForSortRule,
                OptimizerRule::useIndexForSortRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+
   // sort in-values in filters (note: must come after
   // remove-filter-covered-by-index rule)
   registerRule("sort-in-values", sortInValuesRule, OptimizerRule::sortInValuesRule_pass6,
                DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
+
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-2",
                removeUnnecessaryCalculationsRule,
@@ -230,10 +239,20 @@ void OptimizerRulesFeature::addRules() {
   // patch update statements
   registerRule("patch-update-statements", patchUpdateStatementsRule,
                OptimizerRule::patchUpdateStatementsRule_pass9, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
-  // patch update statements
+
+#ifdef USE_IRESEARCH
+  // move filters and sort conditions into views
+  registerRule("handle-views", arangodb::iresearch::handleViewsRule,
+               OptimizerRule::handleViewsRule_pass6, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
+#endif
+
+  // remove FILTER DISTANCE(...) and SORT DISTANCE(...)
   OptimizerRulesFeature::registerRule("geo-index-optimizer", geoIndexRule,
-                                      OptimizerRule::applyGeoIndexRule, false, true);
+                                      OptimizerRule::applyGeoIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+
+  // replace FOR v IN FULLTEXT(...) with an IndexNode and Limit
+  OptimizerRulesFeature::registerRule("fulltext-index-optimizer", fulltextIndexRule,
+                                      OptimizerRule::applyFulltextIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #if 0
@@ -273,13 +292,13 @@ void OptimizerRulesFeature::addRules() {
                  OptimizerRule::removeSatelliteJoinsRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
 #endif
   }
-  
+
   // finally add the storage-engine specific rules
   addStorageEngineRules();
 }
 
 void OptimizerRulesFeature::addStorageEngineRules() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE; 
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr); // Engine not loaded. Startup broken
   engine->addOptimizerRules();
 }
@@ -315,7 +334,7 @@ char const* OptimizerRulesFeature::translateRule(int rule) {
 std::unordered_set<int> OptimizerRulesFeature::getDisabledRuleIds(
     std::vector<std::string> const& names) {
   std::unordered_set<int> disabled;
-                 
+
   // lookup ids of all disabled rules
   for (auto const& name : names) {
     if (name.empty()) {

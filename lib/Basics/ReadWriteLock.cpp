@@ -18,115 +18,86 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
-/// @author Achim Brandt
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReadWriteLock.h"
 
-#if 0
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a read-write lock
-////////////////////////////////////////////////////////////////////////////////
-
-ReadWriteLock::ReadWriteLock() : _rwlock(), _writeLocked(false) {
-  TRI_InitReadWriteLock(&_rwlock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes read-write lock
-////////////////////////////////////////////////////////////////////////////////
-
-ReadWriteLock::~ReadWriteLock() { TRI_DestroyReadWriteLock(&_rwlock); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locks for reading
-////////////////////////////////////////////////////////////////////////////////
-
-void ReadWriteLock::readLock() { TRI_ReadLockReadWriteLock(&_rwlock); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to lock for reading
-////////////////////////////////////////////////////////////////////////////////
-
-bool ReadWriteLock::tryReadLock() {
-  return TRI_TryReadLockReadWriteLock(&_rwlock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to lock for reading, sleeping if the lock cannot be
-/// acquired instantly, sleepTime is in microseconds
-////////////////////////////////////////////////////////////////////////////////
-
-bool ReadWriteLock::tryReadLock(uint64_t sleepTime) {
-  while (true) {
-    if (tryReadLock()) {
-      return true;
-    }
-
-    usleep(static_cast<TRI_usleep_t>(sleepTime));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locks for writing
-////////////////////////////////////////////////////////////////////////////////
-
 void ReadWriteLock::writeLock() {
-  TRI_WriteLockReadWriteLock(&_rwlock);
-
-  _writeLocked = true;
+  std::unique_lock<std::mutex> guard(_mut);
+  if (_state == 0) {
+    _state = -1;
+    return;
+  }
+  do {
+    _wantWrite = true;
+    _bell.wait(guard);
+  } while (_state != 0);
+  _state = -1;
+  _wantWrite = false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to lock for writing
-////////////////////////////////////////////////////////////////////////////////
-
+/// @brief locks for writing, but only tries
 bool ReadWriteLock::tryWriteLock() {
-  if (!TRI_TryWriteLockReadWriteLock(&_rwlock)) {
-    return false;
+  std::unique_lock<std::mutex> guard(_mut);
+  if (_state == 0) {
+    _state = -1;
+    return true;
   }
-
-  _writeLocked = true;
-  return true;
+  return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to lock for writing, sleeping if the lock cannot be
-/// acquired instantly, sleepTime is in microseconds
-////////////////////////////////////////////////////////////////////////////////
-
-bool ReadWriteLock::tryWriteLock(uint64_t sleepTime) {
+/// @brief locks for reading
+void ReadWriteLock::readLock() {
+  std::unique_lock<std::mutex> guard(_mut);
+  if (!_wantWrite && _state >= 0) {
+    _state += 1;
+    return;
+  }
   while (true) {
-    if (tryWriteLock()) {
-      return true;
+    while (_wantWrite || _state < 0) {
+      _bell.wait(guard);
     }
-
-    usleep(static_cast<TRI_usleep_t>(sleepTime));
+    if (!_wantWrite) {
+      break;
+    }
   }
+  _state += 1;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+/// @brief locks for reading, tries only
+bool ReadWriteLock::tryReadLock() {
+  std::unique_lock<std::mutex> guard(_mut);
+  if (!_wantWrite && _state >= 0) {
+    _state += 1;
+    return true;
+  }
+  return false;
+}
+
 /// @brief releases the read-lock or write-lock
-////////////////////////////////////////////////////////////////////////////////
-
 void ReadWriteLock::unlock() {
-  if (_writeLocked) {
-    _writeLocked = false;
-    unlockWrite();
+  std::unique_lock<std::mutex> guard(_mut);
+  if (_state == -1) {
+    _state = 0;
+    _bell.notify_all();
   } else {
-    unlockRead();
+    _state -= 1;
+    if (_state == 0) {
+      _bell.notify_all();
+    }
   }
 }
-
+  
+/// @brief releases the read-lock
 void ReadWriteLock::unlockRead() {
-  TRI_ReadUnlockReadWriteLock(&_rwlock);
+  unlock();
 }
-
+  
+/// @brief releases the write-lock
 void ReadWriteLock::unlockWrite() {
-  TRI_WriteUnlockReadWriteLock(&_rwlock);
+  unlock();
 }
-
-#endif

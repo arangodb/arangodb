@@ -31,6 +31,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <crtdbg.h>
+#include <atlstr.h>
 #include <VersionHelpers.h>
 
 #include "Logger/Logger.h"
@@ -66,61 +67,6 @@ int getpagesize(void) {
   }
 
   return pageSize;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Calls the windows Sleep function which always sleeps for milliseconds
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_sleep(unsigned long waitTime) { Sleep(waitTime * 1000); }
-
-////////////////////////////////////////////////////////////////////////////////
-// Calls a timer which waits for a signal after the elapsed time in 
-// microseconds. The timer is accurate to 100nanoseconds.
-// This is only a Windows workaround, use usleep, which is mapped to 
-// TRI_usleep on Windows!
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_usleep(unsigned long waitTime) {
-  int result;
-  HANDLE hTimer = NULL;            // stores the handle of the timer object
-  LARGE_INTEGER wTime;             // essentially a 64bit number
-  wTime.QuadPart = waitTime * 10;  // *10 to change to microseconds
-  wTime.QuadPart =
-      -wTime.QuadPart;  // negative indicates relative time elapsed,
-
-  // Create an unnamed waitable timer.
-  hTimer = CreateWaitableTimer(NULL, 1, NULL);
-
-  if (hTimer == NULL) {
-    // not much we can do at this low level
-    return;
-  }
-
-  if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "internal error in TRI_usleep()";
-    FATAL_ERROR_EXIT();
-  }
-
-  // Set timer to wait for indicated micro seconds.
-  if (!SetWaitableTimer(hTimer, &wTime, 0, NULL, NULL, 0)) {
-    // not much we can do at this low level
-    CloseHandle(hTimer);
-    return;
-  }
-
-  // Wait for the timer
-  result = WaitForSingleObject(hTimer, INFINITE);
-
-  if (result != WAIT_OBJECT_0) {
-    CloseHandle(hTimer);
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "couldn't wait for timer in TRI_usleep()";
-    FATAL_ERROR_EXIT();
-  }
-
-  CloseHandle(hTimer);
-  // todo: go through what the result is e.g. WAIT_OBJECT_0
-  return;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -558,15 +504,14 @@ void ADB_WindowsExitFunction(int exitCode, void* data) {
 }
 
 // Detect cygwin ssh / terminals
-int _cyg_isatty(int fd)
-{
+int _cyg_isatty(int fd) {
   // detect standard windows ttys:
   if (_isatty (fd)) {
     return 1;
   }
 
   // stupid hack to allow forcing a tty..need to understand this better
-  // and create a thorugh fix..without this the logging stuff will not
+  // and create a thorough fix..without this the logging stuff will not
   // log to the foreground which is super annoying for debugging the
   // resilience tests
   char* forcetty = getenv("FORCE_WINDOWS_TTY");
@@ -660,8 +605,7 @@ int _is_cyg_tty(int fd)
   return 0;
 }
 
-bool terminalKnowsANSIColors()
-{
+bool terminalKnowsANSIColors() {
   if (_is_cyg_tty (STDOUT_FILENO)) {
     // Its a cygwin shell, expected to understand ANSI color codes.
     return true;
@@ -671,7 +615,6 @@ bool terminalKnowsANSIColors()
   return IsWindows8OrGreater();
 }
 
-#include <atlstr.h>
 std::string getFileNameFromHandle(HANDLE fileHandle) {
   char  buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH];
   FILE_NAME_INFO *FileInformation = (FILE_NAME_INFO*) buff;

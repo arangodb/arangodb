@@ -66,7 +66,9 @@ function runArangodRecovery (instanceInfo, options, script, setup, count) {
     args['wal.reserve-logfiles'] = 1;
     args['database.directory'] = instanceInfo.tmpDataDir + '/db';
 
-    instanceInfo.recoveryArgv = toArgv(args).concat(['--server.rest-server', 'false']);
+    args = Object.assign(args, options.extraArgs);
+
+    instanceInfo.recoveryArgv = toArgv(args).concat(['--server.rest-server', 'false', '--replication.auto-start', 'true']);
   }
 
   let argv = instanceInfo.recoveryArgv;

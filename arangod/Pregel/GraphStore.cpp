@@ -79,7 +79,7 @@ GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, GraphFormat<V, E>* graphFormat)
 template <typename V, typename E>
 GraphStore<V, E>::~GraphStore() {
   _destroyed = true;
-  usleep(25 * 1000);
+  std::this_thread::sleep_for(std::chrono::microseconds(25 * 1000));
   delete _vertexData;
   delete _edges;
 }
@@ -210,7 +210,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       }
       
       while (_runningThreads > 0) {
-        usleep(5000);
+        std::this_thread::sleep_for(std::chrono::microseconds(5000));
       }
     }
     scheduler->post(callback);

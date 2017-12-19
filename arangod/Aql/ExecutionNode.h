@@ -36,7 +36,7 @@
 //
 // Even though the Singleton Node has a label saying it is the "ROOT" node it
 // is not in our definiton. Root Nodes are leaf nodes (at the bottom of the list).
-// 
+//
 // To get down (direction to root) from 4 to 5 you need to clla getFirst Parent
 // on the SortNode(4) to receive a pointer to the LimitNode(5). If you want to
 // go up from 5 to 4 (away form root) you need to call getFirstDependency at
@@ -60,6 +60,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -72,6 +73,7 @@ class Slice;
 namespace aql {
 class Ast;
 struct Collection;
+class Condition;
 class ExecutionBlock;
 class TraversalBlock;
 class ExecutionPlan;
@@ -128,7 +130,10 @@ class ExecutionNode {
     UPSERT = 21,
     TRAVERSAL = 22,
     INDEX = 23,
-    SHORTEST_PATH = 24
+    SHORTEST_PATH = 24,
+#ifdef USE_IRESEARCH
+    ENUMERATE_IRESEARCH_VIEW = 25
+#endif
   };
 
   ExecutionNode() = delete;
@@ -710,7 +715,7 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
 
   EnumerateCollectionNode(ExecutionPlan* plan,
                           arangodb::velocypack::Slice const& base);
-  
+
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_COLLECTION; }
 

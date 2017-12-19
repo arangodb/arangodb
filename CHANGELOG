@@ -1,6 +1,37 @@
 devel
 -----
 
+* UI: improved the behavior during collection creation in a cluster environment
+
+* UI: fixed broken foxx configuration keys. Some valid configuration values
+  could not be edited via the ui.
+
+* UI: pressing the return key inside a select2 box no longer triggers the modals
+  success function
+
+* UI: coordinators and db servers are now in sorted order (ascending)
+
+* UI: fixed disappearing of the navigation label in some cases
+
+* fixed issue #3917: traversals with high maximal depth take extremely long
+  in planning phase.
+  
+* UI: fixed issue #3822: disabled name input field for system collections
+
+* fixed issue #3741: fix terminal color output in Windows 
+
+* UI: using default user database api during database creation now
+
+* UI: the graph viewer backend now picks one random start vertex of the
+  first 1000 documents instead of calling any(). The implementation of
+  any is known to scale bad on huge collections with rocksdb.
+
+* UI: added not found views for documents and collections
+
+* UI: edge collections were wrongly added to from and to vertices select box during graph creation
+
+* fixed issue #3640: limit in subquery
+
 * UI: the graph viewer now displays updated label values correctly.
   Additionally the included node/edge editor now closes automatically
 	after a successful node/edge update.
@@ -34,8 +65,6 @@ devel
   The situation is not desired as an ERROR as ArangoDB can store edges pointing to non-existing
   vertex which is perfectly valid, but it may be a n issue on the data model, so users
   can directly see it on the query now and do not "by accident" have to check the LOG output.
-
-* potential fix for issue #3562: Document WITHIN_RECTANGLE not found
 
 * introduce `enforceReplicationFactor` attribute for creating collections:
   this optional parameter controls if the coordinator should bail out during collection

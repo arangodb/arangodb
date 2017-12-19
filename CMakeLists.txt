@@ -99,7 +99,7 @@ set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test program")
 set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - export")
 set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - importer")
 set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - datae xporter")
-set(ARANGO_IMP_FRIENDLY_STRING     "arangoimp - TSV/CSV/JSON importer")
+set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - TSV/CSV/JSON importer")
 set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
 set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
 
@@ -112,7 +112,7 @@ set(BIN_ARANGOBENCH   arangobench)
 set(BIN_ARANGOD       arangod)
 set(BIN_ARANGODUMP    arangodump)
 set(BIN_ARANGOEXPORT  arangoexport)
-set(BIN_ARANGOIMP     arangoimp)
+set(BIN_ARANGOIMPORT  arangoimport)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
 set(BIN_ARANGOVPACK   arangovpack)
@@ -762,6 +762,18 @@ endif()
 ## 3RD PARTY
 ################################################################################
 
+# ------------------------------------------------------------------------------
+# IResearch
+# ------------------------------------------------------------------------------
+
+option(USE_IRESEARCH OFF)
+
+if(USE_IRESEARCH)
+  add_definitions("-DUSE_IRESEARCH=1")
+
+  set(LIB_ARANGO_IRESEARCH arango_iresearch)
+endif()
+
 # 3rdParty exports:
 #
 # V8_VERSION
@@ -1009,7 +1021,7 @@ add_dependencies(arangobench   zlibstatic)
 add_dependencies(arangod       zlibstatic)
 add_dependencies(arangodump    zlibstatic)
 add_dependencies(arangoexport  zlibstatic)
-add_dependencies(arangoimp     zlibstatic)
+add_dependencies(arangoimport  zlibstatic)
 add_dependencies(arangorestore zlibstatic)
 add_dependencies(arangosh      zlibstatic)
 
@@ -1019,7 +1031,7 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangod       v8_build)
   add_dependencies(arangodump    v8_build)
   add_dependencies(arangoexport  v8_build)
-  add_dependencies(arangoimp     v8_build)
+  add_dependencies(arangoimport  v8_build)
   add_dependencies(arangorestore v8_build)
   add_dependencies(arangosh      v8_build)
   if (USE_CATCH_TESTS)

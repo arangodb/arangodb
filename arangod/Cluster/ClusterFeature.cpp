@@ -81,10 +81,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("cluster", "Configure the cluster");
 
   options->addObsoleteOption("--cluster.username",
-                             "username used for cluster-internal communication", 
+                             "username used for cluster-internal communication",
                              true);
   options->addObsoleteOption("--cluster.password",
-                             "password used for cluster-internal communication", 
+                             "password used for cluster-internal communication",
                              true);
   options->addObsoleteOption("--cluster.disable-dispatcher-kickstarter",
                              "The dispatcher feature isn't available anymore; Use ArangoDBStarter for this now!",
@@ -107,7 +107,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addObsoleteOption("--cluster.arangod-path",
                              "path to the arangod for the cluster",
                              true);
-                             
+
   options->addOption("--cluster.agency-endpoint",
                      "agency endpoint to connect to",
                      new VectorParameter<StringParameter>(&_agencyEndpoints));
@@ -131,10 +131,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "replication factor for system collections",
                      new UInt32Parameter(&_systemReplicationFactor));
 
-  options->addOption("--cluster.synchronous-replication-timeout-factor",
-                     "all synchronous replication timeouts are multiplied by this factor",
-                     new DoubleParameter(&_syncReplTimeoutFactor));
-
   options->addHiddenOption("--cluster.create-waits-for-sync-replication",
                      "active coordinator will wait for all replicas to create collection",
                      new BooleanParameter(&_createWaitsForSyncReplication));
@@ -147,7 +143,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       << "The dispatcher feature isn't available anymore. Use ArangoDBStarter for this now! See https://github.com/arangodb-helper/ArangoDBStarter/ for more details.";
     FATAL_ERROR_EXIT();
   }
-  
+
   // check if the cluster is enabled
   _enableCluster = !_agencyEndpoints.empty();
 
@@ -201,8 +197,8 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_myRole.empty()) {
     _requestedRole = ServerState::stringToRole(_myRole);
 
-    std::vector<arangodb::ServerState::RoleEnum> const disallowedRoles= { 
-      /*ServerState::ROLE_SINGLE,*/ ServerState::ROLE_AGENT, ServerState::ROLE_UNDEFINED 
+    std::vector<arangodb::ServerState::RoleEnum> const disallowedRoles= {
+      /*ServerState::ROLE_SINGLE,*/ ServerState::ROLE_AGENT, ServerState::ROLE_UNDEFINED
     };
 
     if (std::find(disallowedRoles.begin(), disallowedRoles.end(), _requestedRole) != disallowedRoles.end()) {
@@ -210,7 +206,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
                     "SECONDARY, COORDINATOR";
       FATAL_ERROR_EXIT();
     }
-  } 
+  }
 }
 
 void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {
@@ -277,7 +273,7 @@ void ClusterFeature::prepare() {
   // register the prefix with the communicator
   AgencyCommManager::initialize(_agencyPrefix);
   TRI_ASSERT(AgencyCommManager::MANAGER != nullptr);
-  
+
   for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
     std::string const unified = Endpoint::unifiedForm(_agencyEndpoints[i]);
 
@@ -313,8 +309,8 @@ void ClusterFeature::prepare() {
 
   auto role = ServerState::instance()->getRole();
   auto endpoints = AgencyCommManager::MANAGER->endpointsString();
-  
-  
+
+
   if (role == ServerState::ROLE_UNDEFINED) {
     // no role found
     LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to determine unambiguous role for server '"
@@ -338,7 +334,7 @@ void ClusterFeature::prepare() {
 
     auto ci = ClusterInfo::instance();
     double start = TRI_microtime();
-    
+
     while (true) {
       LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) << "Waiting for DBservers to show up...";
       ci->loadCurrentDBServers();
@@ -348,9 +344,9 @@ void ClusterFeature::prepare() {
         LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) << "Found " << DBServers.size() << " DBservers.";
         break;
       }
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    
+
   }
 
   if (_myAddress.empty()) {
@@ -367,7 +363,7 @@ void ClusterFeature::prepare() {
                << "' specified for --cluster.my-address";
     FATAL_ERROR_EXIT();
   }
-  
+
 }
 
 void ClusterFeature::start() {
@@ -435,7 +431,7 @@ void ClusterFeature::start() {
 
     while (!_heartbeatThread->isReady()) {
       // wait until heartbeat is ready
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
   }
 
@@ -463,7 +459,7 @@ void ClusterFeature::start() {
       break;
     }
 
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   ServerState::instance()->setState(ServerState::STATE_SERVING);
@@ -479,11 +475,11 @@ void ClusterFeature::stop() {
     if (_heartbeatThread != nullptr) {
       _heartbeatThread->beginShutdown();
     }
-    
+
     if (_heartbeatThread != nullptr) {
       int counter = 0;
       while (_heartbeatThread->isRunning()) {
-        usleep(100000);
+        std::this_thread::sleep_for(std::chrono::microseconds(100000));
         // emit warning after 5 seconds
         if (++counter == 10 * 5) {
           LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) << "waiting for heartbeat thread to finish";
@@ -510,7 +506,7 @@ void ClusterFeature::unprepare() {
     if (_heartbeatThread != nullptr) {
       int counter = 0;
       while (_heartbeatThread->isRunning()) {
-        usleep(100000);
+        std::this_thread::sleep_for(std::chrono::microseconds(100000));
         // emit warning after 5 seconds
         if (++counter == 10 * 5) {
           LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) << "waiting for heartbeat thread to finish";
@@ -542,7 +538,7 @@ void ClusterFeature::unprepare() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   std::string alk = ServerState::roleToAgencyListKey(role);
   std::string me = ServerState::instance()->getId();
-  
+
   AgencyWriteTransaction unreg;
   unreg.operations.push_back(AgencyOperation("Current/" + alk + "/" + me,
                                              AgencySimpleOperationType::DELETE_OP));
@@ -553,7 +549,7 @@ void ClusterFeature::unprepare() {
   comm.sendTransactionWithFailover(unreg, 120.0);
 
   while (_heartbeatThread->isRunning()) {
-    usleep(50000);
+    std::this_thread::sleep_for(std::chrono::microseconds(50000));
   }
 
   AgencyCommManager::MANAGER->stop();

@@ -32,6 +32,9 @@
 #include "SimpleHttpClient/Callbacks.h"
 #include "SimpleHttpClient/Destination.h"
 
+#include <thread>
+#include <chrono>
+
 using namespace arangodb;
 using namespace arangodb::communicator;
 
@@ -57,7 +60,7 @@ TEST_CASE("requests are properly aborted", "[communicator]" ) {
   communicator.work_once();
   communicator.abortRequests();
   while (communicator.work_once() > 0) {
-    usleep(1);
+    std::this_thread::sleep_for(std::chrono::microseconds(1));
   }
   REQUIRE(callbacksCalled);
 }
@@ -84,7 +87,7 @@ TEST_CASE("requests will call the progress callback", "[communicator]") {
   communicator.work_once();
   communicator.abortRequests();
   while (communicator.work_once() > 0) {
-    usleep(1);
+    std::this_thread::sleep_for(std::chrono::microseconds(1));
   }
   REQUIRE(curlRc == CURLE_ABORTED_BY_CALLBACK); // curlRcFn was called
 }

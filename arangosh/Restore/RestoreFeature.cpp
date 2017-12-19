@@ -394,6 +394,12 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
     } else {
       encryptionType = "none";
     }
+  } catch (basics::Exception const& ex) {
+    errorMsg = ex.what();
+    return ex.code();
+  } catch (std::exception const& ex) {
+    errorMsg = ex.what();
+    return TRI_ERROR_INTERNAL;
   } catch (...) {
     // file not found etc.
   }
@@ -829,12 +835,9 @@ ssize_t RestoreFeature::readData(int fd, char* data, size_t len) {
 #ifdef USE_ENTERPRISE
   if (_encryption != nullptr) {
     return _encryption->readData(fd, data, len);
-  } else {
-    return TRI_READ(fd, data, len);
   }
-#else
-  return TRI_READ(fd, data, len);
 #endif
+  return TRI_READ(fd, data, static_cast<TRI_read_t>(len));
 }
 
 void RestoreFeature::beginDecryption(int fd) {

@@ -73,10 +73,9 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl",
                                                            RocksDBReplicationContext::DefaultTTL);
-    RocksDBReplicationContext* ctx = _manager->createContext(ttl);
-
     // create transaction+snapshot
-    RocksDBReplicationContextGuard(_manager, ctx);
+    RocksDBReplicationContext* ctx = _manager->createContext(ttl);
+    RocksDBReplicationContextGuard guard(_manager, ctx);
     ctx->bind(_vocbase);
 
     VPackBuilder b;
@@ -88,16 +87,21 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // add client
     bool found;
     std::string const& value = _request->value("serverId", found);
-    TRI_server_id_t serverId = 0;
-
-    if (found) {
-      serverId = (TRI_server_id_t)StringUtils::uint64(value);
-    } else {
-      serverId = ctx->id();
+    if (!found) {
+      LOG_TOPIC(DEBUG, Logger::FIXME) << "no serverId parameter found in request to " << _request->fullUrl();
     }
+     
+    if (!found || (!value.empty() && value != "none")) {
+      TRI_server_id_t serverId = 0;
 
-    _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+      if (found) {
+        serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
+      } else {
+        serverId = ctx->id();
+      }
 
+      _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+    }
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
   }
@@ -121,7 +125,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     int res = TRI_ERROR_NO_ERROR;
     bool busy;
     RocksDBReplicationContext* ctx = _manager->find(id, busy, expires);
-    RocksDBReplicationContextGuard(_manager, ctx);
+    RocksDBReplicationContextGuard guard(_manager, ctx);
     if (busy) {
       res = TRI_ERROR_CURSOR_BUSY;
       generateError(GeneralResponse::responseCode(res), res);
@@ -135,16 +139,21 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // add client
     bool found;
     std::string const& value = _request->value("serverId", found);
-    TRI_server_id_t serverId = 0;
-
-    if (found) {
-      serverId = (TRI_server_id_t)StringUtils::uint64(value);
-    } else {
-      serverId = ctx->id();
+    if (!found) {
+      LOG_TOPIC(DEBUG, Logger::FIXME) << "no serverId parameter found in request to " << _request->fullUrl();
     }
+     
+    if (!found || (!value.empty() && value != "none")) {
+      TRI_server_id_t serverId = 0;
 
-    _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+      if (found) {
+        serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
+      } else {
+        serverId = ctx->id();
+      }
 
+      _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+    }
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
   }
@@ -266,6 +275,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   // generate the result
   size_t length = data.length();
+  TRI_ASSERT(length == 0 || result.maxTick() > 0);
 
   if (length == 0) {
     resetResponse(rest::ResponseCode::NO_CONTENT);
@@ -315,11 +325,10 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     bool found;
     std::string const& value = _request->value("serverId", found);
 
-    TRI_server_id_t serverId = 0;
-    if (found) {
-      serverId = (TRI_server_id_t)StringUtils::uint64(value);
+    if (!found || (!value.empty() && value != "none")) {
+      TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
+      _vocbase->updateReplicationClient(serverId, result.maxTick());
     }
-    _vocbase->updateReplicationClient(serverId, result.maxTick());
   }
 }
 
@@ -343,6 +352,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   if (found) {
     ctx = _manager->find(StringUtils::uint64(batchId), busy);
   }
+  RocksDBReplicationContextGuard guard(_manager, ctx);
   if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified");
@@ -353,7 +363,6 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
                   "context is busy or nullptr");
     return;
   }
-  RocksDBReplicationContextGuard(_manager, ctx);
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
 
@@ -430,12 +439,12 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   if (found) {
     ctx = _manager->find(StringUtils::uint64(batchId), busy);
   }
+  RocksDBReplicationContextGuard guard(_manager, ctx);
   if (!found || busy || ctx == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified");
     return;
   }
-  RocksDBReplicationContextGuard(_manager, ctx);
  
   // TRI_voc_tick_t tickEnd = UINT64_MAX;
   // determine end tick for keys
@@ -493,6 +502,9 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
   // get context
   bool busy;
   RocksDBReplicationContext* ctx = _manager->find(batchId, busy);
+  //lock context
+  RocksDBReplicationContextGuard guard(_manager, ctx);
+
   if (ctx == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified, expired or invalid in another way");
@@ -503,9 +515,6 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
                   "replication context is busy");
     return;
   }
-
-  //lock context
-  RocksDBReplicationContextGuard(_manager, ctx);
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
@@ -579,6 +588,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   uint64_t batchId = arangodb::basics::StringUtils::uint64(id);
   bool busy;
   RocksDBReplicationContext* ctx = _manager->find(batchId, busy);
+  RocksDBReplicationContextGuard guard(_manager, ctx);
   if (ctx == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batchId not specified or not found");
@@ -590,7 +600,6 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
                   "batch is busy");
     return;
   }
-  RocksDBReplicationContextGuard(_manager, ctx);
 
   std::shared_ptr<transaction::Context> transactionContext =
       transaction::StandaloneContext::Create(_vocbase);
@@ -674,8 +683,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   // acquire context
   bool isBusy = false;
   RocksDBReplicationContext* context = _manager->find(contextId, isBusy);
-  RocksDBReplicationContextGuard(_manager, context);
-
+  RocksDBReplicationContextGuard guard(_manager, context);
+  
   if (context == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "replication dump - unable to find context (it could be expired)");

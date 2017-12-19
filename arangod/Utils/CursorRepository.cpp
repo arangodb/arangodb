@@ -67,7 +67,7 @@ CursorRepository::~CursorRepository() {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "giving up waiting for unused cursors";
     }
 
-    usleep(500000);
+    std::this_thread::sleep_for(std::chrono::microseconds(500000));
     ++tries;
   }
 

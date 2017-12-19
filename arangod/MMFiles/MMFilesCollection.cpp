@@ -32,6 +32,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/WriteUnlocker.h"
 #include "Basics/encoding.h"
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterMethods.h"
@@ -223,6 +224,17 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
       MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
   uint8_t const* vpack = slice.begin();
 
+  LocalDocumentId localDocumentId;
+  if (marker->getSize() == MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + slice.byteSize() + sizeof(LocalDocumentId::BaseType)) {
+    // we do have a LocalDocumentId stored at the end of the marker
+    uint8_t const* ptr = vpack + slice.byteSize();
+    localDocumentId = LocalDocumentId(encoding::readNumber<LocalDocumentId::BaseType>(ptr, sizeof(LocalDocumentId::BaseType)));
+    //LOG_TOPIC(ERR, Logger::FIXME) << "OPEN: FOUND LOCALDOCUMENTID: " << localDocumentId.id();
+  } else {
+    localDocumentId = LocalDocumentId::create();
+    //LOG_TOPIC(ERR, Logger::FIXME) << "OPEN: FOUND NO LOCALDOCUMENTID: " << localDocumentId.id();
+  }
+
   VPackSlice keySlice;
   TRI_voc_rid_t revisionId;
 
@@ -253,7 +265,6 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
 
   // it is a new entry
   if (found == nullptr || !found->isSet()) {
-    LocalDocumentId const localDocumentId = LocalDocumentId::create();
     physical->insertLocalDocumentId(localDocumentId, vpack, fid, false, false);
 
     // insert into primary index
@@ -262,7 +273,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
                                                  state->_mmdr,
                                                  Index::OperationMode::normal);
 
-    if (res.errorNumber() != TRI_ERROR_NO_ERROR) {
+    if (res.fail()) {
       physical->removeLocalDocumentId(localDocumentId, false);
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
           << "inserting document into primary index failed with error: "
@@ -281,8 +292,6 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
   else {
     LocalDocumentId const oldLocalDocumentId = found->localDocumentId();
     // update the revision id in primary index
-    LocalDocumentId const localDocumentId = LocalDocumentId::create();
-
     found->updateLocalDocumentId(localDocumentId, static_cast<uint32_t>(keySlice.begin() - vpack));
 
     MMFilesDocumentPosition const old = physical->lookupDocument(oldLocalDocumentId);
@@ -303,14 +312,13 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
 
     if (old.dataptr() != nullptr) {
       uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
-      int64_t size = static_cast<int64_t>(
-          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) +
-          VPackSlice(vpack).byteSize());
+      MMFilesMarker const* oldMarker = reinterpret_cast<MMFilesMarker const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
 
+      int64_t size = MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(oldMarker);
       dfi->numberAlive--;
-      dfi->sizeAlive -= encoding::alignedSize<int64_t>(size);
+      dfi->sizeAlive -= size;
       dfi->numberDead++;
-      dfi->sizeDead += encoding::alignedSize<int64_t>(size);
+      dfi->sizeDead += size;
     }
 
     state->_dfi->numberAlive++;
@@ -384,14 +392,13 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(
     TRI_ASSERT(old.dataptr() != nullptr);
 
     uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
-    int64_t size = encoding::alignedSize<int64_t>(
-        MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) +
-        VPackSlice(vpack).byteSize());
+    MMFilesMarker const* oldMarker = reinterpret_cast<MMFilesMarker const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
 
+    int64_t size = MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(oldMarker);
     dfi->numberAlive--;
-    dfi->sizeAlive -= encoding::alignedSize<int64_t>(size);
+    dfi->sizeAlive -= size;
     dfi->numberDead++;
-    dfi->sizeDead += encoding::alignedSize<int64_t>(size);
+    dfi->sizeDead += size;
     state->_dfi->numberDeletions++;
 
     state->_primaryIndex->removeKey(trx, oldLocalDocumentId, VPackSlice(vpack),
@@ -598,7 +605,8 @@ int MMFilesCollection::close() {
   while (_ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_DROP) ||
          _ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_RENAME) ||
          _ditches.contains(MMFilesDitch::TRI_DITCH_COMPACTION)) {
-    usleep(20000);
+    WRITE_UNLOCKER(unlocker, _logicalCollection->lock());
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 
   {
@@ -1613,7 +1621,10 @@ int MMFilesCollection::fillIndexes(
       _logicalCollection->vocbase()->name() + "/" + _logicalCollection->name() +
       " }, indexes: " + std::to_string(n - 1));
 
-  auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>();
+  auto poster = [](std::function<void()> fn) -> void {
+    SchedulerFeature::SCHEDULER->post(fn);
+  };
+  auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>(poster);
 
   try {
     TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -2551,7 +2562,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
-      usleep(static_cast<TRI_usleep_t>(waitTime));
+      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
       if (waitTime < 32) {
         waitTime *= 2;
       }
@@ -2664,7 +2675,7 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, double timeout) {
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
-      usleep(static_cast<TRI_usleep_t>(waitTime));
+      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
       if (waitTime < 32) {
         waitTime *= 2;
       }
@@ -2756,14 +2767,14 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
                                   options, documentId, builder->slice());
 
       if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res.errorNumber());
+        THROW_ARANGO_EXCEPTION(res);
       }
     }
 
     return true;
   };
   primaryIdx->invokeOnAllElementsForRemoval(callback);
-  
+
   auto indexes = _indexes;
   size_t const n = indexes.size();
 
@@ -2772,6 +2783,23 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
     TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
     idx->afterTruncate();
   }
+}
+
+LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions const& options) const {
+  //LOG_TOPIC(ERR, Logger::FIXME) << "REUSEORCREATE. ISRECOVERY: " << (options.recoveryData != nullptr);
+  if (options.recoveryData != nullptr) {
+    auto marker = static_cast<MMFilesWalMarker*>(options.recoveryData);
+  //LOG_TOPIC(ERR, Logger::FIXME) << "CHECKING FOR EXISTING DOCUMENTID";
+    if (marker->hasLocalDocumentId()) {
+  //LOG_TOPIC(ERR, Logger::FIXME) << "FOUND EXISTING DOCUMENTID: " << marker->getLocalDocumentId().id();
+      return marker->getLocalDocumentId();
+    }
+    // falls through intentionally
+  }
+
+  // new operation, no recovery -> generate a new LocalDocumentId
+  //LOG_TOPIC(ERR, Logger::FIXME) << "GENERATING NEW DOCUMENTID";
+  return LocalDocumentId::create();
 }
 
 Result MMFilesCollection::insert(transaction::Methods* trx,
@@ -2784,7 +2812,8 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
-  LocalDocumentId const documentId = LocalDocumentId::create();
+  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
+  //LOG_TOPIC(ERR, Logger::FIXME) << "INSERT. EFFECTIVE LOCALDOCUMENTID: " << documentId.id();
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
 
@@ -2850,6 +2879,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
   MMFilesCrudMarker insertMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
       static_cast<MMFilesTransactionState*>(trx->state())->idForMarker(),
+      documentId,
       newSlice);
 
   MMFilesWalMarker const* marker;
@@ -2933,7 +2963,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
       operation.revert(trx);
     }
   }
-  
+
   if (res.ok()) {
     result.setManaged(doc.begin(), documentId);
     // store the tick that was used for writing the document
@@ -3039,9 +3069,8 @@ void MMFilesCollection::removeLocalDocumentId(LocalDocumentId const& documentId,
     if (old && !old.pointsToWal() && old.fid() != 0) {
       TRI_ASSERT(old.dataptr() != nullptr);
       uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
-      int64_t size = encoding::alignedSize<int64_t>(
-          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) +
-          VPackSlice(vpack).byteSize());
+      auto oldMarker = reinterpret_cast<MMFilesMarker const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+      int64_t size = MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(oldMarker);
       _datafileStatistics.increaseDead(old.fid(), 1, size);
     }
   } else {
@@ -3233,7 +3262,9 @@ Result MMFilesCollection::update(
     ManagedDocumentResult& result, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
     ManagedDocumentResult& previous, VPackSlice const key) {
-  LocalDocumentId const documentId = LocalDocumentId::create();
+  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
+  //LOG_TOPIC(ERR, Logger::FIXME) << "UPDATE. EFFECTIVE LOCALDOCUMENTID: " << documentId.id();
+
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
   TRI_IF_FAILURE("UpdateDocumentNoLock") { return Result(TRI_ERROR_DEBUG); }
@@ -3312,6 +3343,7 @@ Result MMFilesCollection::update(
   MMFilesCrudMarker updateMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
       static_cast<MMFilesTransactionState*>(trx->state())->idForMarker(),
+      documentId,
       builder->slice());
 
   MMFilesWalMarker const* marker;
@@ -3365,8 +3397,9 @@ Result MMFilesCollection::replace(
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
     ManagedDocumentResult& previous,
     VPackSlice const fromSlice, VPackSlice const toSlice) {
+  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
+  //LOG_TOPIC(ERR, Logger::FIXME) << "REPLACE. EFFECTIVE LOCALDOCUMENTID: " << documentId.id();
 
-  LocalDocumentId const documentId = LocalDocumentId::create();
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
   TRI_IF_FAILURE("ReplaceDocumentNoLock") { return Result(TRI_ERROR_DEBUG); }
@@ -3440,6 +3473,7 @@ Result MMFilesCollection::replace(
   MMFilesCrudMarker replaceMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
       static_cast<MMFilesTransactionState*>(trx->state())->idForMarker(),
+      documentId,
       builder->slice());
 
   MMFilesWalMarker const* marker;
@@ -3514,6 +3548,7 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
   MMFilesCrudMarker removeMarker(
       TRI_DF_MARKER_VPACK_REMOVE,
       static_cast<MMFilesTransactionState*>(trx->state())->idForMarker(),
+      documentId,
       builder->slice());
 
   MMFilesWalMarker const* marker;
@@ -3721,6 +3756,7 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
   MMFilesCrudMarker removeMarker(
       TRI_DF_MARKER_VPACK_REMOVE,
       static_cast<MMFilesTransactionState*>(trx->state())->idForMarker(),
+      documentId,
       toRemove);
 
   MMFilesWalMarker const* marker = &removeMarker;
@@ -3749,7 +3785,7 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
     if (res.fail()) {
       insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
                              Index::OperationMode::rollback);
-      THROW_ARANGO_EXCEPTION(res.errorNumber());
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     res = deletePrimaryIndex(trx, oldDocumentId, oldDoc, options);
@@ -3757,7 +3793,7 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
     if (res.fail()) {
       insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
                              Index::OperationMode::rollback);
-      THROW_ARANGO_EXCEPTION(res.errorNumber());
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     operation.indexed();

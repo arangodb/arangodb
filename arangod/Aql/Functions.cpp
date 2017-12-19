@@ -149,15 +149,15 @@ std::string Functions::ExtractCollectionName(
 }
 
 /// @brief register warning
-static void RegisterWarning(arangodb::aql::Query* query,
-                            char const* functionName, int code) {
+void Functions::RegisterWarning(arangodb::aql::Query* query,
+                                    char const* fName, int code) {
   std::string msg;
 
   if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
-    msg = arangodb::basics::Exception::FillExceptionString(code, functionName);
+    msg = arangodb::basics::Exception::FillExceptionString(code, fName);
   } else {
     msg.append("in function '");
-    msg.append(functionName);
+    msg.append(fName);
     msg.append("()': ");
     msg.append(TRI_errno_string(code));
   }
@@ -166,8 +166,8 @@ static void RegisterWarning(arangodb::aql::Query* query,
 }
 
 /// @brief register usage of an invalid function argument
-static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
-                                           char const* functionName) {
+void Functions::RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
+                                                   char const* functionName) {
   RegisterWarning(query, functionName,
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
@@ -1759,7 +1759,7 @@ AqlValue Functions::Sleep(arangodb::aql::Query* query,
   double const until = TRI_microtime() + value.toDouble(trx);
 
   while (TRI_microtime() < until) {
-    usleep(30000);
+    std::this_thread::sleep_for(std::chrono::microseconds(30000));
 
     if (query->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -1936,9 +1936,9 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
-  for (auto const& s : VPackArrayIterator(slice)) {
+  for (VPackSlice s : VPackArrayIterator(slice)) {
     if (!s.isNone()) {
-      values.emplace(s);
+      values.emplace(s.resolveExternal());
     }
   }
 
@@ -2052,7 +2052,8 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
     materializers.emplace_back(trx);
     VPackSlice slice = materializers.back().slice(value, false);
 
-    for (auto const& v : VPackArrayIterator(slice)) {
+    for (VPackSlice v : VPackArrayIterator(slice)) {
+      v = v.resolveExternal();
       if (values.find(v) == values.end()) {
         TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

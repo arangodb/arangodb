@@ -247,7 +247,7 @@ arangodb::Result Databases::create(std::string const& dbName,
         break;
       }
       // sleep
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
     if (vocbase == nullptr) {
@@ -433,7 +433,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
 
       vocbase->release();
       // sleep
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
   } else {

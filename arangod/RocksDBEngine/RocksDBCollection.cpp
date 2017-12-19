@@ -39,13 +39,13 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
-#include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIterators.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBValue.h"
@@ -93,7 +93,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
         TRI_ERROR_BAD_PARAMETER,
         "volatile collections are unsupported in the RocksDB engine");
   }
-  
+
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_cacheEnabled) {
@@ -113,7 +113,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _cache(nullptr),
       _cachePresent(false),
       _cacheEnabled(static_cast<RocksDBCollection const*>(physical)->_cacheEnabled) {
-  
+
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_cacheEnabled) {
@@ -249,7 +249,7 @@ void RocksDBCollection::open(bool ignoreErrors) {
   // set the initial number of documents
   RocksDBEngine* engine =
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  auto counterValue = engine->counterManager()->loadCounter(this->objectId());
+  auto counterValue = engine->settingsManager()->loadCounter(this->objectId());
   _numberDocuments = counterValue.added() - counterValue.removed();
   _revisionId = counterValue.revisionId();
 
@@ -1054,7 +1054,7 @@ Result RocksDBCollection::replace(
       return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
   }
-  
+
   VPackSlice const newDoc(builder->slice());
 
   auto state = RocksDBTransactionState::toState(trx);
@@ -1495,7 +1495,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   TRI_ASSERT(_objectId != 0);
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  
+
   // We NEED to do the PUT first, otherwise WAL tailing breaks
   RocksDBKeyLeaser newKey(trx);
   newKey->constructDocument(_objectId, newDocumentId.id());
@@ -1512,7 +1512,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
     res.keySize(newKey->size());
     return res;
   }
-  
+
   RocksDBKeyLeaser oldKey(trx);
   oldKey->constructDocument(_objectId, oldDocumentId.id());
   blackListKey(oldKey->string().data(),
@@ -1598,7 +1598,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 
     mdr.setManagedAfterStringUsage(documentId);
   } else {
-    LOG_TOPIC(ERR, Logger::FIXME)
+    LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
         << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();
@@ -1660,7 +1660,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 
     cb(documentId, VPackSlice(value.data()));
   } else {
-    LOG_TOPIC(ERR, Logger::FIXME)
+    LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
         << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();
@@ -1716,7 +1716,7 @@ int RocksDBCollection::lockWrite(double timeout) {
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
-      usleep(static_cast<TRI_usleep_t>(waitTime));
+      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
       if (waitTime < 32) {
         waitTime *= 2;
       }
@@ -1767,7 +1767,7 @@ int RocksDBCollection::lockRead(double timeout) {
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
-      usleep(static_cast<TRI_usleep_t>(waitTime));
+      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
       if (waitTime < 32) {
         waitTime *= 2;
       }
@@ -1798,12 +1798,12 @@ uint64_t RocksDBCollection::recalculateCounts() {
       rocksutils::countKeyRange(globalRocksDB(), documentBounds, true);
 
   // update counter manager value
-  res = globalRocksEngine()->counterManager()->setAbsoluteCounter(
+  res = globalRocksEngine()->settingsManager()->setAbsoluteCounter(
       _objectId, _numberDocuments);
   if (res.ok()) {
     // in case of fail the counter has never been written and hence does not
     // need correction. The value is not changed and does not need to be synced
-    globalRocksEngine()->counterManager()->sync(true);
+    globalRocksEngine()->settingsManager()->sync(true);
   }
   trx.commit();
 
@@ -1862,13 +1862,14 @@ arangodb::Result RocksDBCollection::serializeIndexEstimates(
   _needToPersistIndexEstimates = false;
   std::string output;
   rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
+  uint64_t latestSeq = static_cast<uint64_t>(tdb->GetLatestSequenceNumber());
   for (auto index : getIndexes()) {
     output.clear();
     RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
     TRI_ASSERT(cindex != nullptr);
     rocksutils::uint64ToPersistent(
-        output, static_cast<uint64_t>(tdb->GetLatestSequenceNumber()));
-    cindex->serializeEstimate(output);
+        output, latestSeq);
+    cindex->serializeEstimate(output, latestSeq);
     if (output.size() > sizeof(uint64_t)) {
       RocksDBKey key;
       key.constructIndexEstimateValue(cindex->objectId());
@@ -1886,7 +1887,7 @@ arangodb::Result RocksDBCollection::serializeIndexEstimates(
   return Result();
 }
 
-void RocksDBCollection::deserializeIndexEstimates(RocksDBCounterManager* mgr) {
+void RocksDBCollection::deserializeIndexEstimates(RocksDBSettingsManager* mgr) {
   std::vector<std::shared_ptr<Index>> toRecalculate;
   for (auto const& it : getIndexes()) {
     auto idx = static_cast<RocksDBIndex*>(it.get());
@@ -1946,7 +1947,7 @@ arangodb::Result RocksDBCollection::serializeKeyGenerator(
   return Result();
 }
 
-void RocksDBCollection::deserializeKeyGenerator(RocksDBCounterManager* mgr) {
+void RocksDBCollection::deserializeKeyGenerator(RocksDBSettingsManager* mgr) {
   uint64_t value = mgr->stealKeyGenerator(_objectId);
   if (value > 0) {
     std::string k(basics::StringUtils::itoa(value));

@@ -356,7 +356,7 @@ static int LookupLocalInfoToId(std::string const& localInfo,
         }
       }
     }
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   };
   return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
 }
@@ -567,7 +567,7 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
     if (!result.successful()) {
       LOG_TOPIC(WARN, Logger::CLUSTER) << "Couldn't fetch " << targetIdStr
         << " and " << targetUrl;
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
 
@@ -627,7 +627,7 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
     if (result.successful()) {
       return true;
     }
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't register shortname for " << id;
@@ -826,7 +826,7 @@ bool ServerState::storeRole(RoleEnum role) {
       AgencyComm comm; // should not throw anything
       AgencyCommResult res = comm.sendTransactionWithFailover(*trx.get(), 1.0);
       if (!res.successful()) {
-          return false;
+        return false;
       }
     } catch (...) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << __FUNCTION__

@@ -126,6 +126,7 @@ struct ReplicationApplierState {
   uint64_t _totalRequests;
   uint64_t _totalFailedConnects;
   uint64_t _totalEvents;
+  uint64_t _totalResyncs;
   uint64_t _skippedOperations;
 };
 

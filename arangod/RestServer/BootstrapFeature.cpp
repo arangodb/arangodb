@@ -71,7 +71,7 @@ static void raceForClusterBootstrap() {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC(TRACE, Logger::STARTUP)
       << "raceForClusterBootstrap: no agency communication";
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
     
@@ -90,7 +90,7 @@ static void raceForClusterBootstrap() {
       }
       LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: somebody else does the bootstrap";
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
       
@@ -102,7 +102,7 @@ static void raceForClusterBootstrap() {
       LOG_TOPIC(DEBUG, Logger::STARTUP)
       << "raceForClusterBootstrap: lost race, somebody else will bootstrap";
       // Cannot get foot into the door, try again later:
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
     // OK, we handle things now
@@ -115,7 +115,7 @@ static void raceForClusterBootstrap() {
       LOG_TOPIC(TRACE, Logger::STARTUP)
           << "raceForClusterBootstrap: no DBservers, waiting";
       agency.removeValues(boostrapKey, false);
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
 
@@ -135,7 +135,7 @@ static void raceForClusterBootstrap() {
         LOG_TOPIC(ERR, Logger::STARTUP) << "Empty returned value.";
       }
       agency.removeValues(boostrapKey, false);
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
     
@@ -154,7 +154,7 @@ static void raceForClusterBootstrap() {
 
     LOG_TOPIC(TRACE, Logger::STARTUP)
         << "raceForClusterBootstrap: could not indicate success";
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 }
 
@@ -200,7 +200,7 @@ void BootstrapFeature::start() {
           << "result of bootstrap was not an array: " << slice.typeName() << ". retrying bootstrap in 1s.";
         }
         if (!success) {
-          sleep(1);
+          std::this_thread::sleep_for(std::chrono::seconds(1));
         }
       }
     } else if (ServerState::isDBServer(role)) {

@@ -129,7 +129,7 @@ static std::string buildPrefix(Ticket ticketId) {
   return std::string("Communicator(") + std::to_string(ticketId) + ") // ";
 }
 
-static std::atomic_uint_fast64_t NEXT_TICKET_ID(static_cast<uint64_t>(0));
+static std::atomic_uint_fast64_t NEXT_TICKET_ID(static_cast<uint64_t>(1));
 static std::vector<char> urlDotSeparators{'/', '#', '?'};
 }
 
@@ -311,7 +311,7 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
   curl_easy_setopt(handle, CURLOPT_HTTPHEADER, requestHeaders);
   curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
   curl_easy_setopt(handle, CURLOPT_PROXY, "");
-  
+
   // the xfer/progress options are only used to handle request abortions
   curl_easy_setopt(handle, CURLOPT_NOPROGRESS, 0L);
   curl_easy_setopt(handle, CURLOPT_XFERINFOFUNCTION, Communicator::curlProgress);
@@ -387,8 +387,8 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
   }
 
   handleInProgress->_rip->_startTime = TRI_microtime();
- 
-  { 
+
+  {
     MUTEX_LOCKER(guard, _handlesLock);
     // ticketId is produced by adding to an atomic counter, so each
     // ticketId should occur only once. adding to the map should
@@ -403,6 +403,7 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
 
 void Communicator::handleResult(CURL* handle, CURLcode rc) {
   // remove request in progress
+  double connectTime = 0.0;
   curl_multi_remove_handle(_curl, handle);
 
   RequestInProgress* rip = nullptr;
@@ -416,11 +417,18 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   }
   
   LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-      << buildPrefix(rip->_ticketId) << "Curl rc is : " << rc << " after "
+      << buildPrefix(rip->_ticketId) << "curl rc is : " << rc << " after "
       << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
+  
+  if (CURLE_OPERATION_TIMEDOUT == rc) {
+    curl_easy_getinfo(handle, CURLINFO_CONNECT_TIME, &connectTime);
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+      << buildPrefix(rip->_ticketId) << "CURLINFO_CONNECT_TIME is " << connectTime;
+  } // if
+
   if (strlen(rip->_errorBuffer) != 0) {
     LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-        << buildPrefix(rip->_ticketId) << "Curl error details: " << rip->_errorBuffer;
+        << buildPrefix(rip->_ticketId) << "curl error details: " << rip->_errorBuffer;
   }
 
   MUTEX_LOCKER(guard, _handlesLock);
@@ -453,7 +461,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     case CURLE_OPERATION_TIMEDOUT:
     case CURLE_RECV_ERROR:
     case CURLE_GOT_NOTHING:
-      if (rip->_aborted) {
+      if (rip->_aborted || (CURLE_OPERATION_TIMEDOUT == rc && 0.0 == connectTime)) {
         callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
       } else {
         callErrorFn(rip, TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
@@ -463,7 +471,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
       if (rip->_aborted) {
         callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
       } else {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Got a write error from curl but request was not aborted";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got a write error from curl but request was not aborted";
         callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
       }
       break;
@@ -472,11 +480,11 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
       callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
       break;
     default:
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Curl return " << rc;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "curl return " << rc;
       callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
       break;
-  } 
-    
+  }
+
   _handlesInProgress.erase(rip->_ticketId);
 }
 
@@ -556,12 +564,16 @@ int Communicator::curlDebug(CURL* handle, curl_infotype type, char* data,
       logHttpHeaders(prefix + "Header <<", dataStr);
       break;
     case CURLINFO_DATA_OUT:
-    case CURLINFO_SSL_DATA_OUT:
       logHttpBody(prefix + "Body >>", dataStr);
       break;
     case CURLINFO_DATA_IN:
-    case CURLINFO_SSL_DATA_IN:
       logHttpBody(prefix + "Body <<", dataStr);
+      break;
+    case CURLINFO_SSL_DATA_OUT:
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << prefix << "SSL outgoing data of size " << std::to_string(size);
+      break;
+    case CURLINFO_SSL_DATA_IN:
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << prefix << "SSL incoming data of size " << std::to_string(size);
       break;
     case CURLINFO_END:
       break;
@@ -627,7 +639,7 @@ void Communicator::abortRequests() {
   }
 }
 
-// needs _handlesLock! 
+// needs _handlesLock!
 std::vector<RequestInProgress const*> Communicator::requestsInProgress() {
   _handlesLock.assertLockedByCurrentThread();
 

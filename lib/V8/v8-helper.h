@@ -27,6 +27,9 @@
 #include "Basics/Common.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
+#include "v8-globals.h"
+#include "V8/v8-conv.h"
+#include "V8/v8-utils.h"
 #include <v8.h>
 
 namespace arangodb {
@@ -83,53 +86,71 @@ class v8gHelper {
   }
 };
 
-inline bool isContextCanceled(v8::Isolate* isolate){
+inline bool isContextCanceled(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
   return v8g->_canceled;
 }
 
-inline std::tuple<bool,bool,Result> extractArangoError(v8::Isolate* isolate, v8::TryCatch& tryCatch){
+inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate, v8::TryCatch& tryCatch, int errorCode) {
   // function tries to receive arango error form tryCatch Object
   // return tuple:
-	//   bool - can continue
+  //   bool - can continue
   //   bool - could convert
   //   result - extracted arango error
-  std::tuple<bool,bool,Result> rv = {};
+  std::tuple<bool, bool, Result> rv = {};
 
   std::get<0>(rv) = true;
   std::get<1>(rv) = false;
 
-  if(!tryCatch.CanContinue()){
+  if (!tryCatch.CanContinue()) {
     std::get<0>(rv) = false;
+    std::get<1>(rv) = true;
+    std::get<2>(rv).reset(TRI_ERROR_REQUEST_CANCELED);
     TRI_GET_GLOBALS();
     v8g->_canceled = true;
+    return rv;
   }
 
   v8::Handle<v8::Value> exception = tryCatch.Exception();
-  if(!exception->IsObject()){
+  if (exception->IsString()) {
+    // the error is a plain string
+    std::string errorMessage = *v8::String::Utf8Value(exception->ToString());
+    std::get<1>(rv) = true;
+    std::get<2>(rv).reset(errorCode, errorMessage);
+    tryCatch.Reset();
+    return rv;
+  }
+
+  if (!exception->IsObject()) {
+    // we have no idea what this error is about
+    std::get<1>(rv) = true;
+    TRI_Utf8ValueNFC exception(tryCatch.Exception());
+    char const* exceptionString = *exception;
+    if (exceptionString == nullptr) {
+      std::get<2>(rv).reset(errorCode, "JavaScript exception");
+    } else {
+      std::get<2>(rv).reset(errorCode, exceptionString);
+    }
     return rv;
   }
 
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(exception);
 
   try {
-
-    if(object->Has(TRI_V8_ASCII_STRING(isolate, "errorNum")) &&
-       object->Has(TRI_V8_ASCII_STRING(isolate, "errorMessage"))
-      )
-    {
+    if (object->Has(TRI_V8_ASCII_STRING(isolate, "errorNum")) &&
+        object->Has(TRI_V8_ASCII_STRING(isolate, "errorMessage"))
+       ) {
       int errorNum = static_cast<int>(TRI_ObjectToInt64(object->Get(TRI_V8_ASCII_STRING(isolate, "errorNum"))));
-      std::string  errorMessage = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING(isolate, "errorMessage")));
+      std::string errorMessage = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING(isolate, "errorMessage")));
       std::get<1>(rv) = true;
-      std::get<2>(rv).reset(errorNum,errorMessage);
+      std::get<2>(rv).reset(errorNum, errorMessage);
       tryCatch.Reset();
       return rv;
     }
 
-    if(object->Has(TRI_V8_ASCII_STRING(isolate, "name")) &&
-       object->Has(TRI_V8_ASCII_STRING(isolate, "message"))
-      )
-    {
+    if (object->Has(TRI_V8_ASCII_STRING(isolate, "name")) &&
+        object->Has(TRI_V8_ASCII_STRING(isolate, "message"))
+       ) {
       std::string  name = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING(isolate, "name")));
       std::string  message = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING(isolate, "message")));
       if(name == "TypeError"){

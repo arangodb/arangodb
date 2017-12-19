@@ -18,6 +18,10 @@ done
 
 export CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
 
+if ! test -d 3rdParty/arangodb-starter; then
+    MOREOPTS="${MOREOPTS} --downloadStarter"
+fi
+
 ./Installation/Jenkins/build.sh \
     maintainer \
     --failure-tests \
@@ -27,8 +31,8 @@ export CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
     --buildDir build-${EP}deb-dbg \
     --targetDir /var/tmp/ \
     --jemalloc \
-    --downloadStarter \
     --noopt \
+    ${MOREOPTS} \
     $@
 
 cd ${DIR}/..

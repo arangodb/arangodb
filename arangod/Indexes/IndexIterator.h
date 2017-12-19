@@ -83,7 +83,10 @@ class IndexIterator {
   LogicalCollection* collection() const { return _collection; }
   transaction::Methods* transaction() const { return _trx; }
 
-  virtual bool hasExtra() const;
+  virtual bool hasExtra() const {
+    // The default index has no extra information
+    return false;
+  }
 
   virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) = 0;
   virtual bool nextDocument(DocumentCallback const& callback, size_t limit);

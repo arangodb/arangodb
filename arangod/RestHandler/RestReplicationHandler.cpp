@@ -914,8 +914,6 @@ Result RestReplicationHandler::processRestoreCollection(
                                         AccessMode::Type::EXCLUSIVE);
         // to turn off waitForSync!
         trx.addHint(transaction::Hints::Hint::RECOVERY);
-        trx.addHint(transaction::Hints::Hint::READ_OWN_WRITES);
-
         res = trx.begin();
         if (!res.ok()) {
           return res;
@@ -1539,6 +1537,11 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, collection->cid(),
                                     AccessMode::Type::EXCLUSIVE);
+
+    // collection status lock was already acquired by collection guard 
+    // above
+    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+    
     Result res = trx.begin();
 
     if (!res.ok()) {
