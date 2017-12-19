@@ -137,22 +137,6 @@ std::string mangleNumeric(std::string name) {
   return name;
 }
 
-std::string mangleString(std::string name, std::string suffix) {
-  arangodb::iresearch::kludge::mangleAnalyzer(name);
-  name += suffix;
-  return name;
-}
-
-std::string mangleType(std::string name) {
-  arangodb::iresearch::kludge::mangleType(name);
-  return name;
-}
-
-std::string mangleAnalyzer(std::string name) {
-  arangodb::iresearch::kludge::mangleAnalyzer(name);
-  return name;
-}
-
 std::string mangleStringIdentity(std::string name) {
   arangodb::iresearch::kludge::mangleStringField(
     name,
@@ -333,21 +317,6 @@ void assertFilterFail(
     std::string const& refName = "d") {
   irs::Or expected;
   return assertFilter(false, false, queryString, expected, exprCtx, bindVars, refName);
-}
-
-void assertFilterParseFail(
-    std::string const& queryString,
-    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-
-  arangodb::aql::Query query(
-     false, &vocbase, arangodb::aql::QueryString(queryString),
-     bindVars, nullptr,
-     arangodb::aql::PART_MAIN
-  );
-
-  auto const parseResult = query.parse();
-  CHECK(TRI_ERROR_NO_ERROR != parseResult.code);
 }
 
 NS_END
