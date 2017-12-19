@@ -108,18 +108,24 @@ RocksDBSettingsManager::CounterAdjustment RocksDBSettingsManager::loadCounter(
   return CounterAdjustment();  // do not create
 }
 
+/// add a new, empty counter
+void RocksDBSettingsManager::addCounter(uint64_t objectId) {
+  CounterAdjustment update;
+
+  WRITE_LOCKER(guard, _rwLock);
+
+  // insert new counter
+  _counters.emplace(std::make_pair(
+      objectId,
+      CMValue(update.sequenceNumber(), update.added() - update.removed(),
+              update.revisionId())));
+}
+
 /// collections / views / indexes can call this method to update
 /// their total counts. Thread-Safe needs the snapshot so we know
 /// the sequence number used
 void RocksDBSettingsManager::updateCounter(uint64_t objectId,
                                            CounterAdjustment const& update) {
-  // From write_batch.cc in rocksdb: first 64 bits in the internal rep_
-  // buffer are the sequence number
-  /*TRI_ASSERT(trx->GetState() == rocksdb::Transaction::COMMITED);
-  rocksdb::WriteBatchWithIndex *batch = trx->GetWriteBatch();
-  rocksdb::SequenceNumber seq =
-  DecodeFixed64(batch->GetWriteBatch()->Data().data());*/
-
   bool needsSync = false;
   {
     WRITE_LOCKER(guard, _rwLock);
