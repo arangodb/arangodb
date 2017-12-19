@@ -4761,30 +4761,6 @@ function AQL_MERGE_RECURSIVE () {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief translate a value, using a lookup document
-// //////////////////////////////////////////////////////////////////////////////
-
-function AQL_TRANSLATE (value, lookup, defaultValue) {
-  'use strict';
-
-  if (TYPEWEIGHT(lookup) !== TYPEWEIGHT_OBJECT) {
-    WARN('TRANSLATE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return null;
-  }
-
-  if (defaultValue === undefined) {
-    defaultValue = value;
-  }
-
-  var key = AQL_TO_STRING(value);
-  if (lookup.hasOwnProperty(key)) {
-    return lookup[key];
-  }
-
-  return defaultValue;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief compare an object against a list of examples and return whether the
 // / object matches any of the examples. returns the example index or a bool,
 // / depending on the value of the control flag (3rd) parameter
@@ -5736,7 +5712,6 @@ exports.AQL_UNSET_RECURSIVE = AQL_UNSET_RECURSIVE;
 exports.AQL_KEEP = AQL_KEEP;
 exports.AQL_MERGE = AQL_MERGE;
 exports.AQL_MERGE_RECURSIVE = AQL_MERGE_RECURSIVE;
-exports.AQL_TRANSLATE = AQL_TRANSLATE;
 exports.AQL_MATCHES = AQL_MATCHES;
 exports.AQL_PASSTHRU = AQL_PASSTHRU;
 exports.AQL_V8 = AQL_PASSTHRU;

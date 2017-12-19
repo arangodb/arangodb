@@ -401,7 +401,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
        true, true, &Functions::UnsetRecursive});
   add({"KEEP", ".,.|+", true, false, true, true,
        &Functions::Keep});
-  add({"TRANSLATE", ".,.|.", true, false, true, true});
+  add({"TRANSLATE", ".,.|.", true, false, true, true, &Functions::Translate});
   add({"ZIP", ".,.", true, false, true, true,
        &Functions::Zip});
   add({"JSON_STRINGIFY", ".", true, false, true,

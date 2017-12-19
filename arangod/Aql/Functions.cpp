@@ -1450,6 +1450,38 @@ AqlValue Functions::Keep(arangodb::aql::Query* query,
   return AqlValue(builder.get());
 }
 
+/// @brief function TRANSLATE
+AqlValue Functions::Translate(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "TRANSLATE", 2, 3);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue lookupDocument = ExtractFunctionParameterValue(trx, parameters, 1);
+  AqlValue defaultValue = ExtractFunctionParameterValue(trx, parameters, 2);
+
+  if (!value.isString()) {
+    RegisterInvalidArgumentWarning(query, "TRANSLATE");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  if (!lookupDocument.isObject()) {
+    RegisterInvalidArgumentWarning(query, "TRANSLATE");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  if (defaultValue.isNone()) {
+    defaultValue = value;
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(lookupDocument, false);;
+  TRI_ASSERT(slice.isObject());
+  VPackSlice key = materializer.slice(value, false);
+  TRI_ASSERT(key.isString());
+  VPackSlice result = slice.get(key.copyString());
+  return result.isNone() ? defaultValue : AqlValue(result);
+}
+
 /// @brief function MERGE
 AqlValue Functions::Merge(arangodb::aql::Query* query,
                           transaction::Methods* trx,
