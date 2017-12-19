@@ -357,8 +357,8 @@ function build-book-symlinks()
     echo "${STD_COLOR}##### generate backwards compatibility symlinks for ${NAME}${RESET}"
     cd "books/${NAME}"
     pwd
-    find . -name "README.mdpp" |\
-        sed -e 's:README\.mdpp$::' |\
+    find . -name "README.mp" |\
+        sed -e 's:README\.md$::' |\
         awk '{print "ln -s index.html " "$1" "README.html"}' |\
         bash
 }
@@ -528,7 +528,7 @@ function clean-book-intermediate()
 #
 function check-docublocks()
 {
-    grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
+    grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v '@startDocuBlockInline' |\
         grep -v ppbook |\
         grep -v allComments.txt |\
@@ -537,7 +537,7 @@ function check-docublocks()
         grep -v '.*#.*:.*' \
              > /tmp/rawindoc.txt
 
-    grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
+    grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v ppbook |\
         grep -v allComments.txt |\
         grep -v Makefile |\
@@ -548,9 +548,9 @@ function check-docublocks()
     sed  -e "s;.*ck ;;" -e "s;.*ne ;;" < /tmp/rawindoc.txt |sort -u > /tmp/indoc.txt
 
     set +e
-    grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" --include "*.mdpp" |grep -v aardvark > /tmp/rawinprog.txt
+    grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" --include "*.md" |grep -v aardvark > /tmp/rawinprog.txt
     # searching the Inline docublocks needs some more blacklisting:
-    grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
+    grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v ppbook |\
         grep -v allComments.txt |\
         grep -v Makefile |\
@@ -632,7 +632,7 @@ function build-books()
     done
 
     check-docublocks
-    check-dangling-anchors
+    # check-dangling-anchors
     echo "${STD_COLOR}##### Generating redirect index.html${RESET}"; \
     echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html
 }
