@@ -26,10 +26,10 @@
 // the namespace in auto-generated headers might fail
 
 namespace arangodb {
-  namespace aql {
-    class Query;
-    class Parser;
-  }
+namespace aql {
+class Query;
+class Parser;
+}
 }
 
 
@@ -39,7 +39,12 @@ namespace arangodb {
 
 #define YY_EXTRA_TYPE arangodb::aql::Parser*
 
-#define YY_USER_ACTION yylloc->first_line = (int) yylineno; yylloc->first_column = (int) yycolumn; yylloc->last_column = (int) (yycolumn + yyleng - 1); yycolumn += (int) yyleng; yyextra->increaseOffset(yyleng);
+#define YY_USER_ACTION                                                   \ 
+  yylloc->first_line = static_cast<int>(yylineno);                       \ 
+  yylloc->first_column = static_cast<int>(yycolumn);                     \
+  yylloc->last_column = static_cast<int>(yycolumn + yyleng - 1);         \
+  yycolumn += static_cast<int>(yyleng);                                  \
+  yyextra->increaseOffset(yyleng);
 
 #define YY_NO_INPUT 1
 
@@ -51,8 +56,7 @@ namespace arangodb {
   if (length > 0) {                                                      \
     yyextra->fillBuffer(resultBuffer, length);                           \
     resultState = length;                                                \
-  }                                                                      \
-  else {                                                                 \
+  } else {                                                               \
     resultState = YY_NULL;                                               \
   }                                                                      \
 }
