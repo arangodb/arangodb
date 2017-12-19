@@ -1,4 +1,14 @@
+v3.3.0 (XXXX-XX-XX)
+-------------------
+
+* optimize usage of AQL FULLTEXT index function to a FOR loop with index
+  usage in some cases
+  When the optimization is applied, this especially speeds up fulltext index 
+  queries in the cluster
+
+
 v3.3.rc10 (2017-XX-XX)
+-------------------
 
 * UI: improved the behavior during collection creation in a cluster environment 
 
