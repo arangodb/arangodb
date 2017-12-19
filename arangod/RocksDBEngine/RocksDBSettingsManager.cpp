@@ -153,6 +153,8 @@ arangodb::Result RocksDBSettingsManager::setAbsoluteCounter(uint64_t objectId,
   WRITE_LOCKER(guard, _rwLock);
   auto it = _counters.find(objectId);
   if (it != _counters.end()) {
+    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+    it->second._sequenceNum = db->GetLatestSequenceNumber();
     it->second._count = value;
   } else {
     // nothing to do as the counter has never been written it can not be set to
