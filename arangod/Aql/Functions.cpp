@@ -1476,9 +1476,7 @@ AqlValue Functions::Translate(arangodb::aql::Query* query,
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(lookupDocument, false);;
   TRI_ASSERT(slice.isObject());
-  VPackSlice key = materializer.slice(value, false);
-  TRI_ASSERT(key.isString());
-  VPackSlice result = slice.get(key.copyString());
+  VPackSlice result = slice.get(value.slice().copyString());
   return result.isNone() ? defaultValue : AqlValue(result);
 }
 
