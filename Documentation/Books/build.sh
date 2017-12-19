@@ -80,7 +80,7 @@ function check-summary()
 
     if test "$(comm -3 /tmp/is_md.txt /tmp/is_summary.txt|wc -l)" -ne 0; then
         echo "${ERR_COLOR}"
-        echo "not all files are mapped to the summary!"
+        echo "not all files of ${NAME} are mapped to the summary!"
         echo " files found       |    files in summary"
         comm -3 /tmp/is_md.txt /tmp/is_summary.txt
         echo "${RESET}"
