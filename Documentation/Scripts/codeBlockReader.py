@@ -12,9 +12,9 @@ searchMDPPPaths = [
   "Cookbook"
 ]
 searchPaths = [
+  "arangod/", "lib/", "js/actions", "js/client", "js/apps/system/_system/cerberus", "js/apps/system/_api/gharial", "js/common", "js/server",
   "Documentation/Books/Users/",
   "Documentation/Books/Cookbook/",
-  "Documentation/DocuBlocks/"
 ]
 fullSuccess = True
 
