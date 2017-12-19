@@ -27,8 +27,6 @@
 #include "Aql/Query.h"
 #include "Aql/AstNode.h"
 
-#include "common.h"
-
 #include <string>
 #include <vector>
 
