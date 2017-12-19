@@ -35,7 +35,7 @@ If no view with such a name exists, then *null* is returned.
 
 This call will create a new view called *view-name*. This method is a database
 method and is documented in detail in
-[Database Methods](DatabaseMethods.md#createView)
+[Database Methods](DatabaseMethods.md#create)
 
 ### View Types
 
