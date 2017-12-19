@@ -38,7 +38,12 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery');
   var c = db._create('UnitTestsRecovery'), i;
-  c.recalculateCount();
+  // we need some data-modification operation on the collection to
+  // have a counter entry for the collection to be created
+  c.insert({ _key: "test" });
+  c.remove("test", { waitForSync: true });
+  // give the sync thread some time to sync the counter entry
+  require("internal").wait(12, false);
 
   internal.debugSetFailAt("RocksDBCounterManagerSync");
 
