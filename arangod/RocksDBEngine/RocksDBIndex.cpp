@@ -296,7 +296,8 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   //check if index entries have been deleted
   if (type() != TRI_IDX_TYPE_GEO1_INDEX && type() != TRI_IDX_TYPE_GEO2_INDEX) {
-    if (mthds->countInBounds(getBounds(), true)) {
+    if (state->numIntermediateCommits() == 0 &&
+        mthds->countInBounds(getBounds(), true)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "deletion check in collection truncate "
                                      "failed - not all documents in an index "
