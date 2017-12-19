@@ -58,7 +58,7 @@ are managed in this database, and their credentials are valid for all databases
 of a server instance.
 
 Similarly **databases** may also contain **view** entities. A
-[View](Views/Readme.md) in its simplest form can be seen as a read-only
+[View](Views/README.md) in its simplest form can be seen as a read-only
 array or collection of documents. The view concept quite closely matches a
 similarly named concept available in most relational database management systems
 (RDBMS). Each view entity usually maps some implementation specific document
