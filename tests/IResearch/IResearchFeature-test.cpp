@@ -26,10 +26,12 @@
 
 #include "utils/misc.hpp"
 #include "utils/string.hpp"
+#include "utils/version_defines.hpp"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchFeature.h"
+#include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 // -----------------------------------------------------------------------------
@@ -56,7 +58,7 @@ struct IResearchFeatureSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_CASE("IResearcFeatureTest", "[iresearch][iresearch-feature]") {
+TEST_CASE("IResearchFeatureTest", "[iresearch][iresearch-feature]") {
   IResearchFeatureSetup s;
   UNUSED(s);
 
@@ -91,6 +93,11 @@ SECTION("test_start") {
     CHECK((nullptr != function));
     CHECK((entry.second == function->arguments));
   };
+}
+
+SECTION("IResearch_version") {
+  CHECK(IResearch_version == arangodb::rest::Version::getIResearchVersion());
+  CHECK(IResearch_version == arangodb::rest::Version::Values["iresearch-version"]);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
