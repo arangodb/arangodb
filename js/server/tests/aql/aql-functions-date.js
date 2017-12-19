@@ -744,21 +744,32 @@ function ahuacatlDateFunctionsTestSuite () {
 /// @brief test date_millisecond function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDateMillisecondInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_MILLISECOND()");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_MILLISECOND(1, 1)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MILLISECOND(null)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MILLISECOND(false)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MILLISECOND([])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MILLISECOND({})");
+    testDateMillisecondInvalid() {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_MILLISECOND())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_MILLISECOND()))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_MILLISECOND(1, 1))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_MILLISECOND(1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_MILLISECOND(null))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_MILLISECOND(null)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_MILLISECOND(false))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_MILLISECOND(false)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_MILLISECOND([]))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_MILLISECOND([])))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_MILLISECOND({}))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_MILLISECOND({})))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test date_millisecond function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDateMillisecond : function () {
-      var values = [
+    testDateMillisecond() {
+      const values = [
         [ "2000-04-29Z", 0 ],
         [ "2012-02-12 13:24:12Z", 0 ],
         [ "2012-02-12 23:59:59.991Z", 991 ],
@@ -818,8 +829,8 @@ function ahuacatlDateFunctionsTestSuite () {
       ];
 
       values.forEach(function (value) {
-        var actual = getQueryResults("RETURN DATE_MILLISECOND(@value)", { value: value[0] });
-        assertEqual([ value[1] ], actual);
+        assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(DATE_MILLISECOND(@value))", { value: value[0] }));
+        assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(V8(DATE_MILLISECOND(@value)))", { value: value[0] }));
       }); 
     },
 

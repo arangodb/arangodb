@@ -1600,9 +1600,41 @@ AqlValue Functions::DateSecond(arangodb::aql::Query* query,
     }
   }
 
-  uint64_t minutes = make_time(tp - floor<days>(tp)).seconds().count();
+  uint64_t seconds = make_time(tp - floor<days>(tp)).seconds().count();
 
-  return AqlValue(AqlValueHintUInt(minutes));
+  return AqlValue(AqlValueHintUInt(seconds));
+}
+
+/// @brief function DATE_MILLISECOND
+AqlValue Functions::DateMillisecond(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (!value.isString() && !value.isNumber() ) {
+    RegisterInvalidArgumentWarning(query, "DATE_MILLISECOND");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  system_clock::time_point tp;
+
+  if (value.isNumber()) {
+    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
+  } else {
+    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
+      RegisterWarning(query, "DATE_MILLISECOND", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  // duration_cast<milliseconds>(  system_clock::now().time_since_epoch() ).count();
+
+  uint64_t mss = make_time( floor<milliseconds>(tp) - floor<days>(tp) ).subseconds().count();
+
+  return AqlValue(AqlValueHintUInt(mss));
 }
 
 
