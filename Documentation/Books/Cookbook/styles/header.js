@@ -53,7 +53,7 @@ function appendHeader() {
     '    <gcse:searchbox-only></gcse:searchbox-only>\n' +
     '  </div>\n' +
     '  <ul class="arangodb-navmenu">\n' +
-    '    <li class="active-tab">\n' +
+    '    <li>\n' +
     '      <a href="#" data-book="Manual">Manual</a>\n' +
     '    </li>\n' +
     '    <li>\n' +
@@ -62,7 +62,7 @@ function appendHeader() {
     '    <li>\n' +
     '      <a href="#" data-book="HTTP">HTTP</a>\n' +
     '    </li>\n' +
-    '    <li>\n' +
+    '    <li class="active-tab">\n' +
     '      <a href="#" data-book="Cookbook">Cookbook</a>\n' +
     '    </li>\n' +
     '    <li class="downloadIcon" title="Download">\n' +
