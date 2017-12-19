@@ -1011,21 +1011,6 @@ std::string RocksDBEngine::createCollection(
       {"path", "statusString"}, /*translate cid*/ true,
       /*for persistence*/ true);
 
-  // should cause counter to be added to the manager
-  // in case the collection is created for the first time
-  VPackSlice objectId = builder.slice().get("objectId");
-  uint64_t objectIdValue;
-  if (objectId.isString()) {
-    objectIdValue = basics::StringUtils::uint64(objectId.copyString());
-  } else {
-    objectIdValue = objectId.getUInt();
-  }
-
-  if (objectIdValue > 0) {
-    // add an empty counter now
-    _counterManager->addCounter(objectIdValue);
-  }
-
   TRI_ASSERT(cid != 0);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
 

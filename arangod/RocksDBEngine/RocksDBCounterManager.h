@@ -76,9 +76,6 @@ class RocksDBCounterManager {
   /// Thread-Safe load a counter
   CounterAdjustment loadCounter(uint64_t objectId) const;
   
-  /// add a new, empty counter
-  void addCounter(uint64_t objectId);
-
   /// collections / views / indexes can call this method to update
   /// their total counts. Thread-Safe needs the snapshot so we know
   /// the sequence number used
