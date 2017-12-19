@@ -183,6 +183,9 @@ struct Functions {
                               VPackFunctionParameters const&);
    static AqlValue DateMillisecond(arangodb::aql::Query*, transaction::Methods*,
                                    VPackFunctionParameters const&);
+   static AqlValue DateDayOfYear(arangodb::aql::Query*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
+
 
 
    static AqlValue Passthru(arangodb::aql::Query*, transaction::Methods*,

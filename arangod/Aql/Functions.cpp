@@ -1637,6 +1637,49 @@ AqlValue Functions::DateMillisecond(arangodb::aql::Query* query,
   return AqlValue(AqlValueHintUInt(mss));
 }
 
+/// @brief function DATE_DAYOFYEAR
+AqlValue Functions::DateDayOfYear(arangodb::aql::Query* query,
+                                  transaction::Methods* trx,
+                                  VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (!value.isString() && !value.isNumber() ) {
+    RegisterInvalidArgumentWarning(query, "DATE_DAYOFYEAR");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  system_clock::time_point tp;
+
+  if (value.isNumber()) {
+    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
+  } else {
+    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
+      RegisterWarning(query, "DATE_DAYOFYEAR", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  auto firstDayInYear = year{year_month_day(floor<days>(tp)).year()}/1/0;
+  uint64_t daysSinceFirst = duration_cast<days>( floor<days>(tp) - sys_days(firstDayInYear) ).count();
+
+  return AqlValue(AqlValueHintUInt(daysSinceFirst));
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
