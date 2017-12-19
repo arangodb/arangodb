@@ -4,7 +4,7 @@
 
 You have a very big database and want to set up a `master-slave` replication between two or more ArangoDB instances. Transfering the entire database over the network may take a long time, if the database is big. In order to speed-up the replication initialization process the **slave** can be initialized using a backup of the **master**.
 
-For the following example setup, we will use the instance `tcp://master.domain.org:8529` as master, and the instance `tcp://slave.domain.org:8530` as slave.
+For the following example setup, we will use the instance with endpoint `tcp://master.domain.org:8529` as master, and the instance with endpoint `tcp://slave.domain.org:8530` as slave.
 
 The goal is to have all data from the database ` _system` on master replicated to the database `_system` on the slave (the same process can be applied for other databases) .
 
