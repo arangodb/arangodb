@@ -21,13 +21,15 @@ Depending on your storage-engine you also want to adjust the following options:
 For MMFiles:
 
 ```sh
---wal.historic-logfiles		(maximum number of historic logfiles to keep after collection (default: 10))
+--wal.historic-logfiles		(maximum number of historic logfiles to keep after collection
+                                (default: 10))
 ```
 
 For RocksDB:
 
 ```sh
---rocksdb.wal-file-timeout	(timeout after which unused WAL files are deleted (in seconds) (default: 10))
+--rocksdb.wal-file-timeout	(timeout after which unused WAL files are deleted
+                                in seconds (default: 10))
 ```
 
 The options above prevent the premature removal of old WAL files from the master, and are useful in case intense write operations happen on the master while you are initializing the slave. In fact, if you do not tune these options, what can happen is that the master WAL files do not include all the write operations happened after the backup is taken. This may lead to situations in which the initialized slave is missing some data, or fails to start.
