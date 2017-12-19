@@ -1,6 +1,8 @@
-!CHAPTER How to invoke AQL 
+How to invoke AQL
+=================
 
-!SECTION Executing queries
+Executing queries
+-----------------
 
 You can run AQL queries from your application via the HTTP REST API. The full
 API description is available at [HTTP Interface for AQL Query Cursors](../HttpAqlQueryCursor/README.md).
@@ -229,7 +231,8 @@ on the server-side and may be able to apply optimizations if a result set is not
 a client.
 
 
-!SECTION Query statistics
+Query statistics
+----------------
 
 A query that has been executed will always return execution statistics. Execution statistics
 can be retrieved by calling `getExtra()` on the cursor. The statistics are returned in the
@@ -279,7 +282,8 @@ The meaning of the statistics attributes is as follows:
   the top level.
 
 
-!SECTION Explaining queries
+Explaining queries
+------------------
 
 If it is unclear how a given query will perform, clients can retrieve a query's execution plan 
 from the AQL query optimizer without actually executing the query. Getting the query execution 
@@ -402,7 +406,8 @@ The above command prints the query's execution plan in the ArangoShell directly,
 on the most important information.
 
 
-!SECTION Parsing queries
+Parsing queries
+---------------
     
 Clients can use ArangoDB to check if a given AQL query is syntactically valid. ArangoDB provides
 an [HTTP REST API](../HttpAqlQuery/README.md) for this. 

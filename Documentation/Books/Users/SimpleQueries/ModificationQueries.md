@@ -1,4 +1,5 @@
-!CHAPTER Modification Queries
+Modification Queries
+====================
 
 ArangoDB also allows removing, replacing, and updating documents based 
 on an example document. Every document in the collection will be 

@@ -1,4 +1,5 @@
-!CHAPTER Date functions
+Date functions
+==============
 
 AQL offers functionality to work with dates. Dates are no data types of their own in
 AQL (neither are they in JSON, which is often used as a format to ship data into and
@@ -375,7 +376,8 @@ DATE_FORMAT("2016-03-01", "%xxx%") // "063", trailing % ignored
   strings containing invalid dates such as *2015-02-31*. The function will return 
   false for all non-string values, even if some of them may be usable in date functions.
 
-!SECTION Working with dates and indices
+Working with dates and indices
+------------------------------
 
 There are two recommended ways to store timestamps in ArangoDB:
   - as string with [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) UTC timestamp
@@ -398,7 +400,8 @@ string comparisons (less than, greater than, in, equality) to express time range
 
 The first and the last timestamp in the array are excluded from the result by the `FILTER`.
 
-!SECTION Limitations
+Limitations
+-----------
 
 Note that dates before the year 1583 aren't allowed by the
 [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) standard by default, because

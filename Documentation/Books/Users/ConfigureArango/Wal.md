@@ -1,4 +1,5 @@
-!CHAPTER Write-ahead log options
+Write-ahead log options
+=======================
 
 Since ArangoDB 2.2, the server will write all data-modification operations into its
 write-ahead log.
@@ -9,51 +10,51 @@ might be transferred into collection journals and datafiles. Unneeded and alread
 garbage-collected logfiles will either be deleted or kept for the purpose of keeping
 a replication backlog.
 
-!SUBSECTION Directory
+### Directory
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileDirectory
 
-!SUBSECTION Logfile size
+### Logfile size
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileSize
 
-!SUBSECTION Allow oversize entries
+### Allow oversize entries
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileAllowOversizeEntries
 
-!SUBSECTION Suppress shape information
+### Suppress shape information
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileSuppressShapeInformation
 
-!SUBSECTION Number of reserve logfiles
+### Number of reserve logfiles
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileReserveLogfiles
 
-!SUBSECTION Number of historic logfiles
+### Number of historic logfiles
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileHistoricLogfiles
 
-!SUBSECTION Sync interval
+### Sync interval
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileSyncInterval
 
-!SUBSECTION Throttling
+### Throttling
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileThrottling
 
-!SUBSECTION Number of slots
+### Number of slots
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileSlots
 
-!SUBSECTION Ignore logfile errors
+### Ignore logfile errors
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileIgnoreLogfileErrors
 
-!SUBSECTION Ignore recovery errors
+### Ignore recovery errors
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileIgnoreRecoveryErrors
 
-!SUBSECTION Ignore (non-WAL) datafile errors
+### Ignore (non-WAL) datafile errors
 <!-- arangod/RestServer/ArangoServer.h -->
 @startDocuBlock databaseIgnoreDatafileErrors
 

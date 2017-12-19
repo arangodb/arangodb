@@ -1,39 +1,40 @@
-!CHAPTER Working with Databases 
+Working with Databases
+======================
 
-!SUBSECTION Database Methods
+### Database Methods
 
 The following methods are available to manage databases via JavaScript.
 Please note that several of these methods can be used from the _system
 database only.
 
-!SUBSECTION Name
+### Name
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock databaseName
 
-!SUBSECTION ID
+### ID
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock databaseId
 
-!SUBSECTION Path
+### Path
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock databasePath
 
-!SUBSECTION isSystem
+### isSystem
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock databaseIsSystem
 
-!SUBSECTION Use Database
+### Use Database
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock databaseUseDatabase
 
-!SUBSECTION List Databases
+### List Databases
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock databaseListDatabase
 
-!SUBSECTION Create Database
+### Create Database
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock databaseCreateDatabase
 
-!SUBSECTION Drop Database
+### Drop Database
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock databaseDropDatabase

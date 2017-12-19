@@ -1,4 +1,5 @@
-!CHAPTER Type cast functions
+Type cast functions
+===================
 
 As mentioned before, some of the operators expect their operands to have a
 certain data type. For example, the logical operators expect their operands to
@@ -56,7 +57,8 @@ will return a number value):
 
 - *TO_LIST(value)*: This is an alias for *TO_ARRAY*.
 
-!SECTION Type check functions
+Type check functions
+--------------------
 
 AQL also offers functions to check the data type of a value at runtime. The
 following type check functions are available. Each of these functions takes an

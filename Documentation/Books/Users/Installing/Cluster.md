@@ -1,4 +1,5 @@
-!CHAPTER Set up your ArangoDB Cluster
+Set up your ArangoDB Cluster
+============================
 
 Setting up a cluster can be intimidating task. You have to deal with
 firewalls, ports, different types of machines, and the like. ArangoDB
@@ -10,7 +11,8 @@ and show you, how to build a ArangoDB cluster within minutes. If you
 want to dive deeper into the nasty details, you should read about
 [Sharding](../Sharding/README.md).
 
-!SECTION Development Scenario
+Development Scenario
+--------------------
 
 While not really relevant for a production environment, a common setup
 for development is to create a cluster on a single machine. This is
@@ -19,7 +21,7 @@ ArangoDB cluster in less than a minute. Even when developing it is
 convenient to create a cluster on a single machine instead of having
 to deal with a lot of servers.
 
-!SUBSECTION Step 1: Enable the Cluster mode
+### Step 1: Enable the Cluster mode
 
 In order to enable the cluster mode, edit the configuration file as root
 
@@ -49,7 +51,7 @@ Save and restart
 /etc/init.d/arangodb restart
 ```
 
-!SUBSECTION Step 2: Setup your Cluster
+### Step 2: Setup your Cluster
 
 You can now configure your cluster. A cluster consists of a number of
 database server and coordinators. A database server holds your
@@ -78,7 +80,7 @@ the number of coordinators and database servers.
 Press *Launch Cluster* to fire up the cluster. That's it. Your cluster
 is up and running.
 
-!SUBSECTION Step 3: Test your Cluster
+### Step 3: Test your Cluster
 
 Click on one of the coordinators (e. g. "Claus") to access your
 cluster.  In order to create a sharded collection, use *Tools / JS

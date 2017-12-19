@@ -1,6 +1,7 @@
-!CHAPTER Emergency Console
+Emergency Console
+=================
 
-!SUBSECTION In Case Of Disaster
+### In Case Of Disaster
 
 The following command starts an emergency console.
 

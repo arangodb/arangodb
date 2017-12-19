@@ -1,4 +1,5 @@
-!CHAPTER Extending AQL with User Functions
+Extending AQL with User Functions
+=================================
 
 AQL comes with a built-in set of functions, but it is not a
 fully-featured programming language.

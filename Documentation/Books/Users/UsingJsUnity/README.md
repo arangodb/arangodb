@@ -1,12 +1,13 @@
-!CHAPTER Using jsUnity and node-jscoverage
+Using jsUnity and node-jscoverage
+=================================
 
 
-!SUBSECTION jsUnity
+### jsUnity
 
 The ArangoDB contains a wrapper for [jsUnity](http://jsunity.com/), a
 lightweight universal JavaScript unit testing framework.
 
-!SUBSECTION Running jsUnity Tests
+### Running jsUnity Tests
 
 Assume that you have a test file containing
 

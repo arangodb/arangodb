@@ -1,4 +1,5 @@
-!CHAPTER Control flow functions
+Control flow functions
+======================
 
 AQL offers the following functions to let the user control the flow of operations:
 
@@ -11,7 +12,8 @@ AQL offers the following functions to let the user control the flow of operation
 - *FIRST_DOCUMENT(alternative, ...)*: Returns the first alternative that is a document,
   and *null* if none of the alternatives is a document
 
-!SECTION Miscellaneous functions
+Miscellaneous functions
+-----------------------
 
 Finally, AQL supports the following functions that do not belong to any of the other
 function categories:

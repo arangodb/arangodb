@@ -1,4 +1,5 @@
-!CHAPTER Components
+Components
+==========
 
 The replication architecture in ArangoDB before version 2.2 consisted of two main 
 components, which could be used together or in isolation: the *replication logger* 
@@ -12,9 +13,9 @@ As replication is configured on a per-database level and there can be multiple
 databases inside one ArangoDB instance, there can be multiple replication appliers
 in one ArangoDB instance.
 
-!SUBSECTION Replication Logger
+### Replication Logger
 
-!SUBSUBSECTION Purpose
+#### Purpose
 
 The purpose of the replication logger in ArangoDB before version 2.2 was to log all 
 changes that modify the state of data in a specific database on a master server. 
@@ -33,7 +34,7 @@ Instead, the server will write all data-modification operations into its write-a
 The write-ahead log can be queried by clients, so the need for an extra event log is 
 gone.
 
-!SUBSUBSECTION Checking the state
+#### Checking the state
 
 Starting with version 2.2, ArangoDB will log all data-modification operations in its
 write-ahead log automatically. There is no need to explicitly start or configure the
@@ -86,16 +87,16 @@ maximum tick values per logfile:
     require("org/arangodb/replication").logger.tickRanges();
 
 
-!SUBSUBSECTION Configuration
+#### Configuration
 
 Since ArangoDB 2.2, no special configuration is necessary for the replication logger.
 All operations are written to a server's write-ahead log, and the write-ahead log is 
 used for replication, too.
 
 
-!SUBSECTION Replication Applier
+### Replication Applier
 
-!SUBSUBSECTION Purpose
+#### Purpose
 
 The purpose of the replication applier is to read data from a master database's event log, 
 and apply them locally. The applier will check the master database for new operations periodically. 
@@ -200,7 +201,7 @@ Here is an example of the state after the replication applier terminated itself 
 **Note**: the state of a database's replication applier is queryable via the HTTP API, too. 
 Please refer to [HTTP Interface for Replication](../HttpReplications/README.md) for more details.
 
-!SUBSUBSECTION All-in-one setup
+#### All-in-one setup
 
 To copy the initial data from the **slave** to the master and start the
 continuous replication, there is an all-in-one command *setupReplication*:
@@ -237,7 +238,7 @@ stop the running applier, drop its configuration and do a resynchronization of d
 master. It will then use the provided configration, overwriting any previously existing replication
 configuration on the slave.
 
-!SUBSUBSECTION Starting and Stopping
+#### Starting and Stopping
 
 To manually start and stop the applier in the current database, the *start* and *stop* commands 
 can be used like this:
@@ -275,7 +276,7 @@ too. Thus stopping the replication applier on the slave manually should only be 
 is certainty that there are no ongoing transactions on the master.
 
 
-!SUBSUBSECTION Configuration
+#### Configuration
 
 To configure the replication applier of a specific database, use the *properties* command. Using 
 it without any arguments will return the applier's current configuration:

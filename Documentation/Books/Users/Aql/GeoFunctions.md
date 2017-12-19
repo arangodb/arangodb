@@ -1,4 +1,5 @@
-!CHAPTER Geo functions
+Geo functions
+=============
 
 AQL offers the following functions to filter data based on [geo indexes](../Glossary/README.md#geo-index):
 

@@ -1,4 +1,5 @@
-!CHAPTER Application Development Mode
+Application Development Mode
+============================
 
 This chapter describes the development mode for Foxx applications.
 It is only useful if you have write access to the files in ArangoDB's application folder.
@@ -12,7 +13,8 @@ So we decided to unify both app paths and activate development mode for specific
 The `--javascript.dev-app-path` parameter is not having any effect any more.
 </div>
 
-!SECTION Activation
+Activation
+----------
 
 Activating the development mode is done with a single command:
 
@@ -32,7 +34,8 @@ Mount       Name          Author          Description                           
 1 application(s) found
 ```
 
-!SECTION Effects
+Effects
+-------
 
 For a Foxx application in development mode the following effects apply:
 

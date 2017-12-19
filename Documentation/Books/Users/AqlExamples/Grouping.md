@@ -1,10 +1,11 @@
-!CHAPTER Grouping
+Grouping
+========
 
 To group results by arbitrary criteria, AQL provides the *COLLECT* keyword.
 *COLLECT* will perform a grouping, but no aggregation. Aggregation can still be
 added in the query if required.
 
-!SUBSECTION Ensuring uniqueness
+### Ensuring uniqueness
 
 *COLLECT* can be used to make a result set unique. The following query will return each distinct
 `age` attribute value only once:
@@ -36,7 +37,7 @@ FOR u IN users
 
 Note: the order of results is undefined for *RETURN DISTINCT*.
 
-!SUBSECTION Fetching group values
+### Fetching group values
 
 To group users by age, and return the names of the users with the highest ages,
 we'll issue a query like this:
@@ -93,7 +94,7 @@ result document per distinct *age* value (let aside the *LIMIT*). For each group
 we have access to the matching document via the *usersByAge* variable introduced in
 the *COLLECT* statement. 
 
-!SUBSECTION Variable Expansion
+### Variable Expansion
 
 The *usersByAge* variable contains the full documents found, and as we're only 
 interested in user names, we'll use the expansion operator <i>[\*]</i> to extract just the 
@@ -107,7 +108,7 @@ FOR temp IN usersByAge
   RETURN temp.u.name
 ```
 
-!SUBSECTION Grouping by multiple criteria
+### Grouping by multiple criteria
 
 To group by multiple criteria, we'll use multiple arguments in the *COLLECT* clause.
 For example, to group users by *ageGroup* (a derived value we need to calculate first)
@@ -152,7 +153,7 @@ FOR u IN users
 ]
 ```
 
-!SUBSECTION Counting group values
+### Counting group values
 
 If the goal is to count the number of values in each group, AQL provides the special
 *COLLECT WITH COUNT INTO* syntax. This is a simple variant for grouping with an additional
@@ -204,7 +205,7 @@ FOR u IN users
 ]
 ```
 
-!SUBSECTION Aggregation
+### Aggregation
 
 Adding further aggregation is also simple in AQL by using an *AGGREGATE* clause
 in the *COLLECT*:
@@ -259,7 +260,7 @@ in the collect operation. This is normally more efficient than collecting all gr
 for all groups and then doing a post-aggregation.
 
 
-!SUBSECTION Post-aggregation
+### Post-aggregation
 
 Aggregation can also be performed after a *COLLECT* operation using other AQL constructs,
 though performance-wise this is often inferior to using *COLLECT* with *AGGREGATE*.
@@ -305,7 +306,7 @@ This is in constrast to the previous query that used an *AGGREGATE* clause to pe
 the aggregation during the collect operation, at the earliest possible stage.
 
 
-!SUBSECTION Post-filtering aggregated data
+### Post-filtering aggregated data
 
 To filter the results of a grouping or aggregation operation (i.e. something
 similar to *HAVING* in SQL), simply add another *FILTER* clause after the *COLLECT* 

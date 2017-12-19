@@ -1,4 +1,5 @@
-!CHAPTER The Manifest File
+The Manifest File
+=================
 
 In the **manifest.json** you define the components of your application.
 The content is a JSON object with the following attributes (not all
@@ -87,7 +88,7 @@ A more complete example for a Manifest file:
 }
 ```
 
-!SUBSECTION The setup and teardown scripts
+### The setup and teardown scripts
 
 You can provide a path to a JavaScript file that prepares ArangoDB for your
 application (or respectively removes it entirely).
@@ -105,7 +106,7 @@ that the application used exclusively, but this is not enforced.
 Maybe there are reasons to keep application data even after removing an application.
 It's up to you to decide what to do.
 
-!SUBSECTION Mocha tests
+### Mocha tests
 
 You can provide test cases for your Foxx app using the [mocha test framework](http://mochajs.org/)
 and an assertion library like [expect.js](https://github.com/Automattic/expect.js)
@@ -121,7 +122,7 @@ the [minimatch module](https://github.com/isaacs/minimatch), for example:
 
 For more information on the supported patterns see the minimatch documentation.
 
-!SUBSECTION Configuration parameters
+### Configuration parameters
 
 Foxx apps can define configuration parameters to make them more re-usable.
 
@@ -157,7 +158,7 @@ The configuration parameters of a mounted app can be adjusted
 from the admin frontend by clicking the *Configuration* button in the app details
 or using the **configure** command of the **foxx-manager** command-line utility.
 
-!SUBSECTION Defining dependencies
+### Defining dependencies
 
 Foxx apps can depend on other Foxx apps to be installed on the same server.
 
@@ -198,7 +199,7 @@ or using the **set-dependencies** command of the **foxx-manager** command-line u
 
 For more information on dependencies see the chapter on [Foxx Exports](./Exports.md).
 
-!SUBSECTION Defining controllers
+### Defining controllers
 
 Controllers can be defined as an object mapping routes to file names:
 
@@ -230,7 +231,7 @@ is equivalent to this:
 }
 ```
 
-!SUBSECTION The files
+### The files
 
 Deliver all files in a certain folder without modifying them. You can deliver
 text files as well as binaries:

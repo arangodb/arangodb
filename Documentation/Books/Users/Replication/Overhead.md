@@ -1,4 +1,5 @@
-!CHAPTER Replication Overhead
+Replication Overhead
+====================
 
 In ArangoDB before version 2.2, there was a so-called *replication logger* which needed to
 be activated on the master in order to allow replicating from it. If the logger was not

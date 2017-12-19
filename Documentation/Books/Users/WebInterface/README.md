@@ -1,4 +1,5 @@
-!CHAPTER Accessing the Web Interface
+Accessing the Web Interface
+===========================
 
 ArangoDB comes with a built-in web interface for administration. The web 
 interface can be accessed via the URL
@@ -25,17 +26,20 @@ The above will load the web interface for the database *mydb*.
 To restrict access to the web interface, use 
 [ArangoDB's authentication feature](../GeneralHttp/README.md#authentication).
 
-!SECTION Select Functionality provided by the Web Interface
+Select Functionality provided by the Web Interface
+--------------------------------------------------
 
 The following sections provide a very brief overview of some features offered
 in the web interface. Please note that this is not a complete list of features.
 
-!SECTION Dashboard Tab
+Dashboard Tab
+-------------
 
 The *Dashboard* tab provides statistics which are polled regularly from the
 ArangoDB server.
 
-!SECTION Collections Tab 
+Collections Tab
+---------------
 
 The *Collections* tab shows an overview of the loaded and unloaded
 collections present in ArangoDB. System collections (i.e. collections
@@ -56,7 +60,8 @@ line to add a new document to the collection. The document will be created
 instantly, with a system-defined key. The key and all other attributes of the
 document can be adjusted in the following view.
 
-!SECTION Services Tab
+Services Tab
+------------
 
 The *Services* tab provides a list of installed Foxx services ( also called applications). The view
 is divided into lists of installed and services that are available for
@@ -67,7 +72,8 @@ itself. Please also note that installed services will be listed in both
 the *installed* and the *available* section. This is intentional because each
 service can be installed multiple times using different mount points.
 
-!SECTION Graphs Tab 
+Graphs Tab
+----------
 
 The *Graphs* tab provides a viewer facility for graph data stored in ArangoDB. It
 allows browsing ArangoDB graphs stored in the *_graphs* system collection or a
@@ -77,7 +83,8 @@ Please note that the graph viewer requires client-side SVG and that you need a
 browser capable of rendering that. Especially Internet Explorer browsers older
 than version 9 are likely to not support this. 
 
-!SECTION AQL Editor Tab 
+AQL Editor Tab
+--------------
 
 The *AQL Editor* tab allows to execute ad-hoc AQL queries.
 
@@ -89,7 +96,8 @@ There is also the option to add own frequently used queries here. Note that own
 queries will be stored in the browser's local storage and the web interface has
 no control over when the browser's local storage is cleared.
 
-!SECTION Tools Tab
+Tools Tab
+---------
 
 The Tools tab contains a JavaScript shell that can be used to run commands on
 the ArangoDB server, a log viewer and a link to the description of ArangoDB's 

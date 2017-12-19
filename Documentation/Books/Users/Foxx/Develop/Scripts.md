@@ -1,4 +1,5 @@
-!CHAPTER Scripts and the Job Queue
+Scripts and the Job Queue
+=========================
 
 Foxx allows you to define scripts that can be executed as part of the installation and removal process, invoked manually or scheduled to run at a later time using the job queue.
 
@@ -34,7 +35,8 @@ queue.push(
 
 For more information the Foxx job queue, see [the chapter about queues](./Queues.md).
 
-!SECTION Script arguments and return values
+Script arguments and return values
+----------------------------------
 
 If the script was invoked with any arguments, you can access them using the **applicationContext.argv** array.
 
@@ -61,13 +63,14 @@ assert.equal(typeof argv[1], 'number', 'Expected second argument to be a number'
 module.exports = argv[0] * argv[1];
 ```
 
-!SECTION Life-Cycle Scripts
+Life-Cycle Scripts
+------------------
 
 Foxx recognizes life-cycle scripts if they are defined and will invoke them during the installation, update and removal process of the app if you want.
 
 The following scripts are currently recognized as life-cycle scripts:
 
-!SUBSECTION Setup Script
+### Setup Script
 
 The **setup** script will be executed without arguments during the installation of your Foxx app:
 
@@ -98,7 +101,7 @@ if (db._collection(textsCollectionName) === null) {
 }
 ```
 
-!SUBSECTION Teardown Script
+### Teardown Script
 
 The **teardown** script will be executed without arguments during the removal of your Foxx app:
 

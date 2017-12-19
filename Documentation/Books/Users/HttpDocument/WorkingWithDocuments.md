@@ -1,4 +1,5 @@
-!CHAPTER Working with Documents using REST
+Working with Documents using REST
+=================================
 
 <!-- arangod/RestHandler/RestDocumentHandler.cpp -->
 @startDocuBlock REST_DOCUMENT_READ

@@ -1,8 +1,9 @@
-!CHAPTER Graph operations
+Graph operations
+================
 
 This chapter describes graph related AQL functions.
 
-!SUBSECTION Short explanation of the example parameter
+### Short explanation of the example parameter
 
 A lot of the following functions accept a vertex (or edge) example as parameter. This can contain the following: 
 
@@ -13,7 +14,7 @@ A lot of the following functions accept a vertex (or edge) example as parameter.
 * {*key1.key2* : *value1*, *key3* : *value2*} : It is possible to chain keys, which means that a document *{key1 : {key2 : value1}, key3 : value2}* would be a match
 * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices/edges that match one of the examples, which means that either *key1* or *key2* are set with the corresponding value
 
-!SUBSECTION The complexity of the shortest path algorithms
+### The complexity of the shortest path algorithms
 
 Most of the functions described in this chapter calculate the shortest paths for subsets of the graphs vertices.
 Hence the complexity of these functions depends of the chosen algorithm for this task. For
@@ -23,111 +24,111 @@ with *n* being the amount of vertices in the graph. For
 the amount of vertices in the graph, *x* the amount of start vertices and *y* the amount of
 target vertices. Hence a suggestion may be to use Dijkstra when x\*y < n and the functions supports choosing your algorithm.
 
-!SUBSECTION Example Graph
+### Example Graph
 All examples in this chapter will use [this simple city graph](../Graphs/README.md#the-city-graph):
 
 ![Cities Example Graph](../Graphs/cities_graph.png)
 
-!SUBSECTION Edges and Vertices related functions
+### Edges and Vertices related functions
 
 This section describes various AQL functions which can be used to receive information about the graph's vertices, edges, neighbor relationship and shared properties.
 
-!SUBSECTION GRAPH_EDGES
+### GRAPH_EDGES
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_edges
 
-!SUBSECTION GRAPH_VERTICES
+### GRAPH_VERTICES
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_vertices
 
-!SUBSECTION GRAPH_NEIGHBORS
+### GRAPH_NEIGHBORS
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_neighbors
 
-!SUBSECTION GRAPH_COMMON_NEIGHBORS
+### GRAPH_COMMON_NEIGHBORS
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_common_neighbors
 
-!SUBSECTION GRAPH_COMMON_PROPERTIES
+### GRAPH_COMMON_PROPERTIES
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_common_properties
 
-!SUBSECTION Shortest Paths, distances and traversals.
+### Shortest Paths, distances and traversals.
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 This section describes AQL functions, that calculate paths from a subset of vertices in a graph to another subset of vertices.
 
-!SUBSECTION GRAPH_PATHS
+### GRAPH_PATHS
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_paths
 
-!SUBSECTION GRAPH_SHORTEST_PATH
+### GRAPH_SHORTEST_PATH
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_shortest_paths
 
-!SUBSECTION GRAPH_TRAVERSAL
+### GRAPH_TRAVERSAL
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_traversal
 
-!SUBSECTION GRAPH_TRAVERSAL_TREE
+### GRAPH_TRAVERSAL_TREE
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_traversal_tree
 
-!SUBSECTION GRAPH_DISTANCE_TO
+### GRAPH_DISTANCE_TO
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_distance
 
-!SUBSECTION Graph measurements.
+### Graph measurements.
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 This section describes AQL functions to calculate various graph related measurements as defined in the mathematical graph theory.
 
-!SUBSECTION GRAPH_ABSOLUTE_ECCENTRICITY
+### GRAPH_ABSOLUTE_ECCENTRICITY
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_absolute_eccentricity
 
-!SUBSECTION GRAPH_ECCENTRICITY
+### GRAPH_ECCENTRICITY
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_eccentricity
 
-!SUBSECTION GRAPH_ABSOLUTE_CLOSENESS
+### GRAPH_ABSOLUTE_CLOSENESS
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_absolute_closeness
 
-!SUBSECTION GRAPH_CLOSENESS
+### GRAPH_CLOSENESS
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_closeness
 
-!SUBSECTION GRAPH_ABSOLUTE_BETWEENNESS
+### GRAPH_ABSOLUTE_BETWEENNESS
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_absolute_betweenness
 
-!SUBSECTION GRAPH_BETWEENNESS
+### GRAPH_BETWEENNESS
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_betweenness
 
-!SUBSECTION GRAPH_RADIUS
+### GRAPH_RADIUS
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_radius
 
-!SUBSECTION GRAPH_DIAMETER
+### GRAPH_DIAMETER
 <!-- js/server/modules/org/arangodb/aql.js -->
 
 @startDocuBlock JSF_aql_general_graph_diameter

@@ -1,4 +1,5 @@
-!CHAPTER Fluent AQL Interface
+Fluent AQL Interface
+====================
 
 This chapter describes a fluent interface to query [your graph](../Graphs/README.md).
 The philosophy of this interface is to select a group of starting elements (vertices or edges) at first and from there on explore the graph with your query by selecting connected elements.
@@ -12,11 +13,13 @@ Examples will explain the API on the [social graph](../Graphs/README.md#the-soci
 
 ![Social Example Graph](../Graphs/social_graph.png)
 
-!SECTION Definition of examples
+Definition of examples
+----------------------
 
 @startDocuBlock JSF_general_graph_example_description
 
-!SECTION Starting Points
+Starting Points
+---------------
 
 This section describes the entry points for the fluent interface.
 The philosophy of this module is to start with a specific subset of vertices or edges and from there on iterate over the graph.
@@ -26,15 +29,16 @@ Therefore you get exactly this two entry points:
 * Select a set of edges
 * Select a set of vertices
 
-!SUBSECTION Edges
+### Edges
 
 @startDocuBlock JSF_general_graph_edges
 
-!SUBSECTION Vertices
+### Vertices
 
 @startDocuBlock JSF_general_graph_vertices
 
-!SECTION Working with the query cursor
+Working with the query cursor
+-----------------------------
 
 The fluent query object handles cursor creation and maintenance for you.
 A cursor will be created as soon as you request the first result.
@@ -42,66 +46,67 @@ If you are unhappy with the current result and want to refine it further you can
 In this interface you get the complete functionality available for general AQL cursors directly on your query.
 The cursor functionality is described in this section.
 
-!SUBSECTION ToArray
+### ToArray
 
 @startDocuBlock JSF_general_graph_fluent_aql_toArray
 
-!SUBSECTION HasNext
+### HasNext
 
 @startDocuBlock JSF_general_graph_fluent_aql_hasNext
 
-!SUBSECTION Next
+### Next
 
 @startDocuBlock JSF_general_graph_fluent_aql_next
 
-!SUBSECTION Count
+### Count
 
 @startDocuBlock JSF_general_graph_fluent_aql_count
 
-!SECTION Fluent queries
+Fluent queries
+--------------
 
 After the selection of the entry point you can now query your graph in
 a fluent way, meaning each of the functions on your query returns the query again.
 Hence it is possible to chain arbitrary many executions one after the other.
 In this section all available query statements are described.
 
-!SUBSECTION Edges
+### Edges
 
 @startDocuBlock JSF_general_graph_fluent_aql_edges
 
-!SUBSECTION OutEdges
+### OutEdges
 
 @startDocuBlock JSF_general_graph_fluent_aql_outEdges
 
-!SUBSECTION InEdges
+### InEdges
 
 @startDocuBlock JSF_general_graph_fluent_aql_inEdges
 
-!SUBSECTION Vertices
+### Vertices
 
 @startDocuBlock JSF_general_graph_fluent_aql_vertices
 
-!SUBSECTION FromVertices
+### FromVertices
 
 @startDocuBlock JSF_general_graph_fluent_aql_fromVertices
 
-!SUBSECTION ToVertices
+### ToVertices
 
 @startDocuBlock JSF_general_graph_fluent_aql_toVertices
 
-!SUBSECTION Neighbors
+### Neighbors
 
 @startDocuBlock JSF_general_graph_fluent_aql_neighbors
 
-!SUBSECTION Restrict
+### Restrict
 
 @startDocuBlock JSF_general_graph_fluent_aql_restrict
 
-!SUBSECTION Filter
+### Filter
 
 @startDocuBlock JSF_general_graph_fluent_aql_filter
 
-!SUBSECTION Path
+### Path
 
 @startDocuBlock JSF_general_graph_fluent_aql_path
 

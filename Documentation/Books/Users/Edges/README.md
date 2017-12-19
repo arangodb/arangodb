@@ -1,4 +1,5 @@
-!CHAPTER Edges, Identifiers, Handles
+Edges, Identifiers, Handles
+===========================
 
 This is an introduction to ArangoDB's interface for edges and how to handle
 edges from the JavaScript shell *arangosh*. For other languages see the
@@ -16,20 +17,21 @@ must be specified when a collection is created and cannot be changed afterwards.
 To change edge endpoints you would need to remove old document/edge and insert new one.
 Other fields can be updated as in default collection.
 
-!SECTION Working with Edges
+Working with Edges
+------------------
 
-!SUBSECTION Insert
+### Insert
 <!-- arangod/V8Server/v8-collection.cpp -->
 @startDocuBlock InsertEdgeCol
 
-!SUBSECTION Edges
+### Edges
 <!-- arangod/V8Server/v8-query.cpp -->
 @startDocuBlock edgeCollectionEdges
 
-!SUBSECTION InEdges
+### InEdges
 <!-- arangod/V8Server/v8-query.cpp -->
 @startDocuBlock edgeCollectionInEdges
 
-!SUBSECTION OutEdges
+### OutEdges
 <!-- arangod/V8Server/v8-query.cpp -->
 @startDocuBlock edgeCollectionOutEdges

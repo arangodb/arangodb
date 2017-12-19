@@ -1,6 +1,7 @@
-!CHAPTER Language basics
+Language basics
+===============
 
-!SUBSECTION Query types
+### Query types
 
 An AQL query must either return a result (indicated by usage of the *RETURN*
 keyword) or execute a data-modification operation (indicated by usage
@@ -13,14 +14,14 @@ AQL only allows *one* query in a single query string; thus semicolons to
 indicate the end of one query and separate multiple queries (as seen in SQL) are
 not allowed.
 
-!SUBSECTION Whitespace 
+### Whitespace
 
 Whitespaces (blanks, carriage returns, line feeds, and tab stops) can be used
 in the query text to increase its readability. Tokens have to be separated by
 any number of whitespaces. Whitespace within strings or names must be enclosed
 in quotes in order to be preserved.
 
-!SUBSECTION Comments 
+### Comments
 
 Comments can be embedded at any position in a query. The text contained in the
 comment is ignored by the AQL parser.
@@ -43,7 +44,7 @@ AQL supports two types of comments:
        comment */
     // a single line comment
 
-!SUBSECTION Keywords
+### Keywords
 
 On the top level, AQL offers the following operations:
 - `FOR`: array iteration
@@ -123,7 +124,7 @@ The current list of keywords is:
 
 Additional keywords may be added in future versions of ArangoDB. 
 
-!SUBSECTION Names
+### Names
 
 In general, names are used to identify objects (collections, attributes,
 variables, and functions) in AQL queries.
@@ -141,7 +142,7 @@ makes it possible to use otherwise reserved keywords as names. An example for th
 Due to the backticks, *filter* and *sort* are interpreted as names and not as
 keywords here.
 
-!SUBSUBSECTION Collection names
+#### Collection names
 
 Collection names can be used in queries as they are. If a collection happens to
 have the same name as a keyword, the name must be enclosed in backticks.
@@ -149,7 +150,7 @@ have the same name as a keyword, the name must be enclosed in backticks.
 Please refer to the [Naming Conventions in ArangoDB](../NamingConventions/CollectionNames.md) about collection naming
 conventions.
 
-!SUBSUBSECTION Attribute names
+#### Attribute names
 
 When referring to attributes of documents from a collection, the fully qualified
 attribute name must be used. This is because multiple collections with ambiguous
@@ -168,7 +169,7 @@ In the above example, the attribute names *active*, *name*, *id*, and *userId*
 are qualified using the collection names they belong to (*u* and *f*
 respectively).
 
-!SUBSUBSECTION Variable names
+#### Variable names
 
 AQL allows the user to assign values to additional variables in a query.  All
 variables that are assigned a value must have a name that is unique within the
@@ -188,7 +189,7 @@ and upper case), the numbers *0* to *9* and the underscore (*_*) symbol. A
 variable name must not start with a number.  If a variable name starts with the
 underscore character, it must also contain at least one letter (a-z or A-Z).
 
-!SUBSECTION Data types
+### Data types
 
 AQL supports both primitive and compound data types. The following types are
 available:
@@ -202,7 +203,7 @@ available:
   - array: Sequence of values, referred to by their positions
   - object / document: Sequence of values, referred to by their names
 
-!SUBSUBSECTION Numeric literals
+#### Numeric literals
 
 Numeric literals can be integers or real values. They can optionally be signed
 using the *+* or *-* symbols. The scientific notation is also supported.
@@ -219,7 +220,7 @@ using the *+* or *-* symbols. The scientific notation is also supported.
 All numeric values are treated as 64-bit double-precision values internally.
 The internal format used is IEEE 754.
 
-!SUBSUBSECTION String literals
+#### String literals
 
 String literals must be enclosed in single or double quotes. If the used quote
 character is to be used itself within the string literal, it must be escaped
@@ -242,7 +243,7 @@ arbitrary binary data if it is not UTF-8 encoded. A workaround to use binary
 data is to encode the data using base64 or other algorithms on the application
 side before storing, and decoding it on application side after retrieval.
 
-!SUBSUBSECTION Arrays
+#### Arrays
 
 AQL supports two compound types:
 
@@ -287,7 +288,7 @@ is required.
     // access second last array element 
     u.friends[-2]
 
-!SUBSUBSECTION Objects / Documents
+#### Objects / Documents
 
 The other supported compound type is the object (or document) type. Objects are a
 composition of zero to many attributes. Each attribute is a name/value pair.
@@ -342,7 +343,7 @@ Individual object attributes can later be accessed by their names using the
     u.address.city.name
     u.friends[0].name.first
 
-!SUBSECTION Bind parameters
+### Bind parameters
 
 AQL supports the usage of bind parameters, thus allowing to separate the query
 text from literal values used in the query. It is good practice to separate the
@@ -383,7 +384,7 @@ when using the bind parameter in a query, two *@* symbols must be used).
       FILTER u.active == true
       RETURN u
 
-!SUBSECTION Type and value order
+### Type and value order
 
 When checking for equality or inequality or when determining the sort order of
 values, AQL uses a deterministic algorithm that takes both the data types and
@@ -505,7 +506,7 @@ compared objects / documents are considered equal.
 
     { "a" : 1, "b" : 2 } == { "b" : 2, "a" : 1 }
 
-!SUBSECTION Accessing data from collections
+### Accessing data from collections
 
 Collection data can be accessed by specifying a collection name in a query.  A
 collection can be understood as an array of documents, and that is how they are

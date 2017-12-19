@@ -1,10 +1,12 @@
-!CHAPTER Install Applications from remote host
+Install Applications from remote host
+=====================================
 
 In this chapter we will make use of the Foxx manager as described [before](README.md).
 This time we want to install an app hosted on a server.
 Currently the Foxx-manager supports downloads of applications via HTTP and HTTPS protocols.
 
-!SECTION Remote file format
+Remote file format
+------------------
 The file on the remote server has to be a valid Foxx application packed in a zip archive.
 The zip archive has to contain a top-level directory which is containing the sources of the Foxx application.
 Especially the file **manifest.json** has to be directly contained in this top-level directory.
@@ -60,7 +62,8 @@ Length     Date   Time    Name
 Next you have to make this file publicly available over HTTP or HTTPS on a webserver.
 Assume we can download the app at **http://www.example.com/hello.zip**.
 
-!SECTION Install from remote server
+Install from remote server
+--------------------------
 
 Having the link to your Foxx application at hand you can just hand this link over to the Foxx manager:
 

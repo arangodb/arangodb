@@ -1,6 +1,7 @@
-!CHAPTER Advanced features
+Advanced features
+=================
 
-!SUBSECTION Subqueries
+### Subqueries
 
 Wherever an expression is allowed in AQL, a subquery can be placed. A subquery
 is a query part that can introduce its own local variables without affecting
@@ -35,7 +36,7 @@ FOR p IN persons
 
 Subqueries may also include other subqueries.
 
-!SUBSECTION Array expansion
+### Array expansion
 
 In order to access a named attribute from all elements in an array easily, AQL
 offers the shortcut operator <i>[\*]</i> for array variable expansion.
@@ -147,7 +148,7 @@ The above will return:
 ]
 ```
 
-!SUBSECTION Array contraction
+### Array contraction
 
 In order to collapse (or flatten) results in nested arrays, AQL provides the <i>[\*\*]</i> 
 operator. It works similar to the <i>[\*]</i> operator, but additionally collapses nested

@@ -1,6 +1,7 @@
-!CHAPTER Graph traversals in AQL
+Graph traversals in AQL
+=======================
 
-!SUBSECTION General query idea
+### General query idea
 
 This query is only useful if you use edge collections and/or graphs in your data model.
 It is supposed to walk through your graph.
@@ -13,7 +14,7 @@ For all vertices that where visited during this process in the range between *mi
 2. The edge pointing to it
 3. The complete path from start-vertex to the visited vertex as a JSON document with an attribute `edges` and an attribute `vertices`, each a list of the coresponding elements. These lists are sorted, s.t. the first element in `vertices` is the start-vertex and the last is the visited vertex. And that the n-th element in `edges` connects the n-th element with the (n+1)-th element in `vertices`.
 
-!SUBSUBSECTION Example execution
+#### Example execution
 
 Let's take a look at a simple example to explain how it works.
 This is the graph that we are going to traverse:
@@ -69,12 +70,12 @@ So all together this query has returned the following paths:
 6. `A -> G -> J`
 
 
-!SUBSECTION Syntax
+### Syntax
 
 Now let's see how we can write a query that follows this schema.
 You have two options here, you can either use a named graph (see [the graphs chapter](../Graphs/README.md) on how to create it) or anonymous graphs.
 
-!SUBSUBSECTION Working on named graphs:
+#### Working on named graphs:
 
 `FOR ` vertex[, edge[, path]]
  `IN` `MIN`[..`MAX`]
@@ -94,7 +95,7 @@ You have two options here, you can either use a named graph (see [the graphs cha
    - `MIN`: edges and vertices returned by this query will start at the traversal depth of `MIN` (thus edges and vertices below will not be returned). If not specified, defaults to `1`, which is the minimal possible value.
    - `MAX`: up to `MAX` length paths are traversed. If omitted in the query, `MAX` equals `MIN`. Thus only the vertices and edges in the range of `MIN` are returned.
 
-!SUBSUBSECTION Working on collection sets:
+#### Working on collection sets:
 
 `FOR ` vertex[, edge[, path]]
  `IN` `MIN`[..`MAX`]
@@ -103,7 +104,7 @@ You have two options here, you can either use a named graph (see [the graphs cha
 
 Instead of the `GRAPH graphName` you may specify a **list of edge collections**. Vertex collections are evaluated from the edges. The rest of the behavior is similar to the named version.
 
-!SUBSUBSECTION Working on collection sets with mixed directions:
+#### Working on collection sets with mixed directions:
 
 For traversals with a **list of edge collections** you can optionally specify the direction for some of the edge collections.
 Say for example you have three edge collections `edges1`, `edges2` and `edges3`, where in `edges2` the direction has no relevance but in `edges1` and `edges3`
@@ -114,7 +115,7 @@ the direction should be taken into account. In this case you can use `OUTBOUND` 
 All collections in the list that do not specify their own direction will use the direction defined after `IN`.
 This allows to use a different direction for each collection in your traversal.
 
-!SUBSECTION Using filters and the explainer to extrapolate the costs
+### Using filters and the explainer to extrapolate the costs
 
 All three variables emitted by the traversals might as well be used in filter statements.
 For some of these filter statements the optimizer can detect that it is possible to prune paths of traversals earlier, hence filtered results will not be emitted to the variables in the first place.
@@ -124,7 +125,7 @@ All paths with a length greater than `MAX` will never be computed.
 
 In the current state `OR` combined filters cannot be optimized, `AND` combined filters can.
 
-!SUBSUBSECTION Filtering on paths
+#### Filtering on paths
 
 This allows for the most powerful filtering and may have the highest impact on performance.
 Using the path variable you can filter on specific iteration depths.
@@ -169,7 +170,7 @@ The resulting paths will be up to 5 items long.
 **Note here**: Although we have defined a `MIN` of `1` we will only get results of depth `2`.
 This is because for all results in depth `1` the second edge does not exist and hence cannot fulfill the condition.
 
-!SUBSUBSECTION Examples
+#### Examples
 We will create a simple symmetric traversal demonstration graph:
 ![traversal graph](../Graphs/traversal_graph.png)
 
@@ -207,7 +208,7 @@ Now we only want the elements of a specific depth - 2 - the ones that are right 
 
 As you can see, we can express this in two ways, one is to omit the `MAX` parameter of the expression.
 
-!SUBSUBSECTION Filter examples
+#### Filter examples
 
 Now lets start to add some filters. 
 We want to cut of the branch on the right side of th graph, we may filter in two ways:
@@ -236,7 +237,7 @@ We also may combine several filters, for instance to filter out the right branch
 
 As you can see combining two `FILTER` statements with an `AND` has the same result.
 
-!SUBSECTION Comparing OUTBOUND / INBOUND / ANY
+### Comparing OUTBOUND / INBOUND / ANY
 All our previous examples traversed the graph into outbound edge directions.
 You may however want to also traverse in reverse direction (`INBOUND`) or both (`ANY`),
 Since `circles/A` only has outbound edges, we start our queries from `circles/E`:
@@ -258,7 +259,7 @@ However these vertices have edges in other directions and they will be traversed
 For instance if it walks from *E* to *F* it will continue to walk from *F* to *E* using the same edge once again.
 Due to this we will see duplicate nodes in the result.
 
-!SUBSUBSECTION Use the AQL explainer for optimizations
+#### Use the AQL explainer for optimizations
 
 Now lets have a look what the optimizer does behind the curtains and inspect traversal queries using [the explainer](Optimizer.md):
 

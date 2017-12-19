@@ -1,4 +1,5 @@
-!CHAPTER Passing parameters to transactions
+Passing parameters to transactions
+==================================
 
 Arbitrary parameters can be passed to transactions by setting the *params* 
 attribute when declaring the transaction. This feature is handy to re-use the
@@ -28,7 +29,7 @@ Some example that uses collections:
       }
     });
 
-!SUBSECTION Disallowed operations
+### Disallowed operations
 
 Some operations are not allowed inside ArangoDB transactions:
 - creation and deletion of collections (*db._create()*, *db._drop()*, *db._rename()*)

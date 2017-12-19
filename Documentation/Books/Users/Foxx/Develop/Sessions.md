@@ -1,8 +1,9 @@
-!CHAPTER Foxx Sessions
+Foxx Sessions
+=============
 
 Foxx provides some convenience methods to make working with sessions easier.
 
-!SUBSECTION Activate sessions
+### Activate sessions
 
 Enables session features for the controller.
 
@@ -84,7 +85,7 @@ controller.activateSessions({
 });
 ```
 
-!SUBSECTION Define a session destruction route
+### Define a session destruction route
 
 Defines a route that will destroy the session.
 

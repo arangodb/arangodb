@@ -1,6 +1,7 @@
-!CHAPTER Authentication and Authorization
+Authentication and Authorization
+================================
 
-!SUBSECTION Authentication and Authorization
+### Authentication and Authorization
 
 ArangoDB only provides a very simple authentication interface and no
 authorization. We plan to add authorization features in later releases, which
@@ -18,7 +19,7 @@ collection is
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_01_authFetch
 
-!SUBSECTION Command-Line Options for the Authentication and Authorization
+### Command-Line Options for the Authentication and Authorization
 
 <!-- arangod/RestServer/ArangoServer.h -->
 @startDocuBlock server_authentication
@@ -26,7 +27,8 @@ collection is
 <!-- arangod/RestServer/ArangoServer.h -->
 @startDocuBlock serverAuthenticateSystemOnly
 
-!SECTION Introduction to User Management
+Introduction to User Management
+-------------------------------
 
 ArangoDB provides basic functionality to add, modify and remove database users
 programmatically. The following functionality is provided by the *users* module
@@ -35,7 +37,7 @@ and can be used from inside arangosh and arangod.
 **Note**: This functionality is not available from within the web
 interface.
 
-!SUBSECTION Save
+### Save
 
 `users.save(user, passwd, active, extra, changePassword)`
 
@@ -72,7 +74,7 @@ the server authentication cache is [reloaded](#reload).
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_02_saveUser
 
-!SUBSECTION Reload
+### Reload
 
 `users.reload()`
 
@@ -93,7 +95,7 @@ and this can be performed by called this method.
 **Note**: this function will not work from within the web interface
 
 
-!SUBSECTION Document
+### Document
 
 `users.document(user)`
 
@@ -113,7 +115,7 @@ This method will fail if the user cannot be found in the database.
 
 **Note**: this function will not work from within the web interface
 
-!SUBSECTION Replace
+### Replace
 
 `users.replace(user, passwd, active, extra, changePassword)`
 
@@ -145,7 +147,7 @@ database.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_03_replaceUser
 
-!SUBSECTION Update
+### Update
 
 `users.update(user, passwd, active, extra, changePassword)`
 
@@ -174,7 +176,7 @@ database.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_04_updateUser
 
-!SUBSECTION isValid
+### isValid
 
 `users.isValid(user, password)`
 
@@ -195,7 +197,7 @@ amount of time.
 
 **Note**: this function will not work from within the web interface
 
-!SUBSECTION all()
+### all()
 
 `users.all()`
 
@@ -209,7 +211,7 @@ Fetches all existing ArangoDB users from the database.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_06_AllUsers
 
-!SUBSECTION Remove
+### Remove
 
 `users.remove(user)`
 

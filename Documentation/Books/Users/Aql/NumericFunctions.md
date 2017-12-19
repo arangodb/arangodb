@@ -1,4 +1,5 @@
-!CHAPTER Numeric functions
+Numeric functions
+=================
 
 AQL offers some numeric functions for calculations. The following functions are
 supported:

@@ -1,6 +1,7 @@
-!CHAPTER Module "planner"
+Module "planner"
+================
 
-!SUBSECTION Cluster Module
+### Cluster Module
 
 This module contains functions to plan, launch and shutdown clusters
 of ArangoDB instances. We distinguish between the planning phase of
@@ -20,38 +21,38 @@ are also used during the planning to find free network ports.
 
 Here are the details of the functionality:
 
-!SUBSECTION Require
+### Require
 <!-- js/server/modules/org/arangodb/cluster/planner.js -->
 @startDocuBlock JSF_Cluster_Planner_Constructor
 
-!SUBSECTION Get Plan
+### Get Plan
 <!-- js/server/modules/org/arangodb/cluster/planner.js -->
 @startDocuBlock JSF_Planner_prototype_getPlan
 
-!SUBSECTION Require
+### Require
 <!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Cluster_Kickstarter_Constructor
 
-!SUBSECTION Launch
+### Launch
 <!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Kickstarter_prototype_launch
 
-!SUBSECTION Check Cluster Health
+### Check Cluster Health
 @startDocuBlock JSF_Kickstarter_prototype_isHealthy
 
-!SUBSECTION Shutdown
+### Shutdown
 <!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Kickstarter_prototype_shutdown
 
-!SUBSECTION Relaunch
+### Relaunch
 <!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Kickstarter_prototype_relaunch
 
-!SUBSECTION Upgrade
+### Upgrade
 <!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Kickstarter_prototype_upgrade
 
-!SUBSECTION Cleanup
+### Cleanup
 <!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Kickstarter_prototype_cleanup
 

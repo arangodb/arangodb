@@ -1,6 +1,7 @@
-!CHAPTER Fulltext indexes
+Fulltext indexes
+================
 
-!SUBSECTION Introduction to Fulltext Indexes
+### Introduction to Fulltext Indexes
 
 This is an introduction to ArangoDB's fulltext indexes.
 
@@ -26,7 +27,8 @@ only be included in the index if it is a string. When indexing the contents of a
 attribute, an object member value will only be included in the index if it is a string. 
 Other data types are ignored and not indexed.
 
-!SECTION Accessing Fulltext Indexes from the Shell
+Accessing Fulltext Indexes from the Shell
+-----------------------------------------
 
 <!-- js/server/modules/org/arangodb/arango-collection.js -->
 @startDocuBlock ensureFulltextIndex

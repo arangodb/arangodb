@@ -1,4 +1,5 @@
-!CHAPTER Foxx Job Queues
+Foxx Job Queues
+===============
 
 If you have never built a Foxx App, then you can make your own [first Foxx App](https://docs.arangodb.com/cookbook/Foxx/FirstSteps.html) using our [cookbook](https://docs.arangodb.com/cookbook).
 
@@ -17,7 +18,8 @@ As of ArangoDB 2.6, Foxx queue job types are defined as regular Foxx scripts. To
 
 For an example of re-usable job types see the various mailer apps available in the Foxx app store.
 
-!SECTION Creating or updating a queue
+Creating or updating a queue
+----------------------------
 
 Creates a queue with the given name and maximum number of workers.
 
@@ -44,7 +46,8 @@ var queue3 = Foxx.queues.create("my-queue", 10);
 assertEqual(queue1, queue3);
 ```
 
-!SECTION Fetching an existing queue
+Fetching an existing queue
+--------------------------
 
 Fetches a queue with the given name.
 
@@ -76,7 +79,8 @@ var queue2 = Foxx.queues.get("some-queue");
 assertEqual(queue1, queue2);
 ```
 
-!SECTION Deleting a queue
+Deleting a queue
+----------------
 
 Deletes the queue with the given name from the database.
 
@@ -101,7 +105,8 @@ Foxx.queues.delete("my-queue"); // true
 Foxx.queues.delete("my-queue"); // false
 ```
 
-!SECTION Adding a job to a queue
+Adding a job to a queue
+-----------------------
 
 Adds a job to the given queue.
 
@@ -188,7 +193,8 @@ queue.push(
 );
 ```
 
-!SECTION Fetching a job from the queue
+Fetching a job from the queue
+-----------------------------
 
 Creates a proxy object representing a job with the given job id.
 
@@ -209,7 +215,8 @@ var job = queue.get(jobId);
 assertEqual(job.id, jobId);
 ```
 
-!SECTION Deleting a job from the queue
+Deleting a job from the queue
+-----------------------------
 
 Deletes a job with the given job id.
 The job will be looked for and deleted in the specified queue in the context of the current database.
@@ -218,7 +225,8 @@ The job will be looked for and deleted in the specified queue in the context of 
 
 Returns **true** if the job was deleted successfully. If the job did not exist it returns **false** instead.
 
-!SECTION Fetching an array of jobs in a queue
+Fetching an array of jobs in a queue
+------------------------------------
 
 **Examples**
 
@@ -232,7 +240,7 @@ assertEqual(queue.progress("log").length, 1);
 assertEqual(queue.progress("log").length, 0);
 assertEqual(queue.complete("log").length, 1);
 ```
-!SUBSECTION Fetching an array of pending jobs in a queue
+### Fetching an array of pending jobs in a queue
 
 `Queue::pending([script])`
 
@@ -245,7 +253,7 @@ The jobs will be looked for in the specified queue in the context of the current
  * **name**: name of the script.
  * **mount**: mount path of the app defining the script.
 
-!SUBSECTION Fetching an array of jobs that are currently in progress
+### Fetching an array of jobs that are currently in progress
 
 `Queue::progress([script])`
 
@@ -258,7 +266,7 @@ The jobs will be looked for in the specified queue in the context of the current
  * **name**: name of the script.
  * **mount**: mount path of the app defining the script.
 
-!SUBSECTION Fetching an array of completed jobs in a queue
+### Fetching an array of completed jobs in a queue
 
 `Queue::complete([script])`
 
@@ -271,7 +279,7 @@ The jobs will be looked for in the specified queue in the context of the current
  * **name**: name of the script.
  * **mount**: mount path of the app defining the script.
 
-!SUBSECTION Fetching an array of failed jobs in a queue
+### Fetching an array of failed jobs in a queue
 
 `Queue::failed([script])`
 
@@ -284,7 +292,7 @@ The jobs will be looked for in the specified queue in the context of the current
  * **name**: name of the script.
  * **mount**: mount path of the app defining the script.
 
-!SUBSECTION Fetching an array of all jobs in a queue
+### Fetching an array of all jobs in a queue
 
 `Queue::all([script])`
 
@@ -297,7 +305,8 @@ The jobs will be looked for in the specified queue in the context of the current
  * **name**: name of the script.
  * **mount**: mount path of the app defining the script.
 
-!SECTION Aborting a job
+Aborting a job
+--------------
 
 Aborts a non-completed job.
 

@@ -1,10 +1,11 @@
-!CHAPTER Database Methods
+Database Methods
+================
 
-!SUBSECTION Collection
+### Collection
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock collectionDatabaseName
 
-!SUBSECTION Create
+### Create
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 @startDocuBlock collectionDatabaseCreate
 
@@ -14,18 +15,18 @@
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 @startDocuBlock collectionCreateDocumentCollection
 
-!SUBSECTION All Collections
+### All Collections
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock collectionDatabaseNameAll
 
-!SUBSECTION Collection Name
+### Collection Name
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock collectionDatabaseCollectionName
 
-!SUBSECTION Drop
+### Drop
 <!-- js/server/modules/org/arangodb/arango-database.js -->
 @startDocuBlock collectionDatabaseDrop
 
-!SUBSECTION Truncate
+### Truncate
 <!-- js/server/modules/org/arangodb/arango-database.js -->
 @startDocuBlock collectionDatabaseTruncate

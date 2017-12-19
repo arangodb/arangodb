@@ -1,96 +1,97 @@
-!CHAPTER Collection Methods
+Collection Methods
+==================
 
-!SUBSECTION All
+### All
 <!-- js/common/modules/org/arangodb/arango-collection-common.js-->
 @startDocuBlock collectionAll
 
-!SUBSECTION Query by example
+### Query by example
 <!-- js/common/modules/org/arangodb/arango-collection-common.js-->
 @startDocuBlock collectionByExample
 
-!SUBSECTION First Example
+### First Example
 <!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock collectionFirstExample
 
-!SUBSECTION Range
+### Range
 <!-- js/common/modules/org/arangodb/arango-collection-common.js-->
 @startDocuBlock collectionRange
 
-!SUBSECTION Closed range
+### Closed range
 <!-- js/common/modules/org/arangodb/arango-collection-common.js-->
 @startDocuBlock collectionClosedRange
 
-!SUBSECTION Any
+### Any
 <!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock documentsCollectionAny
 
-!SUBSECTION Count
+### Count
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock collectionCount
 
-!SUBSECTION toArray
+### toArray
 <!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock collectionToArray
 
-!SUBSECTION Document
+### Document
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsCollectionName
 
-!SUBSECTION Exists
+### Exists
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsCollectionExists
 
-!SUBSECTION Lookup By Keys
+### Lookup By Keys
 <!-- arangod/V8Server/v8-query.cpp-->
 @startDocuBlock collectionLookupByKeys
 
-!SUBSECTION Insert
+### Insert
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsCollectionInsert
 
-!SUBSECTION Replace
+### Replace
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsCollectionReplace
 
-!SUBSECTION Update
+### Update
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsCollectionUpdate
 
-!SUBSECTION Remove
+### Remove
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsCollectionRemove
 
-!SUBSECTION Remove By Keys
+### Remove By Keys
 <!-- arangod/V8Server/v8-query.cpp-->
 @startDocuBlock collectionRemoveByKeys
 
-!SUBSECTION Remove By Example
+### Remove By Example
 <!-- js/common/modules/org/arangodb/arango-collection-common.js-->
 @startDocuBlock documentsCollectionRemoveByExample
 
-!SUBSECTION Replace By Example
+### Replace By Example
 <!-- js/common/modules/org/arangodb/arango-collection-common.js-->
 @startDocuBlock documentsCollectionReplaceByExample
 
-!SUBSECTION Update By Example
+### Update By Example
 <!-- js/common/modules/org/arangodb/arango-collection-common.js-->
 @startDocuBlock documentsCollectionUpdateByExample
 
-!SUBSECTION First
+### First
 <!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock documentsCollectionFirst
 
-!SUBSECTION Last
+### Last
 <!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock documentsCollectionLast
 
-!SUBSECTION Collection type
+### Collection type
 @startDocuBlock collectionType
 
-!SUBSECTION Get the Version of ArangoDB
+### Get the Version of ArangoDB
 @startDocuBlock databaseVersion
 
-!SUBSECTION Misc
+### Misc
 @startDocuBlock collectionEdgesAll
 @startDocuBlock collectionEdgesInbound
 @startDocuBlock collectionEdgesOutbound

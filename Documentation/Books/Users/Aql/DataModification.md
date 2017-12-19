@@ -1,4 +1,5 @@
-!CHAPTER Data modification queries
+Data modification queries
+=========================
 
 AQL supports the following data-modification operations:
 
@@ -8,7 +9,7 @@ AQL supports the following data-modification operations:
 - **REMOVE**: remove existing documents from a collection
 - **UPSERT**: conditionally insert or update documents in a collection
 
-!SUBSECTION Modifying a single document 
+### Modifying a single document
 
 Let's start with the basics: `INSERT`, `UPDATE` and `REMOVE` operations on single documents.
 Here is an example that insert a document in an existing collection *users*:
@@ -42,7 +43,7 @@ or
 	REMOVE {_key:'GilbertoGil'} IN users
 
 
-!SUBSECTION Modifying multiple documents
+### Modifying multiple documents
 
 Data-modification operations are normally combined with *FOR* loops to
 iterate over a given list of documents. They can optionally be combined with
@@ -72,7 +73,7 @@ collections is established via the documents' keys:
       REMOVE u IN backup
 
 
-!SUBSECTION Returning documents
+### Returning documents
 
 Data-modification queries can optionally return documents. In order to reference
 the inserted, removed or modified documents in a `RETURN` statement, data-modification 
@@ -101,7 +102,7 @@ In all cases the full documents will be returned with all their attributes,
 including the potentially auto-generated attributes such as `_id`, `_key`, or `_rev`
 and the attributes not specified in the update expression of a partial update.
 
-!SUBSUBSECTION Projections
+#### Projections
 
 It is possible to return a projection of the documents in `OLD` or `NEW` instead of 
 returning the entire documents. This can be used to reduce the amount of data returned 
@@ -114,7 +115,7 @@ For example, the following query will return only the keys of the inserted docum
       RETURN NEW._key
 
 
-!SUBSUBSECTION Using OLD and NEW in the same query
+#### Using OLD and NEW in the same query
 
 For `UPDATE`, `REPLACE` and `UPSERT` statements, both `OLD` and `NEW` can be used
 to return the previous revision of a document together with the updated revision:
@@ -125,7 +126,7 @@ to return the previous revision of a document together with the updated revision
       RETURN { old: OLD, new: NEW }
 
 
-!SUBSUBSECTION Calculations with OLD or NEW
+#### Calculations with OLD or NEW
 
 It is also possible to run additional calculations with `LET` statements between the
 data-modification part and the final `RETURN` of an AQL query. For example, the following
@@ -141,7 +142,7 @@ the operation type:
     RETURN { _key: NEW._key, type: opType }
 
 
-!SUBSECTION Restrictions
+### Restrictions
 
 The name of the modified collection (*users* and *backup* in the above cases) 
 must be known to the AQL executor at query-compile time and cannot change at 
@@ -163,7 +164,7 @@ Finally, data-modification operations can optionally be followed by `LET` and `R
 but not by other statements such as `SORT`, `COLLECT` etc.
 
 
-!SUBSECTION Transactional Execution
+### Transactional Execution
   
 On a single server, data-modification operations are executed transactionally.
 If a data-modification operation fails, any changes made by it will be rolled 

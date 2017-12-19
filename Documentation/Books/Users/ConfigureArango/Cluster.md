@@ -1,29 +1,30 @@
-!CHAPTER Command-Line Options for Clusters
+Command-Line Options for Clusters
+=================================
 
-!SUBSECTION Node ID
+### Node ID
 <!-- arangod/Cluster/ApplicationCluster.h -->
 @startDocuBlock clusterMyLocalInfo
 
-!SUBSECTION Agency endpoint
+### Agency endpoint
 <!-- arangod/Cluster/ApplicationCluster.h -->
 @startDocuBlock clusterAgencyEndpoint
 
-!SUBSECTION Agency prefix
+### Agency prefix
 <!-- arangod/Cluster/ApplicationCluster.h -->
 @startDocuBlock clusterAgencyPrefix
 
-!SUBSECTION MyId
+### MyId
 <!-- arangod/Cluster/ApplicationCluster.h -->
 @startDocuBlock clusterMyId
 
-!SUBSECTION MyAddress
+### MyAddress
 <!-- arangod/Cluster/ApplicationCluster.h -->
 @startDocuBlock clusterMyAddress
 
-!SUBSECTION Username
+### Username
 <!-- arangod/Cluster/ApplicationCluster.h -->
 @startDocuBlock clusterUsername
 
-!SUBSECTION Password
+### Password
 <!-- arangod/Cluster/ApplicationCluster.h -->
 @startDocuBlock clusterPassword

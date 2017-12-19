@@ -1,13 +1,15 @@
-!CHAPTER Command-Line Options for Logging 
+Command-Line Options for Logging
+================================
 
 There are two different kinds of logs. Human-readable logs and machine-readable
 logs. The human-readable logs are used to provide an administration with
 information about the server. The machine-readable logs are used to provide
 statistics about executed requests and timings about computation steps.
 
-!SECTION General Logging Options
+General Logging Options
+-----------------------
 
-!SUBSECTION Logfile
+### Logfile
 `--log.file filename`
 
 This option allows the user to specify the name of a file to which information
@@ -25,54 +27,56 @@ Use *""* to disable logging to file.
 Be default, if started on a tty, the log output will also go to the ttyp.
 Use *""* to disable.
 
-!SUBSECTION Request
+### Request
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logRequests
 
-!SECTION Human Readable Logging
+Human Readable Logging
+----------------------
 
-!SUBSECTION Logfiles
+### Logfiles
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logFile
 
-!SUBSECTION Level
+### Level
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logLevel
 
-!SUBSECTION Local Time
+### Local Time
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logLocalTime
 
-!SUBSECTION Line number
+### Line number
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logLineNumber
 
-!SUBSECTION Prefix
+### Prefix
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logPrefix
 
-!SUBSECTION Thread
+### Thread
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logThread
 
-!SUBSECTION Source Filter
+### Source Filter
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logSourceFilter
 
-!SUBSECTION Content Filter
+### Content Filter
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logContentFilter
 
-!SUBSECTION Performance
+### Performance
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logPerformance
 
-!SECTION Machine Readable Logging
+Machine Readable Logging
+------------------------
 
-!SUBSECTION Application
+### Application
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logApplication
 
-!SUBSECTION Facility
+### Facility
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logFacility

@@ -1,6 +1,7 @@
-!CHAPTER Query results 
+Query results
+=============
 
-!SUBSECTION Result sets
+### Result sets
 
 The result of an AQL query is an array of values. The individual values in the
 result array may or may not have a homogeneous structure, depending on what is
@@ -42,7 +43,7 @@ found, it will produce an empty result array:
 
     [ ]
 
-!SUBSECTION Errors
+### Errors
 
 Issuing an invalid query to the server will result in a parse error if the query
 is syntactically invalid. ArangoDB will detect such errors during query

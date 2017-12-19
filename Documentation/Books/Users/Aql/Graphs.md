@@ -1,4 +1,5 @@
-!CHAPTER Graphs in AQL
+Graphs in AQL
+=============
 
 As you already [read about graphs in ArangoDB](../Graphs/README.md) you can have several views on graphs.
 There are also several ways to work with graphs in AQL.

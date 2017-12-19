@@ -1,6 +1,7 @@
-!CHAPTER JavaScript Modules
+JavaScript Modules
+==================
 
-!SUBSECTION Introduction to JavaScript Modules
+### Introduction to JavaScript Modules
 
 The ArangoDB uses a [CommonJS](http://wiki.commonjs.org/wiki)
 compatible module and package concept. You can use the function *require* in
@@ -10,7 +11,8 @@ functions of the module or package.
 There are some extensions to the CommonJS concept to allow ArangoDB to load
 Node.js modules as well.
 
-!SECTION CommonJS Modules
+CommonJS Modules
+----------------
 
 Unfortunately, the JavaScript libraries are just in the process of being
 standardized. CommonJS has defined some important modules. ArangoDB implements
@@ -30,12 +32,12 @@ the following
 * Packages are implemented according to
   [Packages/1.0](http://wiki.commonjs.org/wiki/Packages)
 
-!SUBSECTION ArangoDB Specific Modules
+### ArangoDB Specific Modules
 
 A lot of the modules, however, are ArangoDB specific. These modules
 are described in the following chapters.
 
-!SUBSECTION Node Modules
+### Node Modules
 
 ArangoDB also supports some [node](http://www.nodejs.org) modules.
 
@@ -61,7 +63,7 @@ ArangoDB also supports some [node](http://www.nodejs.org) modules.
 * ["url"](http://nodejs.org/api/url.html)
   has utilities for URL resolution and parsing.
 
-!SUBSECTION Bundled NPM Modules
+### Bundled NPM Modules
 
 The following [NPM modules](https://npmjs.org) are preinstalled.
 
@@ -100,7 +102,7 @@ The following [NPM modules](https://npmjs.org) are preinstalled.
 
 * ["underscore"](http://underscorejs.org)
 
-!SUBSECTION Installing NPM Modules
+### Installing NPM Modules
 
 You can install additional modules using `npm install`. Note the following limitations in ArangoDB's compatibility with node or browser modules:
 
@@ -109,7 +111,7 @@ You can install additional modules using `npm install`. Note the following limit
 * only a subset of node's built-in modules are supported (see above)
 * the same limitations apply to each module's dependencies
 
-!SUBSECTION require
+### require
 
 `require(path)`
 
@@ -171,7 +173,8 @@ Note: the purpose of *require* is to load modules or packages. It cannot be used
 arbitrary JavaScript files.
 
 
-!SECTION Modules Path versus Modules Collection
+Modules Path versus Modules Collection
+--------------------------------------
 
 ArangoDB comes with predefined modules defined in the file-system under the path
 specified by *startup.startup-directory*. In a standard installation this

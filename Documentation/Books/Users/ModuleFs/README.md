@@ -1,80 +1,83 @@
-!CHAPTER Module "fs"
+Module "fs"
+===========
 
 The implementation tries to follow the CommonJS specification where possible.
 [Filesystem/A/0](http://wiki.commonjs.org/wiki/Filesystem/A/0).
 
-!SECTION Single File Directory Manipulation
+Single File Directory Manipulation
+----------------------------------
 
-!SUBSUBSECTION exists
+#### exists
 @startDocuBlock JS_Exists
 
-!SUBSUBSECTION isFile
+#### isFile
 @startDocuBlock JS_IsFile
 
-!SUBSUBSECTION isDirectory
+#### isDirectory
 @startDocuBlock JS_IsDirectory
 
-!SUBSUBSECTION size
+#### size
 @startDocuBlock JS_Size
 
-!SUBSUBSECTION mtime
+#### mtime
 @startDocuBlock JS_MTime
 
-!SUBSUBSECTION pathSeparator
+#### pathSeparator
 `fs.pathSeparator`
 
 If you want to combine two paths you can use fs.pathSeparator instead of */* or *\\*.
 
-!SUBSUBSECTION join
+#### join
 `fs.join(path, filename)`
 
 The function returns the combination of the path and filename, e.g. fs.join(Hello/World, foo.bar) would return Hello/World/foo.bar.
 
-!SUBSUBSECTION getTempFile
+#### getTempFile
 @startDocuBlock JS_GetTempFile
 
-!SUBSUBSECTION getTempPath
+#### getTempPath
 @startDocuBlock JS_GetTempPath
 
-!SUBSUBSECTION makeAbsolute
+#### makeAbsolute
 @startDocuBlock JS_MakeAbsolute
 
-!SUBSUBSECTION chmod
+#### chmod
 @startDocuBlock JS_Chmod
 
-!SUBSUBSECTION list
+#### list
 @startDocuBlock JS_List
 
-!SUBSUBSECTION listTree
+#### listTree
 @startDocuBlock JS_ListTree
 
-!SUBSUBSECTION makeDirectory
+#### makeDirectory
 @startDocuBlock JS_MakeDirectory
 
-!SUBSUBSECTION makeDirectoryRecursive
+#### makeDirectoryRecursive
 @startDocuBlock JS_MakeDirectoryRecursive
 
-!SUBSUBSECTION remove
+#### remove
 @startDocuBlock JS_Remove
 
-!SUBSUBSECTION removeDirectory
+#### removeDirectory
 @startDocuBlock JS_RemoveDirectory
 
-!SUBSUBSECTION removeDirectoryRecursive
+#### removeDirectoryRecursive
 @startDocuBlock JS_RemoveDirectoryRecursive
 
-!SECTION File IO
+File IO
+-------
 
-!SUBSUBSECTION read
+#### read
 @startDocuBlock JS_Read
 
-!SUBSUBSECTION read64
+#### read64
 @startDocuBlock JS_Read64
 
-!SUBSUBSECTION readBuffer
+#### readBuffer
 @startDocuBlock JS_ReadBuffer
 
-!SUBSUBSECTION readFileSync
+#### readFileSync
 `fs.readFileSync(filename, encoding)`
 
 Reads the contents of the file specified in `filename`. If `encoding` is specified,
@@ -90,30 +93,32 @@ If no `encoding` is specified, the file contents will be returned in a Buffer
 object.
 
 
-!SUBSUBSECTION save
+#### save
 @startDocuBlock JS_Save
 
-!SUBSUBSECTION writeFileSync
+#### writeFileSync
 `fs.writeFileSync(filename, content)`
 
 This is an alias for `fs.write(filename, content)`.
 
-!SECTION Recursive Manipulation
+Recursive Manipulation
+----------------------
 
-!SUBSUBSECTION copyRecursive
+#### copyRecursive
 @startDocuBlock JS_CopyDirectoryRecursive
 
-!SUBSUBSECTION CopyFile
+#### CopyFile
 @startDocuBlock JS_CopyFile
 
-!SUBSUBSECTION move
+#### move
 @startDocuBlock JS_MoveFile
 
-!SECTION ZIP
+ZIP
+---
 
-!SUBSUBSECTION unzipFile
+#### unzipFile
 @startDocuBlock JS_Unzip
 
-!SUBSUBSECTION zipFile
+#### zipFile
 @startDocuBlock JS_Zip
 

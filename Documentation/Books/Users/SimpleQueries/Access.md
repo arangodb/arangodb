@@ -1,4 +1,5 @@
-!CHAPTER Sequential Access and Cursors
+Sequential Access and Cursors
+=============================
 
 If a query returns a cursor, then you can use *hasNext* and *next* to
 iterate over the result set or *toArray* to convert it to an array.
@@ -18,30 +19,30 @@ method that is available for each type of simple query, or when the simple
 query is executed using its *execute* method. If no *batchSize* value
 is specified, the server will pick a reasonable default value.
 
-!SUBSECTION Has Next
+### Has Next
 <!-- js/common/modules/org/arangodb/simple-query-common.js -->
 @startDocuBlock cursorHasNext
 
-!SUBSECTION Next
+### Next
 <!-- js/common/modules/org/arangodb/simple-query-common.js -->
 @startDocuBlock cursorNext
 
-!SUBSECTION Set Batch size
+### Set Batch size
 <!-- js/common/modules/org/arangodb/simple-query-common.js -->
 @startDocuBlock cursorSetBatchSize
 
-!SUBSECTION Get Batch size
+### Get Batch size
 <!-- js/common/modules/org/arangodb/simple-query-common.js -->
 @startDocuBlock cursorGetBatchSize
 
-!SUBSECTION Execute Query
+### Execute Query
 <!-- js/common/modules/org/arangodb/simple-query-common.js -->
 @startDocuBlock queryExecute
 
-!SUBSECTION Dispose
+### Dispose
 <!-- js/common/modules/org/arangodb/simple-query-common.js -->
 @startDocuBlock cursorDispose
 
-!SUBSECTION Count
+### Count
 <!-- js/common/modules/org/arangodb/simple-query-common.js -->
 @startDocuBlock cursorCount

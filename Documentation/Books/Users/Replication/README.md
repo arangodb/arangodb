@@ -1,6 +1,7 @@
-!CHAPTER Introduction to Replication
+Introduction to Replication
+===========================
 
-!SUBSECTION How the replication works
+### How the replication works
 
 Starting with ArangoDB 1.4, ArangoDB comes with optional asynchronous master-slave 
 replication. Replication is configured on a per-database level, meaning that 
@@ -41,7 +42,7 @@ can reconnect to the master database and transfer the remaining changes. This wi
 happen automatically provided slaves are configured appropriately.
 
 
-!SUBSECTION Replication lag
+### Replication lag
 
 In this setup, write operations are applied first in the master database, and applied 
 in the slave database(s) afterwards. 
@@ -64,7 +65,7 @@ on the slave(s). At point in time t1, the state of data on the master and slave(
 is consistent again (provided no new data modifications happened on the master in
 between). Thus, the replication will lead to an *eventually consistent* state of data.
 
-!SUBSECTION Replication configuration
+### Replication configuration
 
 The replication is turned off by default. In order to create a master-slave setup,
 the so-called *replication applier* needs to be enabled on the slave databases.

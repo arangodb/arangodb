@@ -1,4 +1,5 @@
-!CHAPTER Foxx console
+Foxx console
+============
 
 Foxx injects a **console** object into each Foxx app that allows writing log entries to the database in addition to the ArangoDB log file and querying them from within the app itself.
 
@@ -8,9 +9,10 @@ ArangoDB also provides [the `console` module](../../ModuleConsole/README.md) whi
 
 When working with transactions, keep in mind that the Foxx console will attempt to write to the `_foxxlog` system collection. This behaviour can be disabled using the `setDatabaseLogging` method if you don't want to explicitly allow writing to the log collection during transactions or for performance reasons.
 
-!SECTION Logging
+Logging
+-------
 
-!SUBSECTION Logging console messages
+### Logging console messages
 
 Write an arbitrary message to the app's log.
 
@@ -29,7 +31,7 @@ console.log("Hello,", "beautiful", "world!"); // => "Hello, beautiful world!"
 console.log(1, 2, 3); // => "1 2 3"
 ```
 
-!SUBSECTION Logging with different log levels
+### Logging with different log levels
 
 The **console** object provides additional methods to log messages with different log levels:
 
@@ -48,7 +50,7 @@ The built-in log levels are:
 * 100: **WARN**
 * 200: **ERROR**
 
-!SUBSECTION Logging with timers
+### Logging with timers
 
 You can start and stop timers with labels.
 
@@ -81,7 +83,7 @@ console.timeEnd('foo'); // works
 console.timeEnd('foo'); // fails: label no longer exists.
 ```
 
-!SUBSECTION Logging stack traces
+### Logging stack traces
 
 You can explicitly log a message with a stack trace.
 
@@ -102,7 +104,7 @@ Trace: Hello
 */
 ```
 
-!SUBSECTION Logging assertions
+### Logging assertions
 
 This creates an assertion that will log an error if it fails.
 
@@ -123,7 +125,7 @@ AssertionError: I'm bad at maths
 */
 ```
 
-!SUBSECTION Inspecting an object
+### Inspecting an object
 
 This logs a more detailed string representation of a given object.
 
@@ -149,7 +151,7 @@ console.dir(require('org/arangodb').db);
 */
 ```
 
-!SUBSECTION Custom log levels
+### Custom log levels
 
 This lets you define your own log levels.
 
@@ -166,7 +168,7 @@ This method returns a function that logs messages with the given log level (e.g.
 
 The **value** is used when determining whether a log entry meets the minimum log level that can be defined in various places. For a list of the built-in log levels and their values see the section on logging with different log levels above.
 
-!SUBSECTION Preventing entries from being logged
+### Preventing entries from being logged
 
 You can define a minimum log level entries must match in order to be logged.
 
@@ -180,7 +182,7 @@ This can be helpful if you want to toggle logging diagnostic messages in develop
 
 The default log level is set to `-999`. For a list of built-in log levels and their values see the section on logging with different log levels.
 
-!SUBSECTION Enabling extra stack traces
+### Enabling extra stack traces
 
 You can toggle the logging of stack trace objects for every log entry.
 
@@ -190,7 +192,7 @@ If **trace** is set to `true`, all log entries will be logged with a parsed stac
 
 Because this results in every logging call creating a stack trace (which may have a significant performance impact), this option is disabled by default.
 
-!SUBSECTION Disabling logging to the ArangoDB console
+### Disabling logging to the ArangoDB console
 
 You can toggle whether logs should be written to the ArangoDB console.
 
@@ -198,7 +200,7 @@ You can toggle whether logs should be written to the ArangoDB console.
 
 If **nativeLogging** is set to `false`, log entries will not be logged to the ArangoDB console (which usually writes to the file system).
 
-!SUBSECTION Disabling logging to the database
+### Disabling logging to the database
 
 You can toggle whether logs should be written to the database.
 
@@ -208,7 +210,7 @@ If **databaseLogging** is set to `false`, log entries will not be logged to the 
 
 This is only useful if logging to the ArangoDB console is not also disabled.
 
-!SUBSECTION Enabling assertion errors
+### Enabling assertion errors
 
 You can toggle whether console assertions should throw if they fail.
 
@@ -218,7 +220,7 @@ If **assertThrows** is set to `true`, any failed assertions in `console.assert` 
 
 By default, this setting is disabled.
 
-!SUBSECTION Changing the default log levels
+### Changing the default log levels
 
 Most of the logging methods have an implied log level that is set to a reasonable default. If you would like to have them use different log levels, you can easily change them.
 
@@ -253,11 +255,12 @@ console.log.level = 'POTATO';
 console.log('this throws'); // => Error: Unknown log level: POTATO
 ```
 
-!SECTION Querying a Foxx app's log entries
+Querying a Foxx app's log entries
+---------------------------------
 
 As the log entries are logged to a collection in the database, you can easily query them in your own application.
 
-!SUBSECTION The logs object
+### The logs object
 
 The logs object can be found on the console itself:
 
@@ -281,7 +284,7 @@ Each method takes an optional `opts` argument, which can be an object with any o
 
 The default value for **startTime** can be changed by overriding `logs.defaultMaxAge` with a different time offset in milliseconds.
 
-!SUBSUBSECTION Search by message
+#### Search by message
 
 This lists all log entries with messages that contain the given token.
 
@@ -289,7 +292,7 @@ This lists all log entries with messages that contain the given token.
 
 This works like `logs.list` except it only returns log entries containing the given **message** part in their message.
 
-!SUBSUBSECTION Search by file name
+#### Search by file name
 
 This lists all log entries with stack traces that contain the given token.
 

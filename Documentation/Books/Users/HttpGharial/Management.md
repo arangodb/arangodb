@@ -1,4 +1,5 @@
-!CHAPTER Manage your graphs
+Manage your graphs
+==================
 
 The [graph module](../Graphs/README.md) provides functions dealing with graph structures.
 Examples will explain the REST API on the [social graph](../Graphs/README.md#the-social-graph):

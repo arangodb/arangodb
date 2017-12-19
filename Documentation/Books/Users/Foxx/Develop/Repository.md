@@ -1,4 +1,5 @@
-!CHAPTER Details on FoxxRepository
+Details on FoxxRepository
+=========================
 
 A repository is a gateway to the database. It gets data from the database, updates it or saves new data. It uses the given model when it returns a model and expects instances of the model for methods like save. In your repository file, export the repository as **repository**.
 
@@ -52,11 +53,12 @@ people.remove(person);
 // afterRemove(person)
 ```
 
-!SUBSECTION Initialize
+### Initialize
 
 @startDocuBlock JSF_foxx_repository_initializer
 
-!SECTION Defining custom queries
+Defining custom queries
+-----------------------
 
 You can define custom query methods using Foxx.createQuery and Foxx.Repository.extend.
 
@@ -122,25 +124,27 @@ ctrl.get("/:id", function(req, res) {
 });
 ```
 
-!SECTION Attributes of a Repository
+Attributes of a Repository
+--------------------------
 
-!SUBSECTION Collection
+### Collection
 
 @startDocuBlock JSF_foxx_repository_collection
 
-!SUBSECTION Model
+### Model
 
 @startDocuBlock JSF_foxx_repository_model
 
-!SUBSECTION Model schema
+### Model schema
 
 @startDocuBlock JSF_foxx_repository_modelSchema
 
-!SUBSECTION Prefix
+### Prefix
 
 @startDocuBlock JSF_foxx_repository_prefix
 
-!SECTION Defining indexes
+Defining indexes
+----------------
 
 Repository can take care of ensuring the existence of collection indexes for you.
 If you define indexes for a repository, instances of the repository will have
@@ -163,13 +167,14 @@ var FulltextRepository = Foxx.Repository.extend({
 });
 ```
 
-!SECTION Methods of a Repository
+Methods of a Repository
+-----------------------
 
-!SUBSECTION Adding entries to the repository
+### Adding entries to the repository
 
 @startDocuBlock JSF_foxx_repository_save
 
-!SUBSECTION Finding entries in the repository
+### Finding entries in the repository
 
 @startDocuBlock JSF_foxx_repository_byId
 
@@ -181,7 +186,7 @@ var FulltextRepository = Foxx.Repository.extend({
 
 @startDocuBlock JSF_foxx_repository_any
 
-!SUBSECTION Removing entries from the repository
+### Removing entries from the repository
 
 @startDocuBlock JSF_foxx_repository_remove
 
@@ -189,7 +194,7 @@ var FulltextRepository = Foxx.Repository.extend({
 
 @startDocuBlock JSF_foxx_repository_removeByExample
 
-!SUBSECTION Replacing entries in the repository
+### Replacing entries in the repository
 
 @startDocuBlock JSF_foxx_repository_replace
 
@@ -197,7 +202,7 @@ var FulltextRepository = Foxx.Repository.extend({
 
 @startDocuBlock JSF_foxx_repository_replaceByExample
 
-!SUBSECTION Updating entries in the repository
+### Updating entries in the repository
 @startDocuBlock JSF_foxx_repository_update
 
 @startDocuBlock JSF_foxx_repository_updateById
@@ -206,11 +211,11 @@ var FulltextRepository = Foxx.Repository.extend({
 
 @startDocuBlock JSF_foxx_repository_exists
 
-!SUBSECTION Counting entries in the repository
+### Counting entries in the repository
 
 @startDocuBlock JSF_foxx_repository_count
 
-!SUBSECTION Index-specific repository methods
+### Index-specific repository methods
 
 @startDocuBlock JSF_foxx_repository_range
 

@@ -1,4 +1,5 @@
-!SECTION Index basics
+Index basics
+------------
 
 Indexes allow fast access to documents, provided the indexed attribute(s)
 are used in a query. While ArangoDB automatically indexes some system
@@ -18,7 +19,7 @@ index is often not required and is currently not supported by ArangoDB.
 
 ArangoDB provides the following index types:
 
-!SUBSECTION Primary Index
+### Primary Index
 
 For each collection there will always be a *primary index* which is a hash index 
 for the [document keys](../Glossary/README.md#document-key) (`_key` attribute)
@@ -42,7 +43,7 @@ The primary index of a collection cannot be dropped or changed, and there is no
 mechanism to create user-defined primary indexes.
 
 
-!SUBSECTION Edges Index
+### Edges Index
 
 Every [edge collection](../Glossary/README.md#edge-collection) also has an 
 automatically created *edges index*. The edges index provides quick access to
@@ -71,7 +72,7 @@ created for edge collections, it is not possible to create user-defined edges in
 An edges index cannot be dropped or changed.
 
 
-!SUBSECTION Hash Index
+### Hash Index
 
 A hash index can be used to quickly find documents with specific attribute values.
 The hash index is unsorted, so it supports equality lookups but no range queries or sorting.
@@ -134,7 +135,7 @@ Hash indexes support indexing array values if the index attribute name is extend
 a <i>[\*]</i>`. 
 
 
-!SUBSECTION Skiplist Index
+### Skiplist Index
 
 A skiplist is a sorted index structure. It can be used to quickly find documents 
 with specific attribute values, for range queries and for returning documents from
@@ -224,7 +225,7 @@ Skiplist indexes support indexing array values if the index attribute name is ex
 a <i>[\*]</i>`. 
 
 
-!SUBSECTION Geo Index
+### Geo Index
 
 Users can create additional geo indexes on one or multiple attributes in collections. 
 A geo index is used to find places on the surface of the earth fast. 
@@ -241,7 +242,7 @@ The geo index is used via dedicated functions in AQL or the simple queries funct
 but will not be used for other types of queries or conditions.
 
 
-!SUBSECTION Fulltext Index
+### Fulltext Index
 
 A fulltext index can be used to find words, or prefixes of words inside documents. 
 A fulltext index can be created on a single attribute only, and will index all words 
@@ -260,7 +261,7 @@ The fulltext index is used via dedicated functions in AQL or the simple queries,
 not be enabled for other types of queries or conditions.
 
 
-!SUBSECTION Indexing array values
+### Indexing array values
 
 If an index attribute contains an array, ArangoDB will store the entire array as the index value
 by default. Accessing individual members of the array via the index is not possible this

@@ -1,4 +1,5 @@
-!CHAPTER ARM
+ARM
+===
 
 The ArangoDB packages for ARM require the kernel to allow unaligned memory access.
 How the kernel handles unaligned memory access is configurable at runtime by

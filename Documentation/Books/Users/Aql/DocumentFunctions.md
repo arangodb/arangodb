@@ -1,4 +1,5 @@
-!CHAPTER Document functions
+Document functions
+==================
 
 AQL supports the following functions to operate on document values:
 

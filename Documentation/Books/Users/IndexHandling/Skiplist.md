@@ -1,7 +1,9 @@
-!CHAPTER Skip-Lists
+Skip-Lists
+==========
 
 
-!SECTION Introduction to Skiplist Indexes
+Introduction to Skiplist Indexes
+--------------------------------
 
 This is an introduction to ArangoDB's skiplists.
 
@@ -15,7 +17,8 @@ If the skiplist index is declared sparse, a document will be excluded from the i
 uniqueness checks will be performed if any index attribute value is not set or has a value 
 of `null`. 
 
-!SECTION Accessing Skiplist Indexes from the Shell
+Accessing Skiplist Indexes from the Shell
+-----------------------------------------
 
 <!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock ensureUniqueSkiplist
@@ -23,6 +26,6 @@ of `null`.
 <!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock ensureSkiplist
 
-!SUBSECTION Query by example using a skiplist index
+### Query by example using a skiplist index
 @startDocuBlock collectionByExampleSkiplist
 

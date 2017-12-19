@@ -1,4 +1,5 @@
-!CHAPTER Folder Structure
+Folder Structure
+================
 
 Now we are almost ready to write some code.
 Hence it is time to introduce the folder structure created by Foxx.

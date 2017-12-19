@@ -1,8 +1,10 @@
-!CHAPTER Foxx Queries
+Foxx Queries
+============
 
 This chapter describes helpers for performing AQL queries in Foxx. For a full overview of AQL syntax and semantics see the chapter on the ArangoDB Query Language (AQL).
 
-!SECTION Raw AQL Queries
+Raw AQL Queries
+---------------
 
 The most straightforward way to perform AQL queries is using the `db._query` API. You can learn more about this API in the [chapter on invoking AQL queries](../../Aql/Invoke.md).
 
@@ -15,7 +17,8 @@ var result = db._query('RETURN 42').toArray();
 console.log(result);
 ```
 
-!SECTION AQL Template Strings
+AQL Template Strings
+--------------------
 
 ArangoDB supports ES2015-style template strings for queries using the `aqlQuery` template helper; First lets
 have a look at how its working, then use it for a query:
@@ -47,7 +50,8 @@ var usernames = db._query(aqlQuery`
 console.log('usernames:', usernames);
 ```
 
-!SECTION ArangoDB Query Builder
+ArangoDB Query Builder
+----------------------
 
 The [ArangoDB Query Builder](https://www.npmjs.org/package/aqb) NPM module comes bundled with Foxx and provides a fluid API for generating complex AQL queries while avoiding raw string concatenation.
 
@@ -75,7 +79,8 @@ var usernames = db._query(qb
 console.log('usernames:', usernames);
 ```
 
-!SECTION Foxx.createQuery
+Foxx.createQuery
+----------------
 
 `Foxx.createQuery(cfg)`
 

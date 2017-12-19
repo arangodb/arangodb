@@ -1,18 +1,19 @@
-!CHAPTER Command-Line Options for Communication 
+Command-Line Options for Communication
+======================================
 
-!SUBSECTION Scheduler threads
+### Scheduler threads
 @startDocuBlock schedulerThreads
 
 
-!SUBSECTION Scheduler maximal queue size
+### Scheduler maximal queue size
 @startDocuBlock schedulerMaximalQueueSize
 
 
-!SUBSECTION Scheduler backend
+### Scheduler backend
 @startDocuBlock schedulerBackend
 
 
-!SUBSECTION Io backends
+### Io backends
 `--show-io-backends`
 
 If this option is specified, then the server will list available backends and

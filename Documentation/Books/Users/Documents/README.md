@@ -1,4 +1,5 @@
-!CHAPTER Documents, Identifiers, Handles
+Documents, Identifiers, Handles
+===============================
 
 
 This is an introduction to ArangoDB's interface for documents to and how handle
@@ -62,7 +63,7 @@ even if this might work for some cases.
 *Document Etag*: The document revision enclosed in double quotes. The revision is 
 returned by several HTTP API methods in the Etag HTTP header.
 
-!SUBSECTION Coming from a relational background - how do browse vectors translate into document queries?
+### Coming from a relational background - how do browse vectors translate into document queries?
 
 In traditional SQL you may either fetch all columns of a table row by row using `SELECT * FROM table`,
 or select a subset of the columns.
@@ -72,7 +73,7 @@ The list of table columns to fetch is commonly called *column list* or *browse v
 Since documents aren't 2 dimensional, and neither you want only to be able to return 2 dimensional lists, requirements to AQL are a little bit more complex.
 The semantics how it does this leans mostly on the syntax used in JavaScript to work with structured data. 
 
-!SUBSUBSECTION Composing the return documents
+#### Composing the return documents
 The AQL `RETURN` statement returns one item per document it is handed. You can Return the whole document, or just parts of it:
 
 The full example:

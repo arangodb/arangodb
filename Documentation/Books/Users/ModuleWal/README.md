@@ -1,15 +1,16 @@
-!CHAPTER Write-ahead log 
+Write-ahead log
+===============
 
 This module provides functionality for administering the write-ahead logs.
 
-!SUBSECTION Configuration
+### Configuration
 <!-- arangod/V8Server/v8-vocbase.h -->
 @startDocuBlock walPropertiesGet
 
 <!-- arangod/V8Server/v8-vocbase.h -->
 @startDocuBlock walPropertiesSet
 
-!SUBSECTION Flushing
+### Flushing
 
 <!-- arangod/V8Server/v8-vocbase.h -->
 @startDocuBlock walFlush

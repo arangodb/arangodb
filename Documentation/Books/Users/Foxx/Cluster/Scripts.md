@@ -1,11 +1,13 @@
-!CHAPTER Administrative Scripts in Cluster
+Administrative Scripts in Cluster
+=================================
 
 If you want to scale the dataset you access via Foxx you have to take sharding into account.
 This results in minor changes to your setup and teardown scripts.
 These will be executed on all servers you deploy your Foxx to, hence you have to consider that they will be executed multiple times.
 Also the setup for collections now requires you to give the amount of shards for the collection (recommended is the amount of servers squared).
 
-!SECTION Setup script
+Setup script
+------------
 
 This script has to take into consideration that collections might have been installed by other servers already.
 Also you have to give the amount of shards (9 in this example):
@@ -31,7 +33,8 @@ else {
 }
 ```
 
-!SECTION Teardown script
+Teardown script
+---------------
 
 Also this script has to take into account that it might be run several times.
 You can also omit the teardown execution with passing `teardown:false` options to the uninstall process.

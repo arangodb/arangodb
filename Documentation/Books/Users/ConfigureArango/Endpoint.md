@@ -1,4 +1,5 @@
-!CHAPTER JavaScript Interface for managing Endpoints
+JavaScript Interface for managing Endpoints
+===========================================
 
 The ArangoDB server can listen for incoming requests on multiple *endpoints*.
 
@@ -42,7 +43,7 @@ out in the default database (*_system*) and none of the other databases.
 When not in the default database, you must first switch to it using the 
 *db._useDatabase* method.
 
-!SUBSECTION List
+### List
 <!-- js/server/modules/org/arangodb/arango-database.js -->
 @startDocuBlock listEndpoints
 

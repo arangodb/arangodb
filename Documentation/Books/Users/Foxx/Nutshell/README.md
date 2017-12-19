@@ -1,6 +1,8 @@
-!CHAPTER Foxx in a nutshell
+Foxx in a nutshell
+==================
 
-!SECTION Quick navigation
+Quick navigation
+----------------
 * [Quick start](#quick-start)
 * [Create a new Application](#new-application)
 * [Interactive Documentation](#interactive-doc)
@@ -15,7 +17,8 @@
 * [Conclusion](#conclusion)
 
 <a id="quick-start"></a>
-!SECTION Quick Start
+Quick Start
+-----------
 
 You can follow this tutorial using ArangoDBs web interface.
 
@@ -28,7 +31,8 @@ Start the interface from <a href="http://localhost:8529" target="_blank">http://
 ![ArangoDB WebInterface](applications-tab.png)
 
 <a id="new-application" />
-!SECTION Create a new application
+Create a new application
+------------------------
 1. Click on `Add Application`.
 2. In the New App tab, you will be offered a dialog to fill in some information about your application.
 3. For this tutorial we will use the following information:
@@ -39,7 +43,7 @@ Start the interface from <a href="http://localhost:8529" target="_blank">http://
   * **Collections:** firstCollection
 4. Click Generate
 
-!SUBSECTION Some details you should know:
+### Some details you should know:
 * The information entered here is basically meta information that will be displayed in the web interface.
 * `Collections` will be created for you and are local to your Foxx application. For all collections CRUD endpoints will be generated for you.
 * You can define up to 8 collections. But for this tutorial stick to exactly one.
@@ -47,7 +51,7 @@ Start the interface from <a href="http://localhost:8529" target="_blank">http://
 ![Generate Dialog](foxx_generate.png)
 
 <a id="interactive-doc" />
-!SUBSECTION Interactive documentation
+### Interactive documentation
 Now you should see your new application in the list of installed applications.
 Clicking on it will lead you to the details page.
 This page provides the meta information about the application entered in the generating dialog.
@@ -59,7 +63,7 @@ So you can directly test if your modification has worked or not.
 ![Swagger Documentation](foxx_documentation.png)
 
 <a id="developing" />
-!SUBSECTION Developing in Foxx
+### Developing in Foxx
 In order to develop your Foxx you now have two options. If you do not have access to the file-system of your ArangoDB instance you can only pick option 1).
 
 1. Modify the files locally. 
@@ -82,7 +86,7 @@ In order to develop your Foxx you now have two options. If you do not have acces
   ![Activate Development Mode and App path](foxx_development.png)
 
 <a id="folder-structure" />
-!SUBSECTION App folder structure
+### App folder structure
 
 If you have opened the folder containing your App the folder structure should be the following:
 
@@ -117,7 +121,7 @@ Now open your favorite editor and have a deeper look into the code.
 </dl>
 
 <a id="list-elements" />
-!SUBSECTION List content of a collection
+### List content of a collection
 The following route lists all elements of our collection:
 
 ```
@@ -148,7 +152,7 @@ Some details you should know about the code:
 * The comment above the function will generate a nice documentation.
 
 <a id="create-document" />
-!SUBSECTION  Create a new document
+### Create a new document
 This code-snippet defines the route to create a new document in our collection:
 
 ```
@@ -230,7 +234,7 @@ Some details you should know about the code:
 * `bodyParam` defines that there is an body expected in each request and the body should correspond to a valid FirstCollection object. All other bodies will be rejected and a documentation will be generated for this body. It can be accessed in the request parameters via it's name 'firstCollection'
 
 <a id="read-document" />
-!SUBSECTION  Read a single document
+### Read a single document
 This route allows to read a specific document in our collection, identified by Id:
 
 ```
@@ -267,7 +271,7 @@ unix> curl -X GET http://localhost:8529/_db/_system/firstApp/firstCollection/fir
 * `pathParam` documents the path parameter `id` as described in the path. It also restricts it to be a string.
 
 <a id="update-document">
-!SUBSECTION  Update a document
+### Update a document
 This code shows how to update a specific document in our collection. The API call is:
 
 ```
@@ -321,7 +325,7 @@ Some details you should now about the code:
 * `replaceById` overwrites a document from the collection with a newer version.
 
 <a id="delete-document">
-!SUBSECTION  Delete a document
+### Delete a document
 This call allows to delete a specific document in our collection:
 
 ```
@@ -363,7 +367,7 @@ Some details you should now about the code:
 * If no `errorResponse` is given a internal `500` will be returned by the server.
 
 <a id="execute-query">
-!SUBSECTION  Adding a new route / execute a query
+### Adding a new route / execute a query
 We now want to add some functionality, a simple search query. First we create an endpoint that allows to execute a simple AQL query.
 The query will search for all documents having a specific `name` attribute.
 
@@ -467,7 +471,7 @@ Some details you should know about the code:
 * `name` is a bindParameter for a variable value and will be replaced in the query.
 
 <a id="conclusion" />
-!SUBSECTION Conclusion
+### Conclusion
 
 Now we have managed to create a very basic CRUD based Foxx.
 It is a REST-based wrapper around the interface of one of ArangoDBs collections and you can now start to include custom functionality into it.

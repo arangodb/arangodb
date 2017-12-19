@@ -1,4 +1,5 @@
-!CHAPTER Address and ETag of a Document
+Address and ETag of a Document
+==============================
 
 All documents in ArangoDB have a [document handle](../Glossary/README.md#document-handle). This handle uniquely identifies 
 a document. Any document can be retrieved using its unique URI:

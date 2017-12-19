@@ -1,4 +1,5 @@
-!CHAPTER Write-ahead log
+Write-ahead log
+===============
 
 Starting with version 2.2 ArangoDB stores all data-modification operation in
 its write-ahead log. The write-ahead log is sequence of append-only files containing

@@ -1,4 +1,5 @@
-!CHAPTER Handling Databases
+Handling Databases
+==================
 
 This is an introduction to managing databases in ArangoDB from within 
 JavaScript. 

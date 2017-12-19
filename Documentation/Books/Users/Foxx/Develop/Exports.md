@@ -1,10 +1,12 @@
-!CHAPTER Working with Foxx exports
+Working with Foxx exports
+=========================
 
 Instead of (or in addition to) defining controllers, Foxx apps can also define exports.
 
 Foxx exports are not intended to replace regular NPM modules. They simply allow you to make your app's collections and **applicationContext** available in other Foxx apps or bundling ArangoDB-specific modules in re-usable Foxx apps.
 
-!SECTION Define an export module
+Define an export module
+-----------------------
 
 In order to export modules in a Foxx app you need to list the files in your manifest:
 
@@ -47,7 +49,8 @@ This module would then export the name "repo" bound to the variable **doodads** 
 
 **Note**: Node.js style exports by assigning values directly to the `module.exports` property are supported, too.
 
-!SECTION Import from another app
+Import from another app
+-----------------------
 
 In order to import from another app, you need to know where the app is mounted.
 
@@ -64,7 +67,8 @@ var myDoodad = new Doodad();
 doodadRepo.save(myDoodad);
 ```
 
-!SECTION Default exports
+Default exports
+---------------
 
 If you want more control over the object other apps receive when they load your app using **Foxx.requireApp**, you can specify a single filename instead of an object in your manifest file:
 
@@ -110,7 +114,8 @@ var helloExport = Foxx.requireApp('/hello');
 var greeting = helloExport(); // "Hello!"
 ```
 
-!SECTION Managing app dependencies
+Managing app dependencies
+-------------------------
 
 As of ArangoDB 2.6 you can define Foxx app dependencies of your Foxx app in your manifest.
 

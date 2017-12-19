@@ -1,6 +1,7 @@
-!CHAPTER Hash Indexes
+Hash Indexes
+============
 
-!SUBSECTION Introduction to Hash Indexes
+### Introduction to Hash Indexes
 
 This is an introduction to ArangoDB's hash indexes.
 
@@ -14,7 +15,8 @@ If the index is declared sparse, a document will be excluded from the index and 
 uniqueness checks will be performed if any index attribute value is not set or has a value 
 of `null`. 
 
-!SECTION Accessing Hash Indexes from the Shell
+Accessing Hash Indexes from the Shell
+-------------------------------------
 
 <!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock ensureUniqueConstraint

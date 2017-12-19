@@ -1,4 +1,5 @@
-!CHAPTER Foxx
+Foxx
+====
 
 Foxx is a framework that allows you to write data-centric microservices.
 It is executed directly inside of ArangoDB and grants you raw access to your data.
@@ -132,7 +133,8 @@ We recommend to start with Foxx in a nutshell which gives a really quick introdu
 create and use your first Foxx.
 All other sections will give very detailed informations about the features available and a peak behind the curtains.
 
-!SECTION Foxx in a nutshell
+Foxx in a nutshell
+------------------
 
 This chapter is for the impatient and for the ones that just want to get a quick overview
 of what Foxx is, how it works and how to get it up and running in short time.
@@ -141,7 +143,8 @@ application giving a few insights on the way.
 
 [Read More](Nutshell/README.md)
 
-!SECTION Install a Foxx Application
+Install a Foxx Application
+--------------------------
 
 You would like to get some inspiration from running Applications?
 Or you already have an Application that does what you need?
@@ -149,7 +152,8 @@ This chapter will guide you to get an Application up and running.
 
 [Read More](Install/README.md)
 
-!SECTION Develop your own Foxx
+Develop your own Foxx
+---------------------
 
 Ready to get to bare metal?
 In this chapter you will get to know the details on Foxx development.
@@ -160,7 +164,8 @@ And presents all libraries that are available from a Foxx Application.
 [Read More](Develop/README.md)
 
 
-!SECTION Running Foxx Applications in production
+Running Foxx Applications in production
+---------------------------------------
 
 This chapter is dedicated to all the possibilities on how to run a Foxx Application in production.
 It will start with how to leverage it from development to production.
@@ -168,7 +173,8 @@ We will continue with migration of the Application to a newer version.
 
 [Read More](Production/README.md)
 
-!SECTION Foxx in a cluster
+Foxx in a cluster
+-----------------
 
 Ready to scale out?
 Want to setup your micro-service based application?

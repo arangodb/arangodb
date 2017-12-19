@@ -1,6 +1,8 @@
-!CHAPTER Working with Indexes
+Working with Indexes
+====================
 
-!SECTION Index Identifiers and Handles 
+Index Identifiers and Handles
+-----------------------------
 
 An *index handle* uniquely identifies an index in the database. It is a string and 
 consists of the collection name and an *index identifier* separated by a `/`. The 
@@ -30,13 +32,14 @@ Because the index handle is unique within the database, you can leave out the
 db._index("demo/362549736");
 ```
 
-!SECTION Collection Methods
+Collection Methods
+------------------
 
-!SUBSECTION Listing all indexes of a collection
+### Listing all indexes of a collection
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 @startDocuBlock collectionGetIndexes
 
-!SUBSECTION Creating an index
+### Creating an index
 Indexes should be created using the general method *ensureIndex*. This
 method obsoletes the specialized index-specific methods *ensureHashIndex*,
 *ensureSkiplist*, *ensureUniqueConstraint* etc.
@@ -44,20 +47,21 @@ method obsoletes the specialized index-specific methods *ensureHashIndex*,
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 @startDocuBlock collectionEnsureIndex
 
-!SUBSECTION Dropping an index
+### Dropping an index
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 @startDocuBlock col_dropIndex
 
-!SECTION Database Methods
+Database Methods
+----------------
 
-!SUBSECTION Fetching an index by handle
+### Fetching an index by handle
 <!-- js/server/modules/org/arangodb/arango-database.js -->
 @startDocuBlock IndexHandle
 
-!SUBSECTION Dropping an index
+### Dropping an index
 <!-- js/server/modules/org/arangodb/arango-database.js -->
 @startDocuBlock dropIndex
 
-!SUBSECTION Revalidating whether an index is used
+### Revalidating whether an index is used
 <!-- js/server/modules/org/arangodb/arango-database.js -->
 @startDocuBlock IndexVerify

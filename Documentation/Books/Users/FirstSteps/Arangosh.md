@@ -1,4 +1,5 @@
-!CHAPTER Details about the ArangoDB Shell
+Details about the ArangoDB Shell
+================================
 
 After the server has been [started](../FirstSteps/Arangod.md#details-about-the-arangodb-server),
 you can use the ArangoDB shell (_arangosh_) to administrate the
@@ -14,7 +15,8 @@ unix> ./arangosh --server.endpoint tcp://127.0.0.1:8529 --server.username root
 The shell will print its own version number and – if successfully connected
 to a server – the version number of the ArangoDB server.
 
-!SECTION Command-Line Options
+Command-Line Options
+--------------------
 
 Use `--help` to get a list of command-line options:
 
@@ -53,7 +55,8 @@ CLIENT options:
   --server.username <string>                username to use when connecting (default: "root")
 ```
 
-!SECTION Database Wrappers
+Database Wrappers
+-----------------
 The *db*-Object is available in *arangosh* as well as on *arangod* i.e. if you're using [Foxx](../Foxx/README.md). While its Interface is persistant bewteen the *arangosh* and the *arangod* implementations, its underpinning are not. The *arangod* implementation is JavaScript wrappers around ArangoDBs native C++ implementation, the *arangosh* implementation wraps HTTP-Accesses to [ArangoDBs RESTfull API](../HttpApi/README.md).
 
 So while this code may produce similar results when executed in *arangosh* and *arangod*, the cpu-usage and time required will be really different:

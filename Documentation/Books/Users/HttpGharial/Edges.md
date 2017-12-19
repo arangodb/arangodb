@@ -1,4 +1,5 @@
-!CHAPTER Handling Edges
+Handling Edges
+==============
 
 Examples will explain the REST API for [manipulating edges](../GeneralGraphs/Functions.md) of the [graph module](../Graphs/README.md) on the [knows graph](../Graphs/README.md#the-knowsgraph):
 

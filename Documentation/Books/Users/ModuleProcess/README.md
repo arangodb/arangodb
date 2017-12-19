@@ -1,8 +1,9 @@
-!CHAPTER Module "process"
+Module "process"
+================
 
 mimic parts of nodejs process module
 
-!SUBSECTION env
+### env
 
 env maps the systems environment to an associative array.
 

@@ -1,4 +1,5 @@
-!CHAPTER Details about the ArangoDB Server
+Details about the ArangoDB Server
+=================================
 
 The ArangoDB database server has two modes of operation: As a server, where it
 will answer to client requests and as an emergency console, in which you can
@@ -33,7 +34,8 @@ After starting the server, point your favorite browser to:
 
 to access the administration front-end.
 
-!SECTION Linux
+Linux
+-----
 
 To start the server at system boot time you should use one of the 
 pre-rolled packages that will install the necessary start / stop
@@ -57,7 +59,8 @@ On many systems this can be achieved with the following command:
 
     unix> kill -2 `pidof arangod`
 
-!SECTION Frequently Used Options
+Frequently Used Options
+-----------------------
 
 The following command-line options are frequently used. 
 [For a full list of options see the documentation](../ConfigureArango/README.md).
@@ -97,7 +100,7 @@ more information see [here](../ConfigureArango/Logging.md).
 
 Runs the server as a "daemon" (as a background process).
 
-!SUBSECTION Troubleshooting 
+### Troubleshooting
 
 If the ArangoDB server does not start or if you cannot connect to it 
 using *arangosh* or other clients, you can try to find the problem cause by 

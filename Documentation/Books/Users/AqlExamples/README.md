@@ -1,9 +1,11 @@
-!CHAPTER AQL Examples
+AQL Examples
+============
 
 This page contains some examples how to write queries in AQL. For better
 understandability the query results are also included directly below each query.
 
-!SECTION Simple queries
+Simple queries
+--------------
 
 Following is a query that returns a string value. The result string is contained in an array
 because the result of every valid query is an array:

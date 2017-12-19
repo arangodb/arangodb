@@ -1,6 +1,8 @@
-!CHAPTER Conventions
+Conventions
+===========
 
-!SECTION Naming
+Naming
+------
 
 The *::* symbol is used inside AQL as the namespace separator. Using
 the namespace separator, users can create a multi-level hierarchy of
@@ -22,7 +24,8 @@ the default namespace to look in if an unqualified function name is
 found. Adding user functions to the *_aql* namespace is disallowed and
 will fail.
 
-!SECTION Variables and side effects
+Variables and side effects
+--------------------------
 
 User functions can take any number of input arguments and should
 provide one result via a `return` statement. User functions should be kept 
@@ -71,7 +74,8 @@ function (values) {
 }
 ```
 
-!SECTION Input parameters
+Input parameters
+----------------
 
 In order to return a result, a user function should use a `return` instruction 
 rather than modifying its input parameters.
@@ -83,7 +87,8 @@ However, user functions should not modify input parameters if the parameters are
 arrays or objects and as such passed by reference, as that may modify variables 
 and state outside of the user function itself. 
 
-!SECTION Return values
+Return values
+-------------
 
 User functions must only return primitive types (i.e. *null*, boolean
 values, numeric values, string values) or aggregate types (arrays or
@@ -91,7 +96,8 @@ objects) composed of these types.
 Returning any other JavaScript object type from a user function may lead
 to undefined behavior and should be avoided.
 
-!SECTION Enforcing strict mode
+Enforcing strict mode
+---------------------
 
 By default, any user function code will not be executed in *strict mode* or 
 *strong mode*. In order to make a user function being run in strict 
@@ -113,7 +119,8 @@ function (values) {
 
 Any violation of the strict mode will trigger a runtime error.
 
-!SECTION Miscellaneous
+Miscellaneous
+-------------
 
 Internally, user functions are stored in a system collection named
 *_aqlfunctions*  of the selected database. 

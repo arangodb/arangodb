@@ -1,6 +1,7 @@
-!CHAPTER High-level operations
+High-level operations
+=====================
 
-!SUBSECTION FOR
+### FOR
 
 The *FOR* keyword can be to iterate over all elements of an array.
 The general syntax is:
@@ -63,7 +64,7 @@ traversed as many times as there are elements in the outer array.  For each
 iteration, the current values of *users* and *locations* are made available for
 further processing in the variable *u* and *l*.
 
-!SUBSECTION RETURN 
+### RETURN
 
 The *RETURN* statement can be used to produce the result of a query.
 It is mandatory to specify a *RETURN* statement at the end of each block in a
@@ -94,7 +95,7 @@ scope the *RETURN* is placed in can be used for the computations.
 Note: *RETURN* will close the current scope and eliminate all local variables in
 it.
 
-!SUBSUBSECTION RETURN DISTINCT
+#### RETURN DISTINCT
 
 Since ArangoDB 2.7, *RETURN* can optionally be followed by the *DISTINCT* keyword.
 The *DISTINCT* keyword will ensure uniqueness of the values returned by the
@@ -163,7 +164,7 @@ Note: *RETURN DISTINCT* is not allowed on the top-level of a query if there is n
 loop in front of it.
 
 
-!SUBSECTION FILTER
+### FILTER
 
 The *FILTER* statement can be used to restrict the results to elements that
 match an arbitrary logical condition. The general syntax is:
@@ -200,7 +201,7 @@ FOR u IN users
   RETURN u
 ```
 
-!SUBSECTION SORT 
+### SORT
 
 The *SORT* statement will force a sort of the array of already produced
 intermediate results in the current block. *SORT* allows specifying one or
@@ -230,7 +231,7 @@ optimizer during optimization, but specifying them explicitly may enable further
 optimizations if the optimizer does not need to take into account any particular
 sort order.
 
-!SUBSECTION LIMIT
+### LIMIT
 
 The *LIMIT* statement allows slicing the result array using an
 offset and a count. It reduces the number of elements in the result to at most
@@ -256,7 +257,7 @@ FOR u IN users
   RETURN u
 ```
 
-!SUBSECTION LET 
+### LET
 
 The *LET* statement can be used to assign an arbitrary value to a variable.  The
 variable is then introduced in the scope the *LET* statement is placed in.  The
@@ -306,7 +307,7 @@ FOR u IN users
   }
 ```
 
-!SUBSECTION COLLECT
+### COLLECT
 
 The *COLLECT* keyword can be used to group an array by one or multiple group
 criteria. 
@@ -328,7 +329,7 @@ COLLECT AGGREGATE variable-name = aggregate-expression options
 COLLECT WITH COUNT INTO count-variable options
 ```
 
-!SUBSUBSECTION Grouping syntaxes
+#### Grouping syntaxes
 
 The first syntax form of *COLLECT* only groups the result by the defined group 
 criteria specified in *expression*. In order to further process the results 
@@ -390,7 +391,7 @@ by city, and for each distinct combination of country and city, the users
 will be returned.
 
 
-!SUBSUBSECTION Discarding obsolete variables
+#### Discarding obsolete variables
 
 The third form of *COLLECT* allows rewriting the contents of the *groups-variable* 
 using an arbitrary *projection-expression*:
@@ -452,7 +453,7 @@ be used in the *KEEP* clause. *KEEP* supports the specification of multiple
 variable names.
 
 
-!SUBSUBSECTION Group length calculation
+#### Group length calculation
 
 *COLLECT* also provides a special *WITH COUNT* clause that can be used to 
 determine the number of group members efficiently.
@@ -490,7 +491,7 @@ FOR u IN users
 Note: the *WITH COUNT* clause can only be used together with an *INTO* clause.
 
 
-!SUBSECTION Aggregation
+### Aggregation
 
 A `COLLECT` statement can be used to perform aggregation of data per group. To
 only determine group lengths, the `WITH COUNT INTO` variant of `COLLECT` can be
@@ -551,7 +552,7 @@ assignment:
 - an aggregate expression must not refer to variables introduced by the `COLLECT` itself
 
 
-!SUBSUBSECTION COLLECT variants
+#### COLLECT variants
 
 Since ArangoDB 2.6, there are two variants of *COLLECT* that the optimizer can
 choose from: the *sorted* variant and the *hash* variant. The *hash* variant only becomes a
@@ -594,7 +595,7 @@ Which variant of *COLLECT* was actually used can be figured out by looking into 
 a query, specifically the *AggregateNode* and its *aggregationOptions* attribute.
 
 
-!SUBSUBSECTION Setting COLLECT options
+#### Setting COLLECT options
 
 *options* can be used in a *COLLECT* statement to inform the optimizer about the preferred *COLLECT*
 method. When specifying the following appendix to a *COLLECT* statement, the optimizer will always use
@@ -609,7 +610,7 @@ because the *hash* variant is not eligible for all queries. Instead, if no optio
 than *sorted* are specified in *OPTIONS*, the optimizer will use its regular cost estimations.
 
 
-!SUBSUBSECTION COLLECT vs. RETURN DISTINCT
+#### COLLECT vs. RETURN DISTINCT
 
 In order to make a result set unique, one can either use *COLLECT* or *RETURN DISTINCT*. Behind the
 scenes, both variants will work by creating an *AggregateNode*. For both variants, the optimizer
@@ -631,7 +632,7 @@ However, *COLLECT* is vastly more flexible than *RETURN DISTINCT*. Additionally,
 undefined for a *RETURN DISTINCT*, whereas for a *COLLECT* the results will be sorted.
 
 
-!SUBSECTION REMOVE
+### REMOVE
 
 The *REMOVE* keyword can be used to remove documents from a collection. On a
 single server, the document removal is executed transactionally in an 
@@ -680,7 +681,7 @@ FOR u IN users
   REMOVE { _key: u._key } IN backup
 ```
 
-!SUBSUBSECTION Setting query options
+#### Setting query options
 
 *options* can be used to suppress query errors that may occur when trying to
 remove non-existing documents. For example, the following query will fail if one
@@ -707,7 +708,7 @@ FOR i IN 1..1000
   REMOVE { _key: CONCAT('test', i) } IN users OPTIONS { waitForSync: true }
 ```
 
-!SUBSUBSECTION Returning the removed documents
+#### Returning the removed documents
 
 The removed documents can also be returned by the query. In this case, the `REMOVE` 
 statement must be followed by a `RETURN` statement (intermediate `LET` statements
@@ -728,7 +729,7 @@ FOR u IN users
   RETURN removed._key
 ```
 
-!SUBSECTION UPDATE
+### UPDATE
 
 The *UPDATE* keyword can be used to partially update documents in a collection. On a 
 single server, updates are executed transactionally in an all-or-nothing fashion. 
@@ -796,7 +797,7 @@ FOR u IN users
   UPDATE u WITH { status: 'inactive' } IN backup
 ```
 
-!SUBSUBSECTION Setting query options
+#### Setting query options
 
 *options* can be used to suppress query errors that may occur when trying to
 update non-existing documents or violating unique key constraints:
@@ -859,7 +860,7 @@ FOR u IN users
   UPDATE u WITH { foobar: true } IN users OPTIONS { waitForSync: true }
 ```
 
-!SUBSUBSECTION Returning the modified documents
+#### Returning the modified documents
 
 The modified documents can also be returned by the query. In this case, the `UPDATE` 
 statement needs to be followed a `RETURN` statement (intermediate `LET` statements
@@ -906,7 +907,7 @@ FOR u IN users
 ```
 
 
-!SUBSECTION REPLACE
+### REPLACE
 
 The *REPLACE* keyword can be used to completely replace documents in a collection. On a
 single server, the replace operation is executed transactionally in an all-or-nothing 
@@ -980,7 +981,7 @@ FOR u IN users
   REPLACE u WITH { status: 'inactive', name: u.name } IN backup
 ```
 
-!SUBSUBSECTION Setting query options
+#### Setting query options
 
 *options* can be used to suppress query errors that may occur when trying to
 replace non-existing documents or when violating unique key constraints:
@@ -998,7 +999,7 @@ FOR i IN 1..1000
   REPLACE { _key: CONCAT('test', i) } WITH { foobar: true } IN users OPTIONS { waitForSync: true }
 ```
 
-!SUBSUBSECTION Returning the modified documents
+#### Returning the modified documents
 
 The modified documents can also be returned by the query. In this case, the `REPLACE` 
 statement must be followed by a `RETURN` statement (intermediate `LET` statements are
@@ -1038,7 +1039,7 @@ FOR u IN users
 ```
 
 
-!SUBSECTION INSERT
+### INSERT
 
 The *INSERT* keyword can be used to insert new documents into a collection. On a 
 single server, an insert operation is executed transactionally in an all-or-nothing 
@@ -1079,7 +1080,7 @@ FOR u IN users
     INSERT { _from: u._id, _to: p._id } IN recommendations
 ```
 
-!SUBSUBSECTION Setting query options
+#### Setting query options
 
 *options* can be used to suppress query errors that may occur when violating unique
 key constraints:
@@ -1097,7 +1098,7 @@ FOR i IN 1..1000
   INSERT { _key: CONCAT('test', i), name: "test" } WITH { foobar: true } IN users OPTIONS { waitForSync: true }
 ```
 
-!SUBSUBSECTION Returning the inserted documents
+#### Returning the inserted documents
 
 The inserted documents can also be returned by the query. In this case, the `INSERT` 
 statement can be a `RETURN` statement (intermediate `LET` statements are allowed, too).
@@ -1123,7 +1124,7 @@ FOR i IN 1..100
 ```
 
 
-!SUBSECTION UPSERT
+### UPSERT
 
 The *UPSERT* keyword can be used for checking whether certain documents exist,
 and to update them in case they exist, or create them in case they do not exist.
@@ -1178,7 +1179,7 @@ Note that in the *UPDATE* case it is possible to refer to the previous version o
 document using the *OLD* pseudo-value.
 
 
-!SUBSUBSECTION Setting query options
+#### Setting query options
 
 As in several above examples, the *ignoreErrors* option can be used to suppress query 
 errors that may occur when trying to violate unique key constraints.
@@ -1198,7 +1199,7 @@ To make sure data are durable when an update query returns, there is the *waitFo
 query option.
 
 
-!SUBSUBSECTION Returning documents
+#### Returning documents
 
 `UPSERT` statements can optionally return data. To do so, they need to be followed
 by a `RETURN` statement (intermediate `LET` statements are allowed, too). These statements

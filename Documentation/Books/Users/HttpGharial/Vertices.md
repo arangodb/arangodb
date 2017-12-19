@@ -1,4 +1,5 @@
-!CHAPTER Handling Vertices
+Handling Vertices
+=================
 
 Examples will explain the REST API to the [graph module](../Graphs/README.md) on the [social graph](../Graphs/README.md#the-social-graph):
 

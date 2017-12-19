@@ -1,6 +1,7 @@
-!CHAPTER HTTP Interface for AQL User Functions Management
+HTTP Interface for AQL User Functions Management
+================================================
 
-!SUBSECTION AQL User Functions Management
+### AQL User Functions Management
 
 This is an introduction to ArangoDB's HTTP interface for managing AQL
 user functions. AQL user functions are a means to extend the functionality

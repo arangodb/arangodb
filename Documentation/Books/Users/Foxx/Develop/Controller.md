@@ -1,36 +1,39 @@
-!CHAPTER Details on Controller
+Details on Controller
+=====================
 
-!SUBSECTION Create
+### Create
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_initializer
 
-!SECTION HTTP Methods
+HTTP Methods
+------------
 
-!SUBSECTION get
+### get
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_get
 
-!SUBSECTION head
+### head
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_head
 
-!SUBSECTION post
+### post
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_post
 
-!SUBSECTION put
+### put
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_put
 
-!SUBSECTION patch
+### patch
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_patch
 
-!SUBSECTION delete
+### delete
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_delete
 
-!SECTION Documenting and constraining a specific route
+Documenting and constraining a specific route
+---------------------------------------------
 
 If you now want to document your route, you can use JSDoc style comments (a
 multi-line comment block where the first line starts with */*** instead
@@ -54,40 +57,40 @@ view of the route documentation. With the provided information, Foxx will
 generate a nice documentation for you. Furthermore you can describe your
 API by chaining the following methods onto your path definition:
 
-!SUBSECTION pathParam
+### pathParam
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContext_pathParam
 
-!SUBSECTION queryParam
+### queryParam
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContext_queryParam
 
-!SUBSECTION bodyParam
+### bodyParam
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContext_bodyParam
 
-!SUBSECTION errorResponse
+### errorResponse
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContext_errorResponse
 
-!SUBSECTION onlyif
+### onlyif
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContext_onlyIf
 
-!SUBSECTION onlyIfAuthenticated
+### onlyIfAuthenticated
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContext_onlyIfAuthenticated
 
-!SUBSECTION summary
+### summary
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContext_summary
 
-!SUBSECTION notes
+### notes
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContext_notes
 
 
-!SUBSECTION extend
+### extend
 
 In many use-cases several of the functions are always used in a certain combination (e.g.: `onlyIf` with `errorResponse`).
 In order to avoid duplicating this equal usage for several routes in your application you can
@@ -97,7 +100,8 @@ invoke your self defined single function on all routes using these extensions.
 
 @startDocuBlock JSF_foxx_controller_extend
 
-!SECTION Documenting and constraining all routes
+Documenting and constraining all routes
+---------------------------------------
 
 In addition to documenting a specific route, you can also
 do the same for all routes of a controller. For this purpose
@@ -127,46 +131,48 @@ ctrl.get('/another/route', function (req, res) {
 }); // no errorResponse needed here either
 ```
 
-!SUBSECTION errorResponse
+### errorResponse
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContextBuffer_errorResponse
 
-!SUBSECTION onlyIf
+### onlyIf
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContextBuffer_onlyIf
 
-!SUBSECTION onlyIfAuthenticated
+### onlyIfAuthenticated
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
 
-!SUBSECTION pathParam
+### pathParam
 @startDocuBlock JSF_foxx_RequestContextBuffer_pathParam
 
-!SUBSECTION bodyParam
+### bodyParam
 @startDocuBlock JSF_foxx_RequestContextBuffer_queryParam
 
 
-!SECTION Before and After Hooks
+Before and After Hooks
+----------------------
 
 You can use the following two functions to do something before or respectively
 after the normal routing process is happening. You could use that for logging
 or to manipulate the request or response (translate it to a certain format for
 example).
 
-!SUBSECTION before
+### before
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_before
 
-!SUBSECTION after
+### after
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_after
 
-!SUBSECTION around
+### around
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_around
 
 
-!SECTION The Request and Response Objects
+The Request and Response Objects
+--------------------------------
 
 When you have created your FoxxController you can now define routes on it.
 You provide each with a function that will handle the request. It gets two
@@ -178,7 +184,7 @@ arguments (four, to be honest. But the other two are not relevant for now):
 These objects are provided by the underlying ArangoDB actions and enhanced
 by the **BaseMiddleware** provided by Foxx.
 
-!SUBSECTION The Request Object
+### The Request Object
 
 The **request** object inherits several attributes from the underlying Actions:
 
@@ -220,63 +226,65 @@ The **request** object inherits several attributes from the underlying Actions:
 In addition to these attributes, a Foxx request objects provides the following
 convenience methods:
 
-!SUBSECTION body
+### body
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_request_body
 
-!SUBSECTION rawBody
+### rawBody
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_request_rawBody
 
-!SUBSECTION rawBodyBuffer
+### rawBodyBuffer
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_request_rawBodyBuffer
 
-!SUBSECTION params
+### params
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_request_params
 
-!SUBSECTION cookie
+### cookie
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_request_cookie
 
-!SUBSECTION requestParts
+### requestParts
 Only useful for multi-part requests.
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_request_requestParts
 
-!SECTION The Response Object
+The Response Object
+-------------------
 
 Every response object has the body attribute from the underlying Actions
 to set the raw body by hand.
 
 You provide your response body as a string here.
 
-!SUBSECTION Response status
+### Response status
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_response_status
 
-!SUBSECTION Response set
+### Response set
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_response_set
 
-!SUBSECTION Response json
+### Response json
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_response_json
 
-!SUBSECTION Response cookie
+### Response cookie
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_response_cookie
 
-!SUBSECTION Response send
+### Response send
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_response_send
 
-!SUBSECTION Response sendFile
+### Response sendFile
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_response_sendFile
 
-!SECTION Controlling Access to Foxx Applications
+Controlling Access to Foxx Applications
+---------------------------------------
 
 Access to Foxx applications is controlled by the regular authentication mechanisms
 present in ArangoDB. The server can be run with or without HTTP authentication.
@@ -329,26 +337,26 @@ this works.
 
 To use the application-specific authentication in your own app, first activate it in your controller.
 
-!SUBSECTION Active Authentication
+### Active Authentication
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_activateAuthentication
 
-!SUBSECTION Login
+### Login
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_login
 
-!SUBSECTION Logout
+### Logout
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_logout
 
-!SUBSECTION Register
+### Register
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_register
 
-!SUBSECTION Change Password
+### Change Password
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_changePassword
 
-!SUBSUBSECTION  Restricting routes
+#### Restricting routes
 
 To restrict routes, see the documentation for Documenting and Restraining the routes.

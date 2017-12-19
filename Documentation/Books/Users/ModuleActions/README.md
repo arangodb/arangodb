@@ -1,58 +1,62 @@
-!CHAPTER Module "actions" 
+Module "actions"
+================
 
 The action module provides the infrastructure for defining HTTP actions.
 
-!SECTION Basics
-!SUBSECTION Error message 
+Basics
+------
+### Error message
 <!-- js/server/modules/org/arangodb/actions.js -->
 @startDocuBlock actionsGetErrorMessage
 
-!SECTION Standard HTTP Result Generators
+Standard HTTP Result Generators
+-------------------------------
 
 @startDocuBlock actionsDefineHttp
 
-!SUBSECTION Result ok
+### Result ok
 <!-- js/server/modules/org/arangodb/actions.js -->
 @startDocuBlock actionsResultOk
 
-!SUBSECTION Result bad
+### Result bad
 <!-- js/server/modules/org/arangodb/actions.js -->
 @startDocuBlock actionsResultBad
 
-!SUBSECTION Result not found
+### Result not found
 <!-- js/server/modules/org/arangodb/actions.js -->
 @startDocuBlock actionsResultNotFound
 
-!SUBSECTION Result unsupported
+### Result unsupported
 <!-- js/server/modules/org/arangodb/actions.js -->
 @startDocuBlock actionsResultUnsupported
 
-!SUBSECTION Result error
+### Result error
 <!-- js/server/modules/org/arangodb/actions.js -->
 @startDocuBlock actionsResultError
 
-!SUBSECTION Result not Implemented
+### Result not Implemented
 <!-- js/server/modules/org/arangodb/actions.js -->
 @startDocuBlock actionsResultNotImplemented
 
-!SUBSECTION Result permanent redirect
+### Result permanent redirect
 <!-- js/server/modules/org/arangodb/actions.js -->
 @startDocuBlock actionsResultPermanentRedirect
 
-!SUBSECTION Result temporary redirect
+### Result temporary redirect
 <!-- js/server/modules/org/arangodb/actions.js -->
 @startDocuBlock actionsResultTemporaryRedirect
 
-!SECTION ArangoDB Result Generators
+ArangoDB Result Generators
+--------------------------
 
-!SUBSECTION Collection not found
+### Collection not found
 <!-- js/server/modules/org/arangodb/actions.js -->
 @startDocuBlock actionsCollectionNotFound
 
-!SUBSECTION Index not found
+### Index not found
 <!-- js/server/modules/org/arangodb/actions.js -->
 @startDocuBlock actionsIndexNotFound
 
-!SUBSECTION Result exception
+### Result exception
 <!-- js/server/modules/org/arangodb/actions.js -->
 @startDocuBlock actionsResultException

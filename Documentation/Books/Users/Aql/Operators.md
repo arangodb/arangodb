@@ -1,9 +1,10 @@
-!CHAPTER Operators
+Operators
+=========
 
 AQL supports a number of operators that can be used in expressions.  There are
 comparison, logical, arithmetic, and the ternary operator.
 
-!SUBSUBSECTION Comparison operators
+#### Comparison operators
 
 Comparison (or relational) operators compare two operands. They can be used with
 any input data types, and will return a boolean result value.
@@ -41,7 +42,7 @@ true != null              // true
 42 NOT IN [ 17, 40, 50 ]  // true
 ```
 
-!SUBSUBSECTION Logical operators
+#### Logical operators
 
 The following logical operators are supported in AQL:
 
@@ -109,7 +110,7 @@ whereas the following logical operations will not return boolean values:
     true && 23                                 // 23
 
    
-!SUBSUBSECTION Arithmetic operators
+#### Arithmetic operators
 
 Arithmetic operators perform an arithmetic operation on two numeric
 operands. The result of an arithmetic operation is again a numeric value.
@@ -173,7 +174,7 @@ Here are a few examples:
     1 / 0                   // null
 
 
-!SUBSUBSECTION Ternary operator
+#### Ternary operator
 
 AQL also supports a ternary operator that can be used for conditional
 evaluation. The ternary operator expects a boolean condition as its first
@@ -184,7 +185,7 @@ evaluates to true, and the third operand otherwise.
 
     u.age > 15 || u.active == true ? u.userId : null
 
-!SUBSUBSECTION Range operator
+#### Range operator
 
 AQL supports expressing simple numeric ranges with the *..* operator.
 This operator can be used to easily iterate over a sequence of numeric
@@ -201,7 +202,7 @@ will produce the following result:
 
     [ 2010, 2011, 2012, 2013 ]
 
-!SUBSUBSECTION Operator precedence
+#### Operator precedence
 
 The operator precedence in AQL is similar as in other familiar languages (lowest precedence first):
 

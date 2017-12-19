@@ -1,4 +1,5 @@
-!CHAPTER Handling Indexes
+Handling Indexes
+================
 
 This is an introduction to ArangoDB's interface for indexes in general.  
 There are special sections for 

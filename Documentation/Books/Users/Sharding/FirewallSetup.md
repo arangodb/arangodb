@@ -1,4 +1,5 @@
-!CHAPTER Recommended firewall setup
+Recommended firewall setup
+==========================
 
 This section is intended for people who run a cluster in production
 systems.

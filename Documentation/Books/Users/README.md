@@ -1,4 +1,5 @@
-!BOOK ArangoDB VERSION_NUMBER Documentation
+ArangoDB VERSION_NUMBER Documentation
+=====================================
 
 Welcome to the ArangoDB documentation!
 
@@ -29,7 +30,7 @@ I.e. for the [java driver](https://github.com/arangodb/arangodb-java-driver#lear
 
 You can also go to our [cookbook](https://docs.arangodb.com/cookbook) and look through some recipes to learn more about ArangoDB specific problems and solutions.
 
-!SUBSECTION Community
+### Community
 
 If you have questions regarding ArangoDB, Foxx, drivers, or this documentation don't hesitate to contact us on:
 

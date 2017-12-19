@@ -1,4 +1,5 @@
-!CHAPTER Database Names
+Database Names
+==============
 
 ArangoDB will always start up with a default database, named *_system*.
 Users can create additional databases in ArangoDB, provided the database

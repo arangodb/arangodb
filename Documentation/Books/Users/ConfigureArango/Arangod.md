@@ -1,78 +1,79 @@
-!CHAPTER Command-Line Options for arangod
+Command-Line Options for arangod
+================================
 
-!SUBSECTION Endpoint
+### Endpoint
 @startDocuBlock serverEndpoint
 
 
-!SUBSECTION Reuse address
+### Reuse address
 @startDocuBlock serverReuseAddress
 
 
-!SUBSECTION Disable authentication  
+### Disable authentication
 @startDocuBlock server_authentication
 
 
-!SUBSECTION Disable authentication-unix-sockets
+### Disable authentication-unix-sockets
 @startDocuBlock serverAuthenticationDisable
 
 
-!SUBSECTION Authenticate system only
+### Authenticate system only
 @startDocuBlock serverAuthenticateSystemOnly
 
 
-!SUBSECTION Disable replication-applier
+### Disable replication-applier
 @startDocuBlock serverDisableReplicationApplier
 
 
-!SUBSECTION Keep-alive timeout
+### Keep-alive timeout
 @startDocuBlock keep_alive_timeout
 
 
-!SUBSECTION Default API compatibility
+### Default API compatibility
 @startDocuBlock serverDefaultApi
 
 
-!SUBSECTION Hide Product header
+### Hide Product header
 @startDocuBlock serverHideProductHeader
 
 
-!SUBSECTION Allow method override
+### Allow method override
 @startDocuBlock serverAllowMethod
 
 
-!SUBSECTION Server threads
+### Server threads
 @startDocuBlock serverThreads
 
 
-!SUBSECTION Keyfile
+### Keyfile
 @startDocuBlock serverKeyfile
 
 
-!SUBSECTION Cafile
+### Cafile
 @startDocuBlock serverCafile
 
 
-!SUBSECTION SSL protocol
+### SSL protocol
 @startDocuBlock serverSSLProtocol
 
 
-!SUBSECTION SSL cache
+### SSL cache
 @startDocuBlock serverSSLCache
 
 
-!SUBSECTION SSL options
+### SSL options
 @startDocuBlock serverSSLOptions
 
 
-!SUBSECTION SSL cipher
+### SSL cipher
 @startDocuBlock serverSSLCipher
 
 
-!SUBSECTION Backlog size
+### Backlog size
 @startDocuBlock serverBacklog
 
 
-!SUBSECTION Disable server statistics 
+### Disable server statistics
 
 `--server.disable-statistics value`
 
@@ -83,65 +84,65 @@ Note: this option is only available when ArangoDB has not been compiled with
 the option *--disable-figures*.
 
 
-!SUBSECTION Session timeout
+### Session timeout
 @startDocuBlock SessionTimeout
 
 
-!SUBSECTION Foxx queues 
+### Foxx queues
 @startDocuBlock foxxQueues
 
 
-!SUBSECTION Foxx queues poll interval
+### Foxx queues poll interval
 @startDocuBlock foxxQueuesPollInterval
 
 
-!SUBSECTION Directory
+### Directory
 @startDocuBlock DatabaseDirectory
 
 
-!SUBSECTION Journal size
+### Journal size
 @startDocuBlock databaseMaximalJournalSize
 
 
-!SUBSECTION Wait for sync
+### Wait for sync
 @startDocuBlock databaseWaitForSync
 
 
-!SUBSECTION Force syncing of properties
+### Force syncing of properties
 @startDocuBlock databaseForceSyncProperties
 
 
-!SUBSECTION Disable AQL query tracking
+### Disable AQL query tracking
 @startDocuBlock databaseDisableQueryTracking
 
 
-!SUBSECTION Throw collection not loaded error
+### Throw collection not loaded error
 @startDocuBlock databaseThrowCollectionNotLoadedError
 
 
-!SUBSECTION AQL Query caching mode
+### AQL Query caching mode
 @startDocuBlock queryCacheMode
 
 
-!SUBSECTION AQL Query cache size 
+### AQL Query cache size
 @startDocuBlock queryCacheMaxResults
 
 
-!SUBSECTION Index threads
+### Index threads
 @startDocuBlock indexThreads
 
 
-!SUBSECTION V8 contexts
+### V8 contexts
 @startDocuBlock v8Contexts
 
 
-!SUBSECTION Garbage collection frequency (time-based)
+### Garbage collection frequency (time-based)
 @startDocuBlock jsGcFrequency
 
 
-!SUBSECTION Garbage collection interval (request-based)
+### Garbage collection interval (request-based)
 @startDocuBlock jsStartupGcInterval
 
 
-!SUBSECTION V8 options
+### V8 options
 @startDocuBlock jsV8Options

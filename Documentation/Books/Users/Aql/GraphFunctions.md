@@ -1,4 +1,5 @@
-!CHAPTER Graph functions
+Graph functions
+===============
 
 AQL has the following functions to traverse loosely-structured graphs consisting of 
 an edge collection and plus the vertices connected by it. If you have created a graph 
@@ -6,9 +7,10 @@ using the general-graph module you may want to use its more specific [Graph oper
 instead.
 
 
-!SECTION Determining direct connections
+Determining direct connections
+------------------------------
 
-!SUBSECTION Edges
+### Edges
 *EDGES(edgecollection, startvertex, direction, edgeexamples, options)*:
 
 Return all edges connected to the vertex *startvertex* as an array. The possible values for
@@ -37,7 +39,7 @@ In order to specify only options but no *edgeExamples* set *edgeExamples* to *nu
       EDGES(friendrelations, "friends/john", "any", null, {includeVertices: true})
 
 
-!SUBSECTION Neighbors
+### Neighbors
 *NEIGHBORS(vertexcollection, edgecollection, startvertex, direction, edgeexamples, options)*:
 
 Returns `_id` values of all distinct neighbors that are directly connected to the
@@ -72,12 +74,13 @@ with the option *includeVertices* set to true.
       NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ], {includeData: true})
 
 
-!SECTION General Purpose Traversals
+General Purpose Traversals
+--------------------------
 
 General purpose traversals with its extendability by visitor functions offer more possibilities over the newer [AQL graph traversals](../Aql/GraphTraversals.md),
 however unless you need some of these features you should [prefer AQL graph traversals](../Aql/GraphTraversals.md).
 
-!SUBSECTION Traversal
+### Traversal
 *TRAVERSAL(vertexcollection, edgecollection, startVertex, direction, options)*: 
 Traverses the graph described by *vertexcollection* and *edgecollection*, 
 starting at the vertex identified by id *startVertex*. Vertex connectivity is
@@ -325,7 +328,7 @@ When using a custom AQL function as a visitor, the result may have a different s
         data: { attributes: [ "_id", "_key", "name" ] }
       })
 
-!SUBSECTION Traversal Tree
+### Traversal Tree
 *TRAVERSAL_TREE(vertexcollection, edgecollection, startVertex, direction, connectName, options)*: 
 Traverses the graph described by *vertexcollection* and *edgecollection*, 
 starting at the vertex identified by id *startVertex* and creates a hierarchical result.
@@ -343,7 +346,7 @@ be set up in a way that resembles a depth-first, pre-order visitation result. Th
         itemOrder: "forward"
       })
 
-!SUBSECTION Shortest Path
+### Shortest Path
 *SHORTEST_PATH(vertexcollection, edgecollection, startVertex, endVertex, direction, options)*: 
 Determines the first shortest path from the *startVertex* to the *endVertex*.
 Both vertices must be present in the vertex collection specified in *vertexcollection*,
@@ -482,9 +485,10 @@ When using a custom AQL function as a visitor, the result may have a different s
         return (edge.underConstruction === false); // don't follow these edges
       }, false);
 
-!SECTION Other functions
+Other functions
+---------------
 
-!SUBSECTION Paths
+### Paths
 *PATHS(vertexcollection, edgecollection, direction, options)*: 
 returns an array of paths through the graph defined by the nodes in the collection 
 *vertexcollection* and edges in the collection *edgecollection*. For each vertex
@@ -515,7 +519,8 @@ path is a document consisting of the following attributes:
         FILTER p.source._id == "users/123456"
         RETURN p.vertices[*].name
 
-!SECTION Graph consistency
+Graph consistency
+-----------------
 When [using the graph management functions to remove vertices](../GeneralGraphs/Management.md#remove-a-vertex)
 you have the guaranty that all referencing edges are also removed.
 However, if you use document features alone to remove vertices, no edge collections will be adjusted.
@@ -528,7 +533,8 @@ If *includeData* is enabled, these missing vertices will be touched by the query
 
 In order to keep the result set consistent between *includeData* enabled or disabled, a `null` will be padded to fill the gap for each missing vertex.
 
-!SECTION Performance notes 
+Performance notes
+-----------------
 
 When using any of AQL's general purpose traversal functions, please make sure that the graph 
 does not contain cycles, or that you at least specify some maximum depth or uniqueness 

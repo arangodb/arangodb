@@ -1,4 +1,5 @@
-!CHAPTER Install Applications from local file system
+Install Applications from local file system
+===========================================
 
 In this chapter we will make use of the Foxx manager as described [before](README.md).
 This time we want to install an app that is located on our local file system.

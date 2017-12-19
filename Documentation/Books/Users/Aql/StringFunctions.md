@@ -1,4 +1,5 @@
-!CHAPTER String functions
+String functions
+================
 
 For string processing, AQL offers the following functions:
 

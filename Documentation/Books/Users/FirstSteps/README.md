@@ -1,4 +1,5 @@
-!CHAPTER First Steps in ArangoDB
+First Steps in ArangoDB
+=======================
 
 For installation instructions, please refer to the 
 [Installation Manual](../Installing/README.md).
@@ -40,7 +41,8 @@ For more in-depth information:
 * Or give it a [try](https://www.arangodb.com/tryitout)
 
 
-!SECTION ArangoDB programs 
+ArangoDB programs
+-----------------
 
 The ArangoDB package comes with the following programs:
 

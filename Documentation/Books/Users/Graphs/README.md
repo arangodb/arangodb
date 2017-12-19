@@ -1,6 +1,7 @@
-!SECTION ArangoDB Graphs
+ArangoDB Graphs
+---------------
 
-!SUBSECTION First Steps with Graphs
+### First Steps with Graphs
 
 A Graph consists of *vertices* and *edges*. Edges are stored as documents in *edge collections*.
 A vertex can be a document of a *document collection* or of an *edge collection* (so *edges* can be used as *vertices*).
@@ -8,7 +9,7 @@ Which collections are used within a named graph is defined via *edge definitions
 A named graph can contain more than one *edge definition*, at least one is needed.
 Graphs allow you to structure your models in line with your domain and group them logically in collections and giving you the power to query them in the same graph queries.
 
-!SUBSECTION Coming from a relational background - what is a graph?
+### Coming from a relational background - what is a graph?
 
 In SQL you commonly have the construct of a relation table to store *n:m* relations between two data tables.
 An *edge collection* is somewhat similar to these *relation tables*; *vertex collections* resemble the data tables with the objects to connect.
@@ -19,7 +20,7 @@ Its common to have attributes attached to edges, i.e. a *label* naming this inte
 Edges have a direction, with their relations `_from` and `_to` pointing *from* one document *to* another document stored in vertex collections.
 In queries you can define in which directions the edge relations may be followed (`OUTBOUND`: `_from` -> `_to`, `INBOUND`: `_to` -> `_from`, `ANY`: `_from` <-> `_to`).
 
-!SUBSECTION Named Graphs
+### Named Graphs
 Named graphs are completely managed by arangodb, and thus also [visible in the webinterface](../WebInterface/README.md#graphs-tab).
 They use the ful spectrum of ArangoDBs graph features. You may access them via several interfaces.
 
@@ -33,7 +34,7 @@ They use the ful spectrum of ArangoDBs graph features. You may access them via s
     * [Fluent Query Interface](../GeneralGraphs/FluentAQLInterface.md); if you like to work with graphs via a [fluent interface](https://en.wikipedia.org/wiki/Fluent_interface)
  - [the RESTful General Graph interface](../HttpGharial/README.md) used to implement graph management in client drivers
 
-!SUBSUBSECTION Manipulating collections of named graphs with regular document functions
+#### Manipulating collections of named graphs with regular document functions
 
 The underlying collections of the named graphs are still accessible using the standard methods for collections.
 However the graph module adds an additional layer on top of these collections giving you the following guarantees:
@@ -45,35 +46,35 @@ However the graph module adds an additional layer on top of these collections gi
 These guarantees are lost if you access the collections in any other way than the graph module or AQL,
 so if you delete documents from your vertex collections directly, the edges pointing to them will be remain in place.
 
-!SUBSECTION Anonymous graphs
+### Anonymous graphs
 Sometimes you may not need all the powers of named graphs, but some of its bits may be valuable to you.
 You [may use AQL Graph Functions](../Aql/GraphFunctions.md) that are a little deeper explained in the [traversals](../Traversals/README.md) and the [Working with Edges](../Edges/README.md) Chapter.
 Anonymous graphs don't have *edge definitions* describing which *vertex collection* is connected by which *edge collection*. The graph model has to be maintained in the client side code.
 This gives you more freedom than the strict *named graphs*.
 
-!SUBSUBSECTION When to choose anonymous or named graphs?
+#### When to choose anonymous or named graphs?
 As noted above, named graphs ensure graph integrity, both when inserting or removing edges or vertices.
 So you won't encounter dangling edges, even if you use the same vertex collection in several named graphs.
 This involves more operations inside the database which don't come for free.
 Therefore anonymous graphs may be faster in many operations.
 So this question boils down to 'Can I afford the additional effort or do I need the warranty for integrity?'. 
 
-!SUBSECTION Backup and restore
+### Backup and restore
 For sure you want to have backups of your graph data, you can use [ArangoDump](../HttpBulkImports/Arangodump.md) to create the backup,
 and [ArangoRestore](../HttpBulkImports/Arangorestore.md) to restore a backup into a new ArangoDB. You should however note that:
 - you need the system collection `_graphs` if you backup named graphs.
 - you need to backup the complete set of all edge and vertex collections your graph consists of. Partial dump/restore may not work.
 
-!SUBSECTION Blueprint Graphs
+### Blueprint Graphs
 *Blueprint 2 graphs* are a subset of *named graphs*. It only supports one edge and one vertex collection per graph. Both vertices and edges have to contain a label attribute; the Blueprints API defines a special `LABEL` attribute for this.
 We offer [blueprints support via an api compatible java driver](https://github.com/arangodb/blueprints-arangodb-graph).
 
-!SUBSECTION Example Graphs
+### Example Graphs
 ArangoDB comes with a set of easily graspable graphs that are used to demonstrate the APIs.
 You can use the `add samles` tab in the `create graph` window in the webinterface, or load the module `@arangodb/graph-examples/example-graph` in arangosh and use it to create instances of these graphs in your ArangoDB.
 Once you've created them, you can [inspect them in the webinterface](../WebInterface/README.md#graphs-tab) - which was used to create the pictures below.
 
-!SUBSUBSECTION The Knows\_Graph
+#### The Knows\_Graph
 A set of persons knowing each other:
 ![Persons relation Example Graph](knows_graph.png)
 
@@ -98,7 +99,7 @@ This is how we create it, inspect its *vertices* and *edges*, and drop it again:
     @endDocuBlock graph_create_knows_sample
 
 
-!SUBSUBSECTION The Social Graph
+#### The Social Graph
 A set of persons and their relations:
 
 ![Social Example Graph](social_graph.png)
@@ -118,7 +119,7 @@ This is how we create it, inspect its *vertices* and *edges*, and drop it again:
     @endDocuBlock graph_create_social_sample
 
 
-!SUBSUBSECTION The City Graph
+#### The City Graph
 A set of european cities, and their fictional traveling distances as connections:
 
 ![Cities Example Graph](cities_graph.png)
@@ -138,7 +139,7 @@ The example has the cities as *vertices* in several *vertex collections* - `germ
     @END_EXAMPLE_ARANGOSH_RUN
     @endDocuBlock graph_create_cities_sample
 
-!SUBSUBSECTION The Traversal Graph
+#### The Traversal Graph
 This graph was designed to demonstrate filters in traversals. It has some labels to filter on it.
 
 ![traversal graph](traversal_graph.png)
@@ -156,7 +157,7 @@ Circles have uniq numeric labels. Edges have two boolean attributes (*theFalse* 
     @END_EXAMPLE_ARANGOSH_RUN
     @endDocuBlock graph_create_traversal_sample
 
-!SUBSUBSECTION The World Graph
+#### The World Graph
 The world contry graph structures its nodes like that: world -> continet -> country -> capital. In some cases edge directions aren't forward (therefore it will be displayed disjunct in the graph viewer). It has two ways of creating it. One using the named graph utilities (*worldCountry*), one without (*worldCountryUnManaged*). 
 It is used to demonstrate raw traversal operations.
 
@@ -173,7 +174,7 @@ It is used to demonstrate raw traversal operations.
     @endDocuBlock graph_create_world_sample
 
 
-!SUBSECTION Cookbook examples
+### Cookbook examples
 The above referenced chapters describe the various APIs of ArangoDBs graph engine with small examples. Our cookbook has some more real life examples:
 
  - [Traversing a graph in full depth](https://docs.arangodb.com/cookbook/Graph/FulldepthTraversal.html)
@@ -183,5 +184,5 @@ The above referenced chapters describe the various APIs of ArangoDBs graph engin
  - [Using a custom visitor from node.js](https://docs.arangodb.com/cookbook/Graph/CustomVisitorFromNodeJs.html)
  - [AQL Example Queries on an Actors and Movies Database](https://docs.arangodb.com/cookbook/Graph/ExampleActorsAndMovies.html)
 
-!SUBSECTION Higher volume graph examples
+### Higher volume graph examples
 All of the above examples are rather small so they are easy cromprehensible and can demonstrate the way the functionality works. There are however several datasets freely available on the web that are a lot bigger. [We collected some of them with import scripts](https://github.com/triAGENS/ArangoDB-Data/) so you may play around with them. Another huge graph is the [Pokec social network](https://snap.stanford.edu/data/soc-pokec.html) from Slovakia that we [used for performance testing on several databases](https://www.arangodb.com/2015/06/multi-model-benchmark/); You will find importing scripts etc. in this blogpost.

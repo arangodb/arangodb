@@ -1,4 +1,5 @@
-!CHAPTER Array functions
+Array functions
+===============
 
 AQL supports the following functions to operate on array values:
 

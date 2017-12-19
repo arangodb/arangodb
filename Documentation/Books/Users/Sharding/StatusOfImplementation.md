@@ -1,4 +1,5 @@
-!CHAPTER Status of the implementation
+Status of the implementation
+============================
 
 This version 2.0 of ArangoDB contains the first usable implementation
 of the sharding extensions. However, not all planned features are

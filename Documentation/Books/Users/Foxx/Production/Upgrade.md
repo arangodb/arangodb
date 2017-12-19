@@ -1,4 +1,5 @@
-!CHAPTER Upgrade to a new version
+Upgrade to a new version
+========================
 
 In this chapter we want to cover the case where you have a Foxx in production and want to upgrade it to a new version.
 In this specific case you do not want to execute the setup and teardown scripts.

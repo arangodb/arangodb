@@ -1,4 +1,5 @@
-!CHAPTER Database-to-Endpoint Mapping
+Database-to-Endpoint Mapping
+============================
 
 If a [database name](../Glossary/README.md#database-name) is present in the URI as above, ArangoDB will consult the database-to-endpoint
 mapping for the current endpoint, and validate if access to the database is allowed on the 

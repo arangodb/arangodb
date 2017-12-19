@@ -1,4 +1,5 @@
-!CHAPTER HTTP Interface for Sharding 
+HTTP Interface for Sharding
+===========================
 
 Sharding only should be used by developers!
 

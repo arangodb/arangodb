@@ -1,6 +1,7 @@
-!CHAPTER General Upgrade Information
+General Upgrade Information
+===========================
 
-!SUBSECTION Recommended upgrade procedure
+### Recommended upgrade procedure
 
 To upgrade an existing ArangoDB database to a newer version of ArangoDB 
 (e.g. 2.2 to 2.3, or 2.3 to 2.4), the following method is recommended:

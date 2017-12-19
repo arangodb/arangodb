@@ -1,4 +1,5 @@
-!CHAPTER Available Debugging mechanisms
+Available Debugging mechanisms
+==============================
 
 We are talking about the development mode for Foxx.
 Hence one of the most important parts will be debugging of your Foxx.
@@ -12,7 +13,8 @@ unix>foxx-manager development /example
 Activated development mode for Application hello-foxx version 1.5.0 on mount point /example
 ```
 
-!SECTION Errors during install
+Errors during install
+---------------------
 
 Now you apply changes to the source code of Foxx.
 In development mode it is possible that you create a Foxx that could not be installed regularly.
@@ -29,7 +31,8 @@ Content-Length: 554
 {"exception":"Error: App not found","stacktrace":["Error: App not found","  at Object.lookupApp (./js/server/modules/org/arangodb/foxx/manager.js:99:13)","  at foxxRouting (./js/server/modules/org/arangodb/actions.js:1040:27)","  at execute (./js/server/modules/org/arangodb/actions.js:1291:7)","  at Object.routeRequest (./js/server/modules/org/arangodb/actions.js:1312:3)","  at Function.actions.defineHttp.callback (js/actions/api-system.js:51:15)",""],"error":true,"code":500,"errorNum":500,"errorMessage":"failed to load foxx mounted at '/example'"}
 ```
 
-!SECTION Errors in routes
+Errors in routes
+----------------
 
 If you have created a Foxx that can be regularly installed but has an unhandled error inside a route.
 Triggering this route and entering the error case will return the specific error including a stack trace for you to hunt it down:
@@ -45,7 +48,8 @@ Content-Length: 917
 {"error":"Unhandled Error","stack":"Error: Unhandled Error\n  at fail (js/apps/_db/_system/example/APP/app.js:279:13)\n  at js/apps/_db/_system/example/APP/app.js:284:5\n  at Object.res.action.callback (./js/server/modules/org/arangodb/foxx/internals.js:108:5)\n  at ./js/server/modules/org/arangodb/foxx/routing.js:346:19\n  at execute (./js/server/modules/org/arangodb/actions.js:1291:7)\n  at next (./js/server/modules/org/arangodb/actions.js:1308:7)\n  at [object Object]:386:5\n  at execute (./js/server/modules/org/arangodb/actions.js:1291:7)\n  at routeRequest (./js/server/modules/org/arangodb/actions.js:1312:3)\n  at foxxRouting (./js/server/modules/org/arangodb/actions.js:1082:7)\n  at execute (./js/server/modules/org/arangodb/actions.js:1291:7)\n  at Object.routeRequest (./js/server/modules/org/arangodb/actions.js:1312:3)\n  at Function.actions.defineHttp.callback (js/actions/api-system.js:51:15)\n"}
 ```
 
-!SECTION Errors in logs
+Errors in logs
+--------------
 
 Independent of the errors presented in the routes on requests Fox will always log errors to the log-file if caught by the default error handlers.
 The log entries will always contain stacktraces and error messages:

@@ -1,4 +1,5 @@
-!CHAPTER Generate a new Application
+Generate a new Application
+==========================
 
 In this chapter we will make use of the Foxx manager as described [before](README.md).
 This time we do not have anything to start from and would like ArangoDB to create a template for us.

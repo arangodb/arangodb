@@ -1,4 +1,5 @@
-!CHAPTER Working with Skiplist Indexes
+Working with Skiplist Indexes
+=============================
 
 If a suitable skip-list index exists, then /_api/simple/range will use this index to execute a range query.
 

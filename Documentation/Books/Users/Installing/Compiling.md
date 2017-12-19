@@ -1,4 +1,5 @@
-!CHAPTER Compiling ArangoDB from scratch
+Compiling ArangoDB from scratch
+===============================
 
 The following sections describe how to compile and build the ArangoDB from
 scratch. ArangoDB will compile on most Linux and Mac OS X systems. We assume
@@ -12,13 +13,14 @@ By default, cloning the github repository will checkout **devel**. This version
 contains the development version of the ArangoDB.  Use this branch if you want
 to make changes to the ArangoDB source.
 
-!SECTION Devel Version
+Devel Version
+-------------
 
 Note: a separate [blog
 article](http://jsteemann.github.io/blog/2014/10/16/how-to-compile-arangodb-from-source/)
 is available that describes how to compile ArangoDB from source on Ubuntu.
 
-!SUBSECTION Basic System Requirements
+### Basic System Requirements
 
 Verify that your system contains
 
@@ -43,7 +45,7 @@ When compiling with special configure options, you may need the following extra 
 
 * the Boost test framework library (only when using configure option `--enable-maintainer-mode`) 
 
-!SUBSECTION Download the Source
+### Download the Source
 
 Download the latest source using ***git***:
     
@@ -57,7 +59,7 @@ any changes, you can speed up cloning substantially by using the *--single-branc
     
     unix> git clone --single-branch --depth 1 git://github.com/arangodb/arangodb.git
 
-!SUBSECTION Setup
+### Setup
 
 Switch into the ArangoDB directory
 
@@ -69,7 +71,7 @@ In order to generate the configure script, execute
 
 This will call aclocal, autoheader, automake, and autoconf in the correct order.
 
-!SUBSECTION Configure
+### Configure
 
 In order to configure the build environment please execute
 
@@ -163,7 +165,7 @@ g++ 6 or higher, the following environment variables need to be set:
 
 `CFLAGS="-fno-delete-null-pointer-checks" CXXFLAGS="-fno-delete-null-pointer-checks" ./configure ...`
 
-!SUBSECTION Compiling Go
+### Compiling Go
 
 Users F21 and duralog told us that some systems don't provide an update-to-date
 version of go. This seems to be the case for at least Ubuntu 12 and 13. To
@@ -189,7 +191,7 @@ version of go into the ArangoDB source directory and build it:
     ./configure --enable-internal-go
 
 
-!SUBSECTION Compile
+### Compile
 
 Compile the programs (server, client, utilities) by executing
 
@@ -199,7 +201,7 @@ This will compile ArangoDB and create a binary of the server in
 
     ./bin/arangod
 
-!SUBSECTION Test
+### Test
 
 Create an empty directory
 
@@ -233,7 +235,7 @@ This should produce a JSON object like
 
 as result.
 
-!SUBSECTION Re-building ArangoDB after an update
+### Re-building ArangoDB after an update
 
 To stay up-to-date with changes made in the main ArangoDB repository, you will
 need to pull the changes from it and re-run `make`.
@@ -271,7 +273,7 @@ before issuing `make superclean` (as make `superclean` also removes the file `co
 
 Sometimes you can get away with the less intrusive commands.
 
-!SUBSECTION Install
+### Install
 
 Install everything by executing
 

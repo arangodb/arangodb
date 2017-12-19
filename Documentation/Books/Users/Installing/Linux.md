@@ -1,4 +1,5 @@
-!CHAPTER Linux
+Linux
+=====
 
 You can find binary packages for various Linux distributions
 [here](http://www.arangodb.com/install/).
@@ -16,24 +17,27 @@ We provide packages for:
 * Ubuntu
 
 
-!SECTION Using a Package Manager to install ArangoDB
+Using a Package Manager to install ArangoDB
+-------------------------------------------
 
 Follow the instructions on the [install](https://www.arangodb.com/install)
 page to use your favorite package manager for the major distributions. After
 setting up the ArangoDB repository you can easily install ArangoDB using yum,
 aptitude, urpmi or zypper.
 
-!SUBSECTION Linux-Mint
+### Linux-Mint
 
 Please use the corresponding Ubuntu or Debian packages.
 
-!SECTION Using Vagrant and Chef
+Using Vagrant and Chef
+----------------------
 
 A Chef recipe is available from jbianquetti at:
 
     https://github.com/jbianquetti/chef-arangodb
 
-!SECTION Using ansible
+Using ansible
+-------------
 
 An [Ansible](http://ansible.com) role is available through [Ansible-Galaxy](https://galaxy.ansible.com)
 

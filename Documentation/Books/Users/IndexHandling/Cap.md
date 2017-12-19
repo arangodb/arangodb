@@ -1,7 +1,8 @@
-!CHAPTER Cap Constraint
+Cap Constraint
+==============
 
 
-!SUBSECTION Introduction to Cap Constraints
+### Introduction to Cap Constraints
 
 This is an introduction to ArangoDB's size restrictions aka cap constraints for
 collections.
@@ -27,7 +28,8 @@ indefinitely. Cap constraints can be used to automate the process of getting rid
 of "old" documents, and so save the user from implementing own jobs to purge
 "old" collection data.
 
-!SECTION Accessing Cap Constraints from the Shell
+Accessing Cap Constraints from the Shell
+----------------------------------------
 
 <!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock collectionEnsureCapConstraint

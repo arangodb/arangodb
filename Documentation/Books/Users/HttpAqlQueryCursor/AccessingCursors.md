@@ -1,4 +1,5 @@
-!CHAPTER Accessing Cursors via HTTP 
+Accessing Cursors via HTTP
+==========================
 
 <!-- js/actions/api-cursor.js -->
 @startDocuBlock JSF_post_api_cursor

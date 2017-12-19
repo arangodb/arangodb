@@ -1,21 +1,23 @@
-!CHAPTER Command-line options
-!SUBSECTION Configuration Files
+Command-line options
+====================
+### Configuration Files
 
 Options can be specified on the command line or in configuration files. If a
 string *Variable* occurs in the value, it is replaced by the corresponding
 environment variable.
 
-!SECTION General Options
+General Options
+---------------
 
-!SUBSECTION General help
+### General help
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock generalHelp
 
-!SUBSECTION Version
+### Version
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock generalVersion
  
-!SUBSECTION Upgrade 
+### Upgrade
 `--upgrade`
 
 Specifying this option will make the server perform a database upgrade at start. A database upgrade will first compare the version number stored in the file VERSION in the database directory with the current server version.
@@ -28,22 +30,22 @@ If the version number found in the database directory is lower than the version 
 
 Whether or not this option is specified, the server will always perform a version check on startup. Running the server with a non-matching version number in the VERSION file will make the server refuse to start.
 
-!SUBSECTION Configuration
+### Configuration
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock configurationFilename
 
-!SUBSECTION Daemon
+### Daemon
 `--daemon`
 
 Runs the server as a daemon (as a background process). This parameter can only
 be set if the pid (process id) file is specified. That is, unless a value to the
 parameter pid-file is given, then the server will report an error and exit.
 
-!SUBSECTION Default Language
+### Default Language
 <!-- arangod/RestServer/ArangoServer.h -->
 @startDocuBlock DefaultLanguage
 
-!SUBSECTION Supervisor
+### Supervisor
 `--supervisor`
 
 Executes the server in supervisor mode. In the event that the server
@@ -77,25 +79,25 @@ start up a new database process:
 10168 ?        Sl     0:00  \_ ./arangod --supervisor --pid-file /var/run/arangodb.pid /tmp/vocbase/
 ```
 
-!SUBSECTION User identity 
+### User identity
 
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 @startDocuBlock configurationUid
 
-!SUBSECTION Group identity
+### Group identity
 
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 @startDocuBlock configurationGid
 
-!SUBSECTION Process identity 
+### Process identity
 
 <!-- lib/Rest/AnyServer.h -->
 
 @startDocuBlock pidFile
 
-!SUBSECTION Console
+### Console
 `--console`
 
 Runs the server in an exclusive emergency console mode. When 
@@ -110,5 +112,5 @@ Note that the server cannot be started in this mode if it is
 already running in this or another mode. 
 
 
-!SUBSECTION Random Generator
+### Random Generator
 @startDocuBlock randomGenerator

@@ -1,6 +1,8 @@
-!CHAPTER Administrating ArangoDB 
+Administrating ArangoDB
+=======================
 
-!SECTION AppendOnly/MVCC 
+AppendOnly/MVCC
+---------------
 
 Instead of overwriting existing documents, ArangoDB will create a new version of 
 modified documents. This is even the case when a document gets deleted. The
@@ -14,7 +16,8 @@ The system collects obsolete versions as garbage, recognizing them as
 forsaken. Garbage collection is asynchronous and runs parallel to other
 processes.
 
-!SECTION Mostly Memory/Durability
+Mostly Memory/Durability
+------------------------
 
 Database documents are stored in memory-mapped files. Per default, these
 memory-mapped files are synced regularly but not instantly. This is often a good
@@ -23,9 +26,9 @@ is too low for an application, the server can also sync all modifications to
 disk instantly. This will give full durability but will come with a performance
 penalty as each data modification will trigger a sync I/O operation.
 
-!SUBSECTION Durability Configuration
+### Durability Configuration
 
-!SUBSUBSECTION Global Configuration 
+#### Global Configuration
 
 There are global configuration values for durability, which can be adjusted by
 specifying the following configuration options:
@@ -39,7 +42,7 @@ specifying the following configuration options:
 @startDocuBlock WalLogfileSyncInterval
 
 
-!SUBSUBSECTION Per-collection configuration
+#### Per-collection configuration
 
 You can also configure the durability behavior on a per-collection basis.
 Use the ArangoDB shell to change these properties.
@@ -48,18 +51,19 @@ Use the ArangoDB shell to change these properties.
 @startDocuBlock collectionProperties
 
 
-!SUBSUBSECTION Per-operation configuration
+#### Per-operation configuration
 
 Many data-modification operations and also ArangoDB's transactions allow to specify 
 a *waitForSync* attribute, which when set ensures the operation data has been 
 synchronized to disk when the operation returns.
 
-!SECTION Disk-Usage Configuration
+Disk-Usage Configuration
+------------------------
 
 The amount of disk space used by ArangoDB is determined by a few configuration
 options. 
 
-!SUBSECTION Global Configuration 
+### Global Configuration
 
 The total amount of disk storage required by ArangoDB is determined by the size of
 the write-ahead logfiles plus the sizes of the collection journals and datafiles.
@@ -95,7 +99,7 @@ are is determined by the following global configuration value:
 @startDocuBlock databaseMaximalJournalSize
 
 
-!SUBSECTION Per-collection configuration
+### Per-collection configuration
 
 The journal size can also be adjusted on a per-collection level using the collection's
 *properties* method.

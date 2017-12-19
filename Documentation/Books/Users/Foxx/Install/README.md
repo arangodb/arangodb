@@ -1,6 +1,8 @@
-!CHAPTER Installing Foxx Applications
+Installing Foxx Applications
+============================
 
-!SECTION Introduction to Foxx manager
+Introduction to Foxx manager
+----------------------------
 
 The Foxx manager is a shell program. It should have been installed under **/usr/bin** or **/usr/local/bin**
 when installing the ArangoDB package. An instance of the ArangoDB server must be
@@ -136,7 +138,8 @@ Application itzpapalotl version 1.0.0 installed successfully at mount point /exa
 This will do *uninstall* and *install* of the application but will **not**
 execute *setup* or *teardown* scripts, but will run the *upgrade* script instead.
 
-!SECTION Application identifier
+Application identifier
+----------------------
 
 For all functions that install an application the first argument is an Application identifier.
 In the examples above we have used the Arango Store and downloaded applications that have been published there.

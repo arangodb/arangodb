@@ -1,9 +1,11 @@
-!CHAPTER Application Production Mode
+Application Production Mode
+===========================
 
 This chapter describes the production mode for Foxx applications.
 This is the default mode for all newly installed apps and should always be used in a production environment.
 
-!SECTION Activation
+Activation
+----------
 
 Activating the production mode is done with a single command:
 
@@ -21,7 +23,8 @@ Mount       Name          Author          Description                           
 ---------   -----------   -------------   -----------------------------------------   --------   ------------
 0 application(s) found
 ```
-!SECTION Effects
+Effects
+-------
 
 For a Foxx application in production mode the following effects apply:
 
@@ -38,7 +41,8 @@ Stack traces are never delivered via the public API.
 For more information see the [Debugging](Debugging.md) section.
 
 
-!SECTION Considerations for production environments
+Considerations for production environments
+------------------------------------------
 So you have created your server side application utilizing Foxx services as their backend. 
 To get optimal performance you may want to implement [an HTTP connection pool using keepalive](../../GeneralHttp/README.md#http-keepalive).
 

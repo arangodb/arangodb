@@ -1,9 +1,10 @@
-!CHAPTER Collection-based queries 
+Collection-based queries
+========================
 
 Normally you would want to run queries on data stored in collections. This section
 will provide several examples for that.
 
-!SUBSECTION Example data
+### Example data
 
 Some of the following example queries are executed on a collection *users*
 with the following initial data:
@@ -81,7 +82,7 @@ relationships between users. The example data for *relations* are as follows:
 ]
 ```
 
-!SUBSECTION Things to consider when running queries on collections
+### Things to consider when running queries on collections
 
 Note that all documents created in the two collections will automatically get the
 following server-generated attributes:

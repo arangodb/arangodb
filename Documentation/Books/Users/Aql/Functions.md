@@ -1,4 +1,5 @@
-!CHAPTER Functions
+Functions
+=========
 
 AQL supports functions to allow more complex computations. Functions can be
 called at any query position where an expression is allowed. The general
@@ -21,7 +22,7 @@ Some example function calls:
 In contrast to collection and variable names, function names are case-insensitive, 
 i.e. *LENGTH(foo)* and *length(foo)* are equivalent.
 
-!SUBSUBSECTION Extending AQL
+#### Extending AQL
  
 Since ArangoDB 1.3, it is possible to extend AQL with user-defined functions. 
 These functions need to be written in JavaScript, and be registered before usage

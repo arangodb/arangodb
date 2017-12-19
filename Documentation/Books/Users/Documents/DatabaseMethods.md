@@ -1,21 +1,22 @@
-!CHAPTER Database Methods
+Database Methods
+================
 
-!SUBSECTION Document
+### Document
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsDocumentName
 
-!SUBSECTION Exists
+### Exists
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsDocumentExists
 
-!SUBSECTION Replace
+### Replace
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsDocumentReplace
 
-!SUBSECTION Update
+### Update
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsDocumentUpdate
 
-!SUBSECTION Remove
+### Remove
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsDocumentRemove

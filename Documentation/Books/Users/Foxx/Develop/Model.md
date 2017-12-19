@@ -1,4 +1,5 @@
-!CHAPTER Details on FoxxModel
+Details on FoxxModel
+====================
 
 The model doesn't know anything about the database. It is just a representation
 of the data as an JavaScript object.  You can add and overwrite the methods of
@@ -111,42 +112,42 @@ people.remove(person);
 // afterRemove()
 ```
 
-!SUBSECTION Extend
+### Extend
 <!-- js/server/modules/org/arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_extend
 
-!SUBSECTION Initialize
+### Initialize
 <!-- js/server/modules/org/arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_initializer
 
-!SUBSECTION Get
+### Get
 <!-- js/server/modules/org/arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_get
 
-!SUBSECTION Set
+### Set
 <!-- js/server/modules/org/arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_set
 
-!SUBSECTION Has
+### Has
 <!-- js/server/modules/org/arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_has
 
-!SUBSECTION isValid
+### isValid
 <!-- js/server/modules/org/arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_isvalid
 
-!SUBSECTION Errors
+### Errors
 <!-- js/server/modules/org/arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_errors
 
-!SUBSECTION Attributes
+### Attributes
 <!-- js/server/modules/org/arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_attributes
 
-!SUBSECTION forDB
+### forDB
 <!-- js/server/modules/org/arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_forDB
 
-!SUBSECTION forClient
+### forClient
 <!-- js/server/modules/org/arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_forClient
