@@ -83,23 +83,35 @@ struct RegionCoverParams {
   int bestIndexedLevel = 28;
 };
 
-struct NearParams {
-  NearParams(geo::Coordinate center)
-  : centroid(center),
+struct QueryParams {
+  QueryParams() :
+  centroid(geo::Coordinate::Invalid()),
   cover(queryMaxCoverCells, queryWorstLevel, queryBestLevel) {}
   
+
+  // ============== Near Query Params =============
+
   /// Centroid from which to start
   geo::Coordinate centroid;
+  
   // Min and max distance from centroid that we're willing to search.
   double minDistance = 0.0;
+  bool minInclusive = false;
   
   /// entire earth (halfaround in each direction),
   /// may not be larger than half earth circumference or larger
   /// than the bounding cap of the filter region (see _filter)
   double maxDistance = kEarthRadiusInMeters * M_PI;
+  bool maxInclusive = false;
   
+  bool isSorted = false;
   /// Default order is from closest to farthest
   bool ascending = true;
+
+  // ============= Filtered Params ===============
+
+  FilterType filterType = FilterType::NONE;
+  geo::ShapeContainer filterShape;
   
   // parameters to calculate the cover for index
   // lookup intervals

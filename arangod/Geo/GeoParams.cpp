@@ -73,7 +73,7 @@ void RegionCoverParams::configureS2RegionCoverer(
   coverer->set_max_level(bestIndexedLevel);
 }
 
-double NearParams::maxDistanceRad() const {
+double geo::QueryParams::maxDistanceRad() const {
   double mm = std::min(maxDistance / kEarthRadiusInMeters, M_PI);
   /*if (filter != FilterType::NONE) {
     TRI_ASSERT(region != nullptr);

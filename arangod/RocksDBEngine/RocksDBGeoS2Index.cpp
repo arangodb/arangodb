@@ -92,7 +92,7 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
                ManagedDocumentResult* mmdr, RocksDBGeoS2Index const* index,
-               geo::NearParams const& params)
+               geo::QueryParams const& params)
       : RocksDBGeoS2IndexIterator(collection, trx, mmdr, index),
         _near(params) {
     estimateDensity();
@@ -360,6 +360,81 @@ bool RocksDBGeoS2Index::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
+// Handle GEO_DISTANCE(<something>, doc.field)
+static geo::Coordinate handleDistFunc(aql::AstNode const* node) {
+  //aql::AstNode* dist = node->getMemberUnchecked(0);
+  TRI_ASSERT(node->type == aql::NODE_TYPE_FCALL);
+  aql::AstNode* args = node->getMemberUnchecked(0);
+  TRI_ASSERT(args->numMembers() == 2);
+  aql::AstNode* cc = args->getMemberUnchecked(0);
+  // TODO check that this is not an attribute access
+  if (cc->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  Result res;
+  if (cc->type == aql::NODE_TYPE_ARRAY) { // [lng, lat]
+      return geo::Coordinate(/*lat*/ cc->getMember(1)->getDoubleValue(),
+                             /*lon*/ cc->getMember(0)->getDoubleValue());
+  } else {
+    Result res;
+    VPackBuilder jsonB;
+    cc->toVelocyPackValue(jsonB);
+    VPackSlice json = jsonB.slice();
+    geo::ShapeContainer shape;
+    if (json.isArray() && json.length() >= 2) {
+      res = shape.parseCoordinates(json, /*GeoJson*/true);
+    } else {
+      res = geo::GeoJsonParser::parseGeoJson(json, shape);
+    }
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    return shape.centroid();
+  }
+}
+
+static void handleNode(aql::AstNode const* node, geo::QueryParams& params) {
+
+  switch (node->type) {
+    case aql::NODE_TYPE_FCALL: {
+      // TODO handle GEO_CONTAINS / INTERSECT
+      aql::AstNode* args = node->getMemberUnchecked(0);
+      TRI_ASSERT(args->numMembers() == 2);
+      
+      
+      break;
+    }
+    // Handle GEO_DISTANCE(<something>, doc.field) [<|<=|=>|>] <constant>
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+      params.minInclusive = true;
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT: {
+      geo::Coordinate c = handleDistFunc(node->getMember(0));
+      if (params.centroid != geo::Coordinate::Invalid() &&
+          params.centroid != c) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+      params.minDistance = node->getMember(1)->getDoubleValue();
+      break;
+    }
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+          params.maxInclusive = true;
+    case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT: {
+      geo::Coordinate c = handleDistFunc(node->getMember(0));
+      if (params.centroid != geo::Coordinate::Invalid() &&
+          params.centroid != c) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+      params.maxDistance = node->getMember(1)->getDoubleValue();
+      break;
+    }
+    default:
+      break;
+  }
+
+}
+
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
@@ -367,9 +442,17 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
     arangodb::aql::Variable const* reference, bool reverse) {
   TRI_ASSERT(node != nullptr);
 
-  size_t numMembers = node->numMembers();
+  geo::QueryParams params;
+  if (aql::Ast::IsAndOperatorType(node->type)) {
+    for (size_t i = 0; i < node->numMembers(); i++) {
+      handleNode(node->getMemberUnchecked(i), params);
+    }
+  } else {
+    handleNode(node, params);
+  }
 
-  TRI_ASSERT(numMembers == 1);  // should only be an FCALL
+
+  /*TRI_ASSERT(numMembers == 1);  // should only be an FCALL
   auto fcall = node->getMember(0);
   TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);
   TRI_ASSERT(fcall->numMembers() == 1);
@@ -378,19 +461,19 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
   numMembers = args->numMembers();
   TRI_ASSERT(numMembers >= 3);
 
-  geo::Coordinate center(/*lat*/ args->getMember(1)->getDoubleValue(),
-                         /*lon*/ args->getMember(2)->getDoubleValue());
+  geo::Coordinate center(*lat* args->getMember(1)->getDoubleValue(),
+                         *lon* args->getMember(2)->getDoubleValue());
   TRI_ASSERT(std::abs(center.latitude) <= 90.0 &&
              std::abs(center.longitude) <= 180.0);
   LOG_TOPIC(ERR, Logger::FIXME) << "center: " << center.toString();
   
-  geo::NearParams params(center);
+
   params.minDistance = 0; // TODO support minDistance
   if (numMembers == 5) { // WITHIN
     params.maxDistance = args->getMember(3)->getDoubleValue();
     //params.maxInclusive = args->getMember(4)->getBoolValue();
     // FIXME: maxInclusive support
-  }
+  }*/
 
   // params.cover.worstIndexedLevel < _coverParams.worstIndexedLevel
   // is not necessary, > would be missing entries.

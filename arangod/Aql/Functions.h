@@ -220,8 +220,6 @@ struct Functions {
                                VPackFunctionParameters const&);
    static AqlValue GeoContains(arangodb::aql::Query*, transaction::Methods*,
                                VPackFunctionParameters const&);
-   static AqlValue GeoCircleContains(arangodb::aql::Query*, transaction::Methods*,
-                                   VPackFunctionParameters const&);
    static AqlValue GeoIntersects(arangodb::aql::Query*, transaction::Methods*,
                                  VPackFunctionParameters const&);
    static AqlValue IsInPolygon(arangodb::aql::Query*, transaction::Methods*,

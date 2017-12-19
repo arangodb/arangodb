@@ -2385,41 +2385,6 @@ AqlValue Functions::GeoContains(arangodb::aql::Query* query,
   return GeoContainsIntersect(query, trx, parameters, "GEO_CONTAINS", true);
 }
 
-/// @brief function GEO_CIRCLE_CONTAINS
-AqlValue Functions::GeoCircleContains(arangodb::aql::Query* query,
-                                transaction::Methods* trx,
-                                VPackFunctionParameters const& parameters) {
-  
-  ValidateParameters(parameters, "GEO_CIRCLE_CONTAINS", 3, 3);
-  AqlValue loc = ExtractFunctionParameterValue(trx, parameters, 0);
-  AqlValue max = ExtractFunctionParameterValue(trx, parameters, 1);
-  AqlValue test = ExtractFunctionParameterValue(trx, parameters, 2);
-  
-  if (!max.isNumber()) {
-    Functions::RegisterInvalidArgumentWarning(query, "GEO_CIRCLE_CONTAINS");
-    return AqlValue(AqlValueHintNull());
-  }
-  double radius = max.toDouble(trx);
-  radius = std::max(0.0, std::min(radius, geo::kEarthRadiusInMeters));
-  
-  Result res(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);;
-  AqlValueMaterializer materializer(trx);
-  geo::ShapeContainer center;
-  if (loc.isObject()) {
-    res = geo::GeoJsonParser::parseGeoJson(materializer.slice(loc, true), center);
-  } else if (loc.isArray() && loc.length() >= 2) {
-    res = center.parseCoordinates(materializer.slice(loc, true), /*geoJson*/true);
-  }
-  if (res.fail()) {
-    Functions::RegisterWarning(query, "GEO_CIRCLE_CONTAINS", res);
-    return AqlValue(AqlValueHintNull());
-  }
-  
-  geo::ShapeContainer circle; // outer circle
-  circle.resetAsCap(center.centroid(), radius);
-  return GeoContainsIntersect(query, trx, "GEO_CIRCLE_CONTAINS", circle, test, true);
-}
-
 /// @brief function GEO_INTERSECTS
 AqlValue Functions::GeoIntersects(arangodb::aql::Query* query,
                                   transaction::Methods* trx,

@@ -4655,7 +4655,7 @@ struct GeoIndexInfo {
   // ============ Limit Info ============
   size_t actualLimit = SIZE_MAX;
   
-  // ============ Attributes accessed ============
+  // ============ Accessed Fields ============
   AstNode const* locationVar = nullptr;// access to location field
   AstNode const* latitudeVar = nullptr;// access path to longitude
   AstNode const* longitudeVar = nullptr;// access path to latitude
@@ -4698,18 +4698,22 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan,
   std::shared_ptr<LogicalCollection> coll = collNode->collection()->getCollection();
   
   //check for suitiable indexes
-  for (std::shared_ptr<arangodb::Index> index : coll->getIndexes()) {
+  for (std::shared_ptr<arangodb::Index> idx : coll->getIndexes()) {
     // check if current index is a geo-index
-    std::size_t fieldNum = index->fields().size();
-    bool isGeo1 = index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX;
-    bool isGeo2 = index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX;
-    bool isS2 = index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_S2_INDEX;
+    std::size_t fieldNum = idx->fields().size();
+    bool isGeo1 = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX;
+    bool isGeo2 = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX;
+    bool isS2 = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_S2_INDEX;
     
     if ((isGeo2 || isS2) && fieldNum == 2) { // individual fields
       // check access paths of attributes in ast and those in index match
-      if (index->fields()[0] == attributeAccess1.second &&
-          index->fields()[1] == attributeAccess2.second) {
-        info.index = index;
+      if (idx->fields()[0] == attributeAccess1.second &&
+          idx->fields()[1] == attributeAccess2.second) {
+        if (info.index != nullptr && info.index != idx) {
+          return false; 
+        } 
+
+        info.index = idx;
         info.latitudeVar = firstArg;
         info.longitudeVar = secondArg;
         /*TRI_AttributeNamesJoinNested(attributeAccess1.second, info.longitude, true);
@@ -4717,11 +4721,11 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan,
         return true;
       }
     } else if ((isGeo1 || isS2) && fieldNum == 1) {
-      std::vector<basics::AttributeName> fields1 = index->fields()[0];
-      std::vector<basics::AttributeName> fields2 = index->fields()[0];
+      std::vector<basics::AttributeName> fields1 = idx->fields()[0];
+      std::vector<basics::AttributeName> fields2 = idx->fields()[0];
       
       VPackBuilder builder;
-      index->toVelocyPack(builder,true,false);
+      idx->toVelocyPack(builder,true,false);
       bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
       /*bool legacy = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "legacy", false);
       if (isS2 && !legacy) {
@@ -4731,7 +4735,10 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan,
       fields1.back().name += geoJson ? "[1]" : "[0]";
       fields2.back().name += geoJson ? "[0]" : "[1]";
       if (fields1 == attributeAccess1.second && fields2 == attributeAccess2.second) {
-        info.index = index;
+        if (info.index != nullptr && info.index != idx) {
+          return false; 
+        } 
+        info.index = idx;
         info.latitudeVar = secondArg;
         info.longitudeVar = firstArg;
         /*TRI_AttributeNamesJoinNested(attributeAccess1.second, info.longitude, true);
@@ -4767,13 +4774,16 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* arg, GeoIndexInf
   std::shared_ptr<LogicalCollection> coll = collNode->collection()->getCollection();
   
   //check for suitable indexes
-  for (std::shared_ptr<arangodb::Index> index : coll->getIndexes()) {
+  for (std::shared_ptr<arangodb::Index> idx : coll->getIndexes()) {
     // check if current index is a geo-index
-    bool isS2 = index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_S2_INDEX;
-    if (isS2 && index->fields().size() == 1) { // individual fields
+    bool isS2 = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_S2_INDEX;
+    if (isS2 && idx->fields().size() == 1) { // individual fields
       // check access paths of attributes in ast and those in index match
-      if (index->fields()[0] == attributeAccess.second) {
-        info.index = index;
+      if (idx->fields()[0] == attributeAccess.second) {
+        if (info.index != nullptr && info.index != idx) {
+          return false; 
+        } 
+        info.index = idx;
         info.locationVar = arg;
         //TRI_AttributeNamesJoinNested(attributeAccess.second, info.location, true);
         return true;
@@ -4793,19 +4803,23 @@ static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode, GeoI
   auto func = static_cast<Function const*>(funcNode->getData());
   if (fargs->numMembers() >= 4 && func->name == "DISTANCE") { // allow DISTANCE(a,b,c,d)
     if (distanceFuncArgCheck(plan, fargs->getMemberUnchecked(0), fargs->getMemberUnchecked(1), info)) {
+      // TODO check if vars reference the same shit
       info.distanceCenterLat = fargs->getMemberUnchecked(2);
       info.distanceCenterLng = fargs->getMemberUnchecked(3);
       return true;
     } else if (distanceFuncArgCheck(plan, fargs->getMemberUnchecked(2), fargs->getMemberUnchecked(3), info)) {
+      // TODO check if vars reference the same shit
       info.distanceCenterLat = fargs->getMemberUnchecked(0);
       info.distanceCenterLng = fargs->getMemberUnchecked(1);
       return true;
     }
   } else if (fargs->numMembers() == 2 && (func->name == "GEO_DISTANCE")) {
     if (geoFuncArgCheck(plan, fargs->getMember(0), info)) {
+      // TODO check if vars reference the same shit
       info.distanceCenter = fargs->getMemberUnchecked(1);
       return true;
     } else if (geoFuncArgCheck(plan, fargs->getMember(1), info)) {
+      // TODO check if vars reference the same shit
       info.distanceCenter = fargs->getMemberUnchecked(0);
       return true;
     }
@@ -4844,6 +4858,9 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
         idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX ||
         idx->type() == arangodb::Index::TRI_IDX_TYPE_S2_INDEX) {
+        if (info.index != nullptr && info.index != idx) {
+          return false; 
+        } 
       info.index = idx;
       break;
     }
@@ -5053,10 +5070,12 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
 std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
                                              GeoIndexInfo& info) {
   Ast* ast = plan->getAst();
-  AstNode* func = nullptr;
+  auto cond = std::make_unique<Condition>(ast);
   if (info.distanceCenterLat || info.distanceCenter) {
-    // create GEO_CENTER_CONTAINS
-    AstNode* args = ast->createNodeArray(3);
+    // create GEO_DISTANCE < C
+    TRI_ASSERT(info.maxDistance || info.minDistance);
+
+    AstNode* args = ast->createNodeArray(2);
     if (info.distanceCenterLat && info.distanceCenterLng) { // legacy
       TRI_ASSERT(!info.distanceCenter);
       // info.isSorted && info.ascending &&
@@ -5069,15 +5088,6 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
       TRI_ASSERT(!info.distanceCenterLat && !info.distanceCenterLng);
       args->addMember(info.distanceCenter);  // center location
     }
-    // maxDistance is only null if NEAR or WITHIN
-    TRI_ASSERT(info.maxDistance != nullptr ||
-               info.isSorted && info.ascending);
-    
-    if (info.maxDistance) {
-      args->addMember(info.maxDistance);
-    } else {
-      args->addMember(ast->createNodeValueDouble(geo::kEarthRadiusInMeters));
-    }
     
     if (info.locationVar) {
       args->addMember(info.locationVar);
@@ -5088,8 +5098,25 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
       array->addMember(info.latitudeVar);
       args->addMember(array);
     }
-    func = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("GEO_CIRCLE_CONTAINS"), args);
-  } else if (info.filterMode != geo::FilterType::NONE) { // TODO allow both?
+    AstNode* func = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("GEO_DISTANCE"), args);
+
+    // maxDistance is only null if NEAR or WITHIN
+    TRI_ASSERT(info.maxDistance != nullptr ||
+               info.isSorted && info.ascending);
+
+    if (info.minDistance) {
+      AstNodeType t = info.minInclusive ? NODE_TYPE_OPERATOR_BINARY_GE : NODE_TYPE_OPERATOR_BINARY_ARRAY_GT;
+      AstNode* range = ast->createNodeBinaryOperator(t, func, info.minDistance);
+      cond->andCombine(range);
+    }
+    if (info.maxDistance) {
+      AstNodeType t = info.maxInclusive ? NODE_TYPE_OPERATOR_BINARY_LE : NODE_TYPE_OPERATOR_BINARY_LT;
+      AstNode* range = ast->createNodeBinaryOperator(t, func, info.maxDistance);
+      cond->andCombine(range);
+    }
+
+  }
+  if (info.filterMode != geo::FilterType::NONE) { // TODO allow both?
     // create GEO_CONTAINS / GEO_INTERSECTS
     TRI_ASSERT(info.filterMask);
     TRI_ASSERT(info.locationVar);
@@ -5097,11 +5124,11 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
     args->addMember(info.filterMask);
     args->addMember(info.locationVar);
     char const* fname = info.filterMode == geo::FilterType::CONTAINS ? "GEO_CONTAINS" : "GEO_INTERSECTS";
-    func = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR(fname), args);
+    AstNode* func = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR(fname), args);
+    cond->andCombine(func);
   }
   
-  auto cond = std::make_unique<Condition>(ast);
-  cond->andCombine(func);
+  
   cond->normalize(plan);
   return cond;
 }

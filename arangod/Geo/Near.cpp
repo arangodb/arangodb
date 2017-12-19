@@ -38,7 +38,7 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
-NearUtils::NearUtils(NearParams const& qp)
+NearUtils::NearUtils(QueryParams const& qp)
     : _params(qp),
       _centroid(
           S2LatLng::FromDegrees(qp.centroid.latitude, qp.centroid.longitude)

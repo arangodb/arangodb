@@ -115,7 +115,6 @@ Result GeoJsonParser::parseGeoJson(VPackSlice const& geoJSON,
       }
       return res;
     }
-
     case GeoJSONType::MULTI_POINT: {
       std::vector<S2Point> vertices;
       Result res = parsePoints(geoJSON, true, vertices);
@@ -125,7 +124,6 @@ Result GeoJsonParser::parseGeoJson(VPackSlice const& geoJSON,
       }
       return res;
     }
-
     case GeoJSONType::LINESTRING: {
       auto line = std::make_unique<S2Polyline>();
       Result res = parseLinestring(geoJSON, *line.get());
@@ -134,7 +132,6 @@ Result GeoJsonParser::parseGeoJson(VPackSlice const& geoJSON,
       }
       return res;
     }
-
     case GeoJSONType::MULTI_LINESTRING: {
       std::vector<S2Polyline> polylines;
       Result res = parseMultiLinestring(geoJSON, polylines);
@@ -144,7 +141,6 @@ Result GeoJsonParser::parseGeoJson(VPackSlice const& geoJSON,
       }
       return res;
     }
-
     case GeoJSONType::POLYGON: {
       auto poly = std::make_unique<S2Polygon>();
       Result res = parsePolygon(geoJSON, *poly.get());
@@ -153,12 +149,10 @@ Result GeoJsonParser::parseGeoJson(VPackSlice const& geoJSON,
       }
       return res;
     }
-
     case GeoJSONType::MULTI_POLYGON:
     case GeoJSONType::GEOMETRY_COLLECTION:
       return Result(TRI_ERROR_NOT_IMPLEMENTED,
                     "GeoJSON type is not supported");
-
     case GeoJSONType::UNKNOWN: {
       return badParam;
     }

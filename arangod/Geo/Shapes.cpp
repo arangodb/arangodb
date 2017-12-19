@@ -128,11 +128,6 @@ void ShapeContainer::reset(S2Region* ptr, Type tt) {
   _type = tt;
 }
 
-void ShapeContainer::resetAsCap(geo::Coordinate const& c, double rad) {
-  S2LatLng ll = S2LatLng::FromDegrees(c.latitude, c.longitude);
-  reset(S2Cap::FromAxisAngle(ll.ToPoint(), S1Angle::Radians(rad)).Clone(), Type::S2_CAP);
-}
-
 bool ShapeContainer::isAreaEmpty() const {
   switch (_type) {
     case ShapeContainer::Type::S2_POLYLINE:

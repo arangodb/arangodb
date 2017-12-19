@@ -43,16 +43,16 @@ namespace geo {
 
 /// result of a geospatial index query. distance may or may not be set
 struct GeoDocument {
-  GeoDocument(TRI_voc_rid_t doc, double rad) : rid(doc), radians(rad) {}
+  GeoDocument(TRI_voc_rid_t doc, double rad) : rid(doc), distRad(rad) {}
   /// @brief LocalDocumentId
   TRI_voc_rid_t rid;
   /// @brief distance from centroids on the unit sphere
-  double radians;
+  double distRad;
 };
 
 struct GeoDocumentCompare {
   bool operator()(GeoDocument const& a, GeoDocument const& b) {
-    return a.radians > b.radians;
+    return a.distRad > b.distRad;
   }
 };
 
@@ -66,7 +66,7 @@ class NearUtils {
                               GeoDocumentCompare>
       GeoDocumentsQueue;
 
-  NearUtils(NearParams const& params);
+  NearUtils(geo::QueryParams const& params);
 
  public:
   /// @brief get cell covering target coordinate (at max level)
@@ -81,12 +81,12 @@ class NearUtils {
     // we need to not return results in the search area
     // between _innerBound and _maxBound. Otherwise results may appear
     // too early in the result list
-    return !_buffer.empty() && _buffer.top().radians <= _innerBound;
+    return !_buffer.empty() && _buffer.top().distRad <= _innerBound;
   }
 
   /// @brief closest buffered result
   GeoDocument const& nearest() const {
-    TRI_ASSERT(_buffer.top().radians <= _innerBound);
+    TRI_ASSERT(_buffer.top().distRad <= _innerBound);
     return _buffer.top();
   }
 
@@ -115,7 +115,7 @@ class NearUtils {
   void invalidate();
 
  private:
-  geo::NearParams const _params;
+  geo::QueryParams const _params;
 
   /// target from which distances are measured
   S2Point const _centroid;
