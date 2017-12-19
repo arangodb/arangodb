@@ -1,8 +1,9 @@
-!CHAPTER Write-ahead log 
+Write-ahead log
+===============
 
 This module provides functionality for administering the write-ahead logs.
 
-!SUBSECTION Configuration
+### Configuration
 <!-- arangod/V8Server/v8-vocbase.h -->
 
 
@@ -72,7 +73,7 @@ will be ignored and the configuration for them will not be modified.
     @endDocuBlock WalPropertiesSet
 
 
-!SUBSECTION Flushing
+### Flushing
 
 <!-- arangod/V8Server/v8-vocbase.h -->
 

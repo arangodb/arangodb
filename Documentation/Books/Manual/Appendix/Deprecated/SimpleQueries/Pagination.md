@@ -1,4 +1,5 @@
-!CHAPTER Pagination 
+Pagination
+==========
 
 If, for example, you display the result of a user search, then you are in
 general not interested in the completed result set, but only the first 10 or so
@@ -12,7 +13,7 @@ result pages with 10 result documents per page, you can use <i>skip(n *
 10).limit(10)</i> to access the 10 documents on the *n*th page. This result
 should be sorted, so that the pagination works in a predicable way.
 
-!SUBSECTION Limit
+### Limit
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -46,7 +47,7 @@ unclear which documents will be included in the result set.
 
 
 
-!SUBSECTION Skip
+### Skip
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 

@@ -1,4 +1,5 @@
-!CHAPTER Foxx service context
+Foxx service context
+====================
 
 The service context provides access to methods and attributes that are specific to a given service. In a Foxx service the context is generally available as the `module.context` variable. Within a router's request handler the request and response objects' `context` attribute also provide access to the context of the service the route was mounted in (which may be different from the one the route handler was defined in).
 
@@ -77,7 +78,8 @@ The service context specifies the following properties:
 
   The mount point of the service, e.g. `/my-foxx`.
 
-!SECTION apiDocumentation
+apiDocumentation
+----------------
 
 `module.context.apiDocumentation([options]): Function`
 
@@ -143,7 +145,8 @@ router.get('/docs/*', module.context.apiDocumentation(function (req, res) {
 }));
 ```
 
-!SECTION collection
+collection
+----------
 
 `module.context.collection(name): ArangoCollection | null`
 
@@ -157,7 +160,8 @@ Passes the given name to *collectionName*, then looks up the collection with the
 
 Returns a collection or `null` if no collection with the prefixed name exists.
 
-!SECTION collectionName
+collectionName
+--------------
 
 `module.context.collectionName(name): string`
 
@@ -178,7 +182,8 @@ module.context.mount === '/my-foxx'
 module.context.collectionName('doodads') === 'my_foxx_doodads'
 ```
 
-!SECTION file
+file
+----
 
 `module.context.file(name, [encoding]): Buffer | string`
 
@@ -196,7 +201,8 @@ Passes the given name to *fileName*, then loads the file with the resulting name
 
 Returns the file's contents.
 
-!SECTION fileName
+fileName
+--------
 
 `module.context.fileName(name): string`
 
@@ -230,7 +236,8 @@ TODO
 
 -->
 
-!SECTION use
+use
+---
 
 `module.context.use([path], router): Endpoint`
 

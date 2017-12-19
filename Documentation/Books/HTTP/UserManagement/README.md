@@ -1,4 +1,5 @@
-!CHAPTER HTTP Interface for User Management
+HTTP Interface for User Management
+==================================
 
 This is an introduction to ArangoDB's HTTP interface for managing users.
 

@@ -1,4 +1,5 @@
-!CHAPTER Arangod
+Arangod
+=======
 
 If the ArangoDB server does not start or if you cannot connect to it 
 using *arangosh* or other clients, you can try to find the problem cause by 

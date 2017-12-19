@@ -1,4 +1,5 @@
-!CHAPTER Deployment
+Deployment
+==========
 
 In this chapter we describe various possibilities to deploy ArangoDB.
 In particular for the cluster mode, there are different ways

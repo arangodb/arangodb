@@ -1,4 +1,5 @@
-!SECTION Which Index to use when
+Which Index to use when
+-----------------------
 
 ArangoDB automatically indexes the `_key` attribute in each collection. There
 is no need to index this attribute separately. Please note that a document's
@@ -9,7 +10,7 @@ ArangoDB will also automatically create an index on `_from` and `_to` in any
 edge collection, meaning incoming and outgoing connections can be determined
 efficiently.
 
-!SUBSECTION Index types
+### Index types
 
 Users can define additional indexes on one or multiple document attributes.
 Several different index types are provided by ArangoDB. These indexes have
@@ -81,7 +82,7 @@ different usage scenarios:
   The index supports complete match queries (full words) and prefix queries.
   Fulltext indexes will only be invoked via special functions.
 
-!SUBSECTION Sparse vs. non-sparse indexes
+### Sparse vs. non-sparse indexes
 
 Hash indexes and skiplist indexes can optionally be created sparse. A sparse index
 does not contain documents for which at least one of the index attribute is not set

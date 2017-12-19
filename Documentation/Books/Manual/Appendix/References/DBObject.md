@@ -1,4 +1,5 @@
-!CHAPTER The "db" Object
+The "db" Object
+===============
 
 The `db` object is available in [arangosh](../../GettingStarted/Arangosh.md) by
 default, and can also be imported and used in Foxx services.

@@ -1,4 +1,5 @@
-!CHAPTER Foxx configuration
+Foxx configuration
+==================
 
 Foxx services can define configuration parameters to make them more re-usable.
 

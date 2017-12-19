@@ -1,10 +1,12 @@
-!CHAPTER Features and Improvements
+Features and Improvements
+=========================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 2.1.  ArangoDB 2.1 also contains several bugfixes that are not listed
 here.
 
-!SECTION New Edges Index
+New Edges Index
+---------------
 
 The edges index (used to store connections between nodes in a graph) internally
 uses a new data structure. This data structure improves the performance when
@@ -28,7 +30,8 @@ is possible that the new index returns edges in a different order than the old
 index. This is still considered to be compatible because the old index had never
 guaranteed any result order either.
 
-!SECTION AQL Improvements
+AQL Improvements
+----------------
 
 AQL offers functionality to work with dates. Dates are no data types of their own
 in AQL (neither they are in JSON, which is often used as a format to ship data
@@ -174,13 +177,15 @@ The following other AQL functions have been added in ArangoDB 2.1:
   the query. If authorization is turned off or the query is executed outside of a 
   request context, no user is present and the function will return `null`.
 
-!SECTION Cluster Dump and Restore
+Cluster Dump and Restore
+------------------------
 
 The dump and restore tools, _arangodump_ and _arangorestore_, can now be used to
 dump and restore collections in a cluster. Additionally, a collection dump from
 a standalone ArangoDB server can be imported into a cluster, and vice versa.
 
-!SECTION Web Interface Improvements
+Web Interface Improvements
+--------------------------
 
 The web interface in version 2.1 has a more compact dashboard. It provides
 charts with time-series for incoming requests, HTTP transfer volume and some
@@ -189,7 +194,8 @@ server resource usage figures.
 Additionally it provides trend indicators (e.g. 15 min averages) and
 distribution charts (aka histogram) for some figures.
 
-!SECTION Foxx Improvements
+Foxx Improvements
+-----------------
 
 To easily access a file inside the directory of a Foxx application from within
 Foxx, Foxx's `applicationContext` now provides the `foxxFilename()` function. It
@@ -205,13 +211,15 @@ Foxx application. This allows putting modules inside the Foxx application
 directory and requiring them easily. It also allows using application-specific
 versions of libraries that are bundled with ArangoDB (such as underscore.js).
 
-!SECTION Windows Installer
+Windows Installer
+-----------------
 
 The Windows installer shipped with ArangoDB now supports installation of
 ArangoDB for the current user or all users, with the required privileges.  It
 also supports the installation of ArangoDB as a service.
 
-!SECTION Fixes for 32 bit systems
+Fixes for 32 bit systems
+------------------------
 
 Several issues have been fixed that occurred only when using ArangoDB on a 32 bits
 operating system, specifically:
@@ -225,13 +233,15 @@ operating system, specifically:
   have led to invalid values being passed to socket operations, making them fail
   and re-try too often 
 
-!SECTION Updated drivers
+Updated drivers
+---------------
 
 Several drivers for ArangoDB have been checked for compatibility with 2.1.  The
 current list of drivers with compatibility notes can be found online
 [here](https://www.arangodb.org/driver).
 
-!SECTION C++11 usage
+C++11 usage
+-----------
 
 We have moved several files from C to C++, allowing more code reuse and reducing
 the need for shipping data between the two. We have also decided to require
@@ -241,7 +251,8 @@ features and guarantees that this standard has in stock.
 That also means a compiler with C++11 support is required to build ArangoDB from
 source. For instance GNU CC of at least version 4.8.
 
-!SECTION Miscellaneous Improvements
+Miscellaneous Improvements
+--------------------------
 
 - Cancelable asynchronous jobs: several potentially long-running jobs can now be
   canceled via an explicit cancel operation. This allows stopping long-running

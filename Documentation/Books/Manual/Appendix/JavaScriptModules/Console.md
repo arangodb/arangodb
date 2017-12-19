@@ -1,11 +1,12 @@
-!CHAPTER Console Module
+Console Module
+==============
 
 `require('console')`
 
 The implementation follows the CommonJS specification
 [Console](http://wiki.commonjs.org/wiki/Console).
 
-!SUBSECTION console.assert
+### console.assert
 
 `console.assert(expression, format, argument1, ...)`
 
@@ -18,7 +19,7 @@ an exception.
 console.assert(value === "abc", "expected: value === abc, actual:", value);
 ```
 
-!SUBSECTION console.debug
+### console.debug
 
 `console.debug(format, argument1, ...)`
 
@@ -39,7 +40,7 @@ String substitution patterns, which can be used in *format*.
 console.debug("%s", "this is a test");
 ```
 
-!SUBSECTION console.dir
+### console.dir
 
 `console.dir(object)`
 
@@ -50,7 +51,7 @@ Example usage:
 console.dir(myObject);
 ```
 
-!SUBSECTION console.error
+### console.error
 
 `console.error(format, argument1, ...)`
 
@@ -68,13 +69,13 @@ Example usage:
 ```js
 console.error("error '%s': %s", type, message);
 ```
-!SUBSECTION console.getline
+### console.getline
 
 `console.getline()`
 
 Reads in a line from the console and returns it as string.
 
-!SUBSECTION console.group
+### console.group
 
 `console.group(format, argument1, ...)`
 
@@ -93,19 +94,19 @@ console.log("id", user.id);
 console.groupEnd();
 ```
 
-!SUBSECTION console.groupCollapsed
+### console.groupCollapsed
 
 `console.groupCollapsed(format, argument1, ...)`
 
 Same as *console.group*.
 
-!SUBSECTION console.groupEnd
+### console.groupEnd
 
 `console.groupEnd()`
 
 Closes the most recently opened block created by a call to *group*.
 
-!SUBSECTION console.info
+### console.info
 
 `console.info(format, argument1, ...)`
 
@@ -123,14 +124,14 @@ Example usage:
 ```js
 console.info("The %s jumped over %d fences", animal, count);
 ```
-!SUBSECTION console.log
+### console.log
 
 `console.log(format, argument1, ...)`
 
 Formats the arguments according to *format* and logs the result as
 log message. This is an alias for *console.info*.
 
-!SUBSECTION console.time
+### console.time
 
 `console.time(name)`
 
@@ -145,20 +146,20 @@ console.time("mytimer");
 console.timeEnd("mytimer"); // this will print the elapsed time
 ```
 
-!SUBSECTION console.timeEnd
+### console.timeEnd
 
 `console.timeEnd(name)`
 
 Stops a timer created by a call to *time* and logs the time elapsed. 
 
-!SUBSECTION console.timeEnd
+### console.timeEnd
 
 `console.trace()`
 
 Logs a stack trace of JavaScript execution at the point where it is
 called. 
 
-!SUBSECTION console.warn
+### console.warn
 
 `console.warn(format, argument1, ...)`
 

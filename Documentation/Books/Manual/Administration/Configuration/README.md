@@ -1,13 +1,15 @@
-!CHAPTER Command-line options
-!SUBSECTION Configuration Files
+Command-line options
+====================
+### Configuration Files
 
 Options can be specified on the command line or in configuration files. If a
 string *Variable* occurs in the value, it is replaced by the corresponding
 environment variable.
 
-!SECTION General Options
+General Options
+---------------
 
-!SUBSECTION General help
+### General help
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
@@ -20,7 +22,7 @@ Prints a list of the most common options available and then
 exits. In order to see all options use *--help-all*.
 
 
-!SUBSECTION Version
+### Version
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
@@ -32,7 +34,7 @@ version of the application
 Prints the version of the server and exits.
 
  
-!SUBSECTION Database Upgrade 
+### Database Upgrade
 `--database.auto-upgrade`
 
 Specifying this option will make the server perform a database upgrade at start. A database upgrade will first compare the version number stored in the file VERSION in the database directory with the current server version.
@@ -45,7 +47,7 @@ If the version number found in the database directory is lower than the version 
 
 Whether or not this option is specified, the server will always perform a version check on startup. Running the server with a non-matching version number in the VERSION file will make the server refuse to start.
 
-!SUBSECTION Configuration
+### Configuration
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
 
@@ -125,14 +127,14 @@ When starting up the server. Note that, the word *none* is
 case-insensitive.
 
 
-!SUBSECTION Daemon
+### Daemon
 `--daemon`
 
 Runs the server as a daemon (as a background process). This parameter can only
 be set if the pid (process id) file is specified. That is, unless a value to the
 parameter pid-file is given, then the server will report an error and exit.
 
-!SUBSECTION Default Language
+### Default Language
 <!-- arangod/RestServer/ArangoServer.h -->
 
 
@@ -148,7 +150,7 @@ The default default-language is set to be the system locale on that
 platform.
 
 
-!SUBSECTION Supervisor
+### Supervisor
 `--supervisor`
 
 Executes the server in supervisor mode. In the event that the server
@@ -182,7 +184,7 @@ start up a new database process:
 10168 ?        Sl     0:00  \_ ./arangod --supervisor --pid-file /var/run/arangodb.pid /tmp/vocbase/
 ```
 
-!SUBSECTION User identity 
+### User identity
 
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
@@ -210,7 +212,7 @@ security. In general, this parameter (and its corresponding relative gid)
 can lower privileges but not raise them.
 
 
-!SUBSECTION Group identity
+### Group identity
 
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 
@@ -230,7 +232,7 @@ files).
 This parameter is related to the parameter uid.
 
 
-!SUBSECTION Process identity 
+### Process identity
 
 <!-- lib/Rest/AnyServer.h -->
 
@@ -244,7 +246,7 @@ daemon. This parameter must be specified if either the flag *daemon* or
 *supervisor* is set.
 
 
-!SUBSECTION Console
+### Console
 `--console`
 
 Runs the server in an exclusive emergency console mode. When 
@@ -259,7 +261,7 @@ Note that the server cannot be started in this mode if it is
 already running in this or another mode. 
 
 
-!SUBSECTION Random Generator
+### Random Generator
 
 
 random number generator to use

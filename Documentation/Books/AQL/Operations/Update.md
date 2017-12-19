@@ -1,4 +1,5 @@
-!CHAPTER UPDATE
+UPDATE
+======
 
 The *UPDATE* keyword can be used to partially update documents in a collection. On a 
 single server, updates are executed transactionally in an all-or-nothing fashion. 
@@ -65,7 +66,7 @@ FOR u IN users
   UPDATE u WITH { status: 'inactive' } IN backup
 ```
 
-!SUBSECTION Using the current value of a document attribute
+### Using the current value of a document attribute
 
 The pseudo-variable `OLD` is not supported inside of `WITH` clauses (it is
 available after `UPDATE`). To access the current attribute value, you can
@@ -121,7 +122,7 @@ UPDATE doc WITH {
 If the attribute `hobbies` doesn't exist yet, it is conveniently initialized
 as `[ "swimming" ]` and otherwise extended.
 
-!SUBSECTION Setting query options
+### Setting query options
 
 *options* can be used to suppress query errors that may occur when trying to
 update non-existing documents or violating unique key constraints:
@@ -197,7 +198,7 @@ FOR u IN users
   } IN users OPTIONS { waitForSync: true }
 ```
 
-!SUBSECTION Returning the modified documents
+### Returning the modified documents
 
 The modified documents can also be returned by the query. In this case, the `UPDATE` 
 statement needs to be followed a `RETURN` statement (intermediate `LET` statements

@@ -1,4 +1,5 @@
-!CHAPTER Before, after and around
+Before, after and around
+========================
 
 The `before`, `after` and `around` methods can easily be replaced by middleware:
 

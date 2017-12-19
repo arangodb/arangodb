@@ -1,6 +1,7 @@
-!CHAPTER Collection Methods
+Collection Methods
+==================
 
-!SUBSECTION Drop
+### Drop
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -25,7 +26,7 @@ Drops a *collection* and all its indexes.
 
 
 
-!SUBSECTION Truncate
+### Truncate
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
@@ -54,11 +55,11 @@ Truncates a collection:
     @endDocuBlock collectionTruncate
 
 
-!SUBSECTION Properties
+### Properties
 <!-- arangod/V8Server/v8-collection.cpp -->
 @startDocuBlock collectionProperties
 
-!SUBSECTION Figures
+### Figures
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -165,7 +166,7 @@ used as a lower bound approximation of the disk usage.
 
 
 
-!SUBSECTION Load
+### Load
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -190,7 +191,7 @@ Loads a collection into memory.
 
 
 
-!SUBSECTION Reserve
+### Reserve
 `collection.reserve(number)`
 
 Sends a resize hint to the indexes in the collection. The resize hint allows indexes to reserve space for additional documents (specified by number) in one go.
@@ -199,7 +200,7 @@ The reserve hint can be sent before a mass insertion into the collection is star
 
 Not all indexes implement the reserve function at the moment. The indexes that don't implement it will simply ignore the request. returns the revision id of a collection
 
-!SUBSECTION Revision
+### Revision
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -219,7 +220,7 @@ The revision id returned is a string value. Clients should treat this value
 as an opaque string, and only use it for equality/non-equality comparisons.
 
 
-!SUBSECTION Checksum
+### Checksum
 <!-- arangod/V8Server/v8-query.cpp -->
 
 
@@ -242,7 +243,7 @@ The checksum calculation algorithm changed in ArangoDB 3.0, so checksums from
 **Note**: this method is not available in a cluster.
 
 
-!SUBSECTION Unload
+### Unload
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -268,7 +269,7 @@ until all query have finished.
 
 
 
-!SUBSECTION Rename
+### Rename
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 
@@ -303,7 +304,7 @@ database.
 
 
 
-!SUBSECTION Rotate
+### Rotate
 <!-- arangod/V8Server/v8-collection.cpp -->
 
 

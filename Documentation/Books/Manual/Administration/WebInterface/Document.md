@@ -1,4 +1,5 @@
-!CHAPTER Document
+Document
+========
 
 The document section offers a editor which let you edit documents and edges of a collection.
 

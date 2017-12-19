@@ -1,12 +1,13 @@
-!CHAPTER Working with Databases 
+Working with Databases
+======================
 
-!SUBSECTION Database Methods
+### Database Methods
 
 The following methods are available to manage databases via JavaScript.
 Please note that several of these methods can be used from the _system
 database only.
 
-!SUBSECTION Name
+### Name
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -26,7 +27,7 @@ Returns the name of the current database as a string.
 @endDocuBlock dbName
 
 
-!SUBSECTION ID
+### ID
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -46,7 +47,7 @@ Returns the id of the current database as a string.
 @endDocuBlock dbId
 
 
-!SUBSECTION Path
+### Path
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -66,7 +67,7 @@ Returns the filesystem path of the current database as a string.
 @endDocuBlock dbPath
 
 
-!SUBSECTION isSystem
+### isSystem
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -80,7 +81,7 @@ from within this database. Additionally, the *_system* database itself
 cannot be dropped.
 
 
-!SUBSECTION Use Database
+### Use Database
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -102,7 +103,7 @@ restarted with different username and password credentials and/or
 endpoint data.
 
 
-!SUBSECTION List Databases
+### List Databases
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -113,7 +114,7 @@ Returns the list of all databases. This method can only be used from within
 the *_system* database.
 
 
-!SUBSECTION Create Database
+### Create Database
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -167,7 +168,7 @@ Alternatively, you can specify user data directly. For example:
 Those methods can only be used from within the *_system* database.
 
 
-!SUBSECTION Drop Database
+### Drop Database
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 

@@ -1,6 +1,8 @@
-!CHAPTER Limitations
+Limitations
+===========
 
-!SECTION In General
+In General
+----------
 
 Transactions in ArangoDB have been designed with particular use cases 
 in mind. They will be mainly useful for short and small data retrieval 
@@ -52,7 +54,8 @@ possible to reduce the probability of deadlocks and non-repeatable reads.
 
 Please refer to [Locking and Isolation](LockingAndIsolation.md) for more details.
 
-!SECTION In Clusters
+In Clusters
+-----------
 
 Using a single instance of ArangoDB, multi-document / multi-collection queries
 are guaranteed to be fully ACID. This is more than many other NoSQL database

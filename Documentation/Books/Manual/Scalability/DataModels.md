@@ -1,9 +1,10 @@
-!SECTION Different data models and scalability
+Different data models and scalability
+-------------------------------------
 
 In this section we discuss scalability in the context of the different
 data models supported by ArangoDB.
 
-!SUBSECTION Key/value pairs
+### Key/value pairs
 
 The key/value store data model is the easiest to scale. In ArangoDB,
 this is implemented in the sense that a document collection always has 
@@ -17,7 +18,7 @@ primary key and all these operations scale linearly. If the sharding is
 done using different shard keys, then a lookup of a single key involves
 asking all shards and thus does not scale linearly.
 
-!SUBSECTION Document store
+### Document store
 
 For the document store case even in the presence of secondary indexes
 essentially the same arguments apply, since an index for a sharded
@@ -32,7 +33,7 @@ in which good linear scalability of ArangoDB for single document operations
 is demonstrated.
 
 
-!SUBSECTION Complex queries and joins
+### Complex queries and joins
 
 The AQL query language allows complex queries, using multiple
 collections, secondary indexes as well as joins. In particular with
@@ -49,7 +50,7 @@ Nevertheless, for certain complicated joins, there are limits as
 to what can be achieved. 
 
 
-!SUBSECTION Graph database
+### Graph database
 
 Graph databases are particularly good at queries on graphs that involve
 paths in the graph of an a priori unknown length. For example, finding

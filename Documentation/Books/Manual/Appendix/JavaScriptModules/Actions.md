@@ -1,12 +1,14 @@
-!CHAPTER Module "actions" 
+Module "actions"
+================
 
 The action module provides the infrastructure for defining low-level HTTP actions.
 
 If you want to define HTTP endpoints in ArangoDB you should probably use the [Foxx microservice framework](../../Foxx/README.md) instead.
 
-!SECTION Basics
+Basics
+------
 
-!SUBSECTION Error message 
+### Error message
 
 <!-- js/server/modules/@arangodb/actions.js -->
 
@@ -14,7 +16,8 @@ If you want to define HTTP endpoints in ArangoDB you should probably use the [Fo
 
 Returns the error message for an error code.
 
-!SECTION Standard HTTP Result Generators
+Standard HTTP Result Generators
+-------------------------------
 
 `actions.defineHttp(options)`
 
@@ -50,7 +53,7 @@ The callback must define fill the *response*.
 You can use the functions *ResultOk* and *ResultError* to easily
 generate a response.
 
-!SUBSECTION Result ok
+### Result ok
 
 <!-- js/server/modules/@arangodb/actions.js -->
 
@@ -62,7 +65,7 @@ object in the body. *headers* is an array of headers to returned.
 The function adds the attribute *error* with value *false*
 and *code* with value *code* to the *result*.
 
-!SUBSECTION Result bad
+### Result bad
 
 <!-- js/server/modules/@arangodb/actions.js -->
 
@@ -70,7 +73,7 @@ and *code* with value *code* to the *result*.
 
 The function generates an error response.
 
-!SUBSECTION Result not found
+### Result not found
 
 <!-- js/server/modules/@arangodb/actions.js -->
 
@@ -78,7 +81,7 @@ The function generates an error response.
 
 The function generates an error response.
 
-!SUBSECTION Result unsupported
+### Result unsupported
 
 <!-- js/server/modules/@arangodb/actions.js -->
 
@@ -86,7 +89,7 @@ The function generates an error response.
 
 The function generates an error response.
 
-!SUBSECTION Result error
+### Result error
 
 <!-- js/server/modules/@arangodb/actions.js -->
 
@@ -100,7 +103,7 @@ with an attribute *errorMessage* containing the error message
 containing the error message *errorMessage*. *keyvals* are mixed
 into the result.
 
-!SUBSECTION Result not Implemented
+### Result not Implemented
 
 <!-- js/server/modules/@arangodb/actions.js -->
 
@@ -108,7 +111,7 @@ into the result.
 
 The function generates an error response.
 
-!SUBSECTION Result permanent redirect
+### Result permanent redirect
 
 <!-- js/server/modules/@arangodb/actions.js -->
 
@@ -116,7 +119,7 @@ The function generates an error response.
 
 The function generates a redirect response.
 
-!SUBSECTION Result temporary redirect
+### Result temporary redirect
 
 <!-- js/server/modules/@arangodb/actions.js -->
 
@@ -124,9 +127,10 @@ The function generates a redirect response.
 
 The function generates a redirect response.
 
-!SECTION ArangoDB Result Generators
+ArangoDB Result Generators
+--------------------------
 
-!SUBSECTION Collection not found
+### Collection not found
 
 <!-- js/server/modules/@arangodb/actions.js -->
 
@@ -134,7 +138,7 @@ The function generates a redirect response.
 
 The function generates an error response.
 
-!SUBSECTION Index not found
+### Index not found
 
 <!-- js/server/modules/@arangodb/actions.js -->
 
@@ -142,7 +146,7 @@ The function generates an error response.
 
 The function generates an error response.
 
-!SUBSECTION Result exception
+### Result exception
 
 <!-- js/server/modules/@arangodb/actions.js -->
 

@@ -1,12 +1,14 @@
-!CHAPTER Module "request"
+Module "request"
+================
 
 The request module provides the functionality for making HTTP requests.
 
 `require('@arangodb/request')`
 
-!SECTION Making HTTP requests
+Making HTTP requests
+--------------------
 
-!SUBSECTION HTTP method helpers
+### HTTP method helpers
 
 In addition to the *request* function convenience shorthands are available for each HTTP method in the form of, i.e.:
 
@@ -39,7 +41,7 @@ request({
 });
 ```
 
-!SUBSECTION The request function
+### The request function
 
 The request function can be used to make HTTP requests.
 
@@ -74,7 +76,7 @@ The function returns a *Response* object with the following properties:
 * *statusCode* and *status*: the HTTP status code of the response, e.g. `404`.
 * *message*: the HTTP status message of the response, e.g. `Not Found`.
 
-!SUBSUBSECTION Forms
+#### Forms
 
 The request module supports `application/x-www-form-urlencoded` (URL encoded) form uploads:
 
@@ -96,7 +98,7 @@ Form data will be encoded using the [qs](https://www.npmjs.com/package/qs) modul
 
 If you want to use the [querystring](http://nodejs.org/api/querystring.html) module instead, simply use the *useQuerystring* option.
 
-!SUBSUBSECTION JSON
+#### JSON
 
 If you want to submit JSON-serializable values as request bodies, just set the *json* option:
 
@@ -115,7 +117,7 @@ var res = request({
 });
 ```
 
-!SUBSUBSECTION HTTP authentication
+#### HTTP authentication
 
 The request module supports both *HTTP Basic* authentication. Just pass the credentials via the *auth* option:
 

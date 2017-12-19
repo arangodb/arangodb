@@ -1,8 +1,10 @@
-!CHAPTER Session Transports
+Session Transports
+==================
 
 Session transports are used by the sessions middleware to store and retrieve session identifiers in requests and responses. Session transports must implement the `get` and/or `set` methods and can optionally implement the `clear` method.
 
-!SECTION get
+get
+---
 
 `transport.get(request): string | null`
 
@@ -26,7 +28,8 @@ get(req) {
 }
 ```
 
-!SECTION set
+set
+---
 
 `transport.set(response, sid): void`
 
@@ -54,7 +57,8 @@ set(res) {
 }
 ```
 
-!SECTION clear
+clear
+-----
 
 `transport.clear(response): void`
 

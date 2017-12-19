@@ -1,4 +1,5 @@
-!SECTION Server-side db-Object implementation
+Server-side db-Object implementation
+------------------------------------
 
 We [already talked about the arangosh db Object implementation](../GettingStarted/Arangosh.md), Now a little more about the server version, so the following examples won't work properly in arangosh.
 

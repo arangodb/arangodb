@@ -1,4 +1,5 @@
-!CHAPTER Replication Limitations 
+Replication Limitations
+=======================
 
 The replication in ArangoDB has a few limitations. Some of these limitations may be 
 removed in later versions of ArangoDB:

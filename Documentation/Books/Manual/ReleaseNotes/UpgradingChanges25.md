@@ -1,12 +1,14 @@
-!CHAPTER Incompatible changes in ArangoDB 2.5
+Incompatible changes in ArangoDB 2.5
+====================================
 
 It is recommended to check the following list of incompatible changes **before** 
 upgrading to ArangoDB 2.5, and adjust any client programs if necessary.
 
 
-!SECTION Changed behavior
+Changed behavior
+----------------
 
-!SUBSECTION V8
+### V8
 
 The V8 version shipped with ArangoDB was upgraded from 3.29.59 to 3.31.74.1.
 This leads to additional ECMAScript 6 (ES6 or "harmony") features being enabled by 
@@ -63,7 +65,7 @@ Users should adjust the value of `--javascript.v8-options` accordingly.
 Please note that incomplete harmony features are subject to change in future V8 releases.
 
 
-!SUBSECTION Sparse indexes 
+### Sparse indexes
 
 Hash indexes and skiplist indexes can now be created in a sparse variant. 
 When not explicitly set, the `sparse` attribute defaults to `false` for new indexes.
@@ -101,7 +103,7 @@ The same is true for fulltext indexes. There is no need to specify non-uniquenes
 geo or fulltext indexes. They will always be non-unique and sparse. 
 
 
-!SUBSECTION Moved Foxx applications to a different folder.
+### Moved Foxx applications to a different folder.
 
 Until 2.4 foxx apps were stored in the following folder structure:
 `<app-path>/databases/<dbname>/<appname>:<appversion>`.
@@ -110,7 +112,7 @@ Also the path on filesystem and the app's access URL had no relation to one anot
 Now the path on filesystem is identical to the URL (except the appended APP):
 `<app-path>/_db/<dbname>/<mointpoint>/APP`
 
-!SUBSECTION Foxx Development mode
+### Foxx Development mode
 
 The development mode used until 2.4 is gone. It has been replaced by a much more mature version.
 This includes the deprecation of the javascript.dev-app-path parameter, which is useless since 2.5.
@@ -124,7 +126,7 @@ This change has also made the startup options `--javascript.frontend-development
 `--javascript.dev-app-path` obsolete. The former option will not have any effect when set, and the
 latter option is only read and used during the upgrade to 2.5 and does not have any effects later.
 
-!SUBSECTION Foxx install process
+### Foxx install process
 
 Installing Foxx apps has been a two step process: import them into ArangoDB and mount them at a
 specific mountpoint. These operations have been joined together. You can install an app at one
@@ -133,11 +135,13 @@ simplified to just:
 
 * install: get your Foxx app up and running
 * uninstall: shut it down and erase it from disk
-!SECTION Deprecated features
+Deprecated features
+-------------------
 
 * Foxx: method `Model#toJSONSchema(id)` is deprecated, it will raise a warning if you use it. Please use `Foxx.toJSONSchema(id, model)` instead.
 
-!SECTION Removed features
+Removed features
+----------------
 
 * Startup switch `--javascript.frontend-development-mode`: Its major purpose was internal development
 anyway. Now the web frontend can be set to development mode similar to any other foxx app.

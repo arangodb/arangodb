@@ -1,14 +1,16 @@
-!CHAPTER Related modules
+Related modules
+===============
 
 These are some of the modules outside of Foxx you will find useful when writing Foxx services.
 
 Additionally there are modules providing some level of compatibility with Node.js as well as a number of bundled NPM modules (like lodash and joi). For more information on these modules see [the JavaScript modules appendix](../Appendix/JavaScriptModules/README.md).
 
-!SECTION The `@arangodb` module
+The `@arangodb` module
+----------------------
 
 This module provides access to various ArangoDB internals as well as three of the most important exports necessary to work with the database in Foxx:
 
-!SUBSECTION The `db` object
+### The `db` object
 
 `require('@arangodb').db`
 
@@ -22,7 +24,7 @@ const db = require('@arangodb').db;
 const thirteen = db._query('RETURN 5 + 8')[0];
 ```
 
-!SUBSECTION The `aql` template string handler
+### The `aql` template string handler
 
 `require('@arangodb').aql`
 
@@ -46,7 +48,7 @@ const result = db._query(aql`
 `);
 ```
 
-!SUBSECTION The `errors` object
+### The `errors` object
 
 `require('@arangodb').errors`
 
@@ -69,7 +71,8 @@ try {
 }
 ```
 
-!SECTION The `@arangodb/request` module
+The `@arangodb/request` module
+------------------------------
 
 `require('@arangodb/request')`
 
@@ -77,7 +80,8 @@ This module provides a function for making HTTP requests to external services. N
 
 You can find a full description of this module [in the request module appendix](../Appendix/JavaScriptModules/Request.md).
 
-!SECTION The `@arangodb/general-graph` module
+The `@arangodb/general-graph` module
+------------------------------------
 
 `require('@arangodb/general-graph')`
 

@@ -1,4 +1,5 @@
-!CHAPTER AQL Execution and Performance
+AQL Execution and Performance
+=============================
 
 This chapter describes AQL features related to query executions and query performance.
 

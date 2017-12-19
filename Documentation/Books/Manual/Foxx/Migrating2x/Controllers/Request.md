@@ -1,4 +1,5 @@
-!CHAPTER Request objects
+Request objects
+===============
 
 The names of some attributes of the request object have been adjusted to more closely align with those of the corresponding methods on the endpoint objects and established conventions in other JavaScript frameworks:
 
@@ -54,7 +55,8 @@ const sid = req.cookie('sid', {
 });
 ```
 
-!SECTION Request bodies
+Request bodies
+--------------
 
 The `req.body` is no longer a method and no longer automatically parses JSON request bodies unless a request body was defined. The `req.rawBody` now corresponds to the `req.rawBodyBuffer` of ArangoDB 2.x and is also no longer a method.
 
@@ -88,7 +90,8 @@ router.post('/', function (req, res) {
 .body(joi.object().optional());
 ```
 
-!SECTION Multipart requests
+Multipart requests
+------------------
 
 The `req.requestParts` method has been removed entirely. If you need to accept multipart request bodies, you can simply define the request body using a multipart MIME type like `multipart/form-data`:
 

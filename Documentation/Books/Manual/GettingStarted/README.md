@@ -1,6 +1,8 @@
-!CHAPTER Getting started
+Getting started
+===============
 
-!SECTION Overview
+Overview
+--------
 
 This beginner's guide will make you familiar with ArangoDB.
 We will cover how to
@@ -11,7 +13,7 @@ We will cover how to
 - query the database to retrieve the data again
 - edit and remove existing data
 
-!SUBSECTION Installation
+### Installation
 
 Head to [arangodb.com/download](https://www.arangodb.com/download/),
 select your operating system and download ArangoDB. You may also follow
@@ -32,7 +34,7 @@ For more in-depth information on how to install ArangoDB, as well as available
 startup parameters, installation in a cluster and so on, see
 [Installing](Installing/README.md).
 
-!SUBSECTION Securing the installation
+### Securing the installation
 
 The default installation contains one database *_system* and a user
 named *root*.
@@ -48,7 +50,7 @@ shell> arango-secure-installation
 
 This will asked for a root password and sets this password.
 
-!SUBSECTION Web interface
+### Web interface
 
 The server itself (*arangod*) speaks HTTP / REST, but you can use the
 graphical web interface to keep it simple. There's also
@@ -88,7 +90,7 @@ You should then be presented the dashboard with server statistics like this:
 
 For a more detailed description of the interface, see [Web Interface](../Administration/WebInterface/README.md).
 
-!SUBSECTION Databases, collections and documents
+### Databases, collections and documents
 
 Databases are sets of collections. Collections store records, which are referred
 to as documents. Collections are the equivalent of tables in RDBMS, and
@@ -127,7 +129,7 @@ changes. If you click on *Collection: users* at the top on the right-hand side
 of the ArangoDB logo, the document browser will show the documents in the
 *users* collection and you will see the document you just created in the list.
 
-!SUBSECTION Querying the database
+### Querying the database
 
 Time to retrieve our document using AQL, ArangoDB's query language. We can
 directly look up the document we created via the `_id`, but there are also
@@ -552,7 +554,7 @@ FOR user IN users
 
 The query deletes all users whose age is greater than or equal to 30.
 
-!SUBSECTION How to continue
+### How to continue
 
 There is a lot more to [discover in AQL](../../AQL/index.html) and much more
 functionality that ArangoDB offers. Continue reading the other chapters and
@@ -565,7 +567,8 @@ If you want to write more AQL queries right now, have a look here:
   of `FOR`, `FILTER` and more operations not shown in this introduction
 - [Functions](../../AQL/Functions/index.html): a reference of all provided functions
 
-!SECTION ArangoDB programs 
+ArangoDB programs
+-----------------
 
 The ArangoDB package comes with the following programs:
 

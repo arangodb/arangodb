@@ -1,5 +1,6 @@
-!CHAPTER Combining Graph Traversals
-!SUBSECTION Finding the start vertex via a geo query
+Combining Graph Traversals
+==========================
+### Finding the start vertex via a geo query
 Our first example will locate the start vertex for a graph traversal via [a geo index](../../Manual/Indexing/Geo.html).
 We use [the city graph](../../Manual/Graphs/index.html#the-city-graph) and its geo indices:
 

@@ -1,13 +1,14 @@
-!CHAPTER Command Line Options for Communication
+Command Line Options for Communication
+======================================
 
-!SUBSECTION Scheduler threads
+### Scheduler threads
 
 Number of scheduler threads: `--scheduler.threads arg`
 
 An integer argument which sets the number of threads to use in the IO
 scheduler. The default is 1.
 
-!SUBSECTION Scheduler maximal queue size
+### Scheduler maximal queue size
 
 Maximum size of the dispatcher queue for asynchronous requests:
 `--server.maximal-queue-size size`
@@ -18,7 +19,7 @@ will be rejected until other tasks are popped from the queue. Setting this
 value may help preventing from running out of memory if the queue is
 filled up faster than the server can process requests.
 
-!SUBSECTION Scheduler backend
+### Scheduler backend
 
 Scheduler backend: `--scheduler.backend arg`
 
@@ -27,7 +28,7 @@ not specified) is to try all recommended backends. This is platform
 specific. See libev for further details and the meaning of select, poll
 and epoll.
 
-!SUBSECTION Io backends
+### Io backends
 
 `--scheduler.show-backends`
 

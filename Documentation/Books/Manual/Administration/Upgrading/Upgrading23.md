@@ -1,4 +1,5 @@
-!CHAPTER Upgrading to ArangoDB 2.3
+Upgrading to ArangoDB 2.3
+=========================
 
 Please read the following sections if you upgrade from a previous version to
 ArangoDB 2.3. Please be sure that you have checked the list of [changes in 2.3](../../ReleaseNotes/UpgradingChanges23.md)
@@ -10,7 +11,8 @@ more. Upgrading a database directory cannot be reverted. Therefore
 please make sure to create a full backup of your existing ArangoDB
 installation before performing an upgrade.
 
-!SECTION Database Directory Version Check and Upgrade
+Database Directory Version Check and Upgrade
+--------------------------------------------
 
 ArangoDB will perform a database version check at startup. When ArangoDB 2.3
 encounters a database created with earlier versions of ArangoDB, it will refuse
@@ -73,7 +75,8 @@ Please check the output the `--upgrade` run. It may produce errors, which need
 to be fixed before ArangoDB can be used properly. If no errors are present or
 they have been resolved, you can start ArangoDB 2.3 regularly.
 
-!SECTION Upgrading a cluster planned in the web interface
+Upgrading a cluster planned in the web interface
+------------------------------------------------
 
 A cluster of ArangoDB instances has to be upgraded as well. This
 involves upgrading all ArangoDB instances in the cluster, as well as

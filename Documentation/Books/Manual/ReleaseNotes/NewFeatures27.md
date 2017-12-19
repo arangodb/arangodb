@@ -1,13 +1,15 @@
-!CHAPTER Features and Improvements
+Features and Improvements
+=========================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 2.7. ArangoDB 2.7 also contains several bugfixes that are not listed
 here. For a list of bugfixes, please consult the
 [CHANGELOG](https://github.com/arangodb/arangodb/blob/devel/CHANGELOG).
 
-!SECTION Performance improvements
+Performance improvements
+------------------------
 
-!SUBSECTION Index buckets
+### Index buckets
 
 The primary indexes and hash indexes of collections can now be split into multiple
 index buckets. This option was available for edge indexes only in ArangoDB 2.6.
@@ -51,7 +53,7 @@ in future versions of ArangoDB. Additionally, the configuration option
 for building the index data.
 
 
-!SUBSECTION Faster update and remove operations in non-unique hash indexes
+### Faster update and remove operations in non-unique hash indexes
 
 The unique hash indexes in ArangoDB provided an amortized O(1) lookup, insert, update 
 and remove performance. Non-unique hash indexes provided amortized O(1) insert
@@ -76,7 +78,7 @@ peeking into the actual documents. This change can also lead to reduced index
 resizing times.
 
 
-!SUBSECTION Throughput enhancements
+### Throughput enhancements
 
 The ArangoDB-internal implementations for dispatching requests, keeping statistics
 and assigning V8 contexts to threads have been improved in order to use less
@@ -88,7 +90,7 @@ are real-world cases in which [throughput increased by between 25 % and 70 % whe
 compared to 2.6](https://www.arangodb.com/2015/08/throughput-enhancements/). 
 
 
-!SUBSECTION Madvise hints
+### Madvise hints
 
 The Linux variant for ArangoDB provides the OS with madvise hints about index
 memory and datafile memory. These hints can speed up things when memory is tight, 
@@ -98,9 +100,10 @@ ArangoDB, but actual measurements have shown improvements for loading bigger
 collections.
 
 
-!SECTION AQL improvements
+AQL improvements
+----------------
 
-!SUBSECTION Additional date functions
+### Additional date functions
 
 ArangoDB 2.7 provides several extra AQL functions for date and time 
 calculation and manipulation. These functions were contributed 
@@ -202,7 +205,7 @@ The following extra date functions are available from 2.7 on:
   - %: ignored
 
 
-!SUBSECTION RETURN DISTINCT
+### RETURN DISTINCT
 
 To return unique values from a query, AQL now provides the `DISTINCT` keyword.
 It can be used as a modifier for `RETURN` statements, as a shorter alternative to
@@ -224,7 +227,7 @@ not guarantee any order of results. In order to have certain result order, an
 additional `SORT` statement must be added to a query.
 
 
-!SUBSECTION Shorthand object notation
+### Shorthand object notation
 
 AQL now provides a shorthand notation for object literals in the style of ES6
 object literals:
@@ -245,7 +248,7 @@ available and supported:
 ```
 
 
-!SUBSECTION Array expansion improvements
+### Array expansion improvements
 
 The already existing <i>[\*]</i> operator has been improved with optional
 filtering and projection and limit capabilities.
@@ -293,7 +296,7 @@ which is the simplified variant for:
 ```
 
 
-!SUBSECTION Array contraction
+### Array contraction
 
 In order to collapse (or flatten) results in nested arrays, AQL now provides the <i>[\*\*]</i> 
 operator. It works similar to the <i>[\*]</i> operator, but additionally collapses nested
@@ -317,7 +320,7 @@ result:
 ```
 
 
-!SUBSECTION Template query strings
+### Template query strings
 
 Assembling query strings in JavaScript has been error-prone when using simple 
 string concatenation, especially because plain JavaScript strings do not have
@@ -372,7 +375,7 @@ generator function will take care of this separation, too, but will do it
 *behind the scenes*.
 
 
-!SUBSECTION AQL query result cache
+### AQL query result cache
 
 The AQL query result cache can optionally cache the complete results of all or 
 just selected AQL queries. It can be operated in the following modes:
@@ -400,7 +403,7 @@ If the query cache is operated in `demand` mode, it can be controlled per query
 if the cache should be checked for a result.
 
 
-!SUBSECTION Miscellaneous changes
+### Miscellaneous changes
 
 ### Optimizer
 
@@ -430,7 +433,8 @@ functions with bigger argument values or queries that call AQL functions a lot
 of times.
 
 
-!SECTION Web Admin Interface
+Web Admin Interface
+-------------------
   
 The web interface now has a new design.
 
@@ -440,9 +444,10 @@ The ArangoDB API documentation has been moved from the "Tools" menu to the "Link
 The new documentation is based on Swagger 2.0 and opens in a separate web page.
 
 
-!SECTION Foxx improvements
+Foxx improvements
+-----------------
 
-!SUBSECTION ES2015 Classes
+### ES2015 Classes
 
 All Foxx constructors have been replaced with ES2015 classes and can be extended using the class syntax. 
 The `extend` method is still supported at the moment but will become deprecated in ArangoDB 2.8 and removed in ArangoDB 2.9.
@@ -467,11 +472,11 @@ class MyModel extends Foxx.Model {
 MyModel.prototype.schema = {/* ... */};
 ```
 
-!SUBSECTION Confidential configuration
+### Confidential configuration
 
 It is now possible to specify configuration options with the type `password`. The password type is equivalent to the text type but will be masked in the web frontend to prevent accidental exposure of confidential options like API keys and passwords when configuring your Foxx application.
 
-!SUBSECTION Dependencies
+### Dependencies
 
 The syntax for specifying dependencies in manifests has been extended to allow specifying optional dependencies. Unmet optional dependencies will not prevent an app from being mounted. The traditional shorthand syntax for specifying non-optional dependencies will still be supported in the upcoming versions of ArangoDB.
 
@@ -506,7 +511,8 @@ The syntax for specifying dependencies in manifests has been extended to allow s
 ```
 
 
-!SECTION Replication
+Replication
+-----------
 
 The existing replication HTTP API has been extended with methods that replication
 clients can use to determine whether a given date, identified by a tick value, is
@@ -526,7 +532,8 @@ the master server, and re-starting the replication applier needs to restore the
 state of these transactions.
 
 
-!SECTION Client tools
+Client tools
+------------
 
 The filenames in dumps created by arangodump now contain not only the name of the 
 dumped collection, but also an additional 32-digit hash value. This is done to 
@@ -546,9 +553,10 @@ value to the collection name in all case. These filenames will be unambiguous
 even in case-insensitive filesystems.
 
 
-!SECTION Miscellaneous changes
+Miscellaneous changes
+---------------------
 
-!SUBSECTION Better control-C support in arangosh
+### Better control-C support in arangosh
 
 When CTRL-C is pressed in arangosh, it will now abort the locally running command
 (if any). If no command was running, pressing CTRL-C will print a `^C` first. 
@@ -562,7 +570,7 @@ CTRL-C support has been added to the ArangoShell versions built with Readline-su
 handling input, and support for CTRL-C has not been added there yet. 
 
 
-!SUBSECTION Start / stop 
+### Start / stop
 
 Linux startup scripts and systemd configuration for arangod now try to adjust the 
 NOFILE (number of open files) limits for the process. The limit value is set to 
@@ -584,7 +592,7 @@ scripts. The limit of 10 seconds is arbitrary because the time required for an
 arangod startup is not known in advance.
 
 
-!SUBSECTION Non-sparse logfiles
+### Non-sparse logfiles
 
 WAL logfiles and datafiles created by arangod are now non-sparse. This prevents 
 SIGBUS signals being raised when a memory-mapped region backed by a sparse datafile 

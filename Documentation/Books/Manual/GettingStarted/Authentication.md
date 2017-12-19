@@ -1,4 +1,5 @@
-!CHAPTER Authentication
+Authentication
+==============
 
 ArangoDB allows to restrict access to databases to certain users.  All
 users of the system database are considered administrators. During

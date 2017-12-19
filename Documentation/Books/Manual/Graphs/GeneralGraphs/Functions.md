@@ -1,4 +1,5 @@
-!CHAPTER Graph Functions
+Graph Functions
+===============
 
 This chapter describes [various functions on a graph](../README.md).
 A lot of these accept a vertex (or edge) example as parameter as defined in the next section.
@@ -9,13 +10,15 @@ Examples will explain the API on the [the city graph](../README.md#the-city-grap
 ![Social Example Graph](../cities_graph.png)
 
 
-!SECTION Definition of examples
+Definition of examples
+----------------------
 
 @startDocuBlock JSF_general_graph_example_description
 
-!SECTION Get vertices from edges.
+Get vertices from edges.
+------------------------
 
-!SUBSECTION Get vertex *from* of an edge
+### Get vertex *from* of an edge
 
 
 
@@ -44,7 +47,7 @@ Returns the vertex defined with the attribute *_from* of the edge with *edgeId* 
 
 
 
-!SUBSECTION Get vertex *to* of an edge
+### Get vertex *to* of an edge
 
 
 
@@ -75,7 +78,8 @@ Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as
 
 
 
-!SECTION _neighbors
+_neighbors
+----------
 
 
 
@@ -132,7 +136,8 @@ A route planner example, all outbound neighbors of Hamburg.
 
 
 
-!SECTION _commonNeighbors
+_commonNeighbors
+----------------
 
 
 
@@ -182,7 +187,8 @@ which have a maximal depth of 2 :
 
 
 
-!SECTION _countCommonNeighbors
+_countCommonNeighbors
+---------------------
 
 
 
@@ -224,7 +230,8 @@ which have a maximal depth of 2 :
 
 
 
-!SECTION _commonProperties
+_commonProperties
+-----------------
 
 
 
@@ -280,7 +287,8 @@ A route planner example, all cities which share same properties except for popul
 
 
 
-!SECTION _countCommonProperties
+_countCommonProperties
+----------------------
 
 
 
@@ -320,7 +328,8 @@ A route planner example, all German cities which share same properties except fo
 
 
 
-!SECTION _paths
+_paths
+------
 
 
 
@@ -375,7 +384,8 @@ length of 1 and a minimal length of 2:
     @endDocuBlock generalGraphModulePaths2
 
 
-!SECTION _shortestPath
+_shortestPath
+-------------
 
 
 
@@ -461,7 +471,8 @@ A route planner example, shortest path from Hamburg and Cologne to Lyon:
 
 
 
-!SECTION _distanceTo
+_distanceTo
+-----------
 
 
 
@@ -502,7 +513,8 @@ A route planner example, shortest distance from Hamburg and Cologne to Lyon:
 
 
 
-!SECTION _absoluteEccentricity
+_absoluteEccentricity
+---------------------
 
 
 
@@ -582,7 +594,8 @@ outbound paths.
 
 
 
-!SECTION _eccentricity
+_eccentricity
+-------------
 
 
 
@@ -624,7 +637,8 @@ A route planner example, the weighted eccentricity.
 
 
 
-!SECTION _absoluteCloseness
+_absoluteCloseness
+------------------
 
 
 
@@ -704,7 +718,8 @@ outbound paths.
 
 
 
-!SECTION _closeness
+_closeness
+----------
 
 
 
@@ -759,7 +774,8 @@ outbound paths.
 
 
 
-!SECTION _absoluteBetweenness
+_absoluteBetweenness
+--------------------
 
 
 
@@ -825,7 +841,8 @@ outbound paths.
 
 
 
-!SECTION _betweenness
+_betweenness
+------------
 
 
 
@@ -878,7 +895,8 @@ outbound paths.
 
 
 
-!SECTION _radius
+_radius
+-------
 
 
 
@@ -946,7 +964,8 @@ outbound paths.
 
 
 
-!SECTION _diameter
+_diameter
+---------
 
 
 

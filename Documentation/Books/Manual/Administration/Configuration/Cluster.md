@@ -1,6 +1,7 @@
-!CHAPTER Command-Line Options for Clusters
+Command-Line Options for Clusters
+=================================
 
-!SUBSECTION Node ID
+### Node ID
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
@@ -13,7 +14,7 @@ id (see below) is not specified. Each server of the cluster must
 have a unique local info. This is ignored if my-id below is specified.
 
 
-!SUBSECTION Agency endpoint
+### Agency endpoint
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
@@ -40,7 +41,7 @@ alternative endpoint if one of them becomes unavailable.
 tcp://192.168.1.2:4002
 ```
 
-!SUBSECTION Agency prefix
+### Agency prefix
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
@@ -61,7 +62,7 @@ only. Specifying a prefix is mandatory.
 --cluster.prefix mycluster
 ```
 
-!SUBSECTION MyId
+### MyId
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 This server's id: `--cluster.my-id id`
@@ -75,7 +76,7 @@ determining the server's role and tasks in the cluster.
 *id* must be a string consisting of the letters *a-z*, *A-Z* or the
 digits *0-9* only.
 
-!SUBSECTION MyAddress
+### MyAddress
 
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
@@ -100,7 +101,7 @@ for the server's id, ArangoDB will refuse to start.
 --cluster.my-address tcp://192.168.1.1:8530
 ```
 
-!SUBSECTION Username
+### Username
 <!-- arangod/Cluster/ApplicationCluster.h -->
 
 
@@ -120,7 +121,7 @@ If coordinators and database servers are run with authentication turned
 off, (e.g. by setting the *--server.authentication* option to *false*),
 the cluster-internal communication will also be unauthenticated.
 
-!SUBSECTION Password
+### Password
 
 <!-- arangod/Cluster/ApplicationCluster.h -->
 

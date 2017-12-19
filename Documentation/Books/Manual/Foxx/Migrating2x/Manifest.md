@@ -1,4 +1,5 @@
-!CHAPTER Manifest
+Manifest
+========
 
 Many of the fields that were required in ArangoDB 2.x are now optional and can be safely omitted.
 
@@ -12,7 +13,8 @@ To avoid compatibility problems with future versions of ArangoDB you should alwa
 }
 ```
 
-!SECTION Controllers & exports
+Controllers & exports
+---------------------
 
 Previously Foxx distinguished between `exports` and `controllers`, each of which could be specified as an object. In ArangoDB 3.0 these have been merged into a single `main` field specifying an entry file.
 
@@ -55,7 +57,8 @@ module.exports = {
 };
 ```
 
-!SECTION Index redirect
+Index redirect
+--------------
 
 If you previously did not define the `defaultDocument` field, please note that in ArangoDB 3.0 the field will no longer default to the value `index.html` when omitted:
 
@@ -93,7 +96,8 @@ New:
 }
 ```
 
-!SECTION Assets
+Assets
+------
 
 The `assets` field is no longer supported in ArangoDB 3.0 outside of legacy compatibility mode.
 
@@ -127,12 +131,14 @@ New:
 
 If you relied on being able to specify multiple files that should be concatenated, you will have to use build tools outside of ArangoDB to prepare these files accordingly.
 
-!SECTION Root element
+Root element
+------------
 
 The `rootElement` field is no longer supported and has been removed entirely.
 
 If your controllers relied on this field being available you need to adjust your schemas and routes to be able to handle the full JSON structure of incoming documents.
 
-!SECTION System services
+System services
+---------------
 
 The `isSystem` field is no longer supported. The presence or absence of the field had no effect in most recent versions of ArangoDB 2.x and has now been removed entirely.

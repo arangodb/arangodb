@@ -1,4 +1,5 @@
-!CHAPTER OAuth 2.0
+OAuth 2.0
+=========
 
 `const createOAuth2Client = require('@arangodb/foxx/oauth2');`
 
@@ -92,7 +93,8 @@ router.get('/auth', function (req, res) {
 .queryParam('code', joi.string().optional());
 ```
 
-!SECTION Creating an OAuth2 client
+Creating an OAuth2 client
+-------------------------
 
 `createOAuth2Client(options): OAuth2Client`
 
@@ -130,7 +132,7 @@ Creates an OAuth2 client.
 
 Returns an OAuth2 client for the given provider.
 
-!SUBSECTION Setting up OAuth2 for Facebook
+### Setting up OAuth2 for Facebook
 
 If you want to use Facebook as the OAuth2 provider, use the following options:
 
@@ -148,7 +150,7 @@ You also need to obtain a client ID and client secret from Facebook:
 6. Click on *Settings*, then *Advanced* and enter one or more *Valid OAuth redirect URIs*. At least one of them must match your *redirect_uri* later. Don't forget to save your changes.
 7. Set the option *clientId* to the *App ID* and the option *clientSecret* to the *App Secret*.
 
-!SUBSECTION Setting up OAuth2 for GitHub
+### Setting up OAuth2 for GitHub
 
 If you want to use GitHub as the OAuth2 provider, use the following options:
 
@@ -165,7 +167,7 @@ You also need to obtain a client ID and client secret from GitHub:
 5. Open the application page, then note down the *Client ID* and *Client Secret*.
 6. Set the option *clientId* to the *Client ID* and the option *clientSecret* to the *Client Secret*.
 
-!SUBSECTION Setting up OAuth2 for Google
+### Setting up OAuth2 for Google
 
 If you want to use Google as the OAuth2 provider, use the following options:
 
@@ -184,7 +186,8 @@ You also need to obtain a client ID and client secret from Google:
 7. When the Client ID is ready, note down the *Client ID* and *Client secret*.
 8. Set the option *clientId* to the *Client ID* and the option *clientSecret* to the *Client secret*.
 
-!SECTION Get the authorization URL
+Get the authorization URL
+-------------------------
 
 `oauth2.getAuthUrl(redirect_uri, args): string`
 
@@ -206,7 +209,8 @@ Generates the authorization URL for the authorization endpoint.
 
 Returns a fully-qualified URL for the authorization endpoint of the provider by appending the client ID and any additional arguments from *args* to the *authEndpoint*.
 
-!SECTION Exchange a grant code for an access token
+Exchange a grant code for an access token
+-----------------------------------------
 
 `oauth2.exchangeGrantToken(code, redirect_uri)`
 
@@ -236,7 +240,8 @@ Throws an exception if the remote server responds with an empty response body.
 
 Returns the parsed response object.
 
-!SECTION Fetch the active user
+Fetch the active user
+---------------------
 
 `oauth2.fetchActiveUser(access_token): Object`
 

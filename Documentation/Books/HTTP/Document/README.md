@@ -1,4 +1,5 @@
-!CHAPTER HTTP Interface for Documents
+HTTP Interface for Documents
+============================
 
 In this chapter we describe the REST API of ArangoDB for documents.
 

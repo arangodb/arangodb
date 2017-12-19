@@ -1,4 +1,5 @@
-!CHAPTER The application context
+The application context
+=======================
 
 The global `applicationContext` variable available in Foxx modules has been replaced with the `context` attribute of the `module` variable. For consistency it is now referred to as the *service* context throughout this documentation.
 

@@ -1,5 +1,6 @@
 
-!CHAPTER SORT 
+SORT
+====
 
 The *SORT* statement will force a sort of the array of already produced
 intermediate results in the current block. *SORT* allows specifying one or

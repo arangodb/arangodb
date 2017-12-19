@@ -1,4 +1,5 @@
-!CHAPTER Explaining queries
+Explaining queries
+==================
 
 If it is unclear how a given query will perform, clients can retrieve a query's execution plan 
 from the AQL query optimizer without actually executing the query. Getting the query execution 

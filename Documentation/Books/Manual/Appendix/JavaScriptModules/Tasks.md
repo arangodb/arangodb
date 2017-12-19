@@ -1,6 +1,7 @@
-!CHAPTER Task Management
+Task Management
+===============
 
-!SUBSECTION Introduction to Task Management in ArangoDB
+### Introduction to Task Management in ArangoDB
 
 ArangoDB can execute user-defined JavaScript functions as one-shot
 or periodic tasks. This functionality can be used to implement timed
@@ -28,7 +29,7 @@ Tasks registered in ArangoDB will be executed until the server
 gets shut down or restarted. After a restart of the server, any 
 user-defined one-shot or periodic tasks will be lost. 
 
-!SUBSECTION Commands for Working with Tasks
+### Commands for Working with Tasks
 
 ArangoDB provides the following commands for working with tasks.
 All commands can be accessed via the *tasks* module, which can be
@@ -40,7 +41,7 @@ Please note that the *tasks* module is available inside the ArangoDB
 server only. It cannot be used from the ArangoShell or ArangoDB's web
 interface.
 
-!SUBSECTION Register a task
+### Register a task
 
 To register a task, the JavaScript snippet or function needs to be
 specified in addition to the execution frequency. Optionally, a task
@@ -138,7 +139,7 @@ The only way to set `offset` greater than `interval` is to register
 a non-periodic timer with the specified offset and when this fires this can 
 install a periodic timer with an offset of 0.
 
-!SUBSECTION Unregister a task
+### Unregister a task
 
 After a task has been registered, it can be unregistered using its id:
 
@@ -150,7 +151,7 @@ tasks.unregister("mytask-1");
 Note that unregistering a non-existing task will throw an exception.
 
 
-!SUBSECTION List all tasks
+### List all tasks
 
 To get an overview of which tasks are registered, there is the *get* 
 method. If the *get* method is called without any arguments, it will

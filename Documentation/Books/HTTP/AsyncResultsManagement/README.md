@@ -1,9 +1,10 @@
-!CHAPTER HTTP Interface for Async Results Management
-!SUBSECTION Request Execution
+HTTP Interface for Async Results Management
+===========================================
+### Request Execution
 
 ArangoDB provides various methods of executing client requests. Clients can choose the appropriate method on a per-request level based on their throughput, control flow, and durability requirements.
 
-!SUBSUBSECTION Blocking execution 
+#### Blocking execution
 
 ArangoDB is a multi-threaded server, allowing the processing of multiple client 
 requests at the same time. Communication handling and the actual work can be performed
@@ -24,7 +25,7 @@ Thus closing the connection does not help to abort a long running query!
 See below under [Async Execution and later Result Retrieval](#async-execution-and-later-result-retrieval)
 and [HttpJobPutCancel](#managing-async-results-via-http) for details.
 
-!SUBSUBSECTION Fire and Forget
+#### Fire and Forget
 
 To mitigate client blocking issues, ArangoDB since version 1.4. offers a generic mechanism 
 for non-blocking requests: if clients add the HTTP header *x-arango-async: true* to their
@@ -56,7 +57,7 @@ If you need to cancel requests,
 use [Async Execution and later Result Retrieval](#async-execution-and-later-result-retrieval) 
 and [HttpJobPutCancel](#managing-async-results-via-http) below.
 
-!SUBSUBSECTION Async Execution and later Result Retrieval 
+#### Async Execution and later Result Retrieval
 
 By adding the HTTP header *x-arango-async: store* to a request, clients can instruct
 the ArangoDB server to execute the operation asynchronously as [above](#fire-and-forget),
@@ -87,7 +88,7 @@ from time to time.
 The job queue and the results are kept in memory only on the server, so they will be
 lost in case of a crash.
 
-!SUBSUBSECTION Canceling asynchronous jobs
+#### Canceling asynchronous jobs
 
 As mentioned above it is possible to cancel an asynchronously running
 job using its job ID. This is done with a PUT request as described in
@@ -109,14 +110,15 @@ then only the code running on the coordinator is stopped, there may
 remain tasks within the cluster which have already been distributed to
 the DBservers and it is currently not possible to cancel them as well.
 
-!SUBSUBSECTION Async Execution and Authentication
+#### Async Execution and Authentication
 
 If a request requires authentication, the authentication procedure is run before 
 queueing. The request will only be queued if it valid credentials and the authentication 
 succeeds. If the request does not contain valid credentials, it will not be queued but
 rejected instantly in the same way as a "regular", non-queued request.
 
-!CHAPTER Managing Async Results via HTTP
+Managing Async Results via HTTP
+===============================
 
 @startDocuBlock JSF_job_fetch_result
 @startDocuBlock JSF_job_cancel

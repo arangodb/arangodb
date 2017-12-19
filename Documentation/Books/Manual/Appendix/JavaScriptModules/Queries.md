@@ -1,9 +1,10 @@
-!CHAPTER Module "queries"
+Module "queries"
+================
 
 The query module provides the infrastructure for working with currently running AQL queries via arangosh.
 
 
-!SUBSECTION Properties
+### Properties
 `queries.properties()` Returns the servers current query tracking configuration; we change the slow query threshold to get better results:
 
     @startDocuBlockInline QUERY_01_properyOfQueries
@@ -15,7 +16,7 @@ The query module provides the infrastructure for working with currently running 
     @endDocuBlock QUERY_01_properyOfQueries
 
 
-!SUBSECTION Currently running queries
+### Currently running queries
 
 We [create a task](Tasks.md) that spawns queries, so we have nice output. Since this task
 uses resources, you may want to increase `period` (and not forget to remove it... afterwards):
@@ -43,7 +44,7 @@ uses resources, you may want to increase `period` (and not forget to remove it..
     @endDocuBlock QUERY_02_listQueries
 The function returns the currently running AQL queries as an array.
 
-!SUBSECTION Slow queries
+### Slow queries
 The function returns the last AQL queries that exceeded the slow query threshold as an array:
 
     @startDocuBlockInline QUERY_03_listSlowQueries
@@ -53,7 +54,7 @@ The function returns the last AQL queries that exceeded the slow query threshold
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock QUERY_03_listSlowQueries
 
-!SUBSECTION Clear slow queries
+### Clear slow queries
 Clear the list of slow AQL queries:
 
     @startDocuBlockInline QUERY_04_clearSlowQueries
@@ -65,7 +66,7 @@ Clear the list of slow AQL queries:
     @endDocuBlock QUERY_04_clearSlowQueries
 
 
-!SUBSECTION Kill
+### Kill
 Kill a running AQL query:
 
     @startDocuBlockInline QUERY_05_killQueries

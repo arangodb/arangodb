@@ -1,4 +1,5 @@
-!CHAPTER UPSERT
+UPSERT
+======
 
 The *UPSERT* keyword can be used for checking whether certain documents exist,
 and to update/replace them in case they exist, or create them in case they do not exist.
@@ -52,7 +53,7 @@ Note that in the *UPDATE* case it is possible to refer to the previous version o
 document using the *OLD* pseudo-value.
 
 
-!SUBSECTION Setting query options
+### Setting query options
 
 As in several above examples, the *ignoreErrors* option can be used to suppress query 
 errors that may occur when trying to violate unique key constraints.
@@ -72,7 +73,7 @@ To make sure data are durable when an update query returns, there is the *waitFo
 query option.
 
 
-!SUBSECTION Returning documents
+### Returning documents
 
 `UPSERT` statements can optionally return data. To do so, they need to be followed
 by a `RETURN` statement (intermediate `LET` statements are allowed, too). These statements

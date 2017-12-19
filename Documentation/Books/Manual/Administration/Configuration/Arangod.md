@@ -1,10 +1,11 @@
-!CHAPTER Command-Line Options for arangod
+Command-Line Options for arangod
+================================
 
-!SUBSECTION Endpoint
+### Endpoint
 @startDocuBlock serverEndpoint
 
 
-!SUBSECTION Reuse address
+### Reuse address
 
 
 try to reuse address
@@ -25,11 +26,11 @@ SO_EXCLUSIVEADDRUSE as a measure to alleviate this problem.
 
 
 
-!SUBSECTION Enable/disable authentication  
+### Enable/disable authentication
 @startDocuBlock server_authentication
 
 
-!SUBSECTION Enable/disable authentication for UNIX domain sockets
+### Enable/disable authentication for UNIX domain sockets
 
 
 disable authentication for requests via UNIX domain sockets
@@ -48,11 +49,11 @@ domain sockets.
 
 
 
-!SUBSECTION Enable/disable authentication for system API requests only
+### Enable/disable authentication for system API requests only
 @startDocuBlock serverAuthenticateSystemOnly
 
 
-!SUBSECTION Enable/disable replication applier
+### Enable/disable replication applier
 
 
 Enable/disable the replication applier on server startup
@@ -72,11 +73,11 @@ The default is *true*.
 
 
 
-!SUBSECTION Keep-alive timeout
+### Keep-alive timeout
 @startDocuBlock keep_alive_timeout
 
 
-!SUBSECTION Hide Product header
+### Hide Product header
 
 
 hide the "Server: ArangoDB" header in HTTP responses
@@ -90,7 +91,7 @@ The default is *false*.
 
 
 
-!SUBSECTION Allow method override
+### Allow method override
 
 
 allow HTTP method override via custom headers?
@@ -117,7 +118,7 @@ The default value for this option is *false*.
 
 
 
-!SUBSECTION Server threads
+### Server threads
 
 
 number of dispatcher threads
@@ -128,7 +129,7 @@ requests.
 
 
 
-!SUBSECTION Keyfile
+### Keyfile
 
 
 keyfile containing server certificate
@@ -187,7 +188,7 @@ started with at least one SSL endpoint.
 
 
 
-!SUBSECTION Cafile
+### Cafile
 
 
 CA file
@@ -207,7 +208,7 @@ used.
 
 
 
-!SUBSECTION SSL protocol
+### SSL protocol
 
 
 SSL protocol type to use `--ssl.protocol value`
@@ -228,7 +229,7 @@ to POODLE attack variants.
 
 
 
-!SUBSECTION SSL cache
+### SSL cache
 
 
 whether or not to use SSL session caching
@@ -243,7 +244,7 @@ only if the client supports sending the session id.
 
 
 
-!SUBSECTION SSL options
+### SSL options
 
 
 ssl options to use
@@ -277,7 +278,7 @@ used.
 
 
 
-!SUBSECTION SSL cipher
+### SSL cipher
 
 
 ssl cipher list to use
@@ -310,7 +311,7 @@ The default value for *cipher-list* is "ALL".
 
 
 
-!SUBSECTION Backlog size
+### Backlog size
 
 
 listen backlog size
@@ -326,7 +327,7 @@ system call).
 
 
 
-!SUBSECTION Toggling server statistics 
+### Toggling server statistics
 
 `--server.statistics value`
 
@@ -335,7 +336,7 @@ is turned off. Statistics gathering causes regular CPU activity so using this
 option to turn it off might relieve heavy-loaded instances a bit.
 
 
-!SUBSECTION Session timeout
+### Session timeout
 
 
 time to live for server sessions
@@ -348,15 +349,15 @@ Sessions are only used when authentication is turned on.
 
 
 
-!SUBSECTION Foxx queues 
+### Foxx queues
 @startDocuBlock foxxQueues
 
 
-!SUBSECTION Foxx queues poll interval
+### Foxx queues poll interval
 @startDocuBlock foxxQueuesPollInterval
 
 
-!SUBSECTION Directory
+### Directory
 
 
 path to the database
@@ -387,19 +388,19 @@ directory as argument.
 
 
 
-!SUBSECTION Journal size
+### Journal size
 @startDocuBlock databaseMaximalJournalSize
 
 
-!SUBSECTION Wait for sync
+### Wait for sync
 @startDocuBlock databaseWaitForSync
 
 
-!SUBSECTION Force syncing of properties
+### Force syncing of properties
 @startDocuBlock databaseForceSyncProperties
 
 
-!SUBSECTION Enable/disable AQL query tracking
+### Enable/disable AQL query tracking
 
 
 disable the query tracking feature
@@ -411,7 +412,7 @@ default. Tracking of queries can be disabled by setting the option to *false*.
 The default is *true*.
 
 
-!SUBSECTION Threshold for slow AQL queries
+### Threshold for slow AQL queries
 
 
 adjust the threshold for slow AQL queries
@@ -427,7 +428,7 @@ The default value is *10.0*.
 
 
 
-!SUBSECTION Throw collection not loaded error
+### Throw collection not loaded error
 
 
 throw collection not loaded error
@@ -456,7 +457,7 @@ The default value is *false*.
 
 
 
-!SUBSECTION AQL Query caching mode
+### AQL Query caching mode
 
 
 whether or not to enable the AQL query result cache
@@ -473,7 +474,7 @@ Toggles the AQL query cache behavior. Possible values are:
 
 
 
-!SUBSECTION AQL Query cache size 
+### AQL Query cache size
 
 
 maximum number of elements in the query cache per database
@@ -489,7 +490,7 @@ This option only has an effect if the query cache mode is set to either
 
 
 
-!SUBSECTION Index threads
+### Index threads
 
 
 number of background threads for parallel index creation
@@ -507,7 +508,7 @@ edge index in the collection to be split into multiple buckets).
 
 
 
-!SUBSECTION V8 contexts
+### V8 contexts
 
 
 number of V8 contexts for executing JavaScript actions
@@ -521,7 +522,7 @@ requires periodic CPU processing time for garbage collection.
 
 
 
-!SUBSECTION Garbage collection frequency (time-based)
+### Garbage collection frequency (time-based)
 
 
 JavaScript garbage collection frequency (each x seconds)
@@ -533,7 +534,7 @@ still work in periods with no or little numbers of requests.
 
 
 
-!SUBSECTION Garbage collection interval (request-based)
+### Garbage collection interval (request-based)
 
 
 JavaScript garbage collection interval (each x requests)
@@ -544,7 +545,7 @@ garbage collection for JavaScript objects will be run in each thread.
 
 
 
-!SUBSECTION V8 options
+### V8 options
 
 
 optional arguments to pass to v8

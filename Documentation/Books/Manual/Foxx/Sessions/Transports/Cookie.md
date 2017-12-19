@@ -1,4 +1,5 @@
-!CHAPTER Cookie Session Transport
+Cookie Session Transport
+========================
 
 `const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');`
 
@@ -21,7 +22,8 @@ const sessions = sessionsMiddleware({
 module.context.use(sessions);
 ```
 
-!SECTION Creating a transport
+Creating a transport
+--------------------
 
 `cookieTransport([options]): Transport`
 

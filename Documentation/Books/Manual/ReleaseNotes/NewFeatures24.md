@@ -1,11 +1,13 @@
-!CHAPTER Features and Improvements
+Features and Improvements
+=========================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 2.4. ArangoDB 2.4 also contains several bugfixes that are not listed
 here. For a list of bugfixes, please consult the [CHANGELOG](https://github.com/arangodb/arangodb/blob/devel/CHANGELOG).
 
 
-!SECTION V8 version upgrade
+V8 version upgrade
+------------------
 
 The built-in version of V8 has been upgraded from 3.16.14 to 3.29.59.
 This activates several ES6 (also dubbed *Harmony* or *ES.next*) features in
@@ -40,7 +42,8 @@ More details on the available ES6 features can be found in
 [this blog](https://jsteemann.github.io/blog/2014/12/19/using-es6-features-in-arangodb/).
 
 
-!SECTION FoxxGenerator
+FoxxGenerator
+-------------
 
 ArangoDB 2.4 is shipped with FoxxGenerator, a framework for building
 standardized Hypermedia APIs easily. The generated APIs can be consumed with
@@ -63,9 +66,10 @@ is here:
 
 A cookbook recipe for getting started with FoxxGenerator is [here](https://docs.arangodb.com/2.8/cookbook/FoxxGeneratorFirstSteps.html).
 
-!SECTION AQL improvements
+AQL improvements
+----------------
 
-!SUBSECTION Optimizer improvements
+### Optimizer improvements
 
 The AQL optimizer has been enhanced to use of indexes in queries in several 
 additional cases. Filters containing the `IN` operator can now make use of 
@@ -99,7 +103,7 @@ statement and move the random iteration into the appropriate `EnumerateCollectio
 This is usually more efficient than individually enumerating and sorting.
 
 
-!SUBSECTION Data-modification queries returning documents
+### Data-modification queries returning documents
 
 `INSERT`, `REMOVE`, `UPDATE` or `REPLACE` queries now can optionally return 
 the documents inserted, removed, updated, or replaced. This is helpful for tracking
@@ -132,9 +136,9 @@ including the potentially auto-generated attributes such as `_id`, `_key`, or `_
 and the attributes not specified in the update expression of a partial update.
 
 
-!SUBSECTION Language improvements
+### Language improvements
 
-!SUBSUBSECTION `COUNT` clause
+#### `COUNT` clause
 
 An optional `COUNT` clause was added to the `COLLECT` statement. The `COUNT`
 clause allows for more efficient counting of values.
@@ -167,7 +171,7 @@ The `COUNT` clause can also be used to count the number of items in each group:
       return { group: group, length: length }
 
 
-!SUBSUBSECTION `COLLECT` modifications
+#### `COLLECT` modifications
 
 In ArangoDB 2.4, `COLLECT` operations can be made more efficient if only a 
 small fragment of the group values is needed later. For these cases, `COLLECT`
@@ -197,7 +201,7 @@ variable, whereas the new variant will only copy the `dateRegistered`
 attribute of each `doc`.
 
 
-!SUBSUBSECTION Subquery syntax
+#### Subquery syntax
 
 In previous versions of ArangoDB, subqueries required extra parentheses
 around them, and this caused confusion when subqueries were used as function
@@ -217,7 +221,7 @@ This was unintuitive and is fixed in version 2.4 so that both variants of
 the query are accepted and produce the same result.
 
 
-!SUBSECTION Web interface
+### Web interface
 
 The `Applications` tab for Foxx applications in the web interface has got 
 a complete redesign.
@@ -246,9 +250,10 @@ features already available in the `foxx-manager` console application plus some m
   be installed on the server. Starting with a new Foxx app has never been easier.
 
 
-!SECTION Miscellaneous improvements
+Miscellaneous improvements
+--------------------------
 
-!SUBSECTION Default endpoint is 127.0.0.1
+### Default endpoint is 127.0.0.1
 
 The default endpoint for the ArangoDB server has been changed from `0.0.0.0` to
 `127.0.0.1`. This will make new ArangoDB installations unaccessible from clients other 
@@ -259,7 +264,7 @@ If you are the development option `--enable-relative`, the endpoint will still
 be `0.0.0.0`.
 
 
-!SUBSECTION System collections in replication
+### System collections in replication
   
 By default, system collections are now included in replication and all replication API 
 return values. This will lead to user accounts and credentials data being replicated 

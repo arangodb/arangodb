@@ -1,4 +1,5 @@
-!SECTION Modifying Request and Response
+Modifying Request and Response
+------------------------------
 
 As we've seen in the previous examples, actions get called with the request and
 response objects (named *req* and *res* in the examples) passed as parameters to
@@ -60,7 +61,8 @@ and set the HTTP header *Content-Encoding: binary*. The opposite can be achieved
 with the *base64encode* transformation: ArangoDB will then automatically
 base64-encode the body and set a *Content-Encoding: base64* HTTP header.
 
-!SECTION Writing dynamic action handlers
+Writing dynamic action handlers
+-------------------------------
 
 To write your own dynamic action handlers, you must put them into modules.
 
@@ -117,7 +119,8 @@ Now use the browser or cURL and access http://localhost:8529/ourtest :
 
 You will see that the module's do function has been executed.
 
-!SECTION A Word about Caching
+A Word about Caching
+--------------------
 
 Sometimes it might seem that your change do not take effect. In this case the
 culprit could be the routing caches:
@@ -134,11 +137,12 @@ collection. Whenever you change this collection manually, you need to call
 in order to rebuild the cache.
 
 
-!SECTION Advanced Usages
+Advanced Usages
+---------------
 
 For detailed information see the reference manual.
 
-!SUBSECTION Redirects
+### Redirects
 
 Use the following for a permanent redirect:
 
@@ -169,7 +173,7 @@ Use the following for a permanent redirect:
     @END_EXAMPLE_ARANGOSH_RUN
     @endDocuBlock MOD_06b_routingCurlRedirect
 
-!SUBSECTION Routing Bundles
+### Routing Bundles
 
 Instead of adding all routes for package separately, you can
 specify a bundle:
@@ -255,7 +259,7 @@ will define the URL */test/url1*, */test/url2*, and */test/url3*:
     @END_EXAMPLE_ARANGOSH_RUN
     @endDocuBlock MOD_07d_routingCurlMulti
 
-!SUBSECTION Writing Middleware
+### Writing Middleware
 
 Assume, you want to log every request in your namespace to the console. *(if ArangoDB is running
 as a daemon, this will end up in the logfile)*. In this case you can easily define an
@@ -358,7 +362,8 @@ and the console (and / or the logfile) will show requests and replies.
 *Note that logging doesn't warrant the sequence in which these lines
 will appear.*
 
-!SECTION Application Deployment
+Application Deployment
+----------------------
 
 Using single routes or [bundles](#routing-bundles) can be
 become a bit messy in large applications. Kaerus has written a [deployment tool](https://github.com/kaerus/arangodep) in node.js.
@@ -366,9 +371,10 @@ become a bit messy in large applications. Kaerus has written a [deployment tool]
 Note that there is also [Foxx](../../../Foxx/README.md) for building applications
 with ArangoDB.
 
-!SECTION Common Pitfalls when using Actions
+Common Pitfalls when using Actions
+----------------------------------
 
-!SUBSECTION Caching
+### Caching
 
 If you made any changes to the routing but the changes does not have any effect
 when calling the modified actions URL, you might have been hit by some
@@ -387,7 +393,7 @@ You might also be affected by client-side caching.
 Browsers tend to cache content and also redirection URLs. You might need to
 clear or disable the browser cache in some cases to see your changes in effect.
 
-!SUBSECTION Data types
+### Data types
 
 When processing the request data in an action, please be aware that the data
 type of all query parameters is *string*. This is because the whole URL is a
@@ -406,7 +412,7 @@ header from a client to ArangoDB
 
 then the header *X-My-Value* will have a value of (string) *5* and not (number) *5*.
 
-!SUBSECTION 404 Not Found
+### 404 Not Found
 
 If you defined a URL in the routing and the URL is accessible fine via
 HTTP *GET* but returns an HTTP 501 (not implemented) for other HTTP methods

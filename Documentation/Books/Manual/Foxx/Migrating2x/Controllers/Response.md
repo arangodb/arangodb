@@ -1,4 +1,5 @@
-!CHAPTER Response objects
+Response objects
+================
 
 The response object has a lot of new methods in ArangoDB 3.0 but otherwise remains similar to the response object of previous versions:
 

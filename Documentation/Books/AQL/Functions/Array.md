@@ -1,4 +1,5 @@
-!CHAPTER Array functions
+Array functions
+===============
 
 AQL provides functions for higher-level array manipulation. Also see the
 [numeric functions](Numeric.md) for functions that work on number arrays.
@@ -14,7 +15,7 @@ Apart from that, AQL also offers several language constructs:
   as well as [COLLECT](../Operations/Collect.md) for grouping,
   which also offers efficient aggregation.
 
-!SUBSECTION APPEND()
+### APPEND()
 
 `APPEND(anyArray, values, unique) → newArray`
 
@@ -35,11 +36,11 @@ APPEND([ 1, 2, 3 ], [ 3, 4, 5, 2, 9 ], true)
 // [ 1, 2, 3, 4, 5, 9 ]
 ```
 
-!SUBSECTION COUNT()
+### COUNT()
 
 This is an alias for [LENGTH()](#length).
 
-!SUBSECTION FIRST()
+### FIRST()
 
 `FIRST(anyArray) → firstElement`
 
@@ -49,7 +50,7 @@ Get the first element of an array. It is the same as `anyArray[0]`.
 - returns **firstElement** (any|null): the first element of *anyArray*, or *null* if
   the array is empty.
 
-!SUBSECTION FLATTEN()
+### FLATTEN()
 
 `FLATTEN(anyArray, depth) → flatArray`
 
@@ -73,7 +74,7 @@ FLATTEN( [ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ], 2 )
 // [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
 ```
 
-!SUBSECTION INTERSECTION()
+### INTERSECTION()
 
 `INTERSECTION(array1, array2, ... arrayN) → newArray`
 
@@ -85,7 +86,7 @@ occur in all arguments.
 - returns **newArray** (array): a single array with only the elements, which exist in all
   provided arrays. The element order is random. Duplicates are removed.
 
-!SUBSECTION LAST()
+### LAST()
 
 `LAST(anyArray) → lastElement`
 
@@ -95,7 +96,7 @@ Get the last element of an array. It is the same as `anyArray[-1]`.
 - returns **lastElement** (any|null): the last element of *anyArray* or *null* if the
   array is empty.
 
-!SUBSECTION LENGTH()
+### LENGTH()
 
 `LENGTH(anyArray) → length`
 
@@ -108,7 +109,7 @@ Determine the number of elements in an array.
 of an object / document, the [amount of documents](Miscellaneous.md#length) in a
 collection and the [character length](String.md#length) of a string.
 
-!SUBSECTION MINUS()
+### MINUS()
 
 `MINUS(array1, array2, ... arrayN) → newArray`
 
@@ -120,7 +121,7 @@ Return the difference of all arrays specified.
   but not in any of the subsequent arrays. The order of the result array is undefined
   and should not be relied on. Duplicates will be removed.
 
-!SUBSECTION NTH()
+### NTH()
 
 `NTH(anyArray, position) → nthElement`
 
@@ -139,7 +140,7 @@ NTH( [ "foo", "bar", "baz" ], 3 )  // null
 NTH( [ "foo", "bar", "baz" ], -1 ) // null
 ```
 
-!SUBSECTION OUTERSECTION()
+### OUTERSECTION()
 
 `OUTERSECTION(array1, array2, ... arrayN) → newArray`
 
@@ -155,7 +156,7 @@ OUTERSECTION( [ 1, 2, 3 ], [ 2, 3, 4 ], [ 3, 4, 5 ] )
 // [ 1, 5 ]
 ```
 
-!SUBSECTION POP()
+### POP()
 
 `POP(anyArray) → newArray`
 
@@ -170,7 +171,7 @@ POP( [ 1, 2, 3, 4 ] ) // [ 1, 2, 3 ]
 POP( [ 1 ] ) // []
 ```
 
-!SUBSECTION POSITION()
+### POSITION()
 
 `POSITION(anyArray, search, returnIndex) → position`
 
@@ -184,7 +185,7 @@ Return whether *search* is contained in *array*. Optionally return the position.
   *false* otherwise. If *returnIndex* is enabled, the position of the match is
   returned (positions start at 0), or *-1* if it's not found.
 
-!SUBSECTION PUSH()
+### PUSH()
 
 `PUSH(anyArray, value, unique) → newArray`
 
@@ -209,7 +210,7 @@ PUSH([ 1, 2, 2, 3 ], 2, true)
 // [ 1, 2, 2, 3 ]
 ```
 
-!SUBSECTION REMOVE_NTH()
+### REMOVE_NTH()
 
 `REMOVE_NTH(anyArray, position) → newArray`
 
@@ -229,7 +230,7 @@ REMOVE_NTH( [ "a", "b", "c", "d", "e" ], -2 )
 // [ "a", "b", "c", "e" ]
 ```
 
-!SUBSECTION REMOVE_VALUE()
+### REMOVE_VALUE()
 
 `REMOVE_VALUE(anyArray, value, limit) → newArray`
 
@@ -249,7 +250,7 @@ REMOVE_VALUE( [ "a", "b", "b", "a", "c" ], "a", 1 )
 // [ "b", "b", "a", "c" ]
 ```
 
-!SUBSECTION REMOVE_VALUES()
+### REMOVE_VALUES()
 
 `REMOVE_VALUES(anyArray, values) → newArray`
 
@@ -265,7 +266,7 @@ REMOVE_VALUES( [ "a", "a", "b", "c", "d", "e", "f" ], [ "a", "f", "d" ] )
 // [ "b", "c", "e" ]
 ```
 
-!SUBSECTION REVERSE()
+### REVERSE()
 
 `REVERSE(anyArray) → reversedArray`
 
@@ -275,7 +276,7 @@ Return an array with its elements reversed.
 - returns **reversedArray** (array): a new array with all elements of *anyArray* in
   reversed order
 
-!SUBSECTION SHIFT()
+### SHIFT()
 
 `SHIFT(anyArray) → newArray`
 
@@ -290,7 +291,7 @@ SHIFT( [ 1, 2, 3, 4 ] ) // [ 2, 3, 4 ]
 SHIFT( [ 1 ] ) // []
 ```
 
-!SUBSECTION SLICE()
+### SLICE()
 
 `SLICE(anyArray, start, length) → newArray`
 
@@ -313,7 +314,7 @@ SLICE( [ 1, 2, 3, 4, 5 ], 0, -2 ) // [ 1, 2, 3 ]
 SLICE( [ 1, 2, 3, 4, 5 ], -3, 2 ) // [ 3, 4 ]
 ```
 
-!SUBSECTION UNION()
+### UNION()
 
 `UNION(array1, array2, ... arrayN) → newArray`
 
@@ -346,7 +347,7 @@ UNIQUE(
 // [ 1, 2, 3 ]
 ```
 
-!SUBSECTION UNION_DISTINCT()
+### UNION_DISTINCT()
 
 `UNION_DISTINCT(array1, array2, ... arrayN) → newArray`
 
@@ -365,7 +366,7 @@ UNION_DISTINCT(
 // [ 1, 2, 3 ]
 ```
 
-!SUBSECTION UNIQUE()
+### UNIQUE()
 
 `UNIQUE(anyArray) → newArray`
 
@@ -375,7 +376,7 @@ function will use the comparison order.
 - **anyArray** (array): array with elements of arbitrary type
 - returns **newArray** (array): *anyArray* without duplicates, in any order
 
-!SUBSECTION UNSHIFT()
+### UNSHIFT()
 
 `UNSHIFT(anyArray, value, unique) → newArray`
 

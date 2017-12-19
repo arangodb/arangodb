@@ -1,8 +1,9 @@
-!CHAPTER Fulltext indexes
+Fulltext indexes
+================
 
 This is an introduction to ArangoDB's fulltext indexes.
 
-!SUBSECTION Introduction to Fulltext Indexes
+### Introduction to Fulltext Indexes
 
 A fulltext index can be used to find words, or prefixes of words inside documents. 
 
@@ -41,7 +42,8 @@ only be included in the index if it is a string. When indexing the contents of a
 attribute, an object member value will only be included in the index if it is a string. 
 Other data types are ignored and not indexed.
 
-!SECTION Accessing Fulltext Indexes from the Shell
+Accessing Fulltext Indexes from the Shell
+-----------------------------------------
 
 <!-- js/server/modules/@arangodb/arango-collection.js -->
 
@@ -90,6 +92,7 @@ Looks up a fulltext index:
 
 Checks whether a fulltext index on the given attribute *attribute* exists.
 
-!SECTION Fulltext AQL Functions
+Fulltext AQL Functions
+----------------------
 
 Fulltext AQL functions are detailed in [Fulltext functions](../../AQL/Functions/Fulltext.html).

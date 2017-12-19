@@ -1,4 +1,5 @@
-!CHAPTER How to invoke AQL 
+How to invoke AQL
+=================
 
 AQL queries can be executed using:
 

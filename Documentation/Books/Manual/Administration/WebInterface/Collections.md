@@ -1,4 +1,5 @@
-!CHAPTER Collections
+Collections
+===========
 
 The collections section displays all available collections. From here you can
 create new collections and jump into a collection for details (click on a
@@ -20,7 +21,7 @@ Information:
  - F: Collection state(unloaded, loaded, ...)
  - G: Collection name
 
-!SUBSECTION Collection
+### Collection
 
 ![Collection](images/collectionView.png)
 

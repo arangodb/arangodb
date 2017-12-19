@@ -1,4 +1,5 @@
-!CHAPTER Type and value order
+Type and value order
+====================
 
 When checking for equality or inequality or when determining the sort order of
 values, AQL uses a deterministic algorithm that takes both the data types and

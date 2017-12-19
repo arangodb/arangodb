@@ -1,4 +1,5 @@
-!CHAPTER Working with Edges using REST 
+Working with Edges using REST
+=============================
 
 This is documentation to ArangoDB's
 [REST interface for edges](../../Manual/Graphs/Edges/index.html).

@@ -1,4 +1,5 @@
-!CHAPTER Dashboard
+Dashboard
+=========
 
 The *Dashboard* tab provides statistics which are polled regularly from the
 ArangoDB server.

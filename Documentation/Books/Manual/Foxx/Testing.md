@@ -1,4 +1,5 @@
-!CHAPTER Writing tests
+Writing tests
+=============
 
 Foxx provides out of the box support for running tests against an installed service
 using the [Mocha](https://mochajs.org) test runner.
@@ -6,7 +7,8 @@ using the [Mocha](https://mochajs.org) test runner.
 Test files have full access to the [service context](./Context.md) and all ArangoDB APIs
 but like scripts can not define Foxx routes.
 
-!SECTION Running tests
+Running tests
+-------------
 
 An installed service's tests can be executed from the administrative web interface:
 
@@ -24,7 +26,8 @@ performing requests to the service's own routes as part of the test suites
 may result in tests being executed while the database is in an inconsistent state,
 leading to unexpected behaviour.
 
-!SECTION Test file paths
+Test file paths
+---------------
 
 In order to tell Foxx about files containing test suites, one or more patterns need to be specified in the `tests` option of the [service manifest](./Manifest.md):
 
@@ -91,7 +94,8 @@ Even if multiple patterns match the same file the tests in that file will only b
 The order of tests is always determined by the file paths,
 not the order in which they are matched or specified in the manifest.
 
-!SECTION Test structure
+Test structure
+--------------
 
 Mocha test suites can be defined using one of three interfaces: BDD, TDD or Exports.
 
@@ -99,7 +103,7 @@ The QUnit interface of Mocha is not supported in ArangoDB.
 
 Like all ArangoDB code, test code is always synchronous.
 
-!SUBSECTION BDD interface
+### BDD interface
 
 The BDD interface defines test suites using the `describe` function
 and each test case is defined using the `it` function:
@@ -133,7 +137,7 @@ describe('False things', () => {
 });
 ```
 
-!SUBSECTION TDD interface
+### TDD interface
 
 The TDD interface defines test suites using the `suite` function
 and each test case is defined using the `test` function:
@@ -165,7 +169,7 @@ suite('False things', () => {
 });
 ```
 
-!SUBSECTION Exports interface
+### Exports interface
 
 The Exports interface defines test cases as methods of plain object properties of the `module.exports` object:
 
@@ -196,7 +200,8 @@ exports['False things'] = {
 };
 ```
 
-!SECTION Assertions
+Assertions
+----------
 
 ArangoDB provides two bundled modules to define assertions:
 

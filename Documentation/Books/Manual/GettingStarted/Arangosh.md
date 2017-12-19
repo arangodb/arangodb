@@ -1,4 +1,5 @@
-!CHAPTER Details about the ArangoDB Shell
+Details about the ArangoDB Shell
+================================
 
 After the server has been started,
 you can use the ArangoDB shell (_arangosh_) to administrate the
@@ -14,7 +15,8 @@ unix> ./arangosh --server.endpoint tcp://127.0.0.1:8529 --server.username root
 The shell will print its own version number and if successfully connected
 to a server the version number of the ArangoDB server.
 
-!SECTION Command-Line Options
+Command-Line Options
+--------------------
 
 Use `--help` to get a list of command-line options:
 
@@ -53,7 +55,8 @@ CLIENT options:
   --server.username <string>                username to use when connecting (default: "root")
 ```
 
-!SECTION Database Wrappers
+Database Wrappers
+-----------------
 
 The [`db` object](../Appendix/References/DBObject.md) is available in *arangosh*
 as well as on *arangod* i.e. if you're using [Foxx](../Foxx/README.md). While its
@@ -74,7 +77,8 @@ for (i = 0; i < 100000; i++) {
 Since the *arangosh* version will be doing around 100k HTTP requests, and the
 *arangod* version will directly write to the database.
 
-!SECTION Using `arangosh` via unix shebang mechanisms
+Using `arangosh` via unix shebang mechanisms
+--------------------------------------------
 In unix operating systems you can start scripts by specifying the interpreter in the first line of the script.
 This is commonly called `shebang` or `hash bang`. You can also do that with `arangosh`, i.e. create `~/test.js`:
 

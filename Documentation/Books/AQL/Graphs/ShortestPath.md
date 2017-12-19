@@ -1,6 +1,8 @@
-!CHAPTER Shortest Path in AQL
+Shortest Path in AQL
+====================
 
-!SECTION General query idea
+General query idea
+------------------
 
 This type of query is supposed to find the shortest path between two given documents
 (*startVertex* and *targetVertex*) in your graph. For all vertices on this shortest
@@ -9,7 +11,7 @@ path you will get a result in form of a set with two items:
 1. The vertex on this path.
 2. The edge pointing to it.
 
-!SUBSECTION Example execution
+### Example execution
 
 Let's take a look at a simple example to explain how it works.
 This is the graph that we are going to find a shortest path on:
@@ -35,13 +37,14 @@ return the following pairs:
 Note: The first edge will always be `null` because there is no edge pointing
 to the *startVertex*.
 
-!SECTION Syntax
+Syntax
+------
 
 Now let's see how we can write a shortest path query.
 You have two options here, you can either use a named graph or a set of edge
 collections (anonymous graph).
 
-!SUBSUBSECTION Working with named graphs
+#### Working with named graphs
 
 ```
 FOR vertex[, edge]
@@ -72,7 +75,7 @@ FOR vertex[, edge]
   no *weightAttribute* in the edge document, or if it's not a number. The default
   is 1.
 
-!SUBSECTION Working with collection sets
+### Working with collection sets
 
 ```
 FOR vertex[, edge]
@@ -86,7 +89,7 @@ Instead of `GRAPH graphName` you may specify a list of edge collections (anonymo
 graph). The involved vertex collections are determined by the edges of the given
 edge collections. The rest of the behavior is similar to the named version.
 
-!SUBSECTION Traversing in mixed directions
+### Traversing in mixed directions
 
 For shortest path with a list of edge collections you can optionally specify the
 direction for some of the edge collections. Say for example you have three edge
@@ -105,7 +108,8 @@ All collections in the list that do not specify their own direction will use the
 direction defined after *IN* (here: *OUTBOUND*). This allows to use a different
 direction for each collection in your path search.
 
-!SECTION Conditional shortest path
+Conditional shortest path
+-------------------------
 
 The SHORTEST_PATH computation will only find an unconditioned shortest path.
 With this construct it is not possible to define a condition like: "Find the
@@ -113,7 +117,8 @@ shortest path where all edges are of type *X*". If you want to do this, use a
 normal [Traversal](Traversals.md) instead with the option `{bfs: true}` in
 combination with `LIMIT 1`.
 
-!SECTION Examples
+Examples
+--------
 We will create a simple symmetric traversal demonstration graph:
 
 ![traversal graph](traversal_graph.png)

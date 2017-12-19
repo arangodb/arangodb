@@ -1,4 +1,5 @@
-!CHAPTER Authentication
+Authentication
+==============
 
 `const createAuth = require('@arangodb/foxx/auth');`
 
@@ -6,7 +7,8 @@ Authenticators allow implementing basic password mechanism using simple built-in
 
 For a full example of sessions with authentication and registration see the example in the [chapter on User Management](Users.md).
 
-!SECTION Creating an authenticator
+Creating an authenticator
+-------------------------
 
 `createAuth([options]): Authenticator`
 
@@ -37,7 +39,8 @@ Creates an authenticator.
 
 Returns an authenticator.
 
-!SECTION Creating authentication data objects
+Creating authentication data objects
+------------------------------------
 
 `auth.create(password): AuthData`
 
@@ -63,7 +66,8 @@ Creates an authentication data object for the given password with the following 
 
 Returns the authentication data object.
 
-!SECTION Validating passwords against authentication data objects
+Validating passwords against authentication data objects
+--------------------------------------------------------
 
 `auth.verify([hash, [password]]): boolean`
 

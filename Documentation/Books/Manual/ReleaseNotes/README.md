@@ -1,6 +1,8 @@
-!CHAPTER Release Notes
+Release Notes
+=============
 
-!SECTION Whats New
+Whats New
+---------
 
 - [Whats New in 3.0](NewFeatures30.md)
 - [Whats New in 2.8](NewFeatures28.md)
@@ -12,7 +14,8 @@
 - [Whats New in 2.2](NewFeatures22.md)
 - [Whats New in 2.1](NewFeatures21.md)
 
-!SECTION Incompatible changes
+Incompatible changes
+--------------------
 
 Also see [Upgrading](../Administration/Upgrading/README.md) in the 
 Administration chapter.

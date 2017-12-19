@@ -1,4 +1,5 @@
-!CHAPTER Foxx scripts and queued jobs
+Foxx scripts and queued jobs
+============================
 
 Foxx lets you define scripts that can be executed as part of the installation and removal process, invoked manually or scheduled to run at a later time using the job queue.
 
@@ -30,7 +31,8 @@ queues.get('default').push(
 );
 ```
 
-!SECTION Script arguments and return values
+Script arguments and return values
+----------------------------------
 
 If the script was invoked with any arguments, you can access them using the `module.context.argv` array.
 
@@ -57,13 +59,14 @@ assert.equal(typeof argv[1], 'number', 'Expected second argument to be a number'
 module.exports = argv[0] * argv[1];
 ```
 
-!SECTION Lifecycle Scripts
+Lifecycle Scripts
+-----------------
 
 Foxx recognizes lifecycle scripts if they are defined and will invoke them during the installation, update and removal process of the service if you want.
 
 The following scripts are currently recognized as lifecycle scripts by their name: `"setup"` and `"teardown"`.
 
-!SUBSECTION Setup Script
+### Setup Script
 
 The setup script will be executed without arguments during the installation of your Foxx service.
 
@@ -89,7 +92,7 @@ if (db._collection(textsCollectionName) === null) {
 }
 ```
 
-!SUBSECTION Teardown Script
+### Teardown Script
 
 The teardown script will be executed without arguments during the removal of your Foxx service.
 
@@ -110,7 +113,8 @@ if (textsCollection) {
 }
 ```
 
-!SECTION Queues
+Queues
+------
 
 Foxx allows defining job queues that let you perform slow or expensive actions asynchronously. These queues can be used to send e-mails, call external APIs or perform other actions that you do not want to perform directly or want to retry on failure.
 
@@ -122,7 +126,7 @@ Please note that Foxx job queues are database-specific. Queues and jobs are alwa
 
 For the low-level functionality see the chapter on the [task management module](../Appendix/JavaScriptModules/Tasks.md).
 
-!SUBSECTION Creating or updating a queue
+### Creating or updating a queue
 
 `queues.create(name, [maxWorkers]): Queue`
 
@@ -152,7 +156,7 @@ const queue3 = queues.create("my-queue", 10);
 assertEqual(queue1, queue3);
 ```
 
-!SUBSECTION Fetching an existing queue
+### Fetching an existing queue
 
 `queues.get(name): Queue`
 
@@ -184,7 +188,7 @@ const queue2 = queues.get("some-queue");
 assertEqual(queue1, queue2);
 ```
 
-!SUBSECTION Deleting a queue
+### Deleting a queue
 
 `queues.delete(name): boolean`
 
@@ -209,7 +213,7 @@ queues.delete("my-queue"); // true
 queues.delete("my-queue"); // false
 ```
 
-!SUBSECTION Adding a job to a queue
+### Adding a job to a queue
 
 `queue.push(script, data, [opts]): string`
 
@@ -365,7 +369,7 @@ queue.push(
 );
 ```
 
-!SUBSECTION Fetching a job from the queue
+### Fetching a job from the queue
 
 `queue.get(jobId): Job`
 
@@ -388,7 +392,7 @@ const job = queue.get(jobId);
 assertEqual(job.id, jobId);
 ```
 
-!SUBSECTION Deleting a job from the queue
+### Deleting a job from the queue
 
 `queue.delete(jobId): boolean`
 
@@ -403,7 +407,7 @@ The job will be looked up and deleted in the specified queue in the current data
 
 Returns `true` if the job was deleted successfully. If the job did not exist it returns `false` instead.
 
-!SUBSECTION Fetching an array of jobs in a queue
+### Fetching an array of jobs in a queue
 
 **Examples**
 
@@ -419,7 +423,7 @@ assertEqual(queue.progress(logScript).length, 0);
 assertEqual(queue.complete(logScript).length, 1);
 ```
 
-!SUBSUBSECTION Fetching an array of pending jobs in a queue
+#### Fetching an array of pending jobs in a queue
 
 `queue.pending([script]): Array<string>`
 
@@ -440,7 +444,7 @@ The jobs will be looked up in the specified queue in the current database.
 
   Mount path of the service defining the script.
 
-!SUBSUBSECTION Fetching an array of jobs that are currently in progress
+#### Fetching an array of jobs that are currently in progress
 
 `queue.progress([script])`
 
@@ -461,7 +465,7 @@ The jobs will be looked up in the specified queue in the current database.
 
   Mount path of the service defining the script.
 
-!SUBSUBSECTION Fetching an array of completed jobs in a queue
+#### Fetching an array of completed jobs in a queue
 
 `queue.complete([script]): Array<string>`
 
@@ -482,7 +486,7 @@ The jobs will be looked up in the specified queue in the current database.
 
   Mount path of the service defining the script.
 
-!SUBSUBSECTION Fetching an array of failed jobs in a queue
+#### Fetching an array of failed jobs in a queue
 
 `queue.failed([script]): Array<string>`
 
@@ -503,7 +507,7 @@ The jobs will be looked up in the specified queue in the current database.
 
   Mount path of the service defining the script.
 
-!SUBSUBSECTION Fetching an array of all jobs in a queue
+#### Fetching an array of all jobs in a queue
 
 `queue.all([script]): Array<string>`
 
@@ -524,7 +528,7 @@ The jobs will be looked up in the specified queue in the current database.
 
   Mount path of the service defining the script.
 
-!SUBSECTION Aborting a job
+### Aborting a job
 
 `job.abort(): void`
 

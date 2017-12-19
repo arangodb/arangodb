@@ -1,4 +1,5 @@
-!SECTION Starting the JavaScript shell
+Starting the JavaScript shell
+-----------------------------
 
 The easiest way to connect to the database is the JavaScript shell
 _arangosh_. You can either start it from the command-line or as an
@@ -58,7 +59,8 @@ A default configuration is normally installed under
 */etc/arangodb/arangosh.conf*. It contains a default endpoint and an
 empty password.
 
-!SECTION Querying for Documents
+Querying for Documents
+----------------------
 
 All documents are stored in collections. All collections are stored in a
 database. The database object is accessible via the variable *db*.
@@ -157,7 +159,8 @@ You can learn all about the query language [AQL](../../AQL/index.html). Note tha
 *_query* is a short-cut for *_createStatement* and *execute*. We will
 come back to these functions when we talk about cursors.
 
-!SECTION ArangoDB's Front-End
+ArangoDB's Front-End
+--------------------
 
 The ArangoDB server has a graphical front-end, which allows you to
 inspect the current state of the server from within your browser. You

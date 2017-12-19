@@ -1,6 +1,7 @@
-!CHAPTER Geo Indexes
+Geo Indexes
+===========
 
-!SUBSECTION Introduction to Geo Indexes
+### Introduction to Geo Indexes
 
 This is an introduction to ArangoDB's geo indexes.
 
@@ -14,7 +15,8 @@ A geo-spatial index assumes that the latitude is between -90 and 90 degree and
 the longitude is between -180 and 180 degree. A geo index will ignore all
 documents which do not fulfill these requirements.
 
-!SECTION Accessing Geo Indexes from the Shell
+Accessing Geo Indexes from the Shell
+------------------------------------
 
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 

@@ -1,4 +1,5 @@
-!CHAPTER HTTP Interface for Miscellaneous functions
+HTTP Interface for Miscellaneous functions
+==========================================
 
 This is an overview of ArangoDB's HTTP interface for miscellaneous functions.
 

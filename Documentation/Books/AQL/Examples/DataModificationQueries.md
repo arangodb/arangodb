@@ -1,4 +1,5 @@
-!CHAPTER Data-modification queries
+Data-modification queries
+=========================
 
 The following operations can be used to modify data of multiple documents
 with one query. This is superior to fetching and updating the documents individually
@@ -6,7 +7,8 @@ with multiple queries. However, if only a single document needs to be modified,
 ArangoDB's specialized data-modification operations for single documents
 might execute faster.
 
-!SECTION Updating documents
+Updating documents
+------------------
 
 To update existing documents, we can either use the *UPDATE* or the *REPLACE*
 operation. *UPDATE* updates only the specified attributes in the found documents,
@@ -67,7 +69,8 @@ the first error. In single-server mode, all modifications done by the query will
 be rolled back as if they never happened.
 
 
-!SECTION Replacing documents
+Replacing documents
+-------------------
 
 To not just partially update, but completely replace existing documents, use
 the *REPLACE* operation.
@@ -95,7 +98,8 @@ FOR u IN users
 ```
 
 
-!SECTION Removing documents
+Removing documents
+------------------
 
 Deleting documents can be achieved with the *REMOVE* operation.
 To remove all users within a certain age range, we can use the following query:
@@ -107,7 +111,8 @@ FOR u IN users
 ```
 
 
-!SECTION Creating documents
+Creating documents
+------------------
 
 To create new documents, there is the *INSERT* operation.
 It can also be used to generate copies of existing documents from other collections,
@@ -126,7 +131,8 @@ FOR i IN 1..1000
 ```
 
 
-!SECTION Copying data from one collection into another
+Copying data from one collection into another
+---------------------------------------------
 
 To copy data from one collection into another, an *INSERT* operation can be
 used:
@@ -147,7 +153,8 @@ To make such copy operation work in all cases, the target collection can
 be emptied before, using a *REMOVE* query.
 
 
-!SECTION Handling errors
+Handling errors
+---------------
 
 In some cases it might be desirable to continue execution of a query even in
 the face of errors (e.g. "document not found"). To continue execution of a
@@ -165,7 +172,8 @@ This will continue execution of the query even if errors occur during the
 *REPLACE* operation. It works similar for *UPDATE*, *INSERT*, and *REMOVE*.
 
 
-!SECTION Altering substructures
+Altering substructures
+----------------------
 
 To modify lists in documents we have to work with temporary variables.
 We will collect the sublist in there and alter it. We choose a simple

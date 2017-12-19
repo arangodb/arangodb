@@ -1,4 +1,5 @@
-!CHAPTER Syncing Collections
+Syncing Collections
+===================
 
 In order to synchronize data for a single collection from a master to a slave instance, there
 is the *syncCollection* function:

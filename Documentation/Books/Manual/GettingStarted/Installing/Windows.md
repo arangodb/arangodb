@@ -1,4 +1,5 @@
-!CHAPTER Windows
+Windows
+=======
 
 The default installation directory is *C:\Program Files\ArangoDB-3.x.x*. During the
 installation process you may change this. In the following description we will assume
@@ -9,12 +10,12 @@ write permission to this directory or you need to modify the config file for the
 server process. In the latter case the database directory and the Foxx directory
 have to be writable by the user.
 
-!SUBSECTION Single User Installation
+### Single User Installation
 
 Select a different directory during installation. For example
 *C:\Users\&lt;Username&gt;\ArangoDB* or *C:\ArangoDB*.
 
-!SUBSECTION Multiple Users Installation
+### Multiple Users Installation
 
 Keep the default directory. After the installation edit the file
 *&lt;ROOTDIR&gt;\etc\ArangoDB\arangod.conf*. Adjust the *directory*
@@ -28,7 +29,7 @@ and *app-path* so that these paths point into your home directory.
 
 Create the directories for each user that wants to use ArangoDB.
 
-!SUBSECTION Service Installation
+### Service Installation
 
 Keep the default directory. After the installation open a command line
 as administrator (search for *cmd* and right click *run as
@@ -46,7 +47,8 @@ option.
     file = @ROOTDIR@\var\log\arangodb\arangod.log
 
 
-!SECTION Starting
+Starting
+--------
 
 If you installed ArangoDB as a service it is automatically started.
 
@@ -67,13 +69,15 @@ page:
 
     http://127.0.0.1:8529/
 
-!SECTION Advanced Starting
+Advanced Starting
+-----------------
 
 If you want to provide our own start scripts, you can set the environment
 variable *ARANGODB_CONFIG_PATH*. This variable should point to a directory
 containing the configuration files.
 
-!SECTION Using the Client
+Using the Client
+----------------
 
 To connect to an already running ArangoDB server instance, there is a shell
 *arangosh.exe* located in *&lt;ROOTDIR&gt;\bin*. This starts a shell which can be
@@ -88,7 +92,8 @@ the *arangod.exe* executable.
 *&lt;ROOTDIR&gt;\etc\arangodb\*. Please adjust this to your needs if you want to
 use different connection settings etc.
 
-!SECTION Uninstalling
+Uninstalling
+------------
 
 To uninstall the Arango server application you can use the windows control panel
 (as you would normally uninstall an application). Note however, that any data
@@ -96,7 +101,8 @@ files created by the Arango server will remain as well as the *&lt;ROOTDIR&gt;*
 directory.  To complete the uninstallation process, remove the data files and
 the *&lt;ROOTDIR&gt;* directory manually.
 
-!SECTION Limitations for Cygwin
+Limitations for Cygwin
+----------------------
 
 Please note some important limitations when running ArangoDB under Cygwin:
 Starting ArangoDB can be started from out of a Cygwin terminal, but pressing

@@ -1,4 +1,5 @@
-!CHAPTER Details about the ArangoDB Server
+Details about the ArangoDB Server
+=================================
 
 The following command starts the ArangoDB database in server mode. You will
 be able to access the server using HTTP requests on port 8529. Look 
@@ -8,7 +9,8 @@ frequently used options – see
 
 
 
-!SECTION Frequently Used Options
+Frequently Used Options
+-----------------------
 
 The following command-line options are frequently used. 
 [For a full list of options see the documentation](../Administration/Configuration/README.md).

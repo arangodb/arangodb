@@ -1,6 +1,7 @@
-!CHAPTER HTTP Interface for Transactions
+HTTP Interface for Transactions
+===============================
 
-!SUBSECTION Transactions
+### Transactions
 
 ArangoDB's transactions are executed on the server. Transactions can be 
 initiated by clients by sending the transaction description for execution to

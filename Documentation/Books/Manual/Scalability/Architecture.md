@@ -1,4 +1,5 @@
-!SECTION Architecture
+Architecture
+------------
 
 The cluster architecture of ArangoDB is a CP master/master model with no 
 single point of failure. With "CP" we mean that in the presence of a
@@ -12,7 +13,7 @@ In this way, ArangoDB has been designed as a distributed multi-model
 database. This section gives a short outline on the cluster architecture and
 how the above features and capabilities are achieved.
 
-!SUBSECTION Structure of an ArangoDB cluster
+### Structure of an ArangoDB cluster
 
 An ArangoDB cluster consists of a number of ArangoDB instances
 which talk to each other over the network. They play different roles,
@@ -26,7 +27,7 @@ roles: Agents, Coordinators, Primary and Secondary DBservers. In the
 following sections we will shed light on each of them. Note that the
 tasks for all roles run the same binary from the same Docker image.
 
-!SUBSUBSECTION Agents
+#### Agents
 
 One or multiple Agents form the Agency in an ArangoDB cluster. The
 Agency is the central place to store the configuration in a cluster. It
@@ -44,7 +45,7 @@ At its core the Agency manages a big configuration tree. It supports
 transactional read and write operations on this tree, and other servers
 can subscribe to HTTP callbacks for all changes to the tree.
 
-!SUBSUBSECTION Coordinators
+#### Coordinators
 
 Coordinators should be accessible from the outside. These are the ones
 the clients talk to. They will coordinate cluster tasks like
@@ -53,7 +54,7 @@ data is stored and will optimize where to run user supplied queries or
 parts thereof. Coordinators are stateless and can thus easily be shut down
 and restarted as needed.
 
-!SUBSUBSECTION Primary DBservers
+#### Primary DBservers
 
 Primary DBservers are the ones where the data is actually hosted. They
 host shards of data and using synchronous replication a primary may
@@ -63,7 +64,7 @@ They should not be accessed from the outside but indirectly through the
 coordinators. They may also execute queries in part or as a whole when
 asked by a coordinator.
 
-!SUBSUBSECTION Secondaries
+#### Secondaries
 
 Secondary DBservers are asynchronous replicas of primaries. If one is
 using only synchronous replication, one does not need secondaries at all.
@@ -74,14 +75,14 @@ their replica of the data can be slightly out of date. The secondaries
 are perfectly suitable for backups as they don't interfere with the
 normal cluster operation.
 
-!SUBSUBSECTION Cluster ID
+#### Cluster ID
 
 Every non-Agency ArangoDB instance in a cluster is assigned a unique
 ID during its startup. Using its ID a node is identifiable
 throughout the cluster. All cluster operations will communicate
 via this ID.
 
-!SUBSECTION Sharding
+### Sharding
 
 Using the roles outlined above an ArangoDB cluster is able to distribute
 data in so called shards across multiple primaries. From the outside
@@ -95,7 +96,7 @@ coordinators using the Agency.
 Also see [Sharding](../Administration/Sharding/README.md) in the
 Administration chapter.
 
-!SUBSECTION Many sensible configurations
+### Many sensible configurations
 
 This architecture is very flexible and thus allows many configurations,
 which are suitable for different usage scenarios:
@@ -121,13 +122,13 @@ These for shall suffice for now. The important piece of information here
 is that the coordinator layer can be scaled and deployed independently
 from the DBserver layer.
 
-!SUBSECTION Replication
+### Replication
 
 ArangoDB offers two ways of data replication within a cluster, synchronous
 and asynchronous. In this section we explain some details and highlight
 the advantages and disadvantages respectively.
 
-!SUBSUBSECTION Synchronous replication with automatic fail-over
+#### Synchronous replication with automatic fail-over
 
 Synchronous replication works on a per-shard basis. One configures for
 each collection, how many copies of each shard are kept in the cluster.
@@ -180,7 +181,7 @@ switching off synchronous replication. This is a suitable setting for
 less important or easily recoverable data for which low latency write 
 operations matter.
 
-!SUBSUBSECTION Asynchronous replication with automatic fail-over
+#### Asynchronous replication with automatic fail-over
 
 Asynchronous replication works differently, in that it is organized
 using primary and secondary DBservers. Each secondary server replicates
@@ -204,7 +205,7 @@ Synchronous replication is more flexible in that respect, you can have
 smaller and larger instances, and if one fails, the data can be rebalanced
 across the remaining ones.
 
-!SUBSECTION Microservices and zero administation
+### Microservices and zero administation
 
 The design and capabilities of ArangoDB are geared towards usage in
 modern microservice architectures of applications. With the 
@@ -224,7 +225,7 @@ ArangoDB cluster is resilient against failures and essentially repairs
 itself in case of temporary failures. See the next section for further
 capabilities in this direction.
 
-!SUBSECTION Apache Mesos integration
+### Apache Mesos integration
 
 For the distributed setup, we use the Apache Mesos infrastructure by default.
 ArangoDB is a fully certified package for DC/OS and can thus
@@ -263,7 +264,7 @@ of failed nodes is not automatic and scaling up and down has to be managed
 manually. This is why we do not recommend this setup for production 
 deployment.
 
-!SUBSECTION Authentication
+### Authentication
 
 As of version 3.0 ArangoDB authentication is **NOT** supported within a
 cluster. You **HAVE** to properly secure your cluster to the outside.

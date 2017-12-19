@@ -1,4 +1,5 @@
-!CHAPTER Replication Logger Commands
+Replication Logger Commands
+===========================
 
 Previous versions of ArangoDB allowed starting, stopping and configuring the
 replication logger. These commands are superfluous in ArangoDB 2.2 as all

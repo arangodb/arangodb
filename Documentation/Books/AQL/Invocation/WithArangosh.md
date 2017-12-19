@@ -1,10 +1,11 @@
-!CHAPTER Executing queries from Arangosh 
+Executing queries from Arangosh
+===============================
 
 Within the ArangoDB shell, the *_query* and *_createStatement* methods of the
 *db* object can be used to execute AQL queries. This chapter also describes
 how to use bind parameters, counting, statistics and cursors. 
 
-!SUBSECTION with db._query
+### with db._query
 
 One can execute queries with the *_query* method of the *db* object. 
 This will run the specified query in the context of the currently
@@ -20,7 +21,7 @@ can be printed using its *toArray* method:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 01_workWithAQL_all
 
-!SUBSUBSECTION db._query Bind parameters
+#### db._query Bind parameters
 
 To pass bind parameters into a query, they can be specified as second argument to the
 *_query* method:
@@ -35,7 +36,7 @@ To pass bind parameters into a query, they can be specified as second argument t
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 02_workWithAQL_bindValues
 
-!SUBSUBSECTION ES6 template strings 
+#### ES6 template strings
 
 It is also possible to use ES6 template strings for generating AQL queries. There is
 a template string generator function named *aql*; we call it once to demonstrate
@@ -76,7 +77,7 @@ Note: data-modification AQL queries normally do not return a result (unless the 
 contains an extra *RETURN* statement). When not using a *RETURN* statement in the query, the 
 *toArray* method will return an empty array.
 
-!SUBSUBSECTION Statistics and extra Information
+#### Statistics and extra Information
  
 It is always possible to retrieve statistics for a query with the *getExtra* method:
 
@@ -92,7 +93,7 @@ It is always possible to retrieve statistics for a query with the *getExtra* met
 The meaning of the statistics values is described in [Execution statistics](../ExecutionAndPerformance/QueryStatistics.md).
 You also will find warnings in here; If you're designing queries on the shell be sure to also look at it.
 
-!SUBSECTION with _createStatement (ArangoStatement) 
+### with _createStatement (ArangoStatement)
 
 The *_query* method is a shorthand for creating an ArangoStatement object,
 executing it and iterating over the resulting cursor. If more control over the
@@ -115,7 +116,7 @@ To execute the query, use the *execute* method of the statement:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 05_workWithAQL_statements2
 
-!SUBSUBSECTION Cursors
+#### Cursors
 
 Once the query executed the query results are available in a cursor. 
 The cursor can return all its results at once using the *toArray* method.
@@ -150,7 +151,7 @@ the results again, the query needs to be re-executed.
 Additionally, the iteration can be done in a forward-only fashion. There is no 
 backwards iteration or random access to elements in a cursor.    
 
-!SUBSUBSECTION ArangoStatement parameters binding
+#### ArangoStatement parameters binding
 
 To execute an AQL query using bind parameters, you need to create a statement first
 and then bind the parameters to it before execution:
@@ -204,7 +205,7 @@ making it a bit more convenient:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 05_workWithAQL_statements8
 
-!SUBSUBSECTION Counting with a cursor
+#### Counting with a cursor
     
 Cursors also optionally provide the total number of results. By default, they do not. 
 To make the server return the total number of results, you may set the *count* attribute to 
@@ -247,7 +248,7 @@ on the server-side and may be able to apply optimizations if a result set is not
 a client.
 
 
-!SUBSUBSECTION Using cursors to obtain additional information on internal timings
+#### Using cursors to obtain additional information on internal timings
 
 Cursors can also optionally provide statistics of the internal execution phases. By default, they do not. 
 To get to know how long parsing, otpimisation, instanciation and execution took,

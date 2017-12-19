@@ -1,6 +1,7 @@
-!CHAPTER Basics and Terminology
+Basics and Terminology
+======================
 
-!SUBSECTION Documents, Keys, Handles and Revisions
+### Documents, Keys, Handles and Revisions
 
 Documents in ArangoDB are JSON objects. These objects can be nested (to
 any depth) and may contain lists. Each document has a unique 
@@ -45,14 +46,14 @@ creating a document. `_id` and `_key` values are immutable once the document
 has been created. The `_rev` value is maintained by ArangoDB automatically.
 
 
-!SUBSECTION Document Handle
+### Document Handle
 
 A document handle uniquely identifies a document in the database. It
 is a string and consists of the collection's name and the document key
 (`_key` attribute) separated by `/`.
 
 
-!SUBSECTION Document Key
+### Document Key
 
 A document key uniquely identifies a document in the collection it is
 stored in. It can and should be used by clients when specific documents
@@ -72,7 +73,7 @@ completely, or to force a specific regime for auto-generating the `_key`
 values.
 
 
-!SUBSECTION Document Revision
+### Document Revision
 
 As ArangoDB supports MVCC (Multiple Version Concurrency Control),
 documents can exist in more than one
@@ -99,7 +100,7 @@ to check if a document revision is older than one another, even if this
 might work for some cases.
 
 
-!SUBSECTION Document Etag
+### Document Etag
 
 ArangoDB tries to adhere to the existing HTTP standard as far as
 possible. To this end, results of single document queries have the HTTP
@@ -113,7 +114,7 @@ If you modify a document, you can use the *If-Match* field to detect conflicts.
 The revision of a document can be checking using the HTTP method *HEAD*.
 
 
-!SUBSECTION Multiple Documents in a single Request
+### Multiple Documents in a single Request
 
 Beginning with ArangoDB 3.0 the basic document API has been extended
 to handle not only single documents but multiple documents in a single
@@ -136,7 +137,7 @@ endpoints to request and delete multiple documents in one request.
 FIXME: ADD SENSIBLE LINKS HERE.
 
 
-!SUBSECTION URI of a Document
+### URI of a Document
 
 Any document can be retrieved using its unique URI:
 

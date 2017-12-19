@@ -1,4 +1,5 @@
-!CHAPTER HTTP Interface for Endpoints 
+HTTP Interface for Endpoints
+============================
 
 The ArangoDB server can listen for incoming requests on multiple *endpoints*.
 
@@ -21,7 +22,8 @@ be used to update existing endpoints or remove them at runtime.
 Please note that all endpoint management operations can only be accessed via
 the default database (*_system*) and none of the other databases.
 
-!SECTION Managing Endpoints via HTTP
+Managing Endpoints via HTTP
+---------------------------
 
 <!-- js/actions/api-endpoint.js -->
 @startDocuBlock JSF_get_api_endpoint

@@ -1,4 +1,5 @@
-!CHAPTER Installing
+Installing
+==========
 
 First of all, download and install the corresponding RPM or Debian package or use
 homebrew on MacOS X. You can find packages for various operation systems at our

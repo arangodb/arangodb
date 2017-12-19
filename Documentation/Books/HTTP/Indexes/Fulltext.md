@@ -1,4 +1,5 @@
-!CHAPTER Fulltext
+Fulltext
+========
 
 If a [fulltext index](../../Manual/Appendix/Glossary.html#fulltext-index) exists, then
 /_api/simple/fulltext will use this index to execute the specified fulltext query.

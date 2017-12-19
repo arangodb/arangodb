@@ -1,17 +1,20 @@
-!CHAPTER Incompatible changes in ArangoDB 2.6
+Incompatible changes in ArangoDB 2.6
+====================================
 
 It is recommended to check the following list of incompatible changes **before** 
 upgrading to ArangoDB 2.6, and adjust any client programs if necessary.
 
-!SECTION Requirements
+Requirements
+------------
 
 ArangoDB's built-in web interface now uses cookies for session management.
 Session information ids are stored in cookies, so clients using the web interface must 
 accept cookies in order to log in and use it.
 
-!SECTION Foxx changes
+Foxx changes
+------------
 
-!SUBSECTION Foxx Queues
+### Foxx Queues
 
 Foxx Queue job type definitions were previously based on functions and had to be registered before use. Due to changes in 2.5 this resulted in problems when restarting the server or defining job types incorrectly.
 
@@ -27,7 +30,7 @@ Before: `"type": "mailer.postmark"`
 
 After: `"type": {"name": "mailer", "mount": "/my-postmark-mailer"}`
 
-!SUBSECTION Foxx Sessions
+### Foxx Sessions
 
 The options `jwt` and `type` of the controller method `controller.activateSessions` have been deprecated in 2.6 and will be removed entirely in 2.7.
 
@@ -39,14 +42,15 @@ Instead of using the `type` option you can just use the `cookie` and `header` op
 
 The option `sessionStorageApp` has been renamed to `sessionStorage` and now also accepts session storages directly. The old option `sessionStorageApp` will be removed entirely in 2.7.
 
-!SUBSECTION Libraries
+### Libraries
 
 The bundled version of the `joi` library used in Foxx was upgraded to version 6.0.8.
 This may affect Foxx applications that depend on the library.
 
-!SECTION AQL changes
+AQL changes
+-----------
 
-!SUBSECTION AQL LENGTH function
+### AQL LENGTH function
 
 The return value of the AQL `LENGTH` function was changed if `LENGTH` is applied on `null` or a
 boolean value:
@@ -57,7 +61,7 @@ boolean value:
 
 * `LENGTH(true)` now returns `1`. In previous versions of ArangoDB, the return value was `4`.
 
-!SUBSECTION AQL graph functions
+### AQL graph functions
 
 In 2.6 the graph functions did undergo a performance lifting.
 During this process we had to adopt the result format and the options for some of them.
@@ -183,9 +187,10 @@ Example:
 ]
 ```
 
-!SECTION Function and API changes
+Function and API changes
+------------------------
 
-!SUBSECTION Graph measurements functions
+### Graph measurements functions
 
 All graph measurements functions in JavaScript module `general-graph` that calculated a 
 single figure previously returned an array containing just the figure. Now these functions 
@@ -205,7 +210,7 @@ The affected functions are:
 Client programs calling these functions should be adjusted so they process the scalar value
 returned by the function instead of the previous array value.
 
-!SUBSECTION Cursor API
+### Cursor API
 
 A batchSize value `0` is now disallowed when calling the cursor API via HTTP 
 `POST /_api/cursor`.
@@ -215,7 +220,7 @@ The HTTP REST API `POST /_api/cursor` does not accept a `batchSize` parameter va
 did not check for this value. Now creating a cursor using a `batchSize` value 0 will
 result in an HTTP 400 error response.
 
-!SUBSECTION Document URLs returned
+### Document URLs returned
 
 The REST API method GET `/_api/document?collection=...` (that method will return partial URLs 
 to all documents in the collection) will now properly prefix document address URLs with the 
@@ -225,7 +230,7 @@ Previous versions of ArangoDB returned the URLs starting with `/_api/` but witho
 database name, e.g. `/_api/document/mycollection/mykey`. Starting with 2.6, the response URLs
 will include the database name as well, e.g. `/_db/_system/_api/document/mycollection/mykey`.
 
-!SUBSECTION Fulltext indexing
+### Fulltext indexing
 
 Fulltext indexes will now also index text values contained in direct sub-objects of the indexed 
 attribute.
@@ -237,9 +242,10 @@ Now, if the index attribute value is an object, the object's values will each be
 fulltext index if they are strings. If the index attribute value is an array, the array's values
 will each be included in the fulltext index if they are strings.
 
-!SECTION Deprecated server functionality
+Deprecated server functionality
+-------------------------------
 
-!SUBSECTION Simple queries
+### Simple queries
 
 The following simple query functions are now deprecated:
 
@@ -280,7 +286,7 @@ of ArangoDB.
 Using negative values for `SimpleQuery.skip()` is also deprecated. 
 This functionality will be removed in future versions of ArangoDB.
 
-!SUBSECTION AQL functions
+### AQL functions
 
 The AQL `SKIPLIST` function has been deprecated because it is obsolete.
 
@@ -296,9 +302,10 @@ Since 2.3 the same goal can be achieved by using regular AQL constructs, e.g.
       RETURN doc
 
 
-!SECTION Startup option changes
+Startup option changes
+----------------------
 
-!SUBSECTION Options added
+### Options added
 
 The following configuration options have been added in 2.6:
 
@@ -319,7 +326,7 @@ The following configuration options have been added in 2.6:
   
   Note: this option only has an effect when `--server.foxx-queues` is not set to `false`.
 
-!SUBSECTION Options removed
+### Options removed
 
 The following configuration options have been removed in 2.6.:
 
@@ -337,7 +344,7 @@ The following configuration options have been removed in 2.6.:
   `--log.severity all` will not log requests after the upgrade to 2.6. This can be adjusted 
   by setting the `--log.requests-file` option instead.
 
-!SUBSECTION Default values changed
+### Default values changed
 
 The default values for the following options have changed in 2.6:
 

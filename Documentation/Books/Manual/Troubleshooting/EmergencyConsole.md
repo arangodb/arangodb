@@ -1,4 +1,5 @@
-!CHAPTER Emergency Console
+Emergency Console
+=================
 
 The ArangoDB database server has two modes of operation: As a server, where it
 will answer to client requests and as an emergency console, in which you can
@@ -14,7 +15,7 @@ you from doing this by placing a lockfile in the database directory and
 not allowing a second ArangoDB instance to use the same database directory
 if a lockfile is already present.
 
-!SUBSECTION In Case Of Disaster
+### In Case Of Disaster
 
 The following command starts an emergency console.
 
