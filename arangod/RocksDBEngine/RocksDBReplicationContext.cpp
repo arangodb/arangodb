@@ -128,7 +128,6 @@ int RocksDBReplicationContext::bindCollection(
        _collection->globallyUniqueId() != collectionIdentifier)) {
     _collection = _trx->vocbase()->lookupCollection(collectionIdentifier);
     if (_collection == nullptr) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "LOOKING FOR COLLECTION: " << collectionIdentifier << ", BUT NOT FOUND";
       return TRI_ERROR_BAD_PARAMETER;
     }
     

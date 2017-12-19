@@ -394,6 +394,12 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
     } else {
       encryptionType = "none";
     }
+  } catch (basics::Exception const& ex) {
+    errorMsg = ex.what();
+    return ex.code();
+  } catch (std::exception const& ex) {
+    errorMsg = ex.what();
+    return TRI_ERROR_INTERNAL;
   } catch (...) {
     // file not found etc.
   }
