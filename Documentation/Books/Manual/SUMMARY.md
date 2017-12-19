@@ -38,6 +38,8 @@
     * [Database Methods](DataModeling/Documents/DatabaseMethods.md)
   * [Graphs, Vertices & Edges](DataModeling/GraphsVerticesEdges.md)
   * [Views](DataModeling/Views/README.md)
+    * [Database Methods](DataModeling/Views/DatabaseMethods.md)
+    * [View Methods](DataModeling/Views/ViewMethods.md)
   * [Naming Conventions](DataModeling/NamingConventions/README.md)
     * [Database Names](DataModeling/NamingConventions/DatabaseNames.md)
     * [Collection Names](DataModeling/NamingConventions/CollectionNames.md)
@@ -69,6 +71,12 @@
   * [Working with Edges](Graphs/Edges/README.md)
   * [Pregel](Graphs/Pregel/README.md)
 #
+
+#
+* [Views](Views/README.md)
+#
+  * [IResearch](Views/IResearch.md)
+
 * [Foxx Microservices](Foxx/README.md)
   * [At a glance](Foxx/AtAGlance.md)
   * [Getting started](Foxx/GettingStarted.md)
