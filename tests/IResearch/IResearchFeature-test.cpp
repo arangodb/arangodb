@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "catch.hpp"
+#include "common.h"
 #include "StorageEngineMock.h"
 
 #include "utils/misc.hpp"
@@ -43,6 +44,8 @@ struct IResearchFeatureSetup {
 
   IResearchFeatureSetup() {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
+
+    arangodb::tests::init();
   }
 
   ~IResearchFeatureSetup() {
