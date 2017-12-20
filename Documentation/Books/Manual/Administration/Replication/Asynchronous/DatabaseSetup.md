@@ -1,5 +1,5 @@
-Database Setup
-=============
+Per-Database Setup
+==================
 
 This page describes the replication process based on a specific database within an ArangoDB instance.
 That means that only the specified database will be replicated. 
