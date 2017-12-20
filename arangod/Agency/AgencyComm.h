@@ -204,7 +204,7 @@ class AgencyOperation {
   AgencyOperationType type() const;
 
  public:
-  uint32_t _ttl = 0;
+  uint64_t _ttl = 0;
   VPackSlice _oldValue;
 
  private:
