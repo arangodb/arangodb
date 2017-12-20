@@ -712,7 +712,7 @@ bool IResearchViewOrderedBlock::next(
   return (limit == 0); // exceeded limit
 }
 
-size_t IResearchViewOrderedBlock::skip(uint64_t limit) {
+size_t IResearchViewOrderedBlock::skip(size_t limit) {
   TRI_ASSERT(_filter);
 
   size_t skipped = 0;

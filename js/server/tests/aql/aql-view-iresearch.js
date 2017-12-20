@@ -70,8 +70,7 @@ function iResearchAqlTestSuite () {
       c.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
       c.save({ name: "half", text: "quick fox over lazy" });
       c.save({ name: "other half", text: "the brown jumps the dog" });
-      // save last doc with waitForSync
-      c.save({ name: "quarter", text: "quick over" }, { waitForSync: true });
+      c.save({ name: "quarter", text: "quick over" });
     },
 
     tearDownAll : function () {
@@ -86,7 +85,7 @@ function iResearchAqlTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testAttributeEqualityFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 10);
       result.forEach(function(res) {
@@ -95,7 +94,7 @@ function iResearchAqlTestSuite () {
     },
 
     testMultipleAttributeEqualityFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 5);
       result.forEach(function(res) {
@@ -105,7 +104,7 @@ function iResearchAqlTestSuite () {
     },
 
     testMultipleAttributeEqualityFilterSortAttribute : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' SORT doc.c RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' SORT doc.c RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 5);
       var last = -1;
@@ -118,7 +117,7 @@ function iResearchAqlTestSuite () {
     },
 
     testMultipleAttributeEqualityFilterSortAttributeDesc : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' AND doc.b == 'bar' SORT doc.c DESC RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' AND doc.b == 'bar' SORT doc.c DESC RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 5);
       var last = 5;
@@ -131,7 +130,7 @@ function iResearchAqlTestSuite () {
     },
 
     testAttributeLessFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c < 2 RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c < 2 RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 8);
       result.forEach(function(res) {
@@ -140,7 +139,7 @@ function iResearchAqlTestSuite () {
     },
 
     testAttributeLeqFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c <= 2 RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c <= 2 RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 12);
       result.forEach(function(res) {
@@ -149,7 +148,7 @@ function iResearchAqlTestSuite () {
     },
 
     testAttributeGeqFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 2 RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 2 RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 12);
       result.forEach(function(res) {
@@ -158,7 +157,7 @@ function iResearchAqlTestSuite () {
     },
 
     testAttributeGreaterFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c > 2 RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c > 2 RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 8);
       result.forEach(function(res) {
@@ -167,7 +166,7 @@ function iResearchAqlTestSuite () {
     },
 
     testAttributeOpenIntervalFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c > 1 AND doc.c < 3 RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c > 1 AND doc.c < 3 RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 4);
       result.forEach(function(res) {
@@ -176,7 +175,7 @@ function iResearchAqlTestSuite () {
     },
 
     testAttributeClosedIntervalFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 1 AND doc.c <= 3 RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 1 AND doc.c <= 3 RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 12);
       result.forEach(function(res) {
@@ -185,7 +184,7 @@ function iResearchAqlTestSuite () {
     },
 
     testAttributeIntervalExclusionFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c < 1 OR doc.c > 3 RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c < 1 OR doc.c > 3 RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 8);
       result.forEach(function(res) {
@@ -194,7 +193,7 @@ function iResearchAqlTestSuite () {
     },
 
     testAttributeNeqFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a != 'foo'  RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a != 'foo'  RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 14); // include documents without attribute 'a'
       result.forEach(function(res) {
@@ -203,7 +202,7 @@ function iResearchAqlTestSuite () {
     },
 
     testStartsWithFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.a, 'fo') RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.a, 'fo') RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 10);
       result.forEach(function(res) {
@@ -212,7 +211,7 @@ function iResearchAqlTestSuite () {
     },
 
     testStartsWithFilter2 : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 10);
       result.forEach(function(res) {
@@ -221,7 +220,7 @@ function iResearchAqlTestSuite () {
     },
 
     testStartsWithFilterSort : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') && doc.c == 0 SORT doc.b RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') && doc.c == 0 SORT doc.b RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 2);
       assertEqual(result[0].b, 'bar');
@@ -232,7 +231,7 @@ function iResearchAqlTestSuite () {
 
 // FIXME uncomment when TOKENS function will be fixed
 //    testInTokensFilterSortTFIDF : function () {
-//      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.text IN TOKENS('the quick brown', 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { }).json;
+//      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.text IN TOKENS('the quick brown', 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { waitForSync: true }).json;
 //
 //      assertEqual(result.length, 4);
 //      assertEqual(result[0].name, 'full');
@@ -242,7 +241,7 @@ function iResearchAqlTestSuite () {
 //    },
 
     testPhraseFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, 'quick brown fox jumps', 'text_en') RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, 'quick brown fox jumps', 'text_en') RETURN doc", null, { waitForSync: true }).json;
 
       assertEqual(result.length, 1);
       assertEqual(result[0].name, 'full');

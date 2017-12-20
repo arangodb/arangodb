@@ -382,15 +382,370 @@ function iResearchFeatureAqlTestSuite () {
     },
 
     testViewCreate: function() {
-      // FIXME TODO implement for 1/2/3 empty/non-empty collections (create view)
+      // 1 empty collection
+      {
+        db._dropView("TestView");
+        db._drop("TestCollection0");
+        var col0 = db._create("TestCollection0");
+        var view = db._createView("TestView", "iresearch", {});
+
+        var meta = { links: { "TestCollection0": { includeAllFields: true } } };
+        view.properties(meta, true); // partial update
+
+        var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(0, result.length);
+
+        col0.save({ name: "quarter", text: "quick over" });
+        result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(1, result.length);
+        assertEqual("quarter", result[0].name);
+      }
+
+      // 1 non-empty collection
+      {
+        db._dropView("TestView");
+        db._drop("TestCollection0");
+        var col0 = db._create("TestCollection0");
+        var view = db._createView("TestView", "iresearch", {});
+
+        col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
+        col0.save({ name: "half", text: "quick fox over lazy" });
+        col0.save({ name: "other half", text: "the brown jumps the dog" });
+        col0.save({ name: "quarter", text: "quick over" });
+
+        var meta = { links: { "TestCollection0": { includeAllFields: true } } };
+        view.properties(meta, true); // partial update
+
+        var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(4, result.length);
+        assertEqual("full", result[0].name);
+        assertEqual("half", result[1].name);
+        assertEqual("other half", result[2].name);
+        assertEqual("quarter", result[3].name);
+      }
+
+      // 2 non-empty collections
+      {
+        db._dropView("TestView");
+        db._drop("TestCollection0");
+        db._drop("TestCollection1");
+        var col0 = db._create("TestCollection0");
+        var col1 = db._create("TestCollection1");
+        var view = db._createView("TestView", "iresearch", {});
+
+        col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
+        col0.save({ name: "half", text: "quick fox over lazy" });
+        col1.save({ name: "other half", text: "the brown jumps the dog" });
+        col1.save({ name: "quarter", text: "quick over" });
+
+        var meta = { links: {
+          "TestCollection0": { includeAllFields: true },
+          "TestCollection1": { includeAllFields: true }
+        } };
+        view.properties(meta, true); // partial update
+
+        var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(4, result.length);
+        assertEqual("full", result[0].name);
+        assertEqual("half", result[1].name);
+        assertEqual("other half", result[2].name);
+        assertEqual("quarter", result[3].name);
+      }
+
+      // 1 empty collection + 2 non-empty collections
+      {
+        db._dropView("TestView");
+        db._drop("TestCollection0");
+        db._drop("TestCollection1");
+        db._drop("TestCollection2");
+        var col0 = db._create("TestCollection0");
+        var col1 = db._create("TestCollection1");
+        var col2 = db._create("TestCollection2");
+        var view = db._createView("TestView", "iresearch", {});
+
+        col2.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
+        col2.save({ name: "half", text: "quick fox over lazy" });
+        col0.save({ name: "other half", text: "the brown jumps the dog" });
+        col0.save({ name: "quarter", text: "quick over" });
+
+        var meta = { links: {
+          "TestCollection0": { includeAllFields: true },
+          "TestCollection1": { includeAllFields: true },
+          "TestCollection2": { includeAllFields: true }
+        } };
+        view.properties(meta, true); // partial update
+
+        var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(4, result.length);
+        assertEqual("full", result[0].name);
+        assertEqual("half", result[1].name);
+        assertEqual("other half", result[2].name);
+        assertEqual("quarter", result[3].name);
+      }
     },
 
     testViewModify: function() {
-      // FIXME TODO implement for 1/2/3 empty/non-empty collections (change view properties)
+      // 1 empty collection
+      {
+        db._dropView("TestView");
+        db._drop("TestCollection0");
+        var col0 = db._create("TestCollection0");
+        var view = db._createView("TestView", "iresearch", {});
+
+        var meta = { links: { "TestCollection0": { includeAllFields: true } } };
+        view.properties(meta, true); // partial update
+
+        meta = {
+          commit: {
+            commitIntervalMsec: 10000,
+            consolidate: {
+              bytes: { intervalStep: 20, threshold: 0.5 },
+              bytes_accum: {},
+              count: {}
+            }
+          },
+          dataPath: "TestPath",
+          locale: "de_DE.UTF-16",
+          threadsMaxIdle: 42,
+          threadsMaxTotal: 1
+        };
+        view.properties(meta, true); // partial update
+
+        var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(0, result.length);
+        var properties = view.properties();
+        assertEqual(10, properties.commit.cleanupIntervalStep);
+        assertEqual(10000, properties.commit.commitIntervalMsec);
+        assertEqual(5000, properties.commit.commitTimeoutMsec);
+        assertEqual(3, Object.keys(properties.commit.consolidate).length);
+        assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+        assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
+        assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+        assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
+        assertEqual(10, properties.commit.consolidate.count.intervalStep);
+        assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
+        assertEqual("TestPath", properties.dataPath);
+        assertEqual("de_DE.UTF-8", properties.locale);
+        assertEqual(42, properties.threadsMaxIdle);
+        assertEqual(1, properties.threadsMaxTotal);
+
+        col0.save({ name: "quarter", text: "quick over" });
+        result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(1, result.length);
+        assertEqual("quarter", result[0].name);
+      }
+
+      // 1 non-empty collection
+      {
+        db._dropView("TestView");
+        db._drop("TestCollection0");
+        var col0 = db._create("TestCollection0");
+        var view = db._createView("TestView", "iresearch", {});
+
+        col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
+        col0.save({ name: "half", text: "quick fox over lazy" });
+        col0.save({ name: "other half", text: "the brown jumps the dog" });
+        col0.save({ name: "quarter", text: "quick over" });
+
+        var meta = { links: { "TestCollection0": { includeAllFields: true } } };
+        view.properties(meta, true); // partial update
+
+        meta = {
+          commit: {
+            commitIntervalMsec: 10000,
+            consolidate: {
+              bytes: { intervalStep: 20, threshold: 0.5 },
+              bytes_accum: {},
+              count: {}
+            }
+          },
+          dataPath: "TestPath",
+          locale: "de_DE.UTF-16",
+          threadsMaxIdle: 42,
+          threadsMaxTotal: 1
+        };
+        view.properties(meta, true); // partial update
+
+        var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(4, result.length);
+        assertEqual("full", result[0].name);
+        assertEqual("half", result[1].name);
+        assertEqual("other half", result[2].name);
+        assertEqual("quarter", result[3].name);
+        var properties = view.properties();
+        assertEqual(10, properties.commit.cleanupIntervalStep);
+        assertEqual(10000, properties.commit.commitIntervalMsec);
+        assertEqual(5000, properties.commit.commitTimeoutMsec);
+        assertEqual(3, Object.keys(properties.commit.consolidate).length);
+        assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+        assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
+        assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+        assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
+        assertEqual(10, properties.commit.consolidate.count.intervalStep);
+        assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
+        assertEqual("TestPath", properties.dataPath);
+        assertEqual("de_DE.UTF-8", properties.locale);
+        assertEqual(42, properties.threadsMaxIdle);
+        assertEqual(1, properties.threadsMaxTotal);
+      }
+
+      // 2 non-empty collections
+      {
+        db._dropView("TestView");
+        db._drop("TestCollection0");
+        db._drop("TestCollection1");
+        var col0 = db._create("TestCollection0");
+        var col1 = db._create("TestCollection1");
+        var view = db._createView("TestView", "iresearch", {});
+
+        col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
+        col0.save({ name: "half", text: "quick fox over lazy" });
+        col1.save({ name: "other half", text: "the brown jumps the dog" });
+        col1.save({ name: "quarter", text: "quick over" });
+
+        var meta = { links: {
+          "TestCollection0": { includeAllFields: true },
+          "TestCollection1": { includeAllFields: true }
+        } };
+        view.properties(meta, true); // partial update
+
+        meta = {
+          commit: {
+            commitIntervalMsec: 10000,
+            consolidate: {
+              bytes: { intervalStep: 20, threshold: 0.5 },
+              bytes_accum: {},
+              count: {}
+            }
+          },
+          dataPath: "TestPath",
+          locale: "de_DE.UTF-16",
+          threadsMaxIdle: 42,
+          threadsMaxTotal: 1
+        };
+        view.properties(meta, true); // partial update
+
+        var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(4, result.length);
+        assertEqual("full", result[0].name);
+        assertEqual("half", result[1].name);
+        assertEqual("other half", result[2].name);
+        assertEqual("quarter", result[3].name);
+        var properties = view.properties();
+        assertEqual(10, properties.commit.cleanupIntervalStep);
+        assertEqual(10000, properties.commit.commitIntervalMsec);
+        assertEqual(5000, properties.commit.commitTimeoutMsec);
+        assertEqual(3, Object.keys(properties.commit.consolidate).length);
+        assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+        assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
+        assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+        assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
+        assertEqual(10, properties.commit.consolidate.count.intervalStep);
+        assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
+        assertEqual("TestPath", properties.dataPath);
+        assertEqual("de_DE.UTF-8", properties.locale);
+        assertEqual(42, properties.threadsMaxIdle);
+        assertEqual(1, properties.threadsMaxTotal);
+
+      }
+
+      // 1 empty collection + 2 non-empty collections
+      {
+        db._dropView("TestView");
+        db._drop("TestCollection0");
+        db._drop("TestCollection1");
+        db._drop("TestCollection2");
+        var col0 = db._create("TestCollection0");
+        var col1 = db._create("TestCollection1");
+        var col2 = db._create("TestCollection2");
+        var view = db._createView("TestView", "iresearch", {});
+
+        col2.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
+        col2.save({ name: "half", text: "quick fox over lazy" });
+        col0.save({ name: "other half", text: "the brown jumps the dog" });
+        col0.save({ name: "quarter", text: "quick over" });
+
+        var meta = { links: {
+          "TestCollection0": { includeAllFields: true },
+          "TestCollection1": { includeAllFields: true },
+          "TestCollection2": { includeAllFields: true }
+        } };
+        view.properties(meta, true); // partial update
+
+        meta = {
+          commit: {
+            commitIntervalMsec: 10000,
+            consolidate: {
+              bytes: { intervalStep: 20, threshold: 0.5 },
+              bytes_accum: {},
+              count: {}
+            }
+          },
+          dataPath: "TestPath",
+          locale: "de_DE.UTF-16",
+          threadsMaxIdle: 42,
+          threadsMaxTotal: 1
+        };
+        view.properties(meta, true); // partial update
+
+        var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(4, result.length);
+        assertEqual("full", result[0].name);
+        assertEqual("half", result[1].name);
+        assertEqual("other half", result[2].name);
+        assertEqual("quarter", result[3].name);
+        var properties = view.properties();
+        assertEqual(10, properties.commit.cleanupIntervalStep);
+        assertEqual(10000, properties.commit.commitIntervalMsec);
+        assertEqual(5000, properties.commit.commitTimeoutMsec);
+        assertEqual(3, Object.keys(properties.commit.consolidate).length);
+        assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+        assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
+        assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+        assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
+        assertEqual(10, properties.commit.consolidate.count.intervalStep);
+        assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
+        assertEqual("TestPath", properties.dataPath);
+        assertEqual("de_DE.UTF-8", properties.locale);
+        assertEqual(42, properties.threadsMaxIdle);
+        assertEqual(1, properties.threadsMaxTotal);
+      }
     },
 
     testLinkModify: function() {
-      // FIXME TODO recreate link with different properties on non-empty collections (query docs to verify)
+      db._dropView("TestView");
+      db._drop("TestCollection0");
+      var col0 = db._create("TestCollection0");
+      var view = db._createView("TestView", "iresearch", {});
+
+      col0.save({ a: "foo", c: "bar", z: 0 });
+      col0.save({ a: "foz", d: "baz", z: 1 });
+      col0.save({ b: "bar", c: "foo", z: 2 });
+      col0.save({ b: "baz", d: "foz", z: 3 });
+
+      var meta = { links: { "TestCollection0": { fields: { a: {} } } } };
+      view.properties(meta, true); // partial update
+
+      var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.z RETURN doc", null, { waitForSync: true }).json;
+      assertEqual(2, result.length);
+      assertEqual(0, result[0].z);
+      assertEqual(1, result[1].z);
+
+      var meta = { links: { "TestCollection0": { fields: { b: {} } } } };
+      view.properties(meta, true); // partial update
+
+      var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.z RETURN doc", null, { waitForSync: true }).json;
+      assertEqual(2, result.length);
+      assertEqual(2, result[0].z);
+      assertEqual(3, result[1].z);
+
+      var meta = { links: { "TestCollection0": { fields: { c: {} } } } };
+      view.properties(meta, false); // full update
+
+      var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.z RETURN doc", null, { waitForSync: true }).json;
+      assertEqual(2, result.length);
+      assertEqual(0, result[0].z);
+      assertEqual(2, result[1].z);
     },
 
   };

@@ -814,7 +814,7 @@ IResearchView::IResearchView(
           << "failed to finish commit while processing transaction callback for iResearch view '" << id() << "'";
       } else if (trx->state()->options().waitForSync && !sync()) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-          << "failed to sync while processing transaction callback for iResearch view '" << id() << "'";
+          << "failed to sync while processing transaction callback for IResearch view '" << id() << "'";
       }
 
       return;
@@ -1521,6 +1521,11 @@ int IResearchView::insert(
 }
 
 iresearch::CompoundReader IResearchView::snapshot(transaction::Methods &trx) {
+  if (trx.state() && trx.state()->waitForSync() && !sync()) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "failed to sync while creating snapshot for IResearch view '" << id() << "', previous snapshot will be used instead";
+  }
+
   iresearch::CompoundReader compoundReader(_mutex); // will aquire read-lock since members can be asynchronously updated
 
   try {
