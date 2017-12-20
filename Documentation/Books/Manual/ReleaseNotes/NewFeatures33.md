@@ -9,8 +9,6 @@ here.
 Datacenter-to-datacenter replication (DC2DC)
 --------------------------------------------
 
-
-
 [DC2DC](#) is available in the *Enterprise* edition.
 
 Encrypted backups
@@ -180,15 +178,6 @@ become effective on the leader only, but also on all the followers.
 
 In 3.3 this setup protocol has got some shortcuts for the initial shard creation, 
 which speeds up collection creation by roughly 50 to 60 percent.
-
-
-LDAP roles and aliases
-----------------------
-
-
-Read-only mode for servers
---------------------------
-
 
 Miscellaneous features
 ----------------------
