@@ -37,7 +37,7 @@ newVersionNumber=$( tr -d '\r\n' < ../../VERSION)
 
 declare -A ALL_GSEARCH_ID
 for book in ${ALLBOOKS}; do
-    ALL_GSEARCH_ID[$book]=$(  grep "GSEARCH_ID_${book}" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:-]*\)".*;\1;')
+    ALL_GSEARCH_ID[$book]=$(  grep "GSEARCH_ID_${book}" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:_-]*\)".*;\1;')
 done
 
 

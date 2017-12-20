@@ -193,7 +193,7 @@ if test -z "${SYNCER_REV}"; then
     exit 1
 fi
 
-sed -i VERSIONS -e "s;SYNCER_REV.*;SYNCER_REV \"${SYNCER_REV}\";"
+${SED} -i VERSIONS -e "s;SYNCER_REV.*;SYNCER_REV \"${SYNCER_REV}\";"
 
 GITSHA=$(git log -n1 --pretty='%h')
 if git describe --exact-match --tags "${GITSHA}"; then
@@ -264,7 +264,7 @@ STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/rele
                          grep tag_name | \
                          head -n 1 | \
                          ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;')
-sed -i VERSIONS -e "s;STARTER_REV.*;STARTER_REV \"${STARTER_REV}\";"
+${SED} -i VERSIONS -e "s;STARTER_REV.*;STARTER_REV \"${STARTER_REV}\";"
 
 git add -f \
     README \
