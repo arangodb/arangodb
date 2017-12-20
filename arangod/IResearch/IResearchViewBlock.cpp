@@ -220,10 +220,6 @@ bool IResearchViewBlockBase::readDocument(
     return false; // not a valid document reference
   }
 
-  static const std::string unknown("<unknown>");
-
-  _trx->addCollectionAtRuntime(docPk.cid(), unknown);
-
   auto* collection = _trx->documentCollection(docPk.cid());
 
   if (!collection) {
