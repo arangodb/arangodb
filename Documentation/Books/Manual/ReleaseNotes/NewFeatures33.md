@@ -92,7 +92,7 @@ created on the master, one needed to take action on the slave to ensure that dat
 for that database got actually replicated. Replication on the slave also was not
 aware of when a database was dropped on the master.
 
-3.3 adds [server-level replication](../Administration/Replication/Asynchronous/GlobalSetup.md),
+3.3 adds [server-level replication](../Administration/Replication/Asynchronous/ServerLevelSetup.md),
 which will replicate the current and future databases from the master to the
 slave automatically after the initial setup.
 
