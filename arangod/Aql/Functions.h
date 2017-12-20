@@ -185,7 +185,10 @@ struct Functions {
                                    VPackFunctionParameters const&);
    static AqlValue DateDayOfYear(arangodb::aql::Query*, transaction::Methods*,
                                  VPackFunctionParameters const&);
-
+   static AqlValue DateIsoWeek(arangodb::aql::Query*, transaction::Methods*,
+                               VPackFunctionParameters const&);
+    static AqlValue DateLeapYear(arangodb::aql::Query*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
 
 
    static AqlValue Passthru(arangodb::aql::Query*, transaction::Methods*,

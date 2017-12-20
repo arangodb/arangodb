@@ -1668,10 +1668,64 @@ AqlValue Functions::DateDayOfYear(arangodb::aql::Query* query,
   return AqlValue(AqlValueHintUInt(daysSinceFirst));
 }
 
+/// @brief function DATE_ISOWEEK
+AqlValue Functions::DateIsoWeek(arangodb::aql::Query* query,
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
 
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
+  if (!value.isString() && !value.isNumber() ) {
+    RegisterInvalidArgumentWarning(query, "DATE_ISOWEEK");
+    return AqlValue(AqlValueHintNull());
+  }
 
+  system_clock::time_point tp;
 
+  if (value.isNumber()) {
+    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
+  } else {
+    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
+      RegisterWarning(query, "DATE_ISOWEEK", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  auto firstDayInYear = year{year_month_day(floor<days>(tp)).year()}/1/0;
+  uint64_t isoweek = duration_cast<weeks>( sys_days(floor<days>(tp)) - sys_days(firstDayInYear) ).count();
+
+  return AqlValue(AqlValueHintUInt(isoweek));
+}
+
+/// @brief function DATE_LEAPYEAR
+AqlValue Functions::DateLeapYear(arangodb::aql::Query* query,
+                                 transaction::Methods* trx,
+                                 VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (!value.isString() && !value.isNumber() ) {
+    RegisterInvalidArgumentWarning(query, "DATE_LEAPYEAR");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  system_clock::time_point tp;
+
+  if (value.isNumber()) {
+    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
+  } else {
+    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
+      RegisterWarning(query, "DATE_LEAPYEAR", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  return AqlValue(AqlValueHintBOOL(year_month_day(floor<days>(tp)).is_leap()));
+}
 
 
 
