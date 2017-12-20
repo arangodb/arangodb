@@ -41,7 +41,7 @@ var ignoreCollectionAlreadyThere = [];
 var rc;
 var j;
 
-var hljs = require('highlight.js');
+var hljs = require('highlightjs');
 
 var MAP = {
     'py': 'python',
@@ -112,7 +112,17 @@ var logCurlRequest = function () {
 var swallowText = function () {};
 var curlRequestRaw = internal.appendCurlRequest(swallowText, swallowText, swallowText);
 var curlRequest = function () {
-  return curlRequestRaw.apply(curlRequestRaw, arguments);
+  rc = curlRequestRaw.apply(curlRequestRaw, arguments);
+  if (rc.code != 200) {
+    expectRC = arguments["4"];
+    if (typeof expectRC !== undefined) {
+      if (expectRC.indexOf(rc.code) >=0) {
+        return rc;
+      }
+    }
+    throw rc.code + " " + rc.errorMessage
+  }
+  return rc
 };
 var logJsonResponse = internal.appendJsonResponse(rawAppender, jsonAppender);
 var logHtmlResponse = internal.appendRawResponse(rawAppender, htmlAppender);
