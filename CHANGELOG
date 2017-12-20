@@ -1,4 +1,4 @@
-v3.3.0 (XXXX-XX-XX)
+v3.3.1 (XXXX-XX-XX)
 -------------------
 
 * optimize usage of AQL FULLTEXT index function to a FOR loop with index
@@ -6,14 +6,18 @@ v3.3.0 (XXXX-XX-XX)
   When the optimization is applied, this especially speeds up fulltext index 
   queries in the cluster
 
-
-v3.3.rc10 (2017-XX-XX)
--------------------
-
 * UI: improved the behavior during collection creation in a cluster environment 
 
 
-v3.3.rc8 (2017-XX-XX)
+v3.3.0 (2012-12-14)
+-------------------
+
+* release version
+
+* added a missing try/catch block in the supervision thread
+
+
+v3.3.rc8 (2017-12-12)
 ---------------------
 
 * UI: pressing the return key inside a select2 box no longer triggers the modal's
