@@ -48,10 +48,6 @@ void Aqlerror(YYLTYPE* locp,
   parser->registerParseError(TRI_ERROR_QUERY_PARSE, message, locp->first_line, locp->first_column);
 }
 
-/// @brief check if any of the variables used in the INTO expression were 
-/// introduced by the COLLECT itself, in which case it would fail
-static Variable const* CheckIntoVariables(AstNode const* collectVars, 
-
 /// @brief check if any of the variables used in the INTO expression were
 /// introduced by the COLLECT itself, in which case it would fail
 static Variable const* CheckIntoVariables(AstNode const* collectVars,
