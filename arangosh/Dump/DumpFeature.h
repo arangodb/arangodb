@@ -24,7 +24,7 @@
 #define ARANGODB_DUMP_DUMP_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "V8Client/ArangoClientHelper.h"
+#include "V8Client/ClientHelper.hpp"
 
 namespace arangodb {
 namespace httpclient {
@@ -33,8 +33,13 @@ class SimpleHttpResult;
 
 class EncryptionFeature;
 
+struct DumpFeatureJobData {
+  std::string collectionName;
+};
+extern template class ClientHelper<DumpFeatureJobData>;
+
 class DumpFeature final : public application_features::ApplicationFeature,
-                          public ArangoClientHelper {
+                          public ClientHelper<DumpFeatureJobData> {
  public:
   DumpFeature(application_features::ApplicationServer* server, int* result);
 
@@ -58,6 +63,12 @@ class DumpFeature final : public application_features::ApplicationFeature,
   bool _progress;
   uint64_t _tickStart;
   uint64_t _tickEnd;
+
+ private:
+  virtual Result processJob(httpclient::SimpleHttpClient&,
+                            DumpFeatureJobData&) noexcept override;
+  virtual void handleJobResult(std::unique_ptr<DumpFeatureJobData>&&,
+                               Result&) noexcept override;
 
  private:
   int startBatch(std::string DBserver, std::string& errorMsg);
@@ -88,6 +99,6 @@ class DumpFeature final : public application_features::ApplicationFeature,
     uint64_t _totalWritten;
   } _stats;
 };
-}
+}  // namespace arangodb
 
 #endif

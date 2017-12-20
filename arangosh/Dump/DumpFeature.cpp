@@ -30,6 +30,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/OpenFilesTracker.h"
+#include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -219,6 +220,14 @@ void DumpFeature::prepare() {
   }
 }
 
+Result DumpFeature::processJob(httpclient::SimpleHttpClient&,
+                               DumpFeatureJobData&) noexcept {
+  return {};
+}
+
+void DumpFeature::handleJobResult(std::unique_ptr<DumpFeatureJobData>&&,
+                                  Result&) noexcept {}
+
 // start a batch
 int DumpFeature::startBatch(std::string DBserver, std::string& errorMsg) {
   std::string const url = "/_api/replication/batch";
@@ -229,12 +238,13 @@ int DumpFeature::startBatch(std::string DBserver, std::string& errorMsg) {
     urlExt = "?DBserver=" + DBserver;
   }
 
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
+  auto httpClient = getConnectedClient();
+  std::unique_ptr<SimpleHttpResult> response(httpClient->request(
       rest::RequestType::POST, url + urlExt, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
-        "got invalid response from server: " + _httpClient->getErrorMessage();
+        "got invalid response from server: " + httpClient->getErrorMessage();
 
     if (_force) {
       return TRI_ERROR_NO_ERROR;
@@ -281,7 +291,8 @@ void DumpFeature::extendBatch(std::string DBserver) {
     urlExt = "?DBserver=" + DBserver;
   }
 
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
+  auto httpClient = getConnectedClient();
+  std::unique_ptr<SimpleHttpResult> response(httpClient->request(
       rest::RequestType::PUT, url + urlExt, body.c_str(), body.size()));
 
   // ignore any return value
@@ -300,7 +311,8 @@ void DumpFeature::endBatch(std::string DBserver) {
 
   _batchId = 0;
 
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
+  auto httpClient = getConnectedClient();
+  std::unique_ptr<SimpleHttpResult> response(httpClient->request(
       rest::RequestType::DELETE_REQ, url + urlExt, nullptr, 0));
 
   // ignore any return value
@@ -328,12 +340,13 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
 
     _stats._totalBatches++;
 
+    auto httpClient = getConnectedClient();
     std::unique_ptr<SimpleHttpResult> response(
-        _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
+        httpClient->request(rest::RequestType::GET, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =
-          "got invalid response from server: " + _httpClient->getErrorMessage();
+          "got invalid response from server: " + httpClient->getErrorMessage();
 
       return TRI_ERROR_INTERNAL;
     }
@@ -418,13 +431,14 @@ void DumpFeature::flushWal() {
   std::string const url =
       "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
 
+  auto httpClient = getConnectedClient();
   std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(rest::RequestType::PUT, url, nullptr, 0));
+      httpClient->request(rest::RequestType::PUT, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete() ||
       response->wasHttpError()) {
     std::cerr << "got invalid response from server: " +
-                     _httpClient->getErrorMessage()
+                     httpClient->getErrorMessage()
               << std::endl;
   }
 }
@@ -433,15 +447,16 @@ void DumpFeature::flushWal() {
 int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
   std::string const url =
       "/_api/replication/inventory?includeSystem=" +
-      std::string(_includeSystemCollections ? "true" : "false") + "&batchId=" +
-      StringUtils::itoa(_batchId);
+      std::string(_includeSystemCollections ? "true" : "false") +
+      "&batchId=" + StringUtils::itoa(_batchId);
 
+  auto httpClient = getConnectedClient();
   std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
+      httpClient->request(rest::RequestType::GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
-        "got invalid response from server: " + _httpClient->getErrorMessage();
+        "got invalid response from server: " + httpClient->getErrorMessage();
 
     return TRI_ERROR_INTERNAL;
   }
@@ -718,12 +733,13 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
 
     _stats._totalBatches++;
 
+    auto httpClient = getConnectedClient();
     std::unique_ptr<SimpleHttpResult> response(
-        _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
+        httpClient->request(rest::RequestType::GET, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =
-          "got invalid response from server: " + _httpClient->getErrorMessage();
+          "got invalid response from server: " + httpClient->getErrorMessage();
 
       return TRI_ERROR_INTERNAL;
     }
@@ -811,12 +827,13 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
       "/_api/replication/clusterInventory?includeSystem=" +
       std::string(_includeSystemCollections ? "true" : "false");
 
+  auto httpClient = getConnectedClient();
   std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
+      httpClient->request(rest::RequestType::GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
-        "got invalid response from server: " + _httpClient->getErrorMessage();
+        "got invalid response from server: " + httpClient->getErrorMessage();
 
     return TRI_ERROR_INTERNAL;
   }
@@ -1067,49 +1084,9 @@ void DumpFeature::start() {
   int ret = EXIT_SUCCESS;
   *_result = ret;
 
-  try {
-    _httpClient = client->createHttpClient();
-  } catch (...) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "cannot create server connection, giving up!";
-    FATAL_ERROR_EXIT();
-  }
-
   std::string dbName = client->databaseName();
 
-  _httpClient->params().setLocationRewriter(static_cast<void*>(client),
-                                            &rewriteLocation);
-  _httpClient->params().setUserNamePassword("/", client->username(),
-                                            client->password());
-
-  std::string const versionString = _httpClient->getServerVersion();
-
-  if (!_httpClient->isConnected()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Could not connect to endpoint '" << client->endpoint()
-        << "', database: '" << dbName << "', username: '" << client->username()
-        << "'";
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "Error message: '" << _httpClient->getErrorMessage() << "'";
-
-    FATAL_ERROR_EXIT();
-  }
-
-  // successfully connected
-  std::cout << "Server version: " << versionString << std::endl;
-
-  // validate server version
-  std::pair<int, int> version = Version::parseVersionString(versionString);
-
-  if (version.first < 3) {
-    // we can connect to 3.x
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Error: got incompatible server version '" << versionString << "'";
-
-    if (!_force) {
-      FATAL_ERROR_EXIT();
-    }
-  }
+  auto httpClient = getConnectedClient(_force, true);
 
   _clusterMode = getArangoIsCluster(nullptr);
 
@@ -1121,13 +1098,13 @@ void DumpFeature::start() {
     }
   }
 
-  if (!_httpClient->isConnected()) {
+  if (!httpClient->isConnected()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "Lost connection to endpoint '" << client->endpoint()
         << "', database: '" << dbName << "', username: '" << client->username()
         << "'";
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "Error message: '" << _httpClient->getErrorMessage() << "'";
+        << "Error message: '" << httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
