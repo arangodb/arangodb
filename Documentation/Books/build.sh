@@ -463,7 +463,7 @@ function build-book()
 
     echo "${STD_COLOR} - Building Version ${VERSION}${RESET}"
 
-    if test -n "${NODE_MODULES_DIR}"; then
+    if test -d "${NODE_MODULES_DIR}"; then
         echo "${STD_COLOR}#### Installing plugins from ${NODE_MODULES_DIR}${RESET}"
         cp -a "${NODE_MODULES_DIR}" "ppbooks/${NAME}"
     else
