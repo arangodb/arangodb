@@ -98,37 +98,41 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
         _near(params) {
     estimateDensity();
   }
-
-  //geo::FilterType filterType() const override { return _near.filterType(); }
   
-  /*bool nextDocument(DocumentCallback const& cb, size_t limit) override {
-   ....
-   if (_collection->readDocument(_trx, token, *_mmdr)) {
-   VPackSlice doc(_mmdr->vpack());
-   if (_near.filterType() != geo::FilterType::NONE) {
-   TRI_ASSERT(_near.region() != nullptr);
-   // TODO
-   }
-   }
-  }*/
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override {
     if (_near.isDone()) {
       // we already know that no further results will be returned by the index
       TRI_ASSERT(!_near.hasNearest());
       return false;
     }
+    geo::FilterType const ft = _near.filterType();
     
     while (limit > 0 && !_near.isDone()) {
       while (limit > 0 && _near.hasNearest()) {
         /*LOG_TOPIC(WARN, Logger::FIXME) << "[RETURN] " << _near.nearest().rid
-          << "  d: " << ( _near.nearest().radians * geo::kEarthRadiusInMeters);*/
+         << "  d: " << ( _near.nearest().radians * geo::kEarthRadiusInMeters);*/
         
         LocalDocumentId token(_near.nearest().rid);
-        cb(token);
-
         _near.popNearest();
         limit--;
+        
+        if (_collection->readDocument(_trx, token, *_mmdr)) {
+          VPackSlice doc(_mmdr->vpack());
+          if (ft != geo::FilterType::NONE) { // expensive test
+            geo::ShapeContainer const& filter = _near.filterShape();
+            geo::ShapeContainer test;
+            Result res = geo::GeoJsonParser::parseGeoJson(doc, test);
+            if (res.fail()) { // this should never fail here
+              THROW_ARANGO_EXCEPTION(res);
+            }
+            if ((ft == geo::FilterType::CONTAINS && filter.contains(&test)) ||
+                (ft == geo::FilterType::INTERSECT && filter.intersects(&test))) {
+              continue;
+            }
+          }
+          
+          cb(token, doc);
+        }
       }
       // need to fetch more geo results
       if (limit > 0 && !_near.isDone()) {
@@ -137,6 +141,10 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
       }
     }
     return !_near.isDone();
+  }
+
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+    TRI_ASSERT(false); // I don't think this iterator should be used this way
   }
 
   void reset() override { _near.reset(); }
