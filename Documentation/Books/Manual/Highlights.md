@@ -6,11 +6,29 @@ Version 3.3
 
 ### Enterprise Edition
 
-- [**Datacenter-to-Datacenter Replication**](Deployment/DC2DC.md): Replicate
-  the entire structure and content of an ArangoDB cluster asynchronously to
-  another cluster in a different datacenter with ArangoSync. Multi-datacenter
-  support means you can fallback to a replica of your cluster in case of a
-  disaster in one datacenter.
+- [**Datacenter-to-Datacenter Replication**](Deployment/DC2DC.md): 
+  Every company needs a disaster recovery plan for all important systems.
+  This is true from small units like single processes running in some 
+  container to the largest distributed architectures. For databases in 
+  particular this usually involves a mixture of fault-tolerance, 
+  redundancy, regular backups and emergency plans. The larger a 
+  data store, the more difficult it is to come up with a good strategy.
+
+  Therefore, it is desirable to be able to run a distributed database 
+  in one data-center and replicate all transactions to another 
+  data-center in some way. Often, transaction logs are shipped 
+  over the network to replicate everything in another, identical 
+  system in the other data-center. Some distributed data stores have 
+  built-in support for multiple data-center awareness and can 
+  replicate between data-centers in a fully automatic fashion.
+
+  ArangoDB 3.3 takes an evolutionary step forward by introducing 
+  multi-data-center support, which is asynchronous data-center to 
+  data-center replication. Our solution is asynchronous and scales 
+  to arbitrary cluster sizes, provided your network link between 
+  the data-centers has enough bandwidth. It is fault-tolerant 
+  without a single point of failure and includes a lot of 
+  metrics for monitoring in a production scenario.
 
 - [**Encrypted Backups**](#):
   Arangodump can create backups encrypted with a secret key using AES256
