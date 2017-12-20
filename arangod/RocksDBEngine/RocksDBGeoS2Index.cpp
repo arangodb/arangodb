@@ -24,6 +24,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/Function.h"
 #include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
@@ -366,11 +367,11 @@ static geo::Coordinate handleDistFunc(aql::AstNode const* node) {
   TRI_ASSERT(node->type == aql::NODE_TYPE_FCALL);
   aql::AstNode* args = node->getMemberUnchecked(0);
   TRI_ASSERT(args->numMembers() == 2);
+  TRI_ASSERT(args->getMemberUnchecked(1)->isAttributeAccessForVariable());
   aql::AstNode* cc = args->getMemberUnchecked(0);
-  // TODO check that this is not an attribute access
+  TRI_ASSERT(cc->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
   if (cc->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   }
 
   Result res;
@@ -398,12 +399,39 @@ static geo::Coordinate handleDistFunc(aql::AstNode const* node) {
 static void handleNode(aql::AstNode const* node, geo::QueryParams& params) {
 
   switch (node->type) {
+      // Handle GEO_CONTAINS(<geoJson-object>, doc.field)
+      // or GEO_INTERSECTS(<geoJson-object>, doc.field)
     case aql::NODE_TYPE_FCALL: {
       // TODO handle GEO_CONTAINS / INTERSECT
       aql::AstNode* args = node->getMemberUnchecked(0);
       TRI_ASSERT(args->numMembers() == 2);
+      if (args->numMembers() != 2) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+      }
+      TRI_ASSERT(args->getMemberUnchecked(1)->isAttributeAccessForVariable());
       
+      aql::AstNode* cc = args->getMemberUnchecked(0);
+      if (cc->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
       
+      VPackBuilder jsonB;
+      cc->toVelocyPackValue(jsonB);
+      Result res = geo::GeoJsonParser::parseGeoJson(jsonB.slice(), params.filterShape);
+      if (res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      
+      aql::Function* func = static_cast<aql::Function*>(node->getData());
+      TRI_ASSERT(func != nullptr);
+      if (func->name == "GEO_CONTAINS") {
+        params.filterType = geo::FilterType::CONTAINS;
+      } else if (func->name == "GEO_INTERSECTS") {
+        params.filterType = geo::FilterType::INTERSECT;
+      } else {
+        TRI_ASSERT(false);
+      }
       break;
     }
     // Handle GEO_DISTANCE(<something>, doc.field) [<|<=|=>|>] <constant>
@@ -479,7 +507,7 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
   // is not necessary, > would be missing entries.
   params.cover.worstIndexedLevel = _coverParams.worstIndexedLevel;
   if (params.cover.bestIndexedLevel > _coverParams.bestIndexedLevel) {
-    // it is unnessesary to have the level smaller
+    // it is unnessesary to use a better level than configured
     params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
   }
   return new NearIterator(_collection, trx, mmdr, this, params);
