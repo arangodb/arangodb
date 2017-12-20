@@ -1,5 +1,8 @@
-Example Setup
+Global Setup
 =============
+
+This page describes the replication process based on a complete ArangoDB instance. That means that
+all included databases will be replicated. 
 
 Setting up a working master-slave replication requires two ArangoDB instances:
 * **master**: this is the instance that all data-modification operations should be directed to
@@ -10,7 +13,7 @@ For the following example setup, we'll use the instance *tcp://master.domain.org
 master, and the instance *tcp://slave.domain.org:8530* as a slave.
 
 The goal is to have all data of all databases on master *tcp://master.domain.org:8529* 
-be replicated to the database on the slave *tcp://slave.domain.org:8530*.
+be replicated to the slave instance *tcp://slave.domain.org:8530*.
 
 On the **master**, nothing special needs to be done, as all write operations will automatically be
 logged in the master's write-ahead log (WAL).
@@ -30,6 +33,7 @@ for the complete ArangoDB instance. Note that it should be run on the **slave** 
 **master**:
 
 ```js
+db._useDatabase("_system");
 require("@arangodb/replication").setupReplicationGlobal({
   endpoint: "tcp://127.0.0.1:8529",
   username: "root",
@@ -51,7 +55,7 @@ stop the running applier, drop its configuration and do a resynchronization of d
 configuration on the **slave**.
 
 
-Initial synchronization
+Stopping synchronization
 -----------------------
 
 The initial synchronization and continuous replication applier can also be started separately.
@@ -60,10 +64,11 @@ To start replication on the **slave**, make sure there currently is no replicati
 The following commands stop a running applier in the slave's instance:
 
 ```js
+db._useDatabase("_system");
 require("@arangodb/replication").globalApplier.stop();
 ```
 
-The *stop* operation will terminate any replication activity in the _system database on the slave.
+The *stop* operation will terminate any replication activity in the ArangoDB instance on the slave.
 
 
 After that, the initial synchronization can be run. It will copy the collections from the **master**
@@ -72,7 +77,7 @@ commands on the **slave**:
 
 ```js
 db._useDatabase("_system");
-require("@arangodb/replication").sync({
+require("@arangodb/replication").syncGlobal({
   endpoint: "tcp://master.domain.org:8529",
   username: "myuser",
   password: "mypasswd",
@@ -84,7 +89,7 @@ Username and password only need to be specified when the **master** requires aut
 To check what the synchronization is currently doing, supply set the *verbose* option to *true*.
 If set, the synchronization will create log messages with the current synchronization status.
 
-**Warning**: The *sync* command will replace data in the **slave** database with data from the 
+**Warning**: The *syncGlobal* command will replace data in the **slave** database with data from the 
 **master** database! Only execute these commands if you have verified you are on the correct server, 
 in the correct database!
 
@@ -102,14 +107,14 @@ assume we got the following last log tick:
 Initial synchronization from the ArangoShell
 --------------------------------------------
 
-The initial synchronization via the *sync* command may take a long time to complete. The shell
+The initial synchronization via the *syncGlobal* command may take a long time to complete. The shell
 will block until the slave has completed the initial synchronization or until an error occurs.
-By default, the *sync* command in the ArangoShell will poll the slave for a status update every
+By default, the *syncGlobal* command in the ArangoShell will poll the slave for a status update every
 10 seconds.
 
-Optionally the *sync* command can be made non-blocking by setting its *async* option to true.
-In this case, the *sync command* will return instantly with an id string, and the initial 
-synchronization will run detached on the master. To fetch the current status of the *sync* 
+Optionally the *syncGlobal* command can be made non-blocking by setting its *async* option to true.
+In this case, the *syncGlobal command* will return instantly with an id string, and the initial 
+synchronization will run detached on the master. To fetch the current status of the *syncGlobal* 
 progress from the ArangoShell, the *getSyncResult* function can be used as follows:
 
 ```js
@@ -117,7 +122,7 @@ db._useDatabase("_system");
 var replication = require("@arangodb/replication");
 
 /* run command in async mode */
-var id = replication.sync({
+var id = replication.syncGlobal({
   endpoint: "tcp://master.domain.org:8529",
   username: "myuser",
   password: "mypasswd",
@@ -136,7 +141,7 @@ Continuous synchronization
 --------------------------
 
 When the initial synchronization is finished, the continuous replication applier can be started using
-the last log tick provided by the *sync* command. Before starting it, there is at least one 
+the last log tick provided by the *syncGlobal* command. Before starting it, there is at least one 
 configuration option to consider: replication on the **slave** will be running until the 
 **slave** gets shut down. When the slave server gets restarted, replication will be turned off again. 
 To change this, we first need to configure the slave's replication applier and set its
@@ -147,7 +152,7 @@ Here's the command to configure the replication applier with several options, in
 
 ```js
 db._useDatabase("_system");
-require("@arangodb/replication").applier.properties({
+require("@arangodb/replication").globalApplier.properties({
   endpoint: "tcp://master.domain.org:8529",
   username: "myuser",
   password: "mypasswd",
@@ -201,7 +206,7 @@ before:
 
 ```js
 db._useDatabase("_system");
-require("@arangodb/replication").applier.start("40694126");
+require("@arangodb/replication").globalApplier.start("40694126");
 ```
 
 This will replicate all operations happening in the master's system database and apply them
@@ -211,8 +216,8 @@ After that, you should be able to monitor the state and progress of the replicat
 applier by executing the *state* command on the slave server:
 
 ```js
-    db._useDatabase("_system");
-    require("@arangodb/replication").applier.state();
+db._useDatabase("_system");
+require("@arangodb/replication").globalApplier.state();
 ```
 
 Please note that stopping the replication applier on the slave using the *stop* command 
