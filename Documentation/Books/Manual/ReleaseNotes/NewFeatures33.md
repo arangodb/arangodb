@@ -82,8 +82,8 @@ engine, which does not have encryption-at-rest.
 
 Encrypted backups are available in the *Enterprise* edition.
 
-Server-global replication
--------------------------
+Server-level replication
+------------------------
 
 ArangoDB supports asynchronous replication functionality since version 1.4, but
 replicating from a master server with multiple databases required manual setup
@@ -92,7 +92,7 @@ created on the master, one needed to take action on the slave to ensure that dat
 for that database got actually replicated. Replication on the slave also was not
 aware of when a database was dropped on the master.
 
-3.3 adds [server-global replication](../Administration/Replication/Asynchronous/GlobalSetup.md),
+3.3 adds [server-level replication](../Administration/Replication/Asynchronous/GlobalSetup.md),
 which will replicate the current and future databases from the master to the
 slave automatically after the initial setup.
 
@@ -121,7 +121,7 @@ To check if the applier is running, also use the `globalApplier` object:
 replication.globalApplier.state().state
 ```
 
-The server-global replication requires both the master and slave servers to 
+The server-level replication requires both the master and slave servers to 
 ArangoDB version 3.3 or higher.
 
 Asynchronous failover
@@ -134,7 +134,7 @@ slave, with automatic failover between them.
 Two servers are connected via asynchronous replication. One of the servers is
 elected leader, and the other one is made a follower automatically. At startup,
 the two servers fight for leadership. The follower will automatically start
-replication from the master for all available databases, using the server-global
+replication from the master for all available databases, using the server-level
 replication introduced in 3.3.
 
 When the master goes down, this is automatically detected by an agency

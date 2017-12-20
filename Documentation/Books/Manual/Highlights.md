@@ -18,7 +18,7 @@ Version 3.3
 
 ### All Editions
 
-- [**Server-global Replication**](Administration/Replication/Asynchronous/GlobalSetup.md):
+- [**Server-level Replication**](Administration/Replication/Asynchronous/GlobalSetup.md):
   In addition to per-database replication, there is now an additional
   `globalApplier`. Start the global replication on the slave once and all
   current and future databases will be replicated from the master to the
