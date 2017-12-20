@@ -1011,14 +1011,6 @@ std::string RocksDBEngine::createCollection(
       {"path", "statusString"}, /*translate cid*/ true,
       /*for persistence*/ true);
 
-  // should cause counter to be added to the manager
-  // in case the collection is created for the first time
-  VPackSlice objectId = builder.slice().get("objectId");
-  if (objectId.isInteger()) {
-    RocksDBCounterManager::CounterAdjustment adj;
-    _counterManager->updateCounter(objectId.getUInt(), adj);
-  }
-
   TRI_ASSERT(cid != 0);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
 
@@ -1346,6 +1338,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep) {
       auto const& f = files[current].get();
       if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
         if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
+          LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "RocksDB WAL file '" << f->PathName() << "' added to prunable list";
           _prunableWalFiles.emplace(f->PathName(),
                                     TRI_microtime() + _pruneWaitTime);
         }
