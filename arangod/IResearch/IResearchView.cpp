@@ -1520,10 +1520,11 @@ int IResearchView::insert(
   return TRI_ERROR_NO_ERROR;
 }
 
-iresearch::CompoundReader IResearchView::snapshot(transaction::Methods &trx) {
-  if (trx.state() && trx.state()->waitForSync() && !sync()) {
+iresearch::CompoundReader IResearchView::snapshot(transaction::Methods* trx) {
+  if (trx && trx->state() && trx->state()->waitForSync() && !sync()) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "failed to sync while creating snapshot for IResearch view '" << id() << "', previous snapshot will be used instead";
+      << "failed to sync while creating snapshot for IResearch view '" << id()
+      << "', previous snapshot will be used instead";
   }
 
   iresearch::CompoundReader compoundReader(_mutex); // will aquire read-lock since members can be asynchronously updated
@@ -1549,14 +1550,16 @@ iresearch::CompoundReader IResearchView::snapshot(transaction::Methods &trx) {
     throw;
   }
 
-  // add CIDs of known collections to transaction
-  for (auto& entry: _meta._collections) {
-    trx.addCollectionAtRuntime(arangodb::basics::StringUtils::itoa(entry));
-  }
+  if (trx) {
+    // add CIDs of known collections to transaction
+    for (auto& entry: _meta._collections) {
+      trx->addCollectionAtRuntime(arangodb::basics::StringUtils::itoa(entry));
+    }
 
-  // add CIDs of registered collections to transaction
-  for (auto& entry: _registeredLinks) {
-    trx.addCollectionAtRuntime(std::to_string(entry.first));
+    // add CIDs of registered collections to transaction
+    for (auto& entry: _registeredLinks) {
+      trx->addCollectionAtRuntime(std::to_string(entry.first));
+    }
   }
 
   return compoundReader;

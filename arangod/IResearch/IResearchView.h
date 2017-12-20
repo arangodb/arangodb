@@ -239,7 +239,7 @@ class IResearchView final: public arangodb::ViewImplementation,
     IResearchLinkMeta const& meta
   );
 
-  CompoundReader snapshot(transaction::Methods& trx);
+  CompoundReader snapshot(transaction::Methods* trx);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief count of known links registered with this view

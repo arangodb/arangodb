@@ -470,7 +470,7 @@ SECTION("test_drop_cid") {
     {
       arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       CHECK((trx.begin().ok()));
-      CHECK(1 == view->snapshot(trx).live_docs_count());
+      CHECK(1 == view->snapshot(&trx).live_docs_count());
     }
 
     // drop cid 42
@@ -489,7 +489,7 @@ SECTION("test_drop_cid") {
     {
       arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       CHECK((trx.begin().ok()));
-      CHECK(0 == view->snapshot(trx).live_docs_count());
+      CHECK(0 == view->snapshot(&trx).live_docs_count());
     }
   }
 
@@ -519,7 +519,7 @@ SECTION("test_drop_cid") {
     {
       arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       CHECK((trx.begin().ok()));
-      CHECK(1 == view->snapshot(trx).live_docs_count());
+      CHECK(1 == view->snapshot(&trx).live_docs_count());
     }
 
     // drop cid 42
@@ -538,7 +538,7 @@ SECTION("test_drop_cid") {
     {
       arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       CHECK((trx.begin().ok()));
-      CHECK(0 == view->snapshot(trx).live_docs_count());
+      CHECK(0 == view->snapshot(&trx).live_docs_count());
     }
   }
 }
@@ -582,7 +582,7 @@ SECTION("test_insert") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    auto reader = view->snapshot(trx);
+    auto reader = view->snapshot(&trx);
     CHECK(2 == reader.live_docs_count());
   }
 
@@ -618,7 +618,7 @@ SECTION("test_insert") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    auto reader = view->snapshot(trx);
+    auto reader = view->snapshot(&trx);
     CHECK((2 == reader.docs_count()));
   }
 
@@ -657,7 +657,7 @@ SECTION("test_insert") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    auto reader = view->snapshot(trx);
+    auto reader = view->snapshot(&trx);
     CHECK((4 == reader.docs_count()));
 
     // validate cid count
@@ -703,7 +703,7 @@ SECTION("test_insert") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    auto reader = view->snapshot(trx);
+    auto reader = view->snapshot(&trx);
     CHECK((4 == reader.docs_count()));
   }
 
@@ -736,7 +736,7 @@ SECTION("test_insert") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    auto reader = view->snapshot(trx);
+    auto reader = view->snapshot(&trx);
     CHECK((4 == reader.docs_count()));
   }
 
@@ -770,7 +770,7 @@ SECTION("test_insert") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    auto reader = view->snapshot(trx);
+    auto reader = view->snapshot(&trx);
     CHECK((4 == reader.docs_count()));
   }
 }
@@ -895,7 +895,7 @@ SECTION("test_query") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    CHECK(0 == view->snapshot(trx).docs_count());
+    CHECK(0 == view->snapshot(&trx).docs_count());
   }
 
   // ordered iterator
@@ -924,7 +924,7 @@ SECTION("test_query") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    CHECK(12 == view->snapshot(trx).docs_count());
+    CHECK(12 == view->snapshot(&trx).docs_count());
   }
 
   // snapshot isolation
@@ -969,7 +969,7 @@ SECTION("test_query") {
       arangodb::transaction::StandaloneContext::Create(&vocbase), collections, EMPTY, EMPTY, arangodb::transaction::Options()
     );
     CHECK((readTrx.begin().ok()));
-    auto reader = view->snapshot(readTrx);
+    auto reader = view->snapshot(&readTrx);
     CHECK(12 == reader.docs_count());
 
     // add more data
@@ -994,7 +994,7 @@ SECTION("test_query") {
     // old reader sees same data as before
     CHECK(12 == reader.docs_count());
     // new reader sees new data
-    CHECK(24 == view->snapshot(readTrx).docs_count());
+    CHECK(24 == view->snapshot(&readTrx).docs_count());
   }
 
   // query while running FlushThread
@@ -1048,7 +1048,7 @@ SECTION("test_query") {
       // query
       {
         arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-        CHECK(i == view->snapshot(trx).docs_count());
+        CHECK(i == view->snapshot(&trx).docs_count());
       }
     }
   }

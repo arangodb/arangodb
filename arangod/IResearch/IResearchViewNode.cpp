@@ -287,7 +287,7 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
     return nullptr;
   }
 
-  auto reader = impl->snapshot(*trx);
+  auto reader = impl->snapshot(trx);
 
   if (_sortCondition.empty()) {
     // unordered case
