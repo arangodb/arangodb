@@ -52,11 +52,6 @@ IndexIterator::~IndexIterator() {
   }
 }
 
-bool IndexIterator::hasExtra() const {
-  // The default index has no extra information
-  return false;
-}
-
 bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
   return next([this, &cb](LocalDocumentId const& token) {
     _collection->readDocumentWithCallback(_trx, token, cb);

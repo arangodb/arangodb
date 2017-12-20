@@ -117,13 +117,6 @@ RocksDBCounterManager::CounterAdjustment RocksDBCounterManager::loadCounter(
 /// the sequence number used
 void RocksDBCounterManager::updateCounter(uint64_t objectId,
                                           CounterAdjustment const& update) {
-  // From write_batch.cc in rocksdb: first 64 bits in the internal rep_
-  // buffer are the sequence number
-  /*TRI_ASSERT(trx->GetState() == rocksdb::Transaction::COMMITED);
-  rocksdb::WriteBatchWithIndex *batch = trx->GetWriteBatch();
-  rocksdb::SequenceNumber seq =
-  DecodeFixed64(batch->GetWriteBatch()->Data().data());*/
-
   bool needsSync = false;
   {
     WRITE_LOCKER(guard, _rwLock);

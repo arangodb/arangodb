@@ -1,5 +1,8 @@
-Example Setup
+Database Setup
 =============
+
+This page describes the replication process based on a specific database within an ArangoDB instance.
+That means that only the specified database will be replicated. 
 
 Setting up a working master-slave replication requires two ArangoDB instances:
 * **master**: this is the instance that all data-modification operations should be directed to
