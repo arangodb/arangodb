@@ -382,7 +382,106 @@ function iResearchFeatureAqlTestSuite () {
     },
 
     testViewCreate: function() {
-      // FIXME TODO implement for 1/2/3 empty/non-empty collections (create view)
+      // 1 empty collection
+      {
+        db._dropView("TestView");
+        db._drop("TestCollection0");
+        var col0 = db._create("TestCollection0");
+        var view = db._createView("TestView", "iresearch", {});
+
+        var meta = { links: { "TestCollection0": { includeAllFields: true } } };
+        view.properties(meta, true); // partial update
+
+        var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(0, result.length);
+
+        col0.save({ name: "quarter", text: "quick over" });
+        result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(1, result.length);
+        assertEqual("quarter", result[0].name);
+      }
+
+      // 1 non-empty collection
+      {
+        db._dropView("TestView");
+        db._drop("TestCollection0");
+        var col0 = db._create("TestCollection0");
+        var view = db._createView("TestView", "iresearch", {});
+
+        col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
+        col0.save({ name: "half", text: "quick fox over lazy" });
+        col0.save({ name: "other half", text: "the brown jumps the dog" });
+        col0.save({ name: "quarter", text: "quick over" });
+
+        var meta = { links: { "TestCollection0": { includeAllFields: true } } };
+        view.properties(meta, true); // partial update
+
+        var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(4, result.length);
+        assertEqual("full", result[0].name);
+        assertEqual("half", result[1].name);
+        assertEqual("other half", result[2].name);
+        assertEqual("quarter", result[3].name);
+      }
+
+      // 2 non-empty collections
+      {
+        db._dropView("TestView");
+        db._drop("TestCollection0");
+        db._drop("TestCollection1");
+        var col0 = db._create("TestCollection0");
+        var col1 = db._create("TestCollection1");
+        var view = db._createView("TestView", "iresearch", {});
+
+        col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
+        col0.save({ name: "half", text: "quick fox over lazy" });
+        col1.save({ name: "other half", text: "the brown jumps the dog" });
+        col1.save({ name: "quarter", text: "quick over" });
+
+        var meta = { links: {
+          "TestCollection0": { includeAllFields: true },
+          "TestCollection1": { includeAllFields: true }
+        } };
+        view.properties(meta, true); // partial update
+
+        var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(4, result.length);
+        assertEqual("full", result[0].name);
+        assertEqual("half", result[1].name);
+        assertEqual("other half", result[2].name);
+        assertEqual("quarter", result[3].name);
+      }
+
+      // 1 empty collection + 2 non-empty collections
+      {
+        db._dropView("TestView");
+        db._drop("TestCollection0");
+        db._drop("TestCollection1");
+        db._drop("TestCollection2");
+        var col0 = db._create("TestCollection0");
+        var col1 = db._create("TestCollection1");
+        var col2 = db._create("TestCollection2");
+        var view = db._createView("TestView", "iresearch", {});
+
+        col2.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
+        col2.save({ name: "half", text: "quick fox over lazy" });
+        col0.save({ name: "other half", text: "the brown jumps the dog" });
+        col0.save({ name: "quarter", text: "quick over" });
+
+        var meta = { links: {
+          "TestCollection0": { includeAllFields: true },
+          "TestCollection1": { includeAllFields: true },
+          "TestCollection2": { includeAllFields: true }
+        } };
+        view.properties(meta, true); // partial update
+
+        var result = AQL_EXECUTE("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).json;
+        assertEqual(4, result.length);
+        assertEqual("full", result[0].name);
+        assertEqual("half", result[1].name);
+        assertEqual("other half", result[2].name);
+        assertEqual("quarter", result[3].name);
+      }
     },
 
     testViewModify: function() {
