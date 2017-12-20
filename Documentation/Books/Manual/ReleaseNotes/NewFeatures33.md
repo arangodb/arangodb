@@ -80,7 +80,7 @@ Note that encrypted backups can be used together with the already existing
 RocksDB encryption-at-rest feature, but they can also be used for the MMFiles
 engine, which does not have encryption-at-rest.
 
-[Encrypted backups](#) is available in the *Enterprise* edition.
+Encrypted backups are available in the *Enterprise* edition.
 
 Server-global replication
 -------------------------
@@ -92,8 +92,9 @@ created on the master, one needed to take action on the slave to ensure that dat
 for that database got actually replicated. Replication on the slave also was not
 aware of when a database was dropped on the master.
 
-3.3 adds server-global replication, which will replicates the current and future
-databases from the master to the slave automatically after the initial setup.
+3.3 adds [server-global replication](../Administration/Replication/Asynchronous/GlobalSetup.md),
+which will replicate the current and future databases from the master to the
+slave automatically after the initial setup.
 
 In order to set up global replication on a 3.3 slave for all databases of a given 
 3.3 master, there is now the so-called `globalApplier`. It has the same interface

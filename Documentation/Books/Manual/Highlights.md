@@ -12,19 +12,19 @@ Version 3.3
   support means you can fallback to a replica of your cluster in case of a
   disaster in one datacenter.
 
-- [**Encrypted Backups**](#):
+- [**Encrypted Backups**](ReleaseNotes/NewFeatures33.md#encrypted-backups):
   Arangodump can create backups encrypted with a secret key using AES256
   block cipher.
 
 ### All Editions
 
-- [**Server-global Replication**](#):
+- [**Server-global Replication**](Administration/Replication/Asynchronous/GlobalSetup.md):
   In addition to per-database replication, there is now an additional
   `globalApplier`. Start the global replication on the slave once and all
   current and future databases will be replicated from the master to the
   slave automatically.
 
-- [**Asynchronous Failover**](#):
+- [**Asynchronous Failover**](ReleaseNotes/NewFeatures33.md#asynchronous-failover):
   Make a single server instance resilient with a second server instance, one
   as master and the other as asynchronously replicating slave, with automatic
   failover to the slave if the master goes down.
