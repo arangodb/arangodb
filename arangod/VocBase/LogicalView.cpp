@@ -89,7 +89,7 @@ static std::string const ReadStringValue(VPackSlice info,
   }
   return Helper::getStringValue(info, name, def);
 }
-}
+}  // namespace
 
 /// @brief This the "copy" constructor used in the cluster
 ///        it is required to create objects that survive plan
@@ -181,6 +181,23 @@ bool LogicalView::deleted() const { return _isDeleted; }
 
 void LogicalView::setDeleted(bool newValue) { _isDeleted = newValue; }
 
+void LogicalView::rename(std::string const& newName, bool doSync) {
+  std::string oldName = _name;
+  try {
+    _name = newName;
+      
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    TRI_ASSERT(engine != nullptr);
+
+    if (!engine->inRecovery()) {
+      engine->changeView(_vocbase, _id, this, doSync);
+    }
+  } catch (...) {
+    _name = oldName;
+    throw;
+  }
+}
+
 void LogicalView::drop() {
   _isDeleted = true;
 
@@ -225,7 +242,10 @@ void LogicalView::toVelocyPack(VPackBuilder& result, bool includeProperties,
   if (includeProperties && (getImplementation() != nullptr)) {
     // implementation Information
     result.add("properties", VPackValue(VPackValueType::Object));
-    getImplementation()->getPropertiesVPack(result);
+    // note: includeSystem and forPersistence are not 100% synonymous,
+    // however, for our purposes this is an okay mapping; we only set
+    // includeSystem if we are persisting the properties
+    getImplementation()->getPropertiesVPack(result, includeSystem);
     result.close();
   }
   TRI_ASSERT(result.isOpenObject());
@@ -245,9 +265,13 @@ arangodb::Result LogicalView::updateProperties(VPackSlice const& slice,
 
   if (implResult.ok()) {
     // after this call the properties are stored
-    getPhysical()->persistProperties();
-
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    TRI_ASSERT(engine != nullptr);
+
+    if (!engine->inRecovery()) {
+      getPhysical()->persistProperties();
+    }
+
     engine->changeView(_vocbase, _id, this, doSync);
   }
 
@@ -270,5 +294,5 @@ void LogicalView::persistPhysicalView() {
 void LogicalView::spawnImplementation(
     ViewCreator creator, arangodb::velocypack::Slice const& parameters,
     bool isNew) {
-  _implementation = creator(this, parameters, isNew);
+  _implementation = creator(this, parameters.get("properties"), isNew);
 }

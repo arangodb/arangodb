@@ -211,3 +211,17 @@ ArangoView.prototype.drop = function () {
     this._database._unregisterView(this._name);
   }
 };
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief renames a view
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoView.prototype.rename = function (name) {
+  var body = { name: name };
+  var requestResult = this._database._connection.PUT(this._baseurl('rename'), JSON.stringify(body));
+
+  arangosh.checkRequestResult(requestResult);
+
+  this._database._renameView(this._name, name);
+  this._name = name;
+};

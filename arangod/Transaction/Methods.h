@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,6 +37,12 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
+
+#ifdef USE_ENTERPRISE
+  #define ENTERPRISE_VIRT virtual
+#else
+  #define ENTERPRISE_VIRT
+#endif
 
 namespace arangodb {
 
@@ -81,11 +87,6 @@ class TransactionState;
 class TransactionCollection;
 
 namespace transaction {
-#ifdef USE_ENTERPRISE
-  #define ENTERPRISE_VIRT virtual
-#else
-  #define ENTERPRISE_VIRT
-#endif
 
 class Methods {
   friend class traverser::BaseEngine;
@@ -146,7 +147,9 @@ class Methods {
   };
 
   /// @brief register a callback for transaction commit or abort
-  void registerCallback(std::function<void(arangodb::transaction::Methods* trx)> const& onFinish) { _onFinish = onFinish; }
+  void registerCallback(std::function<void(arangodb::transaction::Methods* trx)> const& cb) {
+    _callbacks.emplace_back(cb);
+  }
 
   /// @brief return database of transaction
   TRI_vocbase_t* vocbase() const;
@@ -298,11 +301,11 @@ class Methods {
   /// @brief remove all documents in a collection
   OperationResult truncate(std::string const& collectionName,
                            OperationOptions const& options);
-  
+
   /// @brief rotate all active journals of the collection
   OperationResult rotateActiveJournal(std::string const& collectionName,
                                       OperationOptions const& options);
-  
+
   /// @brief count the number of documents in a collection
   ENTERPRISE_VIRT OperationResult count(std::string const& collectionName, bool aggregate);
 
@@ -388,7 +391,7 @@ class Methods {
 
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
-  
+
 #ifdef USE_ENTERPRISE
   virtual bool isInaccessibleCollectionId(TRI_voc_cid_t cid) { return false; }
   virtual bool isInaccessibleCollection(std::string const& cid) { return false; }
@@ -462,10 +465,10 @@ class Methods {
 
   OperationResult truncateLocal(std::string const& collectionName,
                                 OperationOptions& options);
-  
+
   OperationResult rotateActiveJournalCoordinator(std::string const& collectionName,
                                                  OperationOptions const& options);
-  
+
   OperationResult rotateActiveJournalLocal(std::string const& collectionName,
                                            OperationOptions const& options);
 
@@ -595,7 +598,7 @@ class Methods {
 
   /// @brief optional callback function that will be called on transaction
   /// commit or abort
-  std::function<void(arangodb::transaction::Methods* trx)> _onFinish;
+  std::vector<std::function<void(arangodb::transaction::Methods* trx)>> _callbacks;
 };
 
 class CallbackInvoker {

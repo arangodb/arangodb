@@ -232,6 +232,7 @@ inline uint64_t uint64FromBigEndianPersistent(char const* p) {
 
 /// shorthand for rocksdb
 rocksdb::TransactionDB* globalRocksDB();
+rocksdb::ColumnFamilyHandle* defaultCF();
 RocksDBEngine* globalRocksEngine();
 arangodb::Result globalRocksDBPut(
     rocksdb::ColumnFamilyHandle *cf,

@@ -229,7 +229,7 @@ class Condition {
 
   /// @brief removes condition parts from another
   AstNode* removeIndexCondition(ExecutionPlan const*, Variable const*, AstNode*);
-  
+
   /// @brief removes condition parts from another
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*, AstNode*);
 

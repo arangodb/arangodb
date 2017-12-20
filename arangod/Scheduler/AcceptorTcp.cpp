@@ -36,9 +36,9 @@ void AcceptorTcp::open() {
 
   boost::asio::ip::tcp::endpoint asioEndpoint;
   boost::system::error_code err;
-  auto address = boost::asio::ip::address::from_string(hostname,err);
+  auto address = boost::asio::ip::address::from_string(hostname, err);
   if (!err) {
-    asioEndpoint = boost::asio::ip::tcp::endpoint(address,portNumber);
+    asioEndpoint = boost::asio::ip::tcp::endpoint(address, portNumber);
   } else { // we need to resolve the string containing the ip
     std::unique_ptr<boost::asio::ip::tcp::resolver::query> query;
     if (_endpoint->domain() == AF_INET6) {
@@ -51,7 +51,7 @@ void AcceptorTcp::open() {
 
     boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(*query, err);
     if (err) {
-      LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to to resolve endpoint: " << err.message();
+      LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to to resolve endpoint ' " << _endpoint->specification() << "': " << err.message();
       throw std::runtime_error(err.message());
     }
 
@@ -83,12 +83,12 @@ void AcceptorTcp::open() {
 
   _acceptor.bind(asioEndpoint, err);
   if (err) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to bind endpoint: " << err.message();
+    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to bind to endpoint '" << _endpoint->specification() << "': " << err.message();
     throw std::runtime_error(err.message());
   }
   _acceptor.listen(_endpoint->listenBacklog(), err);
   if (err) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to bind endpoint: " << err.message();
+    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to listen to endpoint '" << _endpoint->specification() << ": " << err.message();
     throw std::runtime_error(err.message());
   }
 }

@@ -38,6 +38,11 @@ namespace velocypack {
 class Slice;
 }
 
+namespace aql {
+class ExecutionPlan;
+struct ExecutionContext;
+}
+
 class PhysicalView;
 
 class LogicalView {
@@ -71,6 +76,8 @@ class LogicalView {
 
   bool deleted() const;
   void setDeleted(bool);
+
+  void rename(std::string const& newName, bool doSync);
 
   PhysicalView* getPhysical() const { return _physical.get(); }
   ViewImplementation* getImplementation() const {

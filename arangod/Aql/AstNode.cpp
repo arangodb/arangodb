@@ -156,7 +156,8 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN),
      "array compare not in"},
     {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"},
-    {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"}};
+    {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"},
+    {static_cast<int>(NODE_TYPE_VIEW), "view"}};
 
 /// @brief names for AST node value types
 std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
@@ -430,6 +431,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
 
   switch (type) {
     case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_ATTRIBUTE_ACCESS:
     case NODE_TYPE_FCALL_USER: {
@@ -670,6 +672,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_OBJECT_ELEMENT:
     case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_VARIABLE:
     case NODE_TYPE_FCALL:
@@ -765,10 +768,9 @@ AstNode::~AstNode() {
 /// @brief return the string value of a node, as an std::string
 std::string AstNode::getString() const {
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT ||
-             type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-             type == NODE_TYPE_PARAMETER || type == NODE_TYPE_COLLECTION ||
-             type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
-             type == NODE_TYPE_FCALL_USER);
+             type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER ||
+             type == NODE_TYPE_COLLECTION || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
+             type == NODE_TYPE_FCALL_USER || type == NODE_TYPE_VIEW);
   TRI_ASSERT(value.type == VALUE_TYPE_STRING);
   return std::string(getStringValue(), getStringLength());
 }
@@ -1061,7 +1063,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
     builder.add("typeID", VPackValue(static_cast<int>(type)));
   }
   if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_PARAMETER ||
-      type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+      type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_VIEW ||
       type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
     // dump "name" of node
     builder.add("name", VPackValuePair(getStringValue(), getStringLength(),
@@ -2342,6 +2344,7 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_ASSIGN:
     case NODE_TYPE_OBJECT_ELEMENT:
     case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
@@ -2512,6 +2515,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_REFERENCE:
     case NODE_TYPE_OBJECT_ELEMENT:
     case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:

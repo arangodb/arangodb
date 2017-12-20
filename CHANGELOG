@@ -1,7 +1,17 @@
 devel
 -----
 
-* UI: fixed disappearing of the navigation label in some case special case
+* UI: improved the behavior during collection creation in a cluster environment
+
+* UI: fixed broken foxx configuration keys. Some valid configuration values
+  could not be edited via the ui.
+
+* UI: pressing the return key inside a select2 box no longer triggers the modals
+  success function
+
+* UI: coordinators and db servers are now in sorted order (ascending)
+
+* UI: fixed disappearing of the navigation label in some cases
 
 * fixed issue #3917: traversals with high maximal depth take extremely long
   in planning phase.
@@ -56,8 +66,6 @@ devel
   vertex which is perfectly valid, but it may be a n issue on the data model, so users
   can directly see it on the query now and do not "by accident" have to check the LOG output.
 
-* potential fix for issue #3562: Document WITHIN_RECTANGLE not found
-
 * introduce `enforceReplicationFactor` attribute for creating collections:
   this optional parameter controls if the coordinator should bail out during collection
   creation if there are not enough DBServers available for the desired `replicationFactor`.
@@ -69,6 +77,7 @@ devel
   settable via the `--console.prompt` option in arangosh:
 
   - '%t': current time as timestamp
+  - '%a': elpased time since ArangoShell start in seconds
   - '%p': duration of last command in seconds
   - '%d': name of current database
   - '%e': current endpoint

@@ -187,3 +187,36 @@ A skiplist is a sorted index type that can be used to find ranges of documents.
 ### Anonymous Graphs
 
 You may use edge collections with vertex collections without the graph management facilities. However, graph consistency is not enforced by these. If you remove vertices, you have to ensure by yourselves edges pointing to this vertex are removed. Anonymous graphs may not be browsed using graph viewer in the webinterface. This may be faster in some scenarios.
+
+### View
+
+A view is conceptially a transformation function over documents from zero or
+more collections. It is uniquely identified by its view identifier. It also has
+a unique name that clients should use to identify and access it. Views can be
+renamed. Renaming a view will change the view name, but not the view identifier.
+The conceptual transformation function employed by a view type is implementation
+specific. The type is specified by the user when the view is created, and cannot
+be changed later. The following view types are currently supported:
+* [iresearch](../Views/IResearch.md)
+
+### View Identifier
+
+A view identifier identifies a view in a database. It is a string value and is
+unique within the database. Clients should use a view's unique name to access a
+view instead of its identifier.
+
+ArangoDB currently uses 64bit unsigned integer values to maintain view ids
+internally. When returning view ids to clients, ArangoDB will put them into a
+string to ensure the view id is not clipped by clients that do not support big
+integers. Clients should treat the view ids returned by ArangoDB as opaque
+strings when they store or use them locally.
+
+### View Name
+
+A view name identifies a view in a database. It is a string and is unique within
+the database. Unlike the view identifier it is supplied by the creator of the
+view. The view name must consist of letters, digits, and the _ (underscore)
+and - (dash) characters only. Please refer to
+[NamingConventions](../DataModeling/NamingConventions/CollectionNames.md) for
+more information on valid view names, which follow the same guidelines as
+collection names.

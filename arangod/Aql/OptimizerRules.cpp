@@ -464,7 +464,6 @@ void arangodb::aql::removeUnnecessaryFiltersRule(
 
     // filter expression is constant and thus cannot throw
     // we can now evaluate it safely
-    TRI_ASSERT(!s->expression()->canThrow());
 
     if (root->isTrue()) {
       // filter is always true
@@ -1669,7 +1668,7 @@ void arangodb::aql::useIndexesRule(Optimizer* opt,
   TRI_DEFER(cleanupChanges());
   bool hasEmptyResult = false;
   for (auto const& n : nodes) {
-    ConditionFinder finder(plan.get(), &changes, &hasEmptyResult);
+    ConditionFinder finder(plan.get(), &changes, &hasEmptyResult, false);
     n->walk(&finder);
   }
 
@@ -1690,7 +1689,7 @@ void arangodb::aql::useIndexesRule(Optimizer* opt,
 struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
   SortNode* _sortNode;
-  std::vector<std::pair<VariableId, bool>> _sorts;
+  std::vector<std::pair<Variable const*, bool>> _sorts;
   std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
   bool _modified;
 
@@ -1713,7 +1712,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       return true;
     }
 
-    SortCondition sortCondition(
+    SortCondition sortCondition(_plan,
         _sorts, std::vector<std::vector<arangodb::basics::AttributeName>>(),
         _variableDefinitions);
 
@@ -1822,7 +1821,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       isSparse = false;
     }
 
-    SortCondition sortCondition(
+    SortCondition sortCondition(_plan,
         _sorts, cond->getConstAttributes(outVariable, !isSparse),
         _variableDefinitions);
 
@@ -1894,6 +1893,9 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::TRAVERSAL:
       case EN::SHORTEST_PATH:
       case EN::ENUMERATE_LIST:
+#ifdef USE_IRESEARCH
+      case EN::ENUMERATE_IRESEARCH_VIEW:
+#endif
       case EN::SUBQUERY:
       case EN::FILTER:
         return false;  // skip. we don't care.
@@ -1930,7 +1932,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         }
         _sortNode = static_cast<SortNode*>(en);
         for (auto& it : _sortNode->getElements()) {
-          _sorts.emplace_back((it.var)->id, it.ascending);
+          _sorts.emplace_back(it.var, it.ascending);
         }
         return false;
 
@@ -2982,6 +2984,9 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         case EN::SORT:
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
+#ifdef USE_IRESEARCH
+        case EN::ENUMERATE_IRESEARCH_VIEW:
+#endif
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
           // do break
@@ -3084,6 +3089,9 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
         case EN::ENUMERATE_COLLECTION:
+#ifdef USE_IRESEARCH
+        case EN::ENUMERATE_IRESEARCH_VIEW:
+#endif
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
           // CalculationNodes that can be moved to the DBservers have
@@ -3343,6 +3351,9 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
       }
       case EN::SINGLETON:
       case EN::ENUMERATE_LIST:
+#ifdef USE_IRESEARCH
+      case EN::ENUMERATE_IRESEARCH_VIEW:
+#endif
       case EN::SUBQUERY:
       case EN::COLLECT:
       case EN::INSERT:
@@ -4605,7 +4616,7 @@ struct GeoIndexInfo {
     DISTANCE, GEO_CONTAINS, GEO_INTERSECTS, NEAR, WITHIN
   };
   
-  // FILTER or SORT containing DISTANCE, GEO_CONTAINS, GEO_INTERSECT
+  // FILTER or SORT containing DISTANCE, GEO_CONTAINS, GEO_INTERSECTS
   struct Statement {
     // actual FILTER or SORT, might also be null
     ExecutionNode* execNodeToRemove = nullptr;

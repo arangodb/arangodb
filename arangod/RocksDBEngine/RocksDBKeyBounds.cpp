@@ -220,6 +220,8 @@ uint64_t RocksDBKeyBounds::objectId() const {
 
 rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
   switch (_type) {
+    case RocksDBEntryType::Placeholder:
+      return RocksDBColumnFamily::invalid();
     case RocksDBEntryType::Document:
       return RocksDBColumnFamily::documents();
     case RocksDBEntryType::PrimaryIndexValue:
@@ -249,7 +251,7 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
 
 // constructor for an empty bound. do not use for anything but to
 // default-construct a key bound!
-RocksDBKeyBounds::RocksDBKeyBounds() : _type(RocksDBEntryType::Database) {}
+RocksDBKeyBounds::RocksDBKeyBounds() : _type(RocksDBEntryType::VPackIndexValue) {}
 
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type) : _type(type) {
   switch (_type) {

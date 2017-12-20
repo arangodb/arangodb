@@ -34,9 +34,10 @@
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
-#include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -218,7 +219,8 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
           info, "deduplicate", true)),
       _useExpansion(false),
       _allowPartialIndex(true),
-      _estimator(nullptr) {
+      _estimator(nullptr),
+      _estimatorSerializedSeq(0) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::vpack());
 
   if (!_unique && !ServerState::instance()->isCoordinator()) {
@@ -1536,15 +1538,16 @@ bool RocksDBVPackIndex::isDuplicateOperator(
   return duplicate;
 }
 
-void RocksDBVPackIndex::serializeEstimate(std::string& output) const {
+void RocksDBVPackIndex::serializeEstimate(std::string& output, uint64_t seq) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (!_unique) {
     TRI_ASSERT(_estimator != nullptr);
     _estimator->serialize(output);
   }
+  _estimatorSerializedSeq = seq;
 }
 
-bool RocksDBVPackIndex::deserializeEstimate(RocksDBCounterManager* mgr) {
+bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
   if (_unique || ServerState::instance()->isCoordinator()) {
     return true;
   }
@@ -1554,13 +1557,14 @@ bool RocksDBVPackIndex::deserializeEstimate(RocksDBCounterManager* mgr) {
 
   TRI_ASSERT(mgr != nullptr);
   auto tmp = mgr->stealIndexEstimator(_objectId);
-  if (tmp == nullptr) {
+  if (tmp.first == nullptr) {
     // We expected to receive a stored index estimate, however we got none.
     // We use the freshly created estimator but have to recompute it.
     return false;
   }
-  _estimator.swap(tmp);
+  _estimator.swap(tmp.first);
   TRI_ASSERT(_estimator != nullptr);
+  _estimatorSerializedSeq = tmp.second;
   return true;
 }
 
@@ -1592,4 +1596,9 @@ Result RocksDBVPackIndex::postprocessRemove(transaction::Methods* trx,
     _estimator->remove(hash);
   }
   return Result();
+}
+
+std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t>
+RocksDBVPackIndex::estimator() const {
+  return std::make_pair(_estimator.get(), _estimatorSerializedSeq);
 }

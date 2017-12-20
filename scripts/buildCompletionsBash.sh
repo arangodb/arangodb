@@ -35,7 +35,7 @@ EOF
 
 echo "" > $out
 
-progs="arangobench arangosh arangoimp arangodump arangorestore arangod"
+progs="arangobench arangosh arangoimport arangodump arangorestore arangod"
 
 for progname in $progs
   do
@@ -43,14 +43,14 @@ for progname in $progs
     # check if the executable exists
     if [[ -f "build/bin/$progname" ]]; then
       executable="build/bin/$progname"
-  
+
       # setup the help command string
-      command="--help-all" 
+      command="--help-all"
 
       # set up the list of completions for the executable
       completions="`\"$executable\" $command | grep -o \"^\\ \\+--[a-z-]\\+\\(\\.[a-z0-9-]\\+\\)\\?\" | xargs`"
 
-      sed -e "s/PROGNAME/$progname/g" -e "s/PROGOPTS/$completions/g" /tmp/completions-template >> $out          
+      sed -e "s/PROGNAME/$progname/g" -e "s/PROGOPTS/$completions/g" /tmp/completions-template >> $out
     fi
   done
 
