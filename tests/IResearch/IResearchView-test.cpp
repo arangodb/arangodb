@@ -1552,6 +1552,64 @@ SECTION("test_update_overwrite") {
       CHECK((false == logicalCollection1->getIndexes().empty()));
     }
   }
+
+  // update existing link (full update)
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto view = logicalView->getImplementation();
+    REQUIRE((false == !view));
+
+    // initial add of link
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }"
+      );
+      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->getPropertiesVPack(builder, false);
+      builder.close();
+
+      auto slice = builder.slice();
+      auto tmpSlice = slice.get("collections");
+      CHECK((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+      tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+      tmpSlice = tmpSlice.get("testCollection");
+      CHECK((true == tmpSlice.isObject()));
+      tmpSlice = tmpSlice.get("includeAllFields");
+      CHECK((true == tmpSlice.isBoolean() && true == tmpSlice.getBoolean()));
+    }
+
+    // update link
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": { } } }"
+      );
+      CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
+
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->getPropertiesVPack(builder, false);
+      builder.close();
+
+      auto slice = builder.slice();
+      auto tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+      tmpSlice = tmpSlice.get("testCollection");
+      CHECK((true == tmpSlice.isObject()));
+      tmpSlice = tmpSlice.get("includeAllFields");
+      CHECK((true == tmpSlice.isBoolean() && false == tmpSlice.getBoolean()));
+    }
+  }
 }
 
 SECTION("test_update_partial") {
@@ -2142,6 +2200,64 @@ SECTION("test_update_partial") {
       }
 
       CHECK((initial != actual)); // a reindexing took place (link recreated)
+    }
+  }
+
+  // update existing link (partial update)
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto view = logicalView->getImplementation();
+    REQUIRE((false == !view));
+
+    // initial add of link
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }"
+      );
+      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->getPropertiesVPack(builder, false);
+      builder.close();
+
+      auto slice = builder.slice();
+      auto tmpSlice = slice.get("collections");
+      CHECK((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+      tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+      tmpSlice = tmpSlice.get("testCollection");
+      CHECK((true == tmpSlice.isObject()));
+      tmpSlice = tmpSlice.get("includeAllFields");
+      CHECK((true == tmpSlice.isBoolean() && true == tmpSlice.getBoolean()));
+    }
+
+    // update link
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": { } } }"
+      );
+      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->getPropertiesVPack(builder, false);
+      builder.close();
+
+      auto slice = builder.slice();
+      auto tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+      tmpSlice = tmpSlice.get("testCollection");
+      CHECK((true == tmpSlice.isObject()));
+      tmpSlice = tmpSlice.get("includeAllFields");
+      CHECK((true == tmpSlice.isBoolean() && false == tmpSlice.getBoolean()));
     }
   }
 }

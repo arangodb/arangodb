@@ -415,6 +415,7 @@ arangodb::Result updateLinks(
 
     {
       std::unordered_set<TRI_voc_cid_t> collectionsToRemove; // track removal for potential reindex
+      std::unordered_set<TRI_voc_cid_t> collectionsToUpdate; // track reindex requests
 
       // resolve corresponding collection and link
       for (auto itr = linkModifications.begin(); itr != linkModifications.end();) {
@@ -445,12 +446,25 @@ arangodb::Result updateLinks(
           collectionsToRemove.emplace(state._collection->cid());
         }
 
+        if (state._link
+            && state._linkDefinitionsOffset < linkDefinitions.size()) { // link update request
+          collectionsToUpdate.emplace(state._collection->cid());
+        }
+
         ++itr;
       }
 
       // remove modification state if no change on existing link and reindex not requested
       for (auto itr = linkModifications.begin(); itr != linkModifications.end();) {
         auto& state = *itr;
+
+        // remove modification if removal request with an update request also present
+        if (state._link // links currently exists
+            && state._linkDefinitionsOffset >= linkDefinitions.size() // link removal request
+            && collectionsToUpdate.find(state._collection->cid()) != collectionsToRemove.end()) { // also has a reindex request
+          itr = linkModifications.erase(itr);
+          continue;
+        }
 
         // remove modification state if no change on existing link or
         if (state._link // links currently exists
@@ -467,8 +481,7 @@ arangodb::Result updateLinks(
 
     // execute removals
     for (auto& state: linkModifications) {
-      if (state._link
-          && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
+      if (state._link) { // link removal or recreate request
         state._valid = state._collection->dropIndex(state._link->id());
       }
     }
