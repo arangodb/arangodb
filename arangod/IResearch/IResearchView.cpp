@@ -812,6 +812,9 @@ IResearchView::IResearchView(
       if (TRI_ERROR_NO_ERROR != res) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
           << "failed to finish commit while processing transaction callback for iResearch view '" << id() << "'";
+      } else if (trx->state()->options().waitForSync && !sync()) {
+        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+          << "failed to sync while processing transaction callback for IResearch view '" << id() << "'";
       }
 
       return;
