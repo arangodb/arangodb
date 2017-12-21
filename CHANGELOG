@@ -1,6 +1,8 @@
 v3.3.1 (XXXX-XX-XX)
 -------------------
 
+* changed misleading error message from "no leader" to "not a leader"
+
 * optimize usage of AQL FULLTEXT index function to a FOR loop with index
   usage in some cases
   When the optimization is applied, this especially speeds up fulltext index 
