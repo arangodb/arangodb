@@ -29,6 +29,8 @@
 #include "analysis/token_streams.hpp"
 #include "analysis/token_attributes.hpp"
 
+#include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 
@@ -76,6 +78,44 @@ inline void append(std::string& out, size_t value) {
   out.resize(size + 21); // enough to hold all numbers up to 64-bits
   auto const written = sprintf(&out[size], IR_SIZE_T_SPECIFIER, value);
   out.resize(size + written);
+}
+
+inline bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
+  // according to Helpers.cpp, see
+  // `transaction::helpers::extractKeyFromDocument`
+  // `transaction::helpers::extractRevFromDocument`
+  // `transaction::helpers::extractIdFromDocument`
+  // `transaction::helpers::extractFromFromDocument`
+  // `transaction::helpers::extractToFromDocument`
+
+  switch (keySlice.type()) {
+    case VPackValueType::SmallInt: // system attribute
+      switch (keySlice.head()) { // system attribute type
+        case arangodb::basics::VelocyPackHelper::KeyAttribute:
+          key = arangodb::StaticStrings::KeyString;
+          break;
+        case arangodb::basics::VelocyPackHelper::RevAttribute:
+          key = arangodb::StaticStrings::RevString;
+          break;
+        case arangodb::basics::VelocyPackHelper::IdAttribute:
+          key = arangodb::StaticStrings::IdString;
+          break;
+        case arangodb::basics::VelocyPackHelper::FromAttribute:
+          key = arangodb::StaticStrings::FromString;
+          break;
+        case arangodb::basics::VelocyPackHelper::ToAttribute:
+          key = arangodb::StaticStrings::ToString;
+          break;
+        default:
+          return false;
+      }
+      return true;
+    case VPackValueType::String: // regular attribute
+      key = arangodb::iresearch::getStringRef(keySlice);
+      return true;
+    default: // unsupported
+      return false;
+  }
 }
 
 inline bool canHandleValue(
@@ -127,12 +167,11 @@ inline bool inObjectFiltered(
     arangodb::iresearch::IResearchLinkMeta const*& context,
     arangodb::iresearch::IteratorValue const& value
 ) {
-  // FIXME
-  if (!value.key.isString()) {
+  irs::string_ref key;
+
+  if (!keyFromSlice(value.key, key)) {
     return false;
   }
-
-  auto const key = arangodb::iresearch::getStringRef(value.key);
 
   auto const* meta = findMeta(key, context);
 
@@ -151,12 +190,11 @@ inline bool inObject(
     arangodb::iresearch::IResearchLinkMeta const*& context,
     arangodb::iresearch::IteratorValue const& value
 ) {
-  // FIXME
-  if (!value.key.isString()) {
+  irs::string_ref key;
+
+  if (!keyFromSlice(value.key, key)) {
     return false;
   }
-
-  auto const key = arangodb::iresearch::getStringRef(value.key);
 
   buffer.append(key.c_str(), key.size());
   context = findMeta(key, context);
