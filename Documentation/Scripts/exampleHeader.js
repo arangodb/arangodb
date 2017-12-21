@@ -41,7 +41,7 @@ var ignoreCollectionAlreadyThere = [];
 var rc;
 var j;
 
-var hljs = require('highlight.js');
+var hljs = require('highlightjs');
 
 var MAP = {
     'py': 'python',
