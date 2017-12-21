@@ -5,6 +5,8 @@ v3.3.1 (XXXX-XX-XX)
   this option allows importing lines with less fields than specified in the CSV
   header line
 
+* changed misleading error message from "no leader" to "not a leader"
+
 * optimize usage of AQL FULLTEXT index function to a FOR loop with index
   usage in some cases
   When the optimization is applied, this especially speeds up fulltext index 

@@ -168,8 +168,11 @@ The arangojs driver for JavaScript, the Go driver and the Java driver for
 ArangoDB support automatic failover in case the currently accessed server endpoint 
 responds with HTTP 503.
 
-Blog article:
-[Introducing the new ArangoDB Java driver with load balancing and advanced fallback
+Blog articles:
+
+- [Using Automatic failover for resilient single servers
+](https://www.arangodb.com/2017/10/milestone2-arangodb33-new-data-replication/#using-automatic-failover)
+- [Introducing the new ArangoDB Java driver with load balancing and advanced fallback
 ](https://www.arangodb.com/2017/12/introducing-the-new-arangodb-java-driver-load-balancing/)
 
 RocksDB throttling

@@ -1014,7 +1014,7 @@ bool RocksDBVPackIndex::supportsFilterCondition(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
-
+  
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
@@ -1079,7 +1079,7 @@ bool RocksDBVPackIndex::supportsFilterCondition(
   if (values == 0) {
     values = 1;
   }
-
+  
   if (attributesCoveredByEquality == _fields.size() && unique()) {
     // index is unique and condition covers all attributes by equality
     if (itemsInIndex == 0) {
@@ -1087,17 +1087,9 @@ bool RocksDBVPackIndex::supportsFilterCondition(
       estimatedCost = 0.0;
       return true;
     }
+  
     estimatedItems = values;
-    estimatedCost = 0.995 * values;
-    if (values > 0) {
-      if (useCache()) {
-        estimatedCost = static_cast<double>(estimatedItems * values);
-      } else {
-        estimatedCost =
-             std::max(static_cast<double>(1),
-                       std::log2(static_cast<double>(itemsInIndex)) * values);
-      }
-    }
+    estimatedCost = static_cast<double>(estimatedItems * values);
     // cost is already low... now slightly prioritize unique indexes
     estimatedCost *= 0.995 - 0.05 * (_fields.size() - 1);
     return true;
