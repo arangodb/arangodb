@@ -40,6 +40,8 @@
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "StorageEngine/TransactionState.h"
+#include "StorageEngine/TransactionCollection.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -220,7 +222,10 @@ bool IResearchViewBlockBase::readDocument(
     return false; // not a valid document reference
   }
 
-  auto* collection = _trx->documentCollection(docPk.cid());
+  TRI_ASSERT(_trx->state());
+
+  // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
+  auto* collection = _trx->state()->collection(docPk.cid(), arangodb::AccessMode::Type::READ);
 
   if (!collection) {
     LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
@@ -230,7 +235,9 @@ bool IResearchViewBlockBase::readDocument(
     return false; // not a valid collection reference
   }
 
-  return collection->readDocument(
+  TRI_ASSERT(collection->collection());
+
+  return collection->collection()->readDocument(
     _trx, arangodb::LocalDocumentId(docPk.rid()), _mmdr
   );
 }
