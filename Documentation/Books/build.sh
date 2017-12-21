@@ -37,7 +37,7 @@ newVersionNumber=$( tr -d '\r\n' < ../../VERSION)
 
 declare -A ALL_GSEARCH_ID
 for book in ${ALLBOOKS}; do
-    ALL_GSEARCH_ID[$book]=$(  grep "GSEARCH_ID_${book}" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:-]*\)".*;\1;')
+    ALL_GSEARCH_ID[$book]=$(  grep "GSEARCH_ID_${book}" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:_-]*\)".*;\1;')
 done
 
 
@@ -463,7 +463,7 @@ function build-book()
 
     echo "${STD_COLOR} - Building Version ${VERSION}${RESET}"
 
-    if test -n "${NODE_MODULES_DIR}"; then
+    if test -d "${NODE_MODULES_DIR}"; then
         echo "${STD_COLOR}#### Installing plugins from ${NODE_MODULES_DIR}${RESET}"
         cp -a "${NODE_MODULES_DIR}" "ppbooks/${NAME}"
     else
