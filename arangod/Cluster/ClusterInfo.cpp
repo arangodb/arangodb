@@ -1697,7 +1697,7 @@ int ClusterInfo::ensureIndexCoordinator(
   int errorCode = ensureIndexCoordinatorWithoutRollback(
     databaseName, collectionID, idString, slice, create, compare, resultBuilder, errorMsg, timeout);
 
-  if (errorCode == TRI_ERROR_NO_ERROR) {
+  if (errorCode == TRI_ERROR_NO_ERROR || application_features::ApplicationServer::isStopping()) {
     return errorCode;
   }
 
