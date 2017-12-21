@@ -20,6 +20,7 @@
 %{
 #include "Basics/Common.h"
 #include "Basics/conversions.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 
 // introduce the namespace here, otherwise following references to
@@ -459,10 +460,12 @@ class Parser;
   arangodb::aql::AstNode* node = nullptr;
   auto parser = yyextra;
 
-  try {
-    int64_t value1 = arangodb::basics::StringUtils::int64_check(std::string(yytext, yyleng));
+  bool valid;
+  int64_t value1 = arangodb::NumberUtils::atoi<int64_t>(yytext, yytext + yyleng, valid);
+
+  if (valid) {
     node = parser->ast()->createNodeValueInt(value1);
-  } catch (...) {
+  } else {
     try {
       double value2 = TRI_DoubleString(yytext);
       node = parser->ast()->createNodeValueDouble(value2);

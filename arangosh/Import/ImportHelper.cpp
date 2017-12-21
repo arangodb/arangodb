@@ -577,16 +577,10 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
       // integer value
       // conversion might fail with out-of-range error
       try {
-        if (fieldLength > 8) {
-          // long integer numbers might be problematic. check if we get out of
-          // range
-          (void)std::stoll(std::string(field,
-                                       fieldLength));  // this will fail if the
-                                                       // number cannot be
-                                                       // converted
-        }
-
-        int64_t num = StringUtils::int64(field, fieldLength);
+        // long integer numbers might be problematic. check if we get out of
+        // range
+        bool valid;
+        int64_t num = NumberUtils::atoi<int64_t>(field, field + fieldLength, valid);
         _lineBuffer.appendInteger(num);
       } catch (...) {
         // conversion failed

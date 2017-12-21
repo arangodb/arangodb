@@ -25,6 +25,7 @@
 #include "RocksDBRecoveryManager.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -235,19 +236,17 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       // check if the key is numeric
       if (ref[0] >= '1' && ref[0] <= '9') {
         // numeric start byte. looks good
-        try {
-          // extract uint64_t value from key. this will throw if the key
-          // is non-numeric
-          uint64_t tick =
-              basics::StringUtils::uint64_check(ref.data(), ref.size());
+        bool valid;
+        uint64_t tick =
+              NumberUtils::atoi<uint64_t>(ref.data(), ref.data() + ref.size(), valid);
+        if (valid) {
           // if no previous _maxTick set or the numeric value found is
           // "near" our previous _maxTick, then we update it
           if (tick > _maxTick && (_maxTick == 0 || tick - _maxTick < 2048)) {
             storeMaxTick(tick);
           }
-        } catch (...) {
-          // non-numeric key. simply ignore it
-        }
+        } 
+        // else we got a non-numeric key. simply ignore it
       }
     } else if (column_family_id ==
                RocksDBColumnFamily::definitions()->GetID()) {

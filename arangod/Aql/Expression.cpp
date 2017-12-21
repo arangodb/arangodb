@@ -631,15 +631,17 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
     }
      
     if (indexResult.isString()) {
-      std::string const value = indexResult.slice().copyString();
+      VPackSlice s = indexResult.slice();
+      TRI_ASSERT(s.isString());
+      VPackValueLength l;
+      char const* p = s.getString(l);
 
-      try {
-        // stoll() might throw an exception if the string is not a number
-        int64_t position = static_cast<int64_t>(std::stoll(value));
+      bool valid;
+      int64_t position = NumberUtils::atoi<int64_t>(p, p + l, valid); 
+      if (valid) {
         return result.at(trx, position, mustDestroy, true);
-      } catch (...) {
-        // no number found.
-      }
+      } 
+      // no number found.
     } 
       
     // fall-through to returning null
