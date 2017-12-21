@@ -274,7 +274,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     if (index > _confirmed[peerId]) {  // progress this follower?
       _confirmed[peerId] = index;
       if (toLog > 0) { // We want to reset the wait time only if a package callback
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got call back of " << toLog << " logs";
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got call back of " << toLog << " logs, resetting _earliestPackage to now for id " << peerId;
         _earliestPackage[peerId] = system_clock::now();
       }
       wakeupMainLoop();   // only necessary for non-empty callbacks
@@ -295,6 +295,8 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog) {
     // fail, we have to set this earliestPackage time to now such that the
     // main thread tries again immediately:
     MUTEX_LOCKER(guard, _tiLock);
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Resetting _earliestPackage to now for id " << slaveId;
     _earliestPackage[slaveId] = system_clock::now();
   }
 }
@@ -539,6 +541,8 @@ void Agent::sendAppendEntriesRPC() {
         MUTEX_LOCKER(tiLocker, _tiLock);
         _earliestPackage[followerId] = earliestPackage;
       }
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Setting _earliestPackage to now + 1h for id " << followerId;
 
       // Send request
       auto headerFields =
