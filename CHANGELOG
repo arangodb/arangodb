@@ -1,6 +1,10 @@
 devel
 -----
 
+* renamed arangoimp to arangoimport for consistency
+  Release packages will still install arangoimp as a symlink so user scripts 
+  invoking arangoimp do not need to be changed
+
 * UI: improved the behavior during collection creation in a cluster environment
 
 * UI: fixed broken foxx configuration keys. Some valid configuration values
