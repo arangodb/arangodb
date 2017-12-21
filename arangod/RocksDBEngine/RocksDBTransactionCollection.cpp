@@ -108,7 +108,7 @@ bool RocksDBTransactionCollection::isLocked(AccessMode::Type accessType,
 
 /// @brief check whether a collection is locked at all
 bool RocksDBTransactionCollection::isLocked() const {
-  if (CollectionLockState::_noLockHeaders != nullptr) {
+  if (CollectionLockState::_noLockHeaders != nullptr && collection != nullptr) {
     std::string collName(_collection->name());
     auto it = CollectionLockState::_noLockHeaders->find(collName);
     if (it != CollectionLockState::_noLockHeaders->end()) {
