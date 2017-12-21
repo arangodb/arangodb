@@ -460,7 +460,7 @@ function build-book()
 
     echo "${STD_COLOR} - Building Version ${VERSION}${RESET}"
 
-    if test -n "${NODE_MODULES_DIR}"; then
+    if test -d "${NODE_MODULES_DIR}"; then
         echo "${STD_COLOR}#### Installing plugins from ${NODE_MODULES_DIR}${RESET}"
         cp -a "${NODE_MODULES_DIR}" "ppbooks/${NAME}"
     else
@@ -544,7 +544,7 @@ function check-docublocks()
     sed  -e "s;.*ck ;;" -e "s;.*ne ;;" < /tmp/rawindoc.txt |sort -u > /tmp/indoc.txt
 
     set +e
-    grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" --include "*.md" |grep -v aardvark > /tmp/rawinprog.txt
+    grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" |grep -v aardvark > /tmp/rawinprog.txt
     # searching the Inline docublocks needs some more blacklisting:
     grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v ppbook |\
