@@ -570,7 +570,7 @@ struct AstNode {
   inline void setValueType(AstNodeValueType type) { value.type = type; }
 
   /// @brief check whether this node value is of expectedType
-  inline bool isValueType(AstNodeValueType expectedType) {
+  inline bool isValueType(AstNodeValueType expectedType) const {
     return value.type == expectedType;
   }
 

@@ -108,6 +108,7 @@ class StaticStrings {
   static std::string const Queue;
   static std::string const Server;
   static std::string const StartThread;
+  static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
 

@@ -4626,12 +4626,10 @@ struct GeoIndexInfo {
   std::map<ExecutionNode*, Expression*> exesToModify;
   std::set<AstNode const*> nodesToRemove;
 
-  // ============ Distance params ============
-  
+  // ============ Distance ============
   AstNode const* distanceCenter = nullptr;
   AstNode const* distanceCenterLat = nullptr;
   AstNode const* distanceCenterLng = nullptr;
-  
   AstNode const* minDistance = nullptr;
   bool minInclusive = false;
   AstNode const* maxDistance = nullptr;
@@ -4643,12 +4641,8 @@ struct GeoIndexInfo {
   bool ascending = true;
 
   // ============ Filter Info ===========
-  
   geo::FilterType filterMode = geo::FilterType::NONE;
   AstNode const* filterMask = nullptr;
-  //ExecutionNode* execNodeToRemove = nullptr;
-  //AstNode* filterExpressionNode = nullptr;
-  //AstNode* filterFunctionNode = nullptr;
   
   // ============ Limit Info ============
   size_t actualLimit = SIZE_MAX;
@@ -5101,12 +5095,13 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
 // contains all parameters required by the MMFilesGeoIndex
 static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
                                                     GeoIndexInfo const& info) {
+  TRI_ASSERT(info.index);
   Ast* ast = plan->getAst();
   auto cond = std::make_unique<Condition>(ast);
   bool hasCenter = info.distanceCenterLat || info.distanceCenter;
   bool hasDistLimit = info.maxDistance || info.minDistance;
   TRI_ASSERT(!hasCenter || hasDistLimit || info.isSorted);
-  if (hasCenter && hasDistLimit) {
+  if (hasCenter && (hasDistLimit || info.isSorted)) {
     // create GEO_DISTANCE(...) [<|<=|>=|>] Var
     AstNode* args = ast->createNodeArray(2);
     if (info.distanceCenterLat && info.distanceCenterLng) { // legacy
@@ -5137,15 +5132,20 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
     TRI_ASSERT(info.maxDistance != nullptr ||
                info.isSorted && info.ascending);
 
-    if (info.minDistance) {
+    if (info.minDistance != nullptr) {
       AstNodeType t = info.minInclusive ? NODE_TYPE_OPERATOR_BINARY_GE : NODE_TYPE_OPERATOR_BINARY_ARRAY_GT;
-      AstNode* range = ast->createNodeBinaryOperator(t, func, info.minDistance);
-      cond->andCombine(range);
+      cond->andCombine(ast->createNodeBinaryOperator(t, func, info.minDistance));
     }
-    if (info.maxDistance) {
+    if (info.maxDistance != nullptr) {
       AstNodeType t = info.maxInclusive ? NODE_TYPE_OPERATOR_BINARY_LE : NODE_TYPE_OPERATOR_BINARY_LT;
-      AstNode* range = ast->createNodeBinaryOperator(t, func, info.maxDistance);
-      cond->andCombine(range);
+      cond->andCombine(ast->createNodeBinaryOperator(t, func, info.maxDistance));
+    }
+    if (info.minDistance == nullptr && info.maxDistance == nullptr && info.isSorted) {
+      // hack to pass on the sort-to-point info
+      AstNodeType t = NODE_TYPE_OPERATOR_BINARY_LT;
+      std::string const& u = StaticStrings::Unlimited;
+      AstNode* cc = ast->createNodeValueString(u.c_str(), u.length());
+      cond->andCombine(ast->createNodeBinaryOperator(t, func, cc));
     }
   }
   if (info.filterMode != geo::FilterType::NONE) {
@@ -5272,7 +5272,6 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
         default:
           break;// skip
       }
-
       current = current->getFirstDependency();  // inspect next node
     }
   }

@@ -384,8 +384,9 @@ static geo::Coordinate handleDistFunc(aql::AstNode const* node) {
 
   Result res;
   if (cc->type == aql::NODE_TYPE_ARRAY) { // [lng, lat]
-      return geo::Coordinate(/*lat*/ cc->getMember(1)->getDoubleValue(),
-                             /*lon*/ cc->getMember(0)->getDoubleValue());
+    TRI_ASSERT(cc->numMembers() == 2);
+    return geo::Coordinate(/*lat*/ cc->getMember(1)->getDoubleValue(),
+                           /*lon*/ cc->getMember(0)->getDoubleValue());
   } else {
     Result res;
     VPackBuilder jsonB;
@@ -452,12 +453,13 @@ static void handleNode(aql::AstNode const* node, geo::QueryParams& params) {
     case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
       params.minInclusive = true;
     case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT: {
-      geo::Coordinate c = handleDistFunc(node->getMember(0));
+      geo::Coordinate c = handleDistFunc(node->getMemberUnchecked(0));
       if (params.centroid != geo::Coordinate::Invalid() &&
           params.centroid != c) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
-      params.minDistance = node->getMember(1)->getDoubleValue();
+      TRI_ASSERT(node->getMemberUnchecked(1)->type == aql::NODE_TYPE_VALUE);
+      params.minDistance = node->getMemberUnchecked(1)->getDoubleValue();
       break;
     }
     case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
@@ -468,7 +470,11 @@ static void handleNode(aql::AstNode const* node, geo::QueryParams& params) {
           params.centroid != c) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
-      params.maxDistance = node->getMember(1)->getDoubleValue();
+      aql::AstNode const* max = node->getMemberUnchecked(1);
+      TRI_ASSERT(max->type == aql::NODE_TYPE_VALUE);
+      if (max->isValueType(aql::VALUE_TYPE_DOUBLE)) {
+        params.maxDistance = max->getDoubleValue();
+      }
       break;
     }
     default:
