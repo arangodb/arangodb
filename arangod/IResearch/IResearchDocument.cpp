@@ -25,6 +25,7 @@
 #include "IResearchFeature.h"
 #include "IResearchViewMeta.h"
 #include "IResearchKludge.h"
+#include "Misc.h"
 
 #include "analysis/token_streams.hpp"
 #include "analysis/token_attributes.hpp"
@@ -48,6 +49,21 @@ NS_LOCAL
 // ----------------------------------------------------------------------------
 // --SECTION--                                       FieldIterator dependencies
 // ----------------------------------------------------------------------------
+
+enum AttributeType : uint8_t {
+  AT_REG = arangodb::basics::VelocyPackHelper::AttributeBase,
+  AT_KEY = arangodb::basics::VelocyPackHelper::KeyAttribute,
+  AT_REV = arangodb::basics::VelocyPackHelper::RevAttribute,
+  AT_ID = arangodb::basics::VelocyPackHelper::IdAttribute,
+  AT_FROM = arangodb::basics::VelocyPackHelper::FromAttribute,
+  AT_TO = arangodb::basics::VelocyPackHelper::ToAttribute
+}; // AttributeType
+
+static_assert(
+  arangodb::iresearch::adjacencyChecker<AttributeType>::checkAdjacency<
+    AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG
+  >(), "Values are not adjacent"
+);
 
 irs::string_ref const CID_FIELD("@_CID");
 irs::string_ref const RID_FIELD("@_REV");
@@ -80,7 +96,11 @@ inline void append(std::string& out, size_t value) {
   out.resize(size + written);
 }
 
-inline bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
+inline bool keyFromSlice(
+    VPackSlice keySlice,
+    irs::string_ref& key,
+    AttributeType& attributeType
+) {
   // according to Helpers.cpp, see
   // `transaction::helpers::extractKeyFromDocument`
   // `transaction::helpers::extractRevFromDocument`
@@ -90,20 +110,21 @@ inline bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
 
   switch (keySlice.type()) {
     case VPackValueType::SmallInt: // system attribute
-      switch (keySlice.head()) { // system attribute type
-        case arangodb::basics::VelocyPackHelper::KeyAttribute:
+      switch (attributeType = AttributeType(keySlice.head())) { // system attribute type
+        case AT_REG:
+          return false;
+        case AT_KEY:
           key = arangodb::StaticStrings::KeyString;
           break;
-        case arangodb::basics::VelocyPackHelper::RevAttribute:
+        case AT_REV:
           key = arangodb::StaticStrings::RevString;
           break;
-        case arangodb::basics::VelocyPackHelper::IdAttribute:
-          key = arangodb::StaticStrings::IdString;
-          break;
-        case arangodb::basics::VelocyPackHelper::FromAttribute:
+        case AT_ID:
+          return false; // not supported
+        case AT_FROM:
           key = arangodb::StaticStrings::FromString;
           break;
-        case arangodb::basics::VelocyPackHelper::ToAttribute:
+        case AT_TO:
           key = arangodb::StaticStrings::ToString;
           break;
         default:
@@ -111,6 +132,7 @@ inline bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
       }
       return true;
     case VPackValueType::String: // regular attribute
+      attributeType = AT_REG;
       key = arangodb::iresearch::getStringRef(keySlice);
       return true;
     default: // unsupported
@@ -168,8 +190,9 @@ inline bool inObjectFiltered(
     arangodb::iresearch::IteratorValue const& value
 ) {
   irs::string_ref key;
+  AttributeType attributeType;
 
-  if (!keyFromSlice(value.key, key)) {
+  if (!keyFromSlice(value.key, key, attributeType)) {
     return false;
   }
 
@@ -182,7 +205,7 @@ inline bool inObjectFiltered(
   buffer.append(key.c_str(), key.size());
   context = meta;
 
-  return canHandleValue(value.value, *context);
+  return AT_REG != attributeType || canHandleValue(value.value, *context);
 }
 
 inline bool inObject(
@@ -191,15 +214,16 @@ inline bool inObject(
     arangodb::iresearch::IteratorValue const& value
 ) {
   irs::string_ref key;
+  AttributeType attributeType;
 
-  if (!keyFromSlice(value.key, key)) {
+  if (!keyFromSlice(value.key, key, attributeType)) {
     return false;
   }
 
   buffer.append(key.c_str(), key.size());
   context = findMeta(key, context);
 
-  return canHandleValue(value.value, *context);
+  return AT_REG != attributeType || canHandleValue(value.value, *context);
 }
 
 inline bool inArrayOrdered(
@@ -460,28 +484,12 @@ void FieldIterator::reset(
   auto const* context = &linkMeta;
 
   // push the provided 'doc' to stack and initialize current value
-  if (!push(doc, context) || !setValue(topValue().value, *context)) {
+  if (!pushAndSetValue(doc, context)) {
     next();
   }
 }
 
-IResearchLinkMeta const* FieldIterator::nextTop() {
-  auto& name = nameBuffer();
-  auto& level = top();
-  auto& it = level.it;
-  auto const* context = level.meta;
-  auto const filter = level.filter;
-
-  name.resize(level.nameLength);
-  while (it.next() && !filter(name, context, it.value())) {
-    // filtered out
-    name.resize(level.nameLength);
-  }
-
-  return context;
-}
-
-bool FieldIterator::push(VPackSlice slice, IResearchLinkMeta const*& context) {
+bool FieldIterator::pushAndSetValue(VPackSlice slice, IResearchLinkMeta const*& context) {
   auto& name = nameBuffer();
 
   while (isArrayOrObject(slice)) {
@@ -512,16 +520,17 @@ bool FieldIterator::push(VPackSlice slice, IResearchLinkMeta const*& context) {
   }
 
   TRI_ASSERT(context);
-  return true;
+
+  // set value
+  _begin = nullptr;
+  _end = 1 + _begin;                // set surrogate analyzers
+  _value._boost = context->_boost;  // set boost
+
+  return setRegularAttribute(*context);
 }
 
-bool FieldIterator::setValue(
-    VPackSlice const& value,
-    IResearchLinkMeta const& context
-) {
-  _begin = nullptr;
-  _end = 1 + _begin;               // set surrogate analyzers
-  _value._boost = context._boost;  // set boost
+bool FieldIterator::setRegularAttribute(IResearchLinkMeta const& context) {
+  auto const value = topValue().value;
 
   switch (value.type()) {
     case VPackValueType::None:
@@ -558,8 +567,6 @@ bool FieldIterator::setValue(
     default:
       return false;
   }
-
-  return false;
 }
 
 void FieldIterator::next() {
@@ -581,6 +588,23 @@ void FieldIterator::next() {
 
   IResearchLinkMeta const* context;
 
+  auto& name = nameBuffer();
+
+  auto nextTop = [this, &name](){
+    auto& level = top();
+    auto& it = level.it;
+    auto const* context = level.meta;
+    auto const filter = level.filter;
+
+    name.resize(level.nameLength);
+    while (it.next() && !filter(name, context, it.value())) {
+      // filtered out
+      name.resize(level.nameLength);
+    }
+
+    return context;
+  };
+
   do {
     // advance top iterator
     context = nextTop();
@@ -595,11 +619,10 @@ void FieldIterator::next() {
       }
 
       // reset name to previous size
-      nameBuffer().resize(top().nameLength);
+      name.resize(top().nameLength);
     }
 
-  } while (!push(topValue().value, context)
-           || !setValue(topValue().value, *context));
+  } while (!pushAndSetValue(topValue().value, context));
 }
 
 // ----------------------------------------------------------------------------

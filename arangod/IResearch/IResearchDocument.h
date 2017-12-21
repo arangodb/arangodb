@@ -40,23 +40,20 @@ class token_stream; // forward declaration
 NS_END // iresearch
 
 NS_BEGIN(arangodb)
+
 NS_BEGIN(aql)
 
 struct AstNode; // forward declaration
 class SortCondition; // forward declaration
 
 NS_END // aql
-NS_END // arangodb
 
-NS_BEGIN(arangodb)
 NS_BEGIN(transaction)
 
 class Methods; // forward declaration
 
 NS_END // transaction
-NS_END // arangodb
 
-NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 // FIXME move constants to proper place
@@ -180,7 +177,10 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
         size_t nameLength,
         IResearchLinkMeta const& meta,
         Filter filter
-    ): it(slice), nameLength(nameLength), meta(&meta), filter(filter) {
+    ) : it(slice),
+        nameLength(nameLength),
+        meta(&meta),
+        filter(filter) {
     }
 
     bool operator==(Level const& rhs) const noexcept {
@@ -216,9 +216,8 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   FieldIterator& operator=(FieldIterator const&) = delete;
 
   void next();
-  IResearchLinkMeta const* nextTop();
-  bool push(arangodb::velocypack::Slice slice, IResearchLinkMeta const*& topMeta);
-  bool setValue(arangodb::velocypack::Slice const& value, IResearchLinkMeta const& context);
+  bool pushAndSetValue(arangodb::velocypack::Slice slice, IResearchLinkMeta const*& topMeta);
+  bool setRegularAttribute(IResearchLinkMeta const& context);
 
   void resetAnalyzers(IResearchLinkMeta const& context) {
     auto const& analyzers = context._tokenizers;
