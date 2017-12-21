@@ -396,9 +396,6 @@ function build-book()
         if ! test -L SUMMARY.md; then
             ln -s "../../${NAME}/SUMMARY.md" .
         fi
-        if ! test -f HEADER.html ; then
-            cp "../../${NAME}/HEADER.html" .
-        fi
         if ! test -f FOOTER.html ; then
             cp "../../${NAME}/FOOTER.html" .
         fi
@@ -445,7 +442,7 @@ function build-book()
         cp "${NAME}/book.json" "ppbooks/${NAME}"
     fi
 
-    for facilityfile in book.json styles/header.js HEADER.html README.md; do
+    for facilityfile in book.json styles/header.js README.md; do
         export facilityfile
         export RELEASE_DIRECTORY
         (
@@ -472,7 +469,6 @@ function build-book()
     fi
     echo "${STD_COLOR} - Building Book ${NAME} ${RESET}"
     (cd "ppbooks/${NAME}" && gitbook "${GITBOOK_ARGS[@]}" build "./" "./../../books/${NAME}")
-    rm -f "./books/${NAME}/HEADER.html"
     rm -f "./books/${NAME}/FOOTER.html"
     echo "${STD_COLOR} - deleting markdown files in output (gitbook 3.x bug)"
     find "./books/${NAME}/" -type f -name "*.md" -delete
@@ -548,7 +544,7 @@ function check-docublocks()
     sed  -e "s;.*ck ;;" -e "s;.*ne ;;" < /tmp/rawindoc.txt |sort -u > /tmp/indoc.txt
 
     set +e
-    grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" --include "*.md" |grep -v aardvark > /tmp/rawinprog.txt
+    grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" |grep -v aardvark > /tmp/rawinprog.txt
     # searching the Inline docublocks needs some more blacklisting:
     grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v ppbook |\
