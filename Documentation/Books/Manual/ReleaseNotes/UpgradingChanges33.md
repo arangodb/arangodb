@@ -22,6 +22,9 @@ The following incompatible changes have been made in ArangoDB 3.3:
   For compatibility reasons, ArangoDB 3.3 will not fail on startup if the option is 
   still used in the configuration, but it will silently ignore this option.
 
+* The startup configuration parameter `--cluster.my-local-info` is deprecated now.
+  Using it will make arangod log a warning on startup.
+
 * Server startup: the recommended value for the Linux kernel setting in 
   `/proc/sys/vm/max_map_count` was increased to a value eight times as high as in 
   3.2. arangod compares at startup if the effective value of this setting is 
