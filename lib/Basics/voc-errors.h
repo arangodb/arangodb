@@ -432,7 +432,7 @@
 /// - 1495: @LIT{leadership challenge is ongoing}
 ///   Will be raised when servers are currently competing for leadership, and
 ///   the result is still unknown.
-/// - 1496: @LIT{no leader}
+/// - 1496: @LIT{not a leader}
 ///   Will be raised when an operation is sent to a non-leading server.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
@@ -2549,7 +2549,7 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1496: ERROR_CLUSTER_NOT_LEADER
 ///
-/// no leader
+/// not a leader
 ///
 /// Will be raised when an operation is sent to a non-leading server.
 ////////////////////////////////////////////////////////////////////////////////
