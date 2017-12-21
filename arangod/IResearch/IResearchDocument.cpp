@@ -51,12 +51,12 @@ NS_LOCAL
 // ----------------------------------------------------------------------------
 
 enum AttributeType : uint8_t {
-  AT_REG = arangodb::basics::VelocyPackHelper::AttributeBase,
-  AT_KEY = arangodb::basics::VelocyPackHelper::KeyAttribute,
-  AT_REV = arangodb::basics::VelocyPackHelper::RevAttribute,
-  AT_ID = arangodb::basics::VelocyPackHelper::IdAttribute,
-  AT_FROM = arangodb::basics::VelocyPackHelper::FromAttribute,
-  AT_TO = arangodb::basics::VelocyPackHelper::ToAttribute
+  AT_REG = arangodb::basics::VelocyPackHelper::AttributeBase,  // regular attribute
+  AT_KEY = arangodb::basics::VelocyPackHelper::KeyAttribute,   // _key
+  AT_REV = arangodb::basics::VelocyPackHelper::RevAttribute,   // _rev
+  AT_ID = arangodb::basics::VelocyPackHelper::IdAttribute,     // _id
+  AT_FROM = arangodb::basics::VelocyPackHelper::FromAttribute, // _from
+  AT_TO = arangodb::basics::VelocyPackHelper::ToAttribute      // _to
 }; // AttributeType
 
 static_assert(
@@ -98,8 +98,7 @@ inline void append(std::string& out, size_t value) {
 
 inline bool keyFromSlice(
     VPackSlice keySlice,
-    irs::string_ref& key,
-    AttributeType& attributeType
+    irs::string_ref& key
 ) {
   // according to Helpers.cpp, see
   // `transaction::helpers::extractKeyFromDocument`
@@ -110,7 +109,7 @@ inline bool keyFromSlice(
 
   switch (keySlice.type()) {
     case VPackValueType::SmallInt: // system attribute
-      switch (attributeType = AttributeType(keySlice.head())) { // system attribute type
+      switch (AttributeType(keySlice.head())) { // system attribute type
         case AT_REG:
           return false;
         case AT_KEY:
@@ -132,7 +131,6 @@ inline bool keyFromSlice(
       }
       return true;
     case VPackValueType::String: // regular attribute
-      attributeType = AT_REG;
       key = arangodb::iresearch::getStringRef(keySlice);
       return true;
     default: // unsupported
@@ -190,9 +188,8 @@ inline bool inObjectFiltered(
     arangodb::iresearch::IteratorValue const& value
 ) {
   irs::string_ref key;
-  AttributeType attributeType;
 
-  if (!keyFromSlice(value.key, key, attributeType)) {
+  if (!keyFromSlice(value.key, key)) {
     return false;
   }
 
@@ -205,7 +202,7 @@ inline bool inObjectFiltered(
   buffer.append(key.c_str(), key.size());
   context = meta;
 
-  return AT_REG != attributeType || canHandleValue(value.value, *context);
+  return canHandleValue(value.value, *context);
 }
 
 inline bool inObject(
@@ -214,16 +211,15 @@ inline bool inObject(
     arangodb::iresearch::IteratorValue const& value
 ) {
   irs::string_ref key;
-  AttributeType attributeType;
 
-  if (!keyFromSlice(value.key, key, attributeType)) {
+  if (!keyFromSlice(value.key, key)) {
     return false;
   }
 
   buffer.append(key.c_str(), key.size());
   context = findMeta(key, context);
 
-  return AT_REG != attributeType || canHandleValue(value.value, *context);
+  return canHandleValue(value.value, *context);
 }
 
 inline bool inArrayOrdered(
