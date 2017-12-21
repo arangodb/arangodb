@@ -26,7 +26,6 @@
 #define ARANGODB_BASICS_STRING_UTILS_H 1
 
 #include "Basics/Common.h"
-#include "Basics/NumberUtils.h"
 
 namespace arangodb {
 namespace basics {
@@ -431,24 +430,40 @@ bool boolean(std::string const& str);
 /// @brief parses an integer
 ////////////////////////////////////////////////////////////////////////////////
 
+int64_t int64(std::string const& str);
+
 inline int64_t int64(char const* value, size_t size) {
-  return NumberUtils::atoi_zero<int64_t>(value, value + size);
+  return StringUtils::int64(std::string(value, size));
 }
 
-inline int64_t int64(std::string const& str) {
-  return int64(str.data(), str.size());
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses an integer and check
+////////////////////////////////////////////////////////////////////////////////
+
+int64_t int64_check(std::string const& str);
+
+inline int64_t int64_check(char const* value, size_t size) {
+  return StringUtils::int64_check(std::string(value, size));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses an unsigned integer
 ////////////////////////////////////////////////////////////////////////////////
 
+uint64_t uint64(std::string const& str);
+
 inline uint64_t uint64(char const* value, size_t size) {
-  return NumberUtils::atoi_zero<uint64_t>(value, value + size);
+  return StringUtils::uint64(std::string(value, size));
 }
 
-inline uint64_t uint64(std::string const& str) {
-  return uint64(str.data(), str.size());
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses an integer and check
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t uint64_check(std::string const& str);
+
+inline uint64_t uint64_check(char const* value, size_t size) {
+  return StringUtils::uint64_check(std::string(value, size));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -459,37 +474,35 @@ inline uint64_t uint64(std::string const& str) {
 /// is highly optimized
 ////////////////////////////////////////////////////////////////////////////////
 
-inline uint64_t uint64_trusted(char const* value, size_t length) {
-  return NumberUtils::atoi_positive_unchecked<uint64_t>(value, value + length);
-}
+uint64_t uint64_trusted(char const* value, size_t length);
 
 inline uint64_t uint64_trusted(std::string const& value) {
-  return uint64_trusted(value.data(), value.size());
+  return uint64_trusted(value.c_str(), value.size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses an integer
 ////////////////////////////////////////////////////////////////////////////////
 
-inline int32_t int32(char const* value, size_t size) {
-  return NumberUtils::atoi_zero<int32_t>(value, value + size);
-}
+int32_t int32(std::string const& str);
 
-inline int32_t int32(std::string const& str) {
-  return int32(str.data(), str.size());
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses an integer
+////////////////////////////////////////////////////////////////////////////////
+
+int32_t int32(char const* value, size_t size);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses an unsigned integer
 ////////////////////////////////////////////////////////////////////////////////
 
-inline uint32_t uint32(char const* value, size_t size) {
-  return NumberUtils::atoi_zero<uint32_t>(value, value + size);
-}
+uint32_t uint32(std::string const& str);
 
-inline uint32_t uint32(std::string const& str) {
-  return uint32(str.data(), str.size());
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses an unsigned integer
+////////////////////////////////////////////////////////////////////////////////
+
+uint32_t uint32(char const* value, size_t size);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses an unsigned integer given in HEX

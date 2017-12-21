@@ -102,7 +102,7 @@ class LogicalCollection {
   static constexpr uint32_t currentVersion() { return VERSION_33; }
 
   /// @brief determine whether a collection name is a system collection name
-  static bool IsSystemName(std::string const& name) {
+  static inline bool IsSystemName(std::string const& name) {
     return (!name.empty() && name[0] == '_');
   }
 

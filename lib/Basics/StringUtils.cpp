@@ -1609,6 +1609,146 @@ bool boolean(std::string const& str) {
   }
 }
 
+int64_t int64(std::string const& str) {
+  try {
+    return std::stoll(str, 0, 10);
+  } catch (...) {
+    return 0;
+  }
+}
+
+int64_t int64_check(std::string const& str) {
+  size_t n;
+  int64_t value = std::stoll(str, &n, 10);
+
+  if (n < str.size()) {
+    throw std::invalid_argument("cannot convert '" + str + "' to int64");
+  }
+
+  return value;
+}
+
+uint64_t uint64(std::string const& str) {
+  try {
+    return std::stoull(str, 0, 10);
+  } catch (...) {
+    return 0;
+  }
+}
+
+uint64_t uint64_check(std::string const& str) {
+  size_t n;
+  int64_t value = std::stoull(str, &n, 10);
+
+  if (n < str.size()) {
+    throw std::invalid_argument("cannot convert '" + str + "' to uint64");
+  }
+
+  return value;
+}
+
+uint64_t uint64_trusted(char const* value, size_t length) {
+  uint64_t result = 0;
+    
+  switch (length) { 
+    case 20:    result += (value[length - 20] - '0') * 10000000000000000000ULL;
+    // intentionally falls through
+    case 19:    result += (value[length - 19] - '0') * 1000000000000000000ULL;
+    // intentionally falls through
+    case 18:    result += (value[length - 18] - '0') * 100000000000000000ULL;
+    // intentionally falls through
+    case 17:    result += (value[length - 17] - '0') * 10000000000000000ULL;
+    // intentionally falls through
+    case 16:    result += (value[length - 16] - '0') * 1000000000000000ULL;
+    // intentionally falls through
+    case 15:    result += (value[length - 15] - '0') * 100000000000000ULL;
+    // intentionally falls through
+    case 14:    result += (value[length - 14] - '0') * 10000000000000ULL;
+    // intentionally falls through
+    case 13:    result += (value[length - 13] - '0') * 1000000000000ULL;
+    // intentionally falls through
+    case 12:    result += (value[length - 12] - '0') * 100000000000ULL;
+    // intentionally falls through
+    case 11:    result += (value[length - 11] - '0') * 10000000000ULL;
+    // intentionally falls through
+    case 10:    result += (value[length - 10] - '0') * 1000000000ULL;
+    // intentionally falls through
+    case  9:    result += (value[length -  9] - '0') * 100000000ULL;
+    // intentionally falls through
+    case  8:    result += (value[length -  8] - '0') * 10000000ULL;
+    // intentionally falls through
+    case  7:    result += (value[length -  7] - '0') * 1000000ULL;
+    // intentionally falls through
+    case  6:    result += (value[length -  6] - '0') * 100000ULL;
+    // intentionally falls through
+    case  5:    result += (value[length -  5] - '0') * 10000ULL;
+    // intentionally falls through
+    case  4:    result += (value[length -  4] - '0') * 1000ULL;
+    // intentionally falls through
+    case  3:    result += (value[length -  3] - '0') * 100ULL;
+    // intentionally falls through
+    case  2:    result += (value[length -  2] - '0') * 10ULL;
+    // intentionally falls through
+    case  1:    result += (value[length -  1] - '0');
+  }
+
+  return result;
+}
+
+int32_t int32(std::string const& str) {
+#ifdef TRI_HAVE_STRTOL_R
+  struct reent buffer;
+  return strtol_r(&buffer, str.c_str(), 0, 10);
+#else
+#ifdef TRI_HAVE__STRTOL_R
+  struct reent buffer;
+  return _strtol_r(&buffer, str.c_str(), 0, 10);
+#else
+  return (int32_t)strtol(str.c_str(), 0, 10);
+#endif
+#endif
+}
+
+int32_t int32(char const* value, size_t size) {
+  char tmp[22];
+
+  if (value[size] != '\0') {
+    if (size >= sizeof(tmp)) {
+      size = sizeof(tmp) - 1;
+    }
+
+    memcpy(tmp, value, size);
+    tmp[size] = '\0';
+    value = tmp;
+  }
+
+#ifdef TRI_HAVE_STRTOL_R
+  struct reent buffer;
+  return strtol_r(&buffer, value, 0, 10);
+#else
+#ifdef TRI_HAVE__STRTOL_R
+  struct reent buffer;
+  return _strtol_r(&buffer, value, 0, 10);
+#else
+  return (int32_t)strtol(value, 0, 10);
+#endif
+#endif
+}
+
+uint32_t uint32(std::string const& str) {
+#ifdef TRI_HAVE_STRTOUL_R
+  struct reent buffer;
+  return strtoul_r(&buffer, str.c_str(), 0, 10);
+#else
+#ifdef TRI_HAVE__STRTOUL_R
+  struct reent buffer;
+  return _strtoul_r(&buffer, str.c_str(), 0, 10);
+#else
+  return (uint32_t)strtoul(str.c_str(), 0, 10);
+#endif
+#endif
+}
+
 uint32_t unhexUint32(std::string const& str) {
 #ifdef TRI_HAVE_STRTOUL_R
   struct reent buffer;
@@ -1619,6 +1759,32 @@ uint32_t unhexUint32(std::string const& str) {
   return _strtoul_r(&buffer, str.c_str(), 0, 16);
 #else
   return (uint32_t)strtoul(str.c_str(), 0, 16);
+#endif
+#endif
+}
+
+uint32_t uint32(char const* value, size_t size) {
+  char tmp[22];
+
+  if (value[size] != '\0') {
+    if (size >= sizeof(tmp)) {
+      size = sizeof(tmp) - 1;
+    }
+
+    memcpy(tmp, value, size);
+    tmp[size] = '\0';
+    value = tmp;
+  }
+
+#ifdef TRI_HAVE_STRTOUL_R
+  struct reent buffer;
+  return strtoul_r(&buffer, value, 0, 10);
+#else
+#ifdef TRI_HAVE__STRTOUL_R
+  struct reent buffer;
+  return _strtoul_r(&buffer, value, 0, 10);
+#else
+  return (uint32_t)strtoul(value, 0, 10);
 #endif
 #endif
 }

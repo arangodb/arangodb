@@ -665,11 +665,16 @@ int64_t AqlValue::toInt64(transaction::Methods* trx) const {
         return s.getBoolean() ? 1 : 0;
       }
       if (s.isString()) {
-        VPackValueLength l;
-        char const* p = s.getString(l);
-        return NumberUtils::atoi_zero<int64_t>(p, p + l);
-      } 
-      if (s.isArray()) {
+        std::string v(s.copyString());
+        try {
+          return static_cast<int64_t>(std::stoll(v));
+        } catch (...) {
+          if (v.empty()) {
+            return 0;
+          }
+          // conversion failed
+        }
+      } else if (s.isArray()) {
         auto length = s.length();
         if (length == 0) {
           return 0;

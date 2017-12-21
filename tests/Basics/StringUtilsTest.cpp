@@ -187,13 +187,11 @@ SECTION("test_uint64") {
   CHECK(0ULL ==  StringUtils::uint64(" foo"));
   CHECK(0ULL ==  StringUtils::uint64(""));
   CHECK(0ULL ==  StringUtils::uint64(" "));
-  CHECK(12ULL ==  StringUtils::uint64("012"));
-  CHECK(12ULL ==  StringUtils::uint64("00012"));
-  CHECK(1234ULL ==  StringUtils::uint64("1234"));
-  CHECK(0ULL ==  StringUtils::uint64("1234a"));
-  CHECK(0ULL ==  StringUtils::uint64("-1"));
-  CHECK(0ULL ==  StringUtils::uint64("-12345"));
-  CHECK(0ULL ==  StringUtils::uint64("1234.56"));
+  CHECK(12ULL ==  StringUtils::uint64(" 012"));
+  CHECK(1234ULL ==  StringUtils::uint64("1234a"));
+  CHECK(18446744073709551615ULL ==  StringUtils::uint64("-1"));
+  CHECK(18446744073709539271ULL ==  StringUtils::uint64("-12345"));
+  CHECK(1234ULL ==  StringUtils::uint64("1234.56"));
   CHECK(0ULL ==  StringUtils::uint64("1234567890123456789012345678901234567890"));
   CHECK(0ULL ==  StringUtils::uint64("@"));
 
@@ -204,12 +202,42 @@ SECTION("test_uint64") {
   CHECK(1234ULL ==  StringUtils::uint64("1234"));
   CHECK(1234ULL ==  StringUtils::uint64("01234"));
   CHECK(9ULL ==  StringUtils::uint64("9"));
-  CHECK(9ULL ==  StringUtils::uint64("09"));
+  CHECK(9ULL ==  StringUtils::uint64(" 9"));
   CHECK(9ULL ==  StringUtils::uint64("0009"));
   CHECK(12345678ULL ==  StringUtils::uint64("12345678"));
   CHECK(1234567800ULL ==  StringUtils::uint64("1234567800"));
   CHECK(1234567890123456ULL ==  StringUtils::uint64("1234567890123456"));
   CHECK(UINT64_MAX ==  StringUtils::uint64(std::to_string(UINT64_MAX)));
+}
+
+SECTION("test_uint64_check") {
+  CHECK_THROWS_AS(StringUtils::uint64_check("abc"), std::invalid_argument);
+  CHECK_THROWS_AS(StringUtils::uint64_check("ABC"), std::invalid_argument);
+  CHECK_THROWS_AS(StringUtils::uint64_check(" foo"), std::invalid_argument);
+  CHECK_THROWS_AS(StringUtils::uint64_check(""), std::invalid_argument);
+  CHECK_THROWS_AS(StringUtils::uint64_check(" "), std::invalid_argument);
+  CHECK(12ULL ==  StringUtils::uint64_check(" 012"));
+  CHECK_THROWS_AS(StringUtils::uint64_check("1234a"), std::invalid_argument);
+  CHECK(18446744073709551615ULL ==  StringUtils::uint64_check("-1"));
+  CHECK(18446744073709539271ULL ==  StringUtils::uint64_check("-12345"));
+  CHECK_THROWS_AS(StringUtils::uint64_check("1234."), std::invalid_argument);
+  CHECK_THROWS_AS(StringUtils::uint64_check("1234.56"), std::invalid_argument);
+  CHECK_THROWS_AS(StringUtils::uint64_check("1234567889123456789012345678901234567890"), std::out_of_range);
+  CHECK_THROWS_AS(StringUtils::uint64_check("@"), std::invalid_argument);
+
+  CHECK(0ULL ==  StringUtils::uint64_check("0"));
+  CHECK(1ULL ==  StringUtils::uint64_check("1"));
+  CHECK(12ULL ==  StringUtils::uint64_check("12"));
+  CHECK(123ULL ==  StringUtils::uint64_check("123"));
+  CHECK(1234ULL ==  StringUtils::uint64_check("1234"));
+  CHECK(1234ULL ==  StringUtils::uint64_check("01234"));
+  CHECK(9ULL ==  StringUtils::uint64_check("9"));
+  CHECK(9ULL ==  StringUtils::uint64_check(" 9"));
+  CHECK(9ULL ==  StringUtils::uint64_check("0009"));
+  CHECK(12345678ULL ==  StringUtils::uint64_check("12345678"));
+  CHECK(1234567800ULL ==  StringUtils::uint64_check("1234567800"));
+  CHECK(1234567890123456ULL ==  StringUtils::uint64_check("1234567890123456"));
+  CHECK(UINT64_MAX ==  StringUtils::uint64_check(std::to_string(UINT64_MAX)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

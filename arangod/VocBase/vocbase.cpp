@@ -36,7 +36,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/HybridLogicalClock.h"
-#include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -1835,7 +1834,7 @@ TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld,
 TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld,
                               bool warn) {
   if (len > 0 && *p >= '1' && *p <= '9') {
-    auto r = NumberUtils::atoi_positive_unchecked<TRI_voc_rid_t>(p, p + len);
+    TRI_voc_rid_t r = arangodb::basics::StringUtils::uint64_check(p, len);
     if (warn && r > tickLimit) {
       // An old tick value that could be confused with a time stamp
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)

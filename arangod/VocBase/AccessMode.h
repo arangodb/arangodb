@@ -44,23 +44,23 @@ struct AccessMode {
                 AccessMode::Type::READ < AccessMode::Type::EXCLUSIVE,
                 "AccessMode::Type total order fail");
   
-  static bool isNone(Type type) {
+  static inline bool isNone(Type type) {
     return (type == Type::NONE);
   }
   
-  static bool isRead(Type type) {
+  static inline bool isRead(Type type) {
     return (type == Type::READ);
   }
   
-  static bool isWrite(Type type) {
+  static inline bool isWrite(Type type) {
     return (type == Type::WRITE);
   }
   
-  static bool isExclusive(Type type) {
+  static inline bool isExclusive(Type type) {
     return (type == Type::EXCLUSIVE);
   }
 
-  static bool isWriteOrExclusive(Type type) {
+  static inline bool isWriteOrExclusive(Type type) {
     return (isWrite(type) || isExclusive(type));
   }
 
@@ -80,7 +80,7 @@ struct AccessMode {
   }
 
   /// @brief return the type of the transaction as a string
-  static char const* typeString(Type value) {
+  static inline char const* typeString(Type value) {
     switch (value) {
       case Type::NONE: 
         return "none";
