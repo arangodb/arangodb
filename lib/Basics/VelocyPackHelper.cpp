@@ -23,6 +23,7 @@
 
 #include "VelocyPackHelper.h"
 #include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/OpenFilesTracker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -1094,7 +1095,9 @@ uint64_t VelocyPackHelper::extractIdValue(VPackSlice const& slice) {
 
   if (id.isString()) {
     // string cid, e.g. "9988488"
-    return StringUtils::uint64(id.copyString());
+    VPackValueLength l;
+    char const* p = id.getString(l);
+    return NumberUtils::atoi_zero<uint64_t>(p, p + l);
   } else if (id.isNumber()) {
     // numeric cid, e.g. 9988488
     return id.getNumericValue<uint64_t>();

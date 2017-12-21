@@ -57,9 +57,6 @@ class KeyGenerator {
   virtual ~KeyGenerator();
 
  public:
-  /// @brief initialize the lookup table for key checks
-  static void Initialize();
-
   /// @brief get the generator type from VelocyPack
   static GeneratorType generatorType(arangodb::velocypack::Slice const&);
 
@@ -90,9 +87,6 @@ class KeyGenerator {
  protected:
   /// @brief whether or not the users can specify their own keys
   bool _allowUserKeys;
-
-  /// @brief lookup table for key checks
-  static std::array<bool, 256> LookupTable;
 };
 
 class TraditionalKeyGenerator final : public KeyGenerator {

@@ -23,6 +23,7 @@
 
 #include "ClusterMethods.h"
 #include "Basics/conversions.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
@@ -293,8 +294,7 @@ static void extractErrorCodes(ClusterCommResult const& res,
     for (auto const& code : VPackObjectIterator(codesSlice)) {
       VPackValueLength codeLength;
       char const* codeString = code.key.getString(codeLength);
-      int codeNr = static_cast<int>(arangodb::basics::StringUtils::int64(
-          codeString, static_cast<size_t>(codeLength)));
+      int codeNr = NumberUtils::atoi_zero<int>(codeString, codeString + codeLength);
       if (includeNotFound || codeNr != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         errorCounter[codeNr] += code.value.getNumericValue<size_t>();
       }

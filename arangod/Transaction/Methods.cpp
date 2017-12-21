@@ -29,6 +29,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -3073,10 +3074,9 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
   }
 
   if (*handle >= '0' && *handle <= '9') {
-    cid = arangodb::basics::StringUtils::uint64(handle, p - handle);
+    cid = NumberUtils::atoi_zero<TRI_voc_cid_t>(handle, p);
   } else {
-    std::string const name(handle, p - handle);
-    cid = resolver()->getCollectionIdCluster(name);
+    cid = resolver()->getCollectionIdCluster(std::string(handle, p - handle));
   }
 
   if (cid == 0) {
