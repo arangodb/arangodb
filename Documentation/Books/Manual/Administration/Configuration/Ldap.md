@@ -10,16 +10,17 @@ There are two modes of operation: *simple auth* and *bind+search*.
 
 The basic options for specifying how to access the LDAP server are
 `--ldap.enabled`, `--ldap.tls`, `--ldap.port`,
-`--ldap.server`. `--ldap.server` and `--ldap.port` can be replace by
+`--ldap.server`. `--ldap.server` and `--ldap.port` can be replaced by
 `--ldap.url`. The default for `--ldap.port` is *389*.
 
 ### Simple auth
 
 ArangoDB connects to the ldap server and authenticates with the
-username and password provided by the api authentication request.  If
-ldap server verifies the the password then the user is authenticated.
+username and password provided by the API authentication request. If
+the LDAP server successfully verifies the password then the user is 
+authenticated.
 
-If `--ldap.prefix` and/or `--ldap.suffix` is provided then the simple
+If `--ldap.prefix` and/or `--ldap.suffix` is provided, then the simple
 mode is selected.
 
 In order to authorize the user for one or more databases there are two
@@ -27,12 +28,12 @@ modes of operation: *database attribute* or *roles*.
 
 #### Database attribute
 
-In this mode, an ldap sttribute of the user is used to specify the
-access levels within ldap. The database/collection access levels in
+In this mode, an LDAP attribute of the user is used to specify the
+access levels within LDAP. The database/collection access levels in
 ArangoDB are not used.
 
 `--ldap.permissions-attribute-name` has the format
-*databse-name=(&#42;|rw|none)[,database-name=(&#42;|rw|none)]*.
+*database-name=(&#42;|rw|none)[,database-name=(&#42;|rw|none)]*.
 
 Example:
 
@@ -42,8 +43,8 @@ Example:
     --ldap.suffix ,dc=company,dc=com
 
 `--ldap.prefix` and `--ldap.suffix` build the distinguished name
-(DN). ArangoDB trys to authenticate with *prefix* + *ArangoDB
-username* + *suffix* against the ldap server and searches for the
+(DN). ArangoDB tries to authenticate with *prefix* + *ArangoDB
+username* + *suffix* against the LDAP server and searches for the
 database permissions.
 
     dn: uid=fermi,dc=example,dc=com
@@ -55,7 +56,7 @@ not collection access levels.
 
 #### Roles
 
-In this mode, an ldap sttribute of the user is used to specify one or
+In this mode, an LDAP attribute of the user is used to specify one or
 more roles for that users. The database/collection access levels for
 these roles defined in ArangoDB are then used.
 
@@ -90,7 +91,7 @@ expression are used.
 
 `--ldap.roles-transformation` can be used to sepcify a regular
 expression and replacement text as `/re/text/`. This regular
-expression is apply to the role name found.
+expression is applied to the role name found.
 
 `--ldap.superuser-role` can be used to specify the role associated
 with the superuser. Any user belonging to this role gains superuser
@@ -130,7 +131,7 @@ Example with anonymous auth:
     --ldap.basedn dc=company,dc=com \
     --ldap.permissions-attribute-name arangodbPermissions
 
-With this configuration ArangoDB binds anonymously to the ldap server
+With this configuration ArangoDB binds anonymously to the LDAP server
 and searches for the user.  If the user is found a authentication is
 done with the users DN and password and then database permissions are
 fetched.
@@ -144,7 +145,7 @@ Example with DN and password:
     --ldap.permissions-attribute-name arangodbPermissions
 
 With this configuration ArangoDB binds with `--ldap.bindn` and
-`--ldap.bindpasswd` to the ldap server and searches for the user.  If
+`--ldap.bindpasswd` to the LDAP server and searches for the user. If
 the user is found a authentication is done with the users DN and
 password and then database permissions are fetched.
 
