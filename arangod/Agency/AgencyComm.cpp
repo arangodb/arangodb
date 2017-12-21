@@ -1472,8 +1472,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
         continue;
       }
 
-      // got a result, we are done
-      if (result.successful()) {
+      // got a result or shutdown, we are done
+      if (result.successful() || application_features::ApplicationServer::isStopping()) {
         AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
         break;
       }
@@ -1691,7 +1691,7 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
   try {
     VPackObjectBuilder b(&builder);
 
-    
+
     builder.add(                       // Cluster Id --------------------------
       "Cluster", VPackValue(to_string(boost::uuids::random_generator()())));
 
