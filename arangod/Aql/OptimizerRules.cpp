@@ -4606,28 +4606,12 @@ void arangodb::aql::fulltextIndexRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-
+/// Essentially mirrors the geo::QueryParams struct, but with
+/// abstracts AstNode value objects
 struct GeoIndexInfo {
   operator bool() const { return collectionNodeToReplace != nullptr &&
     collectionNodeOutVar && collection && index && valid; }
   void invalidate() { valid = false; }
-  
-  /*enum FunctionType {
-    DISTANCE, GEO_CONTAINS, GEO_INTERSECTS, NEAR, WITHIN
-  };
-  
-  // FILTER or SORT containing DISTANCE, GEO_CONTAINS, GEO_INTERSECTS
-  struct Statement {
-    // actual FILTER or SORT, might also be null
-    ExecutionNode* execNodeToRemove = nullptr;
-    /// node that has contains the condition for
-    // filter or sort, NEAR or WITHIN
-    CalculationNode* calculation = nullptr;
-    /// AstNode that contains the sort/filter condition
-    AstNode* expressionNode = nullptr;
-    AstNode* functionNode = nullptr;
-    FunctionType functionType;
-  };*/
   
   /// node that will be replaced by (geo) IndexNode
   ExecutionNode* collectionNodeToReplace = nullptr;
@@ -4639,8 +4623,7 @@ struct GeoIndexInfo {
   std::shared_ptr<Index> index;
   
   /// Filter calculations to modify
-  std::map<FilterNode*, Expression*> filtersToModify;
-  SortNode* sortToModify;
+  std::map<ExecutionNode*, Expression*> exesToModify;
   std::set<AstNode const*> nodesToRemove;
 
   // ============ Distance params ============
@@ -4682,16 +4665,15 @@ struct GeoIndexInfo {
 // checks 2 parameters of distance function if they represent a valid access to
 // latitude and longitude attribute of the geo index.
 // disance(a,b,c,d) - possible pairs are (a,b) and (c,d)
-static bool distanceFuncArgCheck(ExecutionPlan* plan,
-                          AstNode const* firstArg, AstNode const* secondArg,
-                          GeoIndexInfo& info) {  
+static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
+                                 AstNode const* lngArg, bool supportLegacy, GeoIndexInfo& info) {
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> attributeAccess1;
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> attributeAccess2;
   // first and second should be based on the same document - need to provide the
   // document in order to see which collection is bound to it and if that
   // collections supports geo-index
-  if (!firstArg->isAttributeAccessForVariable(attributeAccess1,true) ||
-      !secondArg->isAttributeAccessForVariable(attributeAccess2, true)) {
+  if (!latArg->isAttributeAccessForVariable(attributeAccess1,true) ||
+      !lngArg->isAttributeAccessForVariable(attributeAccess2, true)) {
     return false;
   }
   TRI_ASSERT(attributeAccess1.first != nullptr);
@@ -4707,32 +4689,33 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan,
     
   //get logical collection
   auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter1);
+  if (info.collectionNodeToReplace != nullptr &&
+      info.collectionNodeToReplace != collNode) {
+    return false; // should probably never happen
+  }
   info.collectionNodeToReplace = collNode;
   info.collectionNodeOutVar = collNode->outVariable();
   info.collection = collNode->collection();
   std::shared_ptr<LogicalCollection> coll = collNode->collection()->getCollection();
   
   //check for suitiable indexes
-  for (std::shared_ptr<arangodb::Index> idx : coll->getIndexes()) {
+  for (std::shared_ptr<Index> idx : coll->getIndexes()) {
     // check if current index is a geo-index
     std::size_t fieldNum = idx->fields().size();
-    bool isGeo1 = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX;
-    bool isGeo2 = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX;
-    bool isS2 = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_S2_INDEX;
+    bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX && supportLegacy;
+    bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX && supportLegacy;
+    bool isS2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_S2_INDEX;
     
     if ((isGeo2 || isS2) && fieldNum == 2) { // individual fields
       // check access paths of attributes in ast and those in index match
       if (idx->fields()[0] == attributeAccess1.second &&
           idx->fields()[1] == attributeAccess2.second) {
         if (info.index != nullptr && info.index != idx) {
-          return false; 
-        } 
-
+          return false;
+        }
         info.index = idx;
-        info.latitudeVar = firstArg;
-        info.longitudeVar = secondArg;
-        /*TRI_AttributeNamesJoinNested(attributeAccess1.second, info.longitude, true);
-        TRI_AttributeNamesJoinNested(attributeAccess2.second, info.latitude, true);*/
+        info.latitudeVar = latArg;
+        info.longitudeVar = lngArg;
         return true;
       }
     } else if ((isGeo1 || isS2) && fieldNum == 1) {
@@ -4742,22 +4725,16 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan,
       VPackBuilder builder;
       idx->toVelocyPack(builder,true,false);
       bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
-      /*bool legacy = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "legacy", false);
-      if (isS2 && !legacy) {
-        continue; // only allowed for legacy use
-      }*/
       
       fields1.back().name += geoJson ? "[1]" : "[0]";
       fields2.back().name += geoJson ? "[0]" : "[1]";
       if (fields1 == attributeAccess1.second && fields2 == attributeAccess2.second) {
         if (info.index != nullptr && info.index != idx) {
           return false; 
-        } 
+        }
         info.index = idx;
-        info.latitudeVar = secondArg;
-        info.longitudeVar = firstArg;
-        /*TRI_AttributeNamesJoinNested(attributeAccess1.second, info.longitude, true);
-        TRI_AttributeNamesJoinNested(attributeAccess2.second, info.latitude, true);*/
+        info.latitudeVar = latArg;
+        info.longitudeVar = lngArg;
         return true;
       }
     } // if isGeo 1 or 2
@@ -4766,12 +4743,14 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan,
 }
 
 // checks parameter of GEO_* function
-static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* arg, GeoIndexInfo& info) {
+static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* arg,
+                            bool supportLegacy, GeoIndexInfo& info) {
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> attributeAccess;
-  // first and second should be based on the same document - need to provide the
-  // document in order to see which collection is bound to it and if that
-  // collections supports geo-index
-  if (!arg->isAttributeAccessForVariable(attributeAccess,true)) {
+  // "arg" is either [doc.lat, doc.lng] or doc.geometry
+  if (arg->isArray() && arg->numMembers() == 2) {
+    return distanceFuncArgCheck(plan, /*lat*/arg->getMemberUnchecked(1),
+                                /*lng*/arg->getMemberUnchecked(0), supportLegacy, info);
+  } else if (!arg->isAttributeAccessForVariable(attributeAccess,true)) {
     return false;
   }
   TRI_ASSERT(attributeAccess.first != nullptr);
@@ -4783,6 +4762,10 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* arg, GeoIndexInf
   
   //get logical collection
   auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter);
+  if (info.collectionNodeToReplace != nullptr &&
+      info.collectionNodeToReplace != collNode) {
+    return false; // should probably never happen
+  }
   info.collectionNodeToReplace = collNode;
   info.collectionNodeOutVar = collNode->outVariable();
   info.collection = collNode->collection();
@@ -4797,15 +4780,29 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* arg, GeoIndexInf
       if (idx->fields()[0] == attributeAccess.second) {
         if (info.index != nullptr && info.index != idx) {
           return false; 
-        } 
+        }
         info.index = idx;
         info.locationVar = arg;
-        //TRI_AttributeNamesJoinNested(attributeAccess.second, info.location, true);
         return true;
       }
     }
   } // for index in collection
   return false;
+}
+
+/// returns true if left side is same as right or lhs is null
+static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
+  if (lhs == nullptr) {
+    return true; // lhs is from the GeoIndexInfo struct
+  }
+  // CompareAstNodes does not handle non const attribute access
+  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> res1, res2;
+  bool acc1 = lhs->isAttributeAccessForVariable(res1, true);
+  bool acc2 = rhs->isAttributeAccessForVariable(res2, true);
+  if (acc1|| acc2) {
+    return acc1 && acc2 && res1 == res2; // same variable same path
+  }
+  return aql::CompareAstNodes(lhs, rhs, false) == 0;
 }
 
 static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode, GeoIndexInfo& info) {
@@ -4817,24 +4814,34 @@ static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode, GeoI
   AstNode* fargs = funcNode->getMemberUnchecked(0);
   auto func = static_cast<Function const*>(funcNode->getData());
   if (fargs->numMembers() >= 4 && func->name == "DISTANCE") { // allow DISTANCE(a,b,c,d)
-    if (distanceFuncArgCheck(plan, fargs->getMemberUnchecked(0), fargs->getMemberUnchecked(1), info)) {
-      // TODO check if vars reference the same shit
+    if (info.distanceCenter != nullptr) {
+      return false; // do not allow mixing of DISTANCE and GEO_DISTANCE
+    }
+    if (isValidGeoArg(info.distanceCenterLat, fargs->getMemberUnchecked(2)) &&
+        isValidGeoArg(info.distanceCenterLng, fargs->getMemberUnchecked(3)) &&
+        distanceFuncArgCheck(plan, fargs->getMemberUnchecked(0),
+                             fargs->getMemberUnchecked(1), /*legacy*/true, info)) {
       info.distanceCenterLat = fargs->getMemberUnchecked(2);
       info.distanceCenterLng = fargs->getMemberUnchecked(3);
       return true;
-    } else if (distanceFuncArgCheck(plan, fargs->getMemberUnchecked(2), fargs->getMemberUnchecked(3), info)) {
-      // TODO check if vars reference the same shit
+    } else if (isValidGeoArg(info.distanceCenterLat, fargs->getMemberUnchecked(0)) &&
+               isValidGeoArg(info.distanceCenterLng, fargs->getMemberUnchecked(1)) &&
+               distanceFuncArgCheck(plan, fargs->getMemberUnchecked(2),
+                                    fargs->getMemberUnchecked(3), /*legacy*/true, info)) {
       info.distanceCenterLat = fargs->getMemberUnchecked(0);
       info.distanceCenterLng = fargs->getMemberUnchecked(1);
       return true;
     }
-  } else if (fargs->numMembers() == 2 && (func->name == "GEO_DISTANCE")) {
-    if (geoFuncArgCheck(plan, fargs->getMember(0), info)) {
-      // TODO check if vars reference the same shit
+  } else if (fargs->numMembers() == 2 && func->name == "GEO_DISTANCE") {
+    if (info.distanceCenterLat || info.distanceCenterLng) {
+      return false; // do not allow mixing of DISTANCE and GEO_DISTANCE
+    }
+    if (isValidGeoArg(info.distanceCenter, fargs->getMemberUnchecked(1)) &&
+        geoFuncArgCheck(plan, fargs->getMemberUnchecked(0), /*legacy*/true, info)) {
       info.distanceCenter = fargs->getMemberUnchecked(1);
       return true;
-    } else if (geoFuncArgCheck(plan, fargs->getMember(1), info)) {
-      // TODO check if vars reference the same shit
+    } else if (isValidGeoArg(info.distanceCenter, fargs->getMemberUnchecked(0)) &&
+               geoFuncArgCheck(plan, fargs->getMemberUnchecked(1), /*legacy*/true, info)) {
       info.distanceCenter = fargs->getMemberUnchecked(0);
       return true;
     }
@@ -4844,7 +4851,6 @@ static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode, GeoI
 
 // support legacy functions without added distance field
 static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, GeoIndexInfo& info) {
-  TRI_ASSERT(info.index.get() == nullptr);
   if (funcNode->type != NODE_TYPE_FCALL || funcNode->numMembers() != 1) {
     return false;
   }
@@ -4856,6 +4862,7 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
       (fargs->numMembers() != 4 && fargs->numMembers() != 3)) {
     return false;
   }
+  TRI_ASSERT(info.collection == nullptr);
   
   AstNode const* collArg = fargs->getMemberUnchecked(0);
   AstNode const* latArg = fargs->getMemberUnchecked(1);
@@ -4881,7 +4888,7 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
     }
   }
   
-  if (info.index) {
+  if (info.index && info.distanceCenter == nullptr) {
     info.isSorted = true;
     info.ascending = true;
     info.distanceCenterLat = latArg;
@@ -4935,9 +4942,9 @@ static bool checkEnumerateListNode(ExecutionPlan* plan, EnumerateListNode* el, G
 // contains the AstNode* a supported function?
 static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
                                    GeoIndexInfo& info) {
-  TRI_ASSERT(info.index == nullptr);
   // the expression must exist and it must be a function call
-  if (funcNode->type != NODE_TYPE_FCALL || funcNode->numMembers() != 1) {
+  if (funcNode->type != NODE_TYPE_FCALL || funcNode->numMembers() != 1 ||
+      info.filterMode != geo::FilterType::NONE) { // can't handle more than one
     return false;
   }
   
@@ -4945,13 +4952,14 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
   AstNode* fargs = funcNode->getMemberUnchecked(0);
   bool contains = func->name == "GEO_CONTAINS";
   bool intersect = func->name == "GEO_INTERSECTS";
-  if ((!contains && !intersect) || fargs->numMembers() < 2) {
+  if ((!contains && !intersect) || fargs->numMembers() != 2) {
     return false;
   }
   
   AstNode* arg = fargs->getMemberUnchecked(1);
-  if (geoFuncArgCheck(plan, arg, info)) {
-    info.filterMode = contains ? geo::FilterType::CONTAINS : geo::FilterType::INTERSECT;
+  if (geoFuncArgCheck(plan, arg, /*legacy*/false, info)) {
+    TRI_ASSERT(contains || intersect);
+    info.filterMode = contains ? geo::FilterType::CONTAINS : geo::FilterType::INTERSECTS;
     info.filterMask = fargs->getMemberUnchecked(0);
     TRI_ASSERT(info.index);
     return true;
@@ -4965,20 +4973,19 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
   // checks @first `smaller` @second
   auto eval = [&](AstNode const* first, AstNode const* second, bool lessequal) -> bool{
     if (first->type == NODE_TYPE_FCALL && isValueOrReference(second) &&
-        checkDistanceFunc(plan, first, info)) {
+        info.maxDistance == nullptr && checkDistanceFunc(plan, first, info)) {
       TRI_ASSERT(info.index);
       info.maxDistance = second;
       info.maxInclusive = lessequal;
       info.nodesToRemove.insert(node);
       return true;
     } else if (second->type == NODE_TYPE_FCALL && isValueOrReference(first) &&
-               checkDistanceFunc(plan, second, info)) {
-      if (info.index->type() != Index::TRI_IDX_TYPE_S2_INDEX) {
-        return false;
+               info.minDistance == nullptr && checkDistanceFunc(plan, second, info)) {
+      if (info.index->type() == Index::TRI_IDX_TYPE_S2_INDEX) {
+        info.minDistance = second;
+        info.minInclusive = lessequal;
+        info.nodesToRemove.insert(node);
       }
-      info.minDistance = second;
-      info.minInclusive = lessequal;
-      info.nodesToRemove.insert(node);
       return true;
     }
     return false;
@@ -4986,7 +4993,11 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
   
   switch (node->type) {
     case NODE_TYPE_FCALL:
-      return checkGeoFilterFunction(plan, node, info);
+      if (checkGeoFilterFunction(plan, node, info)) {
+        info.nodesToRemove.insert(node);
+        return true;
+      }
+      return false;
       break;
     // only DISTANCE is allowed with <=, <, >=, >
     case NODE_TYPE_OPERATOR_BINARY_LE:
@@ -5011,12 +5022,12 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
 
 // checks a single sort or filter node
 void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
-                                      ExecutionNode* node,
+                                      ExecutionNode* en,
                                       GeoIndexInfo& info) {
-  if (node->getType() == EN::SORT) {
+  if (en->getType() == EN::SORT) {
     // we're looking for "SORT DISTANCE(x,y,a,b)"
     
-    SortNode* sort = static_cast<SortNode*>(node);
+    SortNode* sort = static_cast<SortNode*>(en);
     SortElementVector const& elements = sort->getElements();
     if (elements.size() != 1) { // can't do it
       return;
@@ -5036,13 +5047,15 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
       return;
     }
     
-    if (checkDistanceFunc(plan, expr->nodeForModification(), info)) {
-      info.isSorted = true;
+    if (!info.isSorted && checkDistanceFunc(plan, expr->node(), info)) {
+      info.isSorted = true;// do not parse another SORT
       info.ascending = elements[0].ascending;
+      info.exesToModify.emplace(en, expr);
+      info.nodesToRemove.emplace(expr->node());
       return;
     }
-  } else if (node->getType() == EN::FILTER) {
-    FilterNode* fn = static_cast<FilterNode*>(node);
+  } else if (en->getType() == EN::FILTER) {
+    FilterNode* fn = static_cast<FilterNode*>(en);
     // filter nodes always have one input variable
     auto varsUsedHere = fn->getVariablesUsedHere();
     TRI_ASSERT(varsUsedHere.size() == 1); // does the optimizer do this?
@@ -5070,7 +5083,7 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
                             if (orsInBranch == 0 && (pl == 1 || Ast::IsAndOperatorType(parents[pl-2]))) {
                               // do not visit below OR or into <=, <, >, >= expressions
                               if (checkGeoFilterExpression(plan, node, info)) {
-                                info.filtersToModify.emplace(fn, expr);
+                                info.exesToModify.emplace(fn, expr);
                               }
                             }
                           }, [&](AstNode const* node, void*) { // post
@@ -5086,14 +5099,15 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
 
 // builds a condition that can be used with the index interface and
 // contains all parameters required by the MMFilesGeoIndex
-std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
-                                             GeoIndexInfo& info) {
+static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
+                                                    GeoIndexInfo const& info) {
   Ast* ast = plan->getAst();
   auto cond = std::make_unique<Condition>(ast);
-  if (info.distanceCenterLat || info.distanceCenter) {
-    // create GEO_DISTANCE < C
-    TRI_ASSERT(info.maxDistance || info.minDistance);
-
+  bool hasCenter = info.distanceCenterLat || info.distanceCenter;
+  bool hasDistLimit = info.maxDistance || info.minDistance;
+  TRI_ASSERT(!hasCenter || hasDistLimit || info.isSorted);
+  if (hasCenter && hasDistLimit) {
+    // create GEO_DISTANCE(...) [<|<=|>=|>] Var
     AstNode* args = ast->createNodeArray(2);
     if (info.distanceCenterLat && info.distanceCenterLng) { // legacy
       TRI_ASSERT(!info.distanceCenter);
@@ -5133,27 +5147,30 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
       AstNode* range = ast->createNodeBinaryOperator(t, func, info.maxDistance);
       cond->andCombine(range);
     }
-
   }
-  if (info.filterMode != geo::FilterType::NONE) { // TODO allow both?
+  if (info.filterMode != geo::FilterType::NONE) {
     // create GEO_CONTAINS / GEO_INTERSECTS
     TRI_ASSERT(info.filterMask);
     TRI_ASSERT(info.locationVar);
     AstNode* args = ast->createNodeArray(2);
     args->addMember(info.filterMask);
     args->addMember(info.locationVar);
-    char const* fname = info.filterMode == geo::FilterType::CONTAINS ? "GEO_CONTAINS" : "GEO_INTERSECTS";
-    AstNode* func = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR(fname), args);
-    cond->andCombine(func);
+    if (info.filterMode == geo::FilterType::CONTAINS) {
+      cond->andCombine(ast->createNodeFunctionCall("GEO_CONTAINS", args));
+    } else if (info.filterMode == geo::FilterType::INTERSECTS) {
+      cond->andCombine(ast->createNodeFunctionCall("GEO_INTERSECTS", args));
+    } else {
+      TRI_ASSERT(false);
+    }
   }
-  
   
   cond->normalize(plan);
   return cond;
 }
 
 // applys the optimization for a candidate
-static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln, GeoIndexInfo& info) {
+static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
+                                 GeoIndexInfo const& info) {
   TRI_ASSERT(info.collection != nullptr);
   TRI_ASSERT(info.index);
 
@@ -5165,30 +5182,36 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln, GeoIndexInf
           transaction::Methods::IndexHandle{info.index}},
       condition.get(), false);
   plan->registerNode(inode);
-  condition.release();
   plan->replaceNode(info.collectionNodeToReplace, inode);
+  condition.release();
   
   // remove expressions covered by our index
   Ast* ast = plan->getAst();
-  for (std::pair<FilterNode*, Expression*> const& pair : info.filtersToModify) {
+  for (std::pair<ExecutionNode*, Expression*> pair : info.exesToModify) {
     AstNode* root = pair.second->nodeForModification();
-    AstNode* newNode = Ast::traverseAndModify(root,
-                                              [&](AstNode const* node, void*) -> bool {
-                                                return node == root || Ast::IsAndOperatorType(node->type);
-                                              },
-                           [&](AstNode* node, void*) -> AstNode* {
-                             if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-                               for (std::size_t i = 0; i < node->numMembers(); ++i) {
-                                 if (info.nodesToRemove.find(node->getMemberUnchecked(i)) != info.nodesToRemove.end()) {
-                                   return node->getMemberUnchecked(i ? 0 : 1);
-                                 }
-                               }
-                             } else if (info.nodesToRemove.find(node) != info.nodesToRemove.end()) {
-                               return node == root ? nullptr : ast->createNodeValueBool(true);
-                             }
-                             return node;
-                           }, [&](AstNode const* node, void*) {}, nullptr);
-    if (newNode == nullptr) {
+    auto pre = [&](AstNode const* node, void*) -> bool {
+      return node == root || Ast::IsAndOperatorType(node->type);
+    };
+    auto visitor = [&](AstNode* node, void*) -> AstNode* {
+      if (Ast::IsAndOperatorType(node->type)) {
+        for (std::size_t i = 0; i < node->numMembers(); ++i) {
+          if (info.nodesToRemove.find(node->getMemberUnchecked(i)) != info.nodesToRemove.end()) {
+            node->removeMemberUnchecked(i--);
+          }
+        }
+        if (node->numMembers() == 1) {
+          return node->getMemberUnchecked(0);
+        } else if (node->numMembers() == 0) {
+          return node == root ? nullptr : ast->createNodeValueBool(true);
+        }
+      } else if (info.nodesToRemove.find(node) != info.nodesToRemove.end()) {
+        return node == root ? nullptr : ast->createNodeValueBool(true);
+      }
+      return node;
+    };
+    auto post = [](AstNode const*, void*){};
+    AstNode* newNode = Ast::traverseAndModify(root, pre, visitor, post,nullptr);
+    if (newNode == nullptr) { // if root was removed, unlink FILTER or SORT
       plan->unlinkNode(pair.first);
     } else if (newNode != root) {
       pair.second->replaceNode(newNode);

@@ -94,7 +94,7 @@ static rocksdb::Slice GeoIndexValue(
 static RocksDBEntryType s2IndexValue = RocksDBEntryType::S2IndexValue;
 static rocksdb::Slice S2IndexValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &S2IndexValue),
+        &s2IndexValue),
     1);
 
 static RocksDBEntryType view = RocksDBEntryType::View;

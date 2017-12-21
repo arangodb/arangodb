@@ -557,7 +557,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
   }
 
   // iterate over collections
-  for (VPackSlice const& collection : VPackArrayIterator(collections)) {
+  for (VPackSlice collection : VPackArrayIterator(collections)) {
     if (!collection.isObject()) {
       errorMsg = "got malformed JSON response from server";
 
@@ -860,7 +860,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
   }
 
   // iterate over collections
-  for (auto const& collection : VPackArrayIterator(collections)) {
+  for (VPackSlice collection : VPackArrayIterator(collections)) {
     if (!collection.isObject()) {
       errorMsg = "got malformed JSON response from server";
 

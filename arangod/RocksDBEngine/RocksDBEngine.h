@@ -264,7 +264,7 @@ class RocksDBEngine final : public StorageEngine {
 
   // management methods for synchronizing with external persistent stores
   TRI_voc_tick_t currentTick() const override;
-  TRI_voc_tick_t releasedTick() const;
+  TRI_voc_tick_t releasedTick() const override;
   void releaseTick(TRI_voc_tick_t) override;
 
  private:

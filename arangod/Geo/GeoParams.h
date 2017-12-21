@@ -53,7 +53,7 @@ enum class FilterType {
   CONTAINS,
   // Select documents whose geospatial data intersects with a specified GeoJSON
   // object.
-  INTERSECT
+  INTERSECTS
 };
 
 /// @brief contains parameters for s2 region coverer

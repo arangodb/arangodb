@@ -112,7 +112,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
   size_t i = 0;
   size_t nextStart = 0;
 
-  for (VPackSlice const& pair : VPackArrayIterator(responseBody)) {
+  for (VPackSlice pair : VPackArrayIterator(responseBody)) {
     if (!pair.isArray() || pair.length() != 2) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response key pair is no valid array");
     }

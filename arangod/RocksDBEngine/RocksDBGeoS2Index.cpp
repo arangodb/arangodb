@@ -125,8 +125,8 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
             if (res.fail()) { // this should never fail here
               THROW_ARANGO_EXCEPTION(res);
             }
-            if ((ft == geo::FilterType::CONTAINS && filter.contains(&test)) ||
-                (ft == geo::FilterType::INTERSECT && filter.intersects(&test))) {
+            if ((ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
               continue;
             }
           }
@@ -424,9 +424,15 @@ static void handleNode(aql::AstNode const* node, geo::QueryParams& params) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
       
-      VPackBuilder jsonB;
-      cc->toVelocyPackValue(jsonB);
-      Result res = geo::GeoJsonParser::parseGeoJson(jsonB.slice(), params.filterShape);
+      VPackBuilder geoJsonBuilder;
+      cc->toVelocyPackValue(geoJsonBuilder);
+      VPackSlice json = geoJsonBuilder.slice();
+      Result res;
+      if (json.isArray() && json.length() >= 2) {
+        res = params.filterShape.parseCoordinates(json, true);
+      } else {
+        res = geo::GeoJsonParser::parseGeoJson(json, params.filterShape);
+      }
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -436,7 +442,7 @@ static void handleNode(aql::AstNode const* node, geo::QueryParams& params) {
       if (func->name == "GEO_CONTAINS") {
         params.filterType = geo::FilterType::CONTAINS;
       } else if (func->name == "GEO_INTERSECTS") {
-        params.filterType = geo::FilterType::INTERSECT;
+        params.filterType = geo::FilterType::INTERSECTS;
       } else {
         TRI_ASSERT(false);
       }
