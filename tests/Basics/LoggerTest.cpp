@@ -43,17 +43,19 @@ using namespace arangodb::basics;
 TEST_CASE("LoggerTest", "[loggertest]") {
   // store old state as backup
   auto backup = LogAppenderFile::getFds();
+    
+  std::string const path = TRI_GetTempPath();
+  std::string const logfile1 = path + "logfile1";
+  std::string const logfile2 = path + "logfile2";
+    
+  FileUtils::remove(logfile1);
+  FileUtils::remove(logfile2);
+    
   
   // remove any previous loggers
   LogAppenderFile::clear();
 
   SECTION("test_fds") {
-    std::string const logfile1 = "logfile1";
-    std::string const logfile2 = "logfile2";
-    
-    FileUtils::remove(logfile1);
-    FileUtils::remove(logfile2);
-    
     LogAppenderFile logger1(logfile1, "");
     LogAppenderFile logger2(logfile2, "");
 
@@ -80,12 +82,6 @@ TEST_CASE("LoggerTest", "[loggertest]") {
   }
   
   SECTION("test_fds_after_reopen") {
-    std::string const logfile1 = "logfile1";
-    std::string const logfile2 = "logfile2";
-    
-    FileUtils::remove(logfile1);
-    FileUtils::remove(logfile2);
-    
     LogAppenderFile logger1(logfile1, "");
     LogAppenderFile logger2(logfile2, "");
 
@@ -135,4 +131,7 @@ TEST_CASE("LoggerTest", "[loggertest]") {
   // restore old state
   LogAppenderFile::setFds(backup);
   LogAppenderFile::reopenAll();
+  
+  FileUtils::remove(logfile1);
+  FileUtils::remove(logfile2);
 }
