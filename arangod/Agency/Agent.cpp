@@ -536,7 +536,9 @@ void Agent::sendAppendEntriesRPC() {
         }
       }
       
-      earliestPackage = system_clock::now() + std::chrono::seconds(3600);
+      // Postpone sending the next message for 30 seconds or until an
+      // error or successful result occurs.
+      earliestPackage = system_clock::now() + std::chrono::seconds(30);
       {
         MUTEX_LOCKER(tiLocker, _tiLock);
         _earliestPackage[followerId] = earliestPackage;
@@ -552,10 +554,9 @@ void Agent::sendAppendEntriesRPC() {
         arangodb::rest::RequestType::POST, path.str(),
         std::make_shared<std::string>(builder.toJson()), headerFields,
         std::make_shared<AgentCallback>(this, followerId, highest, toLog),
-        3600.0, true);
-      // Note the timeout is essentially indefinite. We let TCP/IP work its
-      // magic here, because all we could do would be to resend the same 
-      // message if a timeout occurs.
+        150.0, true);
+      // Note the timeout is relatively long, but due to the 30 seconds
+      // above, we only ever have at most 5 messages in flight.
 
       _lastSent[followerId]    = system_clock::now();
       // _constituent.notifyHeartbeatSent(followerId);
