@@ -297,7 +297,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     res = TRI_ERROR_NO_ERROR;
 
     try {
-      res = syncer.run(errorMsg, false);
+      res = syncer.run(errorMsg, config._incremental);
 
       // steal the barrier from the syncer
       barrierId = syncer.stealBarrier();
