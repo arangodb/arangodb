@@ -559,8 +559,7 @@ void Supervision::run() {
     TRI_ASSERT(_agent != nullptr);
 
     while (!this->isStopping()) {
-
-      {
+      try {
         MUTEX_LOCKER(locker, _lock);
       
         // Get bunch of job IDs from agency for future jobs
@@ -595,6 +594,10 @@ void Supervision::run() {
             break;
           }
         }
+      } catch (std::exception const& ex) {
+        LOG_TOPIC(WARN, Logger::SUPERVISION) << "caught exception in supervision thread: " << ex.what(); 
+      } catch (...) {
+        LOG_TOPIC(WARN, Logger::SUPERVISION) << "caught unknown exception in supervision thread";
       }
       _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
     }
