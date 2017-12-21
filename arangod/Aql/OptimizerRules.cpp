@@ -4618,7 +4618,7 @@ struct GeoIndexInfo {
   Variable const* collectionNodeOutVar = nullptr;
 
   /// accessed collection
-  aql::Collection const* collection;
+  aql::Collection const* collection = nullptr;
   /// selected index
   std::shared_ptr<Index> index;
   
