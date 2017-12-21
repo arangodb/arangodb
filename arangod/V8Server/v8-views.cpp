@@ -470,8 +470,6 @@ static void JS_RenameViewVocbase(
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  std::string const oldName(view->name());
-
   int res = view->vocbase()->renameView(view, name);
 
   if (res != TRI_ERROR_NO_ERROR) {
