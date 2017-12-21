@@ -6,13 +6,13 @@ Version 3.3
 
 ### Enterprise Edition
 
-- [**Datacenter-to-Datacenter Replication**](Deployment/DC2DC.md): Replicate
+- [**Datacenter to Datacenter Replication**](Deployment/DC2DC.md): Replicate
   the entire structure and content of an ArangoDB cluster asynchronously to
   another cluster in a different datacenter with ArangoSync. Multi-datacenter
   support means you can fallback to a replica of your cluster in case of a
   disaster in one datacenter.
 
-- [**Encrypted Backups**](ReleaseNotes/NewFeatures33.md#encrypted-backups):
+- [**Encrypted Backups**](Administration/Arangodump.md#encryption):
   Arangodump can create backups encrypted with a secret key using AES256
   block cipher.
 

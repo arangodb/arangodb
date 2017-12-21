@@ -1,5 +1,5 @@
-Global Setup
-=============
+Server-level Setup
+==================
 
 This page describes the replication process based on a complete ArangoDB instance. That means that
 all included databases will be replicated. 
