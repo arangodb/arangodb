@@ -43,9 +43,23 @@ struct DumpFeatureStats {
 };
 
 struct DumpFeatureJobData {
-  DumpFeatureJobData(uint64_t, std::string const&, DumpFeatureStats&) noexcept;
-  uint64_t const batchId;
-  std::string const& collectionName;
+  DumpFeatureJobData(VPackSlice const&, std::string const&, std::string const&,
+                     std::string const&, uint64_t const&, uint64_t const&,
+                     uint64_t const&, uint64_t const&, uint64_t const&,
+                     bool const&, bool const&, std::string const&,
+                     DumpFeatureStats&) noexcept;
+  VPackSlice const& collectionInfo;
+  std::string const cid;
+  std::string const name;
+  std::string const type;
+  uint64_t batchId;
+  uint64_t const tickStart;
+  uint64_t const maxTick;
+  uint64_t const initialChunkSize;
+  uint64_t const maxChunkSize;
+  bool const showProgress;
+  bool const dumpData;
+  std::string const& outputDirectory;
   DumpFeatureStats& stats;
 };
 extern template class ClientTaskQueue<DumpFeatureJobData>;
@@ -58,6 +72,7 @@ class DumpFeature final : public application_features::ApplicationFeature,
   DumpFeature(application_features::ApplicationServer* server, int* result);
 
  public:
+  static std::string featureName();
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override final;
@@ -85,16 +100,18 @@ class DumpFeature final : public application_features::ApplicationFeature,
                                Result const& result) noexcept override;
 
  private:
-  int startBatch(std::string DBserver, std::string& errorMsg);
-  void extendBatch(std::string DBserver);
-  void endBatch(std::string DBserver);
-  int dumpCollection(int fd, std::string const& collectionId,
-                     std::string const& name, uint64_t maxTick,
-                     std::string& errorMsg);
+  static Result dumpCollection(httpclient::SimpleHttpClient& client,
+                               DumpFeatureJobData& jobData, int fd);
+  static Result handleCollection(httpclient::SimpleHttpClient& client,
+                                 DumpFeatureJobData& jobData);
+
+  static Result dumpShard(httpclient::SimpleHttpClient& client,
+                          DumpFeatureJobData& jobData, std::string const& DBserver, int fd, std::string const& shardName);
+  static Result handleCollectionCluster(httpclient::SimpleHttpClient& client,
+                            DumpFeatureJobData& jobData);
+
   void flushWal();
   int runDump(std::string& dbName, std::string& errorMsg);
-  int dumpShard(int fd, std::string const& DBserver, std::string const& name,
-                std::string& errorMsg);
   int runClusterDump(std::string& errorMsg);
 
  private:

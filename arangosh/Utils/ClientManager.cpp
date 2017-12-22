@@ -165,7 +165,9 @@ bool ClientManager::getArangoIsCluster(int& err,
     }
   } else {
     if (response->wasHttpError()) {
-      client.setErrorMessage(getHttpErrorMessage(response.get(), err), false);
+      std::string msg = getHttpErrorMessage(response.get(), err);
+      LOG_TOPIC(ERR, Logger::FIXME) << "got error while checking cluster mode: " << msg;
+      client.setErrorMessage(msg, false);
     }
 
     client.disconnect();
