@@ -1,3 +1,9 @@
+v3.2.10 (2017-XX-XX)
+--------------------
+
+* UI: displayed wrong wfs property for a collection when using rocksdb as storage engine
+
+
 v3.2.10 (2017-12-22)
 --------------------
 
