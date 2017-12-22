@@ -1455,14 +1455,9 @@ AqlValue Functions::Translate(arangodb::aql::Query* query,
                          transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "TRANSLATE", 2, 3);
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue key = ExtractFunctionParameterValue(trx, parameters, 0);
   AqlValue lookupDocument = ExtractFunctionParameterValue(trx, parameters, 1);
   AqlValue defaultValue = ExtractFunctionParameterValue(trx, parameters, 2);
-
-  if (!value.isString()) {
-    RegisterInvalidArgumentWarning(query, "TRANSLATE");
-    return AqlValue(AqlValueHintNull());
-  }
 
   if (!lookupDocument.isObject()) {
     RegisterInvalidArgumentWarning(query, "TRANSLATE");
@@ -1470,13 +1465,22 @@ AqlValue Functions::Translate(arangodb::aql::Query* query,
   }
 
   if (defaultValue.isNone()) {
-    defaultValue = value;
+    defaultValue = key;
   }
 
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(lookupDocument, false);;
   TRI_ASSERT(slice.isObject());
-  VPackSlice result = slice.get(value.slice().copyString());
+
+  VPackSlice result;
+  if (key.isString()) {
+    result = slice.get(key.slice().copyString());
+  } else {
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    Functions::Stringify(trx, adapter, key.slice());
+    result = slice.get(buffer->toString());
+  }
   return result.isNone() ? defaultValue : AqlValue(result);
 }
 
@@ -2386,7 +2390,7 @@ AqlValue Functions::JsonStringify(arangodb::aql::Query* query,
 
   VPackDumper dumper(&adapter, trx->transactionContextPtr()->getVPackOptions());
   dumper.dump(slice);
-    
+
   return AqlValue(buffer->begin(), buffer->length());
 }
 
