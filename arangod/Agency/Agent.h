@@ -35,6 +35,7 @@
 #include "Agency/Store.h"
 #include "Agency/Supervision.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/ReadWriteLock.h"
 
 struct TRI_vocbase_t;
 
@@ -325,7 +326,7 @@ class Agent : public arangodb::Thread,
   /// @brief Committed (read) kv-store for transient data
   Store _transient;
 
-  /// @brief Condition variable for appending to the log and for 
+  /// @brief Condition variable for appending to the log and for
   /// AgentCallbacks. This is used by the main agent thread to go
   /// to sleep when all necessary checks have been performed. When
   /// new local log entries have been appended to the log or when
@@ -335,26 +336,18 @@ class Agent : public arangodb::Thread,
   arangodb::basics::ConditionVariable _appendCV;
   bool _agentNeedsWakeup;
 
-  /// @brief Condition variable for waiting for confirmation. This is used
-  /// in threads that wait until the _commitIndex has reached a certain
-  /// index. Whenever _commitIndex is advanced (by incoming confirmations
-  /// in AgentCallbacks and later discovery in advanceCommitIndex). All
-  /// changes to _commitIndex are done under the mutex of _waitForCV
-  /// and are followed by a broadcast on this condition variable.
-  mutable arangodb::basics::ConditionVariable _waitForCV;
-
   /// The following two members are strictly only used in the
   /// Agent thread in sendAppendEntriesRPC. Therefore no protection is
   /// necessary for these:
 
-  /// @brief _lastSent stores for each follower the time stamp of the time 
+  /// @brief _lastSent stores for each follower the time stamp of the time
   /// when the main Agent thread has last sent a non-empty
   /// appendEntriesRPC to that follower.
   std::unordered_map<std::string, TimePoint> _lastSent;
 
   /// The following three members are protected by _tiLock:
 
-  /// @brief stores for each follower the highest index log it has reported as 
+  /// @brief stores for each follower the highest index log it has reported as
   /// locally logged.
   std::unordered_map<std::string, index_t> _confirmed;
 
@@ -370,19 +363,33 @@ class Agent : public arangodb::Thread,
   // protects _confirmed, _lastAcked and _earliestPackage:
   mutable arangodb::Mutex _tiLock;
 
-  /**< @brief RAFT consistency lock:
-     _spearhead
-   */
+  /// @brief RAFT consistency lock:
+  ///   _spearhead
+  ///
   mutable arangodb::Mutex _ioLock;
 
-  /**< @brief RAFT consistency lock:
-     _readDB and _commitIndex
-   */
-  mutable arangodb::Mutex _oLock;
+  /// @brief RAFT consistency lock:
+  ///   _readDB and _commitIndex
+  /// Allows reading from one or both if used alone.
+  /// Writing requires this held first, then _waitForCV's mutex
+  mutable arangodb::basics::ReadWriteLock _outputLock;
+
+  /// @brief RAFT consistency lock and update notifier:
+  ///   _readDB and _commitIndex
+  /// _waitForCV's mutex held alone, allows reads from _readDB or _commitIndex.
+  /// Writing requires _outputLock in Write mode first, then _waitForCV's mutex
+  ///
+  /// Condition variable for waiting for confirmation. This is used
+  /// in threads that wait until the _commitIndex has reached a certain
+  /// index. Whenever _commitIndex is advanced (by incoming confirmations
+  /// in AgentCallbacks and later discovery in advanceCommitIndex). All
+  /// changes to _commitIndex are done under the mutex of _waitForCV
+  /// and are followed by a broadcast on this condition variable.
+  mutable arangodb::basics::ConditionVariable _waitForCV;
 
   /// Rules for writes and locks: This covers the following locks:
   ///    _ioLock (here)
-  ///    _logLock (in State)         
+  ///    _logLock (in State)
   ///    _tiLock (here)
   /// One may never acquire a log in this list whilst holding another one
   /// that appears further down on this list. This is to prevent deadlock.
@@ -391,14 +398,6 @@ class Agent : public arangodb::Thread,
   /// not acquire the _ioLock.
   /// For _ioLock: We put in assertions to ensure that when this lock is
   /// acquired we do not have the _tiLock.
-
-  /// Rules for reading and locks
-  ///    _oLock(here)
-  ///    _logLock(in State) _waiForCV (here)
-  /// _oLock guards the _readDB
-  
-  // @brief guard _activator 
-  mutable arangodb::Mutex _activatorLock;
 
   /// @brief Inception thread getting an agent up to join RAFT from cmd or persistence
   std::unique_ptr<Inception> _inception;
@@ -415,7 +414,7 @@ class Agent : public arangodb::Thread,
 
   /// @brief Keep track of when I last took on leadership
   TimePoint _leaderSince;
-  
+
   /// @brief Ids of ongoing transactions, used for inquire:
   std::unordered_set<std::string> _ongoingTrxs;
 
