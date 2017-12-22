@@ -12,7 +12,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"lastAvailableContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"safeResumeTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"progress"</span> : { 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-11-30T14:20:32Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-12-22T10:38:08Z"</span>, 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"applier initially created"</span>, 
       <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">0</span> 
     }, 
@@ -23,11 +23,11 @@ x-content-type-options: nosniff
     <span class="hljs-string">"lastError"</span> : { 
       <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">0</span> 
     }, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-11-30T14:21:10Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-12-22T10:38:20Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.2.9"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"226713129761942"</span> 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.2.10"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"213619048667"</span> 
   }, 
   <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:8529"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
