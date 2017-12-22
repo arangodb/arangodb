@@ -162,7 +162,28 @@ in the first row. All the following lines in the file will be interpreted as
 data records and will be imported.
 
 The CSV import requires the data to have a homogeneous structure. All records
-must have exactly the same amount of columns as there are headers.
+must have exactly the same amount of columns as there are headers. By default,
+lines with a different number of values will not be imported and there will be 
+warnings for them. To still import lines with less values than in the header,
+there is the *--ignore-missing* option. If set to true, lines that have a
+different amount of fields will be imported. In this case only those attributes
+will be populated for which there are values. Attributes for which there are
+no values present will silently be discarded.
+
+Example:
+
+```
+"first","last","age","active","dob"
+"John","Connor",25,true
+"Jim","O'Brady"
+```
+
+With *--ignore-missing* this will produce the following documents:
+
+```js
+{ "first" : "John", "last" : "Connor", "active" : true, "age" : 25 }
+{ "first" : "Jim", "last" : "O'Brady" }
+```
 
 The cell values can have different data types though. If a cell does not have
 any value, it can be left empty in the file. These values will not be imported

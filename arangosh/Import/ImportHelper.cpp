@@ -154,6 +154,7 @@ ImportHelper::ImportHelper(ClientFeature const* client,
       _overwrite(false),
       _progress(false),
       _firstChunk(true),
+      _ignoreMissing(false),
       _numberLines(0),
       _rowsRead(0),
       _rowOffset(0),
@@ -788,7 +789,7 @@ void ImportHelper::sendCsvBuffer() {
 
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
                   StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
-                  StringUtils::urlEncode(_onDuplicateAction));
+                  StringUtils::urlEncode(_onDuplicateAction) + "&ignoreMissing=" + (_ignoreMissing ? "true" : "false"));
 
   if (!_fromCollectionPrefix.empty()) {
     url += "&fromPrefix=" + StringUtils::urlEncode(_fromCollectionPrefix);
