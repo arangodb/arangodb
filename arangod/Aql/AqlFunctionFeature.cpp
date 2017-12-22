@@ -222,6 +222,7 @@ void AqlFunctionFeature::addTypeCheckFunctions() {
 
   add({"IS_DATESTRING", ".", true, false, true,
        true});
+  add({"IS_KEY", ".", true, false, true, true, &Functions::IsKey});
   add({"TYPENAME", ".", true, false, true, true,
        &Functions::Typename});
 }
