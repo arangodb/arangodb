@@ -1,6 +1,8 @@
 devel
 -----
 
+* UI: displayed wrong wfs property for a collection when using rocksdb as storage engine
+
 * renamed arangoimp to arangoimport for consistency
   Release packages will still install arangoimp as a symlink so user scripts 
   invoking arangoimp do not need to be changed
