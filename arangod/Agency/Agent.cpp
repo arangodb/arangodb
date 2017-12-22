@@ -1237,6 +1237,13 @@ void Agent::beginShutdown() {
 
 bool Agent::prepareLead() {
   
+  {
+    // Erase _earliestPackage, which allows for immediate sending of
+    // AppendEntriesRPC when we become a leader.
+    MUTEX_LOCKER(tiLocker, _tiLock);
+    _earliestPackage.clear();
+  }
+
   // Key value stores
   try {
     rebuildDBs();
