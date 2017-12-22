@@ -3226,6 +3226,21 @@ function AQL_SORTED_UNIQUE (values) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief return a sorted list of elements 
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_SORTED (values) {
+  'use strict';
+
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
+    return null;
+  }
+
+  values.sort(RELATIONAL_CMP);
+  return values;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief create the union (all) of all arguments
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -5687,6 +5702,7 @@ exports.AQL_REVERSE = AQL_REVERSE;
 exports.AQL_RANGE = AQL_RANGE;
 exports.AQL_UNIQUE = AQL_UNIQUE;
 exports.AQL_SORTED_UNIQUE = AQL_SORTED_UNIQUE;
+exports.AQL_SORTED = AQL_SORTED;
 exports.AQL_UNION = AQL_UNION;
 exports.AQL_UNION_DISTINCT = AQL_UNION_DISTINCT;
 exports.AQL_CALL = AQL_CALL;

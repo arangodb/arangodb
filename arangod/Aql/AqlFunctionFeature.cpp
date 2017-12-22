@@ -350,6 +350,8 @@ void AqlFunctionFeature::addListFunctions() {
        &Functions::Unique});
   add({"SORTED_UNIQUE", ".", true, false, true, true,
        &Functions::SortedUnique});
+  add({"SORTED", ".", true, false, true, true,
+       &Functions::Sorted});
   add({"SLICE", ".,.|.", true, false, true, true,
        &Functions::Slice});
   add({"REVERSE", ".", true, false, true,
