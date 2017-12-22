@@ -206,8 +206,42 @@ become effective on the leader only, but also on all the followers.
 In 3.3 this setup protocol has got some shortcuts for the initial shard creation, 
 which speeds up collection creation by roughly 50 to 60 percent.
 
+LDAP authentication
+-------------------
+
+The LDAP authentication module in the *Enterprise* edition has been enhanced.
+The following options have been added to it:
+ 
+- the option `--server.local-authentication` controls whether the local *_users*
+  collection is also used for looking up users. This is also the default behavior.
+  If the authentication shall be restricted to just the LDAP directory, the
+  option can be set to *true*, and arangod will then not make any queries to its
+  *_users* collection when looking up users.
+
+- the option `--server.authentication-timeout` controls the expiration time for 
+  cached LDAP user information entries in arangod.
+
+- basic role support has been added for the LDAP module in the *Enterprise* edition.
+  New configuration options for LDAP in 3.3 are:
+
+  - `--ldap.roles-attribute-name`
+  - `--ldap.roles-transformation`
+  - `--ldap.roles-search`
+  - `--ldap.roles-include`
+  - `--ldap.roles-exclude`
+  - `--ldap.superuser-role`
+
+  Please refer to [LDAP](../Administration/Configuration/Ldap.md) for a detailed
+  explanation.
+
+
 Miscellaneous features
 ----------------------
+
+- when creating a collection in the cluster, there is now an optional 
+  parameter `enforceReplicationFactor`: when set, this parameter
+  enforces that the collection will only be created if there are not
+  enough database servers available for the desired `replicationFactor`.
 
 - AQL DISTINCT is not changing the order of previous (sorted) results
 
@@ -261,3 +295,13 @@ Miscellaneous features
     
   - `--log.thread-name true`: this new option will log the name of the ArangoDB thread that 
     triggered the log message. Will have meaningful output on Linux only
+
+- make the ArangoShell (arangosh) refill its collection cache when a yet-unknown collection
+  is first accessed. This fixes the following problem when working with the shell while
+  in another shell or by another process a new collection is added:
+
+      arangosh1> db._collections();  // shell1 lists all collections
+      arangosh2> db._create("test"); // shell2 now creates a new collection 'test'
+      arangosh1> db.test.insert({}); // shell1 is not aware of the collection created
+                                     // in shell2, so the insert will fail
+
