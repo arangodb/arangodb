@@ -4560,7 +4560,6 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   condition->normalize(plan);
   
   IndexIteratorOptions opts;
-  opts.sorted = false; // doesn't matter here
   auto inode = new IndexNode(plan, plan->nextId(), vocbase,
                              coll, elnode->outVariable(),
                              std::vector<transaction::Methods::IndexHandle>{
