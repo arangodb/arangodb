@@ -5,6 +5,6 @@
      delaycompress
      create 640  arangodb adm
      postrotate
-     systemctl -q is-active @SERVICE_NAME@ && systemctl kill --signal=SIGHUP arangoddb3
+     systemctl -q is-active @SERVICE_NAME@ && systemctl kill --signal=SIGHUP arangodb3
      endscript
      }
