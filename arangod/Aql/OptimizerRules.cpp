@@ -5271,6 +5271,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
         case EN::INDEX:
         case EN::COLLECT:
           info.invalidate();
+          break;
         case EN::ENUMERATE_LIST:{
           EnumerateListNode* el = static_cast<EnumerateListNode*>(current);
           checkEnumerateListNode(plan.get(), el, info);
