@@ -529,11 +529,9 @@ void Agent::sendAppendEntriesRPC() {
       builder.close();
       
       // Really leading?
-      {
-        if (challengeLeadership()) {
-          resign();
-          return;
-        }
+      if (challengeLeadership()) {
+        resign();
+        return;
       }
       
       // Postpone sending the next message for 30 seconds or until an
@@ -1138,6 +1136,12 @@ void Agent::run() {
         // replication and confirmation of it can happen. Service will 
         // continue once _commitIndex has reached the end of the log and then
         // getPrepareLeadership() will finally return 0.
+        continue;
+      }
+
+      // Challenge leadership:
+      if (challengeLeadership()) {
+        resign();
         continue;
       }
 
