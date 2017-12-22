@@ -24,7 +24,9 @@
 #define ARANGODB_DUMP_DUMP_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "V8Client/ClientHelper.hpp"
+#include "Utils/ClientManager.hpp"
+#include "Utils/ClientTaskQueue.hpp"
+#include "Utils/FileHandler.hpp"
 
 namespace arangodb {
 namespace httpclient {
@@ -33,13 +35,25 @@ class SimpleHttpResult;
 
 class EncryptionFeature;
 
-struct DumpFeatureJobData {
-  std::string collectionName;
+struct DumpFeatureStats {
+  DumpFeatureStats(uint64_t b, uint64_t c, uint64_t w) noexcept;
+  std::atomic<uint64_t> totalBatches;
+  std::atomic<uint64_t> totalCollections;
+  std::atomic<uint64_t> totalWritten;
 };
-extern template class ClientHelper<DumpFeatureJobData>;
+
+struct DumpFeatureJobData {
+  DumpFeatureJobData(uint64_t, std::string const&, DumpFeatureStats&) noexcept;
+  uint64_t const batchId;
+  std::string const& collectionName;
+  DumpFeatureStats& stats;
+};
+extern template class ClientTaskQueue<DumpFeatureJobData>;
 
 class DumpFeature final : public application_features::ApplicationFeature,
-                          public ClientHelper<DumpFeatureJobData> {
+                          public ClientManager,
+                          public ClientTaskQueue<DumpFeatureJobData>,
+                          public FileHandler {
  public:
   DumpFeature(application_features::ApplicationServer* server, int* result);
 
@@ -65,10 +79,10 @@ class DumpFeature final : public application_features::ApplicationFeature,
   uint64_t _tickEnd;
 
  private:
-  virtual Result processJob(httpclient::SimpleHttpClient&,
-                            DumpFeatureJobData&) noexcept override;
-  virtual void handleJobResult(std::unique_ptr<DumpFeatureJobData>&&,
-                               Result&) noexcept override;
+  virtual Result processJob(httpclient::SimpleHttpClient& client,
+                            DumpFeatureJobData& jobData) noexcept override;
+  virtual void handleJobResult(std::unique_ptr<DumpFeatureJobData>&& jobData,
+                               Result const& result) noexcept override;
 
  private:
   int startBatch(std::string DBserver, std::string& errorMsg);
@@ -83,21 +97,11 @@ class DumpFeature final : public application_features::ApplicationFeature,
                 std::string& errorMsg);
   int runClusterDump(std::string& errorMsg);
 
-  bool writeData(int fd, char const* data, size_t len);
-  void beginEncryption(int fd);
-  void endEncryption(int fd);
-
  private:
   int* _result;
   uint64_t _batchId;
   bool _clusterMode;
-  EncryptionFeature* _encryption;
-
-  struct {
-    uint64_t _totalBatches;
-    uint64_t _totalCollections;
-    uint64_t _totalWritten;
-  } _stats;
+  DumpFeatureStats _stats;
 };
 }  // namespace arangodb
 

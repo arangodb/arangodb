@@ -55,6 +55,9 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+DumpFeatureStats::DumpFeatureStats(uint64_t b, uint64_t c, uint64_t w) noexcept
+    : totalBatches{b}, totalCollections{c}, totalWritten{w} {}
+
 DumpFeature::DumpFeature(application_features::ApplicationServer* server,
                          int* result)
     : ApplicationFeature(server, "Dump"),
@@ -73,7 +76,6 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _result(result),
       _batchId(0),
       _clusterMode(false),
-      _encryption(nullptr),
       _stats{0, 0, 0} {
   requiresElevatedPrivileges(false);
   setOptional(false);
@@ -220,13 +222,13 @@ void DumpFeature::prepare() {
   }
 }
 
-Result DumpFeature::processJob(httpclient::SimpleHttpClient&,
-                               DumpFeatureJobData&) noexcept {
+Result DumpFeature::processJob(httpclient::SimpleHttpClient& client,
+                               DumpFeatureJobData& jobData) noexcept {
   return {};
 }
 
-void DumpFeature::handleJobResult(std::unique_ptr<DumpFeatureJobData>&&,
-                                  Result&) noexcept {}
+void DumpFeature::handleJobResult(std::unique_ptr<DumpFeatureJobData>&& jobData,
+                                  Result const& result) noexcept {}
 
 // start a batch
 int DumpFeature::startBatch(std::string DBserver, std::string& errorMsg) {
@@ -338,7 +340,7 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
       url += "&to=" + StringUtils::itoa(maxTick);
     }
 
-    _stats._totalBatches++;
+    _stats.totalBatches++;
 
     auto httpClient = getConnectedClient();
     std::unique_ptr<SimpleHttpResult> response(
@@ -352,7 +354,8 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
     }
 
     if (response->wasHttpError()) {
-      errorMsg = getHttpErrorMessage(response.get(), nullptr);
+      int errorNum;
+      errorMsg = getHttpErrorMessage(response.get(), errorNum);
 
       return TRI_ERROR_INTERNAL;
     }
@@ -399,7 +402,7 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
       if (!result) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
       } else {
-        _stats._totalWritten += (uint64_t)body.length();
+        _stats.totalWritten += (uint64_t)body.length();
       }
     }
 
@@ -626,7 +629,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
     }
 
     // now save the collection meta data and/or the actual data
-    _stats._totalCollections++;
+    _stats.totalCollections++;
 
     {
       // save meta data
@@ -731,7 +734,7 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
       url += "&to=" + StringUtils::itoa(maxTick);
     }
 
-    _stats._totalBatches++;
+    _stats.totalBatches++;
 
     auto httpClient = getConnectedClient();
     std::unique_ptr<SimpleHttpResult> response(
@@ -745,7 +748,8 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
     }
 
     if (response->wasHttpError()) {
-      errorMsg = getHttpErrorMessage(response.get(), nullptr);
+      int errorNum;
+      errorMsg = getHttpErrorMessage(response.get(), errorNum);
 
       return TRI_ERROR_INTERNAL;
     }
@@ -792,7 +796,7 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
       if (!result) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
       } else {
-        _stats._totalWritten += (uint64_t)body.length();
+        _stats.totalWritten += (uint64_t)body.length();
       }
     }
 
@@ -945,7 +949,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
     }
 
     // now save the collection meta data and/or the actual data
-    _stats._totalCollections++;
+    _stats.totalCollections++;
 
     {
       // save meta data
@@ -1071,11 +1075,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 }
 
 void DumpFeature::start() {
-#ifdef USE_ENTERPRISE
-  _encryption =
-      application_features::ApplicationServer::getFeature<EncryptionFeature>(
-          "Encryption");
-#endif
+  initializeEncryption();
 
   ClientFeature* client =
       application_features::ApplicationServer::getFeature<ClientFeature>(
@@ -1088,7 +1088,13 @@ void DumpFeature::start() {
 
   auto httpClient = getConnectedClient(_force, true);
 
-  _clusterMode = getArangoIsCluster(nullptr);
+  int errorNum;
+  _clusterMode = getArangoIsCluster(errorNum, *httpClient);
+  if (errorNum != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Error: could not detect ArangoDB instance type";
+    FATAL_ERROR_EXIT();
+  }
 
   if (_clusterMode) {
     if (_tickStart != 0 || _tickEnd != 0) {
@@ -1165,50 +1171,15 @@ void DumpFeature::start() {
 
   if (_progress) {
     if (_dumpData) {
-      std::cout << "Processed " << _stats._totalCollections
-                << " collection(s), "
-                << "wrote " << _stats._totalWritten
+      std::cout << "Processed " << _stats.totalCollections << " collection(s), "
+                << "wrote " << _stats.totalWritten
                 << " byte(s) into datafiles, "
-                << "sent " << _stats._totalBatches << " batch(es)" << std::endl;
+                << "sent " << _stats.totalBatches << " batch(es)" << std::endl;
     } else {
-      std::cout << "Processed " << _stats._totalCollections << " collection(s)"
+      std::cout << "Processed " << _stats.totalCollections << " collection(s)"
                 << std::endl;
     }
   }
 
   *_result = ret;
-}
-
-bool DumpFeature::writeData(int fd, char const* data, size_t len) {
-#ifdef USE_ENTERPRISE
-  if (_encryption != nullptr) {
-    return _encryption->writeData(fd, data, len);
-  } else {
-    return TRI_WritePointer(fd, data, len);
-  }
-#else
-  return TRI_WritePointer(fd, data, len);
-#endif
-}
-
-void DumpFeature::beginEncryption(int fd) {
-#ifdef USE_ENTERPRISE
-  if (_encryption != nullptr) {
-    bool result = _encryption->beginEncryption(fd);
-
-    if (!result) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << "cannot write prefix, giving up!";
-      FATAL_ERROR_EXIT();
-    }
-  }
-#endif
-}
-
-void DumpFeature::endEncryption(int fd) {
-#ifdef USE_ENTERPRISE
-  if (_encryption != nullptr) {
-    _encryption->endEncryption(fd);
-  }
-#endif
 }

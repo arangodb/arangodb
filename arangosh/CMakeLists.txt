@@ -76,8 +76,9 @@ add_executable(${BIN_ARANGODUMP}
   Dump/arangodump.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
-  V8Client/ArangoClientHelper.cpp
-  V8Client/ClientHelper.cpp
+  Utils/ClientManager.cpp
+  Utils/ClientTaskQueue.cpp
+  Utils/FileHandler.cpp
   ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
 )
 
@@ -129,7 +130,6 @@ add_executable(${BIN_ARANGOEXPORT}
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
   V8Client/ArangoClientHelper.cpp
-  V8Client/ClientHelper.cpp
 )
 
 target_link_libraries(${BIN_ARANGOEXPORT}
@@ -182,7 +182,6 @@ add_executable(${BIN_ARANGOIMPORT}
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
   V8Client/ArangoClientHelper.cpp
-  V8Client/ClientHelper.cpp
 )
 
 target_link_libraries(${BIN_ARANGOIMPORT}
@@ -238,7 +237,6 @@ add_executable(${BIN_ARANGORESTORE}
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
   V8Client/ArangoClientHelper.cpp
-  V8Client/ClientHelper.cpp
   ${ADDITIONAL_BIN_ARANGORESTORE_SOURCES}
 )
 
@@ -294,7 +292,6 @@ add_executable(${BIN_ARANGOSH}
   Shell/V8ShellFeature.cpp
   Shell/arangosh.cpp
   V8Client/ArangoClientHelper.cpp
-  V8Client/ClientHelper.cpp
 )
 
 target_link_libraries(${BIN_ARANGOSH}

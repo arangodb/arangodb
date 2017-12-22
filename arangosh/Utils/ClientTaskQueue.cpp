@@ -20,7 +20,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClientHelper.tpp"
+#include "ClientTaskQueue.tpp"
 #include "Dump/DumpFeature.h"
 
-template class ClientHelper<DumpFeatureJobData>;
+template class ClientTaskQueue<DumpFeatureJobData>;

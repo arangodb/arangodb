@@ -20,22 +20,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClientHelper.hpp"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/Result.h"
-#include "Basics/Thread.h"
+#include "ClientManager.hpp"
 
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
@@ -43,62 +34,35 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 
-namespace arangodb {
-template <typename JobData>
-class ClientWorker : public arangodb::Thread {
- private:
-  ClientWorker(ClientWorker const&) = delete;
-  ClientWorker& operator=(ClientWorker const&) = delete;
+ClientManager::ClientManager() {}
 
- public:
-  explicit ClientWorker(ClientHelper<JobData>&,
-                        std::unique_ptr<SimpleHttpClient>&&);
-  virtual ~ClientWorker();
+ClientManager::~ClientManager() {}
 
-  bool isIdle() const noexcept;
-
- protected:
-  void run() override;
-
- private:
-  ClientHelper<JobData>& _helper;
-  std::unique_ptr<SimpleHttpClient> _client;
-  std::atomic<bool> _idle;
-};
-}  // namespace arangodb
-
-template <typename JobData>
-ClientHelper<JobData>::ClientHelper() {}
-
-template <typename JobData>
-ClientHelper<JobData>::~ClientHelper() {}
-
-// helper to rewrite HTTP location
-template <typename JobData>
-std::string ClientHelper<JobData>::rewriteLocation(
+std::string ClientManager::rewriteLocation(
     void* data, std::string const& location) noexcept {
+  // if it already starts with "/_db/", we are done
   if (location.compare(0, 5, "/_db/") == 0) {
     return location;
   }
 
+  // assume data is `ClientFeature*`; must be enforced externally
   ClientFeature* client = static_cast<ClientFeature*>(data);
   std::string const& dbname = client->databaseName();
 
+  // prefix with `/_db/${dbname}/`
   if (location[0] == '/') {
+    // already have leading "/", leave it off
     return "/_db/" + dbname + location;
   }
   return "/_db/" + dbname + "/" + location;
 }
 
-// extract an error message from a response
-template <typename JobData>
-std::string ClientHelper<JobData>::getHttpErrorMessage(SimpleHttpResult* result,
-                                                       int* err) noexcept {
-  if (err != nullptr) {
-    *err = TRI_ERROR_NO_ERROR;
-  }
+std::string ClientManager::getHttpErrorMessage(SimpleHttpResult* result,
+                                               int& err) noexcept {
+  err = TRI_ERROR_NO_ERROR;
   std::string details;
 
+  // assume vpack body, catch otherwise
   try {
     std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
     VPackSlice const body = parsedBody->slice();
@@ -109,23 +73,20 @@ std::string ClientHelper<JobData>::getHttpErrorMessage(SimpleHttpResult* result,
         basics::VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
 
     if (errorMessage != "" && errorNum > 0) {
-      if (err != nullptr) {
-        *err = errorNum;
-      }
+      err = errorNum;
       details =
           ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
     }
   } catch (...) {
-    // No action, fallthrough for error
+    // no need to recover, fallthrough for default error message
   }
   return "got error from server: HTTP " +
          StringUtils::itoa(result->getHttpReturnCode()) + " (" +
          result->getHttpReturnMessage() + ")" + details;
 }
 
-template <typename JobData>
-std::unique_ptr<httpclient::SimpleHttpClient>
-ClientHelper<JobData>::getConnectedClient(bool force, bool verbose) noexcept {
+std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
+    bool force, bool verbose) noexcept {
   std::unique_ptr<httpclient::SimpleHttpClient> httpClient(nullptr);
 
   ClientFeature* client =
@@ -141,13 +102,15 @@ ClientHelper<JobData>::getConnectedClient(bool force, bool verbose) noexcept {
     FATAL_ERROR_EXIT();
   }
 
+  // set client parameters
   std::string dbName = client->databaseName();
   httpClient->params().setLocationRewriter(static_cast<void*>(client),
                                            &rewriteLocation);
   httpClient->params().setUserNamePassword("/", client->username(),
                                            client->password());
-  std::string const versionString = httpClient->getServerVersion();
 
+  // now connect by retrieving version
+  std::string const versionString = httpClient->getServerVersion();
   if (!httpClient->isConnected()) {
     LOG_TOPIC(ERR, Logger::FIXME)
         << "Could not connect to endpoint '" << client->endpoint()
@@ -167,7 +130,6 @@ ClientHelper<JobData>::getConnectedClient(bool force, bool verbose) noexcept {
   // validate server version
   std::pair<int, int> version =
       rest::Version::parseVersionString(versionString);
-
   if (version.first < 3) {
     // we can connect to 3.x
     LOG_TOPIC(ERR, Logger::FIXME)
@@ -181,12 +143,10 @@ ClientHelper<JobData>::getConnectedClient(bool force, bool verbose) noexcept {
   return httpClient;
 }
 
-// check if server is a coordinator of a cluster
-template <typename JobData>
-bool ClientHelper<JobData>::getArangoIsCluster(int* err) noexcept {
-  auto httpClient = getConnectedClient();
-  std::unique_ptr<SimpleHttpResult> response(httpClient->request(
-      rest::RequestType::GET, "/_admin/server/role", "", 0));
+bool ClientManager::getArangoIsCluster(int& err,
+                                       SimpleHttpClient& client) noexcept {
+  std::unique_ptr<SimpleHttpResult> response(
+      client.request(rest::RequestType::GET, "/_admin/server/role", "", 0));
 
   if (response == nullptr || !response->isComplete()) {
     return false;
@@ -205,23 +165,19 @@ bool ClientHelper<JobData>::getArangoIsCluster(int* err) noexcept {
     }
   } else {
     if (response->wasHttpError()) {
-      httpClient->setErrorMessage(getHttpErrorMessage(response.get(), err),
-                                  false);
+      client.setErrorMessage(getHttpErrorMessage(response.get(), err), false);
     }
 
-    httpClient->disconnect();
+    client.disconnect();
   }
 
   return role == "COORDINATOR";
 }
 
-// check if server is using the specified storage engine
-template <typename JobData>
-bool ClientHelper<JobData>::getArangoIsUsingEngine(
-    int* err, std::string const& name) noexcept {
-  auto httpClient = getConnectedClient();
+bool ClientManager::getArangoIsUsingEngine(int& err, SimpleHttpClient& client,
+                                           std::string const& name) noexcept {
   std::unique_ptr<SimpleHttpResult> response(
-      httpClient->request(rest::RequestType::GET, "/_api/engine", "", 0));
+      client.request(rest::RequestType::GET, "/_api/engine", "", 0));
 
   if (response == nullptr || !response->isComplete()) {
     return false;
@@ -240,115 +196,11 @@ bool ClientHelper<JobData>::getArangoIsUsingEngine(
     }
   } else {
     if (response->wasHttpError()) {
-      httpClient->setErrorMessage(getHttpErrorMessage(response.get(), err),
-                                  false);
+      client.setErrorMessage(getHttpErrorMessage(response.get(), err), false);
     }
 
-    httpClient->disconnect();
+    client.disconnect();
   }
 
   return (engine == name);
-}
-
-template <typename JobData>
-bool ClientHelper<JobData>::spawnWorkers(size_t const& toSpawn) noexcept {
-  size_t spawned = 0;
-  for (; spawned < toSpawn; spawned++) {
-    try {
-      auto client = getConnectedClient();
-      auto worker =
-          std::make_unique<ClientWorker<JobData>>(*this, std::move(client));
-      _workers.emplace_back(std::move(worker));
-    } catch (...) {
-      break;
-    }
-  }
-  return (toSpawn == spawned);
-}
-
-template <typename JobData>
-bool ClientHelper<JobData>::isQueueEmpty() const noexcept {
-  MUTEX_LOCKER(lock, _jobsLock);
-  return _jobs.empty();
-}
-
-template <typename JobData>
-bool ClientHelper<JobData>::allWorkersBusy() const noexcept {
-  for (auto& worker : _workers) {
-    if (worker->isIdle()) {
-      return false;
-    }
-  }
-  return true;
-}
-
-template <typename JobData>
-bool ClientHelper<JobData>::queueJob(std::unique_ptr<JobData>&& job) noexcept {
-  MUTEX_LOCKER(lock, _jobsLock);
-  try {
-    _jobs.emplace(std::move(job));
-    _jobsCondition.signal();
-    return true;
-  } catch (...) {
-    return false;
-  }
-}
-
-template <typename JobData>
-std::unique_ptr<JobData> ClientHelper<JobData>::fetchJob() noexcept {
-  std::unique_ptr<JobData> job(nullptr);
-  MUTEX_LOCKER(lock, _jobsLock);
-
-  if (_jobs.empty()) {
-    return job;
-  }
-
-  job = std::move(_jobs.front());
-  _jobs.pop();
-  return job;
-}
-
-template <typename JobData>
-void ClientHelper<JobData>::waitForWork() noexcept {
-  if (!isQueueEmpty()) {
-    return;
-  }
-
-  CONDITION_LOCKER(lock, _jobsCondition);
-  lock.wait(std::chrono::milliseconds(500));
-}
-
-template <typename JobData>
-ClientWorker<JobData>::ClientWorker(
-    ClientHelper<JobData>& helper,
-    std::unique_ptr<httpclient::SimpleHttpClient>&& client)
-    : Thread("ClientWorker"),
-      _helper(helper),
-      _client(std::move(client)),
-      _idle(true) {}
-
-template <typename JobData>
-ClientWorker<JobData>::~ClientWorker() {}
-
-template <typename JobData>
-bool ClientWorker<JobData>::isIdle() const noexcept {
-  return _idle.load();
-}
-
-template <typename JobData>
-void ClientWorker<JobData>::run() {
-  while (!isStopping()) {
-    std::unique_ptr<JobData> job = _helper.fetchJob();
-
-    if (job) {
-      _idle.store(false);
-
-      Result result = _helper.processJob(*_client, *job);
-      _helper.handleJobResult(std::move(job), result);
-
-      _idle.store(true);
-    }
-
-    _helper.waitForWork();
-  }
 }
