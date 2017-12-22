@@ -595,17 +595,6 @@ bool Index::supportsSortCondition(arangodb::aql::SortCondition const*,
   return false;
 }
 
-/// @brief default iterator factory method. does not create an iterator
-IndexIterator* Index::iteratorForCondition(transaction::Methods*,
-                                           ManagedDocumentResult*,
-                                           arangodb::aql::AstNode const*,
-                                           arangodb::aql::Variable const*,
-                                           bool) {
-  // the super class index cannot create an iterator
-  // the derived index classes have to manage this.
-  return nullptr;
-}
-
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* Index::specializeCondition(
     arangodb::aql::AstNode* node, arangodb::aql::Variable const*) const {

@@ -834,7 +834,7 @@ OperationResult transaction::Methods::anyLocal(
 
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr, false);
+      indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr);
 
   cursor->allDocuments([&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
@@ -1277,7 +1277,7 @@ OperationResult transaction::Methods::documentLocal(
     res = workForOneDocument(value, false);
   } else {
     VPackArrayBuilder guard(&resultBuilder);
-    for (auto const& s : VPackArrayIterator(value)) {
+    for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (res.fail()) {
         createBabiesError(resultBuilder, countErrorCodes, res, options.silent);
@@ -2239,7 +2239,7 @@ OperationResult transaction::Methods::allLocal(
 
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, transaction::Methods::CursorType::ALL, &mmdr, false);
+      indexScan(collectionName, transaction::Methods::CursorType::ALL, &mmdr);
 
   if (cursor->fail()) {
     return OperationResult(cursor->code);
@@ -2686,7 +2686,7 @@ std::pair<bool, bool> transaction::Methods::getIndexForSortCondition(
 OperationCursor* transaction::Methods::indexScanForCondition(
     IndexHandle const& indexId, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, ManagedDocumentResult* mmdr,
-    bool reverse) {
+    IndexIteratorOptions const& opts) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -2700,7 +2700,7 @@ OperationCursor* transaction::Methods::indexScanForCondition(
 
   // Now create the Iterator
   std::unique_ptr<IndexIterator> iterator(
-      idx->iteratorForCondition(this, mmdr, condition, var, reverse));
+      idx->iteratorForCondition(this, mmdr, condition, var, opts));
 
   if (iterator == nullptr) {
     // We could not create an ITERATOR and it did not throw an error itself
@@ -2715,8 +2715,7 @@ OperationCursor* transaction::Methods::indexScanForCondition(
 /// calling this method
 std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
     std::string const& collectionName, CursorType cursorType,
-    ManagedDocumentResult* mmdr,
-    bool reverse) {
+    ManagedDocumentResult* mmdr) {
   // For now we assume indexId is the iid part of the index.
 
   if (_state->isCoordinator()) {
@@ -2743,7 +2742,7 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
       break;
     }
     case CursorType::ALL: {
-      iterator = logical->getAllIterator(this, mmdr, reverse);
+      iterator = logical->getAllIterator(this, mmdr);
       break;
     }
   }

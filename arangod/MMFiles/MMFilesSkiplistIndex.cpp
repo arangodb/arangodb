@@ -289,7 +289,7 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
         tmp->clear();
         unique_set.clear();
         value->toVelocyPackValue(*(tmp.get()));
-        for (auto const& it : VPackArrayIterator(tmp->slice())) {
+        for (VPackSlice it : VPackArrayIterator(tmp->slice())) {
           unique_set.emplace(it);
         }
         TRI_IF_FAILURE("SkiplistIndex::permutationIN") {
@@ -1275,7 +1275,9 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
 IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   std::vector<std::vector<arangodb::aql::AstNode const*>> mapping;
   bool usesIn = false;
   if (node != nullptr) {
@@ -1297,16 +1299,16 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
 
   if (usesIn) {
     auto builder = std::make_unique<MMFilesSkiplistInLookupBuilder>(
-        trx, mapping, reference, reverse);
+        trx, mapping, reference, !opts.ascending);
     return new MMFilesSkiplistIterator(_collection, trx, mmdr, this,
                                        _skiplistIndex, numPaths(), CmpElmElm,
-                                       reverse, builder.release());
+                                       !opts.ascending, builder.release());
   }
   auto builder = std::make_unique<MMFilesSkiplistLookupBuilder>(
-      trx, mapping, reference, reverse);
+      trx, mapping, reference, !opts.ascending);
   return new MMFilesSkiplistIterator(_collection, trx, mmdr, this,
                                      _skiplistIndex, numPaths(), CmpElmElm,
-                                     reverse, builder.release());
+                                     !opts.ascending, builder.release());
 }
 
 bool MMFilesSkiplistIndex::supportsFilterCondition(

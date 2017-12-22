@@ -83,6 +83,18 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
           rhs = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(rhs));
           leaf->changeMember(1, rhs);
         }
+        if (lhs->type == NODE_TYPE_FCALL && !en->options().evaluateFCalls) {
+          // in this case try to resolve constant attribute accesses
+          TRI_ASSERT(lhs->numMembers() == 1);
+          AstNode* fargs = lhs->getMemberUnchecked(0);
+          for (size_t x = 0; x < fargs->numMembers(); x++) {
+            AstNode* arg = fargs->getMemberUnchecked(x);
+            if (arg->type == NODE_TYPE_ATTRIBUTE_ACCESS && arg->isConstant()) {
+              arg = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(rhs));
+              fargs->changeMember(x, arg);
+            }
+          }
+        }
       }
     }
   }
@@ -225,8 +237,12 @@ int IndexBlock::initialize() {
           }
         }
       } else {
-        // Index is responsible for the right side, check if left side has to be
-        // evaluated
+        if (lhs->type == NODE_TYPE_FCALL && !en->options().evaluateFCalls) {
+          continue;
+        }
+        
+        // Index is responsible for the right side, check if left side
+        // has to be evaluated
         if (!lhs->isConstant()) {
           instantiateExpression(i, j, 0, lhs);
           TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
@@ -305,7 +321,7 @@ bool IndexBlock::initIndexes() {
     }
   }
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
-  if (node->_reverse) {
+  if (!node->options().ascending) {
     _currentIndex = _indexes.size() - 1;
   } else {
     _currentIndex = 0;
@@ -317,7 +333,7 @@ bool IndexBlock::initIndexes() {
   }
 
   while (!_cursor->hasMore()) {
-    if (node->_reverse) {
+    if (!node->options().ascending) {
       --_currentIndex;
     } else {
       ++_currentIndex;
@@ -354,7 +370,7 @@ void IndexBlock::startNextCursor() {
   DEBUG_BEGIN_BLOCK();
 
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
-  if (node->_reverse) {
+  if (!node->options().ascending) {
     --_currentIndex;
     _isLastIndex = (_currentIndex == 0);
   } else {
@@ -695,7 +711,7 @@ arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
     IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
     _cursors[currentIndex].reset(_trx->indexScanForCondition(
         _indexes[currentIndex], conditionNode, node->outVariable(), _mmdr.get(),
-        node->_reverse));
+        node->_options));
   } else {
     // cursor for index already exists, reset and reuse it
     _cursors[currentIndex]->reset();

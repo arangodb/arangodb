@@ -120,7 +120,7 @@ class RocksDBGeoIndex final : public RocksDBIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
   bool allowExpansion() const override { return false; }
 

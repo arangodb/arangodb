@@ -104,7 +104,7 @@ struct QueryParams {
   double maxDistance = kEarthRadiusInMeters * M_PI;
   bool maxInclusive = false;
   
-  bool isSorted = false;
+  bool sorted = false;
   /// Default order is from closest to farthest
   bool ascending = true;
 

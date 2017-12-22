@@ -66,7 +66,7 @@ class NearUtils {
                               GeoDocumentCompare>
       GeoDocumentsQueue;
 
-  NearUtils(geo::QueryParams const& params);
+  NearUtils(geo::QueryParams&& params);
 
  public:
   /// @brief get cell covering target coordinate (at max level)

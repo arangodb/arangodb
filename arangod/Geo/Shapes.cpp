@@ -56,10 +56,10 @@ Result ShapeContainer::parseCoordinates(VPackSlice const& json, bool geoJson) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
   }
   
+  _type = Type::S2_POINT;
   S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
                                       lng.getNumericValue<double>());
   _data = new S2PointRegion(ll.ToPoint());
-  _type = Type::S2_POINT;
   return TRI_ERROR_NO_ERROR;
 }
 /*
@@ -114,18 +114,24 @@ Result ShapeContainer::parseGeoJson(VPackSlice const& json) {
   return Result(TRI_ERROR_BAD_PARAMETER, "unknown geo filter syntax");
 }*/
 
+ShapeContainer::ShapeContainer(ShapeContainer&& other)
+  : _data(other._data), _type(other._type) {
+  other._data = nullptr;
+  other._type = ShapeContainer::Type::UNDEFINED;
+}
 ShapeContainer::~ShapeContainer() { delete _data; }
 
 void ShapeContainer::reset(std::unique_ptr<S2Region>&& ptr, Type tt) {
   delete _data;
-  _data = ptr.release();
   _type = tt;
+  _data = ptr.get();
+  ptr.release();
 }
 
 void ShapeContainer::reset(S2Region* ptr, Type tt) {
   delete _data;
-  _data = ptr;
   _type = tt;
+  _data = ptr;
 }
 
 bool ShapeContainer::isAreaEmpty() const {

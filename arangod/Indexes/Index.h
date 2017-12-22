@@ -43,6 +43,7 @@ class IndexIterator;
 class LogicalCollection;
 class ManagedDocumentResult;
 class StringRef;
+struct IndexIteratorOptions;
 
 namespace velocypack {
 class Builder;
@@ -293,9 +294,9 @@ class Index {
 
   virtual IndexIterator* iteratorForCondition(transaction::Methods*,
                                               ManagedDocumentResult*,
-                                              arangodb::aql::AstNode const*,
-                                              arangodb::aql::Variable const*,
-                                              bool);
+                                              aql::AstNode const*,
+                                              aql::Variable const*,
+                                              IndexIteratorOptions const&) = 0;
 
   virtual arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;

@@ -889,7 +889,9 @@ bool MMFilesHashIndex::supportsFilterCondition(
 IndexIterator* MMFilesHashIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_IF_FAILURE("HashIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

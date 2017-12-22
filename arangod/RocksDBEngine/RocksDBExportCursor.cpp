@@ -74,9 +74,8 @@ RocksDBExportCursor::RocksDBExportCursor(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  auto rocksCollection =
-      static_cast<RocksDBCollection*>(_collection->getPhysical());
-  _iter = rocksCollection->getAllIterator(_trx.get(), &_mdr, false);
+  auto rcoll = static_cast<RocksDBCollection*>(_collection->getPhysical());
+  _iter = rcoll->getAllIterator(_trx.get(), &_mdr);
 
   _size = _collection->numberDocuments(_trx.get());
   if (limit > 0 && limit < _size) {

@@ -1735,10 +1735,12 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         auto condition = std::make_unique<Condition>(_plan->getAst());
         condition->normalize(_plan);
 
+        IndexIteratorOptions opts;
+        opts.ascending = sortCondition.isAscending();
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
             _plan, _plan->nextId(), enumerateCollectionNode->vocbase(),
             enumerateCollectionNode->collection(), outVariable, usedIndexes,
-            condition.get(), sortCondition.isDescending()));
+            condition.get(), opts));
 
         condition.release();
 
@@ -1830,7 +1832,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
     if (isOnlyAttributeAccess && isSorted && !isSparse &&
         sortCondition.isUnidirectional() &&
-        sortCondition.isDescending() == indexNode->reverse()) {
+        sortCondition.isAscending() == indexNode->options().ascending) {
       // we have found a sort condition, which is unidirectional and in the same
       // order as the IndexNode...
       // now check if the sort attributes match the ones of the index
@@ -1868,7 +1870,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
               (isSorted || fields.size() >= sortCondition.numAttributes())) {
             // no need to sort
             _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
-            indexNode->reverse(sortCondition.isDescending());
+            indexNode->setAscending(sortCondition.isAscending());
             _modified = true;
           } else if (numCovered > 0 && sortCondition.isUnidirectional()) {
             // remove the first few attributes if they are constant
@@ -2591,7 +2593,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
       auto outVars = idxNode->getVariablesSetHere();
       TRI_ASSERT(outVars.size() == 1);
       Variable const* sortVariable = outVars[0];
-      bool isSortReverse = idxNode->reverse();
+      bool isSortAscending = idxNode->options().ascending;
       auto allIndexes = idxNode->getIndexes();
       TRI_ASSERT(!allIndexes.empty());
 
@@ -2599,7 +2601,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
       auto first = allIndexes[0].getIndex();
       if (first->isSorted()) {
         for (auto const& path : first->fieldNames()) {
-          elements.emplace_back(sortVariable, !isSortReverse, path);
+          elements.emplace_back(sortVariable, isSortAscending, path);
         }
         for (auto const& it : allIndexes) {
           if (first != it.getIndex()) {
@@ -4557,11 +4559,13 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   condition->andCombine(cond);
   condition->normalize(plan);
   
+  IndexIteratorOptions opts;
+  opts.sorted = false; // doesn't matter here
   auto inode = new IndexNode(plan, plan->nextId(), vocbase,
                              coll, elnode->outVariable(),
                              std::vector<transaction::Methods::IndexHandle>{
                                transaction::Methods::IndexHandle{index}},
-                             condition.get(), false);
+                             condition.get(), opts);
   plan->registerNode(inode);
   condition.release();
   plan->replaceNode(elnode, inode);
@@ -4636,7 +4640,7 @@ struct GeoIndexInfo {
   bool maxInclusive = false;
 
   // ============ Near Info ============
-  bool isSorted = false;
+  bool sorted = false;
   /// Default order is from closest to farthest
   bool ascending = true;
 
@@ -4799,7 +4803,8 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
   return aql::CompareAstNodes(lhs, rhs, false) == 0;
 }
 
-static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode, GeoIndexInfo& info) {
+static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
+                              bool legacy, GeoIndexInfo& info) {
   // get the ast node of the expression
   if (funcNode->numMembers() != 1) {
     return false;
@@ -4883,8 +4888,8 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
   }
   
   if (info.index && info.distanceCenter == nullptr) {
-    info.isSorted = true;
-    info.ascending = true;
+    info.sorted = true; // legacy functions are alwasy sorted
+    info.ascending = true; // always ascending
     info.distanceCenterLat = latArg;
     info.distanceCenterLng = lngArg;
     if (rangeArg != nullptr) {
@@ -4967,14 +4972,16 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
   // checks @first `smaller` @second
   auto eval = [&](AstNode const* first, AstNode const* second, bool lessequal) -> bool{
     if (first->type == NODE_TYPE_FCALL && isValueOrReference(second) &&
-        info.maxDistance == nullptr && checkDistanceFunc(plan, first, info)) {
+        info.maxDistance == nullptr &&
+        checkDistanceFunc(plan, first, /*legacy*/true, info)) {
       TRI_ASSERT(info.index);
       info.maxDistance = second;
       info.maxInclusive = lessequal;
       info.nodesToRemove.insert(node);
       return true;
     } else if (second->type == NODE_TYPE_FCALL && isValueOrReference(first) &&
-               info.minDistance == nullptr && checkDistanceFunc(plan, second, info)) {
+               info.minDistance == nullptr &&
+               checkDistanceFunc(plan, second, /*legacy*/true, info)) {
       if (info.index->type() == Index::TRI_IDX_TYPE_S2_INDEX) {
         info.minDistance = second;
         info.minInclusive = lessequal;
@@ -5041,8 +5048,9 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
       return;
     }
     
-    if (!info.isSorted && checkDistanceFunc(plan, expr->node(), info)) {
-      info.isSorted = true;// do not parse another SORT
+    bool legacy = elements[0].ascending; // DESC is only supported on s2index
+    if (!info.sorted && checkDistanceFunc(plan, expr->node(), legacy, info)) {
+      info.sorted = true;// do not parse another SORT
       info.ascending = elements[0].ascending;
       info.exesToModify.emplace(en, expr);
       info.nodesToRemove.emplace(expr->node());
@@ -5100,13 +5108,13 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
   auto cond = std::make_unique<Condition>(ast);
   bool hasCenter = info.distanceCenterLat || info.distanceCenter;
   bool hasDistLimit = info.maxDistance || info.minDistance;
-  TRI_ASSERT(!hasCenter || hasDistLimit || info.isSorted);
-  if (hasCenter && (hasDistLimit || info.isSorted)) {
+  TRI_ASSERT(!hasCenter || hasDistLimit || info.sorted);
+  if (hasCenter && (hasDistLimit || info.sorted)) {
     // create GEO_DISTANCE(...) [<|<=|>=|>] Var
     AstNode* args = ast->createNodeArray(2);
     if (info.distanceCenterLat && info.distanceCenterLng) { // legacy
       TRI_ASSERT(!info.distanceCenter);
-      // info.isSorted && info.ascending &&
+      // info.sorted && info.ascending &&
       AstNode* array = ast->createNodeArray(2);
       array->addMember(info.distanceCenterLng); // GeoJSON ordering
       array->addMember(info.distanceCenterLat);
@@ -5118,6 +5126,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
     }
     
     if (info.locationVar) {
+      TRI_ASSERT(info.locationVar);
       args->addMember(info.locationVar);
     } else {
       TRI_ASSERT(info.latitudeVar && info.longitudeVar);
@@ -5130,7 +5139,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
 
     // maxDistance is only null if NEAR or WITHIN
     TRI_ASSERT(info.maxDistance != nullptr ||
-               info.isSorted && info.ascending);
+               info.sorted && info.ascending);
 
     if (info.minDistance != nullptr) {
       AstNodeType t = info.minInclusive ? NODE_TYPE_OPERATOR_BINARY_GE : NODE_TYPE_OPERATOR_BINARY_ARRAY_GT;
@@ -5140,7 +5149,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
       AstNodeType t = info.maxInclusive ? NODE_TYPE_OPERATOR_BINARY_LE : NODE_TYPE_OPERATOR_BINARY_LT;
       cond->andCombine(ast->createNodeBinaryOperator(t, func, info.maxDistance));
     }
-    if (info.minDistance == nullptr && info.maxDistance == nullptr && info.isSorted) {
+    if (info.minDistance == nullptr && info.maxDistance == nullptr && info.sorted) {
       // hack to pass on the sort-to-point info
       AstNodeType t = NODE_TYPE_OPERATOR_BINARY_LT;
       std::string const& u = StaticStrings::Unlimited;
@@ -5174,13 +5183,17 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   TRI_ASSERT(info.collection != nullptr);
   TRI_ASSERT(info.index);
 
+  IndexIteratorOptions opts;
+  opts.sorted = info.sorted;
+  opts.ascending = info.ascending;
+  opts.evaluateFCalls = false; // workaround to avoid evaluating "doc.geo"
   std::unique_ptr<Condition> condition(buildGeoCondition(plan, info));
   auto inode = new IndexNode(
       plan, plan->nextId(), info.collection->vocbase,
       info.collection, info.collectionNodeOutVar,
       std::vector<transaction::Methods::IndexHandle>{
           transaction::Methods::IndexHandle{info.index}},
-      condition.get(), false);
+      condition.get(), opts);
   plan->registerNode(inode);
   plan->replaceNode(info.collectionNodeToReplace, inode);
   condition.release();

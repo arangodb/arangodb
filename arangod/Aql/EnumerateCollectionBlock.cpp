@@ -49,7 +49,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
           _trx->indexScan(_collection->getName(),
                           (ep->_random ? transaction::Methods::CursorType::ANY
                                        : transaction::Methods::CursorType::ALL),
-                          _mmdr.get(), false)) {
+                          _mmdr.get())) {
   TRI_ASSERT(_cursor->ok());
 }
 

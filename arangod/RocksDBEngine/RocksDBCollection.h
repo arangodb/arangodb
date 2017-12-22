@@ -107,13 +107,13 @@ class RocksDBCollection final : public PhysicalCollection {
   /// @brief Drop an index with the given iid.
   bool dropIndex(TRI_idx_iid_t iid) override;
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mdr,
-                                                bool reverse) const override;
+                                                ManagedDocumentResult* mdr) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(
       transaction::Methods* trx, ManagedDocumentResult* mdr) const override;
 
   std::unique_ptr<IndexIterator> getSortedAllIterator(
-      transaction::Methods* trx, ManagedDocumentResult* mdr) const;
+                                                      transaction::Methods* trx, ManagedDocumentResult* mdr) const;
+
 
   void invokeOnAllElements(
       transaction::Methods* trx,

@@ -77,14 +77,15 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
     arangodb::ManagedDocumentResult* mmdr) {
   _searchBuilder.setVertexId(vertexId);
   std::unique_ptr<arangodb::OperationCursor> res;
+  IndexIteratorOptions opts;
   if (_dir == TRI_EDGE_OUT) {
     res.reset(_trx->indexScanForCondition(
         _forwardIndexId, _searchBuilder.getOutboundCondition(),
-        _searchBuilder.getVariable(), mmdr, false));
+        _searchBuilder.getVariable(), mmdr, opts));
   } else {
     res.reset(_trx->indexScanForCondition(
         _forwardIndexId, _searchBuilder.getInboundCondition(),
-        _searchBuilder.getVariable(), mmdr, false));
+        _searchBuilder.getVariable(), mmdr, opts));
   }
   return res;
 }
@@ -114,14 +115,15 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
     arangodb::ManagedDocumentResult* mmdr) {
   _searchBuilder.setVertexId(vertexId);
   std::unique_ptr<arangodb::OperationCursor> res;
+  IndexIteratorOptions opts;
   if (_dir == TRI_EDGE_OUT) {
     res.reset(_trx->indexScanForCondition(
         _backwardIndexId, _searchBuilder.getInboundCondition(),
-        _searchBuilder.getVariable(), mmdr, false));
+        _searchBuilder.getVariable(), mmdr, opts));
   } else {
     res.reset(_trx->indexScanForCondition(
         _backwardIndexId, _searchBuilder.getOutboundCondition(),
-        _searchBuilder.getVariable(), mmdr, false));
+        _searchBuilder.getVariable(), mmdr, opts));
   }
   return res;
 }

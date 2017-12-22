@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/types.h"
 #include "Aql/Variable.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 #include "Transaction/Methods.h"
@@ -53,7 +54,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
-            Condition* condition, bool reverse);
+            Condition* condition, IndexIteratorOptions const&);
 
   IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -72,10 +73,10 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   Condition* condition() const { return _condition; }
 
   /// @brief whether or not all indexes are accessed in reverse order
-  bool reverse() const { return _reverse; }
+  IndexIteratorOptions options() const { return _options; }
  
   /// @brief set reverse mode  
-  void reverse(bool value) { _reverse = value; }
+  void setAscending(bool value) { _options.ascending = value; }
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
@@ -116,8 +117,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   /// @brief the index(es) condition
   Condition* _condition;
 
-  /// @brief the index sort order - this is the same order for all indexes
-  bool _reverse;
+  IndexIteratorOptions _options;
 };
 
 }  // namespace arangodb::aql

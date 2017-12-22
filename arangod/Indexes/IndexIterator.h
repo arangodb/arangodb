@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -165,6 +165,17 @@ class MultiIndexIterator final : public IndexIterator {
    std::vector<IndexIterator*> _iterators;
    size_t _currentIdx;
    IndexIterator* _current;
+};
+
+/// Options for creating an index iterator
+struct IndexIteratorOptions {
+  /// @brief whether the index must sort it's results
+  bool sorted = true;
+  /// @brief the index sort order - this is the same order for all indexes
+  bool ascending = true;
+  /// @brief Whether FCalls will be evaluated entirely or just it's arguments
+  /// Used when creating the condition required to build an iterator
+  bool evaluateFCalls = true;
 };
 }
 #endif

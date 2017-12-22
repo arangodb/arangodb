@@ -497,7 +497,7 @@ void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     }
   };
-  for (auto const& member : VPackArrayIterator(current)) {
+  for (VPackSlice member : VPackArrayIterator(current)) {
     VPackSlice current2(member);
     bool doneNull = false;
     for (size_t i = _expanding[level] + 1; i < n; i++) {
@@ -1191,7 +1191,10 @@ bool RocksDBVPackIndex::supportsSortCondition(
 IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
+  
   VPackBuilder searchValues;
   searchValues.openArray();
   bool needNormalize = false;
@@ -1377,8 +1380,8 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     VPackSlice expandedSlice = expandedSearchValues.slice();
     std::vector<IndexIterator*> iterators;
     try {
-      for (auto const& val : VPackArrayIterator(expandedSlice)) {
-        auto iterator = lookup(trx, mmdr, val, reverse);
+      for (VPackSlice val : VPackArrayIterator(expandedSlice)) {
+        auto iterator = lookup(trx, mmdr, val, !opts.ascending);
         try {
           iterators.push_back(iterator);
         } catch (...) {
@@ -1387,7 +1390,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
           throw;
         }
       }
-      if (reverse) {
+      if (!opts.ascending) {
         std::reverse(iterators.begin(), iterators.end());
       }
     } catch (...) {
@@ -1402,7 +1405,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
   VPackSlice searchSlice = searchValues.slice();
   TRI_ASSERT(searchSlice.length() == 1);
   searchSlice = searchSlice.at(0);
-  return lookup(trx, mmdr, searchSlice, reverse);
+  return lookup(trx, mmdr, searchSlice, !opts.ascending);
 }
 
 /// @brief specializes the condition for use with the index

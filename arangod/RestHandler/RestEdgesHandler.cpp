@@ -81,8 +81,9 @@ void RestEdgesHandler::readCursor(
   }
 
   ManagedDocumentResult mmdr;
+  IndexIteratorOptions opts;
   std::unique_ptr<OperationCursor> cursor(trx.indexScanForCondition(
-      indexId, condition, var, &mmdr, false));
+      indexId, condition, var, &mmdr, opts));
 
   if (cursor->fail()) {
     THROW_ARANGO_EXCEPTION(cursor->code);

@@ -127,9 +127,9 @@ bool ConditionFinder::before(ExecutionNode* en) {
           condition->findIndexes(node, usedIndexes, sortCondition.get());
 
       if (canUseIndex.first /*filtering*/ || canUseIndex.second /*sorting*/) {
-        bool reverse = false;
+        bool descending = false;
         if (canUseIndex.second && sortCondition->isUnidirectional()) {
-          reverse = sortCondition->isDescending();
+          descending = sortCondition->isDescending();
         }
 
         if (!canUseIndex.first) {
@@ -142,11 +142,13 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
         TRI_ASSERT(!usedIndexes.empty());
 
-        // We either can find indexes for everything or findIndexes will clear
-        // out usedIndexes
+        // We either can find indexes for everything or findIndexes
+        // will clear out usedIndexes
+        IndexIteratorOptions opts;
+        opts.ascending = !descending;
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
             _plan, _plan->nextId(), node->vocbase(), node->collection(),
-            node->outVariable(), usedIndexes, condition.get(), reverse));
+            node->outVariable(), usedIndexes, condition.get(), opts));
         condition.release();
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

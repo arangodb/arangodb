@@ -457,10 +457,12 @@ Result RocksDBFulltextIndex::applyQueryToken(
 IndexIterator* RocksDBFulltextIndex::iteratorForCondition(transaction::Methods* trx,
                                                           ManagedDocumentResult* mdr,
                                                           aql::AstNode const* condNode,
-                                                          aql::Variable const* var, bool reverse) {
+                                                          aql::Variable const* var,
+                                                          IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(condNode != nullptr);
-  
   TRI_ASSERT(condNode->numMembers() == 1);  // should only be an FCALL
+  
   aql::AstNode const* fcall = condNode->getMember(0);
   TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);
   TRI_ASSERT(fcall->numMembers() == 1);

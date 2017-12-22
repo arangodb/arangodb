@@ -27,6 +27,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
@@ -39,14 +40,14 @@ using namespace arangodb::aql;
 IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
-            Condition* condition, bool reverse)
+            Condition* condition, IndexIteratorOptions const& opts)
       : ExecutionNode(plan, id),
         DocumentProducingNode(outVariable),
         _vocbase(vocbase),
         _collection(collection),
         _indexes(indexes),
         _condition(condition),
-        _reverse(reverse) {
+        _options(opts) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_condition != nullptr);
@@ -61,11 +62,15 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
           base.get("collection").copyString())),
       _indexes(),
       _condition(nullptr),
-      _reverse(base.get("reverse").getBoolean()) {
+      _options() {
 
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
-
+        
+  _options.sorted = basics::VelocyPackHelper::readBooleanValue(base, "sorted", true);
+  _options.ascending = basics::VelocyPackHelper::readBooleanValue(base, "ascending", true);
+  _options.evaluateFCalls = basics::VelocyPackHelper::readBooleanValue(base, "evalFCalls", true);
+        
   if (_collection == nullptr) {
     std::string msg("collection '");
     msg.append(base.get("collection").copyString());
@@ -82,7 +87,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   _indexes.reserve(indexes.length());
 
   auto trx = plan->getAst()->query()->trx();
-  for (auto const& it : VPackArrayIterator(indexes)) {
+  for (VPackSlice it : VPackArrayIterator(indexes)) {
     std::string iid  = it.get("id").copyString();
     _indexes.emplace_back(trx->getIndexByIdentifier(_collection->getName(), iid));
   }
@@ -119,7 +124,9 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   }
   nodes.add(VPackValue("condition"));
   _condition->toVelocyPack(nodes, verbose);
-  nodes.add("reverse", VPackValue(_reverse));
+  nodes.add("sorted", VPackValue(_options.sorted));
+  nodes.add("ascending", VPackValue(_options.ascending));
+  nodes.add("evalFCalls", VPackValue(_options.evaluateFCalls));
 
   // And close it:
   nodes.close();
@@ -134,7 +141,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   }
 
   auto c = new IndexNode(plan, _id, _vocbase, _collection, outVariable,
-                         _indexes, _condition->clone(), _reverse);
+                         _indexes, _condition->clone(), _options);
 
   cloneHelper(c, withDependencies, withProperties);
 

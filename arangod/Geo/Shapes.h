@@ -41,13 +41,19 @@ namespace geo {
 /// coordinate point on the sphere in DEGREES
 struct Coordinate {
   Coordinate(double lat, double lon) : latitude(lat), longitude(lon) {}
+  Coordinate(Coordinate&& c) : latitude(c.latitude), longitude(c.longitude) {}
   
   static Coordinate fromLatLng(S2LatLng const&);
-
   static inline Coordinate Invalid() { return Coordinate(-1, -1); }
   
 public:
-
+  
+  Coordinate& operator=(Coordinate const& other) {
+    latitude = other.latitude;
+    longitude = other.longitude;
+    return *this;
+  }
+  
   bool operator==(Coordinate const& other) const {
     return latitude == other.latitude && longitude == other.longitude;
   }
@@ -82,6 +88,7 @@ class ShapeContainer final {
   };
 
   ShapeContainer() : _data(nullptr), _type(Type::UNDEFINED) {}
+  ShapeContainer(ShapeContainer&& other);
   /*ShapeContainer(std::unique_ptr<S2Region>&& ptr, Type tt)
       : _data(ptr.release()), _type(tt) {}
   ShapeContainer(S2Region* ptr, Type tt) : _data(ptr), _type(tt) {}*/

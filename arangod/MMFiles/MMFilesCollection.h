@@ -292,8 +292,7 @@ class MMFilesCollection final : public PhysicalCollection {
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const override;
 
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mdr,
-                                                bool reverse) const override;
+                                                ManagedDocumentResult* mdr) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(
       transaction::Methods* trx, ManagedDocumentResult* mdr) const override;
   void invokeOnAllElements(

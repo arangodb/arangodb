@@ -440,8 +440,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     LogicalCollection* coll = trx.documentCollection();
     auto ph = static_cast<RocksDBCollection*>(coll->getPhysical());
-    std::unique_ptr<IndexIterator> iterator =
-        ph->getSortedAllIterator(&trx, &mmdr);
+    std::unique_ptr<IndexIterator> iterator = ph->getSortedAllIterator(&trx, &mmdr);
     iterator->next(
         [&](LocalDocumentId const& token) {
           if (coll->readDocument(&trx, token, mmdr) == false) {

@@ -194,7 +194,7 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;

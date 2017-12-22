@@ -658,9 +658,9 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) const {
+    transaction::Methods* trx, ManagedDocumentResult* mdr) const {
   return std::unique_ptr<IndexIterator>(new RocksDBAllIndexIterator(
-      _logicalCollection, trx, mdr, primaryIndex(), reverse));
+                                  _logicalCollection, trx, mdr, primaryIndex()));
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
@@ -669,18 +669,17 @@ std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(
       _logicalCollection, trx, mdr, primaryIndex()));
 }
 
-std::unique_ptr<IndexIterator> RocksDBCollection::getSortedAllIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr) const {
+std::unique_ptr<IndexIterator> RocksDBCollection::getSortedAllIterator(transaction::Methods* trx,
+                                                                       ManagedDocumentResult* mdr) const {
   return std::unique_ptr<RocksDBSortedAllIterator>(new RocksDBSortedAllIterator(
-      _logicalCollection, trx, mdr, primaryIndex()));
+                                    _logicalCollection, trx, mdr, primaryIndex()));
 }
 
 void RocksDBCollection::invokeOnAllElements(
     transaction::Methods* trx,
     std::function<bool(LocalDocumentId const&)> callback) {
   ManagedDocumentResult mmdr;
-  std::unique_ptr<IndexIterator> cursor(
-      this->getAllIterator(trx, &mmdr, false));
+  std::unique_ptr<IndexIterator> cursor(getAllIterator(trx, &mmdr));
   bool cnt = true;
   auto cb = [&](LocalDocumentId token) {
     if (cnt) {
@@ -1299,7 +1298,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
   RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
   auto state = RocksDBTransactionState::toState(trx);
   std::unique_ptr<IndexIterator> it(new RocksDBAllIndexIterator(
-      _logicalCollection, trx, &mmdr, primaryIndex(), false));
+      _logicalCollection, trx, &mmdr, primaryIndex()));
 
   // fillindex can be non transactional
   rocksdb::DB* db = globalRocksDB()->GetBaseDB();

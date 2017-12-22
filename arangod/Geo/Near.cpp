@@ -38,8 +38,8 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
-NearUtils::NearUtils(QueryParams const& qp)
-    : _params(qp),
+NearUtils::NearUtils(QueryParams&& qp)
+  : _params(std::move(qp)),
       _centroid(
           S2LatLng::FromDegrees(qp.centroid.latitude, qp.centroid.longitude)
               .ToPoint()),

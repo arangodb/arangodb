@@ -479,7 +479,9 @@ bool MMFilesPrimaryIndex::supportsFilterCondition(
 IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   TRI_ASSERT(node->numMembers() == 1);

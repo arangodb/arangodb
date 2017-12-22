@@ -46,7 +46,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   RocksDBAllIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
                           ManagedDocumentResult* mmdr,
-                          RocksDBPrimaryIndex const* index, bool reverse);
+                          RocksDBPrimaryIndex const* index);
 
   ~RocksDBAllIndexIterator() {}
 
@@ -61,7 +61,6 @@ class RocksDBAllIndexIterator final : public IndexIterator {
  private:
   bool outOfRange() const;
 
-  bool const _reverse;
   RocksDBKeyBounds const _bounds;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   rocksdb::Comparator const* _cmp;
