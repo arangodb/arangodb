@@ -620,7 +620,7 @@ void Supervision::run() {
 
           // Do nothing unless leader for over 10 seconds
           auto secondsSinceLeader = std::chrono::duration<double>(
-            std::chrono::system_clock::now() - _agent->leaderSince()).count();
+            std::chrono::steady_clock::now() - _agent->leaderSince()).count();
           
           if (secondsSinceLeader > 10.0) {
             doChecks();
