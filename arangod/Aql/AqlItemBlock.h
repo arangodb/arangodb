@@ -109,7 +109,7 @@ class AqlItemBlock {
     if (value.requiresDestruction()) {
       if (++_valueCount[value] == 1) {
         mem = value.memoryUsage();
-        increaseMemoryUsage(value.memoryUsage());
+        increaseMemoryUsage(mem);
       }
     }
 
@@ -120,7 +120,7 @@ class AqlItemBlock {
       throw;
     }
   }
-  
+
   /// @brief emplaceValue, set the current value of a register, constructing
   /// it in place
   template <typename... Args>
@@ -152,7 +152,6 @@ class AqlItemBlock {
       // invoke dtor
       value->~AqlValue();
 
-      decreaseMemoryUsage(mem);
       _data[index * _nrRegs + varNr].destroy();
       throw;
     }
