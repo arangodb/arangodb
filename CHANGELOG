@@ -1,6 +1,8 @@
 v3.3.1 (XXXX-XX-XX)
 -------------------
 
+* UI: displayed wrong wfs property for a collection when using rocksdb as storage engine
+
 * added `--ignore-missing` option to arangoimp
   this option allows importing lines with less fields than specified in the CSV
   header line
