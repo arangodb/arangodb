@@ -364,7 +364,7 @@ class Agent : public arangodb::Thread,
   /// @brief The earliest timepoint at which we will send new sendAppendEntries
   /// to a particular follower. This is a measure to avoid bombarding a
   /// follower, that has trouble keeping up.
-  std::unordered_map<std::string, TimePoint> _earliestPackage;
+  std::unordered_map<std::string, SteadyTimePoint> _earliestPackage;
 
   // @brief Lock for the above time data about other agents. This
   // protects _confirmed, _lastAcked and _earliestPackage:

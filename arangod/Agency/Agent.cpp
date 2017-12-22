@@ -275,7 +275,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
       _confirmed[peerId] = index;
       if (toLog > 0) { // We want to reset the wait time only if a package callback
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got call back of " << toLog << " logs, resetting _earliestPackage to now for id " << peerId;
-        _earliestPackage[peerId] = system_clock::now();
+        _earliestPackage[peerId] = steady_clock::now();
       }
       wakeupMainLoop();   // only necessary for non-empty callbacks
     }
@@ -297,7 +297,7 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog) {
     MUTEX_LOCKER(guard, _tiLock);
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Resetting _earliestPackage to now for id " << slaveId;
-    _earliestPackage[slaveId] = system_clock::now();
+    _earliestPackage[slaveId] = steady_clock::now();
   }
 }
 
@@ -390,7 +390,8 @@ void Agent::sendAppendEntriesRPC() {
 
       index_t lastConfirmed;
       auto startTime = system_clock::now();
-      time_point<system_clock> earliestPackage, lastAcked;
+      SteadyTimePoint earliestPackage
+      TimePoint lastAcked;
       
       {
         t = this->term();
@@ -401,7 +402,7 @@ void Agent::sendAppendEntriesRPC() {
       }
 
       if (
-        ((system_clock::now() - earliestPackage).count() < 0)) {
+        ((steady_clock::now() - earliestPackage).count() < 0)) {
         continue;
       }
 
@@ -536,7 +537,7 @@ void Agent::sendAppendEntriesRPC() {
       
       // Postpone sending the next message for 30 seconds or until an
       // error or successful result occurs.
-      earliestPackage = system_clock::now() + std::chrono::seconds(30);
+      earliestPackage = steady_clock::now() + std::chrono::seconds(30);
       {
         MUTEX_LOCKER(tiLocker, _tiLock);
         _earliestPackage[followerId] = earliestPackage;
@@ -569,7 +570,7 @@ void Agent::sendAppendEntriesRPC() {
         << " to follower " << followerId
         << ". Next real log contact to " << followerId<< " in: " 
         <<  std::chrono::duration<double, std::milli>(
-          earliestPackage-system_clock::now()).count() << "ms";
+          earliestPackage - steady_clock::now()).count() << "ms";
     }
   }
 }
