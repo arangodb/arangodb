@@ -1503,14 +1503,9 @@ log_t Agent::lastLog() const { return _state.lastLog(); }
 /// Get spearhead
 Store const& Agent::spearhead() const { return _spearhead; }
 
-/// Get readdb
-/// intentionally no lock is acquired here, so we can return
-/// a const reference
-/// the caller has to make sure the lock is actually held
-/// TODO: this seems highly unreliable.  "const" does protect
-///   against another thread changing _readDB
+/// Get _readDB reference with intentionally no lock acquired here.
+///   Safe ONLY IF via executeLock() (see example Supervisor.cpp)
 Store const& Agent::readDB() const {
-  // _outputLock.assertLockedByCurrentThread(); ReadWriteLock does not have assert test. Pray.
   return _readDB;
 }
 
@@ -1524,6 +1519,8 @@ arangodb::consensus::index_t Agent::readDB(Node& node) const {
 void Agent::executeLocked(std::function<void()> const& cb) {
   _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(ioLocker, _ioLock);
+  WRITE_LOCKER(oLocker, _outputLock);
+  CONDITION_LOCKER(guard, _waitForCV);
   cb();
 }
 
