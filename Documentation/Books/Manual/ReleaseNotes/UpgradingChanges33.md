@@ -45,11 +45,11 @@ Client tools
 ------------
 
 * The option `--recycle-ids` has been removed from the arangorestore command. 
-Using this option could have led to problems on the restore, with potential 
-id conflicts between the originating server (the source dump server) and the 
-target server (the restore server). 
+  Using this option could have led to problems on the restore, with potential 
+  id conflicts between the originating server (the source dump server) and the 
+  target server (the restore server). 
 
-* The option `--compat` parameter has been removed from the arangodump command
+* The option `--compat` has been removed from the arangodump command
   and the `/_api/replication/dump` REST API endpoint.
   In order to create a dump from an ArangoDB 2.8 instance, please use an older
   version of the client tools. Older ArangoDB versions are no longer be supported by 
