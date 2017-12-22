@@ -333,12 +333,10 @@ int syncChunkRocksDB(
 }
 
 int handleSyncKeysRocksDB(InitialSyncer& syncer,
-                          arangodb::LogicalCollection* col,
-                          std::string const& keysId, std::string const& cid,
-                          std::string const& collectionName,
-                          TRI_voc_tick_t maxTick, std::string& errorMsg) {
+                          arangodb::LogicalCollection* coll,
+                          std::string const& keysId, std::string& errorMsg) {
   std::string progress =
-      "collecting local keys for collection '" + collectionName + "'";
+      "collecting local keys for collection '" + coll->name() + "'";
   syncer.setProgress(progress);
 
   if (syncer.checkAborted()) {
@@ -353,7 +351,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
 
   std::string url =
       baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize);
-  progress = "fetching remote keys chunks for collection '" + collectionName +
+  progress = "fetching remote keys chunks for collection '" + coll->name() +
              "' from " + url;
   syncer.setProgress(progress);
   auto const headers = syncer.createHeaders();
@@ -415,7 +413,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
   if (numChunks > 0) {
     // first chunk
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer._vocbase), col->cid(),
+        transaction::StandaloneContext::Create(syncer._vocbase), coll->cid(),
         AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
@@ -455,9 +453,9 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
           VPackSlice doc(mmdr.vpack());
           VPackSlice key = doc.get(StaticStrings::KeyString);
           if (key.compareString(lowKey.data(), lowKey.length()) < 0) {
-            trx.remove(collectionName, doc, options);
+            trx.remove(coll->name(), doc, options);
           } else if (key.compareString(highKey.data(), highKey.length()) > 0) {
-            trx.remove(collectionName, doc, options);
+            trx.remove(coll->name(), doc, options);
           }
         },
         UINT64_MAX);
@@ -471,7 +469,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
     }
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer._vocbase), col->cid(),
+        transaction::StandaloneContext::Create(syncer._vocbase), coll->cid(),
         AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
@@ -502,7 +500,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
       syncer.sendExtendBarrier();
 
       progress = "processing keys chunk " + std::to_string(currentChunkId) +
-                 " for collection '" + collectionName + "'";
+                 " for collection '" + coll->name() + "'";
       syncer.setProgress(progress);
 
       // read remote chunk
@@ -546,7 +544,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
 
       if (cmp1 < 0) {
         // smaller values than lowKey mean they don't exist remotely
-        trx.remove(collectionName, key, options);
+        trx.remove(coll->name(), key, options);
         return;
       } else if (cmp1 >= 0 && cmp2 <= 0) {
         // we only need to hash we are in the range
@@ -596,12 +594,12 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
       }
     };
 
-    auto ph = static_cast<RocksDBCollection*>(col->getPhysical());
+    auto ph = static_cast<RocksDBCollection*>(coll->getPhysical());
     std::unique_ptr<IndexIterator> iterator =
         ph->getSortedAllIterator(&trx, &mmdr);
     iterator->next(
         [&](DocumentIdentifierToken const& token) {
-          if (col->readDocument(&trx, token, mmdr) == false) {
+          if (coll->readDocument(&trx, token, mmdr) == false) {
             return;
           }
           VPackSlice doc(mmdr.vpack());

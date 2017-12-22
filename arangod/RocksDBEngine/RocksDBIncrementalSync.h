@@ -39,9 +39,7 @@ int syncChunkRocksDB(
 
 int handleSyncKeysRocksDB(InitialSyncer& syncer,
                           arangodb::LogicalCollection* col,
-                          std::string const& keysId, std::string const& cid,
-                          std::string const& collectionName,
-                          TRI_voc_tick_t maxTick, std::string& errorMsg);
+                          std::string const& keysId, std::string& errorMsg);
 }
 
 #endif

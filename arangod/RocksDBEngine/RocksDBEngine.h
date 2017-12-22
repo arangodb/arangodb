@@ -130,8 +130,7 @@ class RocksDBEngine final : public StorageEngine {
                                           bool doSync) override;
   int handleSyncKeys(arangodb::InitialSyncer& syncer,
                      arangodb::LogicalCollection* col,
-                     std::string const& keysId, std::string const& cid,
-                     std::string const& collectionName, TRI_voc_tick_t maxTick,
+                     std::string const& keysId,
                      std::string& errorMsg) override;
   Result createLoggerState(TRI_vocbase_t* vocbase,
                            VPackBuilder& builder) override;
