@@ -390,7 +390,7 @@ void Agent::sendAppendEntriesRPC() {
 
       index_t lastConfirmed;
       auto startTime = system_clock::now();
-      SteadyTimePoint earliestPackage
+      SteadyTimePoint earliestPackage;
       TimePoint lastAcked;
       
       {
