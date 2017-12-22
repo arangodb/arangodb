@@ -40,20 +40,23 @@ class token_stream; // forward declaration
 NS_END // iresearch
 
 NS_BEGIN(arangodb)
-
 NS_BEGIN(aql)
 
 struct AstNode; // forward declaration
 class SortCondition; // forward declaration
 
 NS_END // aql
+NS_END // arangodb
 
+NS_BEGIN(arangodb)
 NS_BEGIN(transaction)
 
 class Methods; // forward declaration
 
 NS_END // transaction
+NS_END // arangodb
 
+NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 // FIXME move constants to proper place
@@ -274,6 +277,16 @@ class DocumentPrimaryKey {
 
 bool appendKnownCollections(
   std::unordered_set<TRI_voc_cid_t>& set, const irs::index_reader& reader
+);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief go through the reader and call the callback with each TRI_voc_cid_t
+///        value found, the same TRI_voc_cid_t may repeat multiple times
+/// @return success (if the visitor returns false then also consider as failure)
+////////////////////////////////////////////////////////////////////////////////
+bool visitReaderCollections(
+  irs::index_reader const& reader,
+  std::function<bool(TRI_voc_cid_t cid)> const& visitor
 );
 
 NS_END // iresearch

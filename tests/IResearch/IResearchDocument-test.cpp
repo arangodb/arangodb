@@ -1587,6 +1587,96 @@ SECTION("test_appendKnownCollections") {
   }
 }
 
+SECTION("test_visitReaderCollections") {
+  // empty reader
+  {
+    irs::memory_directory dir;
+    auto writer = irs::index_writer::make(
+      dir, irs::formats::get("1_0"), irs::OM_CREATE
+    );
+    REQUIRE(writer);
+    writer->commit();
+
+    auto reader = irs::directory_reader::open(dir);
+    REQUIRE((reader));
+    CHECK((0 == reader->size()));
+    CHECK((0 == reader->docs_count()));
+
+    std::unordered_set<TRI_voc_rid_t> actual;
+    auto visitor = [&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; };
+    CHECK((arangodb::iresearch::visitReaderCollections(reader, visitor)));
+    CHECK((actual.empty()));
+  }
+
+  // write doc without 'cid'
+  {
+    irs::memory_directory dir;
+    auto writer = irs::index_writer::make(
+      dir, irs::formats::get("1_0"), irs::OM_CREATE
+    );
+    REQUIRE(writer);
+
+    TRI_voc_rid_t rid = 42;
+    arangodb::iresearch::Field field;
+
+    arangodb::iresearch::Field::setRidValue(field, rid, arangodb::iresearch::Field::init_stream_t());
+     writer->insert([&field](irs::index_writer::document& doc)->bool{
+       CHECK((doc.insert(irs::action::index, field)));
+       return false; // break the loop
+    });
+    writer->commit();
+
+    // check failure for empty since no such field
+    auto reader = irs::directory_reader::open(dir);
+    REQUIRE((reader));
+    CHECK((1 == reader->size()));
+    CHECK((1 == reader->docs_count()));
+
+    std::unordered_set<TRI_voc_rid_t> actual;
+    auto visitor = [&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; };
+    CHECK((!arangodb::iresearch::visitReaderCollections(reader, visitor)));
+  }
+
+  // write doc with 'cid'
+  {
+    irs::memory_directory dir;
+    auto writer = irs::index_writer::make(
+      dir, irs::formats::get("1_0"), irs::OM_CREATE
+    );
+    REQUIRE(writer);
+
+    TRI_voc_cid_t cid = 42;
+    arangodb::iresearch::Field field;
+
+    arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
+    writer->insert([&field](irs::index_writer::document& doc)->bool{
+      CHECK((doc.insert(irs::action::index, field)));
+      return false; // break the loop
+    });
+    writer->commit();
+
+    auto reader = irs::directory_reader::open(dir);
+    REQUIRE((reader));
+    CHECK((1 == reader->size()));
+    CHECK((1 == reader->docs_count()));
+
+    std::unordered_set<TRI_voc_rid_t> expected = { 42 };
+    std::unordered_set<TRI_voc_rid_t> actual;
+    auto visitor = [&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; };
+    CHECK((arangodb::iresearch::visitReaderCollections(reader, visitor)));
+
+    for (auto& cid: expected) {
+      CHECK((1 == actual.erase(cid)));
+    }
+
+    CHECK((actual.empty()));
+
+    // abort iteration by visitor
+    auto visitor_fail = [](TRI_voc_cid_t)->bool { return false; };
+    CHECK((!arangodb::iresearch::visitReaderCollections(reader, visitor_fail)));
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
