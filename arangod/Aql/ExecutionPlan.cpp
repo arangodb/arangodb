@@ -487,7 +487,7 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
                             _ast->variables()->variables(false), false, true);
 
   registerNode(reinterpret_cast<ExecutionNode*>(en));
-  en->aggregationMethod(CollectOptions::COLLECT_METHOD_DISTINCT);
+  en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
   en->specialized();
 
   return en;
