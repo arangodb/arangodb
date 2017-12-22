@@ -161,9 +161,6 @@ void ShellFeature::start() {
         ok = shell->jslint(_jslint);
         break;
     }
-  } catch (basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
-    ok = false;
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
     ok = false;

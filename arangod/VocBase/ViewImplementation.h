@@ -34,6 +34,24 @@ namespace arangodb {
 class LogicalView;
 class PhysicalView;
 class Result;
+class ViewIterator;
+
+namespace aql {
+
+class Ast;
+struct AstNode;
+class SortCondition;
+class ExecutionPlan;
+class ExpressionContext;
+struct Variable;
+
+};
+
+namespace transaction {
+
+class Methods;
+
+};
 
 /// @brief interface for view implementation
 class ViewImplementation {
@@ -50,13 +68,16 @@ class ViewImplementation {
       arangodb::velocypack::Slice const& slice, bool partialUpdate,
       bool doSync) = 0;
 
-  /// @brief callend when a view's properties are materialized into
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief called when a view's properties are materialized into
   /// the VelocyPack Builder passed into the method. the implementation
   /// is supposed to fill in all its specific properties. The Builder
   /// points into an open VelocyPack object. The method is supposed to
   /// add all its own property attributes with their values, and must
   /// not close the Builder
-  virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
+  //////////////////////////////////////////////////////////////////////////////
+  virtual void getPropertiesVPack(velocypack::Builder&,
+				  bool forPersistence) const = 0;
 
   /// @brief opens an existing view when the server is restarted
   virtual void open() = 0;
@@ -68,14 +89,15 @@ class ViewImplementation {
   LogicalView* _logicalView;
 };
 
+//////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for a ViewImplementation creator function
-/// this typedef is used when registering the creator function for
-/// any view type. the creator function is called when a view is first
-/// created or re-opened after a server restart.
-/// the VelocyPack Slice will contain all information about the
-/// view's general and implementation-specific properties. the isNew
-/// flag will be true if the view is first created, and false if a
+/// This typedef is used when registering the creator function for any view
+/// type. the creator function is called when a view is first created or
+/// re-opened after a server restart. the VelocyPack Slice will contain all
+/// information about the view's general and implementation-specific properties.
+/// the isNew flag will be true if the view is first created, and false if a
 /// view is re-opened on a server restart.
+//////////////////////////////////////////////////////////////////////////////
 typedef std::function<std::unique_ptr<ViewImplementation>(
     LogicalView*, arangodb::velocypack::Slice const&, bool isNew)>
     ViewCreator;

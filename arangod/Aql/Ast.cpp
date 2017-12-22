@@ -122,7 +122,7 @@ std::shared_ptr<VPackBuilder> Ast::toVelocyPack(bool verbose) const {
   return builder;
 }
 
-/// @brief destroy the AST
+/// @brief add an operation to the AST
 void Ast::addOperation(AstNode* node) {
   TRI_ASSERT(_root != nullptr);
 
@@ -584,6 +584,23 @@ AstNode* Ast::createNodeCollection(char const* name,
   return node;
 }
 
+/// @brief create an AST view node
+AstNode* Ast::createNodeView(char const* name) {
+  if (name == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (*name == '\0' || !LogicalCollection::IsAllowedName(true, name)) {
+    _query->registerErrorCustom(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
+    return nullptr;
+  }
+
+  AstNode* node = createNode(NODE_TYPE_VIEW);
+  node->setStringValue(name, strlen(name));
+
+  return node;
+}
+
 /// @brief create an AST reference node
 AstNode* Ast::createNodeReference(char const* variableName, size_t nameLength) {
   if (variableName == nullptr) {
@@ -681,7 +698,7 @@ AstNode* Ast::createNodeBinaryArrayOperator(AstNodeType type, AstNode const* lhs
   // re-use existing function
   AstNode* node = createNodeBinaryOperator(type, lhs, rhs);
   node->addMember(quantifier);
-  
+
   TRI_ASSERT(node->isArrayComparisonOperator());
   TRI_ASSERT(node->numMembers() == 3);
 
@@ -840,6 +857,7 @@ AstNode* Ast::createNodeValueInt(int64_t value) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_INT);
   node->setIntValue(value);
+  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
 
   return node;
 }
@@ -849,6 +867,7 @@ AstNode* Ast::createNodeValueDouble(double value) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_DOUBLE);
   node->setDoubleValue(value);
+  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
 
   return node;
 }
@@ -869,6 +888,7 @@ AstNode* Ast::createNodeValueString(char const* value, size_t length) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_STRING);
   node->setStringValue(value, length);
+  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
 
   return node;
 }
@@ -992,7 +1012,7 @@ AstNode* Ast::createNodeCalculatedObjectElement(AstNode const* attributeName,
 
   return node;
 }
- 
+
 /// @brief create an AST with collections node
 AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
@@ -1023,7 +1043,7 @@ AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
     // We do not need to propagate these members
     node->addMember(c);
   }
-  
+
   AstNode* with = createNode(NODE_TYPE_WITH);
   with->addMember(node);
 
@@ -1247,13 +1267,13 @@ AstNode* Ast::createNodeShortestPath(
 }
 
 /// @brief create an AST function call node
-AstNode* Ast::createNodeFunctionCall(char const* functionName,
+AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
                                      AstNode const* arguments) {
   if (functionName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  auto normalized = normalizeFunctionName(functionName);
+  auto normalized = normalizeFunctionName(functionName, length);
 
   AstNode* node;
 
@@ -1471,7 +1491,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         }
       }
       // fallthrough to exception
-         
+
       // if no string value was inserted for the parameter name, this is an
       // error
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
@@ -1824,7 +1844,7 @@ void Ast::validateAndOptimize() {
     if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
       return this->optimizeTernaryOperator(node);
     }
-    
+
     // attribute access
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       return this->optimizeAttributeAccess(node, static_cast<TraversalContext*>(data)->variableDefinitions);
@@ -1877,7 +1897,7 @@ void Ast::validateAndOptimize() {
       Variable const* variable = static_cast<Variable const*>(node->getMember(0)->getData());
       AstNode const* definition = node->getMember(1);
       // recursively process assignments so we can track LET a = b LET c = b
-      
+
       while (definition->type == NODE_TYPE_REFERENCE) {
         auto it = context->variableDefinitions.find(static_cast<Variable const*>(definition->getData()));
         if (it == context->variableDefinitions.end()) {
@@ -1885,7 +1905,7 @@ void Ast::validateAndOptimize() {
         }
         definition = (*it).second;
       }
-      
+
       context->variableDefinitions.emplace(variable, definition);
       return this->optimizeLet(node);
     }
@@ -1903,7 +1923,7 @@ void Ast::validateAndOptimize() {
     // collection
     if (node->type == NODE_TYPE_COLLECTION) {
       auto c = static_cast<TraversalContext*>(data);
-      
+
       if (c->writeCollectionsSeen.find(node->getString()) != c->writeCollectionsSeen.end()) {
         std::string name("collection '");
         name.append(node->getString());
@@ -2473,7 +2493,7 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
   if (converted->isNullValue()) {
     return const_cast<AstNode*>(&ZeroNode);
   }
-    
+
   if (converted->value.type != VALUE_TYPE_INT &&
       converted->value.type != VALUE_TYPE_DOUBLE) {
     // non-numeric operand
@@ -2653,7 +2673,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
     }
     // intentionally falls through
   }
-  
+
   bool const rhsIsConst = rhs->isConstant();
 
   if (!rhsIsConst) {
@@ -2666,7 +2686,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
     // right operand of IN or NOT IN must be an array or a range, otherwise we return false
     return createNodeValueBool(false);
   }
-  
+
   bool const lhsIsConst = lhs->isConstant();
 
   if (!lhsIsConst) {
@@ -2919,7 +2939,7 @@ AstNode* Ast::optimizeAttributeAccess(AstNode* node, std::unordered_map<Variable
           member->getStringLength() == length &&
           memcmp(name, member->getStringValue(), length) == 0) {
         // found matching member
-        return member->getMember(0); 
+        return member->getMember(0);
       }
     }
   }
@@ -2946,14 +2966,14 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
         auto countArgs = createNodeArray();
         countArgs->addMember(createNodeValueString(arg->getStringValue(),
                                                    arg->getStringLength()));
-        return createNodeFunctionCall("COLLECTION_COUNT", countArgs);
+        return createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("COLLECTION_COUNT"), countArgs);
       }
     }
   } else if (func->name == "IS_NULL") {
     auto args = node->getMember(0);
     if (args->numMembers() == 1) {
       // replace IS_NULL(x) function call with `x == null`
-      return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, args->getMemberUnchecked(0), createNodeValueNull()); 
+      return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, args->getMemberUnchecked(0), createNodeValueNull());
     }
   }
 
@@ -3142,12 +3162,12 @@ AstNode* Ast::optimizeObject(AstNode* node) {
     node->setFlag(DETERMINED_CHECKUNIQUENESS);
     return node;
   }
-    
+
   std::unordered_set<std::string> keys;
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
-    
+
     if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
       // constant key
       if (!keys.emplace(member->getString()).second) {
@@ -3180,6 +3200,11 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
   }
 
   if (slice.isNumber()) {
+    if (slice.isSmallInt() || slice.isInt()) {
+      // integer value
+      return createNodeValueInt(slice.getInt());
+    }
+    // floating point value
     return createNodeValueDouble(slice.getNumber<double>());
   }
 
@@ -3197,11 +3222,11 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
 
   if (slice.isArray()) {
     auto node = createNodeArray(static_cast<size_t>(slice.length()));
- 
+
     for (auto const& it : VPackArrayIterator(slice)) {
-      node->addMember(nodeFromVPack(it, copyStringValues)); 
+      node->addMember(nodeFromVPack(it, copyStringValues));
     }
-    
+
     node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
 
     return node;
@@ -3224,7 +3249,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
       node->addMember(createNodeObjectElement(
           attributeName, static_cast<size_t>(nameLength), nodeFromVPack(it.value, copyStringValues)));
     }
-    
+
     node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
 
     return node;
@@ -3263,14 +3288,14 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
       for (size_t i = 0; i < n; ++i) {
         auto member = node->getMember(i);
 
-        if (member->type == NODE_TYPE_OBJECT_ELEMENT && 
+        if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
             member->getString() == attributeName) {
           // found the attribute
           node = member->getMember(0);
           if (which == 0) {
             // we found what we looked for
             return node;
-          } 
+          }
           // we found the correct attribute but there is now an attribute
           // access on the result
           found = true;
@@ -3394,10 +3419,10 @@ void Ast::traverseReadOnly(AstNode const* node,
 }
 
 /// @brief normalize a function name
-std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name) {
+std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name, size_t length) {
   TRI_ASSERT(name != nullptr);
 
-  std::string functionName(name);
+  std::string functionName(name, length);
   // convert name to upper case
   std::transform(functionName.begin(), functionName.end(), functionName.begin(), ::toupper);
 

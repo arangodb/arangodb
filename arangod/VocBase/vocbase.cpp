@@ -1118,7 +1118,6 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
     int res;
     {
       READ_LOCKER(readLocker, _inventoryLock);
-
       res = dropCollectionWorker(collection, state, timeout);
     }
 
@@ -1140,6 +1139,54 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
     TRI_ASSERT(state == DROP_AGAIN);
     std::this_thread::sleep_for(std::chrono::microseconds(collectionStatusPollInterval()));
   }
+}
+
+/// @brief renames a view
+int TRI_vocbase_t::renameView(std::shared_ptr<arangodb::LogicalView> view,
+                              std::string const& newName) {
+
+  // lock collection because we are going to copy its current name
+  std::string oldName = view->name();
+
+  // old name should be different
+
+  // check if names are actually different
+  if (oldName == newName) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  if (!LogicalView::IsAllowedName(newName)) {
+    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
+
+  READ_LOCKER(readLocker, _inventoryLock);
+
+  WRITE_LOCKER(writeLocker, _viewsLock);
+
+  // Check for duplicate name
+  auto it = _viewsByName.find(newName);
+
+  if (it != _viewsByName.end()) {
+    // new name already in use
+    return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+  }
+
+  _viewsByName.emplace(newName, view);
+  _viewsByName.erase(oldName);
+  
+  // stores the parameters on disk
+  bool const doSync =
+      application_features::ApplicationServer::getFeature<DatabaseFeature>(
+         "Database")
+          ->forceSyncProperties();
+  view->rename(newName, doSync);
+
+  // Tell the engine.
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  arangodb::Result res = engine->renameView(this, view, oldName);
+
+  return res.errorNumber();
 }
 
 /// @brief renames a collection
@@ -1382,9 +1429,16 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
 
     // now let's actually create the backing implementation
     view->spawnImplementation(creator, parameters, true);
+    if (view->getImplementation() == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not spawn view "
+        "implementation");
+    }
 
     // Let's try to persist it.
     view->persistPhysicalView();
+
+    // And lets open it.
+    view->getImplementation()->open();
 
     events::CreateView(name, TRI_ERROR_NO_ERROR);
     return view;

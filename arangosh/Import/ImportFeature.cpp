@@ -58,6 +58,7 @@ ImportFeature::ImportFeature(application_features::ApplicationServer* server,
       _quote("\""),
       _separator(""),
       _progress(true),
+      _ignoreMissing(false),
       _onDuplicateAction("error"),
       _rowsToSkip(0),
       _result(result) {
@@ -155,6 +156,9 @@ void ImportFeature::collectOptions(
 
   options->addOption("--progress", "show progress",
                      new BooleanParameter(&_progress));
+  
+  options->addOption("--ignore-missing", "ignore missing columns in csv input",
+                     new BooleanParameter(&_ignoreMissing));
 
   std::unordered_set<std::string> actions = {"error", "update", "replace",
                                              "ignore"};
@@ -348,6 +352,7 @@ void ImportFeature::start() {
   ih.setRowsToSkip(static_cast<size_t>(_rowsToSkip));
   ih.setOverwrite(_overwrite);
   ih.useBackslash(_useBackslash);
+  ih.ignoreMissing(_ignoreMissing);
 
   std::unordered_map<std::string, std::string> translations;
   for (auto const& it : _translations) {

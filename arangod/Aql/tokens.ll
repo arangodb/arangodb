@@ -22,7 +22,7 @@
 #include "Basics/conversions.h"
 #include "Basics/StringUtils.h"
 
-// introduce the namespace here, otherwise following references to 
+// introduce the namespace here, otherwise following references to
 // the namespace in auto-generated headers might fail
 
 namespace arangodb {
@@ -88,7 +88,7 @@ namespace arangodb {
   return T_SORT;
 }
 
-(?i:LIMIT) { 
+(?i:LIMIT) {
   return T_LIMIT;
 }
 
@@ -184,6 +184,10 @@ namespace arangodb {
   return T_LIKE;
 }
 
+(?i:VIEW) {
+  return T_VIEW;
+}
+
  /* ---------------------------------------------------------------------------
   * predefined type literals
   * --------------------------------------------------------------------------- */
@@ -199,7 +203,7 @@ namespace arangodb {
 (?i:FALSE) {
   return T_FALSE;
 }
- 
+
  /* ---------------------------------------------------------------------------
   * operators
   * --------------------------------------------------------------------------- */
@@ -285,9 +289,9 @@ namespace arangodb {
 }
 
 ".." {
-  return T_RANGE; 
+  return T_RANGE;
 }
- 
+
  /* ---------------------------------------------------------------------------
   * punctuation
   * --------------------------------------------------------------------------- */
@@ -319,16 +323,16 @@ namespace arangodb {
 "]" {
   return T_ARRAY_CLOSE;
 }
- 
+
  /* ---------------------------------------------------------------------------
   * identifiers
   * --------------------------------------------------------------------------- */
 
-($?[a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) { 
+($?[a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) {
   /* unquoted string */
   yylval->strval.value = yyextra->query()->registerString(yytext, yyleng);
   yylval->strval.length = yyleng;
-  return T_STRING; 
+  return T_STRING;
 }
 
 <INITIAL>` {
@@ -435,7 +439,7 @@ namespace arangodb {
 }
 
 <SINGLE_QUOTE>\n {
-  /* newline character inside quote */ 
+  /* newline character inside quote */
 }
 
 <SINGLE_QUOTE>. {
@@ -446,7 +450,7 @@ namespace arangodb {
   * number literals
   * --------------------------------------------------------------------------- */
 
-(0|[1-9][0-9]*) {  
+(0|[1-9][0-9]*) {
   /* a numeric integer value */
   arangodb::aql::AstNode* node = nullptr;
   auto parser = yyextra;
@@ -472,9 +476,9 @@ namespace arangodb {
   return T_INTEGER;
 }
 
-(0|[1-9][0-9]*)((\.[0-9]+)?([eE][\-\+]?[0-9]+)?) { 
+(0|[1-9][0-9]*)((\.[0-9]+)?([eE][\-\+]?[0-9]+)?) {
   /* a numeric double value */
-      
+
   arangodb::aql::AstNode* node = nullptr;
   auto parser = yyextra;
   double value = TRI_DoubleString(yytext);
@@ -484,11 +488,11 @@ namespace arangodb {
     node = parser->ast()->createNodeValueNull();
   }
   else {
-    node = parser->ast()->createNodeValueDouble(value); 
+    node = parser->ast()->createNodeValueDouble(value);
   }
 
   yylval->node = node;
-  
+
   return T_DOUBLE;
 }
 
@@ -499,7 +503,7 @@ namespace arangodb {
 @@?(_+[a-zA-Z0-9]+[a-zA-Z0-9_]*|[a-zA-Z0-9][a-zA-Z0-9_]*) {
   /* bind parameters must start with a @
      if followed by another @, this is a collection name parameter */
-  yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1); 
+  yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1);
   yylval->strval.length = yyleng - 1;
   return T_PARAMETER;
 }
@@ -509,13 +513,13 @@ namespace arangodb {
   * --------------------------------------------------------------------------- */
 
 [ \t\r]+ {
-  /* whitespace is ignored */ 
+  /* whitespace is ignored */
 }
 
 [\n] {
   yycolumn = 0;
 }
- 
+
  /* ---------------------------------------------------------------------------
   * comments
   * --------------------------------------------------------------------------- */
@@ -530,7 +534,7 @@ namespace arangodb {
   BEGIN(INITIAL);
 }
 
-<COMMENT_SINGLE>[^\n]+ { 
+<COMMENT_SINGLE>[^\n]+ {
   /* everything else */
 }
 
@@ -542,7 +546,7 @@ namespace arangodb {
   BEGIN(INITIAL);
 }
 
-<COMMENT_MULTI>[^*\n]+ { 
+<COMMENT_MULTI>[^*\n]+ {
   // eat comment in chunks
 }
 
@@ -592,4 +596,3 @@ namespace arangodb {
 }
 
 %%
-

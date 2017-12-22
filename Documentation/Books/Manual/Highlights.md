@@ -1,6 +1,36 @@
 Highlights
 ==========
 
+Version 3.3
+-----------
+
+### Enterprise Edition
+
+- [**Datacenter to Datacenter Replication**](Deployment/DC2DC.md): Replicate
+  the entire structure and content of an ArangoDB cluster asynchronously to
+  another cluster in a different datacenter with ArangoSync. Multi-datacenter
+  support means you can fallback to a replica of your cluster in case of a
+  disaster in one datacenter.
+
+- [**Encrypted Backups**](Administration/Arangodump.md#encryption):
+  Arangodump can create backups encrypted with a secret key using AES256
+  block cipher.
+
+### All Editions
+
+- [**Server-level Replication**](Administration/Replication/Asynchronous/ServerLevelSetup.md):
+  In addition to per-database replication, there is now an additional
+  `globalApplier`. Start the global replication on the slave once and all
+  current and future databases will be replicated from the master to the
+  slave automatically.
+
+- [**Asynchronous Failover**](ReleaseNotes/NewFeatures33.md#asynchronous-failover):
+  Make a single server instance resilient with a second server instance, one
+  as master and the other as asynchronously replicating slave, with automatic
+  failover to the slave if the master goes down.
+
+Also see [What's New in 3.3](ReleaseNotes/NewFeatures33.md).
+
 Version 3.2
 -----------
 
