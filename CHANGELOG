@@ -1,15 +1,23 @@
 v3.2.10 (2017-12-22)
 --------------------
 
+* replication: more robust initial sync
+
+* fixed a bug in the RocksDB engine that would prevent recalculated 
+  collection counts to be actually stored
+
 * fixed issue #4095: Inconsistent query execution plan
 
 * fixed issue #4056: Executing empty query causes crash
 
-* fixed issue #4045: Out of memory in `arangorestore` when no access rights to dump files
+* fixed issue #4045: Out of memory in `arangorestore` when no access 
+  rights to dump files
 
-* fixed issue #3031: New Graph: Edge definitions with edges in fromCollections na toCollections
+* fixed issue #3031: New Graph: Edge definitions with edges in 
+  fromCollections and toCollections
 
-* fixed issue #2668: UI: when following wrong link from edge to vertex in nonexisting collection misleading error is printed
+* fixed issue #2668: UI: when following wrong link from edge to vertex in 
+  nonexisting collection misleading error is printed
 
 * UI: improved the behavior during collection creation in a cluster environment
 
