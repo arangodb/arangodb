@@ -59,7 +59,7 @@ Agent::Agent(config_t const& config)
   if (size() > 1) {
     _inception = std::make_unique<Inception>(this);
   } else {
-    _leaderSince = std::chrono::system_clock::now();
+    _leaderSince = std::chrono::steady_clock::now();
   }
 }
 
@@ -249,14 +249,14 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
 //  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
-  auto startTime = system_clock::now();
+  auto startTime = steady_clock::now();
 
   // only update the time stamps here:
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
 
     // Update last acknowledged answer
-    auto t = system_clock::now();
+    auto t = steady_clock::now();
     std::chrono::duration<double> d = t - _lastAcked[peerId];
     auto secsSince = d.count();
     if (secsSince < 1.5e9 && peerId != id()
@@ -281,7 +281,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     }
   }
 
-  duration<double> reportInTime = system_clock::now() - startTime;
+  duration<double> reportInTime = steady_clock::now() - startTime;
   if (reportInTime.count() > 0.1) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "reportIn took longer than 0.1s: " << reportInTime.count();
@@ -389,9 +389,9 @@ void Agent::sendAppendEntriesRPC() {
       term_t t(0);
 
       index_t lastConfirmed;
-      auto startTime = system_clock::now();
+      auto startTime = steady_clock::now();
       SteadyTimePoint earliestPackage;
-      TimePoint lastAcked;
+      SteadyTimePoint lastAcked;
       
       {
         t = this->term();
@@ -406,7 +406,7 @@ void Agent::sendAppendEntriesRPC() {
         continue;
       }
 
-      duration<double> lockTime = system_clock::now() - startTime;
+      duration<double> lockTime = steady_clock::now() - startTime;
       if (lockTime.count() > 0.1) {
         LOG_TOPIC(WARN, Logger::AGENCY)
           << "Reading lastConfirmed took too long: " << lockTime.count();
@@ -414,7 +414,7 @@ void Agent::sendAppendEntriesRPC() {
 
       std::vector<log_t> unconfirmed = _state.get(lastConfirmed, lastConfirmed+99);
 
-      lockTime = system_clock::now() - startTime;
+      lockTime = steady_clock::now() - startTime;
       if (lockTime.count() > 0.2) {
         LOG_TOPIC(WARN, Logger::AGENCY)
           << "Finding unconfirmed entries took too long: " << lockTime.count();
@@ -447,7 +447,9 @@ void Agent::sendAppendEntriesRPC() {
         LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Note: sent out last AppendEntriesRPC "
           << "to follower " << followerId << " more than minPing ago: " 
-          << m.count() << " lastAcked: " << timepointToString(lastAcked)
+          << m.count() << " lastAcked: "
+          << std::chrono::duration_cast<std::chrono::microseconds>(
+               lastAcked.time_since_epoch()).count()
           << " lastSent: " << timepointToString(_lastSent[followerId]);
       }
       index_t lowest = unconfirmed.front().index;
@@ -774,7 +776,7 @@ bool Agent::challengeLeadership() {
   
   for (auto const& i : _lastAcked) {
     if (i.first != myid) {  // do not count ourselves
-      duration<double> m = system_clock::now() - i.second;
+      duration<double> m = steady_clock::now() - i.second;
       LOG_TOPIC(DEBUG, Logger::AGENCY) << "challengeLeadership: found "
         "_lastAcked[" << i.first << "] to be "
         << std::chrono::duration_cast<std::chrono::microseconds>(
@@ -809,7 +811,7 @@ bool Agent::challengeLeadership() {
 /// Get last acknowledged responses on leader
 query_t Agent::lastAckedAgo() const {
   
-  std::unordered_map<std::string, TimePoint> lastAcked;
+  std::unordered_map<std::string, SteadyTimePoint> lastAcked;
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
     lastAcked = _lastAcked;
@@ -822,7 +824,7 @@ query_t Agent::lastAckedAgo() const {
       ret->add(i.first, VPackValue(
                  1.0e-2 * std::floor(
                    (i.first!=id() ?
-                    duration<double>(system_clock::now()-i.second).count()*100.0
+                    duration<double>(steady_clock::now()-i.second).count()*100.0
                     : 0.0))));
     }
   }
@@ -1262,9 +1264,9 @@ bool Agent::prepareLead() {
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
     for (auto const& i : _config.active()) {
-      _lastAcked[i] = system_clock::now();
+      _lastAcked[i] = steady_clock::now();
     }
-    _leaderSince = system_clock::now();
+    _leaderSince = steady_clock::now();
   }
   
   return true; 
@@ -1299,7 +1301,7 @@ void Agent::lead() {
 }
 
 // When did we take on leader ship?
-TimePoint const& Agent::leaderSince() const {
+SteadyTimePoint const& Agent::leaderSince() const {
   return _leaderSince;
 }
 
