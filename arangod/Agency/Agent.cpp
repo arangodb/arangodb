@@ -542,7 +542,7 @@ void Agent::sendAppendEntriesRPC() {
         _earliestPackage[followerId] = earliestPackage;
       }
       LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << "Setting _earliestPackage to now + 1h for id " << followerId;
+        << "Setting _earliestPackage to now + 30s for id " << followerId;
 
       // Send request
       auto headerFields =
