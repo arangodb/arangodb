@@ -668,7 +668,6 @@ AqlValue Functions::ToString(arangodb::aql::Query* query,
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   AppendAsString(trx, adapter, value);
-  transaction::BuilderLeaser builder(trx);
   return AqlValue(buffer->begin(), buffer->length());
 }
 
