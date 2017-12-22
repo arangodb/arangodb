@@ -1673,22 +1673,6 @@ function complexInternaSuite () {
     },
 
 
-    testEvenLargerMaxDepth: function () {
-      let query = `
-      WITH ${vn}
-      FOR v, e, p IN 1..18446744073709551615 OUTBOUND "${vn}/A" ${en}
-      FILTER p.edges[1]._id != "${edge.BC}"
-      FILTER p.vertices[2]._id != "${vertex.C}"
-      RETURN v._id`;
-
-      try {
-        db._query(query);
-        assertTrue(false, "This query is expected too fail");
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
-      }
-    },
-
     testNegativeMinDepth: function () {
       let query = `
       WITH ${vn}
