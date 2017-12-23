@@ -44,15 +44,13 @@ using namespace arangodb::rocksdbengine;
 RocksDBGeoIndexIterator::RocksDBGeoIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, RocksDBGeoIndex const* index,
-    geo::QueryParams&& params)
-    : IndexIterator(collection, trx, mmdr, index),
+    geo::QueryParams&& params) : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _cursor(nullptr),
       _coor(),
       _params(std::move(params)),
       _near(_params.maxDistance >= geo::kEarthRadiusInMeters),
       _done(false) {
-        LOG_TOPIC(ERR, Logger::FIXME) << "Center: " << _params.centroid.toString() << "  rad: " << _params.maxDistance;
         TRI_ASSERT(_params.minDistance == 0);
       }
 
@@ -117,7 +115,7 @@ size_t RocksDBGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
 bool RocksDBGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (!_cursor) {
     createCursor(_params.centroid.latitude, _params.centroid.longitude);
-
+    
     if (!_cursor) {
       // actually validate that we got a valid cursor
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -392,10 +390,10 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
                                        velocypack::Slice const& doc,
                                        OperationMode mode) {
   // GeoIndex is always exclusively write-locked with rocksdb
-  VPackSlice lat, lon;
+  VPackSlice lat, lng;
   if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
     lat = doc.get(_latitude);
-    lon = doc.get(_longitude);
+    lng = doc.get(_longitude);
   } else {
     VPackSlice loc = doc.get(_location);
     if (!loc.isArray() || loc.length() < 2) {
@@ -403,14 +401,14 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
       return IndexResult();
     }
     lat = loc.at(_geoJson ? 1 : 0);
-    lon = loc.at(_geoJson ? 0 : 1);
+    lng = loc.at(_geoJson ? 0 : 1);
   }
-  if (!lat.isNumber() || !lon.isNumber()) {
+  if (!lat.isNumber() || !lng.isNumber()) {
     // Invalid, no insert. Index is sparse
     return IndexResult();
   }
-  double longitude = lat.getNumericValue<double>();
-  double latitude = lon.getNumericValue<double>();
+  double latitude = lat.getNumericValue<double>();
+  double longitude = lng.getNumericValue<double>();
 
   // and insert into index
   GeoCoordinate gc;
@@ -441,47 +439,27 @@ Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
                                        arangodb::velocypack::Slice const& doc,
                                        OperationMode mode) {
   // GeoIndex is always exclusively write-locked with rocksdb
-  double latitude = 0.0;
-  double longitude = 0.0;
-  bool ok = true;
 
+  bool ok = true;
+  VPackSlice lat, lng;
   if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
-    VPackSlice lat = doc.get(_latitude);
-    VPackSlice lon = doc.get(_longitude);
-    if (!lat.isNumber()) {
-      ok = false;
-    } else {
-      latitude = lat.getNumericValue<double>();
-    }
-    if (!lon.isNumber()) {
-      ok = false;
-    } else {
-      longitude = lon.getNumericValue<double>();
-    }
+    lat = doc.get(_latitude);
+    lng = doc.get(_longitude);
   } else {
     VPackSlice loc = doc.get(_location);
     if (!loc.isArray() || loc.length() < 2) {
-      ok = false;
-    } else {
-      VPackSlice first = loc.at(0);
-      if (!first.isNumber()) {
-        ok = false;
-      }
-      VPackSlice second = loc.at(1);
-      if (!second.isNumber()) {
-        ok = false;
-      }
-      if (ok) {
-        if (_geoJson) {
-          longitude = first.getNumericValue<double>();
-          latitude = second.getNumericValue<double>();
-        } else {
-          latitude = first.getNumericValue<double>();
-          longitude = second.getNumericValue<double>();
-        }
-      }
+      // Invalid, no insert. Index is sparse
+      return IndexResult();
     }
+    lat = loc.at(_geoJson ? 1 : 0);
+    lng = loc.at(_geoJson ? 0 : 1);
   }
+  if (!lat.isNumber() || !lng.isNumber()) {
+    // Invalid, no insert. Index is sparse
+    return IndexResult();
+  }
+  double latitude = lat.getNumericValue<double>();
+  double longitude = lng.getNumericValue<double>();
 
   if (ok) {
     GeoCoordinate gc;

@@ -25,6 +25,7 @@
 #define ARANGOD_MMFILES_GEO_INDEX_H 1
 
 #include "Basics/Common.h"
+#include "Geo/GeoParams.h"
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/mmfiles-geo-index.h"
@@ -48,8 +49,7 @@ class MMFilesGeoIndexIterator final : public IndexIterator {
                           transaction::Methods* trx,
                           ManagedDocumentResult* mmdr,
                           MMFilesGeoIndex const* index,
-                          arangodb::aql::AstNode const*,
-                          arangodb::aql::Variable const*);
+                          geo::QueryParams&&);
 
   ~MMFilesGeoIndexIterator() { replaceCursor(nullptr); }
 
@@ -63,18 +63,13 @@ class MMFilesGeoIndexIterator final : public IndexIterator {
   size_t findLastIndex(GeoCoordinates* coords) const;
   void replaceCursor(::GeoCursor* c);
   void createCursor(double lat, double lon);
-  void evaluateCondition();  // called in constructor
 
   MMFilesGeoIndex const* _index;
   ::GeoCursor* _cursor;
   ::GeoCoordinate _coor;
-  arangodb::aql::AstNode const* _condition;
-  double _lat;
-  double _lon;
+  geo::QueryParams _params;
   bool _near;
-  bool _inclusive;
   bool _done;
-  double _radius;
 };
 
 class MMFilesGeoIndex final : public MMFilesIndex {
@@ -122,7 +117,7 @@ class MMFilesGeoIndex final : public MMFilesIndex {
 
   bool canBeDropped() const override { return true; }
 
-  bool isSorted() const override { return true; }
+  bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return false; }
 

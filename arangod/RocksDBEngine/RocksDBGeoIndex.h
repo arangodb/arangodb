@@ -122,7 +122,7 @@ class RocksDBGeoIndex final : public RocksDBIndex {
 
   bool canBeDropped() const override { return true; }
 
-  bool isSorted() const override { return true; }
+  bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return false; }
 

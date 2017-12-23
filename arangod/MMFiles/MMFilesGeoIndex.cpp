@@ -28,6 +28,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Geo/AqlUtils.h"
 #include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/TransactionState.h"
@@ -37,51 +38,14 @@ using namespace arangodb;
 MMFilesGeoIndexIterator::MMFilesGeoIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, MMFilesGeoIndex const* index,
-    arangodb::aql::AstNode const* cond, arangodb::aql::Variable const* var)
-    : IndexIterator(collection, trx, mmdr, index),
+    geo::QueryParams&& params) : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _cursor(nullptr),
       _coor(),
-      _condition(cond),
-      _lat(0.0),
-      _lon(0.0),
-      _near(true),
-      _inclusive(false),
-      _done(false),
-      _radius(0.0) {
-  evaluateCondition();
-}
-
-void MMFilesGeoIndexIterator::evaluateCondition() {
-  if (_condition) {
-    auto numMembers = _condition->numMembers();
-
-    TRI_ASSERT(numMembers == 1);  // should only be an FCALL
-    auto fcall = _condition->getMember(0);
-    TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);
-    TRI_ASSERT(fcall->numMembers() == 1);
-    auto args = fcall->getMember(0);
-
-    numMembers = args->numMembers();
-    TRI_ASSERT(numMembers >= 3);
-
-    _lat = args->getMember(1)->getDoubleValue();
-    _lon = args->getMember(2)->getDoubleValue();
-
-    if (numMembers == 3) {
-      // NEAR
-      _near = true;
-    } else {
-      // WITHIN
-      TRI_ASSERT(numMembers == 5);
-      _near = false;
-      _radius = args->getMember(3)->getDoubleValue();
-      _inclusive = args->getMember(4)->getBoolValue();
-    }
-  } else {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "No condition passed to MMFilesGeoIndexIterator constructor";
-  }
+      _params(std::move(params)),
+      _near(_params.maxDistance >= geo::kEarthRadiusInMeters),
+      _done(false) {
+  TRI_ASSERT(_params.minDistance == 0);
 }
 
 size_t MMFilesGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
@@ -99,8 +63,8 @@ size_t MMFilesGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
     // scan backwards because documents with higher distances are more
     // interesting
     int iterations = 0;
-    while ((_inclusive && coords->distances[numDocs - 1] > _radius) ||
-           (!_inclusive && coords->distances[numDocs - 1] >= _radius)) {
+    while ((_params.maxInclusive && coords->distances[numDocs - 1] > _params.maxDistance) ||
+           (!_params.maxInclusive && coords->distances[numDocs - 1] >= _params.maxDistance)) {
       // document is outside the specified radius!
       --numDocs;
 
@@ -117,8 +81,8 @@ size_t MMFilesGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
         while (true) {
           // determine midpoint
           size_t m = l + ((r - l) / 2);
-          if ((_inclusive && coords->distances[m] > _radius) ||
-              (!_inclusive && coords->distances[m] >= _radius)) {
+          if ((_params.maxInclusive && coords->distances[m] > _params.maxDistance) ||
+              (!_params.maxInclusive && coords->distances[m] >= _params.maxDistance)) {
             // document is outside the specified radius!
             if (m == 0) {
               numDocs = 0;
@@ -144,7 +108,7 @@ size_t MMFilesGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
 
 bool MMFilesGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (!_cursor) {
-    createCursor(_lat, _lon);
+    createCursor(_params.centroid.latitude, _params.centroid.longitude);
 
     if (!_cursor) {
       // actually validate that we got a valid cursor
@@ -170,7 +134,7 @@ bool MMFilesGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
       maxDistance = -1.0;
     } else {
       withDistances = true;
-      maxDistance = _radius;
+      maxDistance = _params.maxDistance;
     }
     auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(
         _cursor, static_cast<int>(limit), withDistances, maxDistance));
@@ -229,8 +193,16 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
   TRI_IF_FAILURE("GeoIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return new MMFilesGeoIndexIterator(_collection, trx, mmdr, this, node,
-                                     reference);
+  
+  geo::QueryParams params;
+  params.sorted = true;
+  params.ascending = true;
+  geo::AqlUtils::parseCondition(node, reference, params);
+  TRI_ASSERT(params.centroid != geo::Coordinate::Invalid());
+  TRI_ASSERT(params.minDistance == 0);
+  TRI_ASSERT(params.filterType == geo::FilterType::NONE);
+  
+  return new MMFilesGeoIndexIterator(_collection, trx, mmdr, this, std::move(params));
 }
 
 void MMFilesGeoIndexIterator::reset() { replaceCursor(nullptr); }
@@ -381,47 +353,25 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
 Result MMFilesGeoIndex::insert(transaction::Methods*,
                                LocalDocumentId const& documentId,
                                VPackSlice const& doc, OperationMode mode) {
-  double latitude;
-  double longitude;
-
+  VPackSlice lat, lng;
   if (_variant == INDEX_GEO_INDIVIDUAL) {
-    VPackSlice lat = doc.get(_latitude);
-    if (!lat.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return Result(TRI_ERROR_NO_ERROR);
-    }
-
-    VPackSlice lon = doc.get(_longitude);
-    if (!lon.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return Result(TRI_ERROR_NO_ERROR);
-    }
-    latitude = lat.getNumericValue<double>();
-    longitude = lon.getNumericValue<double>();
+    lat = doc.get(_latitude);
+    lng = doc.get(_longitude);
   } else {
     VPackSlice loc = doc.get(_location);
     if (!loc.isArray() || loc.length() < 2) {
       // Invalid, no insert. Index is sparse
-      return Result(TRI_ERROR_NO_ERROR);
+      return IndexResult();
     }
-    VPackSlice first = loc.at(0);
-    if (!first.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return Result(TRI_ERROR_NO_ERROR);
-    }
-    VPackSlice second = loc.at(1);
-    if (!second.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return Result(TRI_ERROR_NO_ERROR);
-    }
-    if (_geoJson) {
-      longitude = first.getNumericValue<double>();
-      latitude = second.getNumericValue<double>();
-    } else {
-      latitude = first.getNumericValue<double>();
-      longitude = second.getNumericValue<double>();
-    }
+    lat = loc.at(_geoJson ? 1 : 0);
+    lng = loc.at(_geoJson ? 0 : 1);
   }
+  if (!lat.isNumber() || !lng.isNumber()) {
+    // Invalid, no insert. Index is sparse
+    return IndexResult();
+  }
+  double latitude = lat.getNumericValue<double>();
+  double longitude = lng.getNumericValue<double>();
 
   // and insert into index
   GeoCoordinate gc;
@@ -451,51 +401,25 @@ Result MMFilesGeoIndex::insert(transaction::Methods*,
 Result MMFilesGeoIndex::remove(transaction::Methods*,
                                LocalDocumentId const& documentId,
                                VPackSlice const& doc, OperationMode mode) {
-  double latitude = 0.0;
-  double longitude = 0.0;
-  bool ok = true;
-
+  VPackSlice lat, lng;
   if (_variant == INDEX_GEO_INDIVIDUAL) {
-    VPackSlice lat = doc.get(_latitude);
-    VPackSlice lon = doc.get(_longitude);
-    if (!lat.isNumber()) {
-      ok = false;
-    } else {
-      latitude = lat.getNumericValue<double>();
-    }
-    if (!lon.isNumber()) {
-      ok = false;
-    } else {
-      longitude = lon.getNumericValue<double>();
-    }
+    lat = doc.get(_latitude);
+    lng = doc.get(_longitude);
   } else {
     VPackSlice loc = doc.get(_location);
     if (!loc.isArray() || loc.length() < 2) {
-      ok = false;
-    } else {
-      VPackSlice first = loc.at(0);
-      if (!first.isNumber()) {
-        ok = false;
-      }
-      VPackSlice second = loc.at(1);
-      if (!second.isNumber()) {
-        ok = false;
-      }
-      if (ok) {
-        if (_geoJson) {
-          longitude = first.getNumericValue<double>();
-          latitude = second.getNumericValue<double>();
-        } else {
-          latitude = first.getNumericValue<double>();
-          longitude = second.getNumericValue<double>();
-        }
-      }
+      // Invalid, no insert. Index is sparse
+      return IndexResult();
     }
+    lat = loc.at(_geoJson ? 1 : 0);
+    lng = loc.at(_geoJson ? 0 : 1);
   }
-
-  if (!ok) {
-    return Result(TRI_ERROR_NO_ERROR);
+  if (!lat.isNumber() || !lng.isNumber()) {
+    // Invalid, no insert. Index is sparse
+    return IndexResult();
   }
+  double latitude = lat.getNumericValue<double>();
+  double longitude = lng.getNumericValue<double>();
 
   GeoCoordinate gc;
   gc.latitude = latitude;
