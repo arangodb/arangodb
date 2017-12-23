@@ -28,6 +28,8 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Geo/AqlUtils.h"
+#include "Geo/GeoParams.h"
 #include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -42,52 +44,17 @@ using namespace arangodb::rocksdbengine;
 RocksDBGeoIndexIterator::RocksDBGeoIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, RocksDBGeoIndex const* index,
-    arangodb::aql::AstNode const* cond, arangodb::aql::Variable const* var)
+    geo::QueryParams&& params)
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _cursor(nullptr),
       _coor(),
-      _condition(cond),
-      _lat(0.0),
-      _lon(0.0),
-      _near(true),
-      _inclusive(false),
-      _done(false),
-      _radius(0.0) {
-  evaluateCondition();
-}
-
-void RocksDBGeoIndexIterator::evaluateCondition() {
-  if (_condition) {
-    auto numMembers = _condition->numMembers();
-
-    TRI_ASSERT(numMembers == 1);  // should only be an FCALL
-    auto fcall = _condition->getMember(0);
-    TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);
-    TRI_ASSERT(fcall->numMembers() == 1);
-    auto args = fcall->getMember(0);
-
-    numMembers = args->numMembers();
-    TRI_ASSERT(numMembers >= 3);
-
-    _lat = args->getMember(1)->getDoubleValue();
-    _lon = args->getMember(2)->getDoubleValue();
-
-    if (numMembers == 3) {
-      // NEAR
-      _near = true;
-    } else {
-      // WITHIN
-      TRI_ASSERT(numMembers == 5);
-      _near = false;
-      _radius = args->getMember(3)->getDoubleValue();
-      _inclusive = args->getMember(4)->getBoolValue();
-    }
-  } else {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "No condition passed to RocksDBGeoIndexIterator constructor";
-  }
-}
+      _params(std::move(params)),
+      _near(_params.maxDistance >= geo::kEarthRadiusInMeters),
+      _done(false) {
+        LOG_TOPIC(ERR, Logger::FIXME) << "Center: " << _params.centroid.toString() << "  rad: " << _params.maxDistance;
+        TRI_ASSERT(_params.minDistance == 0);
+      }
 
 size_t RocksDBGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
   TRI_ASSERT(coords != nullptr);
@@ -104,8 +71,8 @@ size_t RocksDBGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
     // scan backwards because documents with higher distances are more
     // interesting
     int iterations = 0;
-    while ((_inclusive && coords->distances[numDocs - 1] > _radius) ||
-           (!_inclusive && coords->distances[numDocs - 1] >= _radius)) {
+    while ((_params.maxInclusive && coords->distances[numDocs - 1] > _params.maxDistance) ||
+           (!_params.maxInclusive && coords->distances[numDocs - 1] >= _params.maxDistance)) {
       // document is outside the specified radius!
       --numDocs;
 
@@ -122,8 +89,8 @@ size_t RocksDBGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
         while (true) {
           // determine midpoint
           size_t m = l + ((r - l) / 2);
-          if ((_inclusive && coords->distances[m] > _radius) ||
-              (!_inclusive && coords->distances[m] >= _radius)) {
+          if ((_params.maxInclusive && coords->distances[m] > _params.maxDistance) ||
+              (!_params.maxInclusive && coords->distances[m] >= _params.maxDistance)) {
             // document is outside the specified radius!
             if (m == 0) {
               numDocs = 0;
@@ -149,7 +116,7 @@ size_t RocksDBGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
 
 bool RocksDBGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (!_cursor) {
-    createCursor(_lat, _lon);
+    createCursor(_params.centroid.latitude, _params.centroid.longitude);
 
     if (!_cursor) {
       // actually validate that we got a valid cursor
@@ -175,7 +142,7 @@ bool RocksDBGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
       maxDistance = -1.0;
     } else {
       withDistances = true;
-      maxDistance = _radius;
+      maxDistance = _params.maxDistance;
     }
     auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(
         _cursor, static_cast<int>(limit), withDistances, maxDistance));
@@ -225,18 +192,25 @@ IndexIterator* RocksDBGeoIndex::iteratorForCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
-  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_IF_FAILURE("GeoIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return new RocksDBGeoIndexIterator(_collection, trx, mmdr, this, node,
-                                     reference);
+  
+  geo::QueryParams params;
+  params.sorted = true;
+  params.ascending = true;
+  geo::AqlUtils::parseCondition(node, reference, params);
+  TRI_ASSERT(params.centroid != geo::Coordinate::Invalid());
+  TRI_ASSERT(params.minDistance == 0);
+  TRI_ASSERT(params.filterType == geo::FilterType::NONE);
+  
+  return new RocksDBGeoIndexIterator(_collection, trx, mmdr, this, std::move(params));
 }
 
 void RocksDBGeoIndexIterator::reset() { replaceCursor(nullptr); }
 
 RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
-                                 arangodb::LogicalCollection* collection,
+                                 LogicalCollection* collection,
                                  VPackSlice const& info)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
       _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),

@@ -94,8 +94,9 @@ struct QueryParams {
   /// Centroid from which to start
   geo::Coordinate centroid;
   
-  // Min and max distance from centroid that we're willing to search.
+  /// @brief Min distance from centroid a result has to be
   double minDistance = 0.0;
+  /// @brief is minimum an exclusive bound
   bool minInclusive = false;
   
   /// entire earth (halfaround in each direction),
@@ -104,8 +105,9 @@ struct QueryParams {
   double maxDistance = kEarthRadiusInMeters * M_PI;
   bool maxInclusive = false;
   
+  /// @brief results need to be sorted by distance to centroid
   bool sorted = false;
-  /// Default order is from closest to farthest
+  /// @brief Default order is from closest to farthest
   bool ascending = true;
 
   // ============= Filtered Params ===============

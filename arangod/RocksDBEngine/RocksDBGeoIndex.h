@@ -24,6 +24,7 @@
 #ifndef ARANGOD_ROCKSDB_GEO_INDEX_H
 #define ARANGOD_ROCKSDB_GEO_INDEX_H 1
 
+#include "Geo/GeoParams.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBGeoIndexImpl.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -49,8 +50,7 @@ class RocksDBGeoIndexIterator final : public IndexIterator {
                           transaction::Methods* trx,
                           ManagedDocumentResult* mmdr,
                           RocksDBGeoIndex const* index,
-                          arangodb::aql::AstNode const*,
-                          arangodb::aql::Variable const*);
+                          geo::QueryParams&& params);
 
   ~RocksDBGeoIndexIterator() { replaceCursor(nullptr); }
 
@@ -64,18 +64,14 @@ class RocksDBGeoIndexIterator final : public IndexIterator {
   size_t findLastIndex(arangodb::rocksdbengine::GeoCoordinates* coords) const;
   void replaceCursor(arangodb::rocksdbengine::GeoCursor* c);
   void createCursor(double lat, double lon);
-  void evaluateCondition();  // called in constructor
 
   RocksDBGeoIndex const* _index;
   arangodb::rocksdbengine::GeoCursor* _cursor;
   arangodb::rocksdbengine::GeoCoordinate _coor;
-  arangodb::aql::AstNode const* _condition;
-  double _lat;
-  double _lon;
-  bool _near;
-  bool _inclusive;
+  
+  geo::QueryParams const _params;
+  bool const _near;
   bool _done;
-  double _radius;
 };
 
 class RocksDBGeoIndex final : public RocksDBIndex {

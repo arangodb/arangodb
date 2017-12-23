@@ -294,8 +294,8 @@ class Index {
 
   virtual IndexIterator* iteratorForCondition(transaction::Methods*,
                                               ManagedDocumentResult*,
-                                              aql::AstNode const*,
-                                              aql::Variable const*,
+                                              arangodb::aql::AstNode const*,
+                                              arangodb::aql::Variable const*,
                                               IndexIteratorOptions const&) = 0;
 
   virtual arangodb::aql::AstNode* specializeCondition(

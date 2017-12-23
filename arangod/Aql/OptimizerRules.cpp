@@ -5206,16 +5206,26 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
     };
     auto visitor = [&](AstNode* node, void*) -> AstNode* {
       if (Ast::IsAndOperatorType(node->type)) {
-        for (std::size_t i = 0; i < node->numMembers(); ++i) {
-          if (info.nodesToRemove.find(node->getMemberUnchecked(i)) != info.nodesToRemove.end()) {
-            node->removeMemberUnchecked(i--);
+        std::vector<AstNode*> keep; // always shallow copy node
+        for (std::size_t i = 0; i < node->numMembers(); i++) {
+          AstNode* child = node->getMemberUnchecked(i);
+          if (info.nodesToRemove.find(child) == info.nodesToRemove.end()) {
+            keep.push_back(child);
           }
         }
-        if (node->numMembers() == 1) {
+        
+        if (keep.size() > 2) {
+          AstNode* n = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+          for (size_t i = 0; i < keep.size(); i++) {
+            n->addMember(keep[i]);
+          }
+          return n;
+        } else if (keep.size() == 2) {
+          return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, keep[0], keep[1]);
+        } else if (keep.size() == 1) {
           return node->getMemberUnchecked(0);
-        } else if (node->numMembers() == 0) {
-          return node == root ? nullptr : ast->createNodeValueBool(true);
         }
+        return node == root ? nullptr : ast->createNodeValueBool(true);
       } else if (info.nodesToRemove.find(node) != info.nodesToRemove.end()) {
         return node == root ? nullptr : ast->createNodeValueBool(true);
       }

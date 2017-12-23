@@ -28,6 +28,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Geo/AqlUtils.h"
 #include "Geo/GeoUtils.h"
 #include "Geo/GeoJsonParser.h"
 #include "Indexes/IndexResult.h"
@@ -369,121 +370,6 @@ bool RocksDBGeoS2Index::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-// Handle GEO_DISTANCE(<something>, doc.field)
-static geo::Coordinate handleDistFunc(aql::AstNode const* node) {
-  //aql::AstNode* dist = node->getMemberUnchecked(0);
-  TRI_ASSERT(node->type == aql::NODE_TYPE_FCALL);
-  aql::AstNode* args = node->getMemberUnchecked(0);
-  TRI_ASSERT(args->numMembers() == 2);
-  TRI_ASSERT(args->getMemberUnchecked(1)->isAttributeAccessForVariable());
-  aql::AstNode* cc = args->getMemberUnchecked(0);
-  TRI_ASSERT(cc->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS);
-  if (cc->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  }
-
-  Result res;
-  if (cc->type == aql::NODE_TYPE_ARRAY) { // [lng, lat] is valid input
-    TRI_ASSERT(cc->numMembers() == 2);
-    return geo::Coordinate(/*lat*/ cc->getMember(1)->getDoubleValue(),
-                           /*lon*/ cc->getMember(0)->getDoubleValue());
-  } else {
-    Result res;
-    VPackBuilder jsonB;
-    cc->toVelocyPackValue(jsonB);
-    VPackSlice json = jsonB.slice();
-    geo::ShapeContainer shape;
-    if (json.isArray() && json.length() >= 2) {
-      res = shape.parseCoordinates(json, /*GeoJson*/true);
-    } else {
-      res = geo::GeoJsonParser::parseGeoJson(json, shape);
-    }
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-    return shape.centroid();
-  }
-}
-
-static void handleNode(aql::AstNode const* node, geo::QueryParams& params) {
-
-  switch (node->type) {
-      // Handle GEO_CONTAINS(<geoJson-object>, doc.field)
-      // or GEO_INTERSECTS(<geoJson-object>, doc.field)
-    case aql::NODE_TYPE_FCALL: {
-      // TODO handle GEO_CONTAINS / INTERSECT
-      aql::AstNode* args = node->getMemberUnchecked(0);
-      TRI_ASSERT(args->numMembers() == 2);
-      if (args->numMembers() != 2) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
-      }
-      aql::AstNode* cc = args->getMemberUnchecked(0);
-      TRI_ASSERT(args->getMemberUnchecked(1)->isAttributeAccessForVariable());
-      TRI_ASSERT(cc->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS);
-
-      // arrays can't occur only handle real GeoJSON
-      VPackBuilder geoJsonBuilder;
-      cc->toVelocyPackValue(geoJsonBuilder);
-      VPackSlice json = geoJsonBuilder.slice();
-      Result res = geo::GeoJsonParser::parseGeoJson(json, params.filterShape);
-      if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      
-      aql::Function* func = static_cast<aql::Function*>(node->getData());
-      TRI_ASSERT(func != nullptr);
-      if (func->name == "GEO_CONTAINS") {
-        params.filterType = geo::FilterType::CONTAINS;
-      } else if (func->name == "GEO_INTERSECTS") {
-        params.filterType = geo::FilterType::INTERSECTS;
-      } else {
-        TRI_ASSERT(false);
-      }
-      break;
-    }
-    // Handle GEO_DISTANCE(<something>, doc.field) [<|<=|=>|>] <constant>
-    case aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      params.maxInclusive = true;
-    case aql::NODE_TYPE_OPERATOR_BINARY_LT: {
-      TRI_ASSERT(node->numMembers() == 2);
-      geo::Coordinate c = handleDistFunc(node->getMemberUnchecked(0));
-      if (params.centroid != geo::Coordinate::Invalid() &&
-          params.centroid != c) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
-      //LOG_TOPIC(ERR, Logger::FIXME) << "Found center: " << c.toString();
-      
-      params.centroid = std::move(c);
-      aql::AstNode const* max = node->getMemberUnchecked(1);
-      TRI_ASSERT(max->type == aql::NODE_TYPE_VALUE);
-      if (max->isValueType(aql::VALUE_TYPE_DOUBLE)) {
-        params.maxDistance = max->getDoubleValue();
-      } // else assert(max->getStringValue() == "unlimited")
-      break;
-    }
-    case aql::NODE_TYPE_OPERATOR_BINARY_GE:
-          params.minInclusive = true;
-    case aql::NODE_TYPE_OPERATOR_BINARY_GT: {
-      TRI_ASSERT(node->numMembers() == 2);
-      geo::Coordinate c = handleDistFunc(node->getMemberUnchecked(0));
-      if (params.centroid != geo::Coordinate::Invalid() &&
-          params.centroid != c) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
-      //LOG_TOPIC(ERR, Logger::FIXME) << "Found center: " << c.toString();
-
-      aql::AstNode const* min = node->getMemberUnchecked(1);
-      TRI_ASSERT(min->type == aql::NODE_TYPE_VALUE);
-      params.centroid = c;
-      params.minDistance = min->getDoubleValue();
-      break;
-    }
-    default:
-      break;
-  }
-
-}
-
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
@@ -497,13 +383,7 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
   geo::QueryParams params;
   params.sorted = opts.sorted;
   params.ascending = opts.ascending;
-  if (aql::Ast::IsAndOperatorType(node->type)) {
-    for (size_t i = 0; i < node->numMembers(); i++) {
-      handleNode(node->getMemberUnchecked(i), params);
-    }
-  } else {
-    handleNode(node, params);
-  }
+  geo::AqlUtils::parseCondition(node, reference, params);
   TRI_ASSERT(!opts.sorted || params.centroid != geo::Coordinate::Invalid());
 
   // params.cover.worstIndexedLevel < _coverParams.worstIndexedLevel
