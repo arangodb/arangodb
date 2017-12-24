@@ -37,7 +37,11 @@ class LogAppenderStream : public LogAppender {
 
   virtual std::string details() override = 0;
 
+  int fd() const { return _fd; }
+
  protected:
+  void updateFd(int fd) { _fd = fd; }
+
   virtual void writeLogMessage(LogLevel, char const*, size_t) = 0;
 
   /// @brief maximum size for reusable log buffer
@@ -71,9 +75,12 @@ class LogAppenderFile : public LogAppenderStream {
  public:
   static void reopenAll();
   static void closeAll();
+  static std::vector<std::tuple<int, std::string, LogAppenderFile*>> getFds() { return _fds; }
+  static void setFds(std::vector<std::tuple<int, std::string, LogAppenderFile*>> const& fds) { _fds = fds; }
+  static void clear(); 
 
  private:
-  static std::vector<std::pair<int, std::string>> _fds;
+  static std::vector<std::tuple<int, std::string, LogAppenderFile*>> _fds;
 
   std::string _filename;
 };

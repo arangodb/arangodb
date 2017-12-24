@@ -78,6 +78,7 @@ add_executable(
   Basics/vector-test.cpp
   Basics/structure-size-test.cpp
   Basics/EndpointTest.cpp
+  Basics/LoggerTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
   Basics/VelocyPackHelper-test.cpp

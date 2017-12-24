@@ -1,6 +1,10 @@
 devel
 -----
 
+* renamed arangoimp to arangoimport for consistency
+  Release packages will still install arangoimp as a symlink so user scripts 
+  invoking arangoimp do not need to be changed
+
 * UI: improved the behavior during collection creation in a cluster environment
 
 * UI: fixed broken foxx configuration keys. Some valid configuration values
@@ -39,7 +43,7 @@ devel
 * UI: document/edge editor now remembering their modes (e.g. code or tree)
 
 * UI: optimized error messages for invalid graph definitions. Also fixed a
-  graph renderer cleanrenderer cleanup error.
+  graph renderer cleanup error.
 
 * UI: added a delay within the graph viewer while changing the colors of the
   graph. Necessary due different browser behaviour.
