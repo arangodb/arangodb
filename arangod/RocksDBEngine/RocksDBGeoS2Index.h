@@ -96,7 +96,7 @@ class RocksDBGeoS2Index final : public arangodb::RocksDBIndex {
 
   bool canBeDropped() const override { return true; }
 
-  bool isSorted() const override { return true; }
+  bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return false; }
 
