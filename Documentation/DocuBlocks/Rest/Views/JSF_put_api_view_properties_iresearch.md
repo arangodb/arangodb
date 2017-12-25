@@ -96,11 +96,15 @@ memory usage would continue to grow.
 For the case where there are a few inserts/updates, a higher value will impact performance and waste disk space for each
 commit call without any added benefits.
 
-@RESTBODYPARAM{locale,string,optional,string}
-The default locale used for queries on analyzed string values (default: *C*).
-
 @RESTBODYPARAM{dataPath,string,optional,string}
 The filesystem path where to store persisted index data (default: *"<ArangoDB database path>/iresearch-<index id>"*).
+
+@RESTSTRUCT{includePersistedCidsOnOpen,boolean,optional,bool}
+Should CIDs in the persisted store be included in the list of tracked CIDs.
+If false then only the runtime added/dropped CIDs will be tracked by the view.
+
+@RESTBODYPARAM{locale,string,optional,string}
+The default locale used for queries on analyzed string values (default: *C*).
 
 @RESTBODYPARAM{threadMaxIdle,integer,optional,uint64}
 Maximum idle number of threads for single-run tasks (default: 5).

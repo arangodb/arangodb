@@ -108,6 +108,7 @@ struct IResearchViewMeta {
     bool _collections;
     bool _commit;
     bool _dataPath;
+    bool _includePersistedCidsOnOpen;
     bool _locale;
     bool _threadsMaxIdle;
     bool _threadsMaxTotal;
@@ -117,6 +118,7 @@ struct IResearchViewMeta {
   std::unordered_set<TRI_voc_cid_t> _collections; // known collection IDs having links to this view
   CommitMeta _commit;
   std::string _dataPath; // data file path
+  bool _includePersistedCidsOnOpen; // should cids from persisted store during open() be included in the list of tracked CIDs
   std::locale _locale; // locale used for ordering processed attribute names
   size_t _threadsMaxIdle; // maximum idle number of threads for single-run tasks
   size_t _threadsMaxTotal; // maximum total number of threads for single-run tasks
