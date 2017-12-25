@@ -1520,13 +1520,6 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 //    }
 //    CHECK(expectedDoc == expectedDocs.end());
   }
-
-  // LET x = 'abc'
-  // FOR d IN VIEW FILTER d.seq == _FORWARD_(5) && d.seq == x
-  //   SORT TFIDF(d), BM25(d)
-  // FOR i IN 1..5
-  //   FOR x IN collection FILTER x.abc == d.abc
-  // SORT customscorer(d, i)
 }
 
 // -----------------------------------------------------------------------------
