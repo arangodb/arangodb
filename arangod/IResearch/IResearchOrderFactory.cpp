@@ -230,8 +230,8 @@ NS_BEGIN(iresearch)
 
 /*static*/ bool OrderFactory::scorer(
     irs::sort::ptr* scorer,
-    aql::AstNode const& node,
-    QueryContext const& ctx
+    arangodb::aql::AstNode const& node,
+    arangodb::iresearch::QueryContext const& ctx
 ) {
   switch (node.type) {
     case arangodb::aql::NODE_TYPE_FCALL: // function call
@@ -247,7 +247,7 @@ NS_BEGIN(iresearch)
 
 /*static*/ bool OrderFactory::comparer(
     irs::sort::ptr* comparer,
-    aql::AstNode const& node
+    arangodb::aql::AstNode const& node
 ) {
   std::string buf;
   irs::string_ref scorerName;
