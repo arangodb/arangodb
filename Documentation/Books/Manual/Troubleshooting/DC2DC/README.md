@@ -66,19 +66,19 @@ When you use ArangoSync for backup of your cluster from one datacenter
 to another and the source datacenter has a complete outage, you may consider 
 switching your applications to the target (backup) datacenter.
 
-This is what you must do in that case.
+This is what you must do in that case:
 
-1. [Stop configuration](#stop-synchronization) using `arangosync stop sync ...`.
+1. [Stop synchronization](..\..\Administration\DC2DC\README.md#stoping-synchronization) using `arangosync stop sync ...`.
    <br/>When the source datacenter is completely unresponsive this will not 
    succeed. In that case use `arangosync abort sync ...`. 
-   <br/>See [Configuration](#stop-synchronization) for how to cleanup the source datacenter when 
+   <br/>See [Stoping synchronization](..\..\Administration\DC2DC\README.md#stoping-synchronization) for how to cleanup the source datacenter when 
    it becomes available again.
 2. Verify that configuration has completely stopped using `arangosync get status ... -v`.
 3. Reconfigure your applications to use the target (backup) datacenter.
 
 When the original source datacenter is restored, you may switch roles and 
 make it the target datacenter. To do so, use `arangosync configure sync ...` 
-as described in [Configuration](#configuration).
+as described in [Reversing synchronization direction](..\..\Administration\DC2DC\README.md#reversing-synchronization-direction).
 
 ## What to do in case of a planned network outage
 

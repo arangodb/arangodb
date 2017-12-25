@@ -14,7 +14,7 @@ To use _ArangoSync_ you need the following:
 - One instances of the ArangoSync worker on every machine in each datacenter.
 
 Note: In several places you will need a (x509) certificate. 
-<br/>The [certificates](#certificates) section below provides more guidance for creating 
+<br/>The [..\..\Security\DC2DC\README.md](#certificates) section provides more guidance for creating 
 and renewing these certificates.
 
 Besides the above list, you probably want to use the following:

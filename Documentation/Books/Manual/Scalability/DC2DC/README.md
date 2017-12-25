@@ -6,7 +6,7 @@ For further information about datacenter to datacenter replication, please refer
 to the following sections:
 
 - [Deployment](..\..\Deployment\DC2DC.md)
-- [Administration](..\..\Administation\DC2DC\README.md)
+- [Administration](..\..\Administration\DC2DC\README.md)
 - [Troubleshooting](..\..\Troubleshooting\DC2DC\README.md)
 - [Monitoring](..\..\Monitoring\DC2DC\README.md)
 - [Security](..\..\Security\DC2DC\README.md)
