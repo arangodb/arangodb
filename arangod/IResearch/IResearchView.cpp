@@ -1550,6 +1550,9 @@ iresearch::CompoundReader IResearchView::snapshot(transaction::Methods* trx) {
     throw;
   }
 
+  // FIXME TODO must add cids to transaction in TRI_voc_cid_t order
+  // FIXME TODO must add cids of all documents in the IResearch data store to return a valid set of documents,
+  //            '_meta._collections' + '_registeredLinks' may not be a coplete list for some edge cases
   if (trx) {
     // add CIDs of known collections to transaction
     for (auto& entry: _meta._collections) {

@@ -81,6 +81,7 @@ SECTION("test_defaults") {
 
   CHECK(true == (expectedItem.empty()));
   CHECK(std::string("") == meta._dataPath);
+  CHECK((true == meta._includePersistedCidsOnOpen));
   CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
   CHECK(5 == meta._threadsMaxIdle);
   CHECK(5 == meta._threadsMaxTotal);
@@ -103,6 +104,7 @@ SECTION("test_inheritDefaults") {
   defaults._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::COUNT, 201, .21f);
   defaults._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::FILL, 301, .31f);
   defaults._dataPath = "path";
+  defaults._includePersistedCidsOnOpen = false;
   defaults._locale = irs::locale_utils::locale("ru");
   defaults._threadsMaxIdle = 8;
   defaults._threadsMaxTotal = 16;
@@ -147,6 +149,7 @@ SECTION("test_inheritDefaults") {
 
     CHECK(true == (expectedItem.empty()));
     CHECK(std::string("path") == meta._dataPath);
+    CHECK((false == meta._includePersistedCidsOnOpen));
     CHECK(std::string("ru") == irs::locale_utils::name(meta._locale));
     CHECK(8 == meta._threadsMaxIdle);
     CHECK(16 == meta._threadsMaxTotal);
@@ -177,6 +180,7 @@ SECTION("test_readDefaults") {
     }
 
     CHECK((std::string("testType-123") == meta._dataPath));
+    CHECK((true == meta._includePersistedCidsOnOpen));
     CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
     CHECK(5 == meta._threadsMaxIdle);
     CHECK(5 == meta._threadsMaxTotal);
@@ -313,8 +317,9 @@ SECTION("test_readCustomizedValues") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \
         \"collections\": [ 42 ], \
         \"commit\": { \"commitIntervalMsec\": 456, \"cleanupIntervalStep\": 654, \"commitTimeoutMsec\": 789, \"consolidate\": { \"bytes\": { \"intervalStep\": 1001, \"threshold\": 0.11 }, \"bytes_accum\": { \"intervalStep\": 1501, \"threshold\": 0.151 }, \"count\": { \"intervalStep\": 2001 }, \"fill\": {} } }, \
-        \"locale\": \"ru_RU.KOI8-R\", \
         \"dataPath\": \"somepath\", \
+        \"includePersistedCidsOnOpen\": false, \
+        \"locale\": \"ru_RU.KOI8-R\", \
         \"threadsMaxIdle\": 8, \
         \"threadsMaxTotal\": 16 \
     }");
@@ -362,6 +367,7 @@ SECTION("test_readCustomizedValues") {
 
   CHECK(true == (expectedItem.empty()));
   CHECK(std::string("somepath") == meta._dataPath);
+  CHECK((false == meta._includePersistedCidsOnOpen));
   CHECK(std::string("ru_RU.UTF-8") == iresearch::locale_utils::name(meta._locale));
   CHECK(8 == meta._threadsMaxIdle);
   CHECK(16 == meta._threadsMaxTotal);
@@ -383,7 +389,7 @@ SECTION("test_writeDefaults") {
 
   auto slice = builder.slice();
 
-  CHECK((5U == slice.length()));
+  CHECK((6U == slice.length()));
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 0 == tmpSlice.length()));
   tmpSlice = slice.get("commit");
@@ -415,6 +421,8 @@ SECTION("test_writeDefaults") {
   }
 
   CHECK(true == expectedCommitItemConsolidate.empty());
+  tmpSlice = slice.get("includePersistedCidsOnOpen");
+  CHECK((true == tmpSlice.isBoolean() && true == tmpSlice.getBoolean()));
   tmpSlice = slice.get("locale");
   CHECK((true == tmpSlice.isString() && std::string("C") == tmpSlice.copyString()));
   tmpSlice = slice.get("threadsMaxIdle");
@@ -459,8 +467,9 @@ SECTION("test_writeCustomizedValues") {
   meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::BYTES_ACCUM, 151, .151f);
   meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::COUNT, 201, .21f);
   meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::FILL, 301, .31f);
-  meta._locale = iresearch::locale_utils::locale("en_UK.UTF-8");
   meta._dataPath = "somepath";
+  meta._includePersistedCidsOnOpen = false;
+  meta._locale = iresearch::locale_utils::locale("en_UK.UTF-8");
   meta._threadsMaxIdle = 8;
   meta._threadsMaxTotal = 16;
 
@@ -479,7 +488,7 @@ SECTION("test_writeCustomizedValues") {
 
   auto slice = builder.slice();
 
-  CHECK((6U == slice.length()));
+  CHECK((7U == slice.length()));
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 3 == tmpSlice.length()));
 
@@ -520,6 +529,8 @@ SECTION("test_writeCustomizedValues") {
   CHECK(true == expectedCommitItemConsolidate.empty());
   tmpSlice = slice.get("dataPath");
   CHECK((tmpSlice.isString() && std::string("somepath") == tmpSlice.copyString()));
+  tmpSlice = slice.get("includePersistedCidsOnOpen");
+  CHECK((true == tmpSlice.isBoolean() && false == tmpSlice.getBoolean()));
   tmpSlice = slice.get("locale");
   CHECK((tmpSlice.isString() && std::string("en_UK.UTF-8") == tmpSlice.copyString()));
   tmpSlice = slice.get("threadsMaxIdle");
@@ -539,6 +550,7 @@ SECTION("test_readMaskAll") {
     \"collections\": [ 42 ], \
     \"commit\": { \"commitIntervalMsec\": 654, \"cleanupIntervalStep\": 456, \"consolidate\": {\"bytes_accum\": { \"threshold\": 0.1 } } }, \
     \"dataPath\": \"somepath\", \
+    \"includePersistedCidsOnOpen\": false, \
     \"locale\": \"ru_RU.KOI8-R\", \
     \"threadsMaxIdle\": 8, \
     \"threadsMaxTotal\": 16 \
@@ -547,6 +559,7 @@ SECTION("test_readMaskAll") {
   CHECK(true == mask._collections);
   CHECK(true == mask._commit);
   CHECK(true == mask._dataPath);
+  CHECK((true == mask._includePersistedCidsOnOpen));
   CHECK(true == mask._locale);
   CHECK(true == mask._threadsMaxIdle);
   CHECK(true == mask._threadsMaxTotal);
@@ -564,6 +577,7 @@ SECTION("test_readMaskNone") {
   CHECK(false == mask._collections);
   CHECK(false == mask._commit);
   CHECK(false == mask._dataPath);
+  CHECK((false == mask._includePersistedCidsOnOpen));
   CHECK(false == mask._locale);
   CHECK(false == mask._threadsMaxIdle);
   CHECK(false == mask._threadsMaxTotal);
@@ -581,7 +595,7 @@ SECTION("test_writeMaskAll") {
 
   auto slice = builder.slice();
 
-  CHECK(6U == slice.length());
+  CHECK(7U == slice.length());
   CHECK(true == slice.hasKey("collections"));
   CHECK(true == slice.hasKey("commit"));
   tmpSlice = slice.get("commit");
@@ -590,6 +604,7 @@ SECTION("test_writeMaskAll") {
   CHECK(true == tmpSlice.hasKey("commitTimeoutMsec"));
   CHECK(true == tmpSlice.hasKey("consolidate"));
   CHECK(true == slice.hasKey("dataPath"));
+  CHECK((true == slice.hasKey("includePersistedCidsOnOpen")));
   CHECK(true == slice.hasKey("locale"));
   CHECK(true == slice.hasKey("threadsMaxIdle"));
   CHECK(true == slice.hasKey("threadsMaxTotal"));

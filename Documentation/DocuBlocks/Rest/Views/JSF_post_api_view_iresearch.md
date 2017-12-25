@@ -71,11 +71,15 @@ lot of disk space to be wasted.
 For the case where the consolidation policies rarely merge segments (i.e. few inserts/deletes), a higher value will impact
 performance without any added benefits.
 
-@RESTSTRUCT{locale,JSF_post_api_view_props,string,optional,string}
-The default locale used for queries on analyzed string values (default: *C*).
-
 @RESTSTRUCT{dataPath,JSF_post_api_view_props,string,optional,string}
 The filesystem path where to store persisted index data (default: *"<ArangoDB database path>/iresearch-<index id>"*).
+
+@RESTSTRUCT{includePersistedCidsOnOpen,boolean,optional,bool}
+Should CIDs in the persisted store be included in the list of tracked CIDs.
+If false then only the runtime added/dropped CIDs will be tracked by the view.
+
+@RESTSTRUCT{locale,JSF_post_api_view_props,string,optional,string}
+The default locale used for queries on analyzed string values (default: *C*).
 
 @RESTSTRUCT{threadMaxIdle,JSF_post_api_view_props,integer,optional,uint64}
 Maximum idle number of threads for single-run tasks (default: 5).

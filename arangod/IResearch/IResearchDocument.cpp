@@ -697,6 +697,19 @@ bool appendKnownCollections(
     std::unordered_set<TRI_voc_cid_t>& set,
     const irs::index_reader& reader
 ) {
+  auto visitor = [&set](TRI_voc_cid_t cid)->bool {
+    set.emplace(cid);
+
+    return true;
+  };
+
+  return visitReaderCollections(reader, visitor);
+}
+
+bool visitReaderCollections(
+    irs::index_reader const& reader,
+    std::function<bool(TRI_voc_cid_t cid)> const& visitor
+) {
   for(auto& segment: reader) {
     auto* term_reader = segment.field(CID_FIELD);
 
@@ -726,7 +739,9 @@ bool appendKnownCollections(
         return false;
       }
 
-      set.emplace(cid);
+      if (!visitor(cid)) {
+        return false;
+      }
     }
   }
 
