@@ -1,7 +1,10 @@
 # Datacenter to datacenter replication deployment 
 
-This Section describes how to deploy all the components needed for datacenter to
-datacenter replication.
+This Section describes how to deploy all the components needed for _datacenter to
+datacenter replication_.
+
+For a general introduction to _datacenter to datacenter replication_, please refer
+to the [Datacenter to datacenter replication](..\Scalability\DC2DC\README.md) chapther.
 
 ## ArangoDB cluster 
 
@@ -83,17 +86,17 @@ The _Starter_ itself will use port `8528`.
 
 ## Sync Master 
 
-The Sync Master is responsible for managing all synchronization, creating tasks and assigning 
+The _Sync Master_ is responsible for managing all synchronization, creating tasks and assigning 
 those to workers.
 <br/> At least 2 instances muts be deployed in each datacenter.
 One instance will be the "leader", the other will be an inactive slave. When the leader 
 is gone for a short while, one of the other instances will take over.
 
-With clusters of a significant size, the sync master will require a significant set of resources.
-Therefore it is recommended to deploy sync masters on their own servers, equiped with sufficient
+With clusters of a significant size, the _sync master_ will require a significant set of resources.
+Therefore it is recommended to deploy _sync masters_ on their own servers, equiped with sufficient
 CPU power and memory capacity.
 
-To start a sync master using a `systemd` service, use a unit like this:
+To start a _sync master_ using a `systemd` service, use a unit like this:
 
 ```
 [Unit]
@@ -123,7 +126,7 @@ TimeoutStopSec=60
 WantedBy=multi-user.target
 ```
 
-The sync master needs a TLS server certificate and a 
+The _sync master_ needs a TLS server certificate and a 
 If you want the service to create a TLS certificate & client authentication 
 certificate, for authenticating with sync masters in another datacenter, for every start, 
 add this to the `Service` section.
@@ -146,13 +149,13 @@ ExecStartPre=/usr/sbin/arangosync create client-auth keyfile \
     --host=${HOST}
 ```
 
-The sync master must be reachable on a TCP port `${MASTERPORT}` (used with `--server.port` option).
+The _sync master_ must be reachable on a TCP port `${MASTERPORT}` (used with `--server.port` option).
 This port must be reachable from inside the datacenter (by sync workers and operations) 
 and from inside of the other datacenter (by sync masters in the other datacenter).
 
 ## Sync Workers 
 
-The Sync Worker is responsible for executing synchronization tasks.
+The _Sync Worker_ is responsible for executing synchronization tasks.
 <br/> For optimal performance at least 1 worker instance must be placed on 
 every machine that has an ArangoDB `dbserver` running. This ensures that tasks 
 can be executed with minimal network traffic outside of the machine.
@@ -163,7 +166,7 @@ it is recommended to run at least 2 instances of a worker on every machine in th
 That way, tasks can still be assigned in the most optimal way, even when a worker in temporarily 
 down for a restart.
 
-To start a sync worker using a `systemd` service, use a unit like this:
+To start a _sync worker_ using a `systemd` service, use a unit like this:
 
 ```
 [Unit]
@@ -187,7 +190,7 @@ TimeoutStopSec=60
 WantedBy=multi-user.target
 ```
 
-The sync worker must be reachable on a TCP port `${PORT}` (used with `--server.port` option).
+The _sync worker_ must be reachable on a TCP port `${PORT}` (used with `--server.port` option).
 This port must be reachable from inside the datacenter (by sync masters).
 
 ## Prometheus & Grafana (optional)

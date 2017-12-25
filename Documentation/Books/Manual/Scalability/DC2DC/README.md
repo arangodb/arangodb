@@ -2,7 +2,7 @@
 
 This Chapther introduces ArangoDB's _datacenter to datacenter replication_.
 
-For further information about datacenter to datacenter replication, please refer
+For further information about _datacenter to datacenter replication_, please refer
 to the following sections:
 
 - [Deployment](..\..\Deployment\DC2DC.md)

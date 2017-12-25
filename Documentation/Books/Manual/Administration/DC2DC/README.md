@@ -1,5 +1,12 @@
 # Datacenter to datacenter replication administration
 
+This Section includes information related to the administration of the _datacenter 
+to datacenter replication_.
+
+For a general introduction to the _datacenter to datacenter replication_, please
+refer to the [Datacenter to datacenter replication](..\..\Scalability\DC2DC\README.md)
+chapther.
+
 ## Starting synchronization
 
 Once all components of the _ArangoSync_ solution have been deployed and are 
