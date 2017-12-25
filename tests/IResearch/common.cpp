@@ -110,13 +110,16 @@ bool assertRules(
   );
 
   auto const res = query.explain();
-  auto const explanation = res.result->slice();
 
-  arangodb::velocypack::ArrayIterator rules(explanation.get("rules"));
+  if (res.result) {
+    auto const explanation = res.result->slice();
 
-  for (auto const rule : rules) {
-    auto const strRule = arangodb::iresearch::getStringRef(rule);
-    expectedRules.erase(strRule);
+    arangodb::velocypack::ArrayIterator rules(explanation.get("rules"));
+
+    for (auto const rule : rules) {
+      auto const strRule = arangodb::iresearch::getStringRef(rule);
+      expectedRules.erase(strRule);
+    }
   }
 
   return expectedRules.empty();
