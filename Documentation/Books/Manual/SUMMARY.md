@@ -22,10 +22,10 @@
   * [Architecture](Scalability/Architecture.md)
   * [Data models](Scalability/DataModels.md)
   * [Limitations](Scalability/Limitations.md)
-  * [Datacenter to datacenter replication](Scalability/dc2dc/README.md)
-    * [Introduction](Scalability/dc2dc/Introduction.md)
-    * [Applicability](Scalability/dc2dc/Applicability.md)
-    * [Requirements](Scalability/dc2dc/Requirements.md)
+  * [Datacenter to datacenter replication](Scalability/DC2DC/README.md)
+    * [Introduction](Scalability/DC2DC/Introduction.md)
+    * [Applicability](Scalability/DC2DC/Applicability.md)
+    * [Requirements](Scalability/DC2DC/Requirements.md)
 #
 * [Data models & modeling](DataModeling/README.md)
 # * [Collections](FirstSteps/CollectionsAndDocuments.md) #TODO
