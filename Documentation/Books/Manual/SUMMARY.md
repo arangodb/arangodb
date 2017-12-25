@@ -146,6 +146,11 @@
         * [Cluster: Processes](Deployment/Distributed.md)
         * [Cluster: Docker](Deployment/Docker.md)
   * [Multiple Datacenters](Deployment/DC2DC.md)
+    * [Cluster](Deployment/DC2DC/Cluster.md)
+    * [Kafka & Zookeeper](Deployment/DC2DC/KafkaZookeeper.md)
+    * [ArangoSync Master](Deployment/DC2DC/ArangoSyncMaster.md)
+    * [ArangoSync Workers](Deployment/DC2DC/ArangoSyncWorkers.md)
+    * [Prometheus & Grafana](Deployment/DC2DC/PrometheusGrafana.md)  
 #
 * [Administration](Administration/README.md)
   * [Web Interface](Administration/WebInterface/README.md)

@@ -1,11 +1,11 @@
 # Datacenter to datacenter Security
 
-This Section includes information related to the _datacenter to datacenter replication_
+This section includes information related to the _datacenter to datacenter replication_
 security.
 
 For a general introduction to the _datacenter to datacenter replication_, please
 refer to the [Datacenter to datacenter replication](..\..\Scalability\DC2DC\README.md)
-chapther.
+chapter.
 
 ## Firewall settings
 

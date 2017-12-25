@@ -1,15 +1,15 @@
 # Monitoring datacenter to datacenter replication
 
-This Section includes information related to the monitoring of the _datacenter 
+This section includes information related to the monitoring of the _datacenter 
 to datacenter replication_.
 
 For a general introduction to the _datacenter to datacenter replication_, please
 refer to the [Datacenter to datacenter replication](..\..\Scalability\DC2DC\README.md)
-chapther.
+chapter.
 
 # Metrics
 
-_ArangoSync_ (master & worker) provide metrics that can be used for monitoring 
+_ArangoSync_ (_master_ & _worker_) provide metrics that can be used for monitoring 
 the _datacenter to datacenter repliation_ solution. These metrics are available 
 using the following HTTPS endpoints:
 

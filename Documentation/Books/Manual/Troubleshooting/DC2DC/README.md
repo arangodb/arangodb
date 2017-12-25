@@ -4,12 +4,12 @@ The _datacenter to datacenter replication_ is a distributed system with a lot
 different components. As with any such system, it requires some, but not a lot, 
 of operational support. 
 
-This Section includes information on how to troubleshoot the
+This section includes information on how to troubleshoot the
 _datacenter to datacenter replication_.
 
 For a general introduction to the _datacenter to datacenter replication_, please
 refer to the [Datacenter to datacenter replication](..\..\Scalability\DC2DC\README.md)
-chapther.
+chapter.
 
 ## What means are available to monitor status 
 
