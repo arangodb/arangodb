@@ -1144,7 +1144,7 @@ SECTION("test_register_link") {
     persisted = false;
     auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((false == persisted));
-    CHECK((true == !link1));
+    CHECK((false == !link1)); // duplicate link creation is allowed
     CHECK((1 == view->linkCount()));
 
     {

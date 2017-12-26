@@ -137,7 +137,15 @@ bool IResearchLink::operator==(IResearchView const& view) const noexcept {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
-  return _view && _view->id() == view.id();
+  if (!_view) {
+    return false;
+  }
+
+  auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
+  SCOPED_LOCK(viewMutex);
+  auto* thisView = _view->get();
+
+  return thisView && thisView->id() == view.id();
 }
 
 bool IResearchLink::operator!=(IResearchView const& view) const noexcept {
@@ -178,13 +186,23 @@ void IResearchLink::batchInsert(
     return;
   }
 
+  auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
+  SCOPED_LOCK(viewMutex);
+  auto* view = _view->get();
+
+  if (!view) {
+    queue->setStatus(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // IResearchView required
+
+    return;
+  }
+
   if (!trx) {
     queue->setStatus(TRI_ERROR_BAD_PARAMETER); // 'trx' required
 
     return;
   }
 
-  auto res = _view->insert(*trx, _collection->cid(), batch, _meta);
+  auto res = view->insert(*trx, _collection->cid(), batch, _meta);
 
   if (TRI_ERROR_NO_ERROR != res) {
     queue->setStatus(res);
@@ -207,13 +225,21 @@ int IResearchLink::drop() {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
 
-  if (!releaseAnalyzers(_meta, _view->id(), _id)) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to release tokenizers while dropping IResearch link '" << _id << "' for IResearch view '" << _view->id() << "'";
+  auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
+  SCOPED_LOCK(viewMutex);
+  auto* view = _view->get();
+
+  if (!view) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
+  }
+
+  if (!releaseAnalyzers(_meta, view->id(), _id)) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to release tokenizers while dropping IResearch link '" << _id << "' for IResearch view '" << view->id() << "'";
 
     return TRI_ERROR_INTERNAL;
   }
 
-  return _view->drop(_collection->cid());
+  return view->drop(_collection->cid());
 }
 
 bool IResearchLink::hasBatchInsert() const {
@@ -271,15 +297,25 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return false;
       }
 
-      // on success this call will set the '_view' pointer
-      if (!view->linkRegister(*this)) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error registering link '" << _id << "' for view: '" << viewId;
-        return false;
-      }
+      std::set<TRI_voc_cid_t> viewCids;
+
+      view->appendTrackedCollections(viewCids);
+
+      // FIXME TODO this is an incorrect approach to determine if this is an new or an existing link
+      //            as this approach allows for false positives and false negatives
+      //            the proper approach is to get the information from the collection,
+      //            or to track via a persisted property
+      auto isNew = viewCids.find(collection()->cid()) == viewCids.end();
 
       view->add(collection()->cid());
       _meta = std::move(meta);
-      //_view = view; FIXME TODO use instead of linkRegister
+      _view = view->self();
+
+      // reserve analyzers for new links
+      // FIXME TODO move this to load() or track via persisted property
+      if (isNew && _view) {
+        reserveAnalyzers(_meta, view->id(), _id);
+      }
 
       return true;
     }
@@ -304,11 +340,19 @@ Result IResearchLink::insert(
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
 
+  auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
+  SCOPED_LOCK(viewMutex);
+  auto* view = _view->get();
+
+  if (!view) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
+  }
+
   if (!trx) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
-  return _view->insert(*trx, _collection->cid(), documentId, doc, _meta);
+  return view->insert(*trx, _collection->cid(), documentId, doc, _meta);
 }
 
 bool IResearchLink::isPersistent() const {
@@ -334,13 +378,28 @@ bool IResearchLink::json(
   SCOPED_LOCK(mutex);
 
   if (_view) {
-    builder.add(VIEW_ID_FIELD, VPackValue(_view->id()));
-  } else if (_defaultId) { // '0' _defaultId == no view name in source jSON
-  // } else if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
+    auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
+    SCOPED_LOCK(viewMutex);
+    auto* view = _view->get();
+
+    if (_view) {
+      builder.add(VIEW_ID_FIELD, VPackValue(view->id()));
+
+      return true;
+    }
+  }
+
+  if (_defaultId) { // '0' _defaultId == no view name in source jSON
+  //if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
     builder.add(VIEW_ID_FIELD, VPackValue(_defaultId));
   }
 
   return true;
+}
+
+void IResearchLink::load() {
+  // FIXME TODO move analyzer registration here when this method will be invoked
+  //            by the collection
 }
 
 bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
@@ -352,12 +411,20 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
       return false; // slice has identifier but the current object does not
     }
 
+    auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
+    SCOPED_LOCK(viewMutex);
+    auto* view = _view->get();
+
+    if (!view) {
+      return false; // slice has identifier but the current object does not
+    }
+
     auto identifier = slice.get(VIEW_ID_FIELD);
 
-    if (!identifier.isNumber() || uint64_t(identifier.getInt()) != identifier.getUInt() || identifier.getUInt() != _view->id()) {
+    if (!identifier.isNumber() || uint64_t(identifier.getInt()) != identifier.getUInt() || identifier.getUInt() != view->id()) {
       return false; // iResearch View names of current object and slice do not match
     }
-  } else if (_view) {
+  } else if (_view && _view->get()) { // do not need to lock since this is a single-call
     return false; // slice has no 'name' but the current object does
   }
 
@@ -375,10 +442,15 @@ size_t IResearchLink::memory() const {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
-
   if (_view) {
-    // <iResearch View size> / <number of link instances>
-    size += _view->memory() / std::max(size_t(1), _view->linkCount());
+    auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
+    SCOPED_LOCK(viewMutex);
+    auto* view = _view->get();
+
+    if (view) {
+      // <iResearch View size> / <number of link instances>
+      size += view->memory() / std::max(size_t(1), view->linkCount());
+    }
   }
 
   return size;
@@ -397,12 +469,20 @@ Result IResearchLink::remove(
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
 
+  auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
+  SCOPED_LOCK(viewMutex);
+  auto* view = _view->get();
+
+  if (!view) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
+  }
+
   if (!trx) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
   // remove documents matching on cid and rid
-  return _view->remove(*trx, _collection->cid(), documentId);
+  return view->remove(*trx, _collection->cid(), documentId);
 }
 
 Result IResearchLink::remove(
@@ -417,12 +497,20 @@ Result IResearchLink::remove(
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
 
+  auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
+  SCOPED_LOCK(viewMutex);
+  auto* view = _view->get();
+
+  if (!view) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
+  }
+
   if (!trx) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
   // remove documents matching on cid and documentId
-  return _view->remove(*trx, _collection->cid(), documentId);
+  return view->remove(*trx, _collection->cid(), documentId);
 }
 
 /*static*/ bool IResearchLink::setType(arangodb::velocypack::Builder& builder) {
@@ -461,32 +549,45 @@ int IResearchLink::unload() {
   WriteMutex mutex(_mutex); // '_view' can be asynchronously read
   SCOPED_LOCK(mutex);
 
-  if (_view) {
-    _defaultId = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
+  if (!_view) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
-    auto* col = collection();
+  auto viewCopy = _view; // retain a copy of the pointer for the case where nullyfying the original will call distructor of a locked mutex
+  auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
+  SCOPED_LOCK(viewMutex);
+  auto* view = _view->get();
 
-    if (!col) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed finding collection while unloading IResearch link '" << _id << "'";
+  if (!view) {
+    _view = nullptr; // release reference to the IResearch View
 
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  _defaultId = view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
+
+  auto* col = collection();
+
+  if (!col) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed finding collection while unloading IResearch link '" << _id << "'";
+
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
+  }
+
+  // if the collection is in the process of being removed then drop it from the view
+  if (col->deleted()) {
+    auto res = view->drop(col->cid());
+
+    if (TRI_ERROR_NO_ERROR != res) {
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to drop collection from view while unloading dropped IResearch link '" << _id << "' for IResearch view '" << view->id() << "'";
+
+      return res;
     }
 
-    // if the collection is in the process of being removed then drop it from the view
-    if (col->deleted()) {
-      auto res = _view->drop(col->cid());
+    if (!releaseAnalyzers(_meta, view->id(), _id)) {
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to release tokenizers while unloading dropped IResearch link '" << _id << "' for IResearch view '" << view->id() << "'";
 
-      if (TRI_ERROR_NO_ERROR != res) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to drop collection from view while unloading dropped IResearch link '" << _id << "' for IResearch view '" << _view->id() << "'";
-
-        return res;
-      }
-
-      if (!releaseAnalyzers(_meta, _view->id(), _id)) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to release tokenizers while unloading dropped IResearch link '" << _id << "' for IResearch view '" << _view->id() << "'";
-
-        return TRI_ERROR_INTERNAL;
-      }
+      return TRI_ERROR_INTERNAL;
     }
   }
 
@@ -495,25 +596,11 @@ int IResearchLink::unload() {
   return TRI_ERROR_NO_ERROR;
 }
 
-IResearchView::sptr IResearchLink::updateView(
-    IResearchView::sptr const& view,
-    bool isNew /*= false*/
-) {
-  WriteMutex mutex(_mutex); // '_view' can be asynchronously read
-  SCOPED_LOCK(mutex);
-  auto previous = _view;
-
-  _view = view;
-
-  if (isNew && _view) {
-    reserveAnalyzers(_meta, _view->id(), _id);
-  }
-
-  return previous;
-}
-
 const IResearchView* IResearchLink::view() const {
-  return _view.get();
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+
+  return _view ? _view->get() : nullptr;
 }
 
 int EnhanceJsonIResearchLink(
