@@ -361,7 +361,9 @@ SECTION("test_defaults") {
     REQUIRE((false == !view));
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     REQUIRE((nullptr != viewImpl));
-    CHECK((0 == viewImpl->linkCount()));
+    std::set<TRI_voc_cid_t> cids;
+    viewImpl->appendTrackedCollections(cids);
+    CHECK((0 == cids.size()));
     CHECK((true == logicalCollection->getIndexes().empty()));
   }
 }
@@ -623,8 +625,10 @@ SECTION("test_insert") {
 
     // validate cid count
     {
+      std::set<TRI_voc_cid_t> cids;
+      view->appendTrackedCollections(cids);
+      CHECK((0 == cids.size()));
       std::unordered_set<TRI_voc_cid_t> actual;
-      CHECK((0 == view->linkCount()));
       arangodb::iresearch::appendKnownCollections(actual, view->snapshot());
       CHECK((actual.empty()));
     }
@@ -649,9 +653,11 @@ SECTION("test_insert") {
 
     // validate cid count
     {
+      std::set<TRI_voc_cid_t> cids;
+      view->appendTrackedCollections(cids);
+      CHECK((0 == cids.size()));
       std::unordered_set<TRI_voc_cid_t> expected = { 1 };
       std::unordered_set<TRI_voc_cid_t> actual;
-      CHECK((0 == view->linkCount()));
       arangodb::iresearch::appendKnownCollections(actual, view->snapshot());
 
       for (auto& cid: expected) {
@@ -1046,7 +1052,11 @@ SECTION("test_register_link") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
     REQUIRE((false == !view));
 
-    CHECK((0 == view->linkCount()));
+    {
+      std::set<TRI_voc_cid_t> cids;
+      view->appendTrackedCollections(cids);
+      CHECK((0 == cids.size()));
+    }
 
     auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
@@ -1055,7 +1065,9 @@ SECTION("test_register_link") {
     auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((false == persisted));
     CHECK((false == !link));
-    CHECK((1 == view->linkCount()));
+    std::set<TRI_voc_cid_t> cids;
+    view->appendTrackedCollections(cids);
+    CHECK((1 == cids.size()));
   }
 
   // new link
@@ -1067,7 +1079,11 @@ SECTION("test_register_link") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
     REQUIRE((false == !view));
 
-    CHECK((0 == view->linkCount()));
+    {
+      std::set<TRI_voc_cid_t> cids;
+      view->appendTrackedCollections(cids);
+      CHECK((0 == cids.size()));
+    }
 
     {
       std::unordered_set<TRI_voc_cid_t> expected = { 123 };
@@ -1085,7 +1101,9 @@ SECTION("test_register_link") {
     auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((true == persisted));
     CHECK((false == !link));
-    CHECK((1 == view->linkCount()));
+    std::set<TRI_voc_cid_t> cids;
+    view->appendTrackedCollections(cids);
+    CHECK((1 == cids.size()));
 
     {
       std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
@@ -1109,7 +1127,11 @@ SECTION("test_register_link") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
     REQUIRE((false == !view));
 
-    CHECK((1 == view->linkCount()));
+    {
+      std::set<TRI_voc_cid_t> cids;
+      view->appendTrackedCollections(cids);
+      CHECK((1 == cids.size()));
+    }
 
     {
       std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
@@ -1127,7 +1149,12 @@ SECTION("test_register_link") {
     auto link0 = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((false == persisted));
     CHECK((false == !link0));
-    CHECK((1 == view->linkCount()));
+
+    {
+      std::set<TRI_voc_cid_t> cids;
+      view->appendTrackedCollections(cids);
+      CHECK((1 == cids.size()));
+    }
 
     {
       std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
@@ -1145,7 +1172,9 @@ SECTION("test_register_link") {
     auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((false == persisted));
     CHECK((false == !link1)); // duplicate link creation is allowed
-    CHECK((1 == view->linkCount()));
+    std::set<TRI_voc_cid_t> cids;
+    view->appendTrackedCollections(cids);
+    CHECK((1 == cids.size()));
 
     {
       std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
@@ -1187,7 +1216,11 @@ SECTION("test_unregister_link") {
     CHECK(true == res.ok());
     CHECK((false == logicalCollection->getIndexes().empty()));
 
-    CHECK((1 == view->linkCount()));
+    {
+      std::set<TRI_voc_cid_t> cids;
+      view->appendTrackedCollections(cids);
+      CHECK((1 == cids.size()));
+    }
 
     {
       std::unordered_set<TRI_voc_cid_t> expected = { 100 };
@@ -1210,7 +1243,12 @@ SECTION("test_unregister_link") {
     CHECK((TRI_ERROR_NO_ERROR == vocbase->dropCollection(logicalCollection, true, -1)));
     CHECK((false == persisted));
     CHECK((nullptr == vocbase->lookupCollection("testCollection")));
-    CHECK((0 == view->linkCount()));
+
+    {
+      std::set<TRI_voc_cid_t> cids;
+      view->appendTrackedCollections(cids);
+      CHECK((0 == cids.size()));
+    }
 
     {
       std::set<TRI_voc_cid_t> actual;
@@ -1240,7 +1278,11 @@ SECTION("test_unregister_link") {
     CHECK(true == res.ok());
     CHECK((false == logicalCollection->getIndexes().empty()));
 
-    CHECK((1 == view->linkCount()));
+    {
+      std::set<TRI_voc_cid_t> cids;
+      view->appendTrackedCollections(cids);
+      CHECK((1 == cids.size()));
+    }
 
     {
       std::unordered_set<TRI_voc_cid_t> expected = { 100 };
@@ -1259,7 +1301,12 @@ SECTION("test_unregister_link") {
     CHECK((TRI_ERROR_NO_ERROR == vocbase->dropCollection(logicalCollection, true, -1)));
     CHECK((true == persisted));
     CHECK((nullptr == vocbase->lookupCollection("testCollection")));
-    CHECK((0 == view->linkCount()));
+
+    {
+      std::set<TRI_voc_cid_t> cids;
+      view->appendTrackedCollections(cids);
+      CHECK((0 == cids.size()));
+    }
 
     {
       std::set<TRI_voc_cid_t> actual;
@@ -1289,7 +1336,9 @@ SECTION("test_unregister_link") {
     CHECK(true == res.ok());
     CHECK((false == logicalCollection->getIndexes().empty()));
 
-    CHECK((1 == view->linkCount()));
+    std::set<TRI_voc_cid_t> cids;
+    view->appendTrackedCollections(cids);
+    CHECK((1 == cids.size()));
     CHECK((false == !vocbase->lookupView("testView")));
     CHECK((TRI_ERROR_NO_ERROR == vocbase->dropView("testView")));
     CHECK((true == !vocbase->lookupView("testView")));
@@ -1312,7 +1361,9 @@ SECTION("test_unregister_link") {
       REQUIRE((nullptr != viewImpl));
       CHECK((viewImpl->updateProperties(updateJson->slice(), true, false).ok()));
       CHECK((false == logicalCollection->getIndexes().empty()));
-      CHECK((1 == viewImpl->linkCount()));
+      std::set<TRI_voc_cid_t> cids;
+      viewImpl->appendTrackedCollections(cids);
+      CHECK((1 == cids.size()));
 
       auto factory = [](arangodb::LogicalView*, arangodb::velocypack::Slice const&, bool isNew)->std::unique_ptr<arangodb::ViewImplementation>{ return nullptr; };
       logicalView->spawnImplementation(factory, createJson->slice(), true); // ensure destructor for ViewImplementation is called
@@ -1327,7 +1378,9 @@ SECTION("test_unregister_link") {
       REQUIRE((false == !view));
       auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
       REQUIRE((nullptr != viewImpl));
-      CHECK((0 == viewImpl->linkCount()));
+      std::set<TRI_voc_cid_t> cids;
+      viewImpl->appendTrackedCollections(cids);
+      CHECK((0 == cids.size()));
 
       for (auto& index: logicalCollection->getIndexes()) {
         auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());

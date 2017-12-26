@@ -361,7 +361,9 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
       "}}"
     );
     CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
-    CHECK((2 == impl->linkCount()));
+    std::set<TRI_voc_cid_t> cids;
+    impl->appendTrackedCollections(cids);
+    CHECK((2 == cids.size()));
     impl->sync();
   }
 

@@ -1548,15 +1548,6 @@ int IResearchView::insert(
   return TRI_ERROR_NO_ERROR;
 }
 
-size_t IResearchView::linkCount() const noexcept {
-  std::set<TRI_voc_cid_t> cids;
-
-  appendTrackedCollections(cids);
-
-  // FIXME TODO cids contain only runtime-tracked collection IDs
-  return cids.size();
-}
-
 /*static*/ IResearchView::ptr IResearchView::make(
   arangodb::LogicalView* view,
   arangodb::velocypack::Slice const& info,

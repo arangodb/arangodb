@@ -448,8 +448,12 @@ size_t IResearchLink::memory() const {
     auto* view = _view->get();
 
     if (view) {
-      // <iResearch View size> / <number of link instances>
-      size += view->memory() / std::max(size_t(1), view->linkCount());
+      std::set<TRI_voc_cid_t> cids;
+
+      // <iResearch View size> / <number of tracked collection IDs>
+      // a rough approximation of how much memory is used by each collection ID
+      view->appendTrackedCollections(cids);
+      size += view->memory() / std::max(size_t(1), cids.size());
     }
   }
 
