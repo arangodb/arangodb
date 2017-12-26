@@ -277,7 +277,9 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return false;
       }
 
+      view->add(collection()->cid());
       _meta = std::move(meta);
+      //_view = view; FIXME TODO use instead of linkRegister
 
       return true;
     }

@@ -181,10 +181,20 @@ class IResearchView final: public arangodb::ViewImplementation,
   virtual ~IResearchView();
 
   ///////////////////////////////////////////////////////////////////////////////
-  /// @brief append all know collection IDs to the set (from meta and from store)
-  /// @return success
+  /// @brief add 'cid' to the runtime (non-persisted) list of tracked collection
+  ///        IDs
   ///////////////////////////////////////////////////////////////////////////////
-  bool appendKnownCollections(std::unordered_set<TRI_voc_cid_t>& set) const;
+  void add(TRI_voc_cid_t cid);
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief append all tracked collection IDs to the set
+  ///////////////////////////////////////////////////////////////////////////////
+  void appendTrackedCollections(std::set<TRI_voc_cid_t>& set) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief persist the specified WAL file into permanent storage
+  ////////////////////////////////////////////////////////////////////////////////
+  arangodb::Result commit() override;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this iResearch View
@@ -194,6 +204,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove all documents matching collection 'cid' from this IResearch
   ///        View and the underlying IResearch stores
+  ///        also remove 'cid' from the runtime list of tracked collection IDs
   ////////////////////////////////////////////////////////////////////////////////
   int drop(TRI_voc_cid_t cid);
 
@@ -239,8 +250,6 @@ class IResearchView final: public arangodb::ViewImplementation,
     IResearchLinkMeta const& meta
   );
 
-  CompoundReader snapshot(transaction::Methods* trx);
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief count of known links registered with this view
   ////////////////////////////////////////////////////////////////////////////////
@@ -267,6 +276,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   /// @brief amount of memory in bytes occupied by this iResearch Link
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const;
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
   ///////////////////////////////////////////////////////////////////////////////
@@ -282,6 +292,12 @@ class IResearchView final: public arangodb::ViewImplementation,
     TRI_voc_cid_t cid,
     arangodb::LocalDocumentId const& documentId
   );
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get an index reader containing the currently commited datastore
+  ///        record snapshot
+  ////////////////////////////////////////////////////////////////////////////////
+  CompoundReader snapshot();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief wait for a flush of all index data to its respective stores
@@ -304,11 +320,6 @@ class IResearchView final: public arangodb::ViewImplementation,
     bool partialUpdate,
     bool doSync
   ) override;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief persist the specified WAL file into permanent storage
-  ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Result commit() override;
 
  private:
   struct DataStore {
@@ -430,6 +441,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   DataStore _storePersisted;
   FlushCallback _flushCallback; // responsible for flush callback unregistration
   irs::async_utils::thread_pool _threadPool;
+  std::unordered_set<TRI_voc_cid_t> _trackedCids; // list of CIDs that this collection was requested to track
   std::function<void(transaction::Methods* trx)> _transactionCallback;
   std::atomic<bool> _inRecovery;
   std::shared_ptr<AsyncValid> _valid; // true for the lifetime of the view (for use with asynchronous callbacks)

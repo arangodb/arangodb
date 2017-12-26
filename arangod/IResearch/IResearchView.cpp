@@ -441,12 +441,20 @@ arangodb::Result updateLinks(
           continue;
         }
 
-        if (state._link
+        if (state._link // links currently exists
             && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
-          collectionsToRemove.emplace(state._collection->cid());
+          auto cid = state._collection->cid();
+
+          // remove duplicate removal requests (e.g. by name + by CID)
+          if (collectionsToRemove.find(cid) != collectionsToRemove.end()) { // removal previously requested
+            itr = linkModifications.erase(itr);
+            continue;
+          }
+
+          collectionsToRemove.emplace(cid);
         }
 
-        if (state._link
+        if (state._link // links currently exists
             && state._linkDefinitionsOffset < linkDefinitions.size()) { // link update request
           collectionsToUpdate.emplace(state._collection->cid());
         }
@@ -461,7 +469,7 @@ arangodb::Result updateLinks(
         // remove modification if removal request with an update request also present
         if (state._link // links currently exists
             && state._linkDefinitionsOffset >= linkDefinitions.size() // link removal request
-            && collectionsToUpdate.find(state._collection->cid()) != collectionsToRemove.end()) { // also has a reindex request
+            && collectionsToUpdate.find(state._collection->cid()) != collectionsToUpdate.end()) { // also has a reindex request
           itr = linkModifications.erase(itr);
           continue;
         }
@@ -944,29 +952,23 @@ IResearchView::~IResearchView() {
   }
 }
 
-bool IResearchView::appendKnownCollections(
-    std::unordered_set<TRI_voc_cid_t>& set
+IResearchView::MemoryStore& IResearchView::activeMemoryStore() const {
+  return _memoryNode->_store;
+}
+
+void IResearchView::add(TRI_voc_cid_t cid) {
+  WriteMutex mutex(_mutex);
+  SCOPED_LOCK(mutex);
+  _trackedCids.emplace(cid);
+}
+
+void IResearchView::appendTrackedCollections(
+    std::set<TRI_voc_cid_t>& set
 ) const {
-  CompoundReader reader(_mutex); // will aquire read-lock since members can be asynchronously updated
-
-  reader.add(_memoryNode->_store._reader);
-  SCOPED_LOCK(_toFlush->_readMutex);
-  reader.add(_toFlush->_store._reader);
-
-  if (_storePersisted) {
-    reader.add(_storePersisted._reader);
-  }
-
-  set.insert(_meta._collections.begin(), _meta._collections.end());
-
-  if (arangodb::iresearch::appendKnownCollections(set, reader)) {
-    return true;
-  }
-
-  LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
-    << "failed to collect CIDs for IResearch view '" << id() << "'";
-
-  return false;
+  ReadMutex mutex(_mutex);
+  SCOPED_LOCK(mutex);
+  set.insert(_trackedCids.begin(), _trackedCids.end());
+  set.insert(_meta._collections.begin(), _meta._collections.end()); // FIXME TODO remove
 }
 
 bool IResearchView::cleanup(size_t maxMsec /*= 0*/) {
@@ -1108,6 +1110,7 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
   std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
   WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
+  _trackedCids.erase(cid);
   bool meta_updated = _meta._collections.erase(cid); // will no longer be fully indexed
   mutex.unlock(true); // downgrade to a read-lock
 
@@ -1520,54 +1523,6 @@ int IResearchView::insert(
   return TRI_ERROR_NO_ERROR;
 }
 
-iresearch::CompoundReader IResearchView::snapshot(transaction::Methods* trx) {
-  if (trx && trx->state() && trx->state()->waitForSync() && !sync()) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "failed to sync while creating snapshot for IResearch view '" << id()
-      << "', previous snapshot will be used instead";
-  }
-
-  iresearch::CompoundReader compoundReader(_mutex); // will aquire read-lock since members can be asynchronously updated
-
-  try {
-    compoundReader.add(_memoryNode->_store._reader);
-    SCOPED_LOCK(_toFlush->_readMutex);
-    compoundReader.add(_toFlush->_store._reader);
-
-    if (_storePersisted) {
-      compoundReader.add(_storePersisted._reader);
-    }
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "caught exception while collecting readers for querying iResearch view '" << id()
-      << "': " << e.what();
-    IR_EXCEPTION();
-    throw;
-  } catch (...) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "caught exception while collecting readers for querying iResearch view '" << id() << "'";
-    IR_EXCEPTION();
-    throw;
-  }
-
-  // FIXME TODO must add cids to transaction in TRI_voc_cid_t order
-  // FIXME TODO must add cids of all documents in the IResearch data store to return a valid set of documents,
-  //            '_meta._collections' + '_registeredLinks' may not be a coplete list for some edge cases
-  if (trx) {
-    // add CIDs of known collections to transaction
-    for (auto& entry: _meta._collections) {
-      trx->addCollectionAtRuntime(arangodb::basics::StringUtils::itoa(entry));
-    }
-
-    // add CIDs of registered collections to transaction
-    for (auto& entry: _registeredLinks) {
-      trx->addCollectionAtRuntime(std::to_string(entry.first));
-    }
-  }
-
-  return compoundReader;
-}
-
 size_t IResearchView::linkCount() const noexcept {
   ReadMutex mutex(_mutex); // '_links' can be asynchronously updated
   SCOPED_LOCK(mutex);
@@ -1727,6 +1682,11 @@ void IResearchView::open() {
 
           if (_storePersisted._reader) {
             registerFlushCallback();
+
+            if (_meta._includePersistedCidsOnOpen) {
+              appendKnownCollections(_trackedCids, _storePersisted._reader);
+            }
+
             return; // success
           }
 
@@ -1816,8 +1776,31 @@ int IResearchView::remove(
   return TRI_ERROR_INTERNAL;
 }
 
-IResearchView::MemoryStore& IResearchView::activeMemoryStore() const {
-  return _memoryNode->_store;
+iresearch::CompoundReader IResearchView::snapshot() {
+  iresearch::CompoundReader compoundReader(_mutex); // will aquire read-lock since members can be asynchronously updated
+
+  try {
+    compoundReader.add(_memoryNode->_store._reader);
+    SCOPED_LOCK(_toFlush->_readMutex);
+    compoundReader.add(_toFlush->_store._reader);
+
+    if (_storePersisted) {
+      compoundReader.add(_storePersisted._reader);
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while collecting readers for querying iResearch view '" << id()
+      << "': " << e.what();
+    IR_EXCEPTION();
+    throw;
+  } catch (...) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while collecting readers for querying iResearch view '" << id() << "'";
+    IR_EXCEPTION();
+    throw;
+  }
+
+  return compoundReader;
 }
 
 bool IResearchView::sync(size_t maxMsec /*= 0*/) {
@@ -2185,26 +2168,34 @@ void IResearchView::FlushCallbackUnregisterer::operator()(IResearchView* view) c
 }
 
 void IResearchView::verifyKnownCollections() {
-  std::unordered_set<TRI_voc_cid_t> ids;
-  bool success = appendKnownCollections(ids);
-  if (success) {
-    for (auto cid : ids) {
-      auto collection = _logicalView->vocbase()->lookupCollection(cid);
-      if (!collection) {
-        // collection no longer exists, drop it and move on
+  std::unordered_set<TRI_voc_cid_t> cids;
+
+  if (!appendKnownCollections(cids, snapshot())) {
+    LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+      << "failed to collect collection IDs for IResearch view '" << id() << "'";
+
+    return;
+  }
+
+  for (auto cid : cids) {
+    auto collection = _logicalView->vocbase()->lookupCollection(cid);
+
+    if (!collection) {
+      // collection no longer exists, drop it and move on
+      LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "collection '" << cid
+        << "' no longer exists! removing from IResearch view '"
+        << _logicalView->id() << "'";
+      drop(cid);
+    } else {
+      // see if the link still exists, otherwise drop and move on
+      auto link = findFirstMatchingLink(*collection, *this);
+      if (!link) {
         LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
-          << "collection " << cid << " no longer exists! removing from view "
-          << _logicalView->id();
+          << "collection '" << cid
+          << "' no longer linked! removing from IResearch view '"
+          << _logicalView->id() << "'";
         drop(cid);
-      } else {
-        // see if the link still exists, otherwise drop and move on
-        auto link = findFirstMatchingLink(*collection, *this);
-        if (!link) {
-          LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
-            << "collection " << cid << " no longer linked! removing from view "
-            << _logicalView->id();
-          drop(cid);
-        }
       }
     }
   }

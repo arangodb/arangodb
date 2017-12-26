@@ -21,6 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchFeature.h"
 #include "IResearchViewNode.h"
 #include "IResearchViewBlock.h"
 #include "IResearchOrderFactory.h"
@@ -32,8 +33,9 @@
 #include "Aql/SortCondition.h"
 #include "Aql/Query.h"
 #include "Aql/ExecutionEngine.h"
+#include "StorageEngine/TransactionState.h"
 
-namespace {
+NS_LOCAL
 
 using namespace arangodb;
 
@@ -111,10 +113,10 @@ std::vector<arangodb::iresearch::IResearchSort> fromVelocyPack(
   return {};
 }
 
-}
+NS_END // NS_LOCAL
 
-namespace arangodb {
-namespace iresearch {
+NS_BEGIN(arangodb)
+NS_BEGIN(iresearch)
 
 IResearchViewNode::IResearchViewNode(
     arangodb::aql::ExecutionPlan* plan,
@@ -287,7 +289,24 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
     return nullptr;
   }
 
-  auto reader = impl->snapshot(trx);
+  if (trx->state() && trx->state()->waitForSync() && !impl->sync()) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "failed to sync while creating snapshot for IResearch view '" << impl->id()
+      << "', previous snapshot will be used instead";
+  }
+
+  std::set<TRI_voc_cid_t> cids;
+  auto reader = impl->snapshot();
+
+  impl->appendTrackedCollections(cids);
+
+  // add CIDs of tracked collections to transaction
+  // FIXME TODO must add cids to transaction in TRI_voc_cid_t order
+  // FIXME TODO must add cids of all documents in the IResearch data store to return a valid set of documents,
+  //            '_trackedCids' may not be a coplete list of collections for some edge cases
+  for (auto& cid: cids) {
+    trx->addCollectionAtRuntime(arangodb::basics::StringUtils::itoa(cid));
+  }
 
   if (_sortCondition.empty()) {
     // unordered case
@@ -306,5 +325,9 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
   return new IResearchViewBlock(std::move(reader), engine, *this);
 }
 
-} // iresearch
-} // arangodb
+NS_END // iresearch
+NS_END // arangodb
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
