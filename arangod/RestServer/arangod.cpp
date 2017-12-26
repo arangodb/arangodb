@@ -50,6 +50,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ReplicationTimeoutFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LoggerBufferFeature.h"
@@ -110,7 +111,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
   try {
     context.installSegv();
     context.runStartupChecks();
-    
+
     std::string name = context.binaryName();
 
     auto options = std::make_shared<options::ProgramOptions>(
@@ -122,7 +123,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     std::vector<std::string> nonServerFeatures = {
         "Action",        "Agency",
         "Cluster",       "Daemon",
-        "FoxxQueues",    "GeneralServer", 
+        "FoxxQueues",    "GeneralServer",
         "Greetings",     "LoggerBufferFeature",
         "Server",        "SslServer",
         "Statistics",    "Supervisor"};
@@ -165,6 +166,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new pregel::PregelFeature(&server));
     server.addFeature(new PrivilegeFeature(&server));
     server.addFeature(new RandomFeature(&server));
+    server.addFeature(new ReplicationTimeoutFeature(&server));
     server.addFeature(new QueryRegistryFeature(&server));
     server.addFeature(new SchedulerFeature(&server));
     server.addFeature(new ScriptFeature(&server, &ret));

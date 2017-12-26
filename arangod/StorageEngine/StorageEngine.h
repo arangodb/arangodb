@@ -106,6 +106,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // create storage-engine specific view
   virtual PhysicalView* createPhysicalView(LogicalView*, VPackSlice const&) = 0;
 
+  // minimum timeout for the synchronous replication
+  virtual double minimumSyncReplicationTimeout() const = 0;
+
   // status functionality
   // --------------------
 
