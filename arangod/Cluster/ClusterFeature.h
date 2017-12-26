@@ -50,13 +50,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return _agencyEndpoints;
   }
 
-
   std::string agencyPrefix() {
     return _agencyPrefix;
-  }
-
-  double syncReplTimeoutFactor() {
-    return _syncReplTimeoutFactor;
   }
 
  private:
@@ -66,7 +61,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myAddress;
   uint32_t _systemReplicationFactor = 2;
   bool _createWaitsForSyncReplication = true;
-  double _syncReplTimeoutFactor = 1.0;
 
  private:
   void reportRole(ServerState::RoleEnum);

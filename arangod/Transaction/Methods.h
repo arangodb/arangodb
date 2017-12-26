@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,6 +37,12 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
+
+#ifdef USE_ENTERPRISE
+  #define ENTERPRISE_VIRT virtual
+#else
+  #define ENTERPRISE_VIRT
+#endif
 
 namespace arangodb {
 
@@ -81,11 +87,6 @@ class TransactionState;
 class TransactionCollection;
 
 namespace transaction {
-#ifdef USE_ENTERPRISE
-  #define ENTERPRISE_VIRT virtual
-#else
-  #define ENTERPRISE_VIRT
-#endif
 
 class Methods {
   friend class traverser::BaseEngine;
