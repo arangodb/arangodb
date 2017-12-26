@@ -405,8 +405,13 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   // Do actual monitoring
   for (auto const& machine : machinesPlanned) {
     std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
-      lastStatus, serverID(machine.first),
-      shortName(_snapshot(targetShortID + serverID + "/ShortName").getString());
+      lastStatus, serverID(machine.first), shortName;
+
+    // short name arrives asynchronous to machine registering, make sure
+    //  it has arrived before trying to use it
+    if (LEAF == _snapshot(targetShortID + serverID + "/ShortName").type()) {
+
+      shortName = _snapshot(targetShortID + serverID + "/ShortName").getString();
     
     // Endpoint
     std::string endpoint;
@@ -518,8 +523,12 @@ std::vector<check_t> Supervision::check(std::string const& type) {
         transient(_agent, *tReport);
       }
     }
+    } else {
+      LOG_TOPIC(INFO, Logger::SUPERVISION) <<
+        "Short name for << " << serverID << " not yet available.  Skipping health check.";
+    } // else
     
-  }
+  } // for
   
   return ret;
 }
@@ -622,8 +631,17 @@ void Supervision::run() {
           auto secondsSinceLeader = std::chrono::duration<double>(
             std::chrono::system_clock::now() - _agent->leaderSince()).count();
           
+          // 10 seconds should be plenty of time for all servers to send
+          //  heartbeat status to new leader (heartbeat is once per second)
           if (secondsSinceLeader > 10.0) {
+            try {
             doChecks();
+            } catch (std::exception const& e) {
+              LOG_TOPIC(ERR, Logger::SUPERVISION) << e.what() << " " << __FILE__ << " " << __LINE__;
+            } catch (...) {
+              LOG_TOPIC(ERR, Logger::SUPERVISION) <<
+                "Supervision::doChecks() generated an uncaught exception.";
+            }
           }
         }
 
@@ -989,7 +1007,7 @@ void Supervision::getUniqueIds() {
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::SUPERVISION)
         << "Failed to acquire job IDs from agency: "
-        << e.what() << __FILE__ << __LINE__; 
+        << e.what() << __FILE__ << " " << __LINE__;
     }
   }
   
