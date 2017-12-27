@@ -629,8 +629,7 @@ void Supervision::run() {
 
           // Do nothing unless leader for over 10 seconds
           auto secondsSinceLeader = std::chrono::duration<double>(
-            std::chrono::system_clock::now() - _agent->leaderSince()).count();
-
+            std::chrono::steady_clock::now() - _agent->leaderSince()).count();
           // 10 seconds should be plenty of time for all servers to send
           //  heartbeat status to new leader (heartbeat is once per second)
           if (secondsSinceLeader > 10.0) {
