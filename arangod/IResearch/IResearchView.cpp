@@ -148,21 +148,13 @@ bool appendAbsolutePersistedDataPath(
 ////////////////////////////////////////////////////////////////////////////////
 bool appendLinkRemoval(
     arangodb::velocypack::Builder& builder,
-    arangodb::iresearch::IResearchViewMeta const& meta,
-    std::unordered_set<TRI_voc_cid_t> const& cids
+    arangodb::iresearch::IResearchViewMeta const& meta
 ) {
   if (!builder.isOpenObject()) {
     return false;
   }
 
   for (auto& entry: meta._collections) {
-    builder.add(
-      std::to_string(entry),
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
-    );
-  }
-
-  for (auto& entry: cids) {
     builder.add(
       std::to_string(entry),
       arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
@@ -995,21 +987,6 @@ IResearchView::MemoryStore& IResearchView::activeMemoryStore() const {
   return _memoryNode->_store;
 }
 
-void IResearchView::add(TRI_voc_cid_t cid) {
-  WriteMutex mutex(_mutex);
-  SCOPED_LOCK(mutex);
-  _trackedCids.emplace(cid);
-}
-
-void IResearchView::appendTrackedCollections(
-    std::set<TRI_voc_cid_t>& set
-) const {
-  ReadMutex mutex(_mutex);
-  SCOPED_LOCK(mutex);
-  set.insert(_trackedCids.begin(), _trackedCids.end());
-  set.insert(_meta._collections.begin(), _meta._collections.end()); // FIXME TODO remove
-}
-
 bool IResearchView::cleanup(size_t maxMsec /*= 0*/) {
   ReadMutex mutex(_mutex);
   auto thresholdSec = TRI_microtime() + maxMsec/1000.0;
@@ -1072,8 +1049,7 @@ void IResearchView::drop() {
 
       builder.openObject();
 
-      // FIXME TODO '_trackedCids' only contains the runtime-added list of collection IDs
-      if (!appendLinkRemoval(builder, _meta, _trackedCids)) {
+      if (!appendLinkRemoval(builder, _meta)) {
         throw std::runtime_error(std::string("failed to construct link removal directive while removing iResearch view '") + std::to_string(id()) + "'");
       }
 
@@ -1147,10 +1123,8 @@ void IResearchView::drop() {
 
 int IResearchView::drop(TRI_voc_cid_t cid) {
   std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
-  WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
+  ReadMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
-  _trackedCids.erase(cid);
-  mutex.unlock(true); // downgrade to a read-lock
 
   // ...........................................................................
   // if an exception occurs below than a drop retry would most likely happen
@@ -1304,7 +1278,7 @@ void IResearchView::getPropertiesVPack(
 
   _meta.json(builder);
 
-  if (!_logicalView || forPersistence) {
+  if (!_logicalView || !_logicalView->vocbase() || forPersistence) {
     return; // nothing more to output (persistent configuration does not need links)
   }
 
@@ -1312,13 +1286,10 @@ void IResearchView::getPropertiesVPack(
 
   // add CIDs of known collections to list
   for (auto& entry: _meta._collections) {
-    collections.emplace_back(arangodb::basics::StringUtils::itoa(entry));
-  }
-
-  // add CIDs of tracked collections to list
-  // FIXME TODO this is only a runtime list of tracked collection IDs
-  for (auto& cid: _trackedCids) {
-    collections.emplace_back(std::to_string(cid));
+    // skip collections missing from vocbase or UserTransaction constructor will throw an exception
+    if (nullptr != _logicalView->vocbase()->lookupCollection(entry)) {
+      collections.emplace_back(std::to_string(entry));
+    }
   }
 
   arangodb::velocypack::Builder linksBuilder;
@@ -1574,7 +1545,6 @@ size_t IResearchView::memory() const {
   SCOPED_LOCK(mutex);
   size_t size = sizeof(IResearchView);
 
-  size += sizeof(decltype(_trackedCids)::value_type) * _trackedCids.size();
   size += _meta.memory();
 
   for (auto& tidEntry: _storeByTid) {
@@ -1644,10 +1614,6 @@ void IResearchView::open() {
 
           if (_storePersisted._reader) {
             registerFlushCallback();
-
-            if (_meta._includePersistedCidsOnOpen) {
-              appendKnownCollections(_trackedCids, _storePersisted._reader);
-            }
 
             return; // success
           }
@@ -2070,18 +2036,10 @@ arangodb::Result IResearchView::updateProperties(
       res = updateLinks(collections, *vocbase, *this, slice.get(LINKS_FIELD));
     } else {
       arangodb::velocypack::Builder builder;
-      std::unordered_set<TRI_voc_cid_t> trackedCids;
-
-      {
-        ReadMutex mutex(_mutex);
-        SCOPED_LOCK(mutex); // '_trackedCids' can be asynchronously updated
-        trackedCids = _trackedCids;
-      }
 
       builder.openObject();
 
-      // FIXME TODO 'trackedCids' only contains the runtime-added list of collection IDs
-      if (!appendLinkRemoval(builder, _meta, trackedCids)
+      if (!appendLinkRemoval(builder, _meta)
           || !mergeSlice(builder, slice.get(LINKS_FIELD))) {
         return arangodb::Result(
           TRI_ERROR_INTERNAL,
@@ -2156,7 +2114,7 @@ void IResearchView::registerFlushCallback() {
 }
 
 bool IResearchView::visitCollections(
-    std::function<bool(TRI_voc_cid_t)>& visitor
+    std::function<bool(TRI_voc_cid_t)> const& visitor
 ) const {
   ReadMutex mutex(_mutex);
   SCOPED_LOCK(mutex);

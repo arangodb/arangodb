@@ -302,7 +302,15 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
       std::set<TRI_voc_cid_t> viewCids;
 
-      view->appendTrackedCollections(viewCids);
+      // get a list of collections currently defined in the view
+      // Note: this list will not contain any collections not added via the view
+      //       even though data from the corresponding collection may still exist in
+      //       the view, e.g. droped collections for which records have not yet been
+      //       removed from the view
+      view->visitCollections([&viewCids](TRI_voc_cid_t cid)->bool {
+        viewCids.emplace(cid);
+        return true;
+      });
 
       // FIXME TODO this is an incorrect approach to determine if this is an new or an existing link
       //            as this approach allows for false positives and false negatives
@@ -315,7 +323,6 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return false;
       }
 
-      view->add(collection()->cid());
       _meta = std::move(meta);
       _view = std::move(viewSelf);
 
@@ -446,12 +453,17 @@ size_t IResearchLink::memory() const {
   auto* view = _view->get();
 
   if (view) {
-    std::set<TRI_voc_cid_t> cids;
+    size_t count = 0;
+
+    // get a count of collections currently defined in the view
+    view->visitCollections([&count](TRI_voc_cid_t)->bool {
+      ++count;
+      return true;
+    });
 
     // <iResearch View size> / <number of tracked collection IDs>
     // a rough approximation of how much memory is used by each collection ID
-    view->appendTrackedCollections(cids);
-    size += view->memory() / std::max(size_t(1), cids.size());
+    size += view->memory() / std::max(size_t(1), count);
   }
 
   return size;

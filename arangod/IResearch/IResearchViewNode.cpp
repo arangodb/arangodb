@@ -298,12 +298,17 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
   std::set<TRI_voc_cid_t> cids;
   auto reader = impl->snapshot();
 
-  impl->appendTrackedCollections(cids);
+  // get a list of collections currently defined in the view
+  // Note: this list will not contain any collections not added via the view
+  //       even though data from the corresponding collection may still exist in
+  //       the view, e.g. droped collections for which records have not yet been
+  //       removed from the view
+  impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool {
+    cids.emplace(cid);
+    return true;
+  });
 
-  // add CIDs of tracked collections to transaction
-  // FIXME TODO must add cids to transaction in TRI_voc_cid_t order
-  // FIXME TODO must add cids of all documents in the IResearch data store to return a valid set of documents,
-  //            '_trackedCids' may not be a coplete list of collections for some edge cases
+  // add CIDs of tracked collections to transaction in TRI_voc_cid_t order
   for (auto& cid: cids) {
     trx->addCollectionAtRuntime(arangodb::basics::StringUtils::itoa(cid));
   }
