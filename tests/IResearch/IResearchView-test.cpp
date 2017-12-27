@@ -240,7 +240,8 @@ SECTION("test_defaults") {
 
   // existing view definition with LogicalView (for persistence)
   {
-    arangodb::LogicalView logicalView(nullptr, namedJson->slice());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::LogicalView logicalView(&vocbase, namedJson->slice());
     auto view = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), false);
     CHECK((false == !view));
 
@@ -265,7 +266,8 @@ SECTION("test_defaults") {
 
   // existing view definition with LogicalView
   {
-    arangodb::LogicalView logicalView(nullptr, namedJson->slice());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::LogicalView logicalView(&vocbase, namedJson->slice());
     auto view = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), false);
     CHECK((false == !view));
 
@@ -296,7 +298,8 @@ SECTION("test_defaults") {
 
   // new view definition with LogicalView (for persistence)
   {
-    arangodb::LogicalView logicalView(nullptr, namedJson->slice());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::LogicalView logicalView(&vocbase, namedJson->slice());
     auto view = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), true);
     CHECK((false == !view));
 
@@ -321,7 +324,8 @@ SECTION("test_defaults") {
 
   // new view definition with LogicalView
   {
-    arangodb::LogicalView logicalView(nullptr, namedJson->slice());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::LogicalView logicalView(&vocbase, namedJson->slice());
     auto view = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), true);
     CHECK((false == !view));
 
@@ -1467,21 +1471,6 @@ SECTION("test_tracked_cids") {
     CHECK((actual.empty()));
   }
 
-  // test add direct before open (TRI_vocbase_t::createView(...) will call open())
-  {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    arangodb::LogicalView logicalView(&vocbase, viewJson->slice());
-    auto view = arangodb::iresearch::IResearchView::make(&logicalView, viewJson->slice(), true);
-    CHECK((nullptr != view));
-    auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
-    REQUIRE((nullptr != viewImpl));
-    viewImpl->add(100);
-
-    std::set<TRI_voc_cid_t> actual;
-    viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
-    CHECK((actual.empty())); // tracking cid does not modify view meta
-  }
-
   // test add via link before open (TRI_vocbase_t::createView(...) will call open())
   {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { } } }");
@@ -1570,9 +1559,9 @@ SECTION("test_tracked_cids") {
       feature->executeCallbacks(); // commit to persisted store
     }
 
-    // test include persisted CIDs on open
+    // test persisted CIDs on open
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 102, \"properties\": { \"includePersistedCidsOnOpen\": true } }");
+      auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 102, \"properties\": { } }");
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
       auto logicalView = vocbase.createView(createJson->slice(), 0);
       REQUIRE((false == !logicalView));
@@ -1583,35 +1572,6 @@ SECTION("test_tracked_cids") {
       viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
       CHECK((actual.empty())); // persisted cids do not modify view meta
     }
-
-    // test exclude persisted CIDs on open
-    {
-      auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 102, \"properties\": { \"includePersistedCidsOnOpen\": false } }");
-      TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-      auto logicalView = vocbase.createView(createJson->slice(), 0);
-      REQUIRE((false == !logicalView));
-      auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
-      REQUIRE((nullptr != viewImpl));
-      viewImpl->open();
-
-      std::set<TRI_voc_cid_t> actual;
-      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
-      CHECK((actual.empty()));
-    }
-  }
-
-  // test add direct after open (TRI_vocbase_t::createView(...) will call open())
-  {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto logicalView = vocbase.createView(viewJson->slice(), 0);
-    REQUIRE((false == !logicalView));
-    auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
-    REQUIRE((nullptr != viewImpl));
-    viewImpl->add(100);
-
-    std::set<TRI_voc_cid_t> actual;
-    viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
-    CHECK((actual.empty())); // tracking cid does not modify view meta
   }
 
   // test add via link after open (TRI_vocbase_t::createView(...) will call open())

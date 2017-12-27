@@ -323,7 +323,6 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return false;
       }
 
-      view->add(collection()->cid());
       _meta = std::move(meta);
       _view = std::move(viewSelf);
 

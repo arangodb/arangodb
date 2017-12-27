@@ -180,12 +180,6 @@ class IResearchView final: public arangodb::ViewImplementation,
   ///////////////////////////////////////////////////////////////////////////////
   virtual ~IResearchView();
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief add 'cid' to the runtime (non-persisted) list of tracked collection
-  ///        IDs
-  ///////////////////////////////////////////////////////////////////////////////
-  void add(TRI_voc_cid_t cid);
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief persist the specified WAL file into permanent storage
   ////////////////////////////////////////////////////////////////////////////////
@@ -438,7 +432,6 @@ class IResearchView final: public arangodb::ViewImplementation,
   DataStore _storePersisted;
   FlushCallback _flushCallback; // responsible for flush callback unregistration
   irs::async_utils::thread_pool _threadPool;
-  std::unordered_set<TRI_voc_cid_t> _trackedCids; // list of CIDs that this collection was requested to track
   std::function<void(transaction::Methods* trx)> _transactionCallback;
   std::atomic<bool> _inRecovery;
 };
