@@ -36,10 +36,17 @@ struct AccessMode {
     WRITE = 2,
     EXCLUSIVE = 4
   };
+  // no need to create an object of it
+  AccessMode() = delete; 
+
   static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
                 AccessMode::Type::READ < AccessMode::Type::WRITE &&
                 AccessMode::Type::READ < AccessMode::Type::EXCLUSIVE,
                 "AccessMode::Type total order fail");
+  
+  static inline bool isNone(Type type) {
+    return (type == Type::NONE);
+  }
   
   static inline bool isRead(Type type) {
     return (type == Type::READ);

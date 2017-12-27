@@ -85,9 +85,9 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
   if (!_trx || !_guard || (_guard->database() != vocbase)) {
     rocksdb::Snapshot const* snap = nullptr;
     if (_trx) {
-      _trx->abort();
       auto state = RocksDBTransactionState::toState(_trx.get());
       snap = state->stealSnapshot();
+      _trx->abort();
       _trx.reset();
     }
     
@@ -118,14 +118,15 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
 }
 
 int RocksDBReplicationContext::bindCollection(
-    TRI_vocbase_t *vocbase,
-    std::string const& collectionName) {
+    TRI_vocbase_t* vocbase,
+    std::string const& collectionIdentifier) {
   bind(vocbase);
   
   if ((_collection == nullptr) ||
-      ((_collection->name() != collectionName) &&
-       std::to_string(_collection->cid()) != collectionName)) {
-    _collection = _trx->vocbase()->lookupCollection(collectionName);
+      ((_collection->name() != collectionIdentifier) &&
+       std::to_string(_collection->cid()) != collectionIdentifier &&
+       _collection->globallyUniqueId() != collectionIdentifier)) {
+    _collection = _trx->vocbase()->lookupCollection(collectionIdentifier);
     if (_collection == nullptr) {
       return TRI_ERROR_BAD_PARAMETER;
     }
@@ -138,7 +139,7 @@ int RocksDBReplicationContext::bindCollection(
     }
     TRI_DEFER(ExecContext::CURRENT = old);
 
-    _trx->addCollectionAtRuntime(collectionName);
+    _trx->addCollectionAtRuntime(_collection->name());
     _iter = static_cast<RocksDBCollection*>(_collection->getPhysical())
                 ->getSortedAllIterator(_trx.get(),
                                        &_mdr);  //_mdr is not used nor updated

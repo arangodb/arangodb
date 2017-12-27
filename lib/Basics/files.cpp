@@ -1708,7 +1708,7 @@ bool TRI_CopyFile(std::string const& src, std::string const& dst,
                   std::string& error) {
 #ifdef _WIN32
   TRI_ERRORBUF;
-  bool rc = CopyFile(src.c_str(), dst.c_str(), false) != 0;
+  bool rc = CopyFile(src.c_str(), dst.c_str(), true) != 0;
   if (!rc) {
     TRI_SYSTEM_ERROR();
     error = "failed to copy " + src + " to " + dst + ": " + TRI_GET_ERRORBUF;

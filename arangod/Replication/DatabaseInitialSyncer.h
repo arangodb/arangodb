@@ -38,14 +38,14 @@ class ReplicationApplierConfiguration;
 /*
 arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer,
                                        arangodb::LogicalCollection* col,
-                                       std::string const& keysId, std::string const& cid,
-                                       std::string const& collectionName,
+                                       std::string const& keysId,
+                                       std::string const& leaderColl,
                                        TRI_voc_tick_t maxTick);
 
 arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                                        arangodb::LogicalCollection* col,
-                                       std::string const& keysId, std::string const& cid,
-                                       std::string const& collectionName,
+                                       std::string const& keysId, 
+                                       std::string const& leaderColl,
                                        TRI_voc_tick_t maxTick);
 
 arangodb::Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
@@ -56,12 +56,10 @@ arangodb::Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectio
   */
 class DatabaseInitialSyncer : public InitialSyncer {
   friend ::arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
-                                                              std::string const& keysId, std::string const& cid,
-                                                              std::string const& collectionName, TRI_voc_tick_t maxTick);
+                                                              std::string const& keysId);
   
   friend ::arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
-                                                              std::string const& keysId, std::string const& cid,
-                                                              std::string const& collectionName, TRI_voc_tick_t maxTick);
+                                                              std::string const& keysId);
   
   friend ::arangodb::Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
                                            std::string const& keysId, uint64_t chunkId,
@@ -153,19 +151,19 @@ class DatabaseInitialSyncer : public InitialSyncer {
   Result sendFlush();
   
   /// @brief apply the data from a collection dump
-  Result applyCollectionDump(transaction::Methods&, std::string const&,
+  Result applyCollectionDump(transaction::Methods&, LogicalCollection* col,
                              httpclient::SimpleHttpResult*, uint64_t&);
 
   /// @brief determine the number of documents in a collection
   int64_t getSize(arangodb::LogicalCollection*);
 
   /// @brief incrementally fetch data from a collection
-  Result handleCollectionDump(arangodb::LogicalCollection*, std::string const&,
-                              std::string const&, TRI_voc_tick_t);
+  Result handleCollectionDump(arangodb::LogicalCollection*,
+                              std::string const& leaderColl, TRI_voc_tick_t);
 
   /// @brief incrementally fetch data from a collection
-  Result handleCollectionSync(arangodb::LogicalCollection*, std::string const&,
-                              std::string const&, TRI_voc_tick_t);
+  Result handleCollectionSync(arangodb::LogicalCollection*,
+                              std::string const& leaderColl, TRI_voc_tick_t);
    
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided

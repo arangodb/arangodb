@@ -131,6 +131,9 @@ class ImportHelper {
 
   void useBackslash(bool value) { _useBackslash = value; }
 
+  /// @brief whether or not missing values in CSV files should be ignored
+  void ignoreMissing(bool value) { _ignoreMissing = value; }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the separator
   //////////////////////////////////////////////////////////////////////////////
@@ -280,6 +283,7 @@ class ImportHelper {
   bool _overwrite;
   bool _progress;
   bool _firstChunk;
+  bool _ignoreMissing;
 
   size_t _numberLines;
   ImportStatistics _stats;

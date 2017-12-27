@@ -109,7 +109,7 @@ describe ArangoDB do
                    "type": "logger",
                    "properties": {} }
                  JSON
-          doc2 = ArangoDB.log_post("#{prefix}-create-duplicate", cmd1, :body => body2)
+          doc2 = ArangoDB.log_post("#{prefix}-create-duplicate", cmd2, :body => body2)
 
           doc2.code.should eq(409)
           doc2.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -120,8 +120,163 @@ describe ArangoDB do
           cmd3 = api + '/dup'
           doc3 = ArangoDB.log_delete("#{prefix}-create-duplicate", cmd3)
 
-          doc3.code.should eq(204)
-          doc3.headers['content-type'].should eq("text/plain; charset=utf-8")
+          doc3.code.should eq(200)
+          doc3.headers['content-type'].should eq("application/json; charset=utf-8")
+        end
+
+      end
+
+      context "rename:" do
+
+        it "valid change" do
+          cmd1 = api
+          body1 = <<-JSON
+                 { "name": "testView",
+                   "type": "logger",
+                   "properties": {} }
+                 JSON
+          doc1 = ArangoDB.log_post("#{prefix}-valid-change", cmd1, :body => body1)
+
+          doc1.code.should eq(201)
+          doc1.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc1.parsed_response['name'].should eq("testView")
+          doc1.parsed_response['type'].should eq("logger")
+
+          cmd2 = api + '/testView/rename'
+          body2 = <<-JSON
+                 { "name": "newName" }
+                 JSON
+          doc2 = ArangoDB.log_put("#{prefix}-valid-change", cmd2, :body =>
+           body2)
+
+          doc2.code.should eq(200)
+          doc2.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc2.parsed_response['name'].should eq('newName')
+
+          cmd3 = api + '/newName'
+          doc3 = ArangoDB.log_delete("#{prefix}-valid-change", cmd3)
+
+          doc3.code.should eq(200)
+          doc3.headers['content-type'].should eq("application/json; charset=utf-8")
+        end
+
+        it "same name" do
+          cmd1 = api
+          body1 = <<-JSON
+                 { "name": "testView",
+                   "type": "logger",
+                   "properties": {} }
+                 JSON
+          doc1 = ArangoDB.log_post("#{prefix}-same-name", cmd1, :body => body1)
+
+          doc1.code.should eq(201)
+          doc1.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc1.parsed_response['name'].should eq("testView")
+          doc1.parsed_response['type'].should eq("logger")
+
+          cmd2 = api + '/testView/rename'
+          body2 = <<-JSON
+                 { "name": "testView" }
+                 JSON
+          doc2 = ArangoDB.log_put("#{prefix}-same-name", cmd2, :body =>
+           body2)
+
+          doc2.code.should eq(200)
+          doc2.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc2.parsed_response['name'].should eq('testView')
+
+          cmd3 = api + '/testView'
+          doc3 = ArangoDB.log_delete("#{prefix}-same-name", cmd3)
+
+          doc3.code.should eq(200)
+          doc3.headers['content-type'].should eq("application/json; charset=utf-8")
+        end
+
+        it "invalid name" do
+          cmd1 = api
+          body1 = <<-JSON
+                 { "name": "testView",
+                   "type": "logger",
+                   "properties": {} }
+                 JSON
+          doc1 = ArangoDB.log_post("#{prefix}-rename-invalid", cmd1, :body => body1)
+
+          doc1.code.should eq(201)
+          doc1.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc1.parsed_response['name'].should eq("testView")
+          doc1.parsed_response['type'].should eq("logger")
+
+          cmd2 = api + '/testView/rename'
+          body2 = <<-JSON
+                 { "name": "g@rb@ge" }
+                 JSON
+          doc2 = ArangoDB.log_put("#{prefix}-rename-invalid", cmd2, :body =>
+           body2)
+
+          doc2.code.should eq(400)
+          doc2.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc2.parsed_response['error'].should eq(true)
+          doc2.parsed_response['code'].should eq(400)
+          doc2.parsed_response['errorNum'].should eq(1208)
+
+          cmd3 = api + '/testView'
+          doc3 = ArangoDB.log_delete("#{prefix}-rename-invalid", cmd3)
+
+          doc3.code.should eq(200)
+          doc3.headers['content-type'].should eq("application/json; charset=utf-8")
+        end
+
+        it "duplicate name" do
+          cmd1 = api
+          body1 = <<-JSON
+                 { "name": "dup",
+                   "type": "logger",
+                   "properties": {} }
+                 JSON
+          doc1 = ArangoDB.log_post("#{prefix}-rename-duplicate", cmd1, :body => body1)
+
+          doc1.code.should eq(201)
+          doc1.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc1.parsed_response['name'].should eq("dup")
+          doc1.parsed_response['type'].should eq("logger")
+
+          cmd2 = api
+          body2 = <<-JSON
+                 { "name": "dup2",
+                   "type": "logger",
+                   "properties": {} }
+                 JSON
+          doc2 = ArangoDB.log_post("#{prefix}-rename-duplicate", cmd2, :body => body2)
+
+          doc2.code.should eq(201)
+          doc2.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc2.parsed_response['name'].should eq("dup2")
+          doc2.parsed_response['type'].should eq("logger")
+
+          cmd3 = api + '/dup2/rename'
+          body3 = <<-JSON
+                 { "name": "dup" }
+                 JSON
+          doc3 = ArangoDB.log_put("#{prefix}-rename-duplicate", cmd3, :body =>
+           body3)
+
+          doc3.code.should eq(409)
+          doc3.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc3.parsed_response['error'].should eq(true)
+          doc3.parsed_response['code'].should eq(409)
+          doc3.parsed_response['errorNum'].should eq(1207)
+
+          cmd4 = api + '/dup'
+          doc4 = ArangoDB.log_delete("#{prefix}-rename-duplicate", cmd4)
+
+          doc4.code.should eq(200)
+          doc4.headers['content-type'].should eq("application/json; charset=utf-8")
+
+          cmd5 = api + '/dup2'
+          doc5 = ArangoDB.log_delete("#{prefix}-rename-duplicate", cmd5)
+
+          doc5.code.should eq(200)
+          doc5.headers['content-type'].should eq("application/json; charset=utf-8")
         end
 
       end
@@ -226,8 +381,8 @@ describe ArangoDB do
           cmd3 = api + '/lemon'
           doc3 = ArangoDB.log_delete("#{prefix}-modify-unacceptable", cmd3)
 
-          doc3.code.should eq(204)
-          doc3.headers['content-type'].should eq("text/plain; charset=utf-8")
+          doc3.code.should eq(200)
+          doc3.headers['content-type'].should eq("application/json; charset=utf-8")
         end
 
       end
@@ -254,8 +409,8 @@ describe ArangoDB do
         cmd1 = api + "/abc"
         doc1 = ArangoDB.log_delete("#{prefix}-drop-a-view", cmd1)
 
-        doc1.code.should eq(204)
-        doc1.headers['content-type'].should eq("text/plain; charset=utf-8")
+        doc1.code.should eq(200)
+        doc1.headers['content-type'].should eq("application/json; charset=utf-8")
 
         cmd2 = api + "/abc"
         doc2 = ArangoDB.log_get("#{prefix}-drop-a-view", cmd2)

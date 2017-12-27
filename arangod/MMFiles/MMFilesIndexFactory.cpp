@@ -45,6 +45,10 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchMMFilesLink.h"
+#endif
+
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +195,7 @@ static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
                                     VPackBuilder& builder) {
   VPackSlice fieldsSlice = definition.get("fields");
   if (fieldsSlice.isArray() && fieldsSlice.length() == 1) {
-    // only add geoJson for indexes with a single field (with needs to be an array) 
+    // only add geoJson for indexes with a single field (with needs to be an array)
     bool geoJson =
         basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
     builder.add("geoJson", VPackValue(geoJson));
@@ -304,7 +308,7 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
   try {
     VPackObjectBuilder b(&enhanced);
     current = definition.get("id");
-    uint64_t id = 0; 
+    uint64_t id = 0;
     if (current.isNumber()) {
       id = current.getNumericValue<uint64_t>();
     } else if (current.isString()) {
@@ -314,7 +318,7 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       enhanced.add("id", VPackValue(std::to_string(id)));
     }
 
-    
+
     enhanced.add("type", VPackValue(Index::oldtypeName(type)));
 
     switch (type) {
@@ -338,7 +342,7 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
         res = EnhanceJsonIndexSkiplist(definition, enhanced, create);
         break;
-      
+
       case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
         res = EnhanceJsonIndexPersistent(definition, enhanced, create);
         break;
@@ -346,8 +350,14 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
         res = EnhanceJsonIndexFulltext(definition, enhanced, create);
         break;
-      
-      case Index::TRI_IDX_TYPE_UNKNOWN: 
+
+  #ifdef USE_IRESEARCH
+      case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
+        res = arangodb::iresearch::EnhanceJsonIResearchLink(definition, enhanced, create);
+        break;
+  #endif
+
+      case Index::TRI_IDX_TYPE_UNKNOWN:
       default: {
         res = TRI_ERROR_BAD_PARAMETER;
         break;
@@ -372,7 +382,7 @@ std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
     VPackSlice info, bool generateKey, LogicalCollection* col,
     bool isClusterConstructor) const {
   TRI_idx_iid_t iid = IndexFactory::validateSlice(info, generateKey, isClusterConstructor);
-  
+
   // extract type
   VPackSlice value = info.get("type");
 
@@ -413,6 +423,11 @@ std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
   if (typeString == "fulltext") {
     return std::make_shared<MMFilesFulltextIndex>(iid, col, info);
   }
+#ifdef USE_IRESEARCH
+  if (typeString == "iresearch") {
+    return arangodb::iresearch::IResearchMMFilesLink::make(iid, col, info);
+  }
+#endif
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, std::string("invalid or unsupported index type '") + typeString + "'");
 }
@@ -430,7 +445,7 @@ void MMFilesIndexFactory::fillSystemIndexes(
         std::make_shared<arangodb::MMFilesEdgeIndex>(1, col));
   }
 }
-  
+
 std::vector<std::string> MMFilesIndexFactory::supportedIndexes() const {
   return std::vector<std::string>{ "primary", "edge", "hash", "skiplist", "persistent", "geo", "fulltext" };
 }

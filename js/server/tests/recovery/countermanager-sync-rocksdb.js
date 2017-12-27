@@ -68,13 +68,14 @@ function recoverySuite () {
     // / @brief test whether we can restore the data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testCollectorOom: function () {
+    testCounterManagerSync: function () {
       var i, c = db._collection('UnitTestsRecovery');
       assertEqual(200000, c.count());
 
       for (i = 200000; i < 210000; ++i) {
         c.save({ value1: 'test' + i, value2: i });
       }
+      assertEqual(210000, c.count());
     }
 
   };

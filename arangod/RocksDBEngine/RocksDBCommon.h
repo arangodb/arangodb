@@ -218,6 +218,7 @@ inline void uint16ToPersistent(std::string& out, uint16_t value) {
 
 
 rocksdb::TransactionDB* globalRocksDB();
+rocksdb::ColumnFamilyHandle* defaultCF();
 RocksDBEngine* globalRocksEngine();
 arangodb::Result globalRocksDBPut(
     rocksdb::ColumnFamilyHandle *cf,

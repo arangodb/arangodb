@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Rest/GeneralResponse.h"
 #include "VocBase/LogicalView.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -118,14 +119,21 @@ void RestViewHandler::createView() {
   }
 
   TRI_voc_cid_t id = 0;
-  std::shared_ptr<LogicalView> view = _vocbase->createView(body, id);
-  if (view != nullptr) {
-    VPackBuilder props;
-    props.openObject();
-    view->toVelocyPack(props);
-    props.close();
-    generateResult(rest::ResponseCode::CREATED, props.slice());
-  } else {
+  try {
+    std::shared_ptr<LogicalView> view = _vocbase->createView(body, id);
+    if (view != nullptr) {
+      VPackBuilder props;
+      props.openObject();
+      view->toVelocyPack(props);
+      props.close();
+      generateResult(rest::ResponseCode::CREATED, props.slice());
+    } else {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    "problem creating view");
+    }
+  } catch (basics::Exception const& ex) {
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.message());
+  } catch (...) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "problem creating view");
   }
@@ -143,9 +151,9 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
   std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if ((suffixes.size() != 2) || (suffixes[1] != "properties")) {
+  if ((suffixes.size() != 2) || (suffixes[1] != "properties" && suffixes[1] != "rename")) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "expecting [PUT, PATCH] /_api/view/<view-name>/properties");
+                  "expecting [PUT, PATCH] /_api/view/<view-name>/properties or PUT /_api/view/<view-name>/rename");
     return;
   }
 
@@ -167,26 +175,36 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     }
     VPackSlice body = parsedBody.get()->slice();
 
+    // handle rename functionality
+    if (suffixes[1] == "rename") {
+      VPackSlice newName = body.get("name");
+      if (!newName.isString()) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "expecting \"name\" parameter to be a string");
+        return;
+      }
+
+      int res = _vocbase->renameView(view, newName.copyString());
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        getSingleView(newName.copyString());
+      } else {
+        generateError(GeneralResponse::responseCode(res), res);
+      }
+      return;
+    }
+
     auto result = view->updateProperties(body, partialUpdate,
                                          true);  // TODO: not force sync?
     if (result.ok()) {
       VPackBuilder updated;
       updated.openObject();
-      view->getImplementation()->getPropertiesVPack(updated);
+      view->getImplementation()->getPropertiesVPack(updated, false);
       updated.close();
       generateResult(rest::ResponseCode::OK, updated.slice());
       return;
     } else {
-      rest::ResponseCode httpCode;
-      switch (result.errorNumber()) {
-        case TRI_ERROR_BAD_PARAMETER:
-          httpCode = rest::ResponseCode::BAD;
-          break;
-        default:
-          httpCode = rest::ResponseCode::SERVER_ERROR;
-          break;
-      }
-      generateError(httpCode, result.errorNumber(), result.errorMessage());
+      generateError(GeneralResponse::responseCode(result.errorNumber()), result.errorNumber(), result.errorMessage());
       return;
     }
   } catch (...) {
@@ -213,7 +231,7 @@ void RestViewHandler::deleteView() {
   int res = _vocbase->dropView(name);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    resetResponse(rest::ResponseCode::NO_CONTENT);
+    generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
   } else if (res == TRI_ERROR_ARANGO_VIEW_NOT_FOUND) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
@@ -265,7 +283,7 @@ void RestViewHandler::getListOfViews() {
   for (std::shared_ptr<LogicalView> view : views) {
     if (view.get() != nullptr) {
       props.openObject();
-      view->toVelocyPack(props);
+      view->toVelocyPack(props, true);
       props.close();
     }
   }
@@ -279,7 +297,7 @@ void RestViewHandler::getSingleView(std::string const& name) {
   if (view.get() != nullptr) {
     VPackBuilder props;
     props.openObject();
-    view->toVelocyPack(props);
+    view->toVelocyPack(props, true);
     props.close();
     generateResult(rest::ResponseCode::OK, props.slice());
   } else {
@@ -294,7 +312,7 @@ void RestViewHandler::getViewProperties(std::string const& name) {
   if (view.get() != nullptr) {
     VPackBuilder props;
     props.openObject();
-    view->getImplementation()->getPropertiesVPack(props);
+    view->getImplementation()->getPropertiesVPack(props, false);
     props.close();
     generateResult(rest::ResponseCode::OK, props.slice());
   } else {

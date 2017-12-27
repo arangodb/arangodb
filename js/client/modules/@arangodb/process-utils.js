@@ -69,7 +69,7 @@ let BIN_DIR;
 let ARANGOBENCH_BIN;
 let ARANGODUMP_BIN;
 let ARANGOD_BIN;
-let ARANGOIMP_BIN;
+let ARANGOIMPORT_BIN;
 let ARANGORESTORE_BIN;
 let ARANGOEXPORT_BIN;
 let ARANGOSH_BIN;
@@ -130,7 +130,7 @@ function setupBinaries (builddir, buildType, configDir) {
   ARANGOBENCH_BIN = fs.join(BIN_DIR, 'arangobench' + executableExt);
   ARANGODUMP_BIN = fs.join(BIN_DIR, 'arangodump' + executableExt);
   ARANGOD_BIN = fs.join(BIN_DIR, 'arangod' + executableExt);
-  ARANGOIMP_BIN = fs.join(BIN_DIR, 'arangoimp' + executableExt);
+  ARANGOIMPORT_BIN = fs.join(BIN_DIR, 'arangoimport' + executableExt);
   ARANGORESTORE_BIN = fs.join(BIN_DIR, 'arangorestore' + executableExt);
   ARANGOEXPORT_BIN = fs.join(BIN_DIR, 'arangoexport' + executableExt);
   ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executableExt);
@@ -152,7 +152,7 @@ function setupBinaries (builddir, buildType, configDir) {
     ARANGOBENCH_BIN,
     ARANGODUMP_BIN,
     ARANGOD_BIN,
-    ARANGOIMP_BIN,
+    ARANGOIMPORT_BIN,
     ARANGORESTORE_BIN,
     ARANGOEXPORT_BIN,
     ARANGOSH_BIN];
@@ -529,10 +529,10 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangoimp
+// / @brief runs arangoimport
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoImp (options, instanceInfo, what) {
+function runArangoImport (options, instanceInfo, what) {
   let args = {
     'server.username': options.username,
     'server.password': options.password,
@@ -540,7 +540,8 @@ function runArangoImp (options, instanceInfo, what) {
     'file': fs.join(TOP_DIR, what.data),
     'collection': what.coll,
     'type': what.type,
-    'on-duplicate': what.onDuplicate || 'error'
+    'on-duplicate': what.onDuplicate || 'error',
+    'ignore-missing': what.ignoreMissing || false
   };
 
   if (what.skipLines !== undefined) {
@@ -566,7 +567,7 @@ function runArangoImp (options, instanceInfo, what) {
     args['remove-attribute'] = what.removeAttribute;
   }
 
-  return executeAndWait(ARANGOIMP_BIN, toArgv(args), options, 'arangoimp', instanceInfo.rootDir);
+  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -585,7 +586,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
 
   let exe;
   rootDir = rootDir || instanceInfo.rootDir;
-  
+
   if (which === 'dump') {
     args['output-directory'] = fs.join(rootDir, dumpDir);
     exe = ARANGODUMP_BIN;
@@ -594,9 +595,9 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
     args['input-directory'] = fs.join(rootDir, dumpDir);
     exe = ARANGORESTORE_BIN;
   }
-  
+
   if (options.encrypted) {
-    args['encryption.keyfile'] = fs.join(rootDir, 'secret-key'); 
+    args['encryption.keyfile'] = fs.join(rootDir, 'secret-key');
   }
 
   if (options.extremeVerbosity === true) {
@@ -970,7 +971,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
     }
   } else if (options.singleresilient) {
     // for now start just two (TODO config parameter)
-    for (i = 0; i < 2; i++) {      
+    for (i = 0; i < 2; i++) {
       let port = findFreePort(options.minPort, options.maxPort, usedPorts);
       usedPorts.push(port);
       let endpoint = protocol + '://127.0.0.1:' + port;
@@ -1047,7 +1048,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
     const reply = download(instanceInfo.url + '/_api/cluster/endpoints', '', makeAuthorizationHeaders(authOpts));
     if (!reply.error && reply.code === 200) {
       let res = JSON.parse(reply.body);
-      internal.print("Response ====> " + reply.body);      
+      internal.print("Response ====> " + reply.body);
       let leader = res.endpoints[0].endpoint;
       instanceInfo.arangods.forEach(d => {
         if (d.endpoint === leader) {
@@ -1056,7 +1057,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
         }
       });
     }
-  }   
+  }
 
   arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
   return true;
@@ -1327,7 +1328,7 @@ exports.executeAndWait = executeAndWait;
 
 exports.run = {
   arangoshCmd: runArangoshCmd,
-  arangoImp: runArangoImp,
+  arangoImport: runArangoImport,
   arangoDumpRestore: runArangoDumpRestore,
   arangoBenchmark: runArangoBenchmark
 };
