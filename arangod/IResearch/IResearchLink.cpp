@@ -180,6 +180,12 @@ void IResearchLink::batchInsert(
     throw std::runtime_error(std::string("failed to report status during batch insert for iResearch link '") + arangodb::basics::StringUtils::itoa(_id) + "'");
   }
 
+  if (!trx) {
+    queue->setStatus(TRI_ERROR_BAD_PARAMETER); // 'trx' required
+
+    return;
+  }
+
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
@@ -196,12 +202,6 @@ void IResearchLink::batchInsert(
 
   if (!view) {
     queue->setStatus(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // IResearchView required
-
-    return;
-  }
-
-  if (!trx) {
-    queue->setStatus(TRI_ERROR_BAD_PARAMETER); // 'trx' required
 
     return;
   }
@@ -343,6 +343,10 @@ Result IResearchLink::insert(
   VPackSlice const& doc,
   Index::OperationMode mode
 ) {
+  if (!trx) {
+    return TRI_ERROR_BAD_PARAMETER; // 'trx' required
+  }
+
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
@@ -357,10 +361,6 @@ Result IResearchLink::insert(
 
   if (!view) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
-  }
-
-  if (!trx) {
-    return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
   return view->insert(*trx, _collection->cid(), documentId, doc, _meta);
@@ -466,6 +466,10 @@ Result IResearchLink::remove(
   VPackSlice const& doc,
   Index::OperationMode mode
 ) {
+  if (!trx) {
+    return TRI_ERROR_BAD_PARAMETER; // 'trx' required
+  }
+
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
@@ -480,10 +484,6 @@ Result IResearchLink::remove(
 
   if (!view) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
-  }
-
-  if (!trx) {
-    return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
   // remove documents matching on cid and rid
@@ -495,6 +495,10 @@ Result IResearchLink::remove(
   arangodb::LocalDocumentId const& documentId,
   Index::OperationMode mode
 ) {
+  if (!trx) {
+    return TRI_ERROR_BAD_PARAMETER; // 'trx' required
+  }
+
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
@@ -509,10 +513,6 @@ Result IResearchLink::remove(
 
   if (!view) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
-  }
-
-  if (!trx) {
-    return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
   // remove documents matching on cid and documentId
