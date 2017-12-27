@@ -200,7 +200,7 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
     return Agent::raft_commit_t::OK;
   }
 
-  TimePoint startTime = system_clock::now();
+  auto startTime = steady_clock::now();
   index_t lastCommitIndex = 0;
 
   // Wait until woken up through AgentCallback
@@ -210,7 +210,7 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
     if (leading()) {
       if (lastCommitIndex != _commitIndex) {
         // We restart the timeout computation if there has been progress:
-        startTime = system_clock::now();
+        startTime = steady_clock::now();
       }
       lastCommitIndex = _commitIndex;
       if (lastCommitIndex >= index) {
@@ -220,13 +220,12 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
       return Agent::raft_commit_t::UNKNOWN;
     }
 
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "waitFor: index: " << index <<
-      " _commitIndex: " << _commitIndex
-      << " _lastCommitIndex: " << lastCommitIndex << " startTime: "
-      << timepointToString(startTime) << " now: "
-      << timepointToString(system_clock::now());
+    duration<double> d = steady_clock::now() - startTime;
 
-    duration<double> d = system_clock::now() - startTime;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "waitFor: index: " << index <<
+      " _commitIndex: " << _commitIndex << " _lastCommitIndex: " <<
+      lastCommitIndex << " elapsedTime: " << d.count();
+
     if (d.count() >= timeout) {
       return Agent::raft_commit_t::TIMEOUT;
     }
@@ -440,7 +439,7 @@ void Agent::sendAppendEntriesRPC() {
         continue;
       }
 
-      duration<double> m = system_clock::now() - _lastSent[followerId];
+      duration<double> m = steady_clock::now() - _lastSent[followerId];
 
       if (m.count() > _config.minPing() &&
           _lastSent[followerId].time_since_epoch().count() != 0) {
@@ -448,9 +447,8 @@ void Agent::sendAppendEntriesRPC() {
           << "Note: sent out last AppendEntriesRPC "
           << "to follower " << followerId << " more than minPing ago: " 
           << m.count() << " lastAcked: "
-          << std::chrono::duration_cast<std::chrono::microseconds>(
-               lastAcked.time_since_epoch()).count()
-          << " lastSent: " << timepointToString(_lastSent[followerId]);
+          << duration_cast<std::chrono::microseconds>(
+            lastAcked.time_since_epoch()).count();
       }
       index_t lowest = unconfirmed.front().index;
 
@@ -559,7 +557,7 @@ void Agent::sendAppendEntriesRPC() {
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
 
-      _lastSent[followerId]    = system_clock::now();
+      _lastSent[followerId]    = steady_clock::now();
       // _constituent.notifyHeartbeatSent(followerId);
       // Do not notify constituent, because the AppendEntriesRPC here could
       // take a very long time, so this must not disturb the empty ones
