@@ -447,8 +447,7 @@ void Agent::sendAppendEntriesRPC() {
           << "Note: sent out last AppendEntriesRPC "
           << "to follower " << followerId << " more than minPing ago: " 
           << m.count() << " lastAcked: "
-          << duration_cast<std::chrono::microseconds>(
-            lastAcked.time_since_epoch()).count();
+          << duration_cast<duration<double>>(lastAcked.time_since_epoch()).count();
       }
       index_t lowest = unconfirmed.front().index;
 
@@ -820,10 +819,10 @@ query_t Agent::lastAckedAgo() const {
   if (leading()) {
     for (auto const& i : lastAcked) {
       ret->add(i.first, VPackValue(
-                 1.0e-2 * std::floor(
+                 1.0e-3 * std::floor(
                    (i.first!=id() ?
-                    duration<double>(steady_clock::now()-i.second).count()*100.0
-                    : 0.0))));
+                    duration<double>(steady_clock::now()-i.second).count()*1.0e3 :
+		    0.0))));
     }
   }
   ret->close();
@@ -1140,7 +1139,9 @@ void Agent::run() {
         continue;
       }
 
-      // Challenge leadership:
+      // Challenge leadership.
+      // Let's proactively know, that we no longer lead instead of finding out
+      // through read/write.
       if (challengeLeadership()) {
         resign();
         continue;
