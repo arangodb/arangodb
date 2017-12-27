@@ -527,7 +527,7 @@ SECTION("test_drop_cid") {
       PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
 
       view->drop(42);
-      CHECK((persisted));
+      CHECK((!persisted)); // drop() does not modify view meta
       view->sync();
     }
 
@@ -1099,7 +1099,7 @@ SECTION("test_register_link") {
 
     persisted = false;
     auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
-    CHECK((true == persisted));
+    CHECK((false == persisted)); // link instantiation does not modify view meta
     CHECK((false == !link));
     std::set<TRI_voc_cid_t> cids;
     view->appendTrackedCollections(cids);
@@ -1208,6 +1208,18 @@ SECTION("test_unregister_link") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
     REQUIRE((false == !view));
 
+    // add a document to the view
+    {
+      static std::vector<std::string> const EMPTY;
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&(vocbase.instance)), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+      CHECK((trx.begin().ok()));
+      view->insert(trx, logicalCollection->cid(), arangodb::LocalDocumentId(0), doc->slice(), meta);
+      CHECK((trx.commit().ok()));
+    }
+
     auto links = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \"testCollection\": {} } \
     }");
@@ -1217,8 +1229,9 @@ SECTION("test_unregister_link") {
     CHECK((false == logicalCollection->getIndexes().empty()));
 
     {
-      std::set<TRI_voc_cid_t> cids;
-      view->appendTrackedCollections(cids);
+      std::unordered_set<TRI_voc_cid_t> cids;
+      view->sync();
+      arangodb::iresearch::appendKnownCollections(cids, view->snapshot());
       CHECK((1 == cids.size()));
     }
 
@@ -1245,14 +1258,21 @@ SECTION("test_unregister_link") {
     CHECK((nullptr == vocbase->lookupCollection("testCollection")));
 
     {
-      std::set<TRI_voc_cid_t> cids;
-      view->appendTrackedCollections(cids);
+      std::unordered_set<TRI_voc_cid_t> cids;
+      view->sync();
+      arangodb::iresearch::appendKnownCollections(cids, view->snapshot());
       CHECK((0 == cids.size()));
     }
 
     {
-      std::set<TRI_voc_cid_t> actual;
+      std::unordered_set<TRI_voc_cid_t> expected = { 100 };
+      std::set<TRI_voc_cid_t> actual = { };
       view->appendTrackedCollections(actual);
+
+      for (auto& cid: expected) {
+        CHECK((1 == actual.erase(cid)));
+      }
+
       CHECK((actual.empty()));
     }
 
@@ -1270,6 +1290,18 @@ SECTION("test_unregister_link") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
     REQUIRE((false == !view));
 
+    // add a document to the view
+    {
+      static std::vector<std::string> const EMPTY;
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&(vocbase.instance)), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+      CHECK((trx.begin().ok()));
+      view->insert(trx, logicalCollection->cid(), arangodb::LocalDocumentId(0), doc->slice(), meta);
+      CHECK((trx.commit().ok()));
+    }
+
     auto links = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \"testCollection\": {} } \
     }");
@@ -1279,8 +1311,9 @@ SECTION("test_unregister_link") {
     CHECK((false == logicalCollection->getIndexes().empty()));
 
     {
-      std::set<TRI_voc_cid_t> cids;
-      view->appendTrackedCollections(cids);
+      std::unordered_set<TRI_voc_cid_t> cids;
+      view->sync();
+      arangodb::iresearch::appendKnownCollections(cids, view->snapshot());
       CHECK((1 == cids.size()));
     }
 
@@ -1299,18 +1332,25 @@ SECTION("test_unregister_link") {
     CHECK((nullptr != vocbase->lookupCollection("testCollection")));
     persisted = false;
     CHECK((TRI_ERROR_NO_ERROR == vocbase->dropCollection(logicalCollection, true, -1)));
-    CHECK((true == persisted));
+    CHECK((false == persisted)); // link removal does not modify view meta
     CHECK((nullptr == vocbase->lookupCollection("testCollection")));
 
     {
-      std::set<TRI_voc_cid_t> cids;
-      view->appendTrackedCollections(cids);
+      std::unordered_set<TRI_voc_cid_t> cids;
+      view->sync();
+      arangodb::iresearch::appendKnownCollections(cids, view->snapshot());
       CHECK((0 == cids.size()));
     }
 
     {
+      std::unordered_set<TRI_voc_cid_t> expected = { 100 };
       std::set<TRI_voc_cid_t> actual;
       view->appendTrackedCollections(actual);
+
+      for (auto& cid: expected) {
+        CHECK((1 == actual.erase(cid)));
+      }
+
       CHECK((actual.empty()));
     }
 

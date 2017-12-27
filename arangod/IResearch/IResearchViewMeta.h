@@ -115,7 +115,7 @@ struct IResearchViewMeta {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  std::unordered_set<TRI_voc_cid_t> _collections; // known collection IDs having links to this view
+  std::unordered_set<TRI_voc_cid_t> _collections; // collection links added to this view via view property modification (may contain no-longer valid cids)
   CommitMeta _commit;
   std::string _dataPath; // data file path
   bool _includePersistedCidsOnOpen; // should cids from persisted store during open() be included in the list of tracked CIDs
