@@ -315,6 +315,12 @@ class IResearchView final: public arangodb::ViewImplementation,
     bool doSync
   ) override;
 
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief visit all collection IDs that were added to the view
+  /// @return 'visitor' success
+  ///////////////////////////////////////////////////////////////////////////////
+  bool visitCollections(std::function<bool(TRI_voc_cid_t)>& visitor) const;
+
  private:
   struct DataStore {
     irs::directory::ptr _directory;

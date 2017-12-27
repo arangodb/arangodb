@@ -180,6 +180,12 @@ void IResearchLink::batchInsert(
     throw std::runtime_error(std::string("failed to report status during batch insert for iResearch link '") + arangodb::basics::StringUtils::itoa(_id) + "'");
   }
 
+  if (!_collection) {
+    queue->setStatus(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // '_collection' required
+
+    return;
+  }
+
   if (!trx) {
     queue->setStatus(TRI_ERROR_BAD_PARAMETER); // 'trx' required
 
@@ -188,13 +194,6 @@ void IResearchLink::batchInsert(
 
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
-
-  if (!_collection) {
-    queue->setStatus(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // '_collection' and '_view' required
-
-    return;
-  }
-
   assert(_view); // NO_VIEW used for unasociated links
   auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
   SCOPED_LOCK(viewMutex);
@@ -222,13 +221,12 @@ LogicalCollection* IResearchLink::collection() const noexcept {
 }
 
 int IResearchLink::drop() {
-  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
-  SCOPED_LOCK(mutex);
-
   if (!_collection) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
   }
 
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
   assert(_view); // NO_VIEW used for unasociated links
   auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
   SCOPED_LOCK(viewMutex);
@@ -343,17 +341,16 @@ Result IResearchLink::insert(
   VPackSlice const& doc,
   Index::OperationMode mode
 ) {
+  if (!_collection) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
+  }
+
   if (!trx) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
-
-  if (!_collection) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
-  }
-
   assert(_view); // NO_VIEW used for unasociated links
   auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
   SCOPED_LOCK(viewMutex);
@@ -466,17 +463,16 @@ Result IResearchLink::remove(
   VPackSlice const& doc,
   Index::OperationMode mode
 ) {
+  if (!_collection) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
+  }
+
   if (!trx) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
-
-  if (!_collection) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
-  }
-
   assert(_view); // NO_VIEW used for unasociated links
   auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
   SCOPED_LOCK(viewMutex);
@@ -495,17 +491,16 @@ Result IResearchLink::remove(
   arangodb::LocalDocumentId const& documentId,
   Index::OperationMode mode
 ) {
+  if (!_collection) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
+  }
+
   if (!trx) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
-
-  if (!_collection) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
-  }
-
   assert(_view); // NO_VIEW used for unasociated links
   auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
   SCOPED_LOCK(viewMutex);

@@ -333,9 +333,14 @@ During view modification the following directives apply:
 ### View properties (unmodifiable)
 
 * collections:
-  an internally tracked array of collection identifiers which are known to have
-  links to the current collection
-  among other things used for adding collections during a view query transaction
+  an internally tracked list of collection identifiers which were explicitly
+  added to the current view by the user via view 'link' property modification
+  the list may have no-longer valid identifiers if the user did not explicitly
+  drop the link for the said collection identifier from the current view
+  invalid collection identifiers are removed during view property modification
+  among other things used for acquiring collection locks in transactions (i.e.
+  during a view query no documents will be returned for collections not in this
+  list) and generating view properties 'links' list
 
 ### Link properties
 
