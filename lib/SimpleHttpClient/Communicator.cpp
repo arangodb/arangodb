@@ -304,7 +304,7 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
   curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
   curl_easy_setopt(handle, CURLOPT_VERBOSE, 1L);
   curl_easy_setopt(handle, CURLOPT_PROXY, "");
-  
+
   // the xfer/progress options are only used to handle request abortions
   curl_easy_setopt(handle, CURLOPT_NOPROGRESS, 0L);
   curl_easy_setopt(handle, CURLOPT_XFERINFOFUNCTION, Communicator::curlProgress);
@@ -383,8 +383,8 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
   }
 
   handleInProgress->_rip->_startTime = TRI_microtime();
- 
-  { 
+
+  {
     MUTEX_LOCKER(guard, _handlesLock);
     _handlesInProgress.emplace(newRequest._ticketId, std::move(handleInProgress));
   }
@@ -444,7 +444,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     case CURLE_OPERATION_TIMEDOUT:
     case CURLE_RECV_ERROR:
     case CURLE_GOT_NOTHING:
-      if (rip->_aborted) {
+      if (rip->_aborted || (CURLE_OPERATION_TIMEDOUT == rc && 0.0==connectTime)) {
         rip->_callbacks._onError(TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
       } else {
         rip->_callbacks._onError(TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
@@ -466,8 +466,8 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Curl return " << rc;
       rip->_callbacks._onError(TRI_ERROR_INTERNAL, {nullptr});
       break;
-  } 
-    
+  }
+
   _handlesInProgress.erase(rip->_ticketId);
 }
 
@@ -620,12 +620,12 @@ void Communicator::abortRequests() {
   }
 }
 
-// needs _handlesLock! 
+// needs _handlesLock!
 std::vector<RequestInProgress const*> Communicator::requestsInProgress() {
   _handlesLock.assertLockedByCurrentThread();
 
   std::vector<RequestInProgress const*> vec;
-    
+
   vec.reserve(_handlesInProgress.size());
 
   for (auto& handle : _handlesInProgress) {
@@ -637,7 +637,7 @@ std::vector<RequestInProgress const*> Communicator::requestsInProgress() {
   return vec;
 }
 
-// needs _handlesLock! 
+// needs _handlesLock!
 void Communicator::abortRequestInternal(Ticket ticketId) {
   _handlesLock.assertLockedByCurrentThread();
 
