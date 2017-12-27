@@ -413,116 +413,116 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       shortName = _snapshot(targetShortID + serverID + "/ShortName").getString();
 
-    // Endpoint
-    std::string endpoint;
-    std::string epPath = serverID + "/endpoint";
-    if (serversRegistered.has(epPath)) {
-      endpoint = serversRegistered(epPath).getString();
-    }
-    std::string hostId;
-    std::string hoPath = serverID + "/host";
-    if (serversRegistered.has(hoPath)) {
-      hostId = serversRegistered(hoPath).getString();
-    }
+      // Endpoint
+      std::string endpoint;
+      std::string epPath = serverID + "/endpoint";
+      if (serversRegistered.has(epPath)) {
+        endpoint = serversRegistered(epPath).getString();
+      }
+      std::string hostId;
+      std::string hoPath = serverID + "/host";
+      if (serversRegistered.has(hoPath)) {
+        hostId = serversRegistered(hoPath).getString();
+      }
 
-    // Health records from persistence, from transience and a new one
-    HealthRecord transist(shortName, endpoint, hostId);
-    HealthRecord persist(shortName, endpoint, hostId);
+      // Health records from persistence, from transience and a new one
+      HealthRecord transist(shortName, endpoint, hostId);
+      HealthRecord persist(shortName, endpoint, hostId);
 
-    // Get last health entries from transient and persistent key value stores
-    if (_transient.has(healthPrefix + serverID)) {
-      transist = _transient(healthPrefix + serverID);
-    }
-    if (_snapshot.has(healthPrefix + serverID)) {
-      persist = _snapshot(healthPrefix + serverID);
-    }
+      // Get last health entries from transient and persistent key value stores
+      if (_transient.has(healthPrefix + serverID)) {
+        transist = _transient(healthPrefix + serverID);
+      }
+      if (_snapshot.has(healthPrefix + serverID)) {
+        persist = _snapshot(healthPrefix + serverID);
+      }
 
-    // New health record (start with old add current information from sync)
-    // Sync.time is copied to Health.syncTime
-    // Sync.status is copied to Health.syncStatus
-    std::string syncTime = _transient.has(syncPrefix + serverID) ?
-      _transient(syncPrefix + serverID + "/time").getString() :
-      timepointToString(std::chrono::system_clock::time_point());
-    std::string syncStatus = _transient.has(syncPrefix + serverID) ?
-      _transient(syncPrefix + serverID + "/status").getString() : "UNKNOWN";
+      // New health record (start with old add current information from sync)
+      // Sync.time is copied to Health.syncTime
+      // Sync.status is copied to Health.syncStatus
+      std::string syncTime = _transient.has(syncPrefix + serverID) ?
+        _transient(syncPrefix + serverID + "/time").getString() :
+        timepointToString(std::chrono::system_clock::time_point());
+      std::string syncStatus = _transient.has(syncPrefix + serverID) ?
+        _transient(syncPrefix + serverID + "/status").getString() : "UNKNOWN";
 
-    // Last change registered in sync (transient != sync)
-    // Either now or value in transient
-    auto lastAckedTime = (syncTime != transist.syncTime) ?
-      std::chrono::system_clock::now() : stringToTimepoint(transist.lastAcked);
-    transist.lastAcked = timepointToString(lastAckedTime);
-    transist.syncTime = syncTime;
-    transist.syncStatus = syncStatus;
+      // Last change registered in sync (transient != sync)
+      // Either now or value in transient
+      auto lastAckedTime = (syncTime != transist.syncTime) ?
+        std::chrono::system_clock::now() : stringToTimepoint(transist.lastAcked);
+      transist.lastAcked = timepointToString(lastAckedTime);
+      transist.syncTime = syncTime;
+      transist.syncStatus = syncStatus;
 
-    // Calculate elapsed since lastAcked
-    auto elapsed = std::chrono::duration<double>(
-      std::chrono::system_clock::now() - lastAckedTime);
+      // Calculate elapsed since lastAcked
+      auto elapsed = std::chrono::duration<double>(
+        std::chrono::system_clock::now() - lastAckedTime);
 
-    if (elapsed.count() <= _okThreshold) {
-      transist.status = Supervision::HEALTH_STATUS_GOOD;
-    } else if (elapsed.count() <= _gracePeriod) {
-      transist.status = Supervision::HEALTH_STATUS_BAD;
-    } else {
-      transist.status = Supervision::HEALTH_STATUS_FAILED;
-    }
+      if (elapsed.count() <= _okThreshold) {
+        transist.status = Supervision::HEALTH_STATUS_GOOD;
+      } else if (elapsed.count() <= _gracePeriod) {
+        transist.status = Supervision::HEALTH_STATUS_BAD;
+      } else {
+        transist.status = Supervision::HEALTH_STATUS_FAILED;
+      }
 
-    // Status changed?
-    bool changed = transist.statusDiff(persist);
+      // Status changed?
+      bool changed = transist.statusDiff(persist);
 
-    // Take necessary actions if any
-    std::shared_ptr<VPackBuilder> envelope;
-    if (changed) {
-      handleOnStatus(_agent, _snapshot, persist, transist, serverID, _jobId,
-                     envelope);
-    }
-
-    persist = transist; // Now copy Status, SyncStatus from transient to persited
-
-    // Transient report
-    std::shared_ptr<Builder> tReport = std::make_shared<Builder>();
-    { VPackArrayBuilder transaction(tReport.get());        // Transist Transaction
+      // Take necessary actions if any
       std::shared_ptr<VPackBuilder> envelope;
-      { VPackObjectBuilder operation(tReport.get());       // Operation
-        tReport->add(VPackValue(healthPrefix + serverID)); // Supervision/Health
-        { VPackObjectBuilder oo(tReport.get());
-          transist.toVelocyPack(*tReport); }}} // Transaction
-
-    // Persistent report
-    std::shared_ptr<Builder> pReport = nullptr;
-    if (changed) {
-      pReport = std::make_shared<Builder>();
-      { VPackArrayBuilder transaction(pReport.get());      // Persist Transaction
-        { VPackObjectBuilder operation(pReport.get());     // Operation
-          pReport->add(VPackValue(healthPrefix + serverID)); // Supervision/Health
-          { VPackObjectBuilder oo(pReport.get());
-            persist.toVelocyPack(*pReport); }
-          if (envelope != nullptr) {                       // Failed server
-            TRI_ASSERT(
-              envelope->slice().isArray() && envelope->slice()[0].isObject());
-            for (VPackObjectIterator::ObjectPair i : VPackObjectIterator(envelope->slice()[0])) {
-              pReport->add(i.key.copyString(), i.value);
-            }
-          }} // Operation
-        if (envelope != nullptr) {                         // Preconditions(Job)
-          TRI_ASSERT(
-            envelope->slice().isArray() && envelope->slice()[1].isObject());
-          pReport->add(envelope->slice()[1]);
-        }} // Transaction
-    }
-
-    if (!this->isStopping()) {
-
-      // Replicate special event and only then transient store
       if (changed) {
-        write_ret_t res = singleWriteTransaction(_agent, *pReport);
-        if (res.accepted && res.indices.front() != 0) {
-          ++_jobId; // Job was booked
+        handleOnStatus(_agent, _snapshot, persist, transist, serverID, _jobId,
+                       envelope);
+      }
+
+      persist = transist; // Now copy Status, SyncStatus from transient to persited
+
+      // Transient report
+      std::shared_ptr<Builder> tReport = std::make_shared<Builder>();
+      { VPackArrayBuilder transaction(tReport.get());        // Transist Transaction
+        std::shared_ptr<VPackBuilder> envelope;
+        { VPackObjectBuilder operation(tReport.get());       // Operation
+          tReport->add(VPackValue(healthPrefix + serverID)); // Supervision/Health
+          { VPackObjectBuilder oo(tReport.get());
+            transist.toVelocyPack(*tReport); }}} // Transaction
+
+      // Persistent report
+      std::shared_ptr<Builder> pReport = nullptr;
+      if (changed) {
+        pReport = std::make_shared<Builder>();
+        { VPackArrayBuilder transaction(pReport.get());      // Persist Transaction
+          { VPackObjectBuilder operation(pReport.get());     // Operation
+            pReport->add(VPackValue(healthPrefix + serverID)); // Supervision/Health
+            { VPackObjectBuilder oo(pReport.get());
+              persist.toVelocyPack(*pReport); }
+            if (envelope != nullptr) {                       // Failed server
+              TRI_ASSERT(
+                envelope->slice().isArray() && envelope->slice()[0].isObject());
+              for (VPackObjectIterator::ObjectPair i : VPackObjectIterator(envelope->slice()[0])) {
+                pReport->add(i.key.copyString(), i.value);
+              }
+            }} // Operation
+          if (envelope != nullptr) {                         // Preconditions(Job)
+            TRI_ASSERT(
+              envelope->slice().isArray() && envelope->slice()[1].isObject());
+            pReport->add(envelope->slice()[1]);
+          }} // Transaction
+      }
+
+      if (!this->isStopping()) {
+
+        // Replicate special event and only then transient store
+        if (changed) {
+          write_ret_t res = singleWriteTransaction(_agent, *pReport);
+          if (res.accepted && res.indices.front() != 0) {
+            ++_jobId; // Job was booked
+            transient(_agent, *tReport);
+          }
+        } else { // Nothing special just transient store
           transient(_agent, *tReport);
         }
-      } else { // Nothing special just transient store
-        transient(_agent, *tReport);
       }
-    }
     } else {
       LOG_TOPIC(INFO, Logger::SUPERVISION) <<
         "Short name for << " << serverID << " not yet available.  Skipping health check.";
