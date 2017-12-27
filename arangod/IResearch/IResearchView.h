@@ -186,11 +186,6 @@ class IResearchView final: public arangodb::ViewImplementation,
   ///////////////////////////////////////////////////////////////////////////////
   void add(TRI_voc_cid_t cid);
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief append all tracked collection IDs to the set
-  ///////////////////////////////////////////////////////////////////////////////
-  void appendTrackedCollections(std::set<TRI_voc_cid_t>& set) const;
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief persist the specified WAL file into permanent storage
   ////////////////////////////////////////////////////////////////////////////////
@@ -319,7 +314,9 @@ class IResearchView final: public arangodb::ViewImplementation,
   /// @brief visit all collection IDs that were added to the view
   /// @return 'visitor' success
   ///////////////////////////////////////////////////////////////////////////////
-  bool visitCollections(std::function<bool(TRI_voc_cid_t)>& visitor) const;
+  bool visitCollections(
+    std::function<bool(TRI_voc_cid_t)> const& visitor
+  ) const;
 
  private:
   struct DataStore {

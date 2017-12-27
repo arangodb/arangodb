@@ -362,7 +362,7 @@ SECTION("test_defaults") {
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     REQUIRE((nullptr != viewImpl));
     std::set<TRI_voc_cid_t> cids;
-    viewImpl->appendTrackedCollections(cids);
+    viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((0 == cids.size()));
     CHECK((true == logicalCollection->getIndexes().empty()));
   }
@@ -626,7 +626,7 @@ SECTION("test_insert") {
     // validate cid count
     {
       std::set<TRI_voc_cid_t> cids;
-      view->appendTrackedCollections(cids);
+      view->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       CHECK((0 == cids.size()));
       std::unordered_set<TRI_voc_cid_t> actual;
       arangodb::iresearch::appendKnownCollections(actual, view->snapshot());
@@ -654,7 +654,7 @@ SECTION("test_insert") {
     // validate cid count
     {
       std::set<TRI_voc_cid_t> cids;
-      view->appendTrackedCollections(cids);
+      view->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       CHECK((0 == cids.size()));
       std::unordered_set<TRI_voc_cid_t> expected = { 1 };
       std::unordered_set<TRI_voc_cid_t> actual;
@@ -1054,7 +1054,7 @@ SECTION("test_register_link") {
 
     {
       std::set<TRI_voc_cid_t> cids;
-      view->appendTrackedCollections(cids);
+      view->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       CHECK((0 == cids.size()));
     }
 
@@ -1066,8 +1066,8 @@ SECTION("test_register_link") {
     CHECK((false == persisted));
     CHECK((false == !link));
     std::set<TRI_voc_cid_t> cids;
-    view->appendTrackedCollections(cids);
-    CHECK((1 == cids.size()));
+    view->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
+    CHECK((0 == cids.size())); // link addition does not modify view meta
   }
 
   // new link
@@ -1080,20 +1080,15 @@ SECTION("test_register_link") {
     REQUIRE((false == !view));
 
     {
-      std::set<TRI_voc_cid_t> cids;
-      view->appendTrackedCollections(cids);
+      std::unordered_set<TRI_voc_cid_t> cids;
+      view->sync();
+      arangodb::iresearch::appendKnownCollections(cids, view->snapshot());
       CHECK((0 == cids.size()));
     }
 
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 123 };
-      std::set<TRI_voc_cid_t> actual = { 123 };
-      view->appendTrackedCollections(actual);
-
-      for (auto& cid: expected) {
-        CHECK((1 == actual.erase(cid)));
-      }
-
+      std::set<TRI_voc_cid_t> actual;
+      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
       CHECK((actual.empty()));
     }
 
@@ -1101,20 +1096,15 @@ SECTION("test_register_link") {
     auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((false == persisted)); // link instantiation does not modify view meta
     CHECK((false == !link));
-    std::set<TRI_voc_cid_t> cids;
-    view->appendTrackedCollections(cids);
-    CHECK((1 == cids.size()));
+    std::unordered_set<TRI_voc_cid_t> cids;
+    view->sync();
+    arangodb::iresearch::appendKnownCollections(cids, view->snapshot());
+    CHECK((0 == cids.size())); // link addition does trigger collection load
 
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
-      std::set<TRI_voc_cid_t> actual = { 123 };
-      view->appendTrackedCollections(actual);
-
-      for (auto& cid: expected) {
-        CHECK((1 == actual.erase(cid)));
-      }
-
-      CHECK((actual.empty()));
+      std::set<TRI_voc_cid_t> actual;
+      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      CHECK((actual.empty())); // link addition does not modify view meta
     }
   }
 
@@ -1128,15 +1118,16 @@ SECTION("test_register_link") {
     REQUIRE((false == !view));
 
     {
-      std::set<TRI_voc_cid_t> cids;
-      view->appendTrackedCollections(cids);
-      CHECK((1 == cids.size()));
+      std::unordered_set<TRI_voc_cid_t> cids;
+      view->sync();
+      arangodb::iresearch::appendKnownCollections(cids, view->snapshot());
+      CHECK((0 == cids.size()));
     }
 
     {
       std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
       std::set<TRI_voc_cid_t> actual = { 123 };
-      view->appendTrackedCollections(actual);
+      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
 
       for (auto& cid: expected) {
         CHECK((1 == actual.erase(cid)));
@@ -1151,15 +1142,16 @@ SECTION("test_register_link") {
     CHECK((false == !link0));
 
     {
-      std::set<TRI_voc_cid_t> cids;
-      view->appendTrackedCollections(cids);
-      CHECK((1 == cids.size()));
+      std::unordered_set<TRI_voc_cid_t> cids;
+      view->sync();
+      arangodb::iresearch::appendKnownCollections(cids, view->snapshot());
+      CHECK((0 == cids.size())); // link addition does trigger collection load
     }
 
     {
       std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
       std::set<TRI_voc_cid_t> actual = { 123 };
-      view->appendTrackedCollections(actual);
+      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
 
       for (auto& cid: expected) {
         CHECK((1 == actual.erase(cid)));
@@ -1172,14 +1164,15 @@ SECTION("test_register_link") {
     auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((false == persisted));
     CHECK((false == !link1)); // duplicate link creation is allowed
-    std::set<TRI_voc_cid_t> cids;
-    view->appendTrackedCollections(cids);
-    CHECK((1 == cids.size()));
+    std::unordered_set<TRI_voc_cid_t> cids;
+    view->sync();
+    arangodb::iresearch::appendKnownCollections(cids, view->snapshot());
+    CHECK((0 == cids.size())); // link addition does trigger collection load
 
     {
       std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
       std::set<TRI_voc_cid_t> actual = { 123 };
-      view->appendTrackedCollections(actual);
+      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
 
       for (auto& cid: expected) {
         CHECK((1 == actual.erase(cid)));
@@ -1238,7 +1231,7 @@ SECTION("test_unregister_link") {
     {
       std::unordered_set<TRI_voc_cid_t> expected = { 100 };
       std::set<TRI_voc_cid_t> actual = { };
-      view->appendTrackedCollections(actual);
+      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
 
       for (auto& cid: expected) {
         CHECK((1 == actual.erase(cid)));
@@ -1267,7 +1260,7 @@ SECTION("test_unregister_link") {
     {
       std::unordered_set<TRI_voc_cid_t> expected = { 100 };
       std::set<TRI_voc_cid_t> actual = { };
-      view->appendTrackedCollections(actual);
+      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
 
       for (auto& cid: expected) {
         CHECK((1 == actual.erase(cid)));
@@ -1320,7 +1313,7 @@ SECTION("test_unregister_link") {
     {
       std::unordered_set<TRI_voc_cid_t> expected = { 100 };
       std::set<TRI_voc_cid_t> actual;
-      view->appendTrackedCollections(actual);
+      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
 
       for (auto& cid: expected) {
         CHECK((1 == actual.erase(cid)));
@@ -1345,7 +1338,7 @@ SECTION("test_unregister_link") {
     {
       std::unordered_set<TRI_voc_cid_t> expected = { 100 };
       std::set<TRI_voc_cid_t> actual;
-      view->appendTrackedCollections(actual);
+      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
 
       for (auto& cid: expected) {
         CHECK((1 == actual.erase(cid)));
@@ -1377,7 +1370,7 @@ SECTION("test_unregister_link") {
     CHECK((false == logicalCollection->getIndexes().empty()));
 
     std::set<TRI_voc_cid_t> cids;
-    view->appendTrackedCollections(cids);
+    view->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((1 == cids.size()));
     CHECK((false == !vocbase->lookupView("testView")));
     CHECK((TRI_ERROR_NO_ERROR == vocbase->dropView("testView")));
@@ -1402,7 +1395,7 @@ SECTION("test_unregister_link") {
       CHECK((viewImpl->updateProperties(updateJson->slice(), true, false).ok()));
       CHECK((false == logicalCollection->getIndexes().empty()));
       std::set<TRI_voc_cid_t> cids;
-      viewImpl->appendTrackedCollections(cids);
+      viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       CHECK((1 == cids.size()));
 
       auto factory = [](arangodb::LogicalView*, arangodb::velocypack::Slice const&, bool isNew)->std::unique_ptr<arangodb::ViewImplementation>{ return nullptr; };
@@ -1419,7 +1412,7 @@ SECTION("test_unregister_link") {
       auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
       REQUIRE((nullptr != viewImpl));
       std::set<TRI_voc_cid_t> cids;
-      viewImpl->appendTrackedCollections(cids);
+      viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       CHECK((0 == cids.size()));
 
       for (auto& index: logicalCollection->getIndexes()) {
@@ -1470,7 +1463,7 @@ SECTION("test_tracked_cids") {
     REQUIRE((nullptr != viewImpl));
 
     std::set<TRI_voc_cid_t> actual;
-    viewImpl->appendTrackedCollections(actual);
+    viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
     CHECK((actual.empty()));
   }
 
@@ -1485,14 +1478,8 @@ SECTION("test_tracked_cids") {
     viewImpl->add(100);
 
     std::set<TRI_voc_cid_t> actual;
-    std::set<TRI_voc_cid_t> expected = { 100 };
-    viewImpl->appendTrackedCollections(actual);
-
-    for (auto& cid: actual) {
-      CHECK((1 == expected.erase(cid)));
-    }
-
-    CHECK((expected.empty()));
+    viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+    CHECK((actual.empty())); // tracking cid does not modify view meta
   }
 
   // test add via link before open (TRI_vocbase_t::createView(...) will call open())
@@ -1511,7 +1498,7 @@ SECTION("test_tracked_cids") {
 
     std::set<TRI_voc_cid_t> actual;
     std::set<TRI_voc_cid_t> expected = { 100 };
-    viewImpl->appendTrackedCollections(actual);
+    viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
 
     for (auto& cid: actual) {
       CHECK((1 == expected.erase(cid)));
@@ -1539,7 +1526,7 @@ SECTION("test_tracked_cids") {
 
       std::set<TRI_voc_cid_t> actual;
       std::set<TRI_voc_cid_t> expected = { 100 };
-      viewImpl->appendTrackedCollections(actual);
+      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
 
       for (auto& cid: actual) {
         CHECK((1 == expected.erase(cid)));
@@ -1553,7 +1540,7 @@ SECTION("test_tracked_cids") {
       CHECK((viewImpl->updateProperties(updateJson1->slice(), false, false).ok()));
 
       std::set<TRI_voc_cid_t> actual;
-      viewImpl->appendTrackedCollections(actual);
+      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
       CHECK((actual.empty()));
     }
   }
@@ -1593,14 +1580,8 @@ SECTION("test_tracked_cids") {
       REQUIRE((nullptr != viewImpl));
 
       std::set<TRI_voc_cid_t> actual;
-      std::set<TRI_voc_cid_t> expected = { 42 };
-      viewImpl->appendTrackedCollections(actual);
-
-      for (auto& cid: actual) {
-        CHECK((1 == expected.erase(cid)));
-      }
-
-      CHECK((expected.empty()));
+      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+      CHECK((actual.empty())); // persisted cids do not modify view meta
     }
 
     // test exclude persisted CIDs on open
@@ -1614,7 +1595,7 @@ SECTION("test_tracked_cids") {
       viewImpl->open();
 
       std::set<TRI_voc_cid_t> actual;
-      viewImpl->appendTrackedCollections(actual);
+      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
       CHECK((actual.empty()));
     }
   }
@@ -1629,14 +1610,8 @@ SECTION("test_tracked_cids") {
     viewImpl->add(100);
 
     std::set<TRI_voc_cid_t> actual;
-    std::set<TRI_voc_cid_t> expected = { 100 };
-    viewImpl->appendTrackedCollections(actual);
-
-    for (auto& cid: actual) {
-      CHECK((1 == expected.erase(cid)));
-    }
-
-    CHECK((expected.empty()));
+    viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
+    CHECK((actual.empty())); // tracking cid does not modify view meta
   }
 
   // test add via link after open (TRI_vocbase_t::createView(...) will call open())
@@ -1654,7 +1629,7 @@ SECTION("test_tracked_cids") {
 
     std::set<TRI_voc_cid_t> actual;
     std::set<TRI_voc_cid_t> expected = { 100 };
-    viewImpl->appendTrackedCollections(actual);
+    viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
 
     for (auto& cid: actual) {
       CHECK((1 == expected.erase(cid)));
@@ -1681,7 +1656,7 @@ SECTION("test_tracked_cids") {
 
       std::set<TRI_voc_cid_t> actual;
       std::set<TRI_voc_cid_t> expected = { 100 };
-      viewImpl->appendTrackedCollections(actual);
+      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
 
       for (auto& cid: actual) {
         CHECK((1 == expected.erase(cid)));
@@ -1695,7 +1670,7 @@ SECTION("test_tracked_cids") {
       CHECK((viewImpl->updateProperties(updateJson1->slice(), false, false).ok()));
 
       std::set<TRI_voc_cid_t> actual;
-      viewImpl->appendTrackedCollections(actual);
+      viewImpl->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
       CHECK((actual.empty()));
     }
   }

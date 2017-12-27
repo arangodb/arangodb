@@ -1001,15 +1001,6 @@ void IResearchView::add(TRI_voc_cid_t cid) {
   _trackedCids.emplace(cid);
 }
 
-void IResearchView::appendTrackedCollections(
-    std::set<TRI_voc_cid_t>& set
-) const {
-  ReadMutex mutex(_mutex);
-  SCOPED_LOCK(mutex);
-  set.insert(_trackedCids.begin(), _trackedCids.end());
-  set.insert(_meta._collections.begin(), _meta._collections.end()); // FIXME TODO remove
-}
-
 bool IResearchView::cleanup(size_t maxMsec /*= 0*/) {
   ReadMutex mutex(_mutex);
   auto thresholdSec = TRI_microtime() + maxMsec/1000.0;
@@ -2156,7 +2147,7 @@ void IResearchView::registerFlushCallback() {
 }
 
 bool IResearchView::visitCollections(
-    std::function<bool(TRI_voc_cid_t)>& visitor
+    std::function<bool(TRI_voc_cid_t)> const& visitor
 ) const {
   ReadMutex mutex(_mutex);
   SCOPED_LOCK(mutex);
