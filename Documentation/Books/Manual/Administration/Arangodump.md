@@ -83,15 +83,8 @@ sorted first by shards and within each shard by ascending timestamp. The
 structural information of the collection contains the number of shards
 and the shard keys.
 
-Note that the version of the arangodump client tool needs to match the version of the
-ArangoDB server it connects to. By default, arangodump will produce a dump that can be
-restored with the arangorestore tool of the same version. 
-
-**This was removed starting from ArangoDB 3.3**
-An exception is arangodump from ArangoDB 3.0 to 3.2,
-which supports dumping data in a format compatible with ArangoDB 2.8. In order
-to produce a 2.8-compatible dump with a 3.0 ArangoDB, please specify the option
-`--compat28 true` when invoking arangodump.
+Note that the version of the arangodump client tool needs to match the 
+version of the ArangoDB server it connects to.
     
 
 ### Advanced cluster options

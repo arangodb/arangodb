@@ -48,7 +48,8 @@ using namespace arangodb::rest;
 RestImportHandler::RestImportHandler(GeneralRequest* request,
                                      GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response),
-      _onDuplicateAction(DUPLICATE_ERROR) {}
+      _onDuplicateAction(DUPLICATE_ERROR),
+      _ignoreMissing(false) {}
 
 RestStatus RestImportHandler::execute() {
   // set default value for onDuplicate
@@ -655,6 +656,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   bool const complete = extractBooleanParameter("complete", false);
   bool const overwrite = extractBooleanParameter("overwrite", false);
+  _ignoreMissing = extractBooleanParameter("ignoreMissing", false);
   OperationOptions opOptions;
   opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
 
@@ -1070,7 +1072,7 @@ void RestImportHandler::createVelocyPackObject(
   VPackArrayIterator itKeys(keys);
   VPackArrayIterator itValues(values);
  
-  if (itKeys.size() != itValues.size()) { 
+  if (!_ignoreMissing && itKeys.size() != itValues.size()) { 
     errorMsg = positionize(lineNumber) + "wrong number of JSON values (got " +
                std::to_string(itValues.size()) + ", expected " + std::to_string(itKeys.size()) + ")";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, errorMsg);
@@ -1079,8 +1081,9 @@ void RestImportHandler::createVelocyPackObject(
   result.openObject();
 
   while (itKeys.valid()) {
-    TRI_ASSERT(itValues.valid());
-
+    if (!itValues.valid()) {
+      break;
+    }
     VPackSlice const key = itKeys.value();
     VPackSlice const value = itValues.value();
 

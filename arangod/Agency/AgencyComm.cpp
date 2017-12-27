@@ -408,7 +408,7 @@ std::string AgencyCommResult::errorMessage() const {
   try {
     std::shared_ptr<VPackBuilder> bodyBuilder =
         VPackParser::fromJson(_body);
-    
+
 
     VPackSlice body = bodyBuilder->slice();
     if (!body.isObject()) {
@@ -1155,8 +1155,8 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
                                        << result._statusCode
                                        << ", incriminating body: "
                                        << result.bodyRef()
-                                       << ", url: " << url 
-                                       << ", timeout: " << timeout 
+                                       << ", url: " << url
+                                       << ", timeout: " << timeout
                                        << ", data sent: " << builder.toJson();
     result.clear();
   } catch (...) {
@@ -1456,8 +1456,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
         continue;
       }
 
-      // got a result, we are done
-      if (result.successful()) {
+      // got a result or shutdown, we are done
+      if (result.successful() || application_features::ApplicationServer::isStopping()) {
         AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
         break;
       }
@@ -1511,7 +1511,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
         if (outer.isObject() && outer.hasKey("ongoing")) {
           continue;
         }
-        
+
         // If we get an answer, and it contains a "results" key,
         // we release the connection and break out of the loop letting the
         // inquiry result go to the client. Otherwise try again.
@@ -1660,7 +1660,7 @@ AgencyCommResult AgencyComm::send(
 
   basics::StringBuffer& sb = response->getBody();
   result._body = std::string(sb.c_str(), sb.length());
-  
+
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
       << "request to agency returned status code " << result._statusCode
       << ", message: '" << result._message << "', body: '" << result._body
@@ -1675,7 +1675,7 @@ bool AgencyComm::tryInitializeStructure() {
   try {
     VPackObjectBuilder b(&builder);
 
-    
+
     builder.add(                       // Cluster Id --------------------------
       "Cluster", VPackValue(to_string(boost::uuids::random_generator()())));
 

@@ -2,7 +2,7 @@
 /* global assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief tests for dump/reload
+// / @brief tests for intermediate commits
 // /
 // / @file
 // /
@@ -37,19 +37,24 @@ function runSetup () {
   internal.debugClearFailAt();
 
   db._drop('UnitTestsRecovery');
-  var c = db._create('UnitTestsRecovery'), i;
-  for (i = 0; i < 10000; ++i) {
-    c.save({ value1: 'test' + i, value2: i });
+  var c = db._create('UnitTestsRecovery');
+      
+  for (var i = 0; i < 10000; ++i) {
+    c.insert({ _key: 'test' + i, value: i });
   }
 
-  internal.debugSetFailAt("RocksDBCounterManagerSync");
-  internal.wal.flush(true, true);
+  db._executeTransaction({
+    intermediateCommitCount: 1000,
+    collections: {
+      write: 'UnitTestsRecovery'
+    },
+    action: function () {
+      var db = require('@arangodb').db;
 
-  for (i = 10000; i < 200000; ++i) {
-    c.save({ value1: 'test' + i, value2: i });
-  }
-
-  internal.debugSegfault('crashing server');
+      c.truncate({ waitForSync: true });
+      internal.debugSegfault('crashing server');
+    }
+  });
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -65,17 +70,13 @@ function recoverySuite () {
     tearDown: function () {},
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether we can restore the data
+    // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testCounterManagerSync: function () {
-      var i, c = db._collection('UnitTestsRecovery');
-      assertEqual(200000, c.count());
+    testIntermediateCommitsTruncate: function () {
+      var c = db._collection('UnitTestsRecovery');
 
-      for (i = 200000; i < 210000; ++i) {
-        c.save({ value1: 'test' + i, value2: i });
-      }
-      assertEqual(210000, c.count());
+      assertEqual(0, c.count());
     }
 
   };

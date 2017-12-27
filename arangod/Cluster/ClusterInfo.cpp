@@ -1321,7 +1321,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
           LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
         }
       } else {
-        errorMsg += std::string("file: ") + __FILE__ + 
+        errorMsg += std::string("file: ") + __FILE__ +
                     " line: " + std::to_string(__LINE__);
         errorMsg += " HTTP code: " + std::to_string(res.httpCode());
         errorMsg += " error message: " + res.errorMessage();
@@ -1660,7 +1660,7 @@ Result ClusterInfo::setCollectionStatusCoordinator(
   if (res.successful()) {
     loadPlan();
     return Result();
-  } 
+  }
 
   return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, res.errorMessage());
 }
@@ -1693,7 +1693,7 @@ int ClusterInfo::ensureIndexCoordinator(
   int errorCode = ensureIndexCoordinatorWithoutRollback(
     databaseName, collectionID, idString, slice, create, compare, resultBuilder, errorMsg, timeout);
 
-  if (errorCode == TRI_ERROR_NO_ERROR) {
+  if (errorCode == TRI_ERROR_NO_ERROR || application_features::ApplicationServer::isStopping()) {
     return errorCode;
   }
 
