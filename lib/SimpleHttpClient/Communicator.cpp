@@ -393,6 +393,7 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
 
 void Communicator::handleResult(CURL* handle, CURLcode rc) {
   // remove request in progress
+  double connectTime(0.0);
   curl_multi_remove_handle(_curl, handle);
 
   RequestInProgress* rip = nullptr;
