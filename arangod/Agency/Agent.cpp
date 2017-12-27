@@ -775,11 +775,7 @@ bool Agent::challengeLeadership() {
     if (i.first != myid) {  // do not count ourselves
       duration<double> m = steady_clock::now() - i.second;
       LOG_TOPIC(DEBUG, Logger::AGENCY) << "challengeLeadership: found "
-        "_lastAcked[" << i.first << "] to be "
-        << std::chrono::duration_cast<std::chrono::microseconds>(
-            i.second.time_since_epoch()).count()
-        << " which is " << static_cast<uint64_t>(m.count() * 1000000.0)
-        << " microseconds in the past.";
+        "_lastAcked[" << i.first << "] to be " << m.count() << " seconds in the past.";
 
       // This is rather arbitrary here: We used to have 0.9 here to absolutely
       // ensure that a leader resigns before another one even starts an election.
