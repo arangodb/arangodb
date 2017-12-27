@@ -67,7 +67,7 @@ void Inception::gossip() {
   LOG_TOPIC(INFO, Logger::AGENCY) << "Entering gossip phase ...";
   using namespace std::chrono;
   
-  auto startTime = system_clock::now();
+  auto startTime = steady_clock::now();
   seconds timeout(3600);
   size_t j = 0;
   long waitInterval = 250000;
@@ -155,7 +155,7 @@ void Inception::gossip() {
     }
 
     // Timed out? :(
-    if ((system_clock::now() - startTime) > timeout) {
+    if ((steady_clock::now() - startTime) > timeout) {
       if (config.poolComplete()) {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
       } else {
@@ -195,7 +195,7 @@ bool Inception::restartingActiveAgent() {
 
   auto const  path      = pubApiPrefix + "config";
   auto const  myConfig  = _agent->config();
-  auto const  startTime = system_clock::now();
+  auto const  startTime = steady_clock::now();
   auto        active    = myConfig.active();
   auto const& clientId  = myConfig.id();
   auto const& clientEp  = myConfig.endpoint();
@@ -371,7 +371,7 @@ bool Inception::restartingActiveAgent() {
 
     
     // Timed out? :(
-    if ((system_clock::now() - startTime) > timeout) {
+    if ((steady_clock::now() - startTime) > timeout) {
       if (myConfig.poolComplete()) {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Joined complete pool!";
       } else {
