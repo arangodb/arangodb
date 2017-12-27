@@ -41,6 +41,7 @@
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
 
@@ -218,7 +219,7 @@ void RocksDBThrottle::Startup(rocksdb::DB* db) {
   _threadFuture = std::async(std::launch::async, &RocksDBThrottle::ThreadLoop, this);
 
   while(!_threadRunning.load()) {
-    _threadCondvar.wait(10);
+    _threadCondvar.wait(10000);
   } // while
 
 } // RocksDBThrottle::Startup
@@ -230,17 +231,21 @@ void RocksDBThrottle::SetThrottleWriteRate(std::chrono::microseconds Micros,
   MUTEX_LOCKER(mutexLocker, _threadMutex);
   unsigned target_idx;
 
-  // index 0 for level 0 compactions, index 1 for all others
-  target_idx = (IsLevel0 ? 0 : 1);
+  // throw out anything smaller than 32Mbytes ... be better if this
+  //  was calculated against write_buffer_size, but that varies by column family
+  if ((64<<19)<Bytes) {
+    // index 0 for level 0 compactions, index 1 for all others
+    target_idx = (IsLevel0 ? 0 : 1);
 
-  _throttleData[target_idx]._micros+=Micros;
-  _throttleData[target_idx]._keys+=Keys;
-  _throttleData[target_idx]._bytes+=Bytes;
-  _throttleData[target_idx]._compactions+=1;
+    _throttleData[target_idx]._micros+=Micros;
+    _throttleData[target_idx]._keys+=Keys;
+    _throttleData[target_idx]._bytes+=Bytes;
+    _throttleData[target_idx]._compactions+=1;
 
-  // attempt to override throttle changes by rocksdb ... hammer this often
-  //  (note that _threadMutex IS HELD)
-  SetThrottle();
+    // attempt to override throttle changes by rocksdb ... hammer this often
+    //  (note that _threadMutex IS HELD)
+    SetThrottle();
+  } // if
 
   return;
 } // RocksDBThrottle::SetThrottleWriteRate
@@ -262,7 +267,12 @@ void RocksDBThrottle::ThreadLoop() {
     //
     // start actual throttle work
     //
-    RecalculateThrottle();
+    try {
+      RecalculateThrottle();
+    } catch (...) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "RecalculateThrottle() sent a throw. RocksDB?";
+      _threadRunning.store(false);
+    } // try/catchxs
 
     ++_replaceIdx;
     if (THROTTLE_INTERVALS==_replaceIdx)
@@ -316,10 +326,10 @@ void RocksDBThrottle::RecalculateThrottle() {
       tot_bytes+=_throttleData[loop]._bytes;
       tot_compact+=_throttleData[loop]._compactions;
     }   // for
-  } // unique_lock
 
     // flag to skip throttle changes if zero data available
-  no_data = (0 == tot_bytes && 0 == _throttleData[0]._bytes);
+    no_data = (0 == tot_bytes && 0 == _throttleData[0]._bytes);
+  } // unique_lock
 
   // reduce bytes by 10% for each excess level_0 files and/or excess write buffers
   adjustment_bytes = (tot_bytes*compaction_backlog)/10;
@@ -340,7 +350,6 @@ void RocksDBThrottle::RecalculateThrottle() {
       //  (adjust bytes upward by 1000000 since dividing by microseconds,
       //   yields integer bytes per second)
       new_throttle=((tot_bytes*1000000) / tot_micros.count());
-
     }   // if
 
     // attempt to most recent level0
@@ -406,6 +415,9 @@ void RocksDBThrottle::SetThrottle() {
       // inform write_controller_ of our new rate
       if (1<_throttleBps) {
         // hard casting away of "const" ...
+        if (((WriteController&)_internalRocksDB->write_controller()).max_delayed_write_rate() < _throttleBps) {
+          ((WriteController&)_internalRocksDB->write_controller()).set_max_delayed_write_rate(_throttleBps);
+        } //if
         _delayToken=(((WriteController&)_internalRocksDB->write_controller()).GetDelayToken(_throttleBps));
       } else {
         _delayToken.reset();
