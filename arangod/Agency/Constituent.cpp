@@ -245,7 +245,7 @@ void Constituent::lead(term_t term) {
 
     // Keep track of this election time:
     MUTEX_LOCKER(locker, _recentElectionsMutex);
-    _recentElections.push_back(readSystemClock());
+    _recentElections.push_back(steadyClockToDouble());
 
     // we need to rebuild spear_head and read_db, but this is done in the
     // main Agent thread:
@@ -270,7 +270,7 @@ void Constituent::candidate() {
 
     // Keep track of this election time:
     MUTEX_LOCKER(locker, _recentElectionsMutex);
-    _recentElections.push_back(readSystemClock());
+    _recentElections.push_back(steadyClockToDouble());
   }
 }
 
@@ -351,7 +351,7 @@ bool Constituent::checkLeader(
     // Recall time of this leadership change:
     {
       MUTEX_LOCKER(locker, _recentElectionsMutex);
-      _recentElections.push_back(readSystemClock());
+      _recentElections.push_back(steadyClockToDouble());
     }
 
     TRI_ASSERT(_leaderID != _id);
@@ -784,7 +784,7 @@ int64_t Constituent::countRecentElectionEvents(double threshold) {
   // This discards all election events that are older than `threshold`
   // seconds and returns the number of more recent ones.
 
-  auto now = readSystemClock();
+  auto now = steadyClockToDouble();
   MUTEX_LOCKER(locker, _recentElectionsMutex);
   int64_t count = 0;
   for (auto iter = _recentElections.begin(); iter != _recentElections.end(); ) {

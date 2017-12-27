@@ -496,7 +496,7 @@ void Agent::sendAppendEntriesRPC() {
         path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId="
              << id() << "&prevLogIndex=" << prevLogIndex
              << "&prevLogTerm=" << prevLogTerm << "&leaderCommit=" << _commitIndex
-             << "&senderTimeStamp=" << std::llround(readSystemClock() * 1000);
+             << "&senderTimeStamp=" << std::llround(steadyClockToDouble() * 1000);
       }
       
       // Body
@@ -609,7 +609,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
     path << "/_api/agency_priv/appendEntries?term=" << _constituent.term()
          << "&leaderId=" << id() << "&prevLogIndex=0"
          << "&prevLogTerm=0&leaderCommit=" << _commitIndex
-         << "&senderTimeStamp=" << std::llround(readSystemClock() * 1000);
+         << "&senderTimeStamp=" << std::llround(steadyClockToDouble() * 1000);
   }
 
   // Just check once more:
