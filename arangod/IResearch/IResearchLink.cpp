@@ -54,6 +54,13 @@ static const std::string LINK_TYPE_FIELD("type");
 ////////////////////////////////////////////////////////////////////////////////
 static const std::string VIEW_ID_FIELD("view");
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief an IResearchView token not associated with any view
+///        used to reduce null checks by always having '_view' initialized
+////////////////////////////////////////////////////////////////////////////////
+static const arangodb::iresearch::IResearchView::AsyncSelf::ptr NO_VIEW =
+  irs::memory::make_unique<arangodb::iresearch::IResearchView::AsyncSelf>(nullptr);
+
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
@@ -126,7 +133,7 @@ IResearchLink::IResearchLink(
 ): _collection(collection),
    _defaultId(0), // 0 is never a valid id
    _id(iid),
-   _view(nullptr) {
+   _view(NO_VIEW) {
 }
 
 IResearchLink::~IResearchLink() {
@@ -136,11 +143,7 @@ IResearchLink::~IResearchLink() {
 bool IResearchLink::operator==(IResearchView const& view) const noexcept {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
-
-  if (!_view) {
-    return false;
-  }
-
+  assert(_view); // NO_VIEW used for unasociated links
   auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
   SCOPED_LOCK(viewMutex);
   auto* thisView = _view->get();
@@ -180,12 +183,13 @@ void IResearchLink::batchInsert(
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
-  if (!_collection || !_view) {
+  if (!_collection) {
     queue->setStatus(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // '_collection' and '_view' required
 
     return;
   }
 
+  assert(_view); // NO_VIEW used for unasociated links
   auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
   SCOPED_LOCK(viewMutex);
   auto* view = _view->get();
@@ -221,10 +225,11 @@ int IResearchLink::drop() {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
-  if (!_collection || !_view) {
+  if (!_collection) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
 
+  assert(_view); // NO_VIEW used for unasociated links
   auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
   SCOPED_LOCK(viewMutex);
   auto* view = _view->get();
@@ -306,10 +311,15 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       //            the proper approach is to get the information from the collection,
       //            or to track via a persisted property
       auto isNew = viewCids.find(collection()->cid()) == viewCids.end();
+      auto viewSelf = view->self();
+
+      if (!_view) {
+        return false;
+      }
 
       view->add(collection()->cid());
       _meta = std::move(meta);
-      _view = view->self();
+      _view = std::move(viewSelf);
 
       // reserve analyzers for new links
       // FIXME TODO move this to load() or track via persisted property
@@ -336,10 +346,11 @@ Result IResearchLink::insert(
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
-  if (!_collection || !_view) {
+  if (!_collection) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
 
+  assert(_view); // NO_VIEW used for unasociated links
   auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
   SCOPED_LOCK(viewMutex);
   auto* view = _view->get();
@@ -376,20 +387,14 @@ bool IResearchLink::json(
 
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
+  assert(_view); // NO_VIEW used for unasociated links
+  auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
+  SCOPED_LOCK(viewMutex);
+  auto* view = _view->get();
 
-  if (_view) {
-    auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
-    SCOPED_LOCK(viewMutex);
-    auto* view = _view->get();
-
-    if (_view) {
-      builder.add(VIEW_ID_FIELD, VPackValue(view->id()));
-
-      return true;
-    }
-  }
-
-  if (_defaultId) { // '0' _defaultId == no view name in source jSON
+  if (view) {
+    builder.add(VIEW_ID_FIELD, VPackValue(view->id()));
+  } else if (_defaultId) { // '0' _defaultId == no view name in source jSON
   //if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
     builder.add(VIEW_ID_FIELD, VPackValue(_defaultId));
   }
@@ -405,12 +410,9 @@ void IResearchLink::load() {
 bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
+  assert(_view); // NO_VIEW used for unasociated links
 
   if (slice.hasKey(VIEW_ID_FIELD)) {
-    if (!_view) {
-      return false; // slice has identifier but the current object does not
-    }
-
     auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
     SCOPED_LOCK(viewMutex);
     auto* view = _view->get();
@@ -424,7 +426,7 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
     if (!identifier.isNumber() || uint64_t(identifier.getInt()) != identifier.getUInt() || identifier.getUInt() != view->id()) {
       return false; // iResearch View names of current object and slice do not match
     }
-  } else if (_view && _view->get()) { // do not need to lock since this is a single-call
+  } else if (_view->get()) { // do not need to lock since this is a single-call
     return false; // slice has no 'name' but the current object does
   }
 
@@ -441,20 +443,18 @@ size_t IResearchLink::memory() const {
 
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
+  assert(_view); // NO_VIEW used for unasociated links
+  auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
+  SCOPED_LOCK(viewMutex);
+  auto* view = _view->get();
 
-  if (_view) {
-    auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
-    SCOPED_LOCK(viewMutex);
-    auto* view = _view->get();
+  if (view) {
+    std::set<TRI_voc_cid_t> cids;
 
-    if (view) {
-      std::set<TRI_voc_cid_t> cids;
-
-      // <iResearch View size> / <number of tracked collection IDs>
-      // a rough approximation of how much memory is used by each collection ID
-      view->appendTrackedCollections(cids);
-      size += view->memory() / std::max(size_t(1), cids.size());
-    }
+    // <iResearch View size> / <number of tracked collection IDs>
+    // a rough approximation of how much memory is used by each collection ID
+    view->appendTrackedCollections(cids);
+    size += view->memory() / std::max(size_t(1), cids.size());
   }
 
   return size;
@@ -469,10 +469,11 @@ Result IResearchLink::remove(
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
-  if (!_collection || !_view) {
+  if (!_collection) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
 
+  assert(_view); // NO_VIEW used for unasociated links
   auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
   SCOPED_LOCK(viewMutex);
   auto* view = _view->get();
@@ -497,10 +498,11 @@ Result IResearchLink::remove(
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
-  if (!_collection || !_view) {
+  if (!_collection) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
 
+  assert(_view); // NO_VIEW used for unasociated links
   auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
   SCOPED_LOCK(viewMutex);
   auto* view = _view->get();
@@ -552,18 +554,14 @@ char const* IResearchLink::typeName() const {
 int IResearchLink::unload() {
   WriteMutex mutex(_mutex); // '_view' can be asynchronously read
   SCOPED_LOCK(mutex);
-
-  if (!_view) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
+  assert(_view); // NO_VIEW used for unasociated links
   auto viewCopy = _view; // retain a copy of the pointer for the case where nullyfying the original will call distructor of a locked mutex
   auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
   SCOPED_LOCK(viewMutex);
   auto* view = _view->get();
 
   if (!view) {
-    _view = nullptr; // release reference to the IResearch View
+    _view = NO_VIEW; // release reference to the IResearch View
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -595,7 +593,7 @@ int IResearchLink::unload() {
     }
   }
 
-  _view = nullptr; // release reference to the iResearch View
+  _view = NO_VIEW; // release reference to the iResearch View
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -603,8 +601,9 @@ int IResearchLink::unload() {
 const IResearchView* IResearchLink::view() const {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
+  assert(_view); // NO_VIEW used for unasociated links
 
-  return _view ? _view->get() : nullptr;
+  return _view->get();
 }
 
 int EnhanceJsonIResearchLink(

@@ -1390,6 +1390,32 @@ SECTION("test_unregister_link") {
   }
 }
 
+SECTION("test_self_token") {
+  // test empty token
+  {
+    arangodb::iresearch::IResearchView::AsyncSelf empty(nullptr);
+    CHECK((nullptr == empty.get()));
+  }
+
+  arangodb::iresearch::IResearchView::AsyncSelf::ptr self;
+
+  {
+    auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    auto json = arangodb::velocypack::Parser::fromJson("{}");
+    arangodb::LogicalView logicalView(nullptr, namedJson->slice());
+    auto view = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), false);
+    CHECK((false == !view));
+    auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
+    REQUIRE((nullptr != viewImpl));
+    self = viewImpl->self();
+    CHECK((false == !self));
+    CHECK((viewImpl == self->get()));
+  }
+
+  CHECK((false == !self));
+  CHECK((nullptr == self->get()));
+}
+
 SECTION("test_tracked_cids") {
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101, \"properties\": { } }");
