@@ -344,11 +344,6 @@ During view modification the following directives apply:
   a list of analyzers, by name as defined via the section [Analyzers], that
   should be applied to values of processed document attributes
 
-* boost: \<optional\> (default: 1.0)
-  sort preference factor that should be applied to values of processed 
-  document attributes, documents otherwise scored equally but having a higher
-  preference will appear sooner/higher in the sorted resultset
-
 * fields: \<optional\> (default: {})
   a map{\<attribute-name\>, [Link properties]} of fields that should be
   processed at each level of the document

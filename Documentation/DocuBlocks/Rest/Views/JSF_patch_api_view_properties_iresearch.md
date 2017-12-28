@@ -16,9 +16,6 @@ The set of collection names associated with the properties.
 The link properties. If specified, then *properties*
 should be a JSON object containing the following attributes:
 
-@RESTSTRUCT{boost,JSF_patch_api_view_link_props,float,optional,float}
-Multiplier of the rank value computed for documents matching on this field (default: 1.0).
-
 @RESTSTRUCT{includeAllFields,JSF_patch_api_view_link_props,boolean,optional,bool}
 The flag determines whether or not to index all fields on a particular level of depth (default: false).
 
@@ -31,9 +28,6 @@ The list of analyzers to be used for indexing of string values (default: ["ident
 @RESTSTRUCT{[field-name],JSF_patch_api_view_link_props,object,optional,JSF_patch_api_view_link_props_field_props}
 The field properties. If specified, then *properties*
 should be a JSON object containing the following attributes:
-
-@RESTSTRUCT{boost,JSF_patch_api_view_link_props_field_props,float,optional,float}
-Multiplier of the rank value computed for documents matching on this field (default: 1.0).
 
 @RESTSTRUCT{includeAllFields,JSF_patch_api_view_link_props_field_props,boolean,optional,bool}
 The flag determines whether or not to index all fields on a particular level of depth (default: false).

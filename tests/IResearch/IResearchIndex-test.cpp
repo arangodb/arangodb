@@ -88,7 +88,6 @@ class TestAnalyzer: public irs::analysis::analyzer {
     : irs::analysis::analyzer(TestAnalyzer::type()) {
     _attrs.emplace(_freq); // required by postings_writer::end_term(...)
     _attrs.emplace(_inc); // required by field_data::invert(...)
-    //_attrs.emplace(_norm); // required for field boost
     _attrs.emplace(_pos); // required to match with PHRASE(...)
     _attrs.emplace(_term);
 
@@ -120,7 +119,6 @@ class TestAnalyzer: public irs::analysis::analyzer {
   irs::bytes_ref _data;
   irs::frequency _freq;
   irs::increment _inc;
-  //irs::norm _norm;
   irs::position _pos;
   TestTermAttribute _term;
   TestAttributeX _x;
@@ -150,7 +148,6 @@ struct IResearchIndexSetup {
 
     // setup required application features
     features.emplace_back(new arangodb::AqlFeature(&server), true); // required for arangodb::aql::Query(...)
-    //features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for views of type 'iresearch'
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false); // requires for IResearchView::open()
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true); // required by TRI_vocbase_t::createView(...)
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required by TRI_vocbase_t(...)

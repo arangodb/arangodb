@@ -72,16 +72,14 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 IResearchLinkMeta::Mask::Mask(bool mask /*= false*/) noexcept
-  : _boost(mask),
-    _fields(mask),
+  : _fields(mask),
     _includeAllFields(mask),
     _nestListValues(mask),
     _tokenizers(mask) {
 }
 
 IResearchLinkMeta::IResearchLinkMeta()
-  : _boost(1.0), // no boosting of field preference in view ordering
-    //_fields(<empty>), // empty map to match all encounteredfields
+  : //_fields(<empty>), // no fields to index by default
     _includeAllFields(false), // true to match all encountered fields, false match only fields in '_fields'
     _nestListValues(false) { // treat '_nestListValues' as SQL-IN
   auto analyzer = IResearchAnalyzerFeature::identity();
@@ -102,7 +100,6 @@ IResearchLinkMeta::IResearchLinkMeta(IResearchLinkMeta&& other) noexcept {
 
 IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta&& other) noexcept {
   if (this != &other) {
-    _boost = std::move(other._boost);
     _fields = std::move(other._fields);
     _includeAllFields = std::move(other._includeAllFields);
     _nestListValues = std::move(other._nestListValues);
@@ -114,7 +111,6 @@ IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta&& other) noexc
 
 IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta const& other) {
   if (this != &other) {
-    _boost = other._boost;
     _fields = other._fields;
     _includeAllFields = other._includeAllFields;
     _nestListValues = other._nestListValues;
@@ -127,10 +123,6 @@ IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta const& other) 
 bool IResearchLinkMeta::operator==(
   IResearchLinkMeta const& other
 ) const noexcept {
-  if (_boost != other._boost) {
-    return false; // values do not match
-  }
-
   if (_fields.size() != other._fields.size()) {
     return false; // values do not match
   }
@@ -186,17 +178,6 @@ bool IResearchLinkMeta::init(
 
   if (!mask) {
     mask = &tmpMask;
-  }
-
-  {
-    // optional floating point number
-    static const std::string fieldName("boost");
-
-    if (!getNumber(_boost, slice, fieldName, mask->_boost, defaults._boost)) {
-      errorField = fieldName;
-
-      return false;
-    }
   }
 
   {
@@ -350,10 +331,6 @@ bool IResearchLinkMeta::json(
 ) const {
   if (!builder.isOpenObject()) {
     return false;
-  }
-
-  if ((!ignoreEqual || _boost != ignoreEqual->_boost) && (!mask || mask->_boost)) {
-    builder.add("boost", arangodb::velocypack::Value(_boost));
   }
 
   if (!mask || mask->_fields) { // fields are not inherited from parent

@@ -395,7 +395,6 @@ NS_BEGIN(iresearch)
 /*static*/ void Field::setCidValue(Field& field, TRI_voc_cid_t& cid) {
   field._name = CID_FIELD;
   setIdValue(cid, *field._analyzer);
-  field._boost = 1.f;
   field._features = &irs::flags::empty_instance();
 }
 
@@ -411,7 +410,6 @@ NS_BEGIN(iresearch)
 /*static*/ void Field::setRidValue(Field& field, TRI_voc_rid_t& rid) {
   field._name = RID_FIELD;
   setIdValue(rid, *field._analyzer);
-  field._boost = 1.f;
   field._features = &irs::flags::empty_instance();
 }
 
@@ -427,8 +425,7 @@ NS_BEGIN(iresearch)
 Field::Field(Field&& rhs)
   : _features(rhs._features),
     _analyzer(std::move(rhs._analyzer)),
-    _name(std::move(rhs._name)),
-    _boost(rhs._boost) {
+    _name(std::move(rhs._name)) {
   rhs._features = nullptr;
 }
 
@@ -437,9 +434,9 @@ Field& Field::operator=(Field&& rhs) {
     _features = rhs._features;
     _analyzer = std::move(rhs._analyzer);
     _name = std::move(rhs._name);
-    _boost= rhs._boost;
     rhs._features = nullptr;
   }
+
   return *this;
 }
 
@@ -520,7 +517,6 @@ bool FieldIterator::pushAndSetValue(VPackSlice slice, IResearchLinkMeta const*& 
   // set value
   _begin = nullptr;
   _end = 1 + _begin;                // set surrogate analyzers
-  _value._boost = context->_boost;  // set boost
 
   return setRegularAttribute(*context);
 }
