@@ -1511,7 +1511,14 @@ arangodb::consensus::index_t Agent::readDB(Node& node) const {
   return _commitIndex;
 }
 
-void Agent::executeLocked(std::function<void()> const& cb) {
+void Agent::executeLockedRead(std::function<void()> const& cb) {
+  _tiLock.assertNotLockedByCurrentThread();
+  MUTEX_LOCKER(ioLocker, _ioLock);
+  READ_LOCKER(oLocker, _outputLock);
+  cb();
+}
+
+void Agent::executeLockedWrite(std::function<void()> const& cb) {
   _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(ioLocker, _ioLock);
   WRITE_LOCKER(oLocker, _outputLock);
