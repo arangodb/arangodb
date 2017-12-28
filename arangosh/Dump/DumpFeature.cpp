@@ -55,16 +55,577 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+// start a batch
+namespace {
+std::pair<int, uint64_t> startBatch(SimpleHttpClient& client,
+                                    std::string DBserver,
+                                    std::string& errorMsg) {
+  std::string const url = "/_api/replication/batch";
+  std::string const body = "{\"ttl\":300}";
+
+  std::string urlExt;
+  if (!DBserver.empty()) {
+    urlExt = "?DBserver=" + DBserver;
+  }
+
+  std::unique_ptr<SimpleHttpResult> response(client.request(
+      rest::RequestType::POST, url + urlExt, body.c_str(), body.size()));
+
+  if (response == nullptr || !response->isComplete()) {
+    errorMsg = "got invalid response from server: " + client.getErrorMessage();
+
+    return {TRI_ERROR_INTERNAL, 0};
+  }
+
+  if (response->wasHttpError()) {
+    errorMsg = "got invalid response from server: HTTP " +
+               StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+               response->getHttpReturnMessage();
+
+    return {TRI_ERROR_INTERNAL, 0};
+  }
+
+  std::shared_ptr<VPackBuilder> parsedBody;
+  try {
+    parsedBody = response->getBodyVelocyPack();
+  } catch (...) {
+    errorMsg = "got malformed JSON";
+    return {TRI_ERROR_INTERNAL, 0};
+  }
+  VPackSlice const resBody = parsedBody->slice();
+
+  // look up "id" value
+  std::string const id =
+      arangodb::basics::VelocyPackHelper::getStringValue(resBody, "id", "");
+
+  return {TRI_ERROR_NO_ERROR, StringUtils::uint64(id)};
+}
+}  // namespace
+
+// prolongs a batch
+namespace {
+void extendBatch(SimpleHttpClient& client, std::string DBserver,
+                 uint64_t batchId) {
+  TRI_ASSERT(batchId > 0);
+
+  std::string const url =
+      "/_api/replication/batch/" + StringUtils::itoa(batchId);
+  std::string const body = "{\"ttl\":300}";
+  std::string urlExt;
+  if (!DBserver.empty()) {
+    urlExt = "?DBserver=" + DBserver;
+  }
+
+  std::unique_ptr<SimpleHttpResult> response(client.request(
+      rest::RequestType::PUT, url + urlExt, body.c_str(), body.size()));
+
+  // ignore any return value
+}
+}  // namespace
+
+// end a batch
+namespace {
+void endBatch(SimpleHttpClient& client, std::string DBserver,
+              uint64_t& batchId) {
+  TRI_ASSERT(batchId > 0);
+
+  std::string const url =
+      "/_api/replication/batch/" + StringUtils::itoa(batchId);
+  std::string urlExt;
+  if (!DBserver.empty()) {
+    urlExt = "?DBserver=" + DBserver;
+  }
+
+  batchId = 0;
+
+  std::unique_ptr<SimpleHttpResult> response(
+      client.request(rest::RequestType::DELETE_REQ, url + urlExt, nullptr, 0));
+
+  // ignore any return value
+}
+}  // namespace
+
+// execute a WAL flush request
+namespace {
+void flushWal(httpclient::SimpleHttpClient& client) {
+  std::string const url =
+      "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
+
+  std::unique_ptr<SimpleHttpResult> response(
+      client.request(rest::RequestType::PUT, url, nullptr, 0));
+
+  if (response == nullptr || !response->isComplete() ||
+      response->wasHttpError()) {
+    std::cerr << "got invalid response from server: " + client.getErrorMessage()
+              << std::endl;
+  }
+}
+}  // namespace
+
+// dump an individual collection
+namespace {
+Result dumpCollection(httpclient::SimpleHttpClient& client,
+                      DumpFeatureJobData& jobData, int fd) {
+  uint64_t chunkSize = jobData.initialChunkSize;
+  std::string const baseUrl =
+      "/_api/replication/dump?collection=" + jobData.cid +
+      "&batchId=" + StringUtils::itoa(jobData.batchId) +
+      "&ticks=false&flush=false";
+
+  uint64_t fromTick = jobData.tickStart;
+
+  while (true) {
+    std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick) +
+                      "&chunkSize=" + StringUtils::itoa(chunkSize);
+
+    if (jobData.maxTick > 0) {
+      url += "&to=" + StringUtils::itoa(jobData.maxTick);
+    }
+
+    jobData.stats.totalBatches++;
+
+    std::unique_ptr<SimpleHttpResult> response(
+        client.request(rest::RequestType::GET, url, nullptr, 0));
+
+    if (response == nullptr || !response->isComplete()) {
+      return {TRI_ERROR_INTERNAL,
+              "got invalid response from server: " + client.getErrorMessage()};
+    }
+
+    if (response->wasHttpError()) {
+      int errorNum;
+      return {TRI_ERROR_INTERNAL,
+              jobData.feature.getHttpErrorMessage(response.get(), errorNum)};
+    }
+
+    int res = TRI_ERROR_NO_ERROR;  // just to please the compiler
+    bool checkMore = false;
+    bool found;
+
+    // TODO: fix hard-coded headers
+    std::string header =
+        response->getHeaderField("x-arango-replication-checkmore", found);
+
+    if (found) {
+      checkMore = StringUtils::boolean(header);
+      res = TRI_ERROR_NO_ERROR;
+
+      if (checkMore) {
+        // TODO: fix hard-coded headers
+        header = response->getHeaderField("x-arango-replication-lastincluded",
+                                          found);
+
+        if (found) {
+          uint64_t tick = StringUtils::uint64(header);
+
+          if (tick > fromTick) {
+            fromTick = tick;
+          } else {
+            // we got the same tick again, this indicates we're at the end
+            checkMore = false;
+          }
+        }
+      }
+    }
+
+    if (!found) {
+      return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+              "got invalid response server: required header is missing"};
+    }
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      StringBuffer const& body = response->getBody();
+      bool result =
+          jobData.fileHandler.writeData(fd, body.c_str(), body.length());
+
+      if (!result) {
+        res = TRI_ERROR_CANNOT_WRITE_FILE;
+      } else {
+        jobData.stats.totalWritten += (uint64_t)body.length();
+      }
+    }
+
+    if (res != TRI_ERROR_NO_ERROR || !checkMore || fromTick == 0) {
+      // done
+      return {res};
+    }
+
+    if (chunkSize < jobData.maxChunkSize) {
+      // adaptively increase chunksize
+      chunkSize = static_cast<uint64_t>(chunkSize * 1.5);
+
+      if (chunkSize > jobData.maxChunkSize) {
+        chunkSize = jobData.maxChunkSize;
+      }
+    }
+  }
+
+  TRI_ASSERT(false);
+  return {TRI_ERROR_INTERNAL};
+}
+}  // namespace
+
+// takes care of a single collection dumping job in single-server mode
+namespace {
+Result handleCollection(httpclient::SimpleHttpClient& client,
+                        DumpFeatureJobData& jobData) {
+  std::string const hexString(
+      arangodb::rest::SslInterface::sslMD5(jobData.name));
+
+  // found a collection!
+  if (jobData.showProgress) {
+    std::cout << "# Dumping " << jobData.type << " collection '" << jobData.name
+              << "'..." << std::endl;
+  }
+
+  // now save the collection meta data and/or the actual data
+  jobData.stats.totalCollections++;
+
+  {
+    // save meta data
+    std::string fileName = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR +
+                           jobData.name + "_" + hexString + ".structure.json";
+
+    int fd;
+
+    // remove an existing file first
+    if (TRI_ExistsFile(fileName.c_str())) {
+      TRI_UnlinkFile(fileName.c_str());
+    }
+
+    fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
+                                 O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                 S_IRUSR | S_IWUSR);
+
+    if (fd < 0) {
+      return {TRI_ERROR_CANNOT_WRITE_FILE,
+              "cannot write to file '" + fileName + "'"};
+    }
+
+    jobData.fileHandler.beginEncryption(fd);
+
+    std::string const collectionInfo = jobData.collectionInfo.toJson();
+    bool result = jobData.fileHandler.writeData(fd, collectionInfo.c_str(),
+                                                collectionInfo.size());
+
+    if (!result) {
+      jobData.fileHandler.endEncryption(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
+      return {TRI_ERROR_CANNOT_WRITE_FILE,
+              "cannot write to file '" + fileName + "'"};
+    }
+
+    jobData.fileHandler.endEncryption(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
+  }
+
+  if (jobData.dumpData) {
+    // save the actual data
+    std::string fileName;
+    fileName = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR + jobData.name +
+               "_" + hexString + ".data.json";
+
+    // remove an existing file first
+    if (TRI_ExistsFile(fileName.c_str())) {
+      TRI_UnlinkFile(fileName.c_str());
+    }
+
+    int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
+                                     O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                     S_IRUSR | S_IWUSR);
+
+    if (fd < 0) {
+      return {TRI_ERROR_CANNOT_WRITE_FILE,
+              "cannot write to file '" + fileName + "'"};
+    }
+
+    jobData.fileHandler.beginEncryption(fd);
+
+    extendBatch(client, "", jobData.batchId);
+
+    auto result = dumpCollection(client, jobData, fd);
+
+    jobData.fileHandler.endEncryption(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
+
+    return result;
+  }
+
+  return {TRI_ERROR_NO_ERROR};
+}
+}  // namespace
+
+/// @brief dump a single shard, that is a collection on a DBserver
+namespace {
+Result dumpShard(httpclient::SimpleHttpClient& client,
+                 DumpFeatureJobData& jobData, std::string const& DBserver,
+                 int fd, std::string const& shardName) {
+  uint64_t chunkSize = jobData.initialChunkSize;
+
+  std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
+                              "&batchId=" + StringUtils::itoa(jobData.batchId) +
+                              "&collection=" + shardName + "&ticks=false";
+
+  uint64_t fromTick = 0;
+  uint64_t maxTick = UINT64_MAX;
+
+  while (true) {
+    std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick) +
+                      "&chunkSize=" + StringUtils::itoa(chunkSize);
+
+    if (jobData.maxTick > 0) {
+      url += "&to=" + StringUtils::itoa(maxTick);
+    }
+
+    jobData.stats.totalBatches++;
+
+    std::unique_ptr<SimpleHttpResult> response(
+        client.request(rest::RequestType::GET, url, nullptr, 0));
+
+    if (response == nullptr || !response->isComplete()) {
+      return {TRI_ERROR_INTERNAL,
+              "got invalid response from server: " + client.getErrorMessage()};
+    }
+
+    if (response->wasHttpError()) {
+      int errorNum;
+      return {TRI_ERROR_INTERNAL,
+              jobData.feature.getHttpErrorMessage(response.get(), errorNum)};
+    }
+
+    int res = TRI_ERROR_NO_ERROR;  // just to please the compiler
+    bool checkMore = false;
+    bool found;
+
+    // TODO: fix hard-coded headers
+    std::string header =
+        response->getHeaderField("x-arango-replication-checkmore", found);
+
+    if (found) {
+      checkMore = StringUtils::boolean(header);
+      res = TRI_ERROR_NO_ERROR;
+
+      if (checkMore) {
+        // TODO: fix hard-coded headers
+        header = response->getHeaderField("x-arango-replication-lastincluded",
+                                          found);
+
+        if (found) {
+          uint64_t tick = StringUtils::uint64(header);
+
+          if (tick > fromTick) {
+            fromTick = tick;
+          } else {
+            // we got the same tick again, this indicates we're at the end
+            checkMore = false;
+          }
+        }
+      }
+    }
+
+    if (!found) {
+      return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+              "got invalid response server: required header is missing"};
+    }
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      StringBuffer const& body = response->getBody();
+      bool result =
+          jobData.fileHandler.writeData(fd, body.c_str(), body.length());
+
+      if (!result) {
+        res = TRI_ERROR_CANNOT_WRITE_FILE;
+      } else {
+        jobData.stats.totalWritten += (uint64_t)body.length();
+      }
+    }
+
+    if (res != TRI_ERROR_NO_ERROR || !checkMore || fromTick == 0) {
+      // done
+      return {res};
+    }
+
+    if (chunkSize < jobData.maxChunkSize) {
+      // adaptively increase chunksize
+      chunkSize = static_cast<uint64_t>(chunkSize * 1.5);
+
+      if (chunkSize > jobData.maxChunkSize) {
+        chunkSize = jobData.maxChunkSize;
+      }
+    }
+  }
+
+  TRI_ASSERT(false);
+  return {TRI_ERROR_INTERNAL};
+}
+}  // namespace
+
+// handle a single collection dumping job in cluster mode
+namespace {
+Result handleCollectionCluster(httpclient::SimpleHttpClient& client,
+                               DumpFeatureJobData& jobData) {
+  // found a collection!
+  if (jobData.showProgress) {
+    std::cout << "# Dumping collection '" << jobData.name << "'..."
+              << std::endl;
+  }
+
+  // now save the collection meta data and/or the actual data
+  jobData.stats.totalCollections++;
+
+  {
+    // save meta data
+    std::string fileName = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR +
+                           jobData.name + ".structure.json";
+
+    // remove an existing file first
+    if (TRI_ExistsFile(fileName.c_str())) {
+      TRI_UnlinkFile(fileName.c_str());
+    }
+
+    int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
+                                     O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                     S_IRUSR | S_IWUSR);
+
+    if (fd < 0) {
+      return {TRI_ERROR_CANNOT_WRITE_FILE,
+              "cannot write to file '" + fileName + "'"};
+    }
+
+    jobData.fileHandler.beginEncryption(fd);
+
+    std::string const collectionInfo = jobData.collectionInfo.toJson();
+    bool result = jobData.fileHandler.writeData(fd, collectionInfo.c_str(),
+                                                collectionInfo.size());
+
+    if (!result) {
+      jobData.fileHandler.endEncryption(fd);
+      TRI_TRACKED_CLOSE_FILE(fd);
+      return {TRI_ERROR_CANNOT_WRITE_FILE,
+              "cannot write to file '" + fileName + "'"};
+    }
+
+    jobData.fileHandler.endEncryption(fd);
+    TRI_TRACKED_CLOSE_FILE(fd);
+  }
+
+  if (jobData.dumpData) {
+    // save the actual data
+
+    // Now set up the output file:
+    std::string const hexString(
+        arangodb::rest::SslInterface::sslMD5(jobData.name));
+    std::string fileName = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR +
+                           jobData.name + "_" + hexString + ".data.json";
+
+    // remove an existing file first
+    if (TRI_ExistsFile(fileName.c_str())) {
+      TRI_UnlinkFile(fileName.c_str());
+    }
+
+    int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
+                                     O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                     S_IRUSR | S_IWUSR);
+
+    if (fd < 0) {
+      return {TRI_ERROR_CANNOT_WRITE_FILE,
+              "cannot write to file '" + fileName + "'"};
+    }
+
+    jobData.fileHandler.beginEncryption(fd);
+
+    // First we have to go through all the shards, what are they?
+    VPackSlice const parameters = jobData.collectionInfo.get("parameters");
+    VPackSlice const shards = parameters.get("shards");
+
+    // Iterate over the Map of shardId to server list
+    for (auto const it : VPackObjectIterator(shards)) {
+      TRI_ASSERT(it.key.isString());
+
+      std::string shardName = it.key.copyString();
+
+      if (!it.value.isArray() || it.value.length() == 0 ||
+          !it.value[0].isString()) {
+        jobData.fileHandler.endEncryption(fd);
+        TRI_TRACKED_CLOSE_FILE(fd);
+        return {TRI_ERROR_BAD_PARAMETER,
+                "unexpected value for 'shards' attribute"};
+      }
+
+      std::string DBserver = it.value[0].copyString();
+
+      if (jobData.showProgress) {
+        std::cout << "# Dumping shard '" << shardName << "' from DBserver '"
+                  << DBserver << "' ..." << std::endl;
+      }
+
+      int res;
+      std::string errorMsg;
+      std::tie(res, jobData.batchId) = startBatch(client, DBserver, errorMsg);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        jobData.fileHandler.endEncryption(fd);
+        TRI_TRACKED_CLOSE_FILE(fd);
+        return {res, errorMsg};
+      }
+
+      auto result = dumpShard(client, jobData, DBserver, fd, shardName);
+      res = result.errorNumber();
+
+      if (result.fail()) {
+        jobData.fileHandler.endEncryption(fd);
+        TRI_TRACKED_CLOSE_FILE(fd);
+        return result;
+      }
+
+      endBatch(client, DBserver, jobData.batchId);
+    }
+
+    jobData.fileHandler.endEncryption(fd);
+    int res = TRI_TRACKED_CLOSE_FILE(fd);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return {res};
+    }
+  }
+
+  return {TRI_ERROR_NO_ERROR};
+}
+}  // namespace
+
+// process a single job from the queue
+namespace {
+Result processJob(httpclient::SimpleHttpClient& client,
+                  DumpFeatureJobData& jobData) noexcept {
+  if (jobData.clusterMode) {
+    return handleCollectionCluster(client, jobData);
+  }
+
+  return handleCollection(client, jobData);
+}
+}  // namespace
+
+// handle the result of a single job
+namespace {
+void handleJobResult(std::unique_ptr<DumpFeatureJobData>&& jobData,
+                     Result const& result) noexcept {
+  // notify progress?
+}
+}  // namespace
+
 DumpFeatureStats::DumpFeatureStats(uint64_t b, uint64_t c, uint64_t w) noexcept
     : totalBatches{b}, totalCollections{c}, totalWritten{w} {}
 
 DumpFeatureJobData::DumpFeatureJobData(
-    VPackSlice const& info, std::string const& c, std::string const& n,
-    std::string const& t, uint64_t const& batch, uint64_t const& tStart,
-    uint64_t const& tMax, uint64_t const& chunkInitial,
-    uint64_t const& chunkMax, bool const& prog, bool const& data,
-    std::string const& directory, DumpFeatureStats& s) noexcept
-    : collectionInfo{info},
+    DumpFeature& feat, FileHandler& handler, VPackSlice const& info,
+    std::string const& c, std::string const& n, std::string const& t,
+    uint64_t const& batch, uint64_t const& tStart, uint64_t const& tMax,
+    uint64_t const& chunkInitial, uint64_t const& chunkMax, bool const& cluster,
+    bool const& prog, bool const& data, std::string const& directory,
+    DumpFeatureStats& s) noexcept
+    : feature{feat},
+      fileHandler{handler},
+      collectionInfo{info},
       cid{c},
       name{n},
       type{t},
@@ -73,6 +634,7 @@ DumpFeatureJobData::DumpFeatureJobData(
       maxTick{tMax},
       initialChunkSize{chunkInitial},
       maxChunkSize{chunkMax},
+      clusterMode{cluster},
       showProgress{prog},
       dumpData{data},
       outputDirectory{directory},
@@ -81,6 +643,7 @@ DumpFeatureJobData::DumpFeatureJobData(
 DumpFeature::DumpFeature(application_features::ApplicationServer* server,
                          int* result)
     : ApplicationFeature(server, DumpFeature::featureName()),
+
       _collections(),
       _chunkSize(1024 * 1024 * 8),
       _maxChunkSize(1024 * 1024 * 64),
@@ -93,6 +656,9 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _progress(true),
       _tickStart(0),
       _tickEnd(0),
+      _clientManager(),
+      _clientTaskQueue(processJob, handleJobResult),
+      _fileHandler(),
       _result(result),
       _batchId(0),
       _clusterMode(false),
@@ -244,317 +810,9 @@ void DumpFeature::prepare() {
   }
 }
 
-Result internalProcessJob(httpclient::SimpleHttpClient& client,
-                          DumpFeatureJobData& jobData) noexcept {
-  return Result{};
-}
-
-Result DumpFeature::processJob(httpclient::SimpleHttpClient& client,
-                               DumpFeatureJobData& jobData) noexcept {
-  return internalProcessJob(client, jobData);
-}
-
-void DumpFeature::handleJobResult(std::unique_ptr<DumpFeatureJobData>&& jobData,
-                                  Result const& result) noexcept {}
-
-namespace {
-// start a batch
-std::pair<int, uint64_t> startBatch(SimpleHttpClient& client,
-                                    std::string DBserver, std::string& errorMsg,
-                                    bool force) {
-  std::string const url = "/_api/replication/batch";
-  std::string const body = "{\"ttl\":300}";
-
-  std::string urlExt;
-  if (!DBserver.empty()) {
-    urlExt = "?DBserver=" + DBserver;
-  }
-
-  std::unique_ptr<SimpleHttpResult> response(client.request(
-      rest::RequestType::POST, url + urlExt, body.c_str(), body.size()));
-
-  if (response == nullptr || !response->isComplete()) {
-    errorMsg = "got invalid response from server: " + client.getErrorMessage();
-
-    if (force) {
-      return {TRI_ERROR_NO_ERROR, 0};
-    }
-
-    return {TRI_ERROR_INTERNAL, 0};
-  }
-
-  if (response->wasHttpError()) {
-    errorMsg = "got invalid response from server: HTTP " +
-               StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-               response->getHttpReturnMessage();
-
-    return {TRI_ERROR_INTERNAL, 0};
-  }
-
-  std::shared_ptr<VPackBuilder> parsedBody;
-  try {
-    parsedBody = response->getBodyVelocyPack();
-  } catch (...) {
-    errorMsg = "got malformed JSON";
-    return {TRI_ERROR_INTERNAL, 0};
-  }
-  VPackSlice const resBody = parsedBody->slice();
-
-  // look up "id" value
-  std::string const id =
-      arangodb::basics::VelocyPackHelper::getStringValue(resBody, "id", "");
-
-  return {TRI_ERROR_NO_ERROR, StringUtils::uint64(id)};
-}
-
-// prolongs a batch
-void extendBatch(SimpleHttpClient& client, std::string DBserver,
-                 uint64_t batchId) {
-  TRI_ASSERT(batchId > 0);
-
-  std::string const url =
-      "/_api/replication/batch/" + StringUtils::itoa(batchId);
-  std::string const body = "{\"ttl\":300}";
-  std::string urlExt;
-  if (!DBserver.empty()) {
-    urlExt = "?DBserver=" + DBserver;
-  }
-
-  std::unique_ptr<SimpleHttpResult> response(client.request(
-      rest::RequestType::PUT, url + urlExt, body.c_str(), body.size()));
-
-  // ignore any return value
-}
-
-// end a batch
-void endBatch(SimpleHttpClient& client, std::string DBserver,
-              uint64_t& batchId) {
-  TRI_ASSERT(batchId > 0);
-
-  std::string const url =
-      "/_api/replication/batch/" + StringUtils::itoa(batchId);
-  std::string urlExt;
-  if (!DBserver.empty()) {
-    urlExt = "?DBserver=" + DBserver;
-  }
-
-  batchId = 0;
-
-  std::unique_ptr<SimpleHttpResult> response(
-      client.request(rest::RequestType::DELETE_REQ, url + urlExt, nullptr, 0));
-
-  // ignore any return value
-}
-
-}  // namespace
-
-Result DumpFeature::dumpCollection(httpclient::SimpleHttpClient& client,
-                                   DumpFeatureJobData& jobData, int fd) {
-  DumpFeature& feature =
-      *application_features::ApplicationServer::getFeature<DumpFeature>(
-          DumpFeature::featureName());
-  uint64_t chunkSize = jobData.initialChunkSize;
-  std::string const baseUrl =
-      "/_api/replication/dump?collection=" + jobData.cid +
-      "&batchId=" + StringUtils::itoa(jobData.batchId) +
-      "&ticks=false&flush=false";
-
-  uint64_t fromTick = jobData.tickStart;
-
-  while (true) {
-    std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick) +
-                      "&chunkSize=" + StringUtils::itoa(chunkSize);
-
-    if (jobData.maxTick > 0) {
-      url += "&to=" + StringUtils::itoa(jobData.maxTick);
-    }
-
-    jobData.stats.totalBatches++;
-
-    std::unique_ptr<SimpleHttpResult> response(
-        client.request(rest::RequestType::GET, url, nullptr, 0));
-
-    if (response == nullptr || !response->isComplete()) {
-      return {TRI_ERROR_INTERNAL,
-              "got invalid response from server: " + client.getErrorMessage()};
-    }
-
-    if (response->wasHttpError()) {
-      int errorNum;
-      return {TRI_ERROR_INTERNAL,
-              feature.getHttpErrorMessage(response.get(), errorNum)};
-    }
-
-    int res = TRI_ERROR_NO_ERROR;  // just to please the compiler
-    bool checkMore = false;
-    bool found;
-
-    // TODO: fix hard-coded headers
-    std::string header =
-        response->getHeaderField("x-arango-replication-checkmore", found);
-
-    if (found) {
-      checkMore = StringUtils::boolean(header);
-      res = TRI_ERROR_NO_ERROR;
-
-      if (checkMore) {
-        // TODO: fix hard-coded headers
-        header = response->getHeaderField("x-arango-replication-lastincluded",
-                                          found);
-
-        if (found) {
-          uint64_t tick = StringUtils::uint64(header);
-
-          if (tick > fromTick) {
-            fromTick = tick;
-          } else {
-            // we got the same tick again, this indicates we're at the end
-            checkMore = false;
-          }
-        }
-      }
-    }
-
-    if (!found) {
-      return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-              "got invalid response server: required header is missing"};
-    }
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      StringBuffer const& body = response->getBody();
-      bool result = feature.writeData(fd, body.c_str(), body.length());
-
-      if (!result) {
-        res = TRI_ERROR_CANNOT_WRITE_FILE;
-      } else {
-        jobData.stats.totalWritten += (uint64_t)body.length();
-      }
-    }
-
-    if (res != TRI_ERROR_NO_ERROR || !checkMore || fromTick == 0) {
-      // done
-      return {res};
-    }
-
-    if (chunkSize < jobData.maxChunkSize) {
-      // adaptively increase chunksize
-      chunkSize = static_cast<uint64_t>(chunkSize * 1.5);
-
-      if (chunkSize > jobData.maxChunkSize) {
-        chunkSize = jobData.maxChunkSize;
-      }
-    }
-  }
-
-  TRI_ASSERT(false);
-  return {TRI_ERROR_INTERNAL};
-}
-
-// execute a WAL flush request
-void DumpFeature::flushWal() {
-  std::string const url =
-      "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
-
-  auto httpClient = getConnectedClient();
-  std::unique_ptr<SimpleHttpResult> response(
-      httpClient->request(rest::RequestType::PUT, url, nullptr, 0));
-
-  if (response == nullptr || !response->isComplete() ||
-      response->wasHttpError()) {
-    std::cerr << "got invalid response from server: " +
-                     httpClient->getErrorMessage()
-              << std::endl;
-  }
-}
-
-Result DumpFeature::handleCollection(httpclient::SimpleHttpClient& client,
-                                     DumpFeatureJobData& jobData) {
-  DumpFeature& feature =
-      *application_features::ApplicationServer::getFeature<DumpFeature>(
-          DumpFeature::featureName());
-  std::string const hexString(
-      arangodb::rest::SslInterface::sslMD5(jobData.name));
-
-  // found a collection!
-  if (jobData.showProgress) {
-    std::cout << "# Dumping " << jobData.type << " collection '" << jobData.name
-              << "'..." << std::endl;
-  }
-
-  // now save the collection meta data and/or the actual data
-  jobData.stats.totalCollections++;
-
-  {
-    // save meta data
-    std::string fileName = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR +
-                           jobData.name + "_" + hexString + ".structure.json";
-
-    int fd;
-
-    // remove an existing file first
-    if (TRI_ExistsFile(fileName.c_str())) {
-      TRI_UnlinkFile(fileName.c_str());
-    }
-
-    fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                                 O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                                 S_IRUSR | S_IWUSR);
-
-    if (fd < 0) {
-      return {TRI_ERROR_CANNOT_WRITE_FILE,
-              "cannot write to file '" + fileName + "'"};
-    }
-
-    feature.beginEncryption(fd);
-
-    std::string const collectionInfo = jobData.collectionInfo.toJson();
-    bool result =
-        feature.writeData(fd, collectionInfo.c_str(), collectionInfo.size());
-
-    if (!result) {
-      feature.endEncryption(fd);
-      TRI_TRACKED_CLOSE_FILE(fd);
-      return {TRI_ERROR_CANNOT_WRITE_FILE,
-              "cannot write to file '" + fileName + "'"};
-    }
-
-    feature.endEncryption(fd);
-    TRI_TRACKED_CLOSE_FILE(fd);
-  }
-
-  if (jobData.dumpData) {
-    // save the actual data
-    std::string fileName;
-    fileName = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR + jobData.name +
-               "_" + hexString + ".data.json";
-
-    // remove an existing file first
-    if (TRI_ExistsFile(fileName.c_str())) {
-      TRI_UnlinkFile(fileName.c_str());
-    }
-
-    int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                                     O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                                     S_IRUSR | S_IWUSR);
-
-    if (fd < 0) {
-      return {TRI_ERROR_CANNOT_WRITE_FILE,
-              "cannot write to file '" + fileName + "'"};
-    }
-
-    feature.beginEncryption(fd);
-
-    extendBatch(client, "", jobData.batchId);
-
-    auto result = dumpCollection(client, jobData, fd);
-
-    feature.endEncryption(fd);
-    TRI_TRACKED_CLOSE_FILE(fd);
-
-    return result;
-  }
-
-  return {TRI_ERROR_NO_ERROR};
+std::string DumpFeature::getHttpErrorMessage(
+    httpclient::SimpleHttpResult* result, int& err) noexcept {
+  return _clientManager.getHttpErrorMessage(result, err);
 }
 
 // dump data from server
@@ -564,7 +822,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       std::string(_includeSystemCollections ? "true" : "false") +
       "&batchId=" + StringUtils::itoa(_batchId);
 
-  auto httpClient = getConnectedClient();
+  auto httpClient = _clientManager.getConnectedClient();
   std::unique_ptr<SimpleHttpResult> response(
       httpClient->request(rest::RequestType::GET, url, nullptr, 0));
 
@@ -582,7 +840,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
     return TRI_ERROR_INTERNAL;
   }
 
-  flushWal();
+  flushWal(*httpClient);
   std::shared_ptr<VPackBuilder> parsedBody;
   try {
     parsedBody = response->getBodyVelocyPack();
@@ -653,20 +911,21 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
 
-    beginEncryption(fd);
+    _fileHandler.beginEncryption(fd);
 
     std::string const metaString = meta.slice().toJson();
-    bool result = writeData(fd, metaString.c_str(), metaString.size());
+    bool result =
+        _fileHandler.writeData(fd, metaString.c_str(), metaString.size());
 
     if (!result) {
-      endEncryption(fd);
+      _fileHandler.endEncryption(fd);
       TRI_TRACKED_CLOSE_FILE(fd);
       errorMsg = "cannot write to file '" + fileName + "'";
 
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
 
-    endEncryption(fd);
+    _fileHandler.endEncryption(fd);
     TRI_TRACKED_CLOSE_FILE(fd);
   } catch (basics::Exception const& ex) {
     errorMsg = ex.what();
@@ -732,257 +991,22 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
     }
 
     auto jobData = std::make_unique<DumpFeatureJobData>(
-        collection, std::to_string(cid), name, collectionType, _batchId,
-        _tickStart, maxTick, _chunkSize, _maxChunkSize, _progress, _dumpData,
-        _outputDirectory, _stats);
-    auto result = handleCollection(*httpClient, *jobData);
+        *this, _fileHandler, collection, std::to_string(cid), name,
+        collectionType, _batchId, _tickStart, maxTick, _chunkSize,
+        _maxChunkSize, _clusterMode, _progress, _dumpData, _outputDirectory,
+        _stats);
+    auto result = processJob(*httpClient, *jobData);
     if (result.fail()) {
       errorMsg = result.errorMessage();
       return result.errorNumber();
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief dump a single shard, that is a collection on a DBserver
-Result DumpFeature::dumpShard(httpclient::SimpleHttpClient& client,
-                              DumpFeatureJobData& jobData,
-                              std::string const& DBserver, int fd, std::string const& shardName) {
-  DumpFeature& feature =
-      *application_features::ApplicationServer::getFeature<DumpFeature>(
-          DumpFeature::featureName());
-  uint64_t chunkSize = jobData.initialChunkSize;
-
-  std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
-                              "&batchId=" + StringUtils::itoa(jobData.batchId) +
-                              "&collection=" + shardName + "&ticks=false";
-
-  uint64_t fromTick = 0;
-  uint64_t maxTick = UINT64_MAX;
-
-  while (true) {
-    std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick) +
-                      "&chunkSize=" + StringUtils::itoa(chunkSize);
-
-    if (jobData.maxTick > 0) {
-      url += "&to=" + StringUtils::itoa(maxTick);
-    }
-
-    jobData.stats.totalBatches++;
-
-    std::unique_ptr<SimpleHttpResult> response(
-        client.request(rest::RequestType::GET, url, nullptr, 0));
-
-    if (response == nullptr || !response->isComplete()) {
-      return {TRI_ERROR_INTERNAL,
-              "got invalid response from server: " + client.getErrorMessage()};
-    }
-
-    if (response->wasHttpError()) {
-      int errorNum;
-      return {TRI_ERROR_INTERNAL,
-              getHttpErrorMessage(response.get(), errorNum)};
-    }
-
-    int res = TRI_ERROR_NO_ERROR;  // just to please the compiler
-    bool checkMore = false;
-    bool found;
-
-    // TODO: fix hard-coded headers
-    std::string header =
-        response->getHeaderField("x-arango-replication-checkmore", found);
-
-    if (found) {
-      checkMore = StringUtils::boolean(header);
-      res = TRI_ERROR_NO_ERROR;
-
-      if (checkMore) {
-        // TODO: fix hard-coded headers
-        header = response->getHeaderField("x-arango-replication-lastincluded",
-                                          found);
-
-        if (found) {
-          uint64_t tick = StringUtils::uint64(header);
-
-          if (tick > fromTick) {
-            fromTick = tick;
-          } else {
-            // we got the same tick again, this indicates we're at the end
-            checkMore = false;
-          }
-        }
-      }
-    }
-
-    if (!found) {
-      return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-              "got invalid response server: required header is missing"};
-    }
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      StringBuffer const& body = response->getBody();
-      bool result = feature.writeData(fd, body.c_str(), body.length());
-
-      if (!result) {
-        res = TRI_ERROR_CANNOT_WRITE_FILE;
-      } else {
-        jobData.stats.totalWritten += (uint64_t)body.length();
-      }
-    }
-
-    if (res != TRI_ERROR_NO_ERROR || !checkMore || fromTick == 0) {
-      // done
-      return {res};
-    }
-
-    if (chunkSize < jobData.maxChunkSize) {
-      // adaptively increase chunksize
-      chunkSize = static_cast<uint64_t>(chunkSize * 1.5);
-
-      if (chunkSize > jobData.maxChunkSize) {
-        chunkSize = jobData.maxChunkSize;
-      }
-    }
-  }
-
-  TRI_ASSERT(false);
-  return {TRI_ERROR_INTERNAL};
-}
-
-Result DumpFeature::handleCollectionCluster(
-    httpclient::SimpleHttpClient& client, DumpFeatureJobData& jobData) {
-  DumpFeature& feature =
-      *application_features::ApplicationServer::getFeature<DumpFeature>(
-          DumpFeature::featureName());
-
-  // found a collection!
-  if (jobData.showProgress) {
-    std::cout << "# Dumping collection '" << jobData.name << "'..."
-              << std::endl;
-  }
-
-  // now save the collection meta data and/or the actual data
-  jobData.stats.totalCollections++;
-
   {
-    // save meta data
-    std::string fileName = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR +
-                           jobData.name + ".structure.json";
-
-    // remove an existing file first
-    if (TRI_ExistsFile(fileName.c_str())) {
-      TRI_UnlinkFile(fileName.c_str());
-    }
-
-    int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                                     O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                                     S_IRUSR | S_IWUSR);
-
-    if (fd < 0) {
-      return {TRI_ERROR_CANNOT_WRITE_FILE,
-              "cannot write to file '" + fileName + "'"};
-    }
-
-    feature.beginEncryption(fd);
-
-    std::string const collectionInfo = jobData.collectionInfo.toJson();
-    bool result =
-        feature.writeData(fd, collectionInfo.c_str(), collectionInfo.size());
-
-    if (!result) {
-      feature.endEncryption(fd);
-      TRI_TRACKED_CLOSE_FILE(fd);
-      return {TRI_ERROR_CANNOT_WRITE_FILE,
-              "cannot write to file '" + fileName + "'"};
-    }
-
-    feature.endEncryption(fd);
-    TRI_TRACKED_CLOSE_FILE(fd);
+    // wait for jobs and handle errors?
   }
 
-  if (jobData.dumpData) {
-    // save the actual data
-
-    // Now set up the output file:
-    std::string const hexString(
-        arangodb::rest::SslInterface::sslMD5(jobData.name));
-    std::string fileName = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR +
-                           jobData.name + "_" + hexString + ".data.json";
-
-    // remove an existing file first
-    if (TRI_ExistsFile(fileName.c_str())) {
-      TRI_UnlinkFile(fileName.c_str());
-    }
-
-    int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                                     O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                                     S_IRUSR | S_IWUSR);
-
-    if (fd < 0) {
-      return {TRI_ERROR_CANNOT_WRITE_FILE,
-              "cannot write to file '" + fileName + "'"};
-    }
-
-    feature.beginEncryption(fd);
-
-    // First we have to go through all the shards, what are they?
-    VPackSlice const parameters = jobData.collectionInfo.get("parameters");
-    VPackSlice const shards = parameters.get("shards");
-
-    // Iterate over the Map of shardId to server list
-    for (auto const it : VPackObjectIterator(shards)) {
-      TRI_ASSERT(it.key.isString());
-
-      std::string shardName = it.key.copyString();
-
-      if (!it.value.isArray() || it.value.length() == 0 ||
-          !it.value[0].isString()) {
-        feature.endEncryption(fd);
-        TRI_TRACKED_CLOSE_FILE(fd);
-        return {TRI_ERROR_BAD_PARAMETER,
-                "unexpected value for 'shards' attribute"};
-      }
-
-      std::string DBserver = it.value[0].copyString();
-
-      if (jobData.showProgress) {
-        std::cout << "# Dumping shard '" << shardName << "' from DBserver '"
-                  << DBserver << "' ..." << std::endl;
-      }
-
-      int res;
-      std::string errorMsg;
-      std::tie(res, jobData.batchId) =
-          startBatch(client, DBserver, errorMsg, feature._force);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        feature.endEncryption(fd);
-        TRI_TRACKED_CLOSE_FILE(fd);
-        return {res, errorMsg};
-      }
-
-      auto result = dumpShard(client, jobData, DBserver, fd, shardName);
-      res = result.errorNumber();
-
-      if (result.fail()) {
-        feature.endEncryption(fd);
-        TRI_TRACKED_CLOSE_FILE(fd);
-        return result;
-      }
-
-      endBatch(client, DBserver, jobData.batchId);
-    }
-
-    feature.endEncryption(fd);
-    int res = TRI_TRACKED_CLOSE_FILE(fd);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return {res};
-    }
-  }
-
-  return {TRI_ERROR_NO_ERROR};
+  return TRI_ERROR_NO_ERROR;
 }
 
 // dump data from cluster via a coordinator
@@ -991,7 +1015,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
       "/_api/replication/clusterInventory?includeSystem=" +
       std::string(_includeSystemCollections ? "true" : "false");
 
-  auto httpClient = getConnectedClient();
+  auto httpClient = _clientManager.getConnectedClient();
   std::unique_ptr<SimpleHttpResult> response(
       httpClient->request(rest::RequestType::GET, url, nullptr, 0));
 
@@ -1104,21 +1128,26 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
     }
 
     auto jobData = std::make_unique<DumpFeatureJobData>(
-        collection, std::to_string(cid), name, "" /*collectionType*/, _batchId,
-        _tickStart, 0 /*maxTick*/, _chunkSize, _maxChunkSize, _progress,
-        _dumpData, _outputDirectory, _stats);
-    auto result = handleCollectionCluster(*httpClient, *jobData);
+        *this, _fileHandler, collection, std::to_string(cid), name,
+        "" /*collectionType*/, _batchId, _tickStart, 0 /*maxTick*/, _chunkSize,
+        _maxChunkSize, _clusterMode, _progress, _dumpData, _outputDirectory,
+        _stats);
+    auto result = processJob(*httpClient, *jobData);
     if (result.fail()) {
       errorMsg = result.errorMessage();
       return result.errorNumber();
     }
   }
 
+  {
+    // wait for jobs and handle errors?
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
 void DumpFeature::start() {
-  initializeEncryption();
+  _fileHandler.initializeEncryption();
 
   ClientFeature* client =
       application_features::ApplicationServer::getFeature<ClientFeature>(
@@ -1129,10 +1158,10 @@ void DumpFeature::start() {
 
   std::string dbName = client->databaseName();
 
-  auto httpClient = getConnectedClient(_force, true);
+  auto httpClient = _clientManager.getConnectedClient(_force, true);
 
   int errorNum = {TRI_ERROR_NO_ERROR};
-  _clusterMode = getArangoIsCluster(errorNum, *httpClient);
+  _clusterMode = _clientManager.getArangoIsCluster(errorNum, *httpClient);
   if (errorNum != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "Error: could not detect ArangoDB instance type";
@@ -1178,7 +1207,7 @@ void DumpFeature::start() {
 
   try {
     if (!_clusterMode) {
-      std::tie(res, _batchId) = startBatch(*httpClient, "", errorMsg, _force);
+      std::tie(res, _batchId) = startBatch(*httpClient, "", errorMsg);
 
       if (res != TRI_ERROR_NO_ERROR && _force) {
         res = TRI_ERROR_NO_ERROR;

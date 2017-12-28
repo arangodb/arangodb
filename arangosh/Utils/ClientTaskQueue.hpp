@@ -39,8 +39,7 @@ class SimpleHttpResult;
 }  // namespace httpclient
 
 class ClientManager;
-template <typename JobData>
-class ClientWorker;
+template <typename JobData> class ClientWorker;
 
 /**
  * @brief Provides a simple, parallel task queue for `arangosh`-based clients.
@@ -48,7 +47,36 @@ class ClientWorker;
 template <typename JobData>
 class ClientTaskQueue {
  public:
-  ClientTaskQueue();
+  /**
+   * @brief Processes an individual job
+   *
+   * Each job will be processed by a worker, and many jobs may run in parallel.
+   * Thus any method of this type must be thread-safe.
+   *
+   * @param  client  Client to use for any requests
+   * @param  jobData Data describing the job
+   * @return         The result status of the job
+   */
+  typedef std::function<Result(httpclient::SimpleHttpClient& client,
+                               JobData& jobData)>
+      JobProcessor;
+
+  /**
+   * @brief Handles the result of an individual jobs
+   *
+   * Each job will be processed by a worker, and many jobs may run in parallel.
+   * Thus, any method of this type must be thread-safe. Can be used to requeue a
+   * failed job, notify another actor that the job is done, etc.
+   *
+   * @param jobData Data describing the job which was just processed
+   * @param result  The result status of the job
+   */
+  typedef std::function<void(std::unique_ptr<JobData>&& jobData,
+                             Result const& result)>
+      JobResultHandler;
+
+ public:
+  ClientTaskQueue(JobProcessor processJob, JobResultHandler handleJobResult);
   virtual ~ClientTaskQueue();
 
  protected:
@@ -92,37 +120,13 @@ class ClientTaskQueue {
    */
   bool queueJob(std::unique_ptr<JobData>&& jobData) noexcept;
 
-  /**
-   * @brief Processes an individual job
-   *
-   * Each job will be processed by a worker, and many jobs may run in parallel.
-   * Thus any implementation of this method must be thread-safe.
-   *
-   * @param  client  Client to use for any requests
-   * @param  jobData Data describing the job
-   * @return         The result status of the job
-   */
-  virtual Result processJob(httpclient::SimpleHttpClient& client,
-                            JobData& jobData) noexcept = 0;
-
-  /**
-   * @brief Handles the result of an individual jobs
-   *
-   * Each job will be processed by a worker, and many jobs may run in parallel.
-   * Thus, any implementation of this method must be thread-safe. Can be used to
-   * requeue a failed job, notify another actor that the job is done, etc.
-   *
-   * @param jobData Data describing the job which was just processed
-   * @param result  The result status of the job
-   */
-  virtual void handleJobResult(std::unique_ptr<JobData>&& jobData,
-                               Result const& result) noexcept = 0;
-
  private:
   std::unique_ptr<JobData> fetchJob() noexcept;
   void waitForWork() noexcept;
 
  private:
+  JobProcessor _processJob;
+  JobResultHandler _handleJobResult;
   mutable Mutex _jobsLock;
   basics::ConditionVariable _jobsCondition;
   std::queue<std::unique_ptr<JobData>> _jobs;

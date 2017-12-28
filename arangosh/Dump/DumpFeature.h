@@ -32,7 +32,7 @@ namespace arangodb {
 namespace httpclient {
 class SimpleHttpResult;
 }
-
+class DumpFeature;
 class EncryptionFeature;
 
 struct DumpFeatureStats {
@@ -43,11 +43,14 @@ struct DumpFeatureStats {
 };
 
 struct DumpFeatureJobData {
-  DumpFeatureJobData(VPackSlice const&, std::string const&, std::string const&,
-                     std::string const&, uint64_t const&, uint64_t const&,
+  DumpFeatureJobData(DumpFeature&, FileHandler& filehandler, VPackSlice const&,
+                     std::string const&, std::string const&, std::string const&,
                      uint64_t const&, uint64_t const&, uint64_t const&,
-                     bool const&, bool const&, std::string const&,
+                     uint64_t const&, uint64_t const&, bool const&, bool const&,
+                     bool const&, std::string const&,
                      DumpFeatureStats&) noexcept;
+  DumpFeature& feature;
+  FileHandler& fileHandler;
   VPackSlice const& collectionInfo;
   std::string const cid;
   std::string const name;
@@ -57,6 +60,7 @@ struct DumpFeatureJobData {
   uint64_t const maxTick;
   uint64_t const initialChunkSize;
   uint64_t const maxChunkSize;
+  bool const clusterMode;
   bool const showProgress;
   bool const dumpData;
   std::string const& outputDirectory;
@@ -64,20 +68,20 @@ struct DumpFeatureJobData {
 };
 extern template class ClientTaskQueue<DumpFeatureJobData>;
 
-class DumpFeature final : public application_features::ApplicationFeature,
-                          public ClientManager,
-                          public ClientTaskQueue<DumpFeatureJobData>,
-                          public FileHandler {
+class DumpFeature : public application_features::ApplicationFeature {
  public:
   DumpFeature(application_features::ApplicationServer* server, int* result);
 
  public:
   static std::string featureName();
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(
+  virtual void collectOptions(
+      std::shared_ptr<options::ProgramOptions>) override final;
+  virtual void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override final;
-  void prepare() override final;
-  void start() override final;
+  virtual void prepare() override final;
+  virtual void start() override final;
+  std::string getHttpErrorMessage(httpclient::SimpleHttpResult* result,
+                                  int& err) noexcept;
 
  private:
   std::vector<std::string> _collections;
@@ -94,27 +98,13 @@ class DumpFeature final : public application_features::ApplicationFeature,
   uint64_t _tickEnd;
 
  private:
-  virtual Result processJob(httpclient::SimpleHttpClient& client,
-                            DumpFeatureJobData& jobData) noexcept override;
-  virtual void handleJobResult(std::unique_ptr<DumpFeatureJobData>&& jobData,
-                               Result const& result) noexcept override;
-
- private:
-  static Result dumpCollection(httpclient::SimpleHttpClient& client,
-                               DumpFeatureJobData& jobData, int fd);
-  static Result handleCollection(httpclient::SimpleHttpClient& client,
-                                 DumpFeatureJobData& jobData);
-
-  static Result dumpShard(httpclient::SimpleHttpClient& client,
-                          DumpFeatureJobData& jobData, std::string const& DBserver, int fd, std::string const& shardName);
-  static Result handleCollectionCluster(httpclient::SimpleHttpClient& client,
-                            DumpFeatureJobData& jobData);
-
-  void flushWal();
   int runDump(std::string& dbName, std::string& errorMsg);
   int runClusterDump(std::string& errorMsg);
 
  private:
+  ClientManager _clientManager;
+  ClientTaskQueue<DumpFeatureJobData> _clientTaskQueue;
+  FileHandler _fileHandler;
   int* _result;
   uint64_t _batchId;
   bool _clusterMode;

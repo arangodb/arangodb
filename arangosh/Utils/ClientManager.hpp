@@ -59,8 +59,6 @@ class ClientManager {
   std::unique_ptr<httpclient::SimpleHttpClient> getConnectedClient(
       bool force = false, bool verbose = false) noexcept;
 
- protected:
-
   /**
    * @brief Conditionally prefixes a relative URI with database-specific path
    * @param  data     Pointer to `ClientFeature` instance

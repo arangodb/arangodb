@@ -62,7 +62,7 @@ class ClientWorker : public arangodb::Thread {
 }  // namespace arangodb
 
 template <typename JobData>
-ClientTaskQueue<JobData>::ClientTaskQueue() {}
+ClientTaskQueue<JobData>::ClientTaskQueue(JobProcessor processJob, JobResultHandler handleJobResult) : _processJob(processJob), _handleJobResult(handleJobResult) {}
 
 template <typename JobData>
 ClientTaskQueue<JobData>::~ClientTaskQueue() {}
@@ -164,8 +164,8 @@ void ClientWorker<JobData>::run() {
     if (job) {
       _idle.store(false);
 
-      Result result = _queue.processJob(*_client, *job);
-      _queue.handleJobResult(std::move(job), result);
+      Result result = _queue._processJob(*_client, *job);
+      _queue._handleJobResult(std::move(job), result);
 
       _idle.store(true);
     }

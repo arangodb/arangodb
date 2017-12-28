@@ -34,8 +34,6 @@ class FileHandler {
   FileHandler();
   virtual ~FileHandler();
 
- protected:
-
   /**
    * @brief Prepares handler for encryption if enabled
    */
