@@ -35,7 +35,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-std::vector<std::pair<int, std::string>> LogAppenderFile::_fds = {};
+std::vector<std::tuple<int, std::string, LogAppenderFile*>> LogAppenderFile::_fds = {};
 
 LogAppenderStream::LogAppenderStream(std::string const& filename,
                                      std::string const& filter, int fd)
@@ -87,9 +87,9 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
     // logging to an actual file
     size_t pos = 0;
     for (auto& it : _fds) {
-      if (it.second == _filename) {
+      if (std::get<1>(it) == _filename) {
         // already have an appender for the same file
-        _fd = it.first;
+        _fd = std::get<0>(it);
         break;
       }
       ++pos;
@@ -109,7 +109,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
       }
 
-      _fds.emplace_back(std::make_pair(fd, _filename));
+      _fds.emplace_back(std::make_tuple(fd, _filename, this));
       _fd = fd;
     }
   }
@@ -160,8 +160,8 @@ std::string LogAppenderFile::details() {
 
 void LogAppenderFile::reopenAll() {
   for (auto& it : _fds) {
-    int old = it.first;
-    std::string const& filename = it.second;
+    int old = std::get<0>(it);
+    std::string const& filename = std::get<1>(it);
 
     if (filename.empty()) {
       continue;
@@ -192,7 +192,10 @@ void LogAppenderFile::reopenAll() {
       FileUtils::remove(backup);
     }
 
-    it.first = fd;
+    // update the file descriptor in the map
+    std::get<0>(it) = fd;
+    // and also tell the appender of the file descriptor change
+    std::get<2>(it)->updateFd(fd);
 
     if (old > STDERR_FILENO) {
       TRI_TRACKED_CLOSE_FILE(old);
@@ -202,8 +205,11 @@ void LogAppenderFile::reopenAll() {
 
 void LogAppenderFile::closeAll() {
   for (auto& it : _fds) {
-    int fd = it.first;
-    it.first = -1;
+    int fd = std::get<0>(it);
+    // set the fd to "disabled"
+    std::get<0>(it) = -1;
+    // and also tell the appender of the file descriptor change
+    std::get<2>(it)->updateFd(-1);
 
     if (fd > STDERR_FILENO) {
       fsync(fd);
@@ -211,7 +217,12 @@ void LogAppenderFile::closeAll() {
     }
   }
 }
-  
+
+void LogAppenderFile::clear() {
+  closeAll();
+  _fds.clear();
+}
+
 LogAppenderStdStream::LogAppenderStdStream(std::string const& filename, std::string const& filter, int fd)
     : LogAppenderStream(filename, filter, fd) {
   _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
