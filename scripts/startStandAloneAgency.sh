@@ -243,7 +243,7 @@ for aid in "${aaid[@]}"; do
     --javascript.startup-directory ./js \
     --javascript.v8-contexts 1 \
     --log.file agency/$port.log \
-    --log.force-direct true \
+    --log.force-direct false \
     $LOG_LEVEL \
     --log.use-microtime $USE_MICROTIME \
     --server.authentication false \

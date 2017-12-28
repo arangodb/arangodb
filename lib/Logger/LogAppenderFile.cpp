@@ -217,7 +217,12 @@ void LogAppenderFile::closeAll() {
     }
   }
 }
-  
+
+void LogAppenderFile::clear() {
+  closeAll();
+  _fds.clear();
+}
+
 LogAppenderStdStream::LogAppenderStdStream(std::string const& filename, std::string const& filter, int fd)
     : LogAppenderStream(filename, filter, fd) {
   _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());

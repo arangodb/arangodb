@@ -105,7 +105,7 @@ INFOFILE="/tmp/ArangoDB-CLI.info.$$"
   echo "or start the ArangoDB shell"
   echo "   '${ROOTDIR}/arangosh'"
   echo ""
-  echo "Switching to log-file now, killing this windows will NOT stop the server."
+  echo "Switching to log-file now, closing this window will NOT stop the server."
   echo ""
   echo ""
 ) > $INFOFILE
