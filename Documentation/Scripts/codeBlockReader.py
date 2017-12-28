@@ -7,7 +7,7 @@ validExtensions = (".cpp", ".h", ".js", ".md")
 # specify the paths in which docublocks are searched. note that js/apps/* must not be included because it contains js/apps/system/
 # and that path also contains copies of some files present in js/ anyway.
 
-searchMDPPPaths = [
+searchMDPaths = [
   "Manual",
   "AQL",
   "HTTP",
@@ -38,10 +38,10 @@ def file_content(filepath):
     if "@startDocuBlock" in line[1]:
       # in the unprocessed md files we have non-terminated startDocuBlocks, else it is an error:
       if ((_start != None) and
-          (not searchMDPPPaths[0] in filepath) and 
-          (not searchMDPPPaths[1] in filepath) and 
-          (not searchMDPPPaths[2] in filepath) and 
-          (not searchMDPPPaths[3] in filepath)):
+          (not searchMDPaths[0] in filepath) and
+          (not searchMDPaths[1] in filepath) and
+          (not searchMDPaths[2] in filepath) and
+          (not searchMDPaths[3] in filepath)):
         print "next startDocuBlock found without endDocuBlock inbetween in file %s [%s]" %(filepath, line)
         raise
       _start = line[0]

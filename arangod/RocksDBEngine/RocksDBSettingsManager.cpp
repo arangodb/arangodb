@@ -113,13 +113,6 @@ RocksDBSettingsManager::CounterAdjustment RocksDBSettingsManager::loadCounter(
 /// the sequence number used
 void RocksDBSettingsManager::updateCounter(uint64_t objectId,
                                            CounterAdjustment const& update) {
-  // From write_batch.cc in rocksdb: first 64 bits in the internal rep_
-  // buffer are the sequence number
-  /*TRI_ASSERT(trx->GetState() == rocksdb::Transaction::COMMITED);
-  rocksdb::WriteBatchWithIndex *batch = trx->GetWriteBatch();
-  rocksdb::SequenceNumber seq =
-  DecodeFixed64(batch->GetWriteBatch()->Data().data());*/
-
   bool needsSync = false;
   {
     WRITE_LOCKER(guard, _rwLock);
@@ -153,6 +146,8 @@ arangodb::Result RocksDBSettingsManager::setAbsoluteCounter(uint64_t objectId,
   WRITE_LOCKER(guard, _rwLock);
   auto it = _counters.find(objectId);
   if (it != _counters.end()) {
+    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+    it->second._sequenceNum = db->GetLatestSequenceNumber();
     it->second._count = value;
   } else {
     // nothing to do as the counter has never been written it can not be set to
