@@ -309,10 +309,6 @@ During view modification the following directives apply:
 * dataPath: <optional> (default: \<ArangoDB database path\>/iresearch-\<view-id\>)
   the filesystem path where to store persisted view metadata
 
-* includePersistedCidsOnOpen: <optional> (default: true)
-  should CIDs in the persisted store be included in the list of tracked CIDs
-  if false then only the runtime added/dropped CIDs will be tracked by the view
-
 * locale: <optional> (default: 'C')
   the default locale used for ordering processed attribute names
 

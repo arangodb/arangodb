@@ -74,10 +74,6 @@ performance without any added benefits.
 @RESTSTRUCT{dataPath,JSF_post_api_view_props,string,optional,string}
 The filesystem path where to store persisted index data (default: *"<ArangoDB database path>/iresearch-<index id>"*).
 
-@RESTSTRUCT{includePersistedCidsOnOpen,boolean,optional,bool}
-Should CIDs in the persisted store be included in the list of tracked CIDs.
-If false then only the runtime added/dropped CIDs will be tracked by the view.
-
 @RESTSTRUCT{locale,JSF_post_api_view_props,string,optional,string}
 The default locale used for queries on analyzed string values (default: *C*).
 

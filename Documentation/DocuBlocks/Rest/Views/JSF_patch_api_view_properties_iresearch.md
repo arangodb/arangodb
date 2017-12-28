@@ -99,10 +99,6 @@ commit call without any added benefits.
 @RESTBODYPARAM{dataPath,string,optional,string}
 The filesystem path where to store persisted index data (default: *"<ArangoDB database path>/iresearch-<index id>"*).
 
-@RESTSTRUCT{includePersistedCidsOnOpen,boolean,optional,bool}
-Should CIDs in the persisted store be included in the list of tracked CIDs.
-If false then only the runtime added/dropped CIDs will be tracked by the view.
-
 @RESTBODYPARAM{locale,string,optional,string}
 The default locale used for queries on analyzed string values (default: *C*).
 

@@ -167,22 +167,6 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual("TestPath", properties.dataPath);
       }
 
-      // includePersistedCidsOnOpen
-      {
-        db._dropView("TestView");
-        var view = db._createView("TestView", "iresearch", {});
-
-        var properties = view.properties();
-        assertTrue(Boolean === properties.includePersistedCidsOnOpen.constructor);
-        assertEqual(true, properties.includePersistedCidsOnOpen);
-
-        var meta = { includePersistedCidsOnOpen: false };
-        view.properties(meta);
-        properties = view.properties();
-        assertTrue(Boolean === properties.includePersistedCidsOnOpen.constructor);
-        assertEqual(false, properties.includePersistedCidsOnOpen);
-      }
-
       // locale
       {
         db._dropView("TestView");
@@ -521,7 +505,6 @@ function iResearchFeatureAqlTestSuite () {
             }
           },
           dataPath: "TestPath",
-          includePersistedCidsOnOpen: false,
           locale: "de_DE.UTF-16",
           threadsMaxIdle: 42,
           threadsMaxTotal: 1
@@ -542,7 +525,6 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(10, properties.commit.consolidate.count.intervalStep);
         assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
         assertEqual("TestPath", properties.dataPath);
-        assertEqual(false, properties.includePersistedCidsOnOpen);
         assertEqual("de_DE.UTF-8", properties.locale);
         assertEqual(42, properties.threadsMaxIdle);
         assertEqual(1, properties.threadsMaxTotal);
@@ -578,7 +560,6 @@ function iResearchFeatureAqlTestSuite () {
             }
           },
           dataPath: "TestPath",
-          includePersistedCidsOnOpen: false,
           locale: "de_DE.UTF-16",
           threadsMaxIdle: 42,
           threadsMaxTotal: 1
@@ -603,7 +584,6 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(10, properties.commit.consolidate.count.intervalStep);
         assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
         assertEqual("TestPath", properties.dataPath);
-        assertEqual(false, properties.includePersistedCidsOnOpen);
         assertEqual("de_DE.UTF-8", properties.locale);
         assertEqual(42, properties.threadsMaxIdle);
         assertEqual(1, properties.threadsMaxTotal);
@@ -639,7 +619,6 @@ function iResearchFeatureAqlTestSuite () {
             }
           },
           dataPath: "TestPath",
-          includePersistedCidsOnOpen: false,
           locale: "de_DE.UTF-16",
           threadsMaxIdle: 42,
           threadsMaxTotal: 1
@@ -664,7 +643,6 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(10, properties.commit.consolidate.count.intervalStep);
         assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
         assertEqual("TestPath", properties.dataPath);
-        assertEqual(false, properties.includePersistedCidsOnOpen);
         assertEqual("de_DE.UTF-8", properties.locale);
         assertEqual(42, properties.threadsMaxIdle);
         assertEqual(1, properties.threadsMaxTotal);
@@ -704,7 +682,6 @@ function iResearchFeatureAqlTestSuite () {
             }
           },
           dataPath: "TestPath",
-          includePersistedCidsOnOpen: false,
           locale: "de_DE.UTF-16",
           threadsMaxIdle: 42,
           threadsMaxTotal: 1
@@ -729,7 +706,6 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(10, properties.commit.consolidate.count.intervalStep);
         assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
         assertEqual("TestPath", properties.dataPath);
-        assertEqual(false, properties.includePersistedCidsOnOpen);
         assertEqual("de_DE.UTF-8", properties.locale);
         assertEqual(42, properties.threadsMaxIdle);
         assertEqual(1, properties.threadsMaxTotal);
