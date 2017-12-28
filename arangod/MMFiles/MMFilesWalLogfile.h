@@ -145,16 +145,17 @@ class MMFilesWalLogfile {
 
   /// @brief whether or not the logfile can be collected
   inline bool canBeCollected(TRI_voc_tick_t releasedTick) const {
-#if 0
-    // TODO: if this is reactivated, the recovery tests for MMFiles
-    // will show data loss in some tests
-    if (releasedTick <= df()->maxTick()) {
+    if (releasedTick < df()->maxTick()) {
       return false;
     }
-#endif
 
     return (_status == StatusType::SEALED ||
             _status == StatusType::COLLECTION_REQUESTED);
+  }
+
+  /// @brief whether or not the logfile can be collected
+  inline bool hasBeenReleased(TRI_voc_tick_t releasedTick) const {
+    return (releasedTick >= df()->maxTick());
   }
 
   /// @brief whether or not the logfile can be removed
