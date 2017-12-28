@@ -498,7 +498,7 @@ void Agent::sendAppendEntriesRPC() {
       {
         path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId="
              << id() << "&prevLogIndex=" << prevLogIndex
-             << "&prevLogTerm=" << prevLogTerm << "&leaderCommit=" << _commitIndex
+             << "&prevLogTerm=" << prevLogTerm << "&leaderCommit=" << commitIndex
              << "&senderTimeStamp=" << std::llround(steadyClockToDouble() * 1000);
       }
 
@@ -616,7 +616,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
   {
     path << "/_api/agency_priv/appendEntries?term=" << _constituent.term()
          << "&leaderId=" << id() << "&prevLogIndex=0"
-         << "&prevLogTerm=0&leaderCommit=" << _commitIndex
+         << "&prevLogTerm=0&leaderCommit=" << commitIndex
          << "&senderTimeStamp=" << std::llround(steadyClockToDouble() * 1000);
   }
 
@@ -731,8 +731,8 @@ void Agent::load() {
   {
     _tiLock.assertNotLockedByCurrentThread();
     MUTEX_LOCKER(guard, _ioLock);  // need this for callback to set _spearhead
-    WRITE_LOCKER(guard2, _outputLock);  // need this for callback to set _readDB
-    CONDITION_LOCKER(guard3, _waitForCV);//  rules says this too if _outputLock held for write
+    // Note that _state.loadCollections eventually does a callback to the
+    // setPersistedState method, which acquires _outputLock and _waitForCV.
 
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading persistent state.";
     if (!_state.loadCollections(vocbase, queryRegistry, _config.waitForSync())) {
