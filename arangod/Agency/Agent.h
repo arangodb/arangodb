@@ -199,18 +199,32 @@ class Agent : public arangodb::Thread,
   State const& state() const;
 
   /// @brief execute a callback while holding _ioLock
-  void executeLocked(std::function<void()> const& cb);
+  ///  and read lock for _readDB
+  void executeLockedRead(std::function<void()> const& cb);
+
+  /// @brief execute a callback while holding _ioLock
+  ///  and write lock for _readDB
+  void executeLockedWrite(std::function<void()> const& cb);
 
   /// @brief Get read store and compaction index
   index_t readDB(Node&) const;
 
   /// @brief Get read store
+  ///  WARNING: this assumes caller holds appropriate
+  ///  locks or will use executeLockedRead() or
+  ///  executeLockedWrite() with a lambda function
   Store const& readDB() const;
 
   /// @brief Get spearhead store
+  ///  WARNING: this assumes caller holds appropriate
+  ///  locks or will use executeLockedRead() or
+  ///  executeLockedWrite() with a lambda function
   Store const& spearhead() const;
 
   /// @brief Get transient store
+  ///  WARNING: this assumes caller holds appropriate
+  ///  locks or will use executeLockedRead() or
+  ///  executeLockedWrite() with a lambda function
   Store const& transient() const;
 
   /// @brief Serve active agent interface
@@ -313,7 +327,7 @@ class Agent : public arangodb::Thread,
   /// answers to appendEntriesRPC messages come in on the leader, and when
   /// appendEntriesRPC calls are received on the follower. In each case
   /// we hold the _ioLock when _commitIndex is changed. Reading and writing
-  /// must be done under the write lock of _outputLog and the mutex of 
+  /// must be done under the write lock of _outputLog and the mutex of
   /// _waitForCV to allow a thread to wait for a change using that
   /// condition variable.
   index_t _commitIndex;
@@ -420,7 +434,7 @@ class Agent : public arangodb::Thread,
 
   /// @brief Keep track of when I last took on leadership
   SteadyTimePoint _leaderSince;
-  
+
   /// @brief Ids of ongoing transactions, used for inquire:
   std::unordered_set<std::string> _ongoingTrxs;
 

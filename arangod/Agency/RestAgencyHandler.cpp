@@ -158,7 +158,7 @@ RestStatus RestAgencyHandler::handleStores() {
     {
       VPackObjectBuilder b(&body);
       {
-        _agent->executeLocked([&]() {
+        _agent->executeLockedRead([&]() {
           body.add(VPackValue("spearhead"));
           {
             VPackArrayBuilder bb(&body);
@@ -167,9 +167,7 @@ RestStatus RestAgencyHandler::handleStores() {
           body.add(VPackValue("read_db"));
           {
             VPackArrayBuilder bb(&body);
-            _agent->executeLocked([&]() {
-                _agent->readDB().dumpToBuilder(body);
-              });
+            _agent->readDB().dumpToBuilder(body);
           }
           body.add(VPackValue("transient"));
           {

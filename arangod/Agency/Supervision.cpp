@@ -542,7 +542,7 @@ bool Supervision::updateSnapshot() {
     return false;
   }
 
-  _agent->executeLocked([&]() {
+  _agent->executeLockedRead([&]() {
       if (_agent->readDB().has(_agencyPrefix)) {
         _snapshot = _agent->readDB().get(_agencyPrefix);
       }
@@ -582,7 +582,7 @@ void Supervision::run() {
 
     bool done = false;
     MUTEX_LOCKER(locker, _lock);
-    _agent->executeLocked([&]() {
+    _agent->executeLockedRead([&]() {
       if (_agent->readDB().has(supervisionNode)) {
         try {
           _snapshot = _agent->readDB().get(supervisionNode);
