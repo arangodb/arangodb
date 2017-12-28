@@ -112,17 +112,17 @@ RestStatus RestAgencyHandler::handleTransient() {
     return reportMessage(
       rest::ResponseCode::BAD, "Expecting array of arrays as body for writes");
   }
-  
+
   // Empty request array
   if (query->slice().length() == 0) {
     return reportMessage(rest::ResponseCode::BAD, "Empty request");
   }
-  
+
   // Leadership established?
   if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
     return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
-  
+
   trans_ret_t ret;
 
   try {
@@ -160,17 +160,19 @@ RestStatus RestAgencyHandler::handleStores() {
       {
         _agent->executeLocked([&]() {
           body.add(VPackValue("spearhead"));
-          { 
+          {
             VPackArrayBuilder bb(&body);
             _agent->spearhead().dumpToBuilder(body);
           }
           body.add(VPackValue("read_db"));
-          { 
+          {
             VPackArrayBuilder bb(&body);
-            _agent->readDB().dumpToBuilder(body);
+            _agent->executeLocked([&]() {
+                _agent->readDB().dumpToBuilder(body);
+              });
           }
           body.add(VPackValue("transient"));
-          { 
+          {
             VPackArrayBuilder bb(&body);
             _agent->transient().dumpToBuilder(body);
           }
@@ -179,8 +181,8 @@ RestStatus RestAgencyHandler::handleStores() {
     }
     generateResult(rest::ResponseCode::OK, body.slice());
     return RestStatus::DONE;
-  } 
-  
+  }
+
   return reportMethodNotAllowed();
 }
 
@@ -196,17 +198,17 @@ RestStatus RestAgencyHandler::handleStore() {
     } catch (...) {
       index = _agent->lastCommitted();
     }
-    
+
     try {
       query_t builder = _agent->buildDB(index);
       generateResult(rest::ResponseCode::OK, builder->slice());
     } catch (...) {
       generateError(rest::ResponseCode::BAD, 400);
     }
-    
+
     return RestStatus::DONE;
-  } 
-  
+  }
+
   return reportMethodNotAllowed();
 }
 
@@ -214,7 +216,7 @@ RestStatus RestAgencyHandler::handleWrite() {
   if (_request->requestType() != rest::RequestType::POST) {
     return reportMethodNotAllowed();
   }
-  
+
   query_t query;
 
   // Convert to velocypack
@@ -261,7 +263,7 @@ RestStatus RestAgencyHandler::handleWrite() {
     Builder body;
     body.openObject();
     Agent::raft_commit_t result = Agent::raft_commit_t::OK;
-    
+
     if (call_mode != "noWait") {
       // Note success/error
       body.add("results", VPackValue(VPackValueType::Array));
@@ -272,7 +274,7 @@ RestStatus RestAgencyHandler::handleWrite() {
         }
       }
       body.close();
-      
+
       // Wait for commit of highest except if it is 0?
       if (!ret.indices.empty() && call_mode == "waitForCommitted") {
         arangodb::consensus::index_t max_index = 0;
@@ -282,14 +284,14 @@ RestStatus RestAgencyHandler::handleWrite() {
         } catch (std::exception const& ex) {
           LOG_TOPIC(WARN, Logger::AGENCY) << ex.what();
         }
-        
+
         if (max_index > 0) {
           result = _agent->waitFor(max_index);
         }
-        
+
       }
     }
-    
+
     body.close();
 
     if (result == Agent::raft_commit_t::UNKNOWN) {
@@ -303,7 +305,7 @@ RestStatus RestAgencyHandler::handleWrite() {
         generateResult(rest::ResponseCode::OK, body.slice());
       }
     }
-    
+
   } else {            // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
       return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
@@ -320,7 +322,7 @@ RestStatus RestAgencyHandler::handleTransact() {
   if (_request->requestType() != rest::RequestType::POST) {
     return reportMethodNotAllowed();
   }
-  
+
   query_t query;
 
   // Convert to velocypack
@@ -355,7 +357,7 @@ RestStatus RestAgencyHandler::handleTransact() {
   }
 
   // We're leading and handling the request
-  if (ret.accepted) {  
+  if (ret.accepted) {
 
     // Wait for commit of highest except if it is 0?
     if (ret.maxind > 0) {
@@ -365,7 +367,7 @@ RestStatus RestAgencyHandler::handleTransact() {
       (ret.failed==0) ?
         rest::ResponseCode::OK : rest::ResponseCode::PRECONDITION_FAILED,
       ret.result->slice());
-    
+
   } else {            // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
       return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
@@ -383,7 +385,7 @@ RestStatus RestAgencyHandler::handleInquire() {
   if (_request->requestType() != rest::RequestType::POST) {
     return reportMethodNotAllowed();
   }
-  
+
   query_t query;
 
   // Get query from body
@@ -394,19 +396,19 @@ RestStatus RestAgencyHandler::handleInquire() {
     generateError(rest::ResponseCode::BAD, 400);
     return RestStatus::DONE;
   }
-  
+
   // Leadership established?
   if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
     return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
-  
+
   write_ret_t ret;
   try {
     ret = _agent->inquire(query);
   } catch (std::exception const& e) {
     return reportMessage(rest::ResponseCode::SERVER_ERROR, e.what());
   }
-  
+
   if (ret.accepted) {  // I am leading
 
     
@@ -437,7 +439,7 @@ RestStatus RestAgencyHandler::handleInquire() {
       redirectRequest(ret.redirect);
     }
   }
-  
+
   return RestStatus::DONE;
 }
 
@@ -471,8 +473,8 @@ RestStatus RestAgencyHandler::handleRead() {
       }
     }
     return RestStatus::DONE;
-  } 
-  
+  }
+
   return reportMethodNotAllowed();
 }
 
@@ -500,9 +502,9 @@ RestStatus RestAgencyHandler::handleConfig() {
     body.add("lastAcked", _agent->lastAckedAgo()->slice());
     body.add("configuration", _agent->config().toBuilder()->slice());
   }
-  
+
   generateResult(rest::ResponseCode::OK, body.slice());
-  
+
   return RestStatus::DONE;
 }
 
