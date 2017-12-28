@@ -16,6 +16,16 @@ v3.3.1 (XXXX-XX-XX)
 
 * UI: improved the behavior during collection creation in a cluster environment 
 
+* Agency lockup fixes for very small machines.
+
+* Agency performance improvement by finer grained locking.
+
+* Use steady_clock in agency whereever possible.
+
+* Agency prevent Supervision thread crash.
+
+* Fix agency integer overflow in timeout calculation.
+
 
 v3.3.0 (2012-12-14)
 -------------------
