@@ -42,6 +42,8 @@
 
 extern const char* ARGV0; // defined in main.cpp
 
+NS_LOCAL
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief there can be at most one ArangoGlobalConetxt instance because each
 ///        instance creation calls TRIAGENS_REST_INITIALIZE() which in tern
@@ -67,8 +69,10 @@ struct singleton_t {
 
 static singleton_t* SINGLETON = nullptr;
 
-namespace arangodb {
-namespace tests {
+NS_END
+
+NS_BEGIN(arangodb)
+NS_BEGIN(tests)
 
 void init(bool withICU /*= false*/) {
   static singleton_t singleton;
@@ -128,11 +132,12 @@ bool assertRules(
 arangodb::aql::QueryResult executeQuery(
     TRI_vocbase_t& vocbase,
     std::string const& queryString,
-    std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
+    bool waitForSync /* = false*/
 ) {
   auto options = arangodb::velocypack::Parser::fromJson(
 //    "{ \"tracing\" : 1 }"
-    "{ }"
+    waitForSync ? "{ \"waitForSync\": true }" : "{ }"
   );
 
   arangodb::aql::Query query(
@@ -171,8 +176,8 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   );
 }
 
-}
-}
+NS_END // tests
+NS_END // arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

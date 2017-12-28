@@ -13,8 +13,6 @@ if (USE_IRESEARCH)
     IResearch/Containers-test.cpp
     IResearch/IResearchAnalyzerFeature-test.cpp
     IResearch/IResearchFeature-test.cpp
-    IResearch/IResearchLink-test.cpp
-    IResearch/IResearchLinkMeta-test.cpp
     IResearch/IResearchOrder-test.cpp
     IResearch/IResearchView-test.cpp
     IResearch/IResearchViewMeta-test.cpp
@@ -23,6 +21,9 @@ if (USE_IRESEARCH)
     IResearch/IResearchFilterBoolean-test.cpp
     IResearch/IResearchFilterCompare-test.cpp
     IResearch/IResearchFilterIn-test.cpp
+    IResearch/IResearchIndex-test.cpp
+    IResearch/IResearchLink-test.cpp
+    IResearch/IResearchLinkMeta-test.cpp
     IResearch/IResearchQueryAnd-test.cpp
     IResearch/IResearchQueryBooleanTerm-test.cpp
     IResearch/IResearchQueryComplexBoolean-test.cpp
