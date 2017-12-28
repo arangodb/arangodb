@@ -1,12 +1,12 @@
 arangosh&gt; db.example.insert({ <span class="hljs-attr">Hello</span> : <span class="hljs-string">"World"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/17407"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17407"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WBDp_XG--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/17448"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17448"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WHzGQzy--_"</span> 
 }
 arangosh&gt; db.example.insert({ <span class="hljs-attr">Hello</span> : <span class="hljs-string">"World"</span> }, {<span class="hljs-attr">waitForSync</span>: <span class="hljs-literal">true</span>});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/17411"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17411"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WBDp_XK--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/17452"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17452"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WHzGQz2--_"</span> 
 }
