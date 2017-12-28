@@ -111,7 +111,7 @@ struct Field {
   }
 
   float_t boost() const {
-    return _boost;
+    return 1.f; // FIXME TODO remove once IResearch upstream is updated
   }
 
   bool write(irs::data_output&) const noexcept {
@@ -121,7 +121,6 @@ struct Field {
   irs::flags const* _features{ &irs::flags::empty_instance() };
   std::shared_ptr<irs::token_stream> _analyzer;
   irs::string_ref _name;
-  float_t _boost{1.f};
 }; // Field
 
 ////////////////////////////////////////////////////////////////////////////////

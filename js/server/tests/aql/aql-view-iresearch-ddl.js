@@ -167,22 +167,6 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual("TestPath", properties.dataPath);
       }
 
-      // includePersistedCidsOnOpen
-      {
-        db._dropView("TestView");
-        var view = db._createView("TestView", "iresearch", {});
-
-        var properties = view.properties();
-        assertTrue(Boolean === properties.includePersistedCidsOnOpen.constructor);
-        assertEqual(true, properties.includePersistedCidsOnOpen);
-
-        var meta = { includePersistedCidsOnOpen: false };
-        view.properties(meta);
-        properties = view.properties();
-        assertTrue(Boolean === properties.includePersistedCidsOnOpen.constructor);
-        assertEqual(false, properties.includePersistedCidsOnOpen);
-      }
-
       // locale
       {
         db._dropView("TestView");
@@ -249,9 +233,8 @@ function iResearchFeatureAqlTestSuite () {
 
       var meta = { links: {
         "TestCollection0": {},
-        "TestCollection1": { boost: 7, includeAllFields: true, trackListPositions: true, tokenizers: [ "text_en"] },
-        "TestCollection2": { boost: 42, fields: {
-          "a": { boost: 43 },
+        "TestCollection1": { includeAllFields: true, trackListPositions: true, tokenizers: [ "text_en"] },
+        "TestCollection2": { fields: {
           "b": { fields: { "b1": {} } },
           "c": { includeAllFields: true },
           "d": { trackListPositions: true },
@@ -264,8 +247,6 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(3, Object.keys(properties.links).length);
 
       assertTrue(Object === properties.links.TestCollection0.constructor);
-      assertTrue(Number === properties.links.TestCollection0.boost.constructor);
-      assertEqual((1.0).toFixed(6), properties.links.TestCollection0.boost.toFixed(6));
       assertTrue(Object === properties.links.TestCollection0.fields.constructor);
       assertEqual(0, Object.keys(properties.links.TestCollection0.fields).length);
       assertTrue(Boolean === properties.links.TestCollection0.includeAllFields.constructor);
@@ -279,8 +260,6 @@ function iResearchFeatureAqlTestSuite () {
 
 
       assertTrue(Object === properties.links.TestCollection1.constructor);
-      assertTrue(Number === properties.links.TestCollection1.boost.constructor);
-      assertEqual((7.0).toFixed(6), properties.links.TestCollection1.boost.toFixed(6));
       assertTrue(Object === properties.links.TestCollection1.fields.constructor);
       assertEqual(0, Object.keys(properties.links.TestCollection1.fields).length);
       assertTrue(Boolean === properties.links.TestCollection1.includeAllFields.constructor);
@@ -294,14 +273,9 @@ function iResearchFeatureAqlTestSuite () {
 
 
       assertTrue(Object === properties.links.TestCollection2.constructor);
-      assertTrue(Number === properties.links.TestCollection2.boost.constructor);
 
-      assertEqual((42.0).toFixed(6), properties.links.TestCollection2.boost.toFixed(6));
       assertTrue(Object === properties.links.TestCollection2.fields.constructor);
-      assertEqual(5, Object.keys(properties.links.TestCollection2.fields).length);
-
-      assertTrue(Number === properties.links.TestCollection2.fields.a.boost.constructor);
-      assertEqual((43.0).toFixed(6), properties.links.TestCollection2.fields.a.boost.toFixed(6));
+      assertEqual(4, Object.keys(properties.links.TestCollection2.fields).length);
 
       assertTrue(Object === properties.links.TestCollection2.fields.b.fields.constructor);
       assertEqual(1, Object.keys(properties.links.TestCollection2.fields.b.fields).length);
@@ -333,8 +307,6 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(2, Object.keys(properties.links).length);
 
       assertTrue(Object === properties.links.TestCollection1.constructor);
-      assertTrue(Number === properties.links.TestCollection1.boost.constructor);
-      assertEqual((7.0).toFixed(6), properties.links.TestCollection1.boost.toFixed(6));
       assertTrue(Object === properties.links.TestCollection1.fields.constructor);
       assertEqual(0, Object.keys(properties.links.TestCollection1.fields).length);
       assertTrue(Boolean === properties.links.TestCollection1.includeAllFields.constructor);
@@ -348,8 +320,6 @@ function iResearchFeatureAqlTestSuite () {
 
 
       assertTrue(Object === properties.links.TestCollection2.constructor);
-      assertTrue(Number === properties.links.TestCollection2.boost.constructor);
-      assertEqual((1.0).toFixed(6), properties.links.TestCollection2.boost.toFixed(6));
       assertTrue(Object === properties.links.TestCollection2.fields.constructor);
       assertEqual(0, Object.keys(properties.links.TestCollection2.fields).length);
       assertTrue(Boolean === properties.links.TestCollection2.includeAllFields.constructor);
@@ -368,8 +338,6 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(2, Object.keys(properties.links).length);
 
       assertTrue(Object === properties.links.TestCollection0.constructor);
-      assertTrue(Number === properties.links.TestCollection0.boost.constructor);
-      assertEqual((1.0).toFixed(6), properties.links.TestCollection0.boost.toFixed(6));
       assertTrue(Object === properties.links.TestCollection0.fields.constructor);
       assertEqual(0, Object.keys(properties.links.TestCollection0.fields).length);
       assertTrue(Boolean === properties.links.TestCollection0.includeAllFields.constructor);
@@ -383,8 +351,6 @@ function iResearchFeatureAqlTestSuite () {
 
 
       assertTrue(Object === properties.links.TestCollection1.constructor);
-      assertTrue(Number === properties.links.TestCollection1.boost.constructor);
-      assertEqual((1.0).toFixed(6), properties.links.TestCollection1.boost.toFixed(6));
       assertTrue(Object === properties.links.TestCollection1.fields.constructor);
       assertEqual(0, Object.keys(properties.links.TestCollection1.fields).length);
       assertTrue(Boolean === properties.links.TestCollection1.includeAllFields.constructor);
@@ -521,7 +487,6 @@ function iResearchFeatureAqlTestSuite () {
             }
           },
           dataPath: "TestPath",
-          includePersistedCidsOnOpen: false,
           locale: "de_DE.UTF-16",
           threadsMaxIdle: 42,
           threadsMaxTotal: 1
@@ -542,7 +507,6 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(10, properties.commit.consolidate.count.intervalStep);
         assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
         assertEqual("TestPath", properties.dataPath);
-        assertEqual(false, properties.includePersistedCidsOnOpen);
         assertEqual("de_DE.UTF-8", properties.locale);
         assertEqual(42, properties.threadsMaxIdle);
         assertEqual(1, properties.threadsMaxTotal);
@@ -578,7 +542,6 @@ function iResearchFeatureAqlTestSuite () {
             }
           },
           dataPath: "TestPath",
-          includePersistedCidsOnOpen: false,
           locale: "de_DE.UTF-16",
           threadsMaxIdle: 42,
           threadsMaxTotal: 1
@@ -603,7 +566,6 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(10, properties.commit.consolidate.count.intervalStep);
         assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
         assertEqual("TestPath", properties.dataPath);
-        assertEqual(false, properties.includePersistedCidsOnOpen);
         assertEqual("de_DE.UTF-8", properties.locale);
         assertEqual(42, properties.threadsMaxIdle);
         assertEqual(1, properties.threadsMaxTotal);
@@ -639,7 +601,6 @@ function iResearchFeatureAqlTestSuite () {
             }
           },
           dataPath: "TestPath",
-          includePersistedCidsOnOpen: false,
           locale: "de_DE.UTF-16",
           threadsMaxIdle: 42,
           threadsMaxTotal: 1
@@ -664,7 +625,6 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(10, properties.commit.consolidate.count.intervalStep);
         assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
         assertEqual("TestPath", properties.dataPath);
-        assertEqual(false, properties.includePersistedCidsOnOpen);
         assertEqual("de_DE.UTF-8", properties.locale);
         assertEqual(42, properties.threadsMaxIdle);
         assertEqual(1, properties.threadsMaxTotal);
@@ -704,7 +664,6 @@ function iResearchFeatureAqlTestSuite () {
             }
           },
           dataPath: "TestPath",
-          includePersistedCidsOnOpen: false,
           locale: "de_DE.UTF-16",
           threadsMaxIdle: 42,
           threadsMaxTotal: 1
@@ -729,7 +688,6 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(10, properties.commit.consolidate.count.intervalStep);
         assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
         assertEqual("TestPath", properties.dataPath);
-        assertEqual(false, properties.includePersistedCidsOnOpen);
         assertEqual("de_DE.UTF-8", properties.locale);
         assertEqual(42, properties.threadsMaxIdle);
         assertEqual(1, properties.threadsMaxTotal);

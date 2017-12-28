@@ -57,7 +57,6 @@ function runSetup () {
       }
     },
     dataPath: "TestPath",
-    includePersistedCidsOnOpen: false,
     locale: "de_DE.UTF-16",
     threadsMaxIdle: 42,
     threadsMaxTotal: 1
@@ -109,7 +108,6 @@ function recoverySuite () {
         assertEqual(10, properties.commit.consolidate.count.intervalStep);
         assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
         assertEqual("TestPath", properties.dataPath);
-        assertEqual(false, properties.includePersistedCidsOnOpen);
         assertEqual("de_DE.UTF-8", properties.locale);
         assertEqual(42, properties.threadsMaxIdle);
         assertEqual(1, properties.threadsMaxTotal);

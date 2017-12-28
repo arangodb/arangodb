@@ -238,7 +238,6 @@ SECTION("Field_setCid") {
   arangodb::iresearch::Field field;
 
   // reset field
-  field._boost = 25;
   field._features = &features;
   field._analyzer = nullptr;
 
@@ -246,7 +245,6 @@ SECTION("Field_setCid") {
   {
     TRI_voc_cid_t cid = 10;
     arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
-    CHECK(1.f == field._boost);
     CHECK(arangodb::iresearch::DocumentPrimaryKey::CID() == field._name);
     CHECK(&irs::flags::empty_instance() == field._features);
 
@@ -256,7 +254,6 @@ SECTION("Field_setCid") {
     CHECK(!stream->next());
 
     arangodb::iresearch::Field::setCidValue(field, cid);
-    CHECK(1.f == field._boost);
     CHECK(arangodb::iresearch::DocumentPrimaryKey::CID() == field._name);
     CHECK(&irs::flags::empty_instance() == field._features);
     CHECK(stream == field._analyzer.get());
@@ -265,7 +262,6 @@ SECTION("Field_setCid") {
   }
 
   // reset field
-  field._boost = 25;
   field._features = &features;
   field._analyzer = nullptr;
 
@@ -273,7 +269,6 @@ SECTION("Field_setCid") {
   {
     TRI_voc_rid_t rid = 10;
     arangodb::iresearch::Field::setRidValue(field, rid, arangodb::iresearch::Field::init_stream_t());
-    CHECK(1.f == field._boost);
     CHECK(arangodb::iresearch::DocumentPrimaryKey::RID() == field._name);
     CHECK(&irs::flags::empty_instance() == field._features);
 
@@ -283,7 +278,6 @@ SECTION("Field_setCid") {
     CHECK(!stream->next());
 
     arangodb::iresearch::Field::setRidValue(field, rid);
-    CHECK(1.f == field._boost);
     CHECK(arangodb::iresearch::DocumentPrimaryKey::RID() == field._name);
     CHECK(&irs::flags::empty_instance() == field._features);
     CHECK(stream == field._analyzer.get());
@@ -402,7 +396,7 @@ SECTION("FieldIterator_traverse_complex_object_custom_nested_delimiter") {
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
     CHECK(expected_features == field.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(linkMeta._boost == field.boost());
+    CHECK(1.f == field.boost());
 
     ++it;
   }
@@ -472,7 +466,7 @@ SECTION("FieldIterator_traverse_complex_object_all_fields") {
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
     CHECK(expected_features == field.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(linkMeta._boost == field.boost());
+    CHECK(1.f == field.boost());
 
     ++it;
   }
@@ -551,7 +545,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields") {
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
     CHECK(expected_features == field.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(linkMeta._boost == field.boost());
+    CHECK(1.f == field.boost());
   }
 
   CHECK(expectedValues.empty());
@@ -575,10 +569,9 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
   }");
 
   auto linkMetaJson = arangodb::velocypack::Parser::fromJson("{ \
-    \"boost\" : 1, \
     \"includeAllFields\" : false, \
     \"trackListPositions\" : true, \
-    \"fields\" : { \"boost\" : { \"boost\" : 10 } }, \
+    \"fields\" : { \"boost\" : { } }, \
     \"tokenizers\": [ \"identity\" ] \
   }");
 
@@ -602,7 +595,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
   auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
   CHECK(expected_features == value.features());
   CHECK(&expected_analyzer->type() == &analyzer.type());
-  CHECK(10.f == value.boost());
+  CHECK(1.f == value.boost());
 
   ++it;
   CHECK(!it.valid());
@@ -1008,7 +1001,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields_custom_list_of
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
     CHECK(expected_features == field.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(linkMeta._boost == field.boost());
+    CHECK(1.f == field.boost());
   }
 
   CHECK(expectedValues.empty());
@@ -1035,17 +1028,16 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   auto const slice = json->slice();
 
   auto linkMetaJson = arangodb::velocypack::Parser::fromJson("{ \
-    \"boost\" : 1, \
     \"includeAllFields\" : true, \
     \"trackListPositions\" : true, \
     \"fields\" : { \
-       \"boost\" : { \"boost\" : 10, \"tokenizers\": [ \"identity\" ] }, \
+       \"boost\" : { \"tokenizers\": [ \"identity\" ] }, \
        \"keys\" : { \"trackListPositions\" : false, \"tokenizers\": [ \"identity\" ] }, \
-       \"depth\" : { \"boost\" : 5, \"trackListPositions\" : true }, \
-       \"fields\" : { \"includeAllFields\" : false, \"boost\" : 3, \"fields\" : { \"fieldA\" : { \"includeAllFields\" : true } } }, \
+       \"depth\" : { \"trackListPositions\" : true }, \
+       \"fields\" : { \"includeAllFields\" : false, \"fields\" : { \"fieldA\" : { \"includeAllFields\" : true } } }, \
        \"listValuation\" : { \"includeAllFields\" : false }, \
        \"array\" : { \
-         \"fields\" : { \"subarr\" : { \"trackListPositions\" : false }, \"subobj\": { \"includeAllFields\" : false }, \"id\" : { \"boost\" : 2 } } \
+         \"fields\" : { \"subarr\" : { \"trackListPositions\" : false }, \"subobj\": { \"includeAllFields\" : false }, \"id\" : { } } \
        } \
      }, \
     \"tokenizers\": [ \"identity\", \"iresearch-document-empty\" ] \
@@ -1121,7 +1113,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_features == value.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(10.f == value.boost());
+    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1134,7 +1126,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     CHECK(mangleNumeric("depth") == value.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     CHECK(analyzer.next());
-    CHECK(5.f == value.boost());
+    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1152,7 +1144,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_features == value.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(3.f == value.boost());
+    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1165,7 +1157,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     CHECK(mangleString("fields.fieldA.name", "iresearch-document-empty") == value.name());
     auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
     CHECK(!analyzer.next());
-    CHECK(3.f == value.boost());
+    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1222,7 +1214,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     CHECK(mangleNumeric("array[0].id") == value.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     CHECK(analyzer.next());
-    CHECK(2.f == value.boost());
+    CHECK(1.f == value.boost());
   }
 
 
@@ -1309,7 +1301,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_features == value.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(2.f == value.boost());
+    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1322,7 +1314,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     CHECK(mangleString("array[1].id", "iresearch-document-empty") == value.name());
     auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
     CHECK(!analyzer.next());
-    CHECK(2.f == value.boost());
+    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1335,7 +1327,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     CHECK(mangleNumeric("array[2].id") == value.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     CHECK(analyzer.next());
-    CHECK(2.f == value.boost());
+    CHECK(1.f == value.boost());
   }
 
   // array[2].subarr[0-2]

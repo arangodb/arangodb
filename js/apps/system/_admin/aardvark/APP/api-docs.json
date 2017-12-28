@@ -681,11 +681,6 @@
                     }, 
                     "type": "array"
                 }, 
-                "boost": {
-                    "description": "Multiplier of the rank value computed for documents matching on this field (default: 1.0).\n\n", 
-                    "format": "float", 
-                    "type": "float"
-                }, 
                 "includeAllFields": {
                     "description": "The flag determines whether or not to index all fields on a particular level of depth (default: false).\n\n", 
                     "type": "boolean"
@@ -712,11 +707,6 @@
                         "type": "string"
                     }, 
                     "type": "array"
-                }, 
-                "boost": {
-                    "description": "Multiplier of the rank value computed for documents matching on this field (default: 1.0).\n\n", 
-                    "format": "float", 
-                    "type": "float"
                 }, 
                 "includeAllFields": {
                     "description": "The flag determines whether or not to index all fields on a particular level of depth (default: false).\n\n", 
@@ -1539,11 +1529,6 @@
                     }, 
                     "type": "array"
                 }, 
-                "boost": {
-                    "description": "Multiplier of the rank value computed for documents matching on this field (default: 1.0).\n\n", 
-                    "format": "float", 
-                    "type": "float"
-                }, 
                 "includeAllFields": {
                     "description": "The flag determines whether or not to index all fields on a particular level of depth (default: false).\n\n", 
                     "type": "boolean"
@@ -1570,11 +1555,6 @@
                         "type": "string"
                     }, 
                     "type": "array"
-                }, 
-                "boost": {
-                    "description": "Multiplier of the rank value computed for documents matching on this field (default: 1.0).\n\n", 
-                    "format": "float", 
-                    "type": "float"
                 }, 
                 "includeAllFields": {
                     "description": "The flag determines whether or not to index all fields on a particular level of depth (default: false).\n\n", 

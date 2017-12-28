@@ -408,7 +408,6 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
   : _collections(mask),
     _commit(mask),
     _dataPath(mask),
-    _includePersistedCidsOnOpen(mask),
     _locale(mask),
     _threadsMaxIdle(mask),
     _threadsMaxTotal(mask) {
@@ -416,7 +415,6 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
 
 IResearchViewMeta::IResearchViewMeta()
   : _dataPath(""),
-    _includePersistedCidsOnOpen(true), // match previous behaviour of persisted list of CIDs
     _locale(std::locale::classic()),
     _threadsMaxIdle(5),
     _threadsMaxTotal(5) {
@@ -442,7 +440,6 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _collections = std::move(other._collections);
     _commit = std::move(other._commit);
     _dataPath = std::move(other._dataPath);
-    _includePersistedCidsOnOpen = std::move(other._includePersistedCidsOnOpen);
     _locale = std::move(other._locale);
     _threadsMaxIdle = std::move(other._threadsMaxIdle);
     _threadsMaxTotal = std::move(other._threadsMaxTotal);
@@ -456,7 +453,6 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
     _collections = other._collections;
     _commit = other._commit;
     _dataPath = other._dataPath;
-    _includePersistedCidsOnOpen = other._includePersistedCidsOnOpen;
     _locale = other._locale;
     _threadsMaxIdle = other._threadsMaxIdle;
     _threadsMaxTotal = other._threadsMaxTotal;
@@ -475,10 +471,6 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   }
 
   if (_dataPath != other._dataPath) {
-    return false; // values do not match
-  }
-
-  if (_includePersistedCidsOnOpen != other._includePersistedCidsOnOpen) {
     return false; // values do not match
   }
 
@@ -607,27 +599,6 @@ bool IResearchViewMeta::init(
   }
 
   {
-    // optional bool
-    static const std::string fieldName("includePersistedCidsOnOpen");
-
-    mask->_includePersistedCidsOnOpen = slice.hasKey(fieldName);
-
-    if (!mask->_includePersistedCidsOnOpen) {
-      _includePersistedCidsOnOpen = defaults._includePersistedCidsOnOpen;
-    } else {
-      auto field = slice.get(fieldName);
-
-      if (!field.isBool()) {
-        errorField = fieldName;
-
-        return false;
-      }
-
-      _includePersistedCidsOnOpen = field.getBool();
-    }
-  }
-
-  {
     // optional locale name
     static const std::string fieldName("locale");
 
@@ -723,11 +694,6 @@ bool IResearchViewMeta::json(
 
   if ((!ignoreEqual || _dataPath != ignoreEqual->_dataPath) && (!mask || mask->_dataPath) && !_dataPath.empty()) {
     builder.add("dataPath", arangodb::velocypack::Value(_dataPath));
-  }
-
-  if ((!ignoreEqual || _includePersistedCidsOnOpen != ignoreEqual->_includePersistedCidsOnOpen)
-      && (!mask || mask->_includePersistedCidsOnOpen)) {
-    builder.add("includePersistedCidsOnOpen", arangodb::velocypack::Value(_includePersistedCidsOnOpen));
   }
 
   if ((!ignoreEqual || _locale != ignoreEqual->_locale) && (!mask || mask->_locale)) {

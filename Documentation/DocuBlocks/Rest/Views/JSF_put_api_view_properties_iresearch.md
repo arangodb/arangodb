@@ -16,9 +16,6 @@ The set of collection names associated with the properties.
 The link properties. If specified, then *properties*
 should be a JSON object containing the following attributes:
 
-@RESTSTRUCT{boost,JSF_post_api_view_link_props,float,optional,float}
-Multiplier of the rank value computed for documents matching on this field (default: 1.0).
-
 @RESTSTRUCT{includeAllFields,JSF_post_api_view_link_props,boolean,optional,bool}
 The flag determines whether or not to index all fields on a particular level of depth (default: false).
 
@@ -31,9 +28,6 @@ The list of analyzers to be used for indexing of string values (default: ["ident
 @RESTSTRUCT{[field-name],JSF_post_api_view_link_props,object,optional,JSF_post_api_view_link_props_field_props}
 The field properties. If specified, then *properties*
 should be a JSON object containing the following attributes:
-
-@RESTSTRUCT{boost,JSF_post_api_view_link_props_field_props,float,optional,float}
-Multiplier of the rank value computed for documents matching on this field (default: 1.0).
 
 @RESTSTRUCT{includeAllFields,JSF_post_api_view_link_props_field_props,boolean,optional,bool}
 The flag determines whether or not to index all fields on a particular level of depth (default: false).
@@ -98,10 +92,6 @@ commit call without any added benefits.
 
 @RESTBODYPARAM{dataPath,string,optional,string}
 The filesystem path where to store persisted index data (default: *"<ArangoDB database path>/iresearch-<index id>"*).
-
-@RESTSTRUCT{includePersistedCidsOnOpen,boolean,optional,bool}
-Should CIDs in the persisted store be included in the list of tracked CIDs.
-If false then only the runtime added/dropped CIDs will be tracked by the view.
 
 @RESTBODYPARAM{locale,string,optional,string}
 The default locale used for queries on analyzed string values (default: *C*).

@@ -309,10 +309,6 @@ During view modification the following directives apply:
 * dataPath: <optional> (default: \<ArangoDB database path\>/iresearch-\<view-id\>)
   the filesystem path where to store persisted view metadata
 
-* includePersistedCidsOnOpen: <optional> (default: true)
-  should CIDs in the persisted store be included in the list of tracked CIDs
-  if false then only the runtime added/dropped CIDs will be tracked by the view
-
 * locale: <optional> (default: 'C')
   the default locale used for ordering processed attribute names
 
@@ -347,11 +343,6 @@ During view modification the following directives apply:
 * analyzers: \<optional\> (default: [ 'identity' ])
   a list of analyzers, by name as defined via the section [Analyzers], that
   should be applied to values of processed document attributes
-
-* boost: \<optional\> (default: 1.0)
-  sort preference factor that should be applied to values of processed 
-  document attributes, documents otherwise scored equally but having a higher
-  preference will appear sooner/higher in the sorted resultset
 
 * fields: \<optional\> (default: {})
   a map{\<attribute-name\>, [Link properties]} of fields that should be

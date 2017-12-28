@@ -103,10 +103,9 @@ void SchedulerFeature::validateOptions(
 
   if (_nrMaximalThreads == 0) {
     _nrMaximalThreads = 4 * _nrServerThreads;
-  }
-
-  if (_nrMaximalThreads < 64) {
-    _nrMaximalThreads = 64;
+    if (_nrMaximalThreads < 64) {
+      _nrMaximalThreads = 64;
+    }
   }
 
   if (_nrMinimalThreads > _nrMaximalThreads) {
