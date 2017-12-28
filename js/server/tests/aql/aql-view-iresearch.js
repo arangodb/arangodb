@@ -53,10 +53,6 @@ function iResearchAqlTestSuite () {
             fields: {
               text: {
                 tokenizers: [ "text_en" ]
-              },
-              boostedText : {
-                tokenizers: [ "text_en" ],
-                boost : 2
               }
             }
           }
@@ -75,10 +71,6 @@ function iResearchAqlTestSuite () {
       c.save({ name: "half", text: "quick fox over lazy" });
       c.save({ name: "other half", text: "the brown jumps the dog" });
       c.save({ name: "quarter", text: "quick over" });
-      c.save({ name: "boosted full", boostedText: "the quick brown fox jumps over the lazy dog" });
-      c.save({ name: "boosted half", boostedText: "quick fox over lazy"});
-      c.save({ name: "boosted other half", boostedText: "the brown jumps the dog" });
-      c.save({ name: "boosted quarter", boostedText: "quick over" });
 
       c.save({ name: "numeric", anotherNumericField: 0 });
       c.save({ name: "null", anotherNullField: null });
@@ -207,7 +199,7 @@ function iResearchAqlTestSuite () {
     testAttributeNeqFilter : function () {
       var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a != 'foo'  RETURN doc", null, { waitForSync: true }).json;
 
-      assertEqual(result.length, 21); // include documents without attribute 'a'
+      assertEqual(result.length, 17); // include documents without attribute 'a'
       result.forEach(function(res) {
         assertFalse(res.a === 'foo');
       });
@@ -257,22 +249,6 @@ function iResearchAqlTestSuite () {
 
       assertEqual(result.length, 1);
       assertEqual(result[0].name, 'full');
-    },
-
-    testPhraseFilterBoosted : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, 'quick brown fox jumps', 'text_en') OR PHRASE(doc.boostedText, 'quick brown fox jumps', 'text_en') SORT TFIDF(doc, true) DESC RETURN doc", null, { waitForSync: true }).json;
-
-      assertEqual(result.length, 2);
-      assertEqual(result[0].name, 'boosted full');
-      assertEqual(result[1].name, 'full');
-    },
-
-    testPhraseFilterProximityBoosted : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, 'quick', 2, 'jumps', 'text_en') OR PHRASE(doc.boostedText, 'quick', 2, 'jumps', 'text_en') SORT BM25(doc) DESC RETURN doc", null, { waitForSync: true }).json;
-
-      assertEqual(result.length, 2);
-      assertEqual(result[0].name, 'boosted full');
-      assertEqual(result[1].name, 'full');
     },
 
     testExistsFilter : function () {
