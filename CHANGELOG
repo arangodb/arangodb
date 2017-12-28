@@ -26,6 +26,9 @@ v3.3.0 (2012-12-14)
 v3.3.rc8 (2017-12-12)
 ---------------------
 
+* UI: fixed broken foxx configuration keys. Some valid configuration values
+  could not be edited via the ui.
+
 * UI: pressing the return key inside a select2 box no longer triggers the modal's
   success function
 
