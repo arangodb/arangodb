@@ -337,14 +337,6 @@ class Agent : public arangodb::Thread,
   arangodb::basics::ConditionVariable _appendCV;
   bool _agentNeedsWakeup;
 
-  /// @brief Condition variable for waiting for confirmation. This is used
-  /// in threads that wait until the _commitIndex has reached a certain
-  /// index. Whenever _commitIndex is advanced (by incoming confirmations
-  /// in AgentCallbacks and later discovery in advanceCommitIndex). All
-  /// changes to _commitIndex are done under the mutex of _waitForCV
-  /// and are followed by a broadcast on this condition variable.
-  mutable arangodb::basics::ConditionVariable _waitForCV;
-
   /// The following two members are strictly only used in the
   /// Agent thread in sendAppendEntriesRPC. Therefore no protection is
   /// necessary for these:
