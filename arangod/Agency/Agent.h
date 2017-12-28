@@ -313,8 +313,9 @@ class Agent : public arangodb::Thread,
   /// answers to appendEntriesRPC messages come in on the leader, and when
   /// appendEntriesRPC calls are received on the follower. In each case
   /// we hold the _ioLock when _commitIndex is changed. Reading and writing
-  /// must be done under the mutex of _waitForCV to allow a thread to wait
-  /// for a change using that condition variable.
+  /// must be done under the write lock of _outputLog and the mutex of 
+  /// _waitForCV to allow a thread to wait for a change using that
+  /// condition variable.
   index_t _commitIndex;
 
   /// @brief Spearhead (write) kv-store
@@ -387,15 +388,20 @@ class Agent : public arangodb::Thread,
   /// and are followed by a broadcast on this condition variable.
   mutable arangodb::basics::ConditionVariable _waitForCV;
 
-  /// Rules for writes and locks: This covers the following locks:
+  /// Rules for access and locks: This covers the following locks:
   ///    _ioLock (here)
   ///    _logLock (in State)
+  ///    _outputLock reading or writing
+  ///    _waitForCV
   ///    _tiLock (here)
   /// One may never acquire a log in this list whilst holding another one
   /// that appears further down on this list. This is to prevent deadlock.
+  //
   /// For _logLock: This is local to State and we make sure that the few
   /// functions in State that call Agent methods only call those that do
-  /// not acquire the _ioLock.
+  /// not acquire the _ioLock. They only call Agent::setPersistedState which
+  /// acquires _outputLock and _waitForCV but this is OK.
+  //
   /// For _ioLock: We put in assertions to ensure that when this lock is
   /// acquired we do not have the _tiLock.
 
