@@ -81,7 +81,7 @@ class IdentityTokenizer: public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(IdentityTokenizer, IDENTITY_TOKENIZER_NAME);
-REGISTER_ANALYZER_TEXT(IdentityTokenizer, IdentityTokenizer::make);
+REGISTER_ANALYZER_JSON(IdentityTokenizer, IdentityTokenizer::make);
 
 /*static*/ irs::analysis::analyzer::ptr IdentityTokenizer::make(irs::string_ref const& args) {
   PTR_NAMED(IdentityTokenizer, ptr);
@@ -261,7 +261,8 @@ NS_BEGIN(iresearch)
     irs::string_ref const& type,
     irs::string_ref const& properties
 ) {
-  return irs::analysis::analyzers::get(type, properties);
+  // ArangoDB, for API consistency, only supports analyzers configurable via jSON
+  return irs::analysis::analyzers::get(type, irs::text_format::json, properties);
 }
 
 IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(

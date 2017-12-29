@@ -33,16 +33,43 @@
 
 NS_LOCAL
 
+struct entry_key_t {
+  const irs::text_format::type_id& args_format_;
+  const irs::string_ref name_;
+  entry_key_t(
+      const irs::string_ref& name, const irs::text_format::type_id& args_format
+  ): args_format_(args_format), name_(name) {}
+  bool operator==(const entry_key_t& other) const NOEXCEPT {
+    return &args_format_ == &other.args_format_ && name_ == other.name_;
+  }
+};
+
+NS_END
+
+NS_BEGIN(std)
+
+template<>
+struct hash<entry_key_t> {
+  size_t operator()(const entry_key_t& value) const {
+    return std::hash<irs::string_ref>()(value.name_);
+  }
+}; // hash
+
+NS_END // std
+
+NS_LOCAL
+
 const std::string FILENAME_PREFIX("libanalyzer-");
 
 class analyzer_register:
-  public irs::tagged_generic_register<irs::string_ref, irs::analysis::analyzer::ptr(*)(const irs::string_ref& args), irs::string_ref, analyzer_register> {
+  public irs::tagged_generic_register<entry_key_t, irs::analysis::analyzer::ptr(*)(const irs::string_ref& args), irs::string_ref, analyzer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
-    std::string filename(FILENAME_PREFIX.size() + key.size(), 0);
+    auto& name = key.name_;
+    std::string filename(FILENAME_PREFIX.size() + name.size(), 0);
 
     std::memcpy(&filename[0], FILENAME_PREFIX.c_str(), FILENAME_PREFIX.size());
-    std::memcpy(&filename[0] + FILENAME_PREFIX.size(), key.c_str(), key.size());
+    std::memcpy(&filename[0] + FILENAME_PREFIX.size(), name.c_str(), name.size());
 
     return filename;
   }
@@ -53,14 +80,21 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-/*static*/ bool analyzers::exists(const string_ref& name) {
-  return analyzer_register::instance().get(name);
+/*static*/ bool analyzers::exists(
+    const string_ref& name,
+    const irs::text_format::type_id& args_format
+) {
+  return analyzer_register::instance().get(entry_key_t(name, args_format));
 }
 
 /*static*/ analyzer::ptr analyzers::get(
-  const string_ref& name, const string_ref& args
+    const string_ref& name,
+    const irs::text_format::type_id& args_format,
+    const string_ref& args
 ) {
-  auto* factory = analyzer_register::instance().get(name);
+  auto* factory =
+    analyzer_register::instance().get(entry_key_t(name, args_format));
+
   return factory ? factory(args) : nullptr;
 }
 
@@ -77,9 +111,13 @@ NS_BEGIN(analysis)
 }
 
 /*static*/ bool analyzers::visit(
-  const std::function<bool(const string_ref&)>& visitor
+  const std::function<bool(const string_ref&, const irs::text_format::type_id&)>& visitor
 ) {
-  return analyzer_register::instance().visit(visitor);
+  analyzer_register::visitor_t wrapper = [&visitor](const entry_key_t& key)->bool {
+    return visitor(key.name_, key.args_format_);
+  };
+
+  return analyzer_register::instance().visit(wrapper);
 }
 
 // -----------------------------------------------------------------------------
@@ -94,7 +132,7 @@ analyzer_registrar::analyzer_registrar(
 ) {
   irs::string_ref source_ref(source);
   auto entry = analyzer_register::instance().set(
-    type.name(),
+    entry_key_t(type.name(), args_format),
     factory,
     source_ref.null() ? nullptr : &source_ref
   );
@@ -102,7 +140,8 @@ analyzer_registrar::analyzer_registrar(
   registered_ = entry.second;
 
   if (!registered_ && factory != entry.first) {
-    auto* registered_source = analyzer_register::instance().tag(type.name());
+    auto* registered_source =
+      analyzer_register::instance().tag(entry_key_t(type.name(), args_format));
 
     if (source && registered_source) {
       IR_FRMT_WARN(

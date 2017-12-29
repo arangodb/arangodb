@@ -110,10 +110,6 @@ struct Field {
     return *_analyzer;
   }
 
-  float_t boost() const {
-    return 1.f; // FIXME TODO remove once IResearch upstream is updated
-  }
-
   bool write(irs::data_output&) const noexcept {
     return true;
   }

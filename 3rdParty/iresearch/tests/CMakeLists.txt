@@ -31,7 +31,7 @@ set(IResearchTests_INCLUDE_DIR
   ""
 )
 
-configure_file( 
+configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/tests_config.hpp.in" 
   "${IReSearch_generated_INCLUDE_DIR}/tests_config.hpp" 
 )
@@ -132,6 +132,8 @@ add_executable(${IResearchTests_TARGET_NAME}-shared
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
 )
 
+add_sanitizers(${IResearchTests_TARGET_NAME}-shared)
+
 add_executable(${IResearchTests_TARGET_NAME}-static
   EXCLUDE_FROM_ALL ${IReSearch_sources}
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
@@ -139,6 +141,8 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   ./formats/formats_10_tests.cpp
   ./iql/parser_test.cpp
 )
+
+add_sanitizers(${IResearchTests_TARGET_NAME}-static)
 
 add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-delimited-shared

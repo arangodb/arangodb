@@ -126,7 +126,7 @@ class TestAnalyzer: public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestInsertAnalyzer");
-REGISTER_ANALYZER_TEXT(TestAnalyzer, TestAnalyzer::make);
+REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

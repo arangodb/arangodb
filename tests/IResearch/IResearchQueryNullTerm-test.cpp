@@ -133,7 +133,7 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
-REGISTER_ANALYZER_TEXT(TestDelimAnalyzer, TestDelimAnalyzer::make);
+REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

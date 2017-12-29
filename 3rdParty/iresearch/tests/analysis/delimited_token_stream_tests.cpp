@@ -360,7 +360,7 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 TEST_F(delimited_token_stream_tests, test_load) {
   {
     irs::string_ref data("abc,def,ghi"); // quoted terms should be honoured
-    auto stream = irs::analysis::analyzers::get("delimited", ",");
+    auto stream = irs::analysis::analyzers::get("delimited", irs::text_format::text, ",");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));

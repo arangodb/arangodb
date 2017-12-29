@@ -106,7 +106,7 @@ private:
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestAnalyzer");
-REGISTER_ANALYZER_TEXT(TestAnalyzer, TestAnalyzer::make);
+REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make);
 
 struct Analyzer {
   irs::string_ref type;

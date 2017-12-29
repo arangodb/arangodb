@@ -24,6 +24,7 @@
 #ifndef IRESEARCH_DOCUMENT_GENERATOR_H
 #define IRESEARCH_DOCUMENT_GENERATOR_H
 
+#include "analysis/analyzer.hpp"
 #include "analysis/token_streams.hpp"
 #include "utils/iterator.hpp"
 #include "utils/utf8_path.hpp"
@@ -55,7 +56,6 @@ struct ifield {
   virtual ~ifield() {};
 
   virtual ir::string_ref name() const = 0;
-  virtual float_t boost() const = 0;
   virtual bool write(ir::data_output& out) const = 0;
   virtual ir::token_stream& get_tokens() const = 0;
   virtual const ir::flags& features() const = 0;
@@ -80,16 +80,12 @@ class field_base : public ifield {
   void name(std::string&& name) { name_ = std::move(name); }
   void name(const std::string& name) { name_ = name; }
 
-  void boost(float_t value) { boost_ = value; }
-  float_t boost() const { return boost_; }
-
   const ir::flags& features() const { return features_; };
   ir::flags& features() { return features_; }
 
  private:
   iresearch::flags features_;
   std::string name_;
-  float_t boost_{ 1.f };
 }; // field_base
 
 //////////////////////////////////////////////////////////////////////////////
@@ -333,6 +329,27 @@ class delim_doc_generator : public doc_generator_base {
   doc_template* doc_;
   uint32_t delim_;
 }; // delim_doc_generator
+
+// Generates documents from a CSV file
+class csv_doc_generator: public doc_generator_base {
+ public:
+  struct doc_template: document {
+    virtual void init() = 0;
+    virtual void value(size_t idx, const irs::string_ref& value) = 0;
+    virtual void end() {}
+    virtual void reset() {}
+  }; // doc_template
+
+  csv_doc_generator(const irs::utf8_path& file, doc_template& doc);
+  virtual const tests::document* next() override;
+  virtual void reset() override;
+
+ private:
+  doc_template& doc_;
+  std::ifstream ifs_;
+  std::string line_;
+  irs::analysis::analyzer::ptr stream_;
+};
 
 /* Generates documents from json file based on type of JSON value */
 class json_doc_generator: public doc_generator_base {

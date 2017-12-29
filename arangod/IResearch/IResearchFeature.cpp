@@ -128,7 +128,14 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
 }
 
 void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
-  irs::scorers::visit([&functions](const irs::string_ref& name)->bool {
+  irs::scorers::visit([&functions](
+     irs::string_ref const& name, irs::text_format::type_id const& args_format
+  )->bool {
+    // ArangoDB, for API consistency, only supports scorers configurable via jSON
+    if (irs::text_format::json != args_format) {
+      return true;
+    }
+
     std::string upperName = name;
 
     // AQL function external names are always in upper case

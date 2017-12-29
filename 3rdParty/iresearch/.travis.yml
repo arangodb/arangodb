@@ -339,6 +339,86 @@ matrix:
         - BUILD_TYPE="Release"
 
     ############################################################################
+    # GCC 7
+    ############################################################################
+
+    ############################################################################
+    # Debug build, static library
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc7 is not available in `precise`
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-7
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, static library
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc7 is not available in `precise`
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-7
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE="Release" STATIC_LIB="true"
+
+    ############################################################################
+    # Debug build, shared library
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc7 is not available in `precise`
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-7
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, shared library
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc7 is not available in `precise`
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-7
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE="Release"
+
+    ############################################################################
     # OSX
     ############################################################################
 
@@ -481,7 +561,7 @@ before_script:
   ############################################################################
   # Go back to the root of the project and setup the build directory
   ############################################################################
-  - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE}"
+  - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DUSE_TESTS=On"
   - cd ${TRAVIS_BUILD_DIR}
   - (mkdir build && cd build && cmake .. ${CMAKE_OPTIONS})
 
@@ -496,11 +576,16 @@ script:
         TEST_EXECUTABLE_SUFFIX=""
       fi
       if [[ "${SUPPRESS_MAKE_ERRORS}" == true ]]; then
-        make iresearch-tests${BUILD_TYPE_SUFFIX} 2>/dev/null
+        if ! make -j 1 iresearch-tests${BUILD_TYPE_SUFFIX} 2> stderr.log; then
+          head --bytes=2097152 stderr.log
+          exit 1
+        fi
       else
         make iresearch-tests${BUILD_TYPE_SUFFIX}
       fi
-      travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}
+      if ! travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}; then
+        exit 1
+      fi
       tar -czf iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}${BUILD_TYPE_SUFFIX}-${TRAVIS_BUILD_NUMBER}.tar.gz bin
 
 deploy:

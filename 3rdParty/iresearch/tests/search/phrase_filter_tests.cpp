@@ -29,6 +29,9 @@
 #include "search/phrase_filter.hpp"
 #include "store/memory_directory.hpp"
 #include "store/fs_directory.hpp"
+#ifndef IRESEARCH_DLL
+#include "search/term_query.hpp"
+#endif
 
 namespace ir = iresearch;
 
@@ -163,21 +166,40 @@ class phrase_filter_test_case : public filter_test_case_base {
     }
 
     // search "fox" on field without positions
+    // which is ok for single word phrases
     {
       ir::by_phrase q;
-      q.field("phrase")
-       .push_back("fox");
+      q.field("phrase").push_back("fox");
 
       auto prepared = q.prepare(rdr);
+#ifndef IRESEARCH_DLL
+      // check single word phrase optimization
+      ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+#endif
+      irs::bytes_ref actual_value;
       auto sub = rdr.begin();
+      auto column = sub->column_reader("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+
       auto docs = prepared->execute(*sub);
-      ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
+      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs->value()));
+      auto docs_seek = prepared->execute(*sub);
+      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::doc_id_t>::valid(docs_seek->value()));
+
+      ASSERT_TRUE(docs->next());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
+
       ASSERT_FALSE(docs->next());
       ASSERT_TRUE(ir::type_limits<ir::type_t::doc_id_t>::eof(docs->value()));
     }
 
-    // equals to term_filter "fox" with phrase offset 
-    // which is does not matter
+    // equals to term_filter "fox" with phrase offset
+    // which does not matter
     {
       irs::bytes_ref actual_value;
 
@@ -186,6 +208,10 @@ class phrase_filter_test_case : public filter_test_case_base {
        .push_back("fox", ir::integer_traits<size_t>::const_max);
 
       auto prepared = q.prepare(rdr);
+#ifndef IRESEARCH_DLL
+      // check single word phrase optimization
+      ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+#endif
       auto sub = rdr.begin();
       auto column = sub->column_reader("name");
       ASSERT_NE(nullptr, column);

@@ -196,15 +196,16 @@ struct Doc {
     mutable irs::analysis::analyzer::ptr stream;
     static const std::string& aname;
     static const std::string& aignore;
+    static const irs::text_format::type_id& aignore_format;
 
     TextField(const std::string& n, const irs::flags& flags)
       : Field(n, flags) {
-      stream = irs::analysis::analyzers::get(aname, aignore);
+      stream = irs::analysis::analyzers::get(aname, aignore_format, aignore);
     }
 
     TextField(const std::string& n, const irs::flags& flags, std::string& a)
       : Field(n, flags), f(a) {
-      stream = irs::analysis::analyzers::get(aname, aignore);
+      stream = irs::analysis::analyzers::get(aname, aignore_format, aignore);
     }
 
     irs::token_stream& get_tokens() const override {
@@ -291,6 +292,7 @@ struct Doc {
 std::atomic<uint64_t> Doc::next_id(0);
 const std::string& Doc::TextField::aname = std::string("text");
 const std::string& Doc::TextField::aignore = std::string("{\"locale\":\"en\", \"ignored_words\":[\"abc\", \"def\", \"ghi\"]}");
+const irs::text_format::type_id& Doc::TextField::aignore_format = irs::text_format::json;
 
 struct WikiDoc : Doc {
   WikiDoc() {

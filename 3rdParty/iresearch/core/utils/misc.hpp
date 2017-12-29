@@ -43,9 +43,10 @@ NS_ROOT
   #define IRESEARCH_COUNTOF(x) iresearch::detail::countof(x)
 #elif _MSC_VER // Visual C++ fallback
   #define IRESEARCH_COUNTOF(x) _countof(x)
-#elif __cplusplus >= 199711L && ( // C++ 98 trick
-      defined(__clang__) ||
-      (defined(__GNUC__) && ((__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4)))
+#elif __cplusplus >= 199711L && \
+      (defined(__clang__) \
+       || (defined(__GNUC__) && ((__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4))) \
+      ) // C++ 98 trick
   template <typename T, std::size_t N>
   char(&COUNTOF_ARRAY_ARGUMENT(T(&)[N]))[N];
   #define IRESEARCH_COUNTOF(x) sizeof(COUNTOF_ARRAY_ARGUMENT(x))

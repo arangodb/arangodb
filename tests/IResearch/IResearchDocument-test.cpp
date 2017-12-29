@@ -78,7 +78,7 @@ class EmptyTokenizer: public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(EmptyTokenizer, "iresearch-document-empty");
-REGISTER_ANALYZER_TEXT(EmptyTokenizer, EmptyTokenizer::make);
+REGISTER_ANALYZER_JSON(EmptyTokenizer, EmptyTokenizer::make);
 
 class InvalidTokenizer: public irs::analysis::analyzer {
  public:
@@ -108,7 +108,7 @@ class InvalidTokenizer: public irs::analysis::analyzer {
 bool InvalidTokenizer::returnNullFromMake = false;
 
 DEFINE_ANALYZER_TYPE_NAMED(InvalidTokenizer, "iresearch-document-invalid");
-REGISTER_ANALYZER_TEXT(InvalidTokenizer, InvalidTokenizer::make);
+REGISTER_ANALYZER_JSON(InvalidTokenizer, InvalidTokenizer::make);
 
 std::string mangleBool(std::string name) {
   arangodb::iresearch::kludge::mangleBool(name);
@@ -377,7 +377,7 @@ SECTION("FieldIterator_traverse_complex_object_custom_nested_delimiter") {
   CHECK(it != arangodb::iresearch::FieldIterator::END);
 
   // default analyzer
-  auto const expected_analyzer =  irs::analysis::analyzers::get("identity", "");
+  auto const expected_analyzer =  irs::analysis::analyzers::get("identity", irs::text_format::json, "");
   auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   CHECK(nullptr != analyzers);
   auto const expected_features = analyzers->get("identity")->features();
@@ -396,7 +396,6 @@ SECTION("FieldIterator_traverse_complex_object_custom_nested_delimiter") {
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
     CHECK(expected_features == field.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(1.f == field.boost());
 
     ++it;
   }
@@ -447,7 +446,7 @@ SECTION("FieldIterator_traverse_complex_object_all_fields") {
   CHECK(it != arangodb::iresearch::FieldIterator::END);
 
   // default analyzer
-  auto const expected_analyzer = irs::analysis::analyzers::get("identity", "");
+  auto const expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
   auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   CHECK(nullptr != analyzers);
   auto const expected_features = analyzers->get("identity")->features();
@@ -466,7 +465,6 @@ SECTION("FieldIterator_traverse_complex_object_all_fields") {
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
     CHECK(expected_features == field.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(1.f == field.boost());
 
     ++it;
   }
@@ -531,7 +529,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields") {
   linkMeta._nestListValues = true; // allow indexes in field names
 
   // default analyzer
-  auto const expected_analyzer = irs::analysis::analyzers::get("identity", "");
+  auto const expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
   auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   CHECK(nullptr != analyzers);
   auto const expected_features = analyzers->get("identity")->features();
@@ -545,7 +543,6 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields") {
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
     CHECK(expected_features == field.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(1.f == field.boost());
   }
 
   CHECK(expectedValues.empty());
@@ -588,14 +585,13 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
 
   auto& value = *it;
   CHECK(mangleStringIdentity("boost") == value.name());
-  const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
+  const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
   auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   CHECK(nullptr != analyzers);
   auto const expected_features = analyzers->get("identity")->features();
   auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
   CHECK(expected_features == value.features());
   CHECK(&expected_analyzer->type() == &analyzer.type());
-  CHECK(1.f == value.boost());
 
   ++it;
   CHECK(!it.valid());
@@ -688,9 +684,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   {
     auto& field = *it;
     CHECK(mangleStringIdentity("stringValue") == field.name());
-    CHECK(1.f == field.boost());
-
-    auto const expected_analyzer = irs::analysis::analyzers::get("identity", "");
+    auto const expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
     auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
@@ -707,9 +701,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   {
     auto& field = *it;
     CHECK(mangleString("stringValue", "iresearch-document-empty") == field.name());
-    CHECK(1.f == field.boost());
-
-    auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", "en");
+    auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", irs::text_format::json, "en");
     auto& analyzer = dynamic_cast<EmptyTokenizer&>(field.get_tokens());
     CHECK(&expected_analyzer->type() == &analyzer.type());
     CHECK(expected_analyzer->attributes().features() == field.features());
@@ -723,8 +715,6 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   {
     auto& field = *it;
     CHECK(mangleNull("nullValue") == field.name());
-    CHECK(1.f == field.boost());
-
     auto& analyzer = dynamic_cast<irs::null_token_stream&>(field.get_tokens());
     CHECK(analyzer.next());
   }
@@ -737,8 +727,6 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   {
     auto& field = *it;
     CHECK(mangleBool("trueValue") == field.name());
-    CHECK(1.f == field.boost());
-
     auto& analyzer = dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
     CHECK(analyzer.next());
   }
@@ -751,8 +739,6 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   {
     auto& field = *it;
     CHECK(mangleBool("falseValue") == field.name());
-    CHECK(1.f == field.boost());
-
     auto& analyzer = dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
     CHECK(analyzer.next());
   }
@@ -765,8 +751,6 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   {
     auto& field = *it;
     CHECK(mangleNumeric("smallIntValue") == field.name());
-    CHECK(1.f == field.boost());
-
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     CHECK(analyzer.next());
   }
@@ -779,8 +763,6 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   {
     auto& field = *it;
     CHECK(mangleNumeric("smallNegativeIntValue") == field.name());
-    CHECK(1.f == field.boost());
-
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     CHECK(analyzer.next());
   }
@@ -793,8 +775,6 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   {
     auto& field = *it;
     CHECK(mangleNumeric("bigIntValue") == field.name());
-    CHECK(1.f == field.boost());
-
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     CHECK(analyzer.next());
   }
@@ -807,8 +787,6 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   {
     auto& field = *it;
     CHECK(mangleNumeric("bigNegativeIntValue") == field.name());
-    CHECK(1.f == field.boost());
-
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     CHECK(analyzer.next());
   }
@@ -821,8 +799,6 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   {
     auto& field = *it;
     CHECK(mangleNumeric("smallDoubleValue") == field.name());
-    CHECK(1.f == field.boost());
-
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     CHECK(analyzer.next());
   }
@@ -835,8 +811,6 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   {
     auto& field = *it;
     CHECK(mangleNumeric("bigDoubleValue") == field.name());
-    CHECK(1.f == field.boost());
-
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     CHECK(analyzer.next());
   }
@@ -849,8 +823,6 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   {
     auto& field = *it;
     CHECK(mangleNumeric("bigNegativeDoubleValue") == field.name());
-    CHECK(1.f == field.boost());
-
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
     CHECK(analyzer.next());
   }
@@ -879,14 +851,13 @@ SECTION("FieldIterator_reset") {
   {
     auto& value = *it;
     CHECK(mangleStringIdentity("boost") == value.name());
-    const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
+    const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
     auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_features == value.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -896,14 +867,13 @@ SECTION("FieldIterator_reset") {
   {
     auto& value = *it;
     CHECK(mangleStringIdentity("depth") == value.name());
-    const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
+    const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
     auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_features == value.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -915,14 +885,13 @@ SECTION("FieldIterator_reset") {
   {
     auto& value = *it;
     CHECK(mangleStringIdentity("name") == value.name());
-    const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
+    const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
     auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_features == value.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -988,7 +957,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields_custom_list_of
   CHECK(it != arangodb::iresearch::FieldIterator::END);
 
   // default analyzer
-  auto const expected_analyzer = irs::analysis::analyzers::get("identity", "");
+  auto const expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
   auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   CHECK(nullptr != analyzers);
   auto const expected_features = analyzers->get("identity")->features();
@@ -1001,7 +970,6 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields_custom_list_of
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
     CHECK(expected_features == field.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(1.f == field.boost());
   }
 
   CHECK(expectedValues.empty());
@@ -1056,14 +1024,13 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   {
     auto& value = *it;
     CHECK(mangleStringIdentity("nested.foo") == value.name());
-    const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
+    const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     CHECK(expected_features == value.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1076,7 +1043,6 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     CHECK(mangleString("nested.foo", "iresearch-document-empty") == value.name());
     auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
     CHECK(!analyzer.next());
-    CHECK(1.f == value.boost());
   }
 
   // keys[]
@@ -1087,15 +1053,13 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
 
     auto& value = *it;
     CHECK(mangleStringIdentity("keys") == value.name());
-    const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
+    const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
     auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_features == value.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(1.f == value.boost());
-
   }
 
   ++it;
@@ -1106,14 +1070,13 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   {
     auto& value = *it;
     CHECK(mangleStringIdentity("boost") == value.name());
-    const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
+    const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
     auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_features == value.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1126,7 +1089,6 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     CHECK(mangleNumeric("depth") == value.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     CHECK(analyzer.next());
-    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1137,14 +1099,13 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   {
     auto& value = *it;
     CHECK(mangleStringIdentity("fields.fieldA.name") == value.name());
-    const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
+    const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
     auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_features == value.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1157,7 +1118,6 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     CHECK(mangleString("fields.fieldA.name", "iresearch-document-empty") == value.name());
     auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
     CHECK(!analyzer.next());
-    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1168,14 +1128,13 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   {
     auto& value = *it;
     CHECK(mangleStringIdentity("listValuation") == value.name());
-    const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
+    const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
     auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_features == value.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1188,7 +1147,6 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     CHECK(mangleString("listValuation", "iresearch-document-empty") == value.name());
     auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
     CHECK(!analyzer.next());
-    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1201,7 +1159,6 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     CHECK(mangleNull("locale") == value.name());
     auto& analyzer = dynamic_cast<irs::null_token_stream&>(value.get_tokens());
     CHECK(analyzer.next());
-    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1214,7 +1171,6 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     CHECK(mangleNumeric("array[0].id") == value.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     CHECK(analyzer.next());
-    CHECK(1.f == value.boost());
   }
 
 
@@ -1228,14 +1184,13 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     {
       auto& value = *it;
       CHECK(mangleStringIdentity("array[0].subarr") == value.name());
-      const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
+      const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
       auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       CHECK(nullptr != analyzers);
       auto const expected_features = analyzers->get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
       CHECK(expected_features == value.features());
       CHECK(&expected_analyzer->type() == &analyzer.type());
-      CHECK(1.f == value.boost());
     }
 
     ++it;
@@ -1248,7 +1203,6 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
       CHECK(mangleString("array[0].subarr", "iresearch-document-empty") == value.name());
       auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
       CHECK(!analyzer.next());
-      CHECK(1.f == value.boost());
     }
   }
 
@@ -1262,14 +1216,13 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     {
       auto& value = *it;
       CHECK(mangleStringIdentity("array[1].subarr") == value.name());
-      const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
+      const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
       auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       CHECK(nullptr != analyzers);
       auto const expected_features = analyzers->get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
       CHECK(expected_features == value.features());
       CHECK(&expected_analyzer->type() == &analyzer.type());
-      CHECK(1.f == value.boost());
     }
 
     ++it;
@@ -1282,7 +1235,6 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
       CHECK(mangleString("array[1].subarr", "iresearch-document-empty") == value.name());
       auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
       CHECK(!analyzer.next());
-      CHECK(1.f == value.boost());
     }
   }
 
@@ -1294,14 +1246,13 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   {
     auto& value = *it;
     CHECK(mangleStringIdentity("array[1].id") == value.name());
-    const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
+    const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
     auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_features == value.features());
     CHECK(&expected_analyzer->type() == &analyzer.type());
-    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1314,7 +1265,6 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     CHECK(mangleString("array[1].id", "iresearch-document-empty") == value.name());
     auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
     CHECK(!analyzer.next());
-    CHECK(1.f == value.boost());
   }
 
   ++it;
@@ -1327,7 +1277,6 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     CHECK(mangleNumeric("array[2].id") == value.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     CHECK(analyzer.next());
-    CHECK(1.f == value.boost());
   }
 
   // array[2].subarr[0-2]
@@ -1340,14 +1289,13 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     {
       auto& value = *it;
       CHECK(mangleStringIdentity("array[2].subarr") == value.name());
-      const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
+      const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
       auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       CHECK(nullptr != analyzers);
       auto const expected_features = analyzers->get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
       CHECK(expected_features == value.features());
       CHECK(&expected_analyzer->type() == &analyzer.type());
-      CHECK(1.f == value.boost());
     }
 
     ++it;
@@ -1360,7 +1308,6 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
       CHECK(mangleString("array[2].subarr", "iresearch-document-empty") == value.name());
       auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
       CHECK(!analyzer.next());
-      CHECK(1.f == value.boost());
     }
   }
 
@@ -1410,9 +1357,7 @@ SECTION("FieldIterator_nullptr_tokenizer") {
     {
       auto& field = *it;
       CHECK(mangleStringIdentity("stringValue") == field.name());
-      CHECK(1.f == field.boost());
-
-      auto const expected_analyzer = irs::analysis::analyzers::get("identity", "");
+      auto const expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
       auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       CHECK(nullptr != analyzers);
       auto const expected_features = analyzers->get("identity")->features();
@@ -1429,9 +1374,7 @@ SECTION("FieldIterator_nullptr_tokenizer") {
     {
       auto& field = *it;
       CHECK(mangleString("stringValue", "empty") == field.name());
-      CHECK(1.f == field.boost());
-
-      auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", "en");
+      auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", irs::text_format::json, "en");
       auto& analyzer = dynamic_cast<EmptyTokenizer&>(field.get_tokens());
       CHECK(&expected_analyzer->type() == &analyzer.type());
       CHECK(expected_analyzer->attributes().features()== field.features());
@@ -1463,9 +1406,7 @@ SECTION("FieldIterator_nullptr_tokenizer") {
     {
       auto& field = *it;
       CHECK(mangleString("stringValue", "empty") == field.name());
-      CHECK(1.f == field.boost());
-
-      auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", "en");
+      auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", irs::text_format::json, "en");
       auto& analyzer = dynamic_cast<EmptyTokenizer&>(field.get_tokens());
       CHECK(&expected_analyzer->type() == &analyzer.type());
       CHECK(expected_analyzer->attributes().features() == field.features());

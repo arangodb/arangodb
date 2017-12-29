@@ -121,8 +121,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   bool index(
     const hashed_string_ref& name,
     token_stream& tokens,
-    const flags& features,
-    float_t boost
+    const flags& features
   );
 
   template<typename Field>
@@ -157,9 +156,8 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const flags&>(field.features());
-    const auto boost = static_cast<float_t>(field.boost());
 
-    return index(name, tokens, features, boost);
+    return index(name, tokens, features);
   }
 
   template<typename Field>
@@ -174,9 +172,8 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     // index field
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const flags&>(field.features());
-    const auto boost = static_cast<float_t>(field.boost());
 
-    if (!index(name, tokens, features, boost)) {
+    if (!index(name, tokens, features)) {
       return false; // indexing failed
     }
 

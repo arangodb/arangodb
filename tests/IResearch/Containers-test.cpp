@@ -105,8 +105,9 @@ TEST_CASE("ContainersTest", "[iresearch][iresearch-containers]") {
 
       auto result = cond.wait_for(cond_lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
 
-      // MSVC 2017.3 and 2017.4 optimized code seems to sporadically notify condition variables without explicit request
-      MSVC2017_OPTIMIZED_WORKAROUND(while(!locked && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
+      // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
+      MSVC2015_OPTIMIZED_ONLY(while(!locked && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(1000)));
+      MSVC2017_ONLY(while(!locked && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(1000)));
 
       CHECK((std::cv_status::timeout == result));
       // ^^^ expecting timeout because reader should block indefinitely
