@@ -80,12 +80,18 @@ struct VstInputMessage {
   std::vector<VPackSlice> _payload;
 
   void init() {
-    _header = VPackSlice(_buffer.data());
-    std::size_t offset = _header.byteSize();
+    if (_buffer.length() > 0) {
+      _header = VPackSlice(_buffer.data());
+      std::size_t offset = _header.byteSize();
 
-    for (std::size_t sliceNum = 0; sliceNum < _payloadAmount; ++sliceNum) {
-      _payload.emplace_back(_buffer.data() + offset);
-      offset += _payload.back().byteSize();
+      for (std::size_t sliceNum = 0; sliceNum < _payloadAmount; ++sliceNum) {
+        _payload.emplace_back(_buffer.data() + offset);
+        offset += _payload.back().byteSize();
+      }
+    } else {
+      _header = VPackSlice::noneSlice();
+      _payload.clear();
+      _payloadAmount = 0;
     }
   }
 };
