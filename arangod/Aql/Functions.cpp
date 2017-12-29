@@ -1901,6 +1901,33 @@ AqlValue Functions::Sha1(arangodb::aql::Query* query,
   return AqlValue(&hex[0], 40);
 }
 
+/// @brief function SHA512
+AqlValue Functions::Sha512(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+
+  // create sha1
+  char hash[65];
+  char* p = &hash[0];
+  size_t length;
+
+  arangodb::rest::SslInterface::sslSHA512(buffer->c_str(), buffer->length(), p,
+                                        length);
+
+  // as hex
+  char hex[129];
+  p = &hex[0];
+
+  arangodb::rest::SslInterface::sslHEX(hash, 64, p, length);
+
+  return AqlValue(&hex[0], 128);
+}
+
 /// @brief function HASH
 AqlValue Functions::Hash(arangodb::aql::Query* query,
                          transaction::Methods* trx,
