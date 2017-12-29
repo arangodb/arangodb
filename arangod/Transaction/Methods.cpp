@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,6 +37,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
@@ -725,7 +726,7 @@ Result transaction::Methods::begin() {
 Result transaction::Methods::commit() {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return TRI_ERROR_TRANSACTION_INTERNAL;
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on commit");
   }
 
   CallbackInvoker invoker(this);
@@ -744,7 +745,7 @@ Result transaction::Methods::commit() {
 Result transaction::Methods::abort() {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return TRI_ERROR_TRANSACTION_INTERNAL;
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on abort");
   }
 
   CallbackInvoker invoker(this);
@@ -762,16 +763,7 @@ Result transaction::Methods::abort() {
 
 /// @brief finish a transaction (commit or abort), based on the previous state
 Result transaction::Methods::finish(int errorNum) {
-  if (errorNum == TRI_ERROR_NO_ERROR) {
-    // there was no previous error, so we'll commit
-    return this->commit();
-  }
-
-  // there was a previous error, so we'll abort
-  this->abort();
-
-  // return original error number
-  return errorNum;
+  return finish(Result(errorNum));
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
@@ -1327,36 +1319,21 @@ OperationResult transaction::Methods::insertCoordinator(
 
 /// @brief choose a timeout for synchronous replication, based on the
 /// byte size of the documents we ship over
-static double chooseTimeout(size_t byteSize) {
-  static bool timeoutQueried = false;
-  static double timeoutFactor = 1.0;
-  static double lowerLimit = 0.5;
-  if (!timeoutQueried) {
-    // Multithreading is no problem here because these static variables
-    // are only ever set once in the lifetime of the server.
-    auto feature = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
-    timeoutFactor = feature->syncReplTimeoutFactor();
-    timeoutQueried = true;
-    auto feature2 = application_features::ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector");
-    if (feature2->engineName() == arangodb::RocksDBEngine::EngineName) {
-      lowerLimit = 3.0;
-      // at least as long as we have thinking pauses in RocksDB
-    }
-  }
+static double chooseTimeout(size_t count, size_t totalBytes) {
+  // We usually assume that a server can process at least 2500 documents
+  // per second (this is a low estimate), and use a low limit of 0.5s
+  // and a high timeout of 120s
+  double timeout = count / 2500.0;
 
-  // We usually assume that a server can process at least 250000 bytes
-  // per second (this is a rather arbitrary low estimate and actually
-  // also depends on the size of the documents), and use a low limit of
-  // 0.5s and a high timeout of 120s, for RocksDB we increase the low
-  // limit to 3.0s because write stalls can happen.
-  double timeout = static_cast<double>(byteSize) / 250000.0;
-  if (timeout < lowerLimit) {
-    return lowerLimit * timeoutFactor;
-  } else if (timeout > 120) {
-    return 120.0 * timeoutFactor;
-  } else {
-    return timeout * timeoutFactor;
-  }
+  // Really big documents need additional adjustment. Using total size
+  // of all messages to handle worst case scenario of constrained resource
+  // processing all
+  timeout += (totalBytes / 4096) * ReplicationTimeoutFeature::timeoutPer4k;
+
+  if (timeout < ReplicationTimeoutFeature::lowerLimit) {
+    return ReplicationTimeoutFeature::lowerLimit * ReplicationTimeoutFeature::timeoutFactor;
+   }
+  return (std::min)(120.0, timeout) * ReplicationTimeoutFeature::timeoutFactor;
 }
 
 /// @brief create one or multiple documents in a collection, local
@@ -1517,7 +1494,8 @@ OperationResult transaction::Methods::insertLocal(
           // nullptr only happens on controlled shutdown
           size_t nrDone = 0;
           size_t nrGood = cc->performRequests(requests,
-              chooseTimeout(body->size()), nrDone, Logger::REPLICATION, false);
+                                              chooseTimeout(count, body->size()*followers->size()),
+                                              nrDone, Logger::REPLICATION, false);
           if (nrGood < followers->size()) {
             // If any would-be-follower refused to follow there must be a
             // new leader in the meantime, in this case we must not allow
@@ -1867,7 +1845,8 @@ OperationResult transaction::Methods::modifyLocal(
           }
           size_t nrDone = 0;
           size_t nrGood = cc->performRequests(requests,
-              chooseTimeout(body->size()), nrDone, Logger::REPLICATION, false);
+                                              chooseTimeout(count, body->size()*followers->size()),
+                                              nrDone, Logger::REPLICATION, false);
           if (nrGood < followers->size()) {
             // If any would-be-follower refused to follow there must be a
             // new leader in the meantime, in this case we must not allow
@@ -2146,7 +2125,8 @@ OperationResult transaction::Methods::removeLocal(
           }
           size_t nrDone = 0;
           size_t nrGood = cc->performRequests(requests,
-              chooseTimeout(body->size()), nrDone, Logger::REPLICATION, false);
+                                              chooseTimeout(count, body->size()*followers->size()),
+                                              nrDone, Logger::REPLICATION, false);
           if (nrGood < followers->size()) {
             // If any would-be-follower refused to follow there must be a
             // new leader in the meantime, in this case we must not allow
@@ -2865,7 +2845,7 @@ bool transaction::Methods::isLocked(LogicalCollection* document,
 Result transaction::Methods::lockRecursive(TRI_voc_cid_t cid,
                                            AccessMode::Type type) {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
-    return Result(TRI_ERROR_TRANSACTION_INTERNAL);
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on lock");
   }
   TransactionCollection* trxColl = trxCollection(cid, type);
   TRI_ASSERT(trxColl != nullptr);
@@ -2876,7 +2856,7 @@ Result transaction::Methods::lockRecursive(TRI_voc_cid_t cid,
 Result transaction::Methods::unlockRecursive(TRI_voc_cid_t cid,
                                              AccessMode::Type type) {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
-    return Result(TRI_ERROR_TRANSACTION_INTERNAL);
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on unlock");
   }
   TransactionCollection* trxColl = trxCollection(cid, type);
   TRI_ASSERT(trxColl != nullptr);
