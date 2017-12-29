@@ -73,17 +73,41 @@ class DumpFeature : public application_features::ApplicationFeature {
   DumpFeature(application_features::ApplicationServer* server, int* result);
 
  public:
-  static std::string featureName();
+  // for documentation of virtual methods, see `ApplicationFeature`
   virtual void collectOptions(
       std::shared_ptr<options::ProgramOptions>) override final;
   virtual void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override final;
   virtual void prepare() override final;
   virtual void start() override final;
+
+public:
+
+  /**
+   * Returns the feature name (for registration with `ApplicationServer`)
+   * @return The name of the feature
+   */
+  static std::string featureName();
+
+  /**
+   * @brief Extracts error message from ArangoDB HTTP result
+   * @param  result The HTTP result to extract from
+   * @param  err    Destination for error code
+   * @return        Error message
+   */
   std::string getHttpErrorMessage(httpclient::SimpleHttpResult* result,
                                   int& err) noexcept;
 
  private:
+  Result runDump(std::string& dbName);
+  Result runClusterDump();
+
+ private:
+  int* _result;
+  ClientManager _clientManager;
+  ClientTaskQueue<DumpFeatureJobData> _clientTaskQueue;
+  FileHandler _fileHandler;
+  DumpFeatureStats _stats;
   std::vector<std::string> _collections;
   uint64_t _chunkSize;
   uint64_t _maxChunkSize;
@@ -91,24 +115,13 @@ class DumpFeature : public application_features::ApplicationFeature {
   bool _force;
   bool _ignoreDistributeShardsLikeErrors;
   bool _includeSystemCollections;
-  std::string _outputDirectory;
   bool _overwrite;
   bool _progress;
+  bool _clusterMode;
+  uint64_t _batchId;
   uint64_t _tickStart;
   uint64_t _tickEnd;
-
- private:
-  int runDump(std::string& dbName, std::string& errorMsg);
-  int runClusterDump(std::string& errorMsg);
-
- private:
-  ClientManager _clientManager;
-  ClientTaskQueue<DumpFeatureJobData> _clientTaskQueue;
-  FileHandler _fileHandler;
-  int* _result;
-  uint64_t _batchId;
-  bool _clusterMode;
-  DumpFeatureStats _stats;
+  std::string _outputDirectory;
 };
 }  // namespace arangodb
 
