@@ -410,6 +410,11 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   LOG_TOPIC(TRACE, Logger::COMMUNICATION)
       << prefix << "Curl rc is : " << rc << " after "
       << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
+  if (CURLE_OPERATION_TIMEDOUT == rc) {
+    curl_easy_getinfo(handle, CURLINFO_CONNECT_TIME, &connectTime);
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+      << prefix << "CURLINFO_CONNECT_TIME is " << connectTime;
+  } // if
   if (strlen(rip->_errorBuffer) != 0) {
     LOG_TOPIC(TRACE, Logger::COMMUNICATION)
         << prefix << "Curl error details: " << rip->_errorBuffer;
