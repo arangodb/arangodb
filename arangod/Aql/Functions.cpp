@@ -1911,7 +1911,7 @@ AqlValue Functions::Sha512(arangodb::aql::Query* query,
 
   AppendAsString(trx, adapter, value);
 
-  // create sha1
+  // create sha512
   char hash[65];
   char* p = &hash[0];
   size_t length;
