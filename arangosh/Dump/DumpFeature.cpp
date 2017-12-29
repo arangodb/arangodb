@@ -206,9 +206,13 @@ Result dumpCollection(httpclient::SimpleHttpClient& client,
   std::string baseUrl =
       "/_api/replication/dump?collection=" + name +
       "&batchId=" + StringUtils::itoa(batchId) +
-      "&ticks=false&flush=false";
-  if (server != "") {
+      "&ticks=false";
+  if (jobData.clusterMode) {
+    // we are in cluster mode, must specify dbserver
     baseUrl += "&DBserver=" + server;
+  } else {
+    // we are in single-server mode, we already flushed the wal
+    baseUrl += "&flush=false";
   }
 
   while (true) {
