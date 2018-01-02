@@ -35,6 +35,7 @@
             "frontend/css/jsoneditor.css",
             "frontend/css/grids-responsive-min.css",
             "frontend/css/tippy.css",
+            "frontend/css/dygraph.css",
             "frontend/ttf/arangofont/style.css"
           ]
         },
