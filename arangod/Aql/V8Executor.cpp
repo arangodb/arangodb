@@ -698,9 +698,10 @@ void V8Executor::generateCodeCollection(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 0);
 
-  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.GET_DOCUMENTS("));
-  generateCodeString(node->getStringValue(), node->getStringLength());
-  _buffer->appendChar(')');
+  // we should not get here anymore, as all collection accesses should
+  // have either been transformed to collection names (i.e. strings)
+  // or FOR ... RETURN ... subqueries beforehand
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type 'collection' found in script generatin");
 }
 
 /// @brief generate JavaScript code for a full view access
