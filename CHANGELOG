@@ -1,7 +1,8 @@
 devel
 -----
-
 * UI: displayed wrong wfs property for a collection when using rocksdb as storage engine
+
+* UI: updated dygraph js library to version 2.1.0
 
 * renamed arangoimp to arangoimport for consistency
   Release packages will still install arangoimp as a symlink so user scripts 
