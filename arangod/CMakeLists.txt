@@ -252,6 +252,8 @@ SET(ARANGOD_SOURCES
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
   Cache/TransactionManager.cpp
+  Cluster/Action.cpp
+  Cluster/ActionBase.cpp
   Cluster/ActionDescription.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
@@ -263,6 +265,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterMethods.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/CollectionLockState.cpp
+  Cluster/CreateDatabase.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp

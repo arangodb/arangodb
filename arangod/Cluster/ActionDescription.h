@@ -31,25 +31,47 @@
 namespace arangodb {
 namespace maintenance {
 
-enum Type { CREATE_DATASE = 2, DROP_DATABASE,
-            CREATE_COLLECTION, DROP_COLLECTION,
-            CREATE_INDEX, DROP_INDEX };
-
 /// @brief Maintenance operation description card
 struct ActionDescription {
+  
 public:
+  
+  /// @brief Construct with properties
   ActionDescription(std::map<std::string, std::string> const&);
+
+  /// @brief Clean up
   virtual ~ActionDescription();
+
+  /// @brief Equality
   bool operator== (ActionDescription const&) const noexcept;
+
+  /// @brief Hash function
   std::size_t hash() const;
 
+  /// @brief Name of action
+  std::string name() const;
+
+  /// @brief Has named property
+  bool has(std::string const& p) const noexcept;
+
+  /// @brief Get property
+  std::string get(std::string const& key) const;
+
+  /// @brief Set property
+  void set(std::string const& key, std::string const& value);
+
+  /// @brief Set property
+  void set(std::pair<std::string, std::string> const& kvpair);
+
 private:
+  /// @brief Action properties
   std::map<std::string, std::string> _properties;
 };
 
 }}
 
 namespace std {
+/// @brief Hash function used by std::unordered_map<ActionDescription,...>
 template<> struct hash<arangodb::maintenance::ActionDescription> {
   typedef arangodb::maintenance::ActionDescription argument_t;
   typedef std::size_t result_t;

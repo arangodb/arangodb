@@ -30,10 +30,31 @@ using namespace arangodb::maintenance;
 
 /// @brief ctor
 ActionDescription::ActionDescription(
-  std::map<std::string, std::string> const& p) : _properties(p) {}
+  std::map<std::string, std::string> const& p) : _properties(p) {
+}
 
 /// @brief Default dtor
 ActionDescription::~ActionDescription() {}
+
+/// @brief Does this description have a "p" parameter?
+bool ActionDescription::has(std::string const& p) const noexcept {
+  return _properties.find(p) != _properties.end();
+}
+
+/// @brief Does this description have a "p" parameter?
+std::string ActionDescription::get(std::string const& p) const {
+  return _properties.at(p);
+}
+
+/// @brief Does this description have a "p" parameter?
+void ActionDescription::set(std::string const& key, std::string const& value) {
+  _properties.emplace(key, value);
+}
+
+/// @brief Does this description have a "p" parameter?
+void ActionDescription::set(std::pair<std::string, std::string> const& kvpair) {
+  _properties.emplace(kvpair);
+}
 
 /// @brief Hash function
 std::size_t ActionDescription::hash() const {
@@ -50,10 +71,15 @@ bool ActionDescription::operator==(
   return _properties==other._properties;
 }
 
+/// @brief Get action name
+std::string ActionDescription::name() const {
+  return _properties.at("name");
+}
+
 /// @brief hash implementation for ActionRegistry
 namespace std {
 std::size_t hash<ActionDescription>::operator()(
   ActionDescription const& a) const noexcept {
   return a.hash();
-}
-}
+}}
+
