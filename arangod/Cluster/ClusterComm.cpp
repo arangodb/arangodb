@@ -637,19 +637,25 @@ ClusterCommResult const ClusterComm::wait(
     CoordTransactionID const coordTransactionID, communicator::Ticket const ticketId,
     ShardID const& shardID, ClusterCommTimeout timeout) {
 
-  ResponseIterator i;
+  ResponseIterator i, i_erase;
   AsyncResponse response;
-  ClusterCommResult return_result;
   bool match_good, status_ready;
   ClusterCommTimeout endTime = TRI_microtime() + timeout;
 
   TRI_ASSERT(timeout >= 0.0);
+
+  // if we cannot find the sought operation, we will return the status
+  // DROPPED. if we get into the timeout while waiting, we will still return
+  // CL_COMM_TIMEOUT.
+  ClusterCommResult return_result;
+  return_result.status = CL_COMM_DROPPED;
 
   // tell scheduler that we are waiting:
   JobGuard guard{SchedulerFeature::SCHEDULER};
   guard.block();
 
   do {
+      i_erase = responses.end();
     CONDITION_LOCKER(locker, somethingReceived);
     match_good=false;
     status_ready=false;
@@ -661,10 +667,15 @@ ClusterCommResult const ClusterComm::wait(
           return_result = *i->second.result.get();
           status_ready = (CL_COMM_SUBMITTED != return_result.status);
           if (status_ready) {
-            responses.erase(i);
+            i_erase = i;
           } // if
-        }
-      }
+        } // if
+      } // for
+
+      // only delete from list after leaving loop
+      if (responses.end() != i_erase) {
+        responses.erase(i_erase);
+      } // if
     } else {
       i = responses.find(ticketId);
 
@@ -891,9 +902,9 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
 
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
-  ClusterCommTimeout startTime = TRI_microtime();
+  ClusterCommTimeout const startTime = TRI_microtime();
+  ClusterCommTimeout const endTime = startTime + timeout;
   ClusterCommTimeout now = startTime;
-  ClusterCommTimeout endTime = startTime + timeout;
 
   std::vector<ClusterCommTimeout> dueTime;
   for (size_t i = 0; i < requests.size(); ++i) {
@@ -1012,6 +1023,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         // the operation, in which we have to flush ClusterInfo:
         ClusterInfo::instance()->loadCurrent();
         requests[index].result = res;
+        now = TRI_microtime();
 
         // In this case we will retry:
         double tryAgainAfter = now - startTime;

@@ -106,6 +106,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // create storage-engine specific view
   virtual PhysicalView* createPhysicalView(LogicalView*, VPackSlice const&) = 0;
 
+  // minimum timeout for the synchronous replication
+  virtual double minimumSyncReplicationTimeout() const = 0;
+
   // status functionality
   // --------------------
 
@@ -356,9 +359,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual int handleSyncKeys(arangodb::InitialSyncer& syncer,
                           arangodb::LogicalCollection* col,
                           std::string const& keysId,
-                          std::string const& cid,
-                          std::string const& collectionName,
-                          TRI_voc_tick_t maxTick,
                           std::string& errorMsg) = 0;
   virtual Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) = 0;
   virtual Result createTickRanges(VPackBuilder& builder) = 0;

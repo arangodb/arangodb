@@ -3386,11 +3386,8 @@ int MMFilesEngine::saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, a
 int MMFilesEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
                           arangodb::LogicalCollection* col,
                           std::string const& keysId,
-                          std::string const& cid,
-                          std::string const& collectionName,
-                          TRI_voc_tick_t maxTick,
                           std::string& errorMsg) {
-  return handleSyncKeysMMFiles(syncer, col, keysId, cid, collectionName,maxTick, errorMsg);
+  return handleSyncKeysMMFiles(syncer, col, keysId, errorMsg);
 }
   
 Result MMFilesEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder){

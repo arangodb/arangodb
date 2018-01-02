@@ -1644,7 +1644,66 @@ function complexInternaSuite () {
       let res = db._query(query);
       assertEqual(res.count(), 1);
       assertEqual(res.toArray(), [vertex.B]);
-    }
+    },
+
+    testLargeMaxDepth: function () {
+      let query = `
+      WITH ${vn}
+      FOR v, e, p IN 1..4294967295 OUTBOUND "${vn}/A" ${en}
+      FILTER p.edges[1]._id != "${edge.BC}"
+      FILTER p.vertices[2]._id != "${vertex.C}"
+      RETURN v._id`;
+
+      let res = db._query(query);
+      assertEqual(res.count(), 1);
+      assertEqual(res.toArray(), [vertex.B]);
+    },
+
+    testInt64MaxMaxDepth: function () {
+      let query = `
+      WITH ${vn}
+      FOR v, e, p IN 1..9223372036854775807 OUTBOUND "${vn}/A" ${en}
+      FILTER p.edges[1]._id != "${edge.BC}"
+      FILTER p.vertices[2]._id != "${vertex.C}"
+      RETURN v._id`;
+
+      let res = db._query(query);
+      assertEqual(res.count(), 1);
+      assertEqual(res.toArray(), [vertex.B]);
+    },
+
+
+    testNegativeMinDepth: function () {
+      let query = `
+      WITH ${vn}
+      FOR v, e, p IN -1..3 OUTBOUND "${vn}/A" ${en}
+      FILTER p.edges[1]._id != "${edge.BC}"
+      FILTER p.vertices[2]._id != "${vertex.C}"
+      RETURN v._id`;
+      try {
+        db._query(query);
+        assertTrue(false, "This query is expected too fail");
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
+      }
+    },
+
+    testNegativeMaxDepth: function () {
+      let query = `
+      WITH ${vn}
+      FOR v, e, p IN 1..-3 OUTBOUND "${vn}/A" ${en}
+      FILTER p.edges[1]._id != "${edge.BC}"
+      FILTER p.vertices[2]._id != "${vertex.C}"
+      RETURN v._id`;
+
+      try {
+        db._query(query);
+        assertTrue(false, "This query is expected too fail");
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
+      }
+    },
+
   };
 }
 

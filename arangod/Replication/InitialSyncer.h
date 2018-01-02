@@ -42,15 +42,13 @@ class InitialSyncer;
 
 int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
                           arangodb::LogicalCollection* col,
-                          std::string const& keysId, std::string const& cid,
-                          std::string const& collectionName,
-                          TRI_voc_tick_t maxTick, std::string& errorMsg);
+                          std::string const& keysId,
+                          std::string& errorMsg);
 
 int handleSyncKeysRocksDB(InitialSyncer& syncer,
                           arangodb::LogicalCollection* col,
-                          std::string const& keysId, std::string const& cid,
-                          std::string const& collectionName,
-                          TRI_voc_tick_t maxTick, std::string& errorMsg);
+                          std::string const& keysId,
+                          std::string& errorMsg);
 
 int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
                      std::string const& keysId, uint64_t chunkId,
@@ -65,15 +63,11 @@ class SimpleHttpResult;
 class InitialSyncer : public Syncer {
   friend int ::arangodb::handleSyncKeysMMFiles(
       arangodb::InitialSyncer& syncer, arangodb::LogicalCollection* col,
-      std::string const& keysId, std::string const& cid,
-      std::string const& collectionName, TRI_voc_tick_t maxTick,
-      std::string& errorMsg);
+      std::string const& keysId, std::string& errorMsg);
 
   friend int ::arangodb::handleSyncKeysRocksDB(
       InitialSyncer& syncer, arangodb::LogicalCollection* col,
-      std::string const& keysId, std::string const& cid,
-      std::string const& collectionName, TRI_voc_tick_t maxTick,
-      std::string& errorMsg);
+      std::string const& keysId, std::string& errorMsg);
 
   friend int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
                      std::string const& keysId, uint64_t chunkId,
@@ -162,7 +156,7 @@ class InitialSyncer : public Syncer {
   bool checkAborted();
 
   /// @brief apply the data from a collection dump
-  int applyCollectionDump(transaction::Methods&, std::string const&,
+  int applyCollectionDump(transaction::Methods&, LogicalCollection*,
                           httpclient::SimpleHttpResult*, uint64_t&,
                           std::string&);
 
@@ -171,11 +165,11 @@ class InitialSyncer : public Syncer {
 
   /// @brief incrementally fetch data from a collection
   int handleCollectionDump(arangodb::LogicalCollection*, std::string const&,
-                           std::string const&, TRI_voc_tick_t, std::string&);
+                           TRI_voc_tick_t, std::string&);
 
   /// @brief incrementally fetch data from a collection
   int handleCollectionSync(arangodb::LogicalCollection*, std::string const&,
-                           std::string const&, TRI_voc_tick_t, std::string&);
+                           TRI_voc_tick_t, std::string&);
 
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided

@@ -463,33 +463,25 @@ int ContinuousSyncer::getLocalState(std::string& errorMsg) {
 int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
                                       VPackSlice const& slice,
                                       std::string& errorMsg) {
-  // extract "cid"
-  TRI_voc_cid_t cid = getCid(slice);
-
-  if (cid == 0) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  // extract optional "cname"
-  bool isSystem = false;
-  VPackSlice const cname = slice.get("cname");
-
-  if (cname.isString()) {
-    std::string const cnameString = cname.copyString();
-    isSystem = (!cnameString.empty() && cnameString[0] == '_');
-
-    arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cnameString);
-
-    if (col != nullptr && col->cid() != cid) {
-      // cid change? this may happen for system collections or if we restored
-      // from a dump
-      cid = col->cid();
+    
+  LogicalCollection* coll = nullptr;
+  {
+    TRI_voc_cid_t cid = getCid(slice);
+    // extract optional "cname"
+    VPackSlice const cname = slice.get("cname");
+    if (cname.isString()) {
+      //isSystem = (!cnameString.empty() && cnameString[0] == '_');
+      coll = getCollectionByIdOrName(cid, cname.copyString());
+    } else {
+      coll = _vocbase->lookupCollection(cid);
     }
+  }
+  if (coll == nullptr) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
   // extract "data"
   VPackSlice const doc = slice.get("data");
-
   if (!doc.isObject()) {
     errorMsg = "invalid document format";
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -497,7 +489,6 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
 
   // extract "key"
   VPackSlice const key = doc.get(StaticStrings::KeyString);
-
   if (!key.isString()) {
     errorMsg = "invalid document key format";
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -505,7 +496,6 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
 
   // extract "rev"
   VPackSlice const rev = doc.get(StaticStrings::RevString);
-  
   if (!rev.isString()) {
     errorMsg = "invalid document revision format";
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -544,10 +534,9 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
       return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
     }
 
-    trx->addCollectionAtRuntime(cid, "", AccessMode::Type::EXCLUSIVE); 
-    int res = applyCollectionDumpMarker(*trx, trx->name(cid), type, old, doc, errorMsg);
-
-    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
+    trx->addCollectionAtRuntime(coll->cid(), "", AccessMode::Type::EXCLUSIVE);
+    int res = applyCollectionDumpMarker(*trx, coll, type, old, doc, errorMsg);
+    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && coll->isSystem()) {
       // ignore unique constraint violations for system collections
       res = TRI_ERROR_NO_ERROR;
     }
@@ -559,7 +548,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
     // standalone operation
     // update the apply tick for all standalone operations
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase),
-                                            cid, AccessMode::Type::EXCLUSIVE);
+                                    coll->cid(), AccessMode::Type::EXCLUSIVE);
   
     if (_supportsSingleOperations) {
       trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -572,8 +561,8 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
       errorMsg = "unable to create replication transaction: " + res.errorMessage();
       res.reset(res.errorNumber(),errorMsg);
     } else {
-      res = applyCollectionDumpMarker(trx, trx.name(), type, old, doc, errorMsg); 
-      if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
+      res = applyCollectionDumpMarker(trx, coll, type, old, doc, errorMsg);
+      if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && coll->isSystem()) {
         // ignore unique constraint violations for system collections
         res.reset();
       }

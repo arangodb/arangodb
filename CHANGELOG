@@ -1,5 +1,44 @@
-v3.2.10 (2017-XX-XX)
--------------------
+v3.2.11 (2018-XX-XX)
+--------------------
+
+* UI: displayed wrong wfs property for a collection when using rocksdb as storage engine
+
+
+v3.2.10 (2017-12-22)
+--------------------
+
+* replication: more robust initial sync
+
+* fixed a bug in the RocksDB engine that would prevent recalculated 
+  collection counts to be actually stored
+
+* fixed issue #4095: Inconsistent query execution plan
+
+* fixed issue #4056: Executing empty query causes crash
+
+* fixed issue #4045: Out of memory in `arangorestore` when no access 
+  rights to dump files
+
+* fixed issue #3031: New Graph: Edge definitions with edges in 
+  fromCollections and toCollections
+
+* fixed issue #2668: UI: when following wrong link from edge to vertex in 
+  nonexisting collection misleading error is printed
+
+* UI: improved the behavior during collection creation in a cluster environment
+
+* UI: the graph viewer backend now picks one random start vertex of the
+  first 1000 documents instead of calling any(). The implementation of
+  any is known to scale bad on huge collections with rocksdb.
+
+* fixed snapshots becoming potentially invalid after intermediate commits in 
+  the RocksDB engine
+
+* backport agency inquire API changes
+
+* fixed issue #3822: Field validation error in ArangoDB UI - Minor
+
+* UI: fixed disappearing of the navigation label in some cases
 
 * UI: fixed broken foxx configuration keys. Some valid configuration values
   could not be edited via the ui.
@@ -10,6 +49,11 @@ v3.2.10 (2017-XX-XX)
 
 * UI: edge collections were wrongly added to from and to vertices select 
   box during graph creation
+
+* fixed issue #3741: fix terminal color output in Windows 
+
+* fixed issue #3917: traversals with high maximal depth take extremely long
+  in planning phase.
 
 * fix equality comparison for MMFiles documents in AQL functions UNIQUE 
   and UNION_DISTINCT

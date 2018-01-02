@@ -653,6 +653,12 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         }
       }
     }
+  } catch (basics::Exception const& ex) {
+    errorMsg = ex.what();
+    return ex.code();
+  } catch (std::exception const& ex) {
+    errorMsg = ex.what();
+    return TRI_ERROR_INTERNAL;
   } catch (...) {
     errorMsg = "out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
