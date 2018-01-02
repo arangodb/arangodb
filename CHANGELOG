@@ -40,9 +40,10 @@ v3.2.10 (2017-12-22)
 
 * UI: fixed disappearing of the navigation label in some cases
 
-* fixed issue #3640: limit in subquery
+* UI: fixed broken foxx configuration keys. Some valid configuration values
+  could not be edited via the ui.
 
-* UI: fixed issue #3822: disabled name input field for system collections
+* fixed issue #3640: limit in subquery
 
 * UI: edge collections were wrongly added to from and to vertices select 
   box during graph creation
