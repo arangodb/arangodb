@@ -62,7 +62,6 @@ TEST_CASE("LoggerTest", "[loggertest]") {
     auto fds = LogAppenderFile::getFds();
     CHECK(fds.size() == 2);
 
-    CHECK(std::get<0>(fds[0]) > STDERR_FILENO);
     CHECK(std::get<1>(fds[0]) == logfile1);
     CHECK(std::get<2>(fds[0])->fd() == std::get<0>(fds[0]));
 
@@ -88,7 +87,6 @@ TEST_CASE("LoggerTest", "[loggertest]") {
     auto fds = LogAppenderFile::getFds();
     CHECK(fds.size() == 2);
 
-    CHECK(std::get<0>(fds[0]) > STDERR_FILENO);
     CHECK(std::get<1>(fds[0]) == logfile1);
     CHECK(std::get<2>(fds[0])->fd() == std::get<0>(fds[0]));
 
