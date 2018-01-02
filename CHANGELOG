@@ -1,6 +1,9 @@
 v3.2.11 (2018-XX-XX)
 --------------------
 
+* UI: Shard distribution view now has an accordion view instead of displaying
+  all shards of all collections at once.
+
 * fixed issue #4255: AQL SORT consuming too much memory
 
 * fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' 
