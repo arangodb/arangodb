@@ -286,6 +286,10 @@ void OptimizerRulesFeature::addRules() {
                  undistributeRemoveAfterEnumCollRule,
                  OptimizerRule::undistributeRemoveAfterEnumCollRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
+    registerRule("copy-limits-to-shards",
+                 optimizeClusterLimitsToShardsRule,
+                 OptimizerRule::applyOptimizeClusterLimitsToShardsRule, DoesNotCreateAdditionalPlans, CanBeDisabled);
+
 #ifdef USE_ENTERPRISE
     registerRule("remove-satellite-joins",
                  removeSatelliteJoinsRule,
