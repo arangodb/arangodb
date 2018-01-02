@@ -261,7 +261,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"SUBSTITUTE", ".,.|.,.", true, false, true, true});
   add({"MD5", ".", true, false, true, true, &Functions::Md5});
   add({"SHA1", ".", true, false, true, true, &Functions::Sha1});
-  add({"SHA512", ".", true, false, true, true});
+  add({"SHA512", ".", true, false, true, true, &Functions::Sha512});
   add({"HASH", ".", true, false, true, true, &Functions::Hash});
   add({"RANDOM_TOKEN", ".", false, true, true, true, &Functions::RandomToken});
 }
