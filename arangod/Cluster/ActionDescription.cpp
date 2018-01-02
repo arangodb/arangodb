@@ -28,23 +28,32 @@
 
 using namespace arangodb::maintenance;
 
+/// @brief ctor
 ActionDescription::ActionDescription(
-  Type const& t, std::map<std::string, std::string> const& p) :
-  _type(t), _properties(p) {}
+  std::map<std::string, std::string> const& p) : _properties(p) {}
 
+/// @brief Default dtor
 ActionDescription::~ActionDescription() {}
 
-bool ActionDescription::operator== (ActionDescription const& other) const noexcept{
-  return _type==other._type && _properties==other._properties;
+/// @brief Hash function
+std::size_t ActionDescription::hash() const {
+  std::string propstr;
+  for (auto const& i : _properties) {
+    propstr += i.first + i.second;
+  }
+  return std::hash<std::string>{}(propstr); 
 }
 
+/// @brief Equality operator
+bool ActionDescription::operator==(
+  ActionDescription const& other) const noexcept {
+  return _properties==other._properties;
+}
+
+/// @brief hash implementation for ActionRegistry
 namespace std {
 std::size_t hash<ActionDescription>::operator()(
   ActionDescription const& a) const noexcept {
-  std::size_t const h1 (a._type);
-  std::string h2;
-  for (auto const& i : a._properties) {
-    h2 += i.first + i.second;
-  }
-  return h1 ^ (std::hash<std::string>{}(h2) << 1); 
-}}
+  return a.hash();
+}
+}

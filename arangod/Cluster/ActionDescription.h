@@ -37,12 +37,13 @@ enum Type { CREATE_DATASE = 2, DROP_DATABASE,
 
 /// @brief Maintenance operation description card
 struct ActionDescription {
-
-  ActionDescription(Type const&, std::map<std::string, std::string> const&);
+public:
+  ActionDescription(std::map<std::string, std::string> const&);
   virtual ~ActionDescription();
   bool operator== (ActionDescription const&) const noexcept;
+  std::size_t hash() const;
 
-  Type _type;
+private:
   std::map<std::string, std::string> _properties;
 };
 
