@@ -1018,6 +1018,78 @@ actions.defineHttp({
 });
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @start Docu Block JSF_collectionShardDistribution
+// / (intentionally not in manual)
+// / @brief returns information about all collections and their shard
+// / distribution
+// /
+// / @ RESTHEADER{PUT /_admin/cluster/collectionShardDistribution,
+// / Get shard distribution for a specific collections.}
+// /
+// / @ RESTDESCRIPTION Returns an object with an attribute for a specific collection.
+// / The attribute name is the collection name. Each value is an object
+// / of the following form:
+// /
+// /     { "collection1": { "Plan": { "s100001": ["DBServer001", "DBServer002"],
+// /                                  "s100002": ["DBServer003", "DBServer004"] },
+// /                        "Current": { "s100001": ["DBServer001", "DBServer002"],
+// /                                     "s100002": ["DBServer003"] } },
+// /       "collection2": ...
+// /     }
+//
+// / The body must be a JSON document with the following attributes:
+// /   - `"collection"`: a string with the name of the collection
+// /
+// / @ RESTRETURNCODES
+// /
+// / @ RESTRETURNCODE{200} is returned when everything went well and the
+// / job is scheduled.
+// /
+// / @ RESTRETURNCODE{403} server is not a coordinator or method was not GET.
+// /
+// / @end Docu Block
+// //////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: '_admin/cluster/collectionShardDistribution',
+  allowUseDatabase: false,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require('@arangodb/cluster').isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only coordinators can serve this request');
+      return;
+    }
+    if (req.requestType !== actions.PUT) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only the PUT method is allowed');
+      return;
+    }
+
+    var body = actions.getJsonBody(req, res);
+    if (typeof body !== 'object') {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        'body must be an object.');
+      return;
+    }
+    if (!body.collection) {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        'body missing. expected collection name.');
+      return;
+    }
+    if (typeof body.collection !== 'string') {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        'collection name must be a string.');
+      return;
+    }
+
+    var result = require('@arangodb/cluster').collectionShardDistribution(body.collection);
+    actions.resultOk(req, res, actions.HTTP_OK, result);
+  }
+});
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @start Docu Block JSF_getShardDistribution
 // / (intentionally not in manual)
 // / @brief returns information about all collections and their shard
