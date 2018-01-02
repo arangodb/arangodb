@@ -469,6 +469,20 @@ string representation.
 SHA1("foobar") // "8843d7f92416211de9ebb963ff4ce28125932878"
 ```
 
+### SHA512()
+
+`SHA512(text) → hash`
+
+Calculate the SHA512 checksum for *text* and returns it in a hexadecimal
+string representation.
+
+- **text** (string): a string
+- returns **hash** (string): SHA512 checksum as hex string
+
+```js
+SHA512("foobar") // "0a50261ebd1a390fed2bf326f2673c145582a6342d523204973d0219337f81616a8069b012587cf5635f6925f1b56c360230c19b273500ee013e030601bf2425"
+```
+
 ### SPLIT()
 
 `SPLIT(value, separator, limit) → strArray`
