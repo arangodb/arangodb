@@ -1457,19 +1457,14 @@ AqlValue Functions::Translate(arangodb::aql::Query* query,
   ValidateParameters(parameters, "TRANSLATE", 2, 3);
   AqlValue key = ExtractFunctionParameterValue(trx, parameters, 0);
   AqlValue lookupDocument = ExtractFunctionParameterValue(trx, parameters, 1);
-  AqlValue defaultValue = ExtractFunctionParameterValue(trx, parameters, 2);
 
   if (!lookupDocument.isObject()) {
     RegisterInvalidArgumentWarning(query, "TRANSLATE");
     return AqlValue(AqlValueHintNull());
   }
 
-  if (defaultValue.isNone()) {
-    defaultValue = key;
-  }
-
   AqlValueMaterializer materializer(trx);
-  VPackSlice slice = materializer.slice(lookupDocument, false);;
+  VPackSlice slice = materializer.slice(lookupDocument, true);
   TRI_ASSERT(slice.isObject());
 
   VPackSlice result;
@@ -1481,7 +1476,18 @@ AqlValue Functions::Translate(arangodb::aql::Query* query,
     Functions::Stringify(trx, adapter, key.slice());
     result = slice.get(buffer->toString());
   }
-  return result.isNone() ? defaultValue : AqlValue(result);
+  
+  if (!result.isNone()) {
+    return AqlValue(result);
+  }
+  
+  // attribute not found, now return the default value
+  // we must create copy of it however
+  AqlValue defaultValue = ExtractFunctionParameterValue(trx, parameters, 2);
+  if (defaultValue.isNone()) {
+    return key.clone();
+  }
+  return defaultValue.clone();
 }
 
 /// @brief function MERGE
