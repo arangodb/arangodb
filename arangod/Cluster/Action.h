@@ -27,17 +27,40 @@
 
 #include "ActionDescription.h"
 
+#include "lib/Basics/Result.h"
+
+#include <chrono>
+
 namespace arangodb {
 namespace maintenance {
 
 class ActionBase;
 
 class Action {
+
 public:
+
+  /// @brief construct with description
   Action(ActionDescription const&);
+  
+  /// @brief clean up
   virtual ~Action();
+  
+  /// @brief run for some time and tell, if need more time or done
+  arangodb::Result run(
+    std::chrono::duration<double> const&, bool& finished);
+
+  /// @brief kill action with signal
+  arangodb::Result kill(Signal const& signal);
+  
+  /// @brief check progress
+  arangodb::Result progress(double& progress);
+
+  /// @brief describe action
   ActionDescription describe() const;
+  
 private:
+  
   ActionBase* _action;
 };
 

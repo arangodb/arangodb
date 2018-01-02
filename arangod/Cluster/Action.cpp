@@ -42,6 +42,25 @@ ActionDescription Action::describe() const {
   return _action->describe();
 }
 
-Action::~Action() {};
+arangodb::Result Action::run(
+  std::chrono::duration<double> const& d, bool& f) {
+  TRI_ASSERT(_action != nullptr);
+  return _action->run(d, f);
+}
+  
+arangodb::Result Action::kill(Signal const& signal) {
+  TRI_ASSERT(_action != nullptr);
+  return _action->kill(signal);
+}
+  
+arangodb::Result Action::progress(double& p) {
+  TRI_ASSERT(_action != nullptr);
+  return _action->progress(p);
+}
+
+Action::~Action() {
+  if(_action != nullptr)
+    delete _action;
+}
 
 

@@ -32,8 +32,6 @@
 
 #include <chrono>
 
-enum Signal { GRACEFUL, IMMEDIATE };
-
 namespace arangodb {
 namespace maintenance {
 

@@ -31,6 +31,8 @@
 namespace arangodb {
 namespace maintenance {
 
+enum Signal { GRACEFUL, IMMEDIATE };
+
 /// @brief Maintenance operation description card
 struct ActionDescription {
   
