@@ -34,7 +34,7 @@ ActionDescription::ActionDescription(
 
 ActionDescription::~ActionDescription() {}
 
-ActionDescription::operator== (ActionDescription const& other) {
+bool ActionDescription::operator== (ActionDescription const& other) const noexcept{
   return _type==other._type && _properties==other._properties;
 }
 

@@ -40,7 +40,7 @@ struct ActionDescription {
 
   ActionDescription(Type const&, std::map<std::string, std::string> const&);
   virtual ~ActionDescription();
-  bool operator== (ActionDescription const&)
+  bool operator== (ActionDescription const&) const noexcept;
 
   Type _type;
   std::map<std::string, std::string> _properties;
