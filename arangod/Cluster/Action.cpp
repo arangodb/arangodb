@@ -26,6 +26,7 @@
 
 #include "Cluster/ActionBase.h"
 #include "Cluster/CreateDatabase.h"
+#include "Cluster/DropDatabase.h"
 
 using namespace arangodb::maintenance;
 
@@ -34,6 +35,13 @@ Action::Action(ActionDescription const& d) : _action(nullptr) {
   std::string name = d.name();
   if (name == "CreateDatabase") {
     _action = new CreateDatabase(d);
+  } if else (name == "DropDatabase") {
+    _action = new DropDatabase(d);
+  } else {
+    // Should never get here
+    LOG_TOPIC(ERROR, Logger::Cluster) << "Unknown maintenance action" << name;
+    TRI_ASSERT(false);
+    
   }
 }
 
