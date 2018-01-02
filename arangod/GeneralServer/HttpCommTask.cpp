@@ -215,14 +215,15 @@ void HttpCommTask::addResponse(GeneralResponse* baseResponse,
 
 // reads data from the socket
 // caller must hold the _lock
-bool HttpCommTask::processRead(double startTime) {
+std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
+  Result rv;
   _lock.assertLockedByCurrentThread();
   
   cancelKeepAlive();
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
 
   if (_requestPending) {
-    return false;
+    return {false, rv};
   }
 
   RequestStatistics* stat = nullptr;
@@ -234,7 +235,7 @@ bool HttpCommTask::processRead(double startTime) {
     char const* etr = _readBuffer.end();
 
     if (ptr == etr) {
-      return false;
+      return {false, rv};
     }
 
     // starting a new request
@@ -257,7 +258,7 @@ bool HttpCommTask::processRead(double startTime) {
 
     // read buffer contents are way too small. we can exit here directly
     if (ptr >= end) {
-      return false;
+      return {false, rv};
     }
 
     // check for the end of the request
@@ -282,7 +283,7 @@ bool HttpCommTask::processRead(double startTime) {
                         1);  // ID does not matter for http (http default is 1)
 
       _closeRequested = true;
-      return false;
+      return {false, rv};
     }
 
     if (_readBuffer.length() >= 11 &&
@@ -307,7 +308,7 @@ bool HttpCommTask::processRead(double startTime) {
         commTask->processAll();
       }
       commTask->start();
-      return false;
+      return {false, rv};
     }
 
     // header is complete
@@ -320,7 +321,7 @@ bool HttpCommTask::processRead(double startTime) {
       if (slen == 11 && std::memcmp(sptr, "VST/1.1\r\n\r\n", 11) == 0) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "got VST request on HTTP port";
         _closeRequested = true;
-        return false;
+        return {false, rv};
       }
 
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "HTTP READ FOR " << (void*)this << ": "
@@ -343,7 +344,7 @@ bool HttpCommTask::processRead(double startTime) {
         handleSimpleError(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED, *_incompleteRequest, 1);
 
         _closeRequested = true;
-        return false;
+        return {false, rv};
       }
 
       // check max URL length
@@ -353,7 +354,7 @@ bool HttpCommTask::processRead(double startTime) {
         handleSimpleError(rest::ResponseCode::REQUEST_URI_TOO_LONG, *_incompleteRequest, 1);
 
         _closeRequested = true;
-        return false;
+        return {false, rv};
       }
 
       // update the connection information, i. e. client and server addresses
@@ -431,7 +432,7 @@ bool HttpCommTask::processRead(double startTime) {
           if (!checkContentLength(_incompleteRequest.get(),
                                   expectContentLength)) {
             _closeRequested = true;
-            return false;
+            return {false, rv};
           }
 
           if (_bodyLength == 0) {
@@ -455,7 +456,7 @@ bool HttpCommTask::processRead(double startTime) {
           handleSimpleError(rest::ResponseCode::METHOD_NOT_ALLOWED, *_incompleteRequest, 1);
 
           _closeRequested = true;
-          return false;
+          return {false, rv};
         }
       }
 
@@ -488,7 +489,7 @@ bool HttpCommTask::processRead(double startTime) {
   if (_readRequestBody) {
     if (_readBuffer.length() - _bodyPosition < _bodyLength) {
       // let client send more
-      return false;
+      return {false, rv};
     }
 
     bool handled = false;
@@ -501,7 +502,7 @@ bool HttpCommTask::processRead(double startTime) {
                                          _bodyLength, uncompressed)) {
           handleSimpleError(rest::ResponseCode::BAD, *_incompleteRequest, TRI_ERROR_BAD_PARAMETER,
                             "gzip decoding error", 1);
-          return false;
+          return {false, rv};
         }
         _incompleteRequest->setBody(uncompressed.c_str(), uncompressed.size());
         handled = true;
@@ -511,7 +512,7 @@ bool HttpCommTask::processRead(double startTime) {
                                       _bodyLength, uncompressed)) {
           handleSimpleError(rest::ResponseCode::BAD, *_incompleteRequest, TRI_ERROR_BAD_PARAMETER,
                             "gzip deflate error", 1);
-          return false;
+          return {false, rv};
         }
         _incompleteRequest->setBody(uncompressed.c_str(), uncompressed.size());
         handled = true;
@@ -532,7 +533,7 @@ bool HttpCommTask::processRead(double startTime) {
   }
 
   if (!handleRequest) {
-    return false;
+    return {false, rv};
   }
 
   auto bytes = _bodyPosition - _startPosition + _bodyLength;
@@ -606,7 +607,7 @@ bool HttpCommTask::processRead(double startTime) {
   }
 
   _incompleteRequest.reset(nullptr);
-  return true;
+  return {true, rv};
 }
 
 void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {

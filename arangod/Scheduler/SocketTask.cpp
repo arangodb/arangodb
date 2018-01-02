@@ -328,11 +328,13 @@ void SocketTask::closeStreamNoLock() {
 
   boost::system::error_code err;
 
-  bool closeSend = !_closedSend;
-  bool closeReceive = !_closedReceive;
-  
-  _peer->shutdown(err, closeSend, closeReceive);
-  
+
+  bool mustCloseSend = !_closedSend;
+  bool mustCloseReceive = !_closedReceive;
+
+  TRI_ASSERT(_peer); // Is the destructor called twice?
+  _peer->shutdown(err, mustCloseSend, mustCloseReceive);
+
   _closedSend = true;
   _closedReceive = true;
   _closeRequested = false;
@@ -424,7 +426,7 @@ bool SocketTask::trySyncRead() {
   if (_abandoned) {
     return false;
   }
-  
+
   boost::system::error_code err;
 
   if (0 == _peer->available(err)) {
@@ -464,14 +466,24 @@ bool SocketTask::trySyncRead() {
 }
 
 // caller must hold the _lock
+// runs until _closeRequested or ProcessRead Returns false is true or task becomes abandoned
+// returns bool - true value signals that processRead should continue to run (new read)
 bool SocketTask::processAll() {
   _lock.assertLockedByCurrentThread();
 
   double startTime = StatisticsFeature::time();
 
-  while (processRead(startTime)) {
+  std::pair<bool, Result> rv{true,TRI_ERROR_NO_ERROR};
+  while (rv.first) {
+    rv = processRead(startTime);
     if (_abandoned) {
       return false;
+    }
+
+    if(rv.second.fail()){
+      LOG_TOPIC(ERR, Logger::COMMUNICATION) << rv.second.errorMessage();
+      _closeRequested = true;
+      break;
     }
 
     if (_closeRequested) {
