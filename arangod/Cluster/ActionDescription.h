@@ -22,6 +22,10 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGODB_CLUSTER_MAINTENANCE_ACTION_DESCRIPTION_H
+#define ARANGODB_CLUSTER_MAINTENANCE_ACTION_DESCRIPTION_H
+
+#include <map>
 #include <string>
 
 namespace arangodb {
@@ -32,22 +36,25 @@ enum Type { CREATE_DATASE = 2, DROP_DATABASE,
             CREATE_INDEX, DROP_INDEX };
 
 /// @brief Maintenance operation description card
-struct OperationDescription {
+struct ActionDescription {
 
-  OperationDescription(Type const&, std::string const&);
-  virtual ~OperationDescription();
+  ActionDescription(Type const&, std::map<std::string, std::string> const&);
+  virtual ~ActionDescription();
+  bool operator== (ActionDescription const&)
 
   Type _type;
-  std::string _name;
+  std::map<std::string, std::string> _properties;
 };
 
 }}
 
 namespace std {
-template<> struct hash<arangodb::maintenance::OperationDescription> {
-  typedef arangodb::maintenance::OperationDescription argument_t;
+template<> struct hash<arangodb::maintenance::ActionDescription> {
+  typedef arangodb::maintenance::ActionDescription argument_t;
   typedef std::size_t result_t;
   result_t operator()(argument_t const& a) const noexcept;
 };
 }
+
+#endif
 

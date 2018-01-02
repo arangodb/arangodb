@@ -22,22 +22,29 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OperationDescription.h"
+#include "ActionDescription.h"
 
 #include <functional>
 
 using namespace arangodb::maintenance;
 
-OperationDescription::OperationDescription(
-  Type const& type, std::string const& name) :
-  _type(type), _name(name) {}
+ActionDescription::ActionDescription(
+  Type const& t, std::map<std::string, std::string> const& p) :
+  _type(t), _properties(p) {}
 
-OperationDescription::~OperationDescription() {}
+ActionDescription::~ActionDescription() {}
+
+ActionDescription::operator== (ActionDescription const& other) {
+  return _type==other._type && _properties==other._properties;
+}
 
 namespace std {
-std::size_t hash<OperationDescription>::operator()(
-  OperationDescription const& a) const noexcept {
+std::size_t hash<ActionDescription>::operator()(
+  ActionDescription const& a) const noexcept {
   std::size_t const h1 (a._type);
-  std::size_t const h2 (std::hash<std::string>{}(a._name));
-  return h1 ^ (h2 << 1); 
+  std::string h2;
+  for (auto const& i : a._properties) {
+    h2 += i.first + i.second;
+  }
+  return h1 ^ (std::hash<std::string>{}(h2) << 1); 
 }}
