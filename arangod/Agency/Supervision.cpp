@@ -286,9 +286,12 @@ void handleOnStatusDBServer(
   // New condition GOOD:
   if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
     if (snapshot.has(failedServerPath)) {
-      envelope->add(VPackValue(failedServerPath));
-      { VPackObjectBuilder ccc(envelope.get());
-        envelope->add("op", VPackValue("delete")); }
+      envelope = std::make_shared<VPackBuilder>();
+      { VPackArrayBuilder a(envelope.get());
+        { VPackObjectBuilder operations (envelope.get());
+          envelope->add(VPackValue(failedServerPath));
+          { VPackObjectBuilder ccc(envelope.get());
+            envelope->add("op", VPackValue("delete")); }}}
     }
   } else if ( // New state: FAILED persisted: GOOD (-> BAD)
     persisted.status == Supervision::HEALTH_STATUS_GOOD &&
@@ -499,7 +502,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
                 pReport->add(i.key.copyString(), i.value);
               }
             }} // Operation
-          if (envelope != nullptr) {                         // Preconditions(Job)
+          if (envelope != nullptr && envelope->slice().length()>1) {  // Preconditions(Job)
             TRI_ASSERT(
               envelope->slice().isArray() && envelope->slice()[1].isObject());
             pReport->add(envelope->slice()[1]);
