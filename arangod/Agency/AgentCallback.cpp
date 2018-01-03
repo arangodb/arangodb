@@ -60,7 +60,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
         if (senderTimeStamp.isInteger()) {
           try {
             int64_t sts = senderTimeStamp.getNumber<int64_t>();
-            int64_t now = std::llround(readSystemClock() * 1000);
+            int64_t now = std::llround(steadyClockToDouble() * 1000);
             if (now - sts > 1000) {  // a second round trip time!
               LOG_TOPIC(DEBUG, Logger::AGENCY)
                 << "Round trip for appendEntriesRPC took " << now - sts

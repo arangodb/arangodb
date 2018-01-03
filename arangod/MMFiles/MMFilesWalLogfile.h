@@ -145,12 +145,17 @@ class MMFilesWalLogfile {
 
   /// @brief whether or not the logfile can be collected
   inline bool canBeCollected(TRI_voc_tick_t releasedTick) const {
-    if (releasedTick <= df()->maxTick()) {
+    if (releasedTick < df()->maxTick()) {
       return false;
     }
 
     return (_status == StatusType::SEALED ||
             _status == StatusType::COLLECTION_REQUESTED);
+  }
+
+  /// @brief whether or not the logfile can be collected
+  inline bool hasBeenReleased(TRI_voc_tick_t releasedTick) const {
+    return (releasedTick >= df()->maxTick());
   }
 
   /// @brief whether or not the logfile can be removed

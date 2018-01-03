@@ -1,11 +1,12 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @brief auto-generated file generated from exitcodes.dat
-////////////////////////////////////////////////////////////////////////////////
+/// auto-generated file generated from exitcodes.dat
 
 #include "Basics/Common.h"
-#include "./lib/Basics/exitcodes.h"
+#include "Basics/exitcodes.h"
 
-void TRI_InitializeExitMessages () {
+/// helper macro to define an exit code string
+#define REG_EXIT(id, label) TRI_set_exitno_string(TRI_ ## id, label);
+
+void TRI_InitializeExitMessages() {
   REG_EXIT(EXIT_SUCCESS, "success");
   REG_EXIT(EXIT_FAILED, "exit with error");
   REG_EXIT(EXIT_CODE_RESOLVING_FAILED, "exit code resolving failed");
