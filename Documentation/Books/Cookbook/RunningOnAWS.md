@@ -1,4 +1,4 @@
-#Running ArangoDB on AWS
+# Running ArangoDB on AWS
 
 ArangoDB is available as AMI on the [AWS Marketplace][1].
 

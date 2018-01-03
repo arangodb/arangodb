@@ -1,11 +1,11 @@
-#Monitoring your Foxx applications
+# Monitoring your Foxx applications
 
 **Note**: this recipe is working with ArangoDB 2.5 Foxx
 
-##Problem
+## Problem
 How to integrate a Foxx application into a monitoring system using the `collectd curl_JSON` plugin.
 
-##Solution
+## Solution
 Since Foxx native tongue is JSON, integrating it with the [collectd curl_JSON plugin](MonitoringWithCollectd.html)
 should be an easy exercise.
 We have a Foxx-Application which can receive Data and write it into a collection. We specify an easy input Model:

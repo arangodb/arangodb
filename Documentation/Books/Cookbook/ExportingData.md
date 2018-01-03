@@ -1,11 +1,11 @@
-#Exporting Data for Offline Processing
+# Exporting Data for Offline Processing
 
 In this recipe we will learn how to use the [export API][1] to extract data and process it with PHP. At the end of the recipe you can download the complete PHP script.
 
 **Note**: The following recipe is written using an ArangoDB server with version 2.6 or higher. You can also use the `devel` branch, since version 2.6 hasn't been an official release yet.
 
-##Howto
-###Importing example data
+## Howto
+### Importing example data
 
 First of all we need some data in an ArangoDB collection. For this example we will use a collection named `users` which we will populate with 100.000 [example documents][2]. This way you can get the data into ArangoDB:
 
@@ -18,7 +18,7 @@ tar xvfz users-100000.json.tar.gz
 arangoimp --file users-100000.json --collection users --create-collection true
 ```
 
-###Setting up ArangoDB-PHP
+### Setting up ArangoDB-PHP
 For this recipe we will use the [ArangoDB PHP driver][3]:
 
 ```bash
@@ -73,7 +73,7 @@ try {
 
 After running the script you should see `Connected!` in the bash if successful.
 
-###Extracting the data
+### Extracting the data
 
 Now we can run an export of the data in the collection `users`. Place the following code into the `TODO` part of the first code:
 
@@ -135,7 +135,7 @@ The function extracts all documents from the collection and writes them into an 
 written 100000 documents in 20 batches with 40890013 total bytes
 ```
 
-###Applying some transformations
+### Applying some transformations
 We now will use PHP to transform data as we extract it:
 
 ```php
@@ -203,8 +203,8 @@ With this script the following changes will be made on the data:
 
 **Note**: The output will be in a file named `output-transformed.json`.
 
-###Filtering attributes
-####Exclude certain attributes
+### Filtering attributes
+#### Exclude certain attributes
 Instead of filtering out as done in the previous example we can easily configure the export to exclude these attributes server-side:
 
 ```php
@@ -221,7 +221,7 @@ $settings = array(
 
 This script will exclude the attributes `_id`, `_rev`. `_key` and `likes`.
 
-####Include certain attributes
+#### Include certain attributes
 We can also include attributes with the following script:
 
 ```php
@@ -267,7 +267,7 @@ In this script only the `_key` and `name` attributes are extracted. In the print
 
 **Note**: The whole script [can be downloaded][4].
 
-###Using the API without PHP
+### Using the API without PHP
 
 The export API REST interface can be used with any client that can speak HTTP like curl. With the following command you can fetch the documents from the `users` collection:
 

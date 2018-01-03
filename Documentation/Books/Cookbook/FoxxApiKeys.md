@@ -1,4 +1,4 @@
-#Restrict Foxx Apps with API Keys
+# Restrict Foxx Apps with API Keys
 
 **Note:** For this recipe you need at least ArangoDB 2.5.
 

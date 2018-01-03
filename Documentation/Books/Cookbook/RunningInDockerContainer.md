@@ -1,10 +1,10 @@
-#How to run ArangoDB in a Docker container
+# How to run ArangoDB in a Docker container
 
-##Problem
+## Problem
 
 How do you make ArangoDB run in a Docker container?
 
-##Solution
+## Solution
 
 ArangoDB is now available as an [official repository in the Docker Hub](https://hub.docker.com/_/arangodb/) (@see documentation there). Furthermore, it could be used from our own repository:
 
@@ -28,7 +28,7 @@ Please note that this recipe is a general overview. There is also a recipe expla
 
 You can get more information about [Docker and how to use it](https://github.com/arangodb/arangodb-docker) in our Docker repository.
 
-###Usage
+### Usage
 
 First of all you need to start an ArangoDB instance.
 
@@ -38,13 +38,13 @@ In order to start an ArangoDB instance run
 
 By default ArangoDB listen on port 8529 for request and the image includes `EXPOST 8529`. If you link an application container, it is automatically available in the linked container. See the following examples.
 
-###Using the instance
+### Using the instance
 
 In order to use the running instance from an application, link the container
 
     unix> docker run --name my-app --link arangodb-instance
 
-###Running the image
+### Running the image
 
 In order to start an ArangoDB instance run
 
@@ -56,7 +56,7 @@ In order to get a list of supported options, run
 
     unix> docker run -e help=1 arangodb/arangodb
 
-###Persistent Data
+### Persistent Data
 
 *note: if you're running a docker machine on [OS X](https://docs.docker.com/v1.8/installation/mac/) or [Windows](https://docs.docker.com/windows/step_one/), [read first about using docker inside of virtual machines](#docker-inside-of-a-virtual-machine)*
 
@@ -85,7 +85,7 @@ If want to save a few bytes for you can alternatively use [tianon/true][3] or [p
 
     unix> docker run -d --name arangodb-persist -v /var/lib/arangodb tianon/true true
 
-###Building an image
+### Building an image
 
 Simple clone the repository and execute the following command in the arangodb-docker folder
 
@@ -93,7 +93,7 @@ Simple clone the repository and execute the following command in the arangodb-do
 
 This will create a image named arangodb.
 
-##Update note
+## Update note
 that we have changed the location of the data files, in order
 to be compatible with the official docker image (see
 https://github.com/docker-library/official-images/pull/728):
@@ -102,13 +102,13 @@ https://github.com/docker-library/official-images/pull/728):
 - `/var/lib/arangodb-apps` instead of `/apps`
 - `/var/log/arangodb` instead of `/logs`
 
-##Docker inside of a virtual machine
+## Docker inside of a virtual machine
 There are some setups in which you may want to run a docker container inside of a virtual machine - either you want reproduceable tests for deployment, or its not directly compatible with your hosts os (aka OS X or Windows).
 If you only want to mount filesystems native to the VM as persistent volume, everything is fine. But if you need to mount filesystems from your host into the VM and then in term into the docker container, things get complicated.
 Even more if the Virtual Machine part is abstracted away from the user - if you're on OS X with `boot to docker` or on windows.
 [Please read the upstream documentation howto mount persistent volumes in this case.](https://docs.docker.com/engine/userguide/dockervolumes/#mount-a-host-directory-as-a-data-volume).
 
-##Comment
+## Comment
 
 A good explanation about persistence and docker container can be found here: 
 

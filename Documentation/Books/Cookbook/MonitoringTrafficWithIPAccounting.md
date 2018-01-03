@@ -8,7 +8,7 @@ We run a cluster and want to know whether the traffic is unbalanced or something
 
 As we already run [Collectd](http://collectd.org) as our metric-hub, we want to utilize it to also give us these figures. A very cheap way to generate these values are the counters in the IPTables firewall of our system.
 
-###Ingredients
+### Ingredients
 
 For this recipe you need to install the following tools:
 
@@ -45,7 +45,7 @@ We can now check which ports they occupied:
 * Pavel - This is the first DB-Server; Claus will talk to it on port 8629
 * Perry - This is the second DB-Server; Claus will talk to it on port 8630
 
-###Configuring IPTables / ferm
+### Configuring IPTables / ferm
 Since the usual solution using shell scripts calling iptables brings the [DRY principle](http://en.wikipedia.org/wiki/Don%27t_repeat_yourself) to a grinding hold, we need something better. Here [ferm](http://ferm.foo-projects.org/download/2.2/ferm.html#basic_iptables_match_keywords) comes to the rescue - It enables you to produce very compact and well readable firewall configurations.
 
 According to the ports we found in the last section, we will configure our firewall in `/etc/ferm/ferm.conf`, and put the identities into the comments so we have a persistent naming scheme:

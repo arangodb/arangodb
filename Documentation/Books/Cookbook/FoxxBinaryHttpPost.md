@@ -42,7 +42,7 @@ Since we really want to know whats going on on the wire, we'll use [sniffing](ht
 ngrep -Wbyline host httpbin.org > /tmp/log
 interface: eth0 (192.168.1.0/255.255.255.0)
 filter: (ip or ip6) and ( host httpbin.org )
-####
+ ####
 T 192.168.1.2:45487 -> 54.175.219.8:80 [A]
 POST /post HTTP/1.1
 Host: httpbin.org
@@ -58,7 +58,7 @@ Content-Type: application/octet-stream
 
 --1234MyMimeBoundary--
 
-####
+ ####
 T 54.175.219.8:80 -> 192.168.1.2:45487 [A]
 HTTP/1.1 200 OK.
 Server: nginx.
@@ -80,7 +80,7 @@ Access-Control-Allow-Credentials: true.
     "Accept-Encoding": "deflate",
     "Content-Length": "205020",
     "Content-Type": "m
-##
+ ##
 T 54.175.219.8:80 -> 192.168.1.2:45487 [AP]
 ultipart/form-data; boundary=1234MyMimeBoundary",
     "Host": "httpbin.org",
@@ -91,7 +91,7 @@ ultipart/form-data; boundary=1234MyMimeBoundary",
   "url": "http://httpbin.org/post"
 }
 
-####exit
+ ####exit
 592 received, 0 dropped
 ```
 

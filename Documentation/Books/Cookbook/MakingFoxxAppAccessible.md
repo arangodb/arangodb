@@ -91,7 +91,7 @@ ProxyPassReverse /_api/ http://127.0.0.1:8529/_api/
 
 Restart Apache again.
 
-###Configure the proxy server - NGINX
+### Configure the proxy server - NGINX
 Nginx doesn't offer modules in a way apache does. However, HTTP-Proxying is one of its core features.
 
 Adopting the above example for nginx may look like this (add it to a server section):

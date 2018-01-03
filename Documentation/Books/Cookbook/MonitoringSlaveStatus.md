@@ -1,11 +1,11 @@
-#Monitoring replication slave
+# Monitoring replication slave
 
 **Note**: this recipe is working with ArangoDB 2.5, you need a collectd curl_json plugin with correct boolean type mapping.
 
-##Problem
+## Problem
 How to monitor the slave status using the `collectd curl_JSON` plugin.
 
-##Solution
+## Solution
 Since arangodb [reports the replication status in JSON](https://docs.arangodb.com/HttpReplications/ReplicationApplier.html#state-of-the-replication-applier),
 integrating it with the [collectd curl_JSON plugin](MonitoringWithCollectd.html)
 should be an easy exercise. However, only very recent versions of collectd will handle boolean flags correctly.

@@ -4,15 +4,15 @@
 
 Aside of the values which ArangoDB already offers for monitoring, other system metrics may be relevant for continuously operating ArangoDB. be it a single instance or a cluster setup. [Collectd offers a pleathora of plugins](https://collectd.org/wiki/index.php/Table_of_Plugins) - lets have a look at some of them which may be useful for us.
 
-##Solution
-###Ingedients
+## Solution
+### Ingedients
 
 For this recipe you need to install the following tools:
 
   * [collectd](https://collectd.org/): The metrics aggregation Daemon
   * we base on [Monitoring with Collecd recipe](MonitoringWithCollectd.html) for understanding the basics about collectd
 
-###Disk usage
+### Disk usage
 You may want to monitor that ArangoDB doesn't run out of disk space. The [df Plugin](https://collectd.org/wiki/index.php/Plugin:DF) can aggregate these values for you.
 
 First we need to find out which disks are used by your ArangoDB. By default you need to find **/var/lib/arango** in the mountpoints. Since nowadays many virtual file systems are also mounted on a typical \*nix system we want to sort the output of mount:
@@ -55,7 +55,7 @@ The collectd configuration `/etc/collectd/collectd.conf.d/diskusage.conf` looks 
       #  ValuesPercentage false
     </Plugin>
 
-###Disk I/O Usage
+### Disk I/O Usage
 Another interesting metric is the amount of data read/written to disk - its an estimate how busy your ArangoDB or the whole system currently is.
 The [Disk plugin](https://collectd.org/wiki/index.php/Plugin:Disk) aggregates these values.
 
@@ -69,7 +69,7 @@ According to the mountpoints above our configuration `/etc/collectd/collectd.con
     </Plugin>
 
 
-###CPU Usage
+### CPU Usage
 While the ArangoDB self monitoring already offers some overview of the running threads etc. you can get a deeper view using the [Process Plugin](https://collectd.org/wiki/index.php/Plugin:Processes).
 
 If you're running a single Arango instance, a simple match by process name is sufficient, `/etc/collectd/collectd.conf.d/arango_process.conf` looks like this:
