@@ -78,24 +78,24 @@ function optimizerRuleTestSuite() {
     setUp : function () {
       var loopto = 10;
 
-        internal.db._drop(colName);
-        fulltext = internal.db._create(colName);
-        fulltext.ensureIndex({type:"fulltext", fields:["t1"]});
-        fulltext.ensureIndex({type:"fulltext", fields:["t2"], minLength: 4});        
-        fulltext.ensureIndex({type:"fulltext", fields:["t3.e.x"]});
-        var texts = [
-          "Flötenkröten tröten böse wörter nörgelnd",
-          "Krötenbrote grölen stoßen GROßE Römermöter",
-          "Löwenschützer möchten mächtige Müller ködern",
-          "Differenzenquotienten goutieren gourmante Querulanten, quasi quergestreift",
-          "Warum winken wichtige Winzer weinenden Wichten watschelnd winterher?",
-          "Warum möchten böse wichte wenig müßige müller meiern?",
-          "Loewenschuetzer moechten maechtige Mueller koedern",
-          "Moechten boese wichte wenig mueller melken?"
-        ];
-        for (var i = 0; i < texts.length; ++i) {
-          fulltext.save({ id : (i + 1), t1 :texts[i], t2:texts[i], t3:{e:{x:texts[i]}}});
-        }
+      internal.db._drop(colName);
+      fulltext = internal.db._create(colName);
+      fulltext.ensureIndex({type:"fulltext", fields:["t1"]});
+      fulltext.ensureIndex({type:"fulltext", fields:["t2"], minLength: 4});        
+      fulltext.ensureIndex({type:"fulltext", fields:["t3.e.x"]});
+      var texts = [
+        "Flötenkröten tröten böse wörter nörgelnd",
+        "Krötenbrote grölen stoßen GROßE Römermöter",
+        "Löwenschützer möchten mächtige Müller ködern",
+        "Differenzenquotienten goutieren gourmante Querulanten, quasi quergestreift",
+        "Warum winken wichtige Winzer weinenden Wichten watschelnd winterher?",
+        "Warum möchten böse wichte wenig müßige müller meiern?",
+        "Loewenschuetzer moechten maechtige Mueller koedern",
+        "Moechten boese wichte wenig mueller melken?"
+      ];
+      for (var i = 0; i < texts.length; ++i) {
+        fulltext.save({ id : (i + 1), t1 :texts[i], t2:texts[i], t3:{e:{x:texts[i]}}});
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -105,6 +105,20 @@ function optimizerRuleTestSuite() {
     tearDown : function () {
       internal.db._drop(colName);
       fulltext = null;
+    },
+    
+    testRuleNotApplicable : function () {
+      let query = "FOR search IN ['prefix:möchten,müller', 'möchten,prefix:müller', 'möchten,müller', 'Flötenkröten,|goutieren', 'prefix:quergestreift,|koedern,|prefix:römer,-melken,-quasi'] RETURN (FOR d IN FULLTEXT(@@coll, @attr, search) SORT d.id RETURN d.id)";
+        
+      ["t1", "t2", "t3.e.x"].forEach(field => {
+        let bindVars = {'@coll': colName, attr: field};
+        let plan = AQL_EXPLAIN(query, bindVars);
+        hasNoIndexNode(plan, query);
+              
+        let expected = [ [ 3, 6 ], [ 3, 6 ], [ 3, 6 ], [ 1, 4 ], [ 2, 7 ] ];
+        let r = AQL_EXECUTE(query, bindVars);
+        assertEqual(r.json, expected, "Invalid fulltext result");
+      });
     },
 
     testRuleBasics : function () {
