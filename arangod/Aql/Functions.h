@@ -198,6 +198,8 @@ struct Functions {
                        VPackFunctionParameters const&);
    static AqlValue Sha1(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
+   static AqlValue Sha512(arangodb::aql::Query*, transaction::Methods*,
+                        VPackFunctionParameters const&);
    static AqlValue Hash(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
    static AqlValue Unique(arangodb::aql::Query*, transaction::Methods*,

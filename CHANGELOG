@@ -1,5 +1,10 @@
 devel
 -----
+* UI: displayed wrong wfs property for a collection when using rocksdb as storage engine
+
+* UI: updated dygraph js library to version 2.1.0
+
+* added C++ implementation for AQL function `SHA512()`
 
 * add AQL functions `SORTED` and `SORTED_UNIQUE`
   
@@ -15,6 +20,9 @@ devel
 
 * UI: fixed broken foxx configuration keys. Some valid configuration values
   could not be edited via the ui.
+
+* UI: Shard distribution view now has an accordion view instead of displaying
+  all shards of all collections at once.
 
 * UI: pressing the return key inside a select2 box no longer triggers the modals
   success function

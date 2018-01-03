@@ -149,8 +149,14 @@ class Ast {
   /// @brief create an AST example node
   AstNode* createNodeExample(AstNode const*, AstNode const*);
 
+  /// @brief create an AST subquery node
+  AstNode* createNodeSubquery();
+
   /// @brief create an AST for node
   AstNode* createNodeFor(char const*, size_t, AstNode const*, bool);
+  
+  /// @brief create an AST for node, using an existing output variable
+  AstNode* createNodeFor(Variable*, AstNode const*);
 
   /// @brief create an AST let node, without an IF condition
   AstNode* createNodeLet(char const*, size_t, AstNode const*, bool);
