@@ -274,13 +274,9 @@ void handleOnStatusDBServer(
   // New condition GOOD:
   if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
     if (snapshot.has(failedServerPath)) {
-      Builder del;
-      { VPackArrayBuilder c(&del);
-        { VPackObjectBuilder cc(&del);
-          del.add(VPackValue(failedServerPath));
-          { VPackObjectBuilder ccc(&del);
-            del.add("op", VPackValue("delete")); }}}
-      singleWriteTransaction(agent, del);
+      envelope->add(VPackValue(failedServerPath));
+      { VPackObjectBuilder ccc(envelope.get());
+        envelope->add("op", VPackValue("delete")); }
     }
   } else if ( // New state: FAILED persisted: GOOD (-> BAD)
     persisted.status == Supervision::HEALTH_STATUS_GOOD &&
