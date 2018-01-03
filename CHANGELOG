@@ -1,7 +1,10 @@
 v3.2.11 (2018-XX-XX)
 --------------------
 
-* UI: displayed wrong wfs property for a collection when using rocksdb as storage engine
+* UI: displayed wrong "waitForSync" property for a collection when 
+  using RocksDB as storage engine
+
+* prevent binding to the same combination of IP and port on Windows
 
 
 v3.2.10 (2017-12-22)
