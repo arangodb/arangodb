@@ -39,7 +39,8 @@ class SimpleHttpResult;
 }  // namespace httpclient
 
 class ClientManager;
-template <typename JobData> class ClientWorker;
+template <typename JobData>
+class ClientWorker;
 
 /**
  * @brief Provides a simple, parallel task queue for `arangosh`-based clients.
@@ -79,7 +80,7 @@ class ClientTaskQueue {
   ClientTaskQueue(JobProcessor processJob, JobResultHandler handleJobResult);
   virtual ~ClientTaskQueue();
 
- protected:
+ public:
   /**
    * @brief Spawn a number of workers to handle queued tasks
    *
@@ -111,6 +112,15 @@ class ClientTaskQueue {
   bool allWorkersBusy() const noexcept;
 
   /**
+   * @brief Determines if all workers are currently waiting for work
+   *
+   * Thread-safe.
+   *
+   * @return `true` if all workers are idle
+   */
+  bool allWorkersIdle() const noexcept;
+
+  /**
    * @brief Queues a job to be processed
    *
    * Thread-safe.
@@ -120,8 +130,23 @@ class ClientTaskQueue {
    */
   bool queueJob(std::unique_ptr<JobData>&& jobData) noexcept;
 
+  /**
+   * @brief Empties the queue by deleting all jobs not yet started
+   *
+   * Thread-safe.
+   */
+  void clearQueue() noexcept;
+
+  /**
+   * @brief Waits for the queue to be empty and all workers to be idle
+   *
+   * Thread-safe.
+   */
+  void waitForIdle() noexcept;
+
  private:
   std::unique_ptr<JobData> fetchJob() noexcept;
+  void notifyIdle() noexcept;
   void waitForWork() noexcept;
 
  private:
@@ -131,6 +156,7 @@ class ClientTaskQueue {
   basics::ConditionVariable _jobsCondition;
   std::queue<std::unique_ptr<JobData>> _jobs;
   mutable Mutex _workersLock;
+  basics::ConditionVariable _workersCondition;
   std::vector<std::unique_ptr<ClientWorker<JobData>>> _workers;
 
   friend class ClientWorker<JobData>;

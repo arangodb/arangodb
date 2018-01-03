@@ -49,7 +49,7 @@ class ClientWorker : public arangodb::Thread {
                         std::unique_ptr<SimpleHttpClient>&&);
   virtual ~ClientWorker();
 
-  bool isIdle() const noexcept; // not currently processing a job
+  bool isIdle() const noexcept;  // not currently processing a job
 
  protected:
   void run() override;
@@ -62,10 +62,17 @@ class ClientWorker : public arangodb::Thread {
 }  // namespace arangodb
 
 template <typename JobData>
-ClientTaskQueue<JobData>::ClientTaskQueue(JobProcessor processJob, JobResultHandler handleJobResult) : _processJob(processJob), _handleJobResult(handleJobResult) {}
+ClientTaskQueue<JobData>::ClientTaskQueue(JobProcessor processJob,
+                                          JobResultHandler handleJobResult)
+    : _processJob(processJob), _handleJobResult(handleJobResult) {}
 
 template <typename JobData>
-ClientTaskQueue<JobData>::~ClientTaskQueue() {}
+ClientTaskQueue<JobData>::~ClientTaskQueue() {
+  for (auto& worker : _workers) {
+    worker->beginShutdown();
+  }
+  _jobsCondition.broadcast();
+}
 
 template <typename JobData>
 bool ClientTaskQueue<JobData>::spawnWorkers(ClientManager& manager,
@@ -78,6 +85,7 @@ bool ClientTaskQueue<JobData>::spawnWorkers(ClientManager& manager,
       auto worker =
           std::make_unique<ClientWorker<JobData>>(*this, std::move(client));
       _workers.emplace_back(std::move(worker));
+      _workers.back()->start();
     } catch (...) {
       break;
     }
@@ -103,6 +111,17 @@ bool ClientTaskQueue<JobData>::allWorkersBusy() const noexcept {
 }
 
 template <typename JobData>
+bool ClientTaskQueue<JobData>::allWorkersIdle() const noexcept {
+  MUTEX_LOCKER(lock, _workersLock);
+  for (auto& worker : _workers) {
+    if (!worker->isIdle()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+template <typename JobData>
 bool ClientTaskQueue<JobData>::queueJob(
     std::unique_ptr<JobData>&& job) noexcept {
   MUTEX_LOCKER(lock, _jobsLock);
@@ -112,6 +131,26 @@ bool ClientTaskQueue<JobData>::queueJob(
     return true;
   } catch (...) {
     return false;
+  }
+}
+
+template <typename JobData>
+void ClientTaskQueue<JobData>::clearQueue() noexcept {
+  MUTEX_LOCKER(lock, _jobsLock);
+  while (!_jobs.empty()) {
+    _jobs.pop();
+  }
+}
+
+template <typename JobData>
+void ClientTaskQueue<JobData>::waitForIdle() noexcept {
+  while (true) {
+    if (isQueueEmpty() && allWorkersIdle()) {
+      break;
+    }
+
+    CONDITION_LOCKER(lock, _workersCondition);
+    lock.wait(std::chrono::milliseconds(500));
   }
 }
 
@@ -140,6 +179,11 @@ void ClientTaskQueue<JobData>::waitForWork() noexcept {
 }
 
 template <typename JobData>
+void ClientTaskQueue<JobData>::notifyIdle() noexcept {
+  _workersCondition.signal();
+}
+
+template <typename JobData>
 ClientWorker<JobData>::ClientWorker(
     ClientTaskQueue<JobData>& queue,
     std::unique_ptr<httpclient::SimpleHttpClient>&& client)
@@ -149,7 +193,9 @@ ClientWorker<JobData>::ClientWorker(
       _idle(true) {}
 
 template <typename JobData>
-ClientWorker<JobData>::~ClientWorker() {}
+ClientWorker<JobData>::~ClientWorker() {
+  Thread::shutdown();
+}
 
 template <typename JobData>
 bool ClientWorker<JobData>::isIdle() const noexcept {
@@ -168,6 +214,7 @@ void ClientWorker<JobData>::run() {
       _queue._handleJobResult(std::move(job), result);
 
       _idle.store(true);
+      _queue.notifyIdle();
     }
 
     _queue.waitForWork();

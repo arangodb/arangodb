@@ -35,9 +35,29 @@ class FileHandler {
   virtual ~FileHandler();
 
   /**
-   * @brief Prepares handler for encryption if enabled
+   * @brief Determines whether encryption is enabled
+   *
+   * Note that this function will only return a valid response if `initializeEncryption` has already been called.
+   *
+   * @return `true` if encryption is enabled
    */
-  void initializeEncryption();
+  bool encryptionEnabled() const noexcept;
+
+      /**
+       * @brief Prepares handler for encryption if enabled
+       */
+      void
+      initializeEncryption() noexcept;
+
+  /**
+   * @brief Writes a directory-wide encryption meta file (necessary to decrypt)
+   *
+   * Should only be called once per encrypted directory. Not necessary to call
+   * for subdirectories.
+   *
+   * @param directory Base directory to use for encryption
+   */
+  void initializeEncryptedDirectory(std::string const& directory) noexcept;
 
   /**
    * @brief Writes data to the given file, using encryption if enabled
@@ -46,19 +66,19 @@ class FileHandler {
    * @param  len  Length of data to write
    * @return      `true` if successful
    */
-  bool writeData(int fd, char const* data, size_t len);
+  bool writeData(int fd, char const* data, size_t len) noexcept;
 
   /**
    * @brief Prepares given file for encryption if enabled
    * @param fd File to prepare
    */
-  void beginEncryption(int fd);
+  void beginEncryption(int fd) noexcept;
 
   /**
    * @brief Finalizes encryption of given file, if enabled
    * @param fd File to finalize
    */
-  void endEncryption(int fd);
+  void endEncryption(int fd) noexcept;
 
   /**
    * @brief Reads data from the given file, using decryption if enabled
@@ -67,19 +87,19 @@ class FileHandler {
    * @param  len  Maximum amount of data to read (no more than buffer length)
    * @return      `true` if successful
    */
-  ssize_t readData(int fd, char* data, size_t len);
+  ssize_t readData(int fd, char* data, size_t len) noexcept;
 
   /**
    * @brief Prepares to read from decrypted file, if enabled
    * @param fd File to prepare
    */
-  void beginDecryption(int fd);
+  void beginDecryption(int fd) noexcept;
 
   /**
    * @brief Finalizes decryption of a given file, if enabled
    * @param fd File to finalize
    */
-  void endDecryption(int fd);
+  void endDecryption(int fd) noexcept;
 
  private:
   EncryptionFeature* _feature;

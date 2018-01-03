@@ -57,32 +57,36 @@ std::string ClientManager::rewriteLocation(
   return "/_db/" + dbname + "/" + location;
 }
 
-std::string ClientManager::getHttpErrorMessage(SimpleHttpResult* result,
-                                               int& err) noexcept {
-  err = TRI_ERROR_NO_ERROR;
-  std::string details;
+namespace {
+Result getHttpErrorMessage(SimpleHttpResult* result) noexcept {
+  if (!result) {
+    return {TRI_ERROR_INTERNAL, "no response from server!"};
+  }
+
+  int code = TRI_ERROR_NO_ERROR;
+  std::string message("got error from server: HTTP " +
+         StringUtils::itoa(result->getHttpReturnCode()) + " (" +
+         result->getHttpReturnMessage() + ")");
 
   // assume vpack body, catch otherwise
   try {
     std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
     VPackSlice const body = parsedBody->slice();
 
-    std::string const& errorMessage =
-        basics::VelocyPackHelper::getStringValue(body, "errorMessage", "");
-    int errorNum =
+    int serverCode =
         basics::VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
+    std::string const& serverMessage =
+        basics::VelocyPackHelper::getStringValue(body, "errorMessage", "");
 
-    if (errorMessage != "" && errorNum > 0) {
-      err = errorNum;
-      details =
-          ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
+    if (serverCode > 0) {
+      code = serverCode;
+      message.append(": ArangoError " + StringUtils::itoa(serverCode) + ": " + serverMessage);
     }
   } catch (...) {
     // no need to recover, fallthrough for default error message
   }
-  return "got error from server: HTTP " +
-         StringUtils::itoa(result->getHttpReturnCode()) + " (" +
-         result->getHttpReturnMessage() + ")" + details;
+  return {code, message};
+}
 }
 
 std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
@@ -143,13 +147,14 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
   return httpClient;
 }
 
-bool ClientManager::getArangoIsCluster(int& err,
-                                       SimpleHttpClient& client) noexcept {
+std::pair<Result, bool> ClientManager::getArangoIsCluster(SimpleHttpClient& client) noexcept {
+  Result result{TRI_ERROR_NO_ERROR};
   std::unique_ptr<SimpleHttpResult> response(
       client.request(rest::RequestType::GET, "/_admin/server/role", "", 0));
 
   if (response == nullptr || !response->isComplete()) {
-    return false;
+    result = {TRI_ERROR_INTERNAL, "no response from server!"};
+    return {result, false};
   }
 
   std::string role = "UNDEFINED";
@@ -165,24 +170,27 @@ bool ClientManager::getArangoIsCluster(int& err,
     }
   } else {
     if (response->wasHttpError()) {
-      std::string msg = getHttpErrorMessage(response.get(), err);
-      LOG_TOPIC(ERR, Logger::FIXME) << "got error while checking cluster mode: " << msg;
-      client.setErrorMessage(msg, false);
+      auto result = ::getHttpErrorMessage(response.get());
+      LOG_TOPIC(ERR, Logger::FIXME) << "got error while checking cluster mode: " << result.errorMessage();
+      client.setErrorMessage(result.errorMessage(), false);
+    } else {
+      result = {TRI_ERROR_INTERNAL};
     }
 
     client.disconnect();
   }
 
-  return role == "COORDINATOR";
+  return {result, (role == "COORDINATOR")};
 }
 
-bool ClientManager::getArangoIsUsingEngine(int& err, SimpleHttpClient& client,
+std::pair<Result, bool> ClientManager::getArangoIsUsingEngine(SimpleHttpClient& client,
                                            std::string const& name) noexcept {
+  Result result{TRI_ERROR_NO_ERROR};
   std::unique_ptr<SimpleHttpResult> response(
       client.request(rest::RequestType::GET, "/_api/engine", "", 0));
-
   if (response == nullptr || !response->isComplete()) {
-    return false;
+    result = {TRI_ERROR_INTERNAL, "no response from server!"};
+    return {result, false};
   }
 
   std::string engine = "UNDEFINED";
@@ -198,11 +206,15 @@ bool ClientManager::getArangoIsUsingEngine(int& err, SimpleHttpClient& client,
     }
   } else {
     if (response->wasHttpError()) {
-      client.setErrorMessage(getHttpErrorMessage(response.get(), err), false);
+      result = ::getHttpErrorMessage(response.get());
+      LOG_TOPIC(ERR, Logger::FIXME) << "got error while checking storage engine: " << result.errorMessage();
+      client.setErrorMessage(result.errorMessage(), false);
+    } else {
+      result = {TRI_ERROR_INTERNAL};
     }
 
     client.disconnect();
   }
 
-  return (engine == name);
+  return {result, (engine == name)};
 }

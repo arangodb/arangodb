@@ -43,7 +43,6 @@ class ClientManager {
   virtual ~ClientManager();
 
  public:
-
   /**
    * @brief Initailizes a client, connects to server, and verifies version
    *
@@ -79,23 +78,23 @@ class ClientManager {
 
   /**
    * @brief Determines whether the ArangoDB instance is part of a cluster
-   * @param  err    Reference to store error code if one occurs
    * @param  client Client to use for request
-   * @return        `true` if it is part of a cluster
+   * @return        status result; `true` if successful and part of a cluster
    */
-  bool getArangoIsCluster(int& err,
-                          httpclient::SimpleHttpClient& client) noexcept;
+  std::pair<Result, bool> getArangoIsCluster(
+      httpclient::SimpleHttpClient& client) noexcept;
 
   /**
    * Determines whether the ArangoDB instance is using the specified engine
    * @param  err    Reference to store error code if one occurs
    * @param  client Client to use for request
    * @param  name   Name of storage engine to check against
-   * @return        `true` if specified engine is in use
+   * @return        status result; `true` if successful and specified engine is
+   *                in use
    */
-  bool getArangoIsUsingEngine(int& err,
-                              httpclient::SimpleHttpClient& httpClient,
-                              std::string const& name) noexcept;
+  std::pair<Result, bool> getArangoIsUsingEngine(
+      httpclient::SimpleHttpClient& httpClient,
+      std::string const& name) noexcept;
 };
 }  // namespace arangodb
 

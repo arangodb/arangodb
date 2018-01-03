@@ -25,6 +25,7 @@
 #define ARANGODB_DUMP_DUMP_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Mutex.h"
 #include "Utils/ClientManager.hpp"
 #include "Utils/ClientTaskQueue.hpp"
 #include "Utils/FileHandler.hpp"
@@ -52,7 +53,7 @@ struct DumpFeatureJobData {
                      DumpFeatureStats&) noexcept;
   DumpFeature& feature;
   FileHandler& fileHandler;
-  VPackSlice const& collectionInfo;
+  VPackSlice const collectionInfo;
   std::string const cid;
   std::string const name;
   std::string const type;
@@ -71,7 +72,7 @@ extern template class ClientTaskQueue<DumpFeatureJobData>;
 
 class DumpFeature : public application_features::ApplicationFeature {
  public:
-  DumpFeature(application_features::ApplicationServer* server, int* result);
+  DumpFeature(application_features::ApplicationServer* server, int& exitCode);
 
  public:
   // for documentation of virtual methods, see `ApplicationFeature`
@@ -85,22 +86,30 @@ class DumpFeature : public application_features::ApplicationFeature {
 public:
 
   /**
-   * Returns the feature name (for registration with `ApplicationServer`)
+   * @brief Returns the feature name (for registration with `ApplicationServer`)
    * @return The name of the feature
    */
   static std::string featureName();
 
- private:
-  Result runDump(std::string& dbName);
-  Result runClusterDump();
+  /**
+   * @brief Saves a worker error for later handling and clears queued jobs
+   * @param error Error from a client worker
+   */
+  void reportError(Result const& error) noexcept;
 
  private:
-  int* _result;
+  Result runDump(httpclient::SimpleHttpClient& client, std::string& dbName) noexcept;
+  Result runClusterDump(httpclient::SimpleHttpClient& client) noexcept;
+
+ private:
+  int& _exitCode;
   ClientManager _clientManager;
   ClientTaskQueue<DumpFeatureJobData> _clientTaskQueue;
   FileHandler _fileHandler;
   DumpFeatureStats _stats;
   std::vector<std::string> _collections;
+  Mutex _workerErrorLock;
+  std::queue<Result> _workerErrors;
   uint64_t _chunkSize;
   uint64_t _maxChunkSize;
   bool _dumpData;
@@ -110,10 +119,10 @@ public:
   bool _overwrite;
   bool _progress;
   bool _clusterMode;
-  uint64_t _batchId;
   uint64_t _tickStart;
   uint64_t _tickEnd;
   std::string _outputDirectory;
+  size_t _threads;
 };
 }  // namespace arangodb
 

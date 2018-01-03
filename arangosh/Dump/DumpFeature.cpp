@@ -23,7 +23,9 @@
 
 #include "DumpFeature.h"
 
+#include <chrono>
 #include <iostream>
+#include <thread>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -31,18 +33,12 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/OpenFilesTracker.h"
 #include "Basics/Result.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/files.h"
-#include "Basics/tri-strings.h"
-#include "Endpoint/Endpoint.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Rest/HttpResponse.h"
-#include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
@@ -62,12 +58,15 @@ namespace {
 uint64_t MinChunkSize = 1024 * 128;
 /// @brief maximum amount of data to fetch from server in a single batch
 uint64_t MaxChunkSize = 1024 * 1024 * 96;  // larger value may cause tcp issues
+/// @brief generic error for if server returns bad/unexpected json
+Result ErrorMalformedJsonResponse = {TRI_ERROR_INTERNAL,
+                                     "got malformed JSON response from server"};
 }  // namespace
 
 namespace {
 /// @brief check whether HTTP response is valid, complete, and not an error
 Result checkHttpResponse(SimpleHttpClient& client,
-                         std::unique_ptr<SimpleHttpResult>& response) {
+                         std::unique_ptr<SimpleHttpResult>& response) noexcept {
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
             "got invalid response from server: " + client.getErrorMessage()};
@@ -86,7 +85,7 @@ namespace {
 /// @brief prepare file for writing
 Result prepareFileForWriting(FileHandler& fileHandler,
                              std::string const& filename, int& fd,
-                             bool overwrite) {
+                             bool overwrite) noexcept {
   // deal with existing file first if it exists
   bool fileExists = TRI_ExistsFile(filename.c_str());
   if (fileExists) {
@@ -115,7 +114,7 @@ Result prepareFileForWriting(FileHandler& fileHandler,
 
 namespace {
 /// @brief prepare file for writing
-int finalizeWritingFile(FileHandler& fileHandler, int const& fd) {
+int finalizeWritingFile(FileHandler& fileHandler, int const& fd) noexcept {
   // end encryption if enabled
   fileHandler.endEncryption(fd);
   // now actually close the file
@@ -126,7 +125,7 @@ int finalizeWritingFile(FileHandler& fileHandler, int const& fd) {
 namespace {
 /// @brief start a batch via the replication API
 std::pair<Result, uint64_t> startBatch(SimpleHttpClient& client,
-                                       std::string DBserver) {
+                                       std::string DBserver) noexcept {
   std::string const url = "/_api/replication/batch";
   std::string const body = "{\"ttl\":300}";
   std::string urlExt;
@@ -146,7 +145,7 @@ std::pair<Result, uint64_t> startBatch(SimpleHttpClient& client,
   try {
     parsedBody = response->getBodyVelocyPack();
   } catch (...) {
-    return {{TRI_ERROR_INTERNAL, "got malformed JSON"}, 0};
+    return {::ErrorMalformedJsonResponse, 0};
   }
   VPackSlice const resBody = parsedBody->slice();
 
@@ -161,7 +160,7 @@ std::pair<Result, uint64_t> startBatch(SimpleHttpClient& client,
 namespace {
 /// @brief prolongs a batch to ensure we can complete our dump
 void extendBatch(SimpleHttpClient& client, std::string DBserver,
-                 uint64_t batchId) {
+                 uint64_t batchId) noexcept {
   TRI_ASSERT(batchId > 0);
 
   std::string const url =
@@ -181,7 +180,7 @@ void extendBatch(SimpleHttpClient& client, std::string DBserver,
 namespace {
 /// @brief mark our batch finished so resources can be freed on server
 void endBatch(SimpleHttpClient& client, std::string DBserver,
-              uint64_t& batchId) {
+              uint64_t& batchId) noexcept {
   TRI_ASSERT(batchId > 0);
 
   std::string const url =
@@ -202,7 +201,7 @@ void endBatch(SimpleHttpClient& client, std::string DBserver,
 
 namespace {
 /// @brief execute a WAL flush request
-void flushWal(httpclient::SimpleHttpClient& client) {
+void flushWal(httpclient::SimpleHttpClient& client) noexcept {
   std::string const url =
       "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
 
@@ -222,7 +221,8 @@ namespace {
 Result dumpCollection(httpclient::SimpleHttpClient& client,
                       DumpFeatureJobData& jobData, int fd,
                       std::string const& name, std::string const& server,
-                      uint64_t batchId, uint64_t minTick, uint64_t maxTick) {
+                      uint64_t batchId, uint64_t minTick,
+                      uint64_t maxTick) noexcept {
   uint64_t fromTick = minTick;
   uint64_t chunkSize =
       jobData.initialChunkSize;  // will grow adaptively up to max
@@ -318,7 +318,7 @@ Result dumpCollection(httpclient::SimpleHttpClient& client,
 namespace {
 /// @brief processes a single collection dumping job in single-server mode
 Result handleCollection(httpclient::SimpleHttpClient& client,
-                        DumpFeatureJobData& jobData, int fd) {
+                        DumpFeatureJobData& jobData, int fd) noexcept {
   // keep the batch alive
   ::extendBatch(client, "", jobData.batchId);
 
@@ -331,7 +331,7 @@ Result handleCollection(httpclient::SimpleHttpClient& client,
 namespace {
 /// @brief handle a single collection dumping job in cluster mode
 Result handleCollectionCluster(httpclient::SimpleHttpClient& client,
-                               DumpFeatureJobData& jobData, int fd) {
+                               DumpFeatureJobData& jobData, int fd) noexcept {
   Result result{TRI_ERROR_NO_ERROR};
 
   // First we have to go through all the shards, what are they?
@@ -397,8 +397,9 @@ Result processJob(httpclient::SimpleHttpClient& client,
 
   {
     // save meta data
-    std::string filename = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR +
-                           jobData.name + ".structure.json";
+    std::string filename =
+        jobData.outputDirectory + TRI_DIR_SEPARATOR_STR + jobData.name +
+        (jobData.clusterMode ? "" : ("_" + hexString)) + ".structure.json";
     int fd;
     result = ::prepareFileForWriting(jobData.fileHandler, filename, fd, true);
     if (result.fail()) {
@@ -408,15 +409,12 @@ Result processJob(httpclient::SimpleHttpClient& client,
     std::string const collectionInfo = jobData.collectionInfo.toJson();
     bool written = jobData.fileHandler.writeData(fd, collectionInfo.c_str(),
                                                  collectionInfo.size());
-
+    ::finalizeWritingFile(jobData.fileHandler, fd);
     if (!written) {
       // close file and bail out
       result = {TRI_ERROR_CANNOT_WRITE_FILE,
                 "cannot write to file '" + filename + "'"};
     }
-
-    // close file
-    ::finalizeWritingFile(jobData.fileHandler, fd);
   }
 
   if (result.ok() && jobData.dumpData) {
@@ -450,7 +448,9 @@ namespace {
 /// @brief handle the result of a single job
 void handleJobResult(std::unique_ptr<DumpFeatureJobData>&& jobData,
                      Result const& result) noexcept {
-  // notify progress?
+  if (result.fail()) {
+    jobData->feature.reportError(result);
+  }
 }
 }  // namespace
 
@@ -482,14 +482,16 @@ DumpFeatureJobData::DumpFeatureJobData(
       stats{s} {}
 
 DumpFeature::DumpFeature(application_features::ApplicationServer* server,
-                         int* result)
+                         int& exitCode)
     : ApplicationFeature(server, DumpFeature::featureName()),
-      _result{result},
+      _exitCode{exitCode},
       _clientManager{},
       _clientTaskQueue{::processJob, ::handleJobResult},
       _fileHandler{},
       _stats{0, 0, 0},
       _collections{},
+      _workerErrorLock{},
+      _workerErrors{},
       _chunkSize{1024 * 1024 * 8},
       _maxChunkSize{1024 * 1024 * 64},
       _dumpData{true},
@@ -499,11 +501,11 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _overwrite{false},
       _progress{true},
       _clusterMode{false},
-      _batchId{0},
       _tickStart{0},
       _tickEnd{0},
       _outputDirectory{FileUtils::buildFilename(
-          FileUtils::currentDirectory().result(), "dump")} {
+          FileUtils::currentDirectory().result(), "dump")},
+      _threads{1} {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Client");
@@ -649,53 +651,60 @@ void DumpFeature::prepare() {
       FATAL_ERROR_EXIT();
     }
   }
+
+  _fileHandler.initializeEncryption();
+  _fileHandler.initializeEncryptedDirectory(_outputDirectory);
 }
 
 // dump data from server
-Result DumpFeature::runDump(std::string& dbName) {
+Result DumpFeature::runDump(SimpleHttpClient& client,
+                            std::string& dbName) noexcept {
   Result result;
+  uint64_t batchId;
+  std::tie(result, batchId) = ::startBatch(client, "");
+  if (result.fail()) {
+    return result;
+  }
+  TRI_DEFER(::endBatch(client, "", batchId));
 
-  // get a client
-  auto httpClient = _clientManager.getConnectedClient();
+  // flush the wal and so we know we are getting everything
+  flushWal(client);
 
   // fetch the collection inventory
   std::string const url =
       "/_api/replication/inventory?includeSystem=" +
       std::string(_includeSystemCollections ? "true" : "false") +
-      "&batchId=" + StringUtils::itoa(_batchId);
+      "&batchId=" + StringUtils::itoa(batchId);
   std::unique_ptr<SimpleHttpResult> response(
-    httpClient->request(rest::RequestType::GET, url, nullptr, 0));
-  auto check = ::checkHttpResponse(*httpClient, response);
+      client.request(rest::RequestType::GET, url, nullptr, 0));
+  auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
     return check;
   }
-
-  // flush the wal and so we know we are getting everything
-  flushWal(*httpClient);
 
   // extract the vpack body inventory
   std::shared_ptr<VPackBuilder> parsedBody;
   try {
     parsedBody = response->getBodyVelocyPack();
   } catch (...) {
-    return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
+    return ::ErrorMalformedJsonResponse;
   }
   VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
-    return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
+    return ::ErrorMalformedJsonResponse;
   }
 
   // get the collections list
   VPackSlice const collections = body.get("collections");
   if (!collections.isArray()) {
-    return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
+    return ::ErrorMalformedJsonResponse;
   }
 
   // read the server's max tick value
   std::string const tickString =
       arangodb::basics::VelocyPackHelper::getStringValue(body, "tick", "");
   if (tickString == "") {
-    return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
+    return ::ErrorMalformedJsonResponse;
   }
   std::cout << "Last tick provided by server is: " << tickString << std::endl;
 
@@ -725,13 +734,11 @@ Result DumpFeature::runDump(std::string& dbName) {
     std::string const metaString = meta.slice().toJson();
     bool written =
         _fileHandler.writeData(fd, metaString.c_str(), metaString.size());
+    ::finalizeWritingFile(_fileHandler, fd);
     if (!written) {
-      ::finalizeWritingFile(_fileHandler, fd);
       return {TRI_ERROR_CANNOT_WRITE_FILE,
               "cannot write to file '" + filename + "'"};
     }
-
-    ::finalizeWritingFile(_fileHandler, fd);
   } catch (basics::Exception const& ex) {
     return {ex.code(), ex.what()};
   } catch (std::exception const& ex) {
@@ -750,11 +757,11 @@ Result DumpFeature::runDump(std::string& dbName) {
   for (VPackSlice const& collection : VPackArrayIterator(collections)) {
     // extract parameters about the individual collection
     if (!collection.isObject()) {
-      return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
+      return ::ErrorMalformedJsonResponse;
     }
     VPackSlice const parameters = collection.get("parameters");
     if (!parameters.isObject()) {
-      return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
+      return ::ErrorMalformedJsonResponse;
     }
 
     // extract basic info about the collection
@@ -770,7 +777,7 @@ Result DumpFeature::runDump(std::string& dbName) {
 
     // basic filtering
     if (cid == 0 || name == "") {
-      return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
+      return ::ErrorMalformedJsonResponse;
     }
     if (deleted) {
       continue;
@@ -789,54 +796,52 @@ Result DumpFeature::runDump(std::string& dbName) {
     // queue job to actually dump collection
     auto jobData = std::make_unique<DumpFeatureJobData>(
         *this, _fileHandler, collection, std::to_string(cid), name,
-        collectionType, _batchId, _tickStart, maxTick, _chunkSize,
-        _maxChunkSize, _clusterMode, _progress, _dumpData, _outputDirectory,
-        _stats);
-    auto result = ::processJob(*httpClient, *jobData);
-    if (result.fail()) {
-      return result;
-    }
+        collectionType, batchId, _tickStart, maxTick, _chunkSize, _maxChunkSize,
+        _clusterMode, _progress, _dumpData, _outputDirectory, _stats);
+    _clientTaskQueue.queueJob(std::move(jobData));
   }
 
+  // wait for all jobs to finish, then check for errors
+  _clientTaskQueue.waitForIdle();
   {
-    // wait for jobs and handle errors?
+    MUTEX_LOCKER(lock, _workerErrorLock);
+    if (!_workerErrors.empty()) {
+      return _workerErrors.front();
+    }
   }
 
   return {TRI_ERROR_NO_ERROR};
 }
 
 // dump data from cluster via a coordinator
-Result DumpFeature::runClusterDump() {
-  // get an http client
-  auto httpClient = _clientManager.getConnectedClient();
-
+Result DumpFeature::runClusterDump(SimpleHttpClient& client) noexcept {
   // get the cluster inventory
   std::string const url =
       "/_api/replication/clusterInventory?includeSystem=" +
       std::string(_includeSystemCollections ? "true" : "false");
   std::unique_ptr<SimpleHttpResult> response(
-      httpClient->request(rest::RequestType::GET, url, nullptr, 0));
-      auto check = ::checkHttpResponse(*httpClient, response);
-      if (check.fail()) {
-        return check;
-      }
+      client.request(rest::RequestType::GET, url, nullptr, 0));
+  auto check = ::checkHttpResponse(client, response);
+  if (check.fail()) {
+    return check;
+  }
 
   // parse the inventory vpack body
   std::shared_ptr<VPackBuilder> parsedBody;
   try {
     parsedBody = response->getBodyVelocyPack();
   } catch (...) {
-    return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
+    return ::ErrorMalformedJsonResponse;
   }
   VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
-    return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
+    return ::ErrorMalformedJsonResponse;
   }
 
   // parse collections array
   VPackSlice const collections = body.get("collections");
   if (!collections.isArray()) {
-    return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
+    return ::ErrorMalformedJsonResponse;
   }
 
   // create a lookup table for collections
@@ -849,15 +854,15 @@ Result DumpFeature::runClusterDump() {
   for (auto const& collection : VPackArrayIterator(collections)) {
     // extract parameters about the individual collection
     if (!collection.isObject()) {
-      return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
+      return ::ErrorMalformedJsonResponse;
     }
     VPackSlice const parameters = collection.get("parameters");
 
     if (!parameters.isObject()) {
-      return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
+      return ::ErrorMalformedJsonResponse;
     }
 
-// extract basic info about the collection
+    // extract basic info about the collection
     uint64_t const cid =
         arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
     std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
@@ -867,7 +872,7 @@ Result DumpFeature::runClusterDump() {
 
     // simple filtering
     if (cid == 0 || name == "") {
-      return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
+      return ::ErrorMalformedJsonResponse;
     }
     if (deleted) {
       continue;
@@ -907,44 +912,57 @@ Result DumpFeature::runClusterDump() {
     // queue job to actually dump collection
     auto jobData = std::make_unique<DumpFeatureJobData>(
         *this, _fileHandler, collection, std::to_string(cid), name,
-        "" /*collectionType*/, _batchId, _tickStart, 0 /*maxTick*/, _chunkSize,
+        "" /*collectionType*/, 0, _tickStart, 0 /*maxTick*/, _chunkSize,
         _maxChunkSize, _clusterMode, _progress, _dumpData, _outputDirectory,
         _stats);
-    auto result = ::processJob(*httpClient, *jobData);
-    if (result.fail()) {
-      return result;
-    }
+    _clientTaskQueue.queueJob(std::move(jobData));
   }
 
+  // wait for all jobs to finish, then check for errors
+  _clientTaskQueue.waitForIdle();
   {
-    // wait for jobs and handle errors?
+    MUTEX_LOCKER(lock, _workerErrorLock);
+    if (!_workerErrors.empty()) {
+      return _workerErrors.front();
+    }
   }
 
   return {TRI_ERROR_NO_ERROR};
 }
 
-void DumpFeature::start() {
-  _fileHandler.initializeEncryption();
+void DumpFeature::reportError(Result const& error) noexcept {
+  try {
+    MUTEX_LOCKER(lock, _workerErrorLock);
+    _workerErrors.emplace(error);
+    _clientTaskQueue.clearQueue();
+  } catch (...) {
+  }
+}
 
-  ClientFeature* client =
+/// @brief main method to run dump
+void DumpFeature::start() {
+  _exitCode = EXIT_SUCCESS;
+
+  // get database name to operate on
+  auto client =
       application_features::ApplicationServer::getFeature<ClientFeature>(
           "Client");
+  auto dbName = client->databaseName();
 
-  int ret = EXIT_SUCCESS;
-  *_result = ret;
-
-  std::string dbName = client->databaseName();
-
+  // get a client to use in main thread
   auto httpClient = _clientManager.getConnectedClient(_force, true);
 
-  int errorNum = {TRI_ERROR_NO_ERROR};
-  _clusterMode = _clientManager.getArangoIsCluster(errorNum, *httpClient);
-  if (errorNum != TRI_ERROR_NO_ERROR) {
+  // check if we are in cluster or single-server mode
+  Result result{TRI_ERROR_NO_ERROR};
+  std::tie(result, _clusterMode) =
+      _clientManager.getArangoIsCluster(*httpClient);
+  if (result.fail()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "Error: could not detect ArangoDB instance type";
     FATAL_ERROR_EXIT();
   }
 
+  // special cluster-mode parameter checks
   if (_clusterMode) {
     if (_tickStart != 0 || _tickEnd != 0) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -953,15 +971,21 @@ void DumpFeature::start() {
     }
   }
 
-  if (!httpClient->isConnected()) {
+  // set up threads and workers
+  bool usingRocksDB = false;
+  std::tie(result, usingRocksDB) =
+      _clientManager.getArangoIsUsingEngine(*httpClient, "rocksdb");
+  if (result.fail()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Lost connection to endpoint '" << client->endpoint()
-        << "', database: '" << dbName << "', username: '" << client->username()
-        << "'";
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "Error message: '" << httpClient->getErrorMessage() << "'";
+        << "Error: could not detect ArangoDB storage engine";
     FATAL_ERROR_EXIT();
   }
+  if (usingRocksDB) {
+    _threads = 1;
+  } else if (_fileHandler.encryptionEnabled()) {
+    _threads = 1;
+  }
+  _clientTaskQueue.spawnWorkers(_clientManager, _threads);
 
   if (_progress) {
     std::cout << "Connected to ArangoDB '" << client->endpoint()
@@ -972,25 +996,12 @@ void DumpFeature::start() {
               << std::endl;
   }
 
-#ifdef USE_ENTERPRISE
-  if (_encryption != nullptr) {
-    _encryption->writeEncryptionFile(_outputDirectory);
-  }
-#endif
-
   Result res;
   try {
     if (!_clusterMode) {
-      std::tie(res, _batchId) = ::startBatch(*httpClient, "");
-      if (res.ok()) {
-        res = runDump(dbName);
-      }
-
-      if (_batchId > 0) {
-        ::endBatch(*httpClient, "", _batchId);
-      }
+      res = runDump(*httpClient, dbName);
     } else {
-      res = runClusterDump();
+      res = runClusterDump(*httpClient);
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
@@ -1004,7 +1015,7 @@ void DumpFeature::start() {
   if (res.fail()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "An error occurred: " + res.errorMessage();
-    ret = EXIT_FAILURE;
+    _exitCode = EXIT_FAILURE;
   }
 
   if (_progress) {
@@ -1018,6 +1029,4 @@ void DumpFeature::start() {
                 << std::endl;
     }
   }
-
-  *_result = ret;
 }

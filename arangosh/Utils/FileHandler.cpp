@@ -29,15 +29,31 @@ FileHandler::FileHandler() : _feature{nullptr} {}
 
 FileHandler::~FileHandler() {}
 
-void FileHandler::initializeEncryption() {
-  #ifdef USE_ENTERPRISE
-    _feature =
-        application_features::ApplicationServer::getFeature<EncryptionFeature>(
-            "Encryption");
-  #endif
+bool FileHandler::encryptionEnabled() const noexcept {
+#ifdef USE_ENTERPRISE
+  return (_feature != nullptr);
+#endif
+  return false;
 }
 
-bool FileHandler::writeData(int fd, char const* data, size_t len) {
+void FileHandler::initializeEncryption() noexcept {
+#ifdef USE_ENTERPRISE
+  _feature =
+      application_features::ApplicationServer::getFeature<EncryptionFeature>(
+          "Encryption");
+#endif
+}
+
+void FileHandler::initializeEncryptedDirectory(
+    std::string const& directory) noexcept {
+#ifdef USE_ENTERPRISE
+  if (_feature != nullptr) {
+    _feature->writeEncryptionFile(directory);
+  }
+#endif
+}
+
+bool FileHandler::writeData(int fd, char const* data, size_t len) noexcept {
 #ifdef USE_ENTERPRISE
   if (_feature) {
     return _feature->writeData(fd, data, len);
@@ -49,7 +65,7 @@ bool FileHandler::writeData(int fd, char const* data, size_t len) {
 #endif
 }
 
-void FileHandler::beginEncryption(int fd) {
+void FileHandler::beginEncryption(int fd) noexcept {
 #ifdef USE_ENTERPRISE
   if (_feature) {
     bool result = _feature->beginEncryption(fd);
@@ -63,7 +79,7 @@ void FileHandler::beginEncryption(int fd) {
 #endif
 }
 
-void FileHandler::endEncryption(int fd) {
+void FileHandler::endEncryption(int fd) noexcept {
 #ifdef USE_ENTERPRISE
   if (_feature) {
     _feature->endEncryption(fd);
@@ -71,7 +87,7 @@ void FileHandler::endEncryption(int fd) {
 #endif
 }
 
-ssize_t FileHandler::readData(int fd, char* data, size_t len) {
+ssize_t FileHandler::readData(int fd, char* data, size_t len) noexcept {
 #ifdef USE_ENTERPRISE
   if (_feature) {
     return _feature->readData(fd, data, len);
@@ -80,7 +96,7 @@ ssize_t FileHandler::readData(int fd, char* data, size_t len) {
   return TRI_READ(fd, data, static_cast<TRI_read_t>(len));
 }
 
-void FileHandler::beginDecryption(int fd) {
+void FileHandler::beginDecryption(int fd) noexcept {
 #ifdef USE_ENTERPRISE
   if (_feature) {
     bool result = _feature->beginDecryption(fd);
@@ -94,7 +110,7 @@ void FileHandler::beginDecryption(int fd) {
 #endif
 }
 
-void FileHandler::endDecryption(int fd) {
+void FileHandler::endDecryption(int fd) noexcept {
 #ifdef USE_ENTERPRISE
   if (_feature) {
     _feature->endDecryption(fd);
