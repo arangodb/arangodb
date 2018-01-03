@@ -6,6 +6,8 @@ devel
 
 * added C++ implementation for AQL function `SHA512()`
 
+* Added C++ implementation for the AQL TRANSLATE function
+
 * renamed arangoimp to arangoimport for consistency
   Release packages will still install arangoimp as a symlink so user scripts 
   invoking arangoimp do not need to be changed
