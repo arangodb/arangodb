@@ -178,27 +178,8 @@ if (UNIX)
         DESTINATION ${SYSTEMD_UNIT_DIR}/
         RENAME ${SERVICE_NAME}.service
       )
-
-      # configure and install logrotate file
-      configure_file (
-        ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.systemd
-        ${PROJECT_BINARY_DIR}/arangod.systemd
-        NEWLINE_STYLE UNIX
-      )
-      install(
-        FILES ${PROJECT_BINARY_DIR}/arangod.systemd
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-        DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate.d
-        RENAME ${SERVICE_NAME}
-      )
-
     else ()
       message(STATUS "-- systemd not found")
-      configure_file (
-        ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.sysv
-        ${PROJECT_BINARY_DIR}/arangod.sysv
-        NEWLINE_STYLE UNIX
-      )
     endif(SYSTEMD_FOUND)
   endif(NOT PKG_CONFIG_FOUND) 
 endif(UNIX)
