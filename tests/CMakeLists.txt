@@ -98,6 +98,7 @@ add_executable(
   Cache/TransactionsWithBackingStore.cpp
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
+  Cluster/MaintenanceTest.cpp
   Cluster/ShardDistributionReporterTest.cpp
   Geo/georeg.cpp
   Graph/ClusterTraverserCacheTest.cpp

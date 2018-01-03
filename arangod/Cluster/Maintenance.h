@@ -31,6 +31,14 @@
 namespace arangodb {
 namespace maintenance {
 
+
+
+static std::string const PLANNED_DATABASES("/arango/Plan/Databases");
+
+arangodb::Result diffPlanLocalForDatabases(
+  arangodb::consensus::Node const&, std::vector<std::string> const&,
+  std::vector<std::string>&, std::vector<std::string>&);
+
 arangodb::Result executePlanForDatabases (
   arangodb::consensus::Node plan, arangodb::consensus::Node current,
   std::vector<std::string>);

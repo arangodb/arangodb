@@ -28,6 +28,8 @@ using namespace arangodb::maintenance;
 
 ActionBase::ActionBase(ActionDescription const& d) : _description(d) {}
 
+ActionBase::~ActionBase() {}
+
 ActionDescription ActionBase::describe() const {
   return _description;
 }
