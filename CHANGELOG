@@ -8,6 +8,8 @@ v3.3.2 (XXXX-XX-XX)
 
 * distinguish isReady and allInSync in clusterInventory
 
+* fixed issue #4197: AQL statement not working in 3.3.1 when upgraded from 3.2.10
+
 
 v3.3.1 (2017-12-28)
 -------------------

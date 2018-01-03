@@ -4447,14 +4447,12 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 }
 
 static bool isValueTypeString(AstNode* node) {
-  return (node->type == NODE_TYPE_VALUE && node->value.type == VALUE_TYPE_STRING) ||
-  node->type == NODE_TYPE_REFERENCE;
+  return (node->type == NODE_TYPE_VALUE && node->value.type == VALUE_TYPE_STRING);
 }
 
 static bool isValueTypeNumber(AstNode* node) {
   return (node->type == NODE_TYPE_VALUE && (node->value.type == VALUE_TYPE_INT ||
-                                            node->value.type == VALUE_TYPE_DOUBLE)) ||
-         node->type == NODE_TYPE_REFERENCE;
+                                            node->value.type == VALUE_TYPE_DOUBLE));
 }
 
 static bool applyFulltextOptimization(EnumerateListNode* elnode,
@@ -4494,7 +4492,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   AstNode* attrArg = fargs->getMember(1);
   AstNode* queryArg = fargs->getMember(2);
   AstNode* limitArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
-  if ((collArg->type != NODE_TYPE_COLLECTION && collArg->type != NODE_TYPE_VALUE) ||
+  if ((collArg->type != NODE_TYPE_COLLECTION && !isValueTypeString(collArg)) ||
       !isValueTypeString(attrArg) || !isValueTypeString(queryArg) ||
       (limitArg != nullptr && !isValueTypeNumber(limitArg))) {
     return false;
