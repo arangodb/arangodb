@@ -35,7 +35,7 @@ using namespace arangodb::maintenance;
 
 arangodb::Result diffPlanLocalForDatabases(
   Node const& plan, std::vector<std::string> const& local,
-  std::vector<std::string>& toAdd, std::vector<std::string>& toRemove) {
+  std::vector<std::string>& toCreate, std::vector<std::string>& toDrop) {
 
   arangodb::Result result;
   
@@ -50,17 +50,17 @@ arangodb::Result diffPlanLocalForDatabases(
   std::set_intersection(
     planv.begin(), planv.end(), local.begin(), local.end(), isect.begin());
 
-  // In plan but not in intersection => toAdd
+  // In plan but not in intersection => toCreate
   for (auto const i : planv) {
     if (std::find(isect.begin(), isect.end(), i) == isect.end()) {
-      toAdd.emplace_back(i);
+      toCreate.emplace_back(i);
     }
   }
 
-  // Local but not in intersection => toRemove
+  // Local but not in intersection => toDrop
   for (auto const i : local) {
     if (std::find(isect.begin(), isect.end(), i) == isect.end()) {
-      toRemove.emplace_back(i);
+      toDrop.emplace_back(i);
     }
   }
 
@@ -76,19 +76,23 @@ arangodb::Result executePlanForDatabases (
   ActionRegistry* actreg = ActionRegistry::instance();
 
   // build difference between plan and local
-  std::vector<std::string> toAdd, toRemove;
-  diffPlanLocalForDatabases(plan, local, toAdd, toRemove);
+  std::vector<std::string> toCreate, toDrop;
+  diffPlanLocalForDatabases(plan, local, toCreate, toDrop);
 
   // dispatch creations
-  for (auto const& i : toAdd) {
-    actreg->dispatch(
-      ActionDescription({{"name", "CreateDatabase"}, {"database", i}}));
+  for (auto const& i : toCreate) {
+    auto desc = ActionDescription({{"name", "CreateDatabase"}, {"database", i}});
+    if (actreg->get(desc) == nullptr) {
+      actreg->dispatch(desc);
+    }
   }
 
   // dispatch creations
-  for (auto const& i : toRemove) {
-    actreg->dispatch(
-      ActionDescription({{"name", "DropDatabase"}, {"database", i}}));
+  for (auto const& i : toDrop) {
+    auto desc = ActionDescription({{"name", "DropDatabase"}, {"database", i}});
+    if (actreg->get(desc) == nullptr) {
+      actreg->dispatch(desc);
+    }
   }
 
   return result;
