@@ -38,3 +38,9 @@ ActionRegistry* ActionRegistry::Instance() {
   }
   return _registry;
 }
+
+arangodb::Result ActionRegistry::dispatch (ActionDescription const& desc) {
+  arangodb::Result result;
+  return result;
+}
+

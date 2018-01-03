@@ -25,6 +25,10 @@
 #ifndef ARANGODB_MAINTENANCE_MAINTENANCE_H
 #define ARANGODB_MAINTENANCE_MAINTENANCE_H
 
+#include "Cluster/ActionDescription.h"
+
+#include "Basics/Result.h"
+
 namespace arangodb {
 namespace maintenance {
 
@@ -39,6 +43,8 @@ public:
   ActionRegistry* Instance();
 
   static ActionRegistry* _registry;
+
+  arangodb::Result dispatch (ActionDescription const&);
   
 };
 
