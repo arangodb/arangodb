@@ -98,8 +98,8 @@ NS_ROOT
 
 /*static*/ void scorers::init() {
   #ifndef IRESEARCH_DLL
-    REGISTER_SCORER_JSON(irs::bm25_sort, irs::bm25_sort::make); // match bm25.cpp
-    REGISTER_SCORER_JSON(irs::tfidf_sort, irs::tfidf_sort::make); // match tfidf.cpp
+    irs::bm25_sort::init();
+    irs::tfidf_sort::init();
   #endif
 }
 

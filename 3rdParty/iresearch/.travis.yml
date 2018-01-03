@@ -428,7 +428,11 @@ matrix:
     - os: osx
       osx_image: xcode9
       compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
       env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -437,7 +441,11 @@ matrix:
     - os: osx
       osx_image: xcode9
       compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
       env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BUILD_TYPE="Release" STATIC_LIB="true"
 
     ############################################################################
@@ -446,7 +454,11 @@ matrix:
     - os: osx
       osx_image: xcode9
       compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
       env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -455,13 +467,21 @@ matrix:
     - os: osx
       osx_image: xcode9
       compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
       env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BUILD_TYPE="Release"
 
 before_install:
   - eval "${SET_ENV}"
 
 install:
+  - set
+  - which bison
+  - bison --version
+  - which cmake
   - cmake --version
 
   ############################################################################

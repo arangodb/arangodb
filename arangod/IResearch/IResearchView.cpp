@@ -281,7 +281,7 @@ arangodb::iresearch::IResearchLink* findFirstMatchingLink(
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
 inline void insertDocument(
-    irs::index_writer::document& doc,
+    irs::segment_writer::document& doc,
     arangodb::iresearch::FieldIterator& body,
     TRI_voc_cid_t cid,
     TRI_voc_rid_t rid) {
@@ -1406,7 +1406,7 @@ int IResearchView::insert(
     return TRI_ERROR_NO_ERROR; // nothing to index
   }
 
-  auto insert = [&body, cid, documentId](irs::index_writer::document& doc)->bool {
+  auto insert = [&body, cid, documentId](irs::segment_writer::document& doc)->bool {
     insertDocument(doc, body, cid, documentId.id());
 
     return false; // break the loop
@@ -1482,7 +1482,7 @@ int IResearchView::insert(
     return TRI_ERROR_NO_ERROR; // nothing to index
   }
 
-  auto insert = [&meta, &begin, &end, &body, cid, &rid](irs::index_writer::document& doc)->bool {
+  auto insert = [&meta, &begin, &end, &body, cid, &rid](irs::segment_writer::document& doc)->bool {
     insertDocument(doc, body, cid, rid);
 
     // find next valid document

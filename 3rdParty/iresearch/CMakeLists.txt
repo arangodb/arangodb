@@ -130,6 +130,17 @@ mark_as_advanced(
 
 add_definitions(-DUNICODE -D_UNICODE)
 
+# set test resource directory
+set(IResearch_test_resource_dir
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/resources
+)
+
+# generate tests_config.hpp here instead of inside 'tests' to make available externally
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/tests/tests_config.hpp.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/tests/tests_config.hpp"
+)
+
 add_subdirectory(core)
 add_subdirectory(external)
 add_subdirectory(utils)

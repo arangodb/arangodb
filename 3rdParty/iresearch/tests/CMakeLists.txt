@@ -8,11 +8,6 @@ find_package(GTestLocal
   REQUIRED
 )
 
-# set test resource directory
-set(IResearch_test_resource_dir
-  ${CMAKE_CURRENT_SOURCE_DIR}/resources
-)
-
 SOURCE_GROUP("analysis" ./analysis/*)
 SOURCE_GROUP("store" ./store/*)
 SOURCE_GROUP("index" ./index/*)
@@ -29,11 +24,6 @@ set(IResearchTests_INCLUDE_DIR
   "${PROJECT_SOURCE_DIR}/tests"
   CACHE INTERNAL
   ""
-)
-
-configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/tests_config.hpp.in" 
-  "${IReSearch_generated_INCLUDE_DIR}/tests_config.hpp" 
 )
 
 set(IReSearch_tests_sources

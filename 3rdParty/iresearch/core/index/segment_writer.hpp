@@ -34,8 +34,124 @@ NS_ROOT
 
 struct segment_meta;
 
+//////////////////////////////////////////////////////////////////////////////
+/// @enum Action
+/// @brief defines how the inserting field should be processed
+//////////////////////////////////////////////////////////////////////////////
+NS_BEGIN(action)
+
+////////////////////////////////////////////////////////////////////////////
+/// @brief Field should be indexed only
+/// @note Field must satisfy 'Field' concept
+////////////////////////////////////////////////////////////////////////////
+struct index_t{};
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  static const index_t index = index_t();
+#else
+  CONSTEXPR const index_t index = index_t();
+#endif
+
+////////////////////////////////////////////////////////////////////////////
+/// @brief Field should be indexed and stored
+/// @note Field must satisfy 'Field' and 'Attribute' concepts
+////////////////////////////////////////////////////////////////////////////
+struct index_store_t{};
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  static const index_store_t index_store = index_store_t();
+#else
+  CONSTEXPR const index_store_t index_store = index_store_t();
+#endif
+
+////////////////////////////////////////////////////////////////////////////
+/// @brief Field should be stored only
+/// @note Field must satisfy 'Attribute' concept
+////////////////////////////////////////////////////////////////////////////
+struct store_t{};
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  static const store_t store = store_t();
+#else
+  CONSTEXPR const store_t store = store_t();
+#endif
+
+NS_END // action
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief interface for an index writer over a directory
+///        an object that represents a single ongoing transaction
+///        non-thread safe
+////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API segment_writer: util::noncopyable {
  public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @class document
+  /// @brief Facade for the insertion logic
+  //////////////////////////////////////////////////////////////////////////////
+  class document: private util::noncopyable {
+   public:
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief constructor
+    ////////////////////////////////////////////////////////////////////////////
+    explicit document(segment_writer& writer) NOEXCEPT: writer_(writer) {}
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief destructor
+    ////////////////////////////////////////////////////////////////////////////
+    ~document() = default;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @return current state of the object
+    /// @note if the object is in an invalid state all further operations will
+    ///       not take any effect
+    ////////////////////////////////////////////////////////////////////////////
+    bool valid() const NOEXCEPT { return writer_.valid(); }
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief inserts the specified field into the document according to the
+    ///        specified ACTION
+    /// @note 'Field' type type must satisfy the Field concept
+    /// @param field attribute to be inserted
+    /// @return true, if field was successfully insterted
+    ////////////////////////////////////////////////////////////////////////////
+    template<typename Action, typename Field>
+    bool insert(Action action, Field& field) const {
+      return writer_.insert(action, field);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief inserts the specified field (denoted by the pointer) into the
+    ///        document according to the specified ACTION
+    /// @note 'Field' type type must satisfy the Field concept
+    /// @note pointer must not be nullptr
+    /// @param field attribute to be inserted
+    /// @return true, if field was successfully insterted
+    ////////////////////////////////////////////////////////////////////////////
+    template<typename Action, typename Field>
+    bool insert(Action action, Field* field) const {
+      assert(field);
+      return insert(action, *field);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief inserts the specified range of fields, denoted by the [begin;end)
+    ///        into the document according to the specified ACTION
+    /// @note 'Iterator' underline value type must satisfy the Field concept
+    /// @param begin the beginning of the fields range
+    /// @param end the end of the fields range
+    /// @return true, if the range was successfully insterted
+    ////////////////////////////////////////////////////////////////////////////
+    template<typename Action, typename Iterator>
+    bool insert(Action action, Iterator begin, Iterator end) const {
+      for (; valid() && begin != end; ++begin) {
+        insert(action, *begin);
+      }
+
+      return valid();
+    }
+
+   private:
+    segment_writer& writer_;
+  }; // document
+
   DECLARE_PTR(segment_writer);
   DECLARE_FACTORY_DEFAULT(directory& dir);
 
@@ -56,19 +172,19 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   // adds stored document field
   template<typename Field>
-  bool store(Field& field) {
+  bool insert(action::store_t, Field& field) {
     return valid_ = valid_ && store_worker(field);
   }
 
   // adds indexed document field
   template<typename Field>
-  bool index(Field& field) {
+  bool insert(action::index_t, Field& field) {
     return valid_ = valid_ && index_worker(field);
   }
 
   // adds indexed and stored document field
   template<typename Field>
-  bool index_and_store(Field& field) {
+  bool insert(action::index_store_t, Field& field) {
     // FIXME optimize, do not evaluate field name hash twice
     return valid_ = valid_ && index_and_store_worker(field);
   }
@@ -215,4 +331,5 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 }; // segment_writer
 
 NS_END
+
 #endif

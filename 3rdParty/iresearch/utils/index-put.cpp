@@ -466,7 +466,7 @@ int put(
       while (batch_provider.swap(buf)) {
         SCOPED_TIMER(std::string("Index batch ") + std::to_string(buf.size()));
         size_t i = 0;
-        auto inserter = [&buf, &i, &doc](const irs::index_writer::document& builder) {
+        auto inserter = [&buf, &i, &doc](const irs::segment_writer::document& builder) {
           doc.fill(&(buf[i]));
 
           for (auto& field: doc.elements) {

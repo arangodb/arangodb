@@ -361,7 +361,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     for (auto doc : arangodb::velocypack::ArrayIterator(testDataRoot)) {
       storedField.str = arangodb::iresearch::getStringRef(doc.get("name"));
-      writer->insert([&storedField](irs::index_writer::document& doc) {
+      writer->insert([&storedField](irs::segment_writer::document& doc)->bool {
         doc.insert(irs::action::store, storedField);
         return false; // break the loop
       });

@@ -780,7 +780,7 @@ class index_test_case_base : public tests::index_test_base {
           }
 
           csv_doc_template_t csv_doc_template;
-          auto csv_doc_inserter = [&csv_doc_template](irs::index_writer::document& doc)->bool {
+          auto csv_doc_inserter = [&csv_doc_template](irs::segment_writer::document& doc)->bool {
             doc.insert(irs::action::index, csv_doc_template.indexed.begin(), csv_doc_template.indexed.end());
             doc.insert(irs::action::store, csv_doc_template.stored.begin(), csv_doc_template.stored.end());
             return false;
@@ -1738,7 +1738,7 @@ class index_test_case_base : public tests::index_test_base {
       } field;
 
       irs::doc_id_t docs_count = 0;
-      auto inserter = [&docs_count, &field](const irs::index_writer::document& doc) {
+      auto inserter = [&docs_count, &field](const irs::segment_writer::document& doc) {
         if (docs_count % 2) {
           doc.insert(irs::action::store, field);
         }
@@ -2524,7 +2524,7 @@ class index_test_case_base : public tests::index_test_base {
       } field;
 
       irs::doc_id_t docs_count = 0;
-      auto inserter = [&docs_count, &field](const irs::index_writer::document& doc) {
+      auto inserter = [&docs_count, &field](const irs::segment_writer::document& doc) {
         doc.insert(irs::action::store, field);
         return ++docs_count < MAX_DOCS;
       };
@@ -3218,7 +3218,7 @@ class index_test_case_base : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto inserter = [&field](const irs::index_writer::document& doc) {
+      auto inserter = [&field](const irs::segment_writer::document& doc) {
         doc.insert(irs::action::store, field);
         return ++field.value < MAX_DOCS;
       };
@@ -3972,7 +3972,7 @@ class index_test_case_base : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto inserter = [&field](const irs::index_writer::document& doc) {
+      auto inserter = [&field](const irs::segment_writer::document& doc) {
         doc.insert(irs::action::store, field);
         return ++field.value < MAX_DOCS;
       };
@@ -4874,7 +4874,7 @@ class index_test_case_base : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto inserter = [&inserted, &field](const irs::index_writer::document& doc) {
+      auto inserter = [&inserted, &field](const irs::segment_writer::document& doc) {
         if (field.value % 2 ) {
           doc.insert(irs::action::store, field);
           ++inserted;
@@ -5911,7 +5911,7 @@ class index_test_case_base : public tests::index_test_base {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
       ASSERT_NE(nullptr, writer);
 
-      auto inserter = [&field, &names](irs::index_writer::document& doc) {
+      auto inserter = [&field, &names](irs::segment_writer::document& doc) {
         for (auto& name : names) {
           field.name_ = name;
           doc.insert(irs::action::index, field);
@@ -6109,7 +6109,7 @@ class index_test_case_base : public tests::index_test_base {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
       ASSERT_NE(nullptr, writer);
 
-      auto inserter = [&field, &names](irs::index_writer::document& doc) {
+      auto inserter = [&field, &names](irs::segment_writer::document& doc) {
         for (auto& name : names) {
           field.name_ = name;
           doc.insert(irs::action::store, field);
@@ -7384,7 +7384,7 @@ class index_test_case_base : public tests::index_test_base {
     bool states[max];
     std::fill(std::begin(states), std::end(states), true);
 
-    auto bulk_inserter = [&i, &max, &states](irs::index_writer::document& doc) mutable {
+    auto bulk_inserter = [&i, &max, &states](irs::segment_writer::document& doc) mutable {
       auto& state = states[i];
       switch (i) {
         case 0: { // doc0

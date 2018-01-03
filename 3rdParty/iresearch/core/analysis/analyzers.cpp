@@ -100,9 +100,8 @@ NS_BEGIN(analysis)
 
 /*static*/ void analyzers::init() {
   #ifndef IRESEARCH_DLL
-    REGISTER_ANALYZER_TEXT(irs::analysis::delimited_token_stream, irs::analysis::delimited_token_stream::make);  // match delimited_token_stream.cpp
-    REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, irs::analysis::text_token_stream::make); // match text_token_stream.cpp
-    REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, irs::analysis::text_token_stream::make); // match text_token_stream.cpp
+    irs::analysis::delimited_token_stream::init();
+    irs::analysis::text_token_stream::init();
   #endif
 }
 

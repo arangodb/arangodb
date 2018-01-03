@@ -165,7 +165,7 @@ class index_test_base : public virtual test_base {
 
     while ((src = gen.next())) {
       segment.add(src->indexed.begin(), src->indexed.end());
-      ASSERT_TRUE(writer.insert([src](irs::index_writer::document& doc)->bool {
+      ASSERT_TRUE(writer.insert([src](irs::segment_writer::document& doc)->bool {
         doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
         doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
         return false;

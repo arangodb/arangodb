@@ -1469,7 +1469,7 @@ SECTION("test_appendKnownCollections") {
     arangodb::iresearch::Field field;
 
     arangodb::iresearch::Field::setRidValue(field, rid, arangodb::iresearch::Field::init_stream_t());
-     writer->insert([&field](irs::index_writer::document& doc)->bool{
+     writer->insert([&field](irs::segment_writer::document& doc)->bool {
        CHECK((doc.insert(irs::action::index, field)));
        return false; // break the loop
     });
@@ -1497,7 +1497,7 @@ SECTION("test_appendKnownCollections") {
     arangodb::iresearch::Field field;
 
     arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
-    writer->insert([&field](irs::index_writer::document& doc)->bool{
+    writer->insert([&field](irs::segment_writer::document& doc)->bool {
       CHECK((doc.insert(irs::action::index, field)));
       return false; // break the loop
     });
@@ -1553,7 +1553,7 @@ SECTION("test_visitReaderCollections") {
     arangodb::iresearch::Field field;
 
     arangodb::iresearch::Field::setRidValue(field, rid, arangodb::iresearch::Field::init_stream_t());
-     writer->insert([&field](irs::index_writer::document& doc)->bool{
+     writer->insert([&field](irs::segment_writer::document& doc)->bool {
        CHECK((doc.insert(irs::action::index, field)));
        return false; // break the loop
     });
@@ -1582,7 +1582,7 @@ SECTION("test_visitReaderCollections") {
     arangodb::iresearch::Field field;
 
     arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
-    writer->insert([&field](irs::index_writer::document& doc)->bool{
+    writer->insert([&field](irs::segment_writer::document& doc)->bool {
       CHECK((doc.insert(irs::action::index, field)));
       return false; // break the loop
     });
