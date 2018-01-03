@@ -1,13 +1,24 @@
 v3.3.2 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' at 98,7: ArangoError 4: Expecting type String
+
+* fixed issue in agency supervision with a good server being left in
+  failedServers
+
+* distinguish isReady and allInSync in clusterInventory
+
 * fixed issue #4197: AQL statement not working in 3.3.1 when upgraded from 3.2.10
 
 
 v3.3.1 (2017-12-28)
 -------------------
 
-* UI: displayed wrong wfs property for a collection when using rocksdb as storage engine
+* UI: displayed wrong wfs property for a collection when using rocksdb as 
+  storage engine
+
+* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' 
+  at 98,7: ArangoError 4: Expecting type String 
 
 * added `--ignore-missing` option to arangoimp
   this option allows importing lines with less fields than specified in the CSV
@@ -152,6 +163,7 @@ v3.3.beta1 (2017-11-07)
   settable via the `--console.prompt` option in arangosh:
 
   - '%t': current time as timestamp
+  - '%a': elpased time since ArangoShell start in seconds
   - '%p': duration of last command in seconds
   - '%d': name of current database
   - '%e': current endpoint
