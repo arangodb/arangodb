@@ -627,7 +627,7 @@ function build-books()
         ppbook-check-html-link "${book}"
     done
 
-    check-docublocks
+    # check-docublocks
     check-dangling-anchors
     echo "${STD_COLOR}##### Generating redirect index.html${RESET}"; \
     echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html
