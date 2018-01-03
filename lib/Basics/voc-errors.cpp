@@ -1,11 +1,12 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @brief auto-generated file generated from errors.dat
-////////////////////////////////////////////////////////////////////////////////
+/// auto-generated file generated from errors.dat
 
 #include "Basics/Common.h"
-#include "./lib/Basics/voc-errors.h"
+#include "Basics/voc-errors.h"
 
-void TRI_InitializeErrorMessages () {
+/// helper macro to define an error string
+#define REG_ERROR(id, label) TRI_set_errno_string(TRI_ ## id, label);
+
+void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_NO_ERROR, "no error");
   REG_ERROR(ERROR_FAILED, "failed");
   REG_ERROR(ERROR_SYS_ERROR, "system error");

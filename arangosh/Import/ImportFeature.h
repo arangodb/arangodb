@@ -62,6 +62,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   std::string _quote;
   std::string _separator;
   bool _progress;
+  bool _ignoreMissing;
   std::string _onDuplicateAction;
   uint64_t _rowsToSkip;
 
