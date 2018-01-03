@@ -1,7 +1,17 @@
+v3.3.2 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' at 98,7: ArangoError 4: Expecting type String
+
+
 v3.3.1 (2017-12-28)
 -------------------
 
-* UI: displayed wrong wfs property for a collection when using rocksdb as storage engine
+* UI: displayed wrong wfs property for a collection when using rocksdb as 
+  storage engine
+
+* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' 
+  at 98,7: ArangoError 4: Expecting type String 
 
 * added `--ignore-missing` option to arangoimp
   this option allows importing lines with less fields than specified in the CSV

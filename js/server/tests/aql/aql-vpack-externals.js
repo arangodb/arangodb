@@ -51,7 +51,7 @@ function aqlVPackExternalsTestSuite () {
       let coll = db._create(collName);
 
       for (let i = 1000; i < 5000; ++i) {
-        coll.save({_key: "test" + i});
+        coll.save({_key: "test" + i, value: "test" + i});
       }
 
       let ecoll = db._createEdgeCollection(edgeColl);
@@ -62,6 +62,25 @@ function aqlVPackExternalsTestSuite () {
     },
 
     tearDown: cleanUp,
+    
+    testCustom: function () {
+      const query = `FOR x IN ${collName} FILTER x IN [${JSON.stringify(db[collName].any())}] RETURN x`;
+      const cursor = db._query(query);
+      assertTrue(cursor.hasNext());
+    },
+    
+    testCustomSubquery: function () {
+      const query = `FOR x IN ${collName} FILTER x IN (FOR doc IN ${collName} LIMIT 1 RETURN doc) RETURN x`;
+      const cursor = db._query(query);
+      assertTrue(cursor.hasNext());
+    },
+    
+    testCustomSubquery2: function () {
+      db[collName].insert({ value: db[collName].any() });
+      const query = `FOR x IN ${collName} FILTER x.value IN (FOR doc IN ${collName} RETURN doc) RETURN x`;
+      const cursor = db._query(query);
+      assertTrue(cursor.hasNext());
+    },
 
     testPlainExternal: function () {
       const query = `FOR x IN ${collName} SORT x._key RETURN x`;
@@ -116,13 +135,13 @@ function aqlVPackExternalsTestSuite () {
     },
 
     testExternalInMerge: function () {
-      const query = `FOR x IN ${collName} SORT x._key RETURN MERGE({value: 5}, x)`;
+      const query = `FOR x IN ${collName} SORT x._key RETURN MERGE({value2: 5}, x)`;
       const cursor = db._query(query);
       for (let i = 1000; i < 5000; ++i) {
         assertTrue(cursor.hasNext());
         let n = cursor.next();
         assertEqual(n._key, "test" + i);
-        assertEqual(n.value, 5);
+        assertEqual(n.value2, 5);
       }
     },
 
