@@ -10,6 +10,8 @@ v3.3.2 (XXXX-XX-XX)
 
 * fixed issue #4197: AQL statement not working in 3.3.1 when upgraded from 3.2.10
 
+* do not reuse collection ids when restoring collections from a dump, but assign new collection ids, this should prevent collection id conflicts
+
 
 v3.3.1 (2017-12-28)
 -------------------
