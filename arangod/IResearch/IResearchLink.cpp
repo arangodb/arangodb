@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationServerHelper.h"
-#include "IResearchAnalyzerFeature.h"
 #include "IResearchFeature.h"
 
 #include "Basics/LocalTaskQueue.h"
@@ -63,64 +62,6 @@ static const arangodb::iresearch::IResearchView::AsyncSelf::ptr NO_VIEW =
 
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reserve in IResearchAnalyzerFeature all tokenizers regsitered with
-///        the IResearchLinkMeta
-/// @return success
-////////////////////////////////////////////////////////////////////////////////
-bool reserveAnalyzers(
-    arangodb::iresearch::IResearchLinkMeta const& meta,
-    TRI_voc_cid_t cid,
-    TRI_idx_iid_t iid
-) {
-  auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-
-  if (!analyzers) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to retrieve Analyzer Feature while registering analyzers for IResearch view '" << cid << "' IResearch link '" << iid << "'";
-
-    return false;
-  }
-
-  // reserve all tokenizers registered by link meta
-  for (auto& entry: meta._tokenizers) {
-    if (entry) {
-      // FIXME TODO revert on failure or send iterator to reserve
-      analyzers->reserve(entry->name());
-    }
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief release from IResearchAnalyzerFeature all tokenizers regsitered with
-///        the IResearchLinkMeta
-/// @return success
-////////////////////////////////////////////////////////////////////////////////
-bool releaseAnalyzers(
-    arangodb::iresearch::IResearchLinkMeta const& meta,
-    TRI_voc_cid_t cid,
-    TRI_idx_iid_t iid
-) {
-  auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-
-  if (!analyzers) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to retrieve Analyzer Feature while unregistering analyzers for IResearch view '" << cid << "' IResearch link '" << iid << "'";
-
-    return false;
-  }
-
-  // release all tokenizers reserved by link meta
-  for (auto& entry: meta._tokenizers) {
-    if (entry) {
-      // FIXME TODO revert on failure or send iterator to release
-      analyzers->release(entry->name());
-    }
-  }
-
-  return true;
-}
 
 NS_END
 
@@ -236,12 +177,6 @@ int IResearchLink::drop() {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
   }
 
-  if (!releaseAnalyzers(_meta, view->id(), _id)) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to release tokenizers while dropping IResearch link '" << _id << "' for IResearch view '" << view->id() << "'";
-
-    return TRI_ERROR_INTERNAL;
-  }
-
   return view->drop(_collection->cid());
 }
 
@@ -297,40 +232,20 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
       if (!view) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error finding view: '" << viewId << "' for link '" << _id << "'";
+
         return false;
       }
 
-      std::set<TRI_voc_cid_t> viewCids;
-
-      // get a list of collections currently defined in the view
-      // Note: this list will not contain any collections not added via the view
-      //       even though data from the corresponding collection may still exist in
-      //       the view, e.g. droped collections for which records have not yet been
-      //       removed from the view
-      view->visitCollections([&viewCids](TRI_voc_cid_t cid)->bool {
-        viewCids.emplace(cid);
-        return true;
-      });
-
-      // FIXME TODO this is an incorrect approach to determine if this is an new or an existing link
-      //            as this approach allows for false positives and false negatives
-      //            the proper approach is to get the information from the collection,
-      //            or to track via a persisted property
-      auto isNew = viewCids.find(collection()->cid()) == viewCids.end();
       auto viewSelf = view->self();
 
-      if (!_view) {
+      if (!viewSelf) {
+        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error getting view: '" << viewId << "' for link '" << _id << "'";
+
         return false;
       }
 
       _meta = std::move(meta);
       _view = std::move(viewSelf);
-
-      // reserve analyzers for new links
-      // FIXME TODO move this to load() or track via persisted property
-      if (isNew && _view) {
-        reserveAnalyzers(_meta, view->id(), _id);
-      }
 
       return true;
     }
@@ -407,8 +322,6 @@ bool IResearchLink::json(
 }
 
 void IResearchLink::load() {
-  // FIXME TODO move analyzer registration here when this method will be invoked
-  //            by the collection
 }
 
 bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
@@ -591,12 +504,6 @@ int IResearchLink::unload() {
       LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to drop collection from view while unloading dropped IResearch link '" << _id << "' for IResearch view '" << view->id() << "'";
 
       return res;
-    }
-
-    if (!releaseAnalyzers(_meta, view->id(), _id)) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to release tokenizers while unloading dropped IResearch link '" << _id << "' for IResearch view '" << view->id() << "'";
-
-      return TRI_ERROR_INTERNAL;
     }
   }
 
