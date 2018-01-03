@@ -11,7 +11,7 @@ You can also run AQL queries from arangosh. To do so, you can use the *_query* m
 of the *db* object. This will run the specified query in the context of the currently
 selected database and return the query results in a cursor. The results of the cursor
 can be printed using its *toArray* method:
-    
+
     @startDocuBlockInline 01_workWithAQL_all
     @EXAMPLE_ARANGOSH_OUTPUT{01_workWithAQL_all}
     ~addIgnoreCollection("mycollection")
@@ -28,7 +28,7 @@ To pass bind parameters into a query, they can be specified as second argument t
     @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_bindValues}
     |db._query(
     | 'FOR c IN @@collection FILTER c._key == @key RETURN c._key', {
-    |   '@collection': 'mycollection', 
+    |   '@collection': 'mycollection',
     |   'key': 'testKey'
     }).toArray();
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -38,16 +38,16 @@ It is also possible to use ES6 template strings for generating AQL queries. Ther
 a template string generator function named *aqlQuery*; we call it once to demonstrate
 its result, and once putting it directly into the query:
 
-    ```js
-    var key = 'testKey';
-    aqlQuery`FOR c IN mycollection FILTER c._key == ${key} RETURN c._key`;
-    { 
-      "query" : "FOR c IN mycollection FILTER c._key == @value0 RETURN c._key", 
-      "bindVars" : { 
-        "value0" : "testKey" 
-      } 
-    }
-    ```
+```js
+var key = 'testKey';
+aqlQuery`FOR c IN mycollection FILTER c._key == ${key} RETURN c._key`;
+{
+  "query" : "FOR c IN mycollection FILTER c._key == @value0 RETURN c._key",
+  "bindVars" : {
+    "value0" : "testKey"
+  }
+}
+```
 
     @startDocuBlockInline 02_workWithAQL_aqlQuery
     @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_aqlQuery}
@@ -71,7 +71,7 @@ Arbitrary JavaScript expressions can be used in queries that are generated with 
 
 Note: data-modification AQL queries normally do not return a result (unless the AQL query 
 contains an extra *RETURN* statement). When not using a *RETURN* statement in the query, the 
-*toArray* method will return an empty array. 
+*toArray* method will return an empty array.
 
 It is always possible to retrieve statistics for a query with the *getExtra* method:
 
@@ -119,7 +119,7 @@ set without iterating over it yourself.
     c.toArray();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 05_workWithAQL_statements3
-    
+
 Cursors can also be used to iterate over the result set document-by-document.
 To do so, use the *hasNext* and *next* methods of the cursor:
 
@@ -134,9 +134,9 @@ To do so, use the *hasNext* and *next* methods of the cursor:
 Please note that you can iterate over the results of a cursor only once, and that
 the cursor will be empty when you have fully iterated over it. To iterate over
 the results again, the query needs to be re-executed.
- 
-Additionally, the iteration can be done in a forward-only fashion. There is no 
-backwards iteration or random access to elements in a cursor.    
+
+Additionally, the iteration can be done in a forward-only fashion. There is no
+backwards iteration or random access to elements in a cursor.
 
 To execute an AQL query using bind parameters, you need to create a statement first
 and then bind the parameters to it before execution:
@@ -152,7 +152,7 @@ and then bind the parameters to it before execution:
     @endDocuBlock 05_workWithAQL_statements5
 
 The cursor results can then be dumped or iterated over as usual, e.g.:
-    
+
     @startDocuBlockInline 05_workWithAQL_statements6
     @EXAMPLE_ARANGOSH_OUTPUT{05_workWithAQL_statements6}
     ~var stmt = db._createStatement( { "query": "FOR i IN [ @one, @two ] RETURN i * 2" } );
@@ -163,7 +163,7 @@ The cursor results can then be dumped or iterated over as usual, e.g.:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 05_workWithAQL_statements6
 
-or 
+or
 
     @startDocuBlockInline 05_workWithAQL_statements7
     @EXAMPLE_ARANGOSH_OUTPUT{05_workWithAQL_statements7}
@@ -177,23 +177,23 @@ or
 
 Please note that bind parameters can also be passed into the *_createStatement* method directly,
 making it a bit more convenient:
-    
+
     @startDocuBlockInline 05_workWithAQL_statements8
     @EXAMPLE_ARANGOSH_OUTPUT{05_workWithAQL_statements8}
-    |stmt = db._createStatement( { 
-    |  "query": "FOR i IN [ @one, @two ] RETURN i * 2", 
-    |  "bindVars": { 
-    |    "one": 1, 
-    |    "two": 2 
-    |  } 
+    |stmt = db._createStatement( {
+    |  "query": "FOR i IN [ @one, @two ] RETURN i * 2",
+    |  "bindVars": {
+    |    "one": 1,
+    |    "two": 2
+    |  }
     } );
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 05_workWithAQL_statements8
-    
+
 Cursors also optionally provide the total number of results. By default, they do not. 
 To make the server return the total number of results, you may set the *count* attribute to 
 *true* when creating a statement:
-    
+
     @startDocuBlockInline 05_workWithAQL_statements9
     @EXAMPLE_ARANGOSH_OUTPUT{05_workWithAQL_statements9}
     |stmt = db._createStatement( {
@@ -204,7 +204,7 @@ To make the server return the total number of results, you may set the *count* a
 
 After executing this query, you can use the *count* method of the cursor to get the 
 number of total results from the result set:
-    
+
     @startDocuBlockInline 05_workWithAQL_statements10
     @EXAMPLE_ARANGOSH_OUTPUT{05_workWithAQL_statements10}
     ~var stmt = db._createStatement( { "query": "FOR i IN [ 1, 2, 3, 4 ] RETURN i", "count": true } );
@@ -214,7 +214,7 @@ number of total results from the result set:
     @endDocuBlock 05_workWithAQL_statements10
 
 Please note that the *count* method returns nothing if you did not specify the *count*
-attribute when creating the query. 
+attribute when creating the query.
 
 This is intentional so that the server may apply optimizations when executing the query and 
 construct the result set incrementally. Incremental creation of the result sets
@@ -408,9 +408,9 @@ on the most important information.
 
 Parsing queries
 ---------------
-    
+
 Clients can use ArangoDB to check if a given AQL query is syntactically valid. ArangoDB provides
-an [HTTP REST API](../HttpAqlQuery/README.md) for this. 
+an [HTTP REST API](../HttpAqlQuery/README.md) for this.
 
 A query can also be parsed from the ArangoShell using `ArangoStatement`s `parse` method. The
 `parse` method will throw an exception if the query is syntactically invalid. Otherwise, it will

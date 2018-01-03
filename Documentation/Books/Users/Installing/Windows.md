@@ -29,7 +29,7 @@ Installing as Service: Keep the default directory. After the installation open
 a command line as administrator (search for *cmd* and right click *run as
 administrator*).
 
-       cmd&gt; arangod --install-service
+       cmd> arangod --install-service
        INFO: adding service 'ArangoDB - the multi-model database' (internal 'ArangoDB')
        INFO: added service with command line '"C:\Program Files (x86)\ArangoDB 1.4.4\bin\arangod.exe" --start-service'
 
