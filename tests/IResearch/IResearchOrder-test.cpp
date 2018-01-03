@@ -588,7 +588,7 @@ SECTION("test_FCall_bm25") {
   {
     std::string query = "FOR d IN collection FILTER '1' SORT bm25(d, 0.97, 0.07, false, 1) RETURN d";
 
-    assertOrderExecutionFail(query, TRI_ERROR_NO_ERROR);
+    assertOrderParseFail(query, TRI_ERROR_NO_ERROR);
   }
 
   // invalid reference (invalid output variable reference)

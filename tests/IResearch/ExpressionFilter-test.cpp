@@ -115,6 +115,9 @@ struct custom_sort: public irs::sort {
     class scorer: public irs::sort::scorer_base<irs::doc_id_t> {
      public:
       virtual void score(irs::byte_type* score_buf) override {
+        UNUSED(filter_node_attrs_);
+        UNUSED(segment_reader_);
+        UNUSED(term_reader_);
         CHECK(score_buf);
         auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
 
