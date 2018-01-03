@@ -22,22 +22,76 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_MAINTENANCE_H
-#define ARANGODB_MAINTENANCE_MAINTENANCE_H
-
 #include "Cluster/Maintenance.h"
+#include "Cluster/ActionDescription.h"
+#include "Cluster/ActionRegistry.h"
 
-namespace arangodb::maintenance;
+#include <algorithm>
+
+static std::string const PLANNED_DATABASES("Plan/Databases");
+
+using namespace arangodb;
+using namespace arangodb::consensus;
+using namespace arangodb::maintenance;
+
+arangodb::Result diffPlanLocalForDatabases(
+  Node const& plan, std::vector<std::string> const& local,
+  std::vector<std::string>& toAdd, std::vector<std::string>& toRemove) {
+
+  arangodb::Result result;
+  
+  TRI_ASSERT(plan.has(PLANNED_DATABASES));
+  Node const& plannedDatabases = plan(PLANNED_DATABASES);
+  std::vector<std::string> planv;
+  for (auto const i : plannedDatabases.children()) {
+    planv.emplace_back(i.first);
+  }
+    
+  std::vector<std::string> isect;
+  std::set_intersection(
+    planv.begin(), planv.end(), local.begin(), local.end(), isect.begin());
+
+  // In plan but not in intersection => toAdd
+  for (auto const i : planv) {
+    if (std::find(isect.begin(), isect.end(), i) == isect.end()) {
+      toAdd.emplace_back(i);
+    }
+  }
+
+  // Local but not in intersection => toRemove
+  for (auto const i : local) {
+    if (std::find(isect.begin(), isect.end(), i) == isect.end()) {
+      toRemove.emplace_back(i);
+    }
+  }
+
+  return result;
+  
+}
 
 /// @brief handle plan for local databases
 arangodb::Result executePlanForDatabases (
-  std::forward<Node> plan, std::forward<Node> current,
-  std::forward<std::vector<std::string>>) {
+  Node plan, Node current, std::vector<std::string> local) {
 
   arangodb::Result result;
+//  ActionRegistry* actreg = ActionRegistry::instance();
 
   // build difference between plan and local
-  
+  std::vector<std::string> toAdd, toRemove;
+  diffPlanLocalForDatabases(plan, local, toAdd, toRemove);
+
+  // dispatch creations
+  for (auto const& i : toAdd) {
+/*    actreg->dispatch(
+      ActionDescription({{"name", "CreateDatabase"}, {"database", i}}));*/
+  }
+
+  // dispatch creations
+  for (auto const& i : toRemove) {
+/*    actreg->dispatch(
+      ActionDescription({{"name", "DropDatabase"}, {"database", i}}));*/
+  }
+
   return result;
   
 }

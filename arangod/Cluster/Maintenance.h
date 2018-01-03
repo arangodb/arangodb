@@ -25,12 +25,15 @@
 #ifndef ARANGODB_MAINTENANCE_MAINTENANCE_H
 #define ARANGODB_MAINTENANCE_MAINTENANCE_H
 
+#include "Basics/Result.h"
+#include "Agency/Node.h"
+
 namespace arangodb {
 namespace maintenance {
 
 arangodb::Result executePlanForDatabases (
-  std::forward<Node> plan, std::forward<Node> current, std::forward<std::vector<std::string>>);
-
+  arangodb::consensus::Node plan, arangodb::consensus::Node current,
+  std::vector<std::string>);
 
 }}
 
