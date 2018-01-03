@@ -889,42 +889,42 @@ actions.defineHttp({
   }
 });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @start Docu Block JSF_getSecondary
-/// (intentionally not in manual)
-/// @brief gets the secondary of a primary DBserver
-///
-/// @ RESTHEADER{GET /_admin/cluster/getSecondary, Get secondary of a primary DBServer}
-///
-/// @ RESTQUERYPARAMETERS
-///
-/// @ RESTDESCRIPTION Gets the configuration in the agency of the secondary
-/// replicating a primary.
-///
-/// @ RESTQUERYPARAMETERS
-///
-/// @ RESTQUERYPARAM{primary,string,required}
-/// is the ID of the primary whose secondary we would like to get.
-///
-/// @ RESTQUERYPARAM{timeout,number,optional}
-/// the timeout to use in HTTP requests to the agency, default is 60.
-///
-/// @ RESTRETURNCODES
-///
-/// @ RESTRETURNCODE{200} is returned when everything went well.
-///
-/// @ RESTRETURNCODE{400} the primary was not given as query parameter.
-///
-/// @ RESTRETURNCODE{403} server is not a coordinator or method was not GET.
-///
-/// @ RESTRETURNCODE{404} the given primary name is not configured in Agency.
-///
-/// @ RESTRETURNCODE{408} there was a timeout in the Agency communication.
-///
-/// @ RESTRETURNCODE{500} the get operation did not work.
-///
-/// @end Docu Block
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @start Docu Block JSF_getSecondary
+// / (intentionally not in manual)
+// / @brief gets the secondary of a primary DBserver
+// /
+// / @ RESTHEADER{GET /_admin/cluster/getSecondary, Get secondary of a primary DBServer}
+// /
+// / @ RESTQUERYPARAMETERS
+// /
+// / @ RESTDESCRIPTION Gets the configuration in the agency of the secondary
+// / replicating a primary.
+// /
+// / @ RESTQUERYPARAMETERS
+// /
+// / @ RESTQUERYPARAM{primary,string,required}
+// / is the ID of the primary whose secondary we would like to get.
+// /
+// / @ RESTQUERYPARAM{timeout,number,optional}
+// / the timeout to use in HTTP requests to the agency, default is 60.
+// /
+// / @ RESTRETURNCODES
+// /
+// / @ RESTRETURNCODE{200} is returned when everything went well.
+// /
+// / @ RESTRETURNCODE{400} the primary was not given as query parameter.
+// /
+// / @ RESTRETURNCODE{403} server is not a coordinator or method was not GET.
+// /
+// / @ RESTRETURNCODE{404} the given primary name is not configured in Agency.
+// /
+// / @ RESTRETURNCODE{408} there was a timeout in the Agency communication.
+// /
+// / @ RESTRETURNCODE{500} the get operation did not work.
+// /
+// / @end Docu Block
+// //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url: "_admin/cluster/getSecondary",
@@ -985,53 +985,53 @@ actions.defineHttp({
   }
 });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @start Docu Block JSF_replaceSecondary
-/// (intentionally not in manual)
-/// @brief exchanges the secondary of a primary DBserver
-///
-/// @ RESTHEADER{PUT /_admin/cluster/replaceSecondary, Replace secondary of a primary DBServer}
-///
-/// @ RESTDESCRIPTION Replaces the configuration in the agency of the secondary
-/// replicating a primary. Use with care, because the old secondary will
-/// relatively quickly delete its data. For security reasons and to avoid
-/// races, the ID of the old secondary must be given as well.
-///
-/// @ RESTBODYPARAM{primary,string,required,string}
-/// is the ID of the primary whose secondary is to be changed.
-///
-/// @ RESTBODYPARAM{oldSecondary,string,required,string}
-/// is the old ID of the secondary.
-///
-/// @ RESTBODYPARAM{newSecondary,string,required,string}
-/// is the new ID of the secondary.
-///
-/// @ RESTBODYPARAM{ttl,number,optional,number}
-/// the time to live in seconds for the write lock, default is 60.
-///
-/// @ RESTBODYPARAM{timeout,number,optional,number}
-/// the timeout to use in HTTP requests to the agency, default is 60.
-///
-/// @ RESTRETURNCODES
-///
-/// @ RESTRETURNCODE{200} is returned when everything went well.
-///
-/// @ RESTRETURNCODE{400} either one of the required body parameters was
-/// not given or no server with this ID exists.
-///
-/// @ RESTRETURNCODE{403} server is not a coordinator or method was not PUT.
-///
-/// @ RESTRETURNCODE{404} the given primary name is not configured in Agency.
-///
-/// @ RESTRETURNCODE{408} there was a timeout in the Agency communication.
-///
-/// @ RESTRETURNCODE{412} the given oldSecondary was not the current secondary
-/// of the given primary.
-///
-/// @ RESTRETURNCODE{500} the change operation did not work.
-///
-/// @end Docu Block
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @start Docu Block JSF_replaceSecondary
+// / (intentionally not in manual)
+// / @brief exchanges the secondary of a primary DBserver
+// /
+// / @ RESTHEADER{PUT /_admin/cluster/replaceSecondary, Replace secondary of a primary DBServer}
+// /
+// / @ RESTDESCRIPTION Replaces the configuration in the agency of the secondary
+// / replicating a primary. Use with care, because the old secondary will
+// / relatively quickly delete its data. For security reasons and to avoid
+// / races, the ID of the old secondary must be given as well.
+// /
+// / @ RESTBODYPARAM{primary,string,required,string}
+// / is the ID of the primary whose secondary is to be changed.
+// /
+// / @ RESTBODYPARAM{oldSecondary,string,required,string}
+// / is the old ID of the secondary.
+// /
+// / @ RESTBODYPARAM{newSecondary,string,required,string}
+// / is the new ID of the secondary.
+// /
+// / @ RESTBODYPARAM{ttl,number,optional,number}
+// / the time to live in seconds for the write lock, default is 60.
+// /
+// / @ RESTBODYPARAM{timeout,number,optional,number}
+// / the timeout to use in HTTP requests to the agency, default is 60.
+// /
+// / @ RESTRETURNCODES
+// /
+// / @ RESTRETURNCODE{200} is returned when everything went well.
+// /
+// / @ RESTRETURNCODE{400} either one of the required body parameters was
+// / not given or no server with this ID exists.
+// /
+// / @ RESTRETURNCODE{403} server is not a coordinator or method was not PUT.
+// /
+// / @ RESTRETURNCODE{404} the given primary name is not configured in Agency.
+// /
+// / @ RESTRETURNCODE{408} there was a timeout in the Agency communication.
+// /
+// / @ RESTRETURNCODE{412} the given oldSecondary was not the current secondary
+// / of the given primary.
+// /
+// / @ RESTRETURNCODE{500} the change operation did not work.
+// /
+// / @end Docu Block
+// //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url: "_admin/cluster/replaceSecondary",
@@ -1173,54 +1173,54 @@ function changeAllShardReponsibilities (oldServer, newServer) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @start Docu Block JSF_swapPrimaryAndSecondary
-/// (intentionally not in manual)
-/// @brief swaps the roles of a primary and secondary pair
-///
-/// @ RESTHEADER{PUT /_admin/cluster/swapPrimaryAndSecondary, Swaps the roles of a primary and secondary pair.}
-///
-/// @RESTDESCRIPTION Swaps the roles of a primary and replicating secondary 
-/// pair. This includes changing the entry for all shards for which the 
-/// primary was responsible to the name of the secondary. All changes happen
-/// in a single write transaction (using a write lock) and the Plan/Version 
-/// is increased. Use with care, because currently replication in the cluster
-/// is asynchronous and the old secondary might not yet have all the data.
-/// For security reasons and to avoid races, the ID of the old secondary
-/// must be given as well.
-///
-/// @ RESTBODYPARAM{primary,string,required,string}
-/// is the ID of the primary whose secondary is to be changed.
-///
-/// @ RESTBODYPARAM{secondary,string,required,string}
-/// is the ID of the secondary, which must be the secondary of this primay.
-///
-/// @ RESTBODYPARAM{ttl,number,optional,number}
-/// the time to live in seconds for the write lock, default is 60.
-///
-/// @ RESTBODYPARAM{timeout,number,optional,number}
-/// the timeout to use in HTTP requests to the agency, default is 60.
-///
-/// @ RESTRETURNCODES
-///
-/// @ RESTRETURNCODE{200} is returned when everything went well.
-///
-/// @ RESTRETURNCODE{400} either one of the required body parameters was
-/// not given or no server with this ID exists.
-///
-/// @ RESTRETURNCODE{403} server is not a coordinator or method was not PUT.
-///
-/// @ RESTRETURNCODE{404} the given primary name is not configured in Agency.
-///
-/// @ RESTRETURNCODE{408} there was a timeout in the Agency communication.
-///
-/// @ RESTRETURNCODE{412} the given secondary was not the current secondary
-/// of the given primary.
-///
-/// @ RESTRETURNCODE{500} the change operation did not work.
-///
-/// @end Docu Block
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @start Docu Block JSF_swapPrimaryAndSecondary
+// / (intentionally not in manual)
+// / @brief swaps the roles of a primary and secondary pair
+// /
+// / @ RESTHEADER{PUT /_admin/cluster/swapPrimaryAndSecondary, Swaps the roles of a primary and secondary pair.}
+// /
+// / @RESTDESCRIPTION Swaps the roles of a primary and replicating secondary 
+// / pair. This includes changing the entry for all shards for which the 
+// / primary was responsible to the name of the secondary. All changes happen
+// / in a single write transaction (using a write lock) and the Plan/Version 
+// / is increased. Use with care, because currently replication in the cluster
+// / is asynchronous and the old secondary might not yet have all the data.
+// / For security reasons and to avoid races, the ID of the old secondary
+// / must be given as well.
+// /
+// / @ RESTBODYPARAM{primary,string,required,string}
+// / is the ID of the primary whose secondary is to be changed.
+// /
+// / @ RESTBODYPARAM{secondary,string,required,string}
+// / is the ID of the secondary, which must be the secondary of this primay.
+// /
+// / @ RESTBODYPARAM{ttl,number,optional,number}
+// / the time to live in seconds for the write lock, default is 60.
+// /
+// / @ RESTBODYPARAM{timeout,number,optional,number}
+// / the timeout to use in HTTP requests to the agency, default is 60.
+// /
+// / @ RESTRETURNCODES
+// /
+// / @ RESTRETURNCODE{200} is returned when everything went well.
+// /
+// / @ RESTRETURNCODE{400} either one of the required body parameters was
+// / not given or no server with this ID exists.
+// /
+// / @ RESTRETURNCODE{403} server is not a coordinator or method was not PUT.
+// /
+// / @ RESTRETURNCODE{404} the given primary name is not configured in Agency.
+// /
+// / @ RESTRETURNCODE{408} there was a timeout in the Agency communication.
+// /
+// / @ RESTRETURNCODE{412} the given secondary was not the current secondary
+// / of the given primary.
+// /
+// / @ RESTRETURNCODE{500} the change operation did not work.
+// /
+// / @end Docu Block
+// //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url: "_admin/cluster/swapPrimaryAndSecondary",
