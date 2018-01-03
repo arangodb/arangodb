@@ -1,6 +1,25 @@
 devel
 -----
-* UI: displayed wrong wfs property for a collection when using rocksdb as storage engine
+
+
+v3.3.2 (XXXX-XX-XX)
+-------------------
+
+* issue #3504: added option `--force-same-database` for arangorestore
+
+  with this option set to true, it is possible to make any arangorestore attempt
+  fail if the specified target database does not match the database name
+  specified in the source dump's "dump.json" file. it can thus be used to
+  prevent restoring data into the "wrong" database
+
+  The option is set to `false` by default to ensure backwards-compatibility
+
+
+v3.3.1 (2017-12-28)
+-------------------
+
+* UI: displayed wrong wfs property for a collection when using RocksDB as 
+  storage engine
 
 * UI: updated dygraph js library to version 2.1.0
 
