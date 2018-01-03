@@ -2446,10 +2446,11 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   if (!name.empty() && name[0] == '_' && !slice.hasKey("isSystem")) {
     // system collection?
     patch.add("isSystem", VPackValue(true));
-    patch.add("objectId", VPackSlice::nullSlice());
-    patch.add("cid", VPackSlice::nullSlice());
-    patch.add("id", VPackSlice::nullSlice());
   }
+  patch.add("objectId", VPackSlice::nullSlice());
+  patch.add("cid", VPackSlice::nullSlice());
+  patch.add("id", VPackSlice::nullSlice());
+  
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   engine->addParametersForNewCollection(patch, slice);
