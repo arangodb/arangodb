@@ -1,6 +1,5 @@
 devel
 -----
-* UI: displayed wrong wfs property for a collection when using rocksdb as storage engine
 
 * UI: updated dygraph js library to version 2.1.0
 
@@ -10,43 +9,112 @@ devel
   Release packages will still install arangoimp as a symlink so user scripts 
   invoking arangoimp do not need to be changed
 
-* UI: improved the behavior during collection creation in a cluster environment
+* UI: Shard distribution view now has an accordion view instead of displaying
+  all shards of all collections at once.
+
+
+v3.3.2 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' 
+  at 98,7: ArangoError 4: Expecting type String 
+
+
+v3.3.1 (2017-12-28)
+-------------------
+
+* UI: displayed wrong wfs property for a collection when using RocksDB as 
+  storage engine
+
+* added `--ignore-missing` option to arangoimp
+  this option allows importing lines with less fields than specified in the CSV
+  header line
+
+* changed misleading error message from "no leader" to "not a leader"
+
+* optimize usage of AQL FULLTEXT index function to a FOR loop with index
+  usage in some cases
+  When the optimization is applied, this especially speeds up fulltext index 
+  queries in the cluster
+
+* UI: improved the behavior during collection creation in a cluster environment 
+
+* Agency lockup fixes for very small machines.
+
+* Agency performance improvement by finer grained locking.
+
+* Use steady_clock in agency whereever possible.
+
+* Agency prevent Supervision thread crash.
+
+* Fix agency integer overflow in timeout calculation.
+
+
+v3.3.0 (2012-12-14)
+-------------------
+
+* release version
+
+* added a missing try/catch block in the supervision thread
+
+
+v3.3.rc8 (2017-12-12)
+---------------------
 
 * UI: fixed broken foxx configuration keys. Some valid configuration values
   could not be edited via the ui.
 
-* UI: Shard distribution view now has an accordion view instead of displaying
-  all shards of all collections at once.
-
-* UI: pressing the return key inside a select2 box no longer triggers the modals
+* UI: pressing the return key inside a select2 box no longer triggers the modal's
   success function
 
 * UI: coordinators and db servers are now in sorted order (ascending)
 
-* UI: fixed disappearing of the navigation label in some cases
 
-* fixed issue #3917: traversals with high maximal depth take extremely long
-  in planning phase.
-  
-* UI: fixed issue #3822: disabled name input field for system collections
+v3.3.rc7 (2017-12-07)
+---------------------
 
 * fixed issue #3741: fix terminal color output in Windows 
+
+* UI: fixed issue #3822: disabled name input field for system collections
+
+* fixed issue #3640: limit in subquery
+
+* fixed issue #3745: Invalid result when using OLD object with array attribute in UPSERT statement
+
+* UI: edge collections were wrongly added to from and to vertices select box during graph creation
+
+* UI: added not found views for documents and collections
 
 * UI: using default user database api during database creation now
 
 * UI: the graph viewer backend now picks one random start vertex of the
   first 1000 documents instead of calling any(). The implementation of
-  any is known to scale bad on huge collections with rocksdb.
+  "any" is known to scale bad on huge collections with RocksDB.
 
-* UI: added not found views for documents and collections
-
-* UI: edge collections were wrongly added to from and to vertices select box during graph creation
-
-* fixed issue #3640: limit in subquery
+* UI: fixed disappearing of the navigation label in some case special case
 
 * UI: the graph viewer now displays updated label values correctly.
   Additionally the included node/edge editor now closes automatically
-	after a successful node/edge update.
+  after a successful node/edge update.
+  
+* fixed issue #3917: traversals with high maximal depth take extremely long
+  in planning phase.
+
+
+v3.3.rc4 (2017-11-28)
+---------------------
+
+* minor bug-fixes
+
+
+v3.3.rc3 (2017-11-24)
+---------------------
+
+* bug-fixes
+
+
+v3.3.rc2 (2017-11-22)
+---------------------
 
 * UI: document/edge editor now remembering their modes (e.g. code or tree)
 
@@ -59,11 +127,19 @@ devel
 * added options `--encryption.keyfile` and `--encryption.key-generator` to arangodump
   and arangorestore
 
+* UI: the graph viewer now displays updated label values correctly.
+  Additionally the included node/edge editor now closes automatically
+	after a successful node/edge update.
+
 * removed `--recycle-ids` option for arangorestore
 
   using that option could have led to problems on the restore, with potential
   id conflicts between the originating server (the source dump server) and the
   target server (the restore server)
+
+
+v3.3.rc1 (2017-11-17)
+---------------------
 
 * add readonly mode REST API
 
