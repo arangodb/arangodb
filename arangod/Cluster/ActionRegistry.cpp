@@ -24,23 +24,52 @@
 
 #include "ActionRegistry.h"
 
+#include "Cluster/ActionRegistry.h"
+#include "Cluster/Action.h"
+
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
+
 using namespace arangodb::maintenance;
 
-ActionRegistry* ActionRegistry::_registry = nullptr;
+/// @brief let us begin
+ActionRegistry* ActionRegistry::_instance = nullptr;
 
+/// @brief consturuct
 ActionRegistry::ActionRegistry() {}
 
+/// @brief clean up
 ActionRegistry::~ActionRegistry() {}
 
+/// @brief public access to registry
 ActionRegistry* ActionRegistry::Instance() {
-  if (_registry == nullptr) {
-    _registry = new ActionRegistry();
+  if (_instance == nullptr) {
+    _instance = new ActionRegistry();
   }
-  return _registry;
+  return _instance;
 }
 
-arangodb::Result ActionRegistry::dispatch (ActionDescription const& desc) {
+/// @brief proposal entry for dispatching new actions through registry
+arangodb::Result ActionRegistry::dispatch (
+  ActionDescription const& desc, std::shared_ptr<Action>& ptr) {
+  
   arangodb::Result result;
+  
+  {
+    WRITE_LOCKER(guard, _registryLock);
+    
+    if (_registry.find(desc) == _registry.end()) {
+      ptr = std::make_shared<Action>(desc);
+      _registry.emplace(desc, ptr);
+    }
+  }
+  
   return result;
+  
 }
 
+/// @brief get 
+std::shared_ptr<Action> ActionRegistry::get (ActionDescription const& desc) {
+  READ_LOCKER(guard, _registryLock);
+  return _registry.at(desc);
+}

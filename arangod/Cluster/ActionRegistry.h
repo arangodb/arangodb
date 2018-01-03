@@ -28,23 +28,46 @@
 #include "Cluster/ActionDescription.h"
 
 #include "Basics/Result.h"
+#include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
 namespace maintenance {
+
+class Action;
 
 /// @brief Action registry singleton 
 class ActionRegistry {
 
 public:
+
+  /// @brief construct
   ActionRegistry();
 
+  /// @brief clean up
   ~ActionRegistry();
 
+  /// @brief public access to instance
   ActionRegistry* Instance();
 
-  static ActionRegistry* _registry;
+  /// @brief dispatch action through registry
+  arangodb::Result dispatch (ActionDescription const&, std::shared_ptr<Action>&);
 
-  arangodb::Result dispatch (ActionDescription const&);
+  /// @brief get a dispatched action
+  std::shared_ptr<Action> get (ActionDescription const&);
+  
+  /// @brief get a dispatched action
+  std::shared_ptr<Action> kill (ActionDescription const&, Signal const& signal);
+  
+private:
+
+  /// @brief single instance
+  static ActionRegistry* _instance;
+
+  /// @brief registry
+  std::unordered_map<ActionDescription, std::shared_ptr<Action>> _registry;
+
+  /// @brief Read write lock to guard access to _registry
+  mutable arangodb::basics::ReadWriteLock _registryLock;
   
 };
 
