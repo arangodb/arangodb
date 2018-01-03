@@ -22,8 +22,8 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_MAINTENANCE_H
-#define ARANGODB_MAINTENANCE_MAINTENANCE_H
+#ifndef ARANGODB_MAINTENANCE_ACTION_REGISTRY_H
+#define ARANGODB_MAINTENANCE_ACTION_REGISTRY_H
 
 #include "Cluster/ActionDescription.h"
 
@@ -47,10 +47,10 @@ public:
   ~ActionRegistry();
 
   /// @brief public access to instance
-  ActionRegistry* Instance();
+  static ActionRegistry* instance();
 
   /// @brief dispatch action through registry
-  arangodb::Result dispatch (ActionDescription const&, std::shared_ptr<Action>&);
+  arangodb::Result dispatch (ActionDescription const&);
 
   /// @brief get a dispatched action
   std::shared_ptr<Action> get (ActionDescription const&);

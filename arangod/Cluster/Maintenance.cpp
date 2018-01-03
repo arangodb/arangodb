@@ -22,9 +22,8 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/Maintenance.h"
-#include "Cluster/ActionDescription.h"
 #include "Cluster/ActionRegistry.h"
+#include "Cluster/Maintenance.h"
 
 #include <algorithm>
 
@@ -74,7 +73,7 @@ arangodb::Result executePlanForDatabases (
   Node plan, Node current, std::vector<std::string> local) {
 
   arangodb::Result result;
-//  ActionRegistry* actreg = ActionRegistry::instance();
+  ActionRegistry* actreg = ActionRegistry::instance();
 
   // build difference between plan and local
   std::vector<std::string> toAdd, toRemove;
@@ -82,14 +81,14 @@ arangodb::Result executePlanForDatabases (
 
   // dispatch creations
   for (auto const& i : toAdd) {
-/*    actreg->dispatch(
-      ActionDescription({{"name", "CreateDatabase"}, {"database", i}}));*/
+    actreg->dispatch(
+      ActionDescription({{"name", "CreateDatabase"}, {"database", i}}));
   }
 
   // dispatch creations
   for (auto const& i : toRemove) {
-/*    actreg->dispatch(
-      ActionDescription({{"name", "DropDatabase"}, {"database", i}}));*/
+    actreg->dispatch(
+      ActionDescription({{"name", "DropDatabase"}, {"database", i}}));
   }
 
   return result;

@@ -42,7 +42,7 @@ ActionRegistry::ActionRegistry() {}
 ActionRegistry::~ActionRegistry() {}
 
 /// @brief public access to registry
-ActionRegistry* ActionRegistry::Instance() {
+ActionRegistry* ActionRegistry::instance() {
   if (_instance == nullptr) {
     _instance = new ActionRegistry();
   }
@@ -50,17 +50,14 @@ ActionRegistry* ActionRegistry::Instance() {
 }
 
 /// @brief proposal entry for dispatching new actions through registry
-arangodb::Result ActionRegistry::dispatch (
-  ActionDescription const& desc, std::shared_ptr<Action>& ptr) {
+arangodb::Result ActionRegistry::dispatch (ActionDescription const& desc) {
   
   arangodb::Result result;
   
   {
     WRITE_LOCKER(guard, _registryLock);
-    
     if (_registry.find(desc) == _registry.end()) {
-      ptr = std::make_shared<Action>(desc);
-      _registry.emplace(desc, ptr);
+      _registry.emplace(desc, std::make_shared<Action>(desc));
     }
   }
   
