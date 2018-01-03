@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_DUMP_DUMP_FEATURE_H
@@ -88,15 +89,6 @@ public:
    * @return The name of the feature
    */
   static std::string featureName();
-
-  /**
-   * @brief Extracts error message from ArangoDB HTTP result
-   * @param  result The HTTP result to extract from
-   * @param  err    Destination for error code
-   * @return        Error message
-   */
-  std::string getHttpErrorMessage(httpclient::SimpleHttpResult* result,
-                                  int& err) noexcept;
 
  private:
   Result runDump(std::string& dbName);

@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DumpFeature.h"
@@ -26,6 +27,7 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+#include <boost/algorithm/clamp.hpp>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
@@ -54,6 +56,13 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
+
+namespace {
+/// @brief minimum amount of data to fetch from server in a single batch
+uint64_t MinChunkSize = 1024 * 128;
+/// @brief maximum amount of data to fetch from server in a single batch
+uint64_t MaxChunkSize = 1024 * 1024 * 96;  // larger value may cause tcp issues
+}  // namespace
 
 namespace {
 /// @brief check whether HTTP response is valid, complete, and not an error
@@ -89,6 +98,7 @@ Result prepareFileForWriting(FileHandler& fileHandler,
     }
   }
 
+  // create file
   fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
                                O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                                S_IRUSR | S_IWUSR);
@@ -97,8 +107,19 @@ Result prepareFileForWriting(FileHandler& fileHandler,
             "cannot write to file '" + filename + "'"};
   }
 
+  // begin encryption if eanabled
   fileHandler.beginEncryption(fd);
   return {TRI_ERROR_NO_ERROR};
+}
+}  // namespace
+
+namespace {
+/// @brief prepare file for writing
+int finalizeWritingFile(FileHandler& fileHandler, int const& fd) {
+  // end encryption if enabled
+  fileHandler.endEncryption(fd);
+  // now actually close the file
+  return TRI_TRACKED_CLOSE_FILE(fd);
 }
 }  // namespace
 
@@ -199,14 +220,15 @@ void flushWal(httpclient::SimpleHttpClient& client) {
 namespace {
 /// @brief dump the actual data from an individual collection
 Result dumpCollection(httpclient::SimpleHttpClient& client,
-                      DumpFeatureJobData& jobData, int fd, std::string const& name, std::string const& server, uint64_t batchId, uint64_t minTick, uint64_t maxTick) {
+                      DumpFeatureJobData& jobData, int fd,
+                      std::string const& name, std::string const& server,
+                      uint64_t batchId, uint64_t minTick, uint64_t maxTick) {
   uint64_t fromTick = minTick;
   uint64_t chunkSize =
       jobData.initialChunkSize;  // will grow adaptively up to max
-  std::string baseUrl =
-      "/_api/replication/dump?collection=" + name +
-      "&batchId=" + StringUtils::itoa(batchId) +
-      "&ticks=false";
+  std::string baseUrl = "/_api/replication/dump?collection=" + name +
+                        "&batchId=" + StringUtils::itoa(batchId) +
+                        "&ticks=false";
   if (jobData.clusterMode) {
     // we are in cluster mode, must specify dbserver
     baseUrl += "&DBserver=" + server;
@@ -222,7 +244,7 @@ Result dumpCollection(httpclient::SimpleHttpClient& client,
       url += "&to=" + StringUtils::itoa(maxTick);
     }
 
-    jobData.stats.totalBatches++;  // count how many chunks we are fetching
+    ++(jobData.stats.totalBatches);  // count how many chunks we are fetching
 
     // make the actual request for data
     std::unique_ptr<SimpleHttpResult> response(
@@ -258,7 +280,7 @@ Result dumpCollection(httpclient::SimpleHttpClient& client,
         }
       }
     }
-    if (!headerExtracted) {  // not else, fallthrough from outer or inner above
+    if (!headerExtracted) {  // NOT else, fallthrough from outer or inner above
       return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
               "got invalid response server: required header is missing"};
     }
@@ -296,291 +318,63 @@ Result dumpCollection(httpclient::SimpleHttpClient& client,
 namespace {
 /// @brief processes a single collection dumping job in single-server mode
 Result handleCollection(httpclient::SimpleHttpClient& client,
-                        DumpFeatureJobData& jobData) {
-  Result result;
-  // prep hex string of job name
-  std::string const hexString(
-      arangodb::rest::SslInterface::sslMD5(jobData.name));
+                        DumpFeatureJobData& jobData, int fd) {
+  // keep the batch alive
+  ::extendBatch(client, "", jobData.batchId);
 
-  if (jobData.showProgress) {
-    std::cout << "# Dumping " << jobData.type << " collection '" << jobData.name
-              << "'..." << std::endl;
-  }
-  jobData.stats.totalCollections++;
-
-  // now save the collection meta data
-  {
-    std::string filename = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR +
-                           jobData.name + "_" + hexString + ".structure.json";
-    int fd;
-    result = prepareFileForWriting(jobData.fileHandler, filename, fd, true);
-    if (result.fail()) {
-      return result;
-    }
-
-    // write data out to file
-    std::string const collectionInfo = jobData.collectionInfo.toJson();
-    bool written = jobData.fileHandler.writeData(fd, collectionInfo.c_str(),
-                                                 collectionInfo.size());
-    if (!written) {
-      result = {TRI_ERROR_CANNOT_WRITE_FILE,
-                "cannot write to file '" + filename + "'"};
-    }
-
-    // close file
-    jobData.fileHandler.endEncryption(fd);
-    TRI_TRACKED_CLOSE_FILE(fd);
-  }
-
-  // save the actual data if requested
-  if (result.ok() && jobData.dumpData) {
-    std::string filename = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR +
-                           jobData.name + "_" + hexString + ".data.json";
-    int fd;
-    result = prepareFileForWriting(jobData.fileHandler, filename, fd, true);
-    if (result.fail()) {
-      return result;
-    }
-
-    // keep the batch alive
-    ::extendBatch(client, "", jobData.batchId);
-
-    // do the hard work in another function...
-    result = ::dumpCollection(client, jobData, fd, jobData.name, "", jobData.batchId, jobData.tickStart, jobData.maxTick);
-
-    // close file
-    jobData.fileHandler.endEncryption(fd);
-    TRI_TRACKED_CLOSE_FILE(fd);
-  }
-
-  return result;
+  // do the hard work in another function...
+  return ::dumpCollection(client, jobData, fd, jobData.name, "",
+                          jobData.batchId, jobData.tickStart, jobData.maxTick);
 }
 }  // namespace
-
-/*namespace {
-// TODO FIXME eliminate `dumpShard`, unify with `dumpCollection`
-/// @brief dump the actual data from an individual shard
-Result dumpShard(httpclient::SimpleHttpClient& client,
-                 DumpFeatureJobData& jobData, std::string const& DBserver,
-                 int fd, std::string const& name) {
-                   // no setting tick ranges in cluster mode, only full-range
-                   uint64_t fromTick = 0;
-                   uint64_t maxTick = UINT64_MAX;
-  uint64_t chunkSize = jobData.initialChunkSize; // will grow adaptively to max
-
-  std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
-                              "&batchId=" + StringUtils::itoa(jobData.batchId) +
-                              "&collection=" + shardName + "&ticks=false";
-
-  while (true) {
-    std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick) +
-                      "&chunkSize=" + StringUtils::itoa(chunkSize);
-    if (jobData.maxTick > 0) {
-      url += "&to=" + StringUtils::itoa(maxTick);
-    }
-
-    jobData.stats.totalBatches++; // count how many chunks we are fetching
-
-    // make the actual request for data
-    std::unique_ptr<SimpleHttpResult> response(
-        client.request(rest::RequestType::GET, url, nullptr, 0));
-    auto check = checkHttpResponse(client, response);
-    if (check.fail()) {
-      return check;
-    }
-
-    bool checkMore = false;
-    bool found;
-
-    // TODO: fix hard-coded headers
-    std::string header =
-        response->getHeaderField("x-arango-replication-checkmore", found);
-
-    if (found) {
-      checkMore = StringUtils::boolean(header);
-      res = TRI_ERROR_NO_ERROR;
-
-      if (checkMore) {
-        // TODO: fix hard-coded headers
-        header = response->getHeaderField("x-arango-replication-lastincluded",
-                                          found);
-
-        if (found) {
-          uint64_t tick = StringUtils::uint64(header);
-
-          if (tick > fromTick) {
-            fromTick = tick;
-          } else {
-            // we got the same tick again, this indicates we're at the end
-            checkMore = false;
-          }
-        }
-      }
-    }
-
-    if (!found) {
-      return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-              "got invalid response server: required header is missing"};
-    }
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      StringBuffer const& body = response->getBody();
-      bool result =
-          jobData.fileHandler.writeData(fd, body.c_str(), body.length());
-
-      if (!result) {
-        res = TRI_ERROR_CANNOT_WRITE_FILE;
-      } else {
-        jobData.stats.totalWritten += (uint64_t)body.length();
-      }
-    }
-
-    if (res != TRI_ERROR_NO_ERROR || !checkMore || fromTick == 0) {
-      // done
-      return {res};
-    }
-
-    if (chunkSize < jobData.maxChunkSize) {
-      // adaptively increase chunksize
-      chunkSize = static_cast<uint64_t>(chunkSize * 1.5);
-
-      if (chunkSize > jobData.maxChunkSize) {
-        chunkSize = jobData.maxChunkSize;
-      }
-    }
-  }
-
-  TRI_ASSERT(false);
-  return {TRI_ERROR_INTERNAL};
-}
-}  // namespace*/
 
 namespace {
 /// @brief handle a single collection dumping job in cluster mode
 Result handleCollectionCluster(httpclient::SimpleHttpClient& client,
-                               DumpFeatureJobData& jobData) {
-  // found a collection!
-  if (jobData.showProgress) {
-    std::cout << "# Dumping collection '" << jobData.name << "'..."
-              << std::endl;
-  }
+                               DumpFeatureJobData& jobData, int fd) {
+  Result result{TRI_ERROR_NO_ERROR};
 
-  // now save the collection meta data and/or the actual data
-  jobData.stats.totalCollections++;
+  // First we have to go through all the shards, what are they?
+  VPackSlice const parameters = jobData.collectionInfo.get("parameters");
+  VPackSlice const shards = parameters.get("shards");
 
-  {
-    // save meta data
-    std::string fileName = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR +
-                           jobData.name + ".structure.json";
+  // Iterate over the Map of shardId to server list
+  for (auto const it : VPackObjectIterator(shards)) {
+    // extract shard name
+    TRI_ASSERT(it.key.isString());
+    std::string shardName = it.key.copyString();
 
-    // remove an existing file first
-    if (TRI_ExistsFile(fileName.c_str())) {
-      TRI_UnlinkFile(fileName.c_str());
+    // extract dbserver id
+    if (!it.value.isArray() || it.value.length() == 0 ||
+        !it.value[0].isString()) {
+      ::finalizeWritingFile(jobData.fileHandler, fd);
+      return {TRI_ERROR_BAD_PARAMETER,
+              "unexpected value for 'shards' attribute"};
+    }
+    std::string DBserver = it.value[0].copyString();
+
+    if (jobData.showProgress) {
+      std::cout << "# Dumping shard '" << shardName << "' from DBserver '"
+                << DBserver << "' ..." << std::endl;
     }
 
-    int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                                     O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                                     S_IRUSR | S_IWUSR);
-
-    if (fd < 0) {
-      return {TRI_ERROR_CANNOT_WRITE_FILE,
-              "cannot write to file '" + fileName + "'"};
-    }
-
-    jobData.fileHandler.beginEncryption(fd);
-
-    std::string const collectionInfo = jobData.collectionInfo.toJson();
-    bool result = jobData.fileHandler.writeData(fd, collectionInfo.c_str(),
-                                                collectionInfo.size());
-
-    if (!result) {
-      jobData.fileHandler.endEncryption(fd);
-      TRI_TRACKED_CLOSE_FILE(fd);
-      return {TRI_ERROR_CANNOT_WRITE_FILE,
-              "cannot write to file '" + fileName + "'"};
-    }
-
-    jobData.fileHandler.endEncryption(fd);
-    TRI_TRACKED_CLOSE_FILE(fd);
-  }
-
-  if (jobData.dumpData) {
-    // save the actual data
-
-    // Now set up the output file:
-    std::string const hexString(
-        arangodb::rest::SslInterface::sslMD5(jobData.name));
-    std::string fileName = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR +
-                           jobData.name + "_" + hexString + ".data.json";
-
-    // remove an existing file first
-    if (TRI_ExistsFile(fileName.c_str())) {
-      TRI_UnlinkFile(fileName.c_str());
-    }
-
-    int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                                     O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                                     S_IRUSR | S_IWUSR);
-
-    if (fd < 0) {
-      return {TRI_ERROR_CANNOT_WRITE_FILE,
-              "cannot write to file '" + fileName + "'"};
-    }
-
-    jobData.fileHandler.beginEncryption(fd);
-
-    // First we have to go through all the shards, what are they?
-    VPackSlice const parameters = jobData.collectionInfo.get("parameters");
-    VPackSlice const shards = parameters.get("shards");
-
-    // Iterate over the Map of shardId to server list
-    for (auto const it : VPackObjectIterator(shards)) {
-      TRI_ASSERT(it.key.isString());
-
-      std::string shardName = it.key.copyString();
-
-      if (!it.value.isArray() || it.value.length() == 0 ||
-          !it.value[0].isString()) {
-        jobData.fileHandler.endEncryption(fd);
-        TRI_TRACKED_CLOSE_FILE(fd);
-        return {TRI_ERROR_BAD_PARAMETER,
-                "unexpected value for 'shards' attribute"};
-      }
-
-      std::string DBserver = it.value[0].copyString();
-
-      if (jobData.showProgress) {
-        std::cout << "# Dumping shard '" << shardName << "' from DBserver '"
-                  << DBserver << "' ..." << std::endl;
-      }
-
-      Result result;
-      uint64_t batchId;
-      std::tie(result, batchId) = ::startBatch(client, DBserver);
-      if (result.fail()) {
-        jobData.fileHandler.endEncryption(fd);
-        TRI_TRACKED_CLOSE_FILE(fd);
-        return result;
-      }
-
-      result = ::dumpCollection(client, jobData, fd, shardName, DBserver, batchId, 0, UINT64_MAX);
-      if (result.fail()) {
-        jobData.fileHandler.endEncryption(fd);
-        TRI_TRACKED_CLOSE_FILE(fd);
-        return result;
-      }
-
+    // make sure we have at batch on this dbserver
+    uint64_t batchId;
+    std::tie(result, batchId) = ::startBatch(client, DBserver);
+    if (result.ok()) {
+      // do the hard work elsewhere
+      result = ::dumpCollection(client, jobData, fd, shardName, DBserver,
+                                batchId, 0, UINT64_MAX);
       ::endBatch(client, DBserver, batchId);
     }
 
-    jobData.fileHandler.endEncryption(fd);
-    int res = TRI_TRACKED_CLOSE_FILE(fd);
-    if (res != TRI_ERROR_NO_ERROR) {
-      return {res};
+    if (result.fail()) {
+      // fail early for collection if a given shard fails
+      break;
     }
   }
 
-  return {TRI_ERROR_NO_ERROR};
+  return result;
 }
 }  // namespace
 
@@ -588,11 +382,67 @@ namespace {
 /// @brief process a single job from the queue
 Result processJob(httpclient::SimpleHttpClient& client,
                   DumpFeatureJobData& jobData) noexcept {
-  if (jobData.clusterMode) {
-    return ::handleCollectionCluster(client, jobData);
+  Result result{TRI_ERROR_NO_ERROR};
+
+  // prep hex string of collection name
+  std::string const hexString(
+      arangodb::rest::SslInterface::sslMD5(jobData.name));
+
+  // found a collection!
+  if (jobData.showProgress) {
+    std::cout << "# Dumping collection '" << jobData.name << "'..."
+              << std::endl;
+  }
+  ++(jobData.stats.totalCollections);
+
+  {
+    // save meta data
+    std::string filename = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR +
+                           jobData.name + ".structure.json";
+    int fd;
+    result = ::prepareFileForWriting(jobData.fileHandler, filename, fd, true);
+    if (result.fail()) {
+      return result;
+    }
+
+    std::string const collectionInfo = jobData.collectionInfo.toJson();
+    bool written = jobData.fileHandler.writeData(fd, collectionInfo.c_str(),
+                                                 collectionInfo.size());
+
+    if (!written) {
+      // close file and bail out
+      result = {TRI_ERROR_CANNOT_WRITE_FILE,
+                "cannot write to file '" + filename + "'"};
+    }
+
+    // close file
+    ::finalizeWritingFile(jobData.fileHandler, fd);
   }
 
-  return ::handleCollection(client, jobData);
+  if (result.ok() && jobData.dumpData) {
+    // save the actual data
+    std::string filename = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR +
+                           jobData.name + "_" + hexString + ".data.json";
+    int fd;
+    result = ::prepareFileForWriting(jobData.fileHandler, filename, fd, true);
+    if (result.fail()) {
+      return result;
+    }
+
+    if (jobData.clusterMode) {
+      result = handleCollectionCluster(client, jobData, fd);
+    } else {
+      result = handleCollection(client, jobData, fd);
+    }
+
+    // close out file for collection
+    int fileStatus = ::finalizeWritingFile(jobData.fileHandler, fd);
+    if (fileStatus != TRI_ERROR_NO_ERROR && result.fail()) {
+      result = {fileStatus};
+    }
+  }
+
+  return result;
 }
 }  // namespace
 
@@ -652,7 +502,8 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _batchId{0},
       _tickStart{0},
       _tickEnd{0},
-      _outputDirectory{} {
+      _outputDirectory{FileUtils::buildFilename(
+          FileUtils::currentDirectory().result(), "dump")} {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Client");
@@ -661,9 +512,6 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
 #ifdef USE_ENTERPRISE
   startsAfter("Encryption");
 #endif
-
-  _outputDirectory =
-      FileUtils::buildFilename(FileUtils::currentDirectory().result(), "dump");
 }
 
 std::string DumpFeature::featureName() { return "Dump"; }
@@ -729,13 +577,11 @@ void DumpFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if (_chunkSize < 1024 * 128) {
-    _chunkSize = 1024 * 128;
-  }
-
-  if (_maxChunkSize < _chunkSize) {
-    _maxChunkSize = _chunkSize;
-  }
+  // clamp chunk values to allowed ranges
+  _chunkSize =
+      boost::algorithm::clamp(_chunkSize, ::MinChunkSize, ::MaxChunkSize);
+  _maxChunkSize =
+      boost::algorithm::clamp(_maxChunkSize, _chunkSize, ::MaxChunkSize);
 
   if (_tickStart < _tickEnd) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
@@ -753,23 +599,26 @@ void DumpFeature::validateOptions(
 }
 
 void DumpFeature::prepare() {
+  // set up the output directory, not much else
+
   bool isDirectory = false;
   bool isEmptyDirectory = false;
 
+  // need to make sure we actually have a name specified
   if (!_outputDirectory.empty()) {
+    // see if it exists already as a directory
     isDirectory = TRI_IsDirectory(_outputDirectory.c_str());
-
     if (isDirectory) {
+      // if so, check if it already has some files in it
       std::vector<std::string> files(
           TRI_FullTreeDirectory(_outputDirectory.c_str()));
-      // we don't care if the target directory is empty
-      isEmptyDirectory = (files.size() <= 1);  // TODO: TRI_FullTreeDirectory
-                                               // always returns at least one
-                                               // element (""), even if
-                                               // directory is empty?
+      isEmptyDirectory = (files.size() <= 1);
+      // TODO: TRI_FullTreeDirectory always returns at least one element ("")
+      // even if directory is empty?
     }
   }
 
+  // no directory specified, or points to non-directory file
   if (_outputDirectory.empty() ||
       (TRI_ExistsFile(_outputDirectory.c_str()) && !isDirectory)) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
@@ -777,6 +626,7 @@ void DumpFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
+  // directory exists, has files, and we aren't allowed to overwrite
   if (isDirectory && !isEmptyDirectory && !_overwrite) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "output directory '" << _outputDirectory
@@ -785,6 +635,7 @@ void DumpFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
+  // create directory if it doesn't exist
   if (!isDirectory) {
     long systemError;
     std::string errorMessage;
@@ -800,35 +651,29 @@ void DumpFeature::prepare() {
   }
 }
 
-std::string DumpFeature::getHttpErrorMessage(
-    httpclient::SimpleHttpResult* result, int& err) noexcept {
-  return _clientManager.getHttpErrorMessage(result, err);
-}
-
 // dump data from server
 Result DumpFeature::runDump(std::string& dbName) {
+  Result result;
+
+  // get a client
+  auto httpClient = _clientManager.getConnectedClient();
+
+  // fetch the collection inventory
   std::string const url =
       "/_api/replication/inventory?includeSystem=" +
       std::string(_includeSystemCollections ? "true" : "false") +
       "&batchId=" + StringUtils::itoa(_batchId);
-
-  auto httpClient = _clientManager.getConnectedClient();
   std::unique_ptr<SimpleHttpResult> response(
-      httpClient->request(rest::RequestType::GET, url, nullptr, 0));
-
-  if (response == nullptr || !response->isComplete()) {
-    return {TRI_ERROR_INTERNAL, "got invalid response from server: " +
-                                    httpClient->getErrorMessage()};
+    httpClient->request(rest::RequestType::GET, url, nullptr, 0));
+  auto check = ::checkHttpResponse(*httpClient, response);
+  if (check.fail()) {
+    return check;
   }
 
-  if (response->wasHttpError()) {
-    return {TRI_ERROR_INTERNAL,
-            "got invalid response from server: HTTP " +
-                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-                response->getHttpReturnMessage()};
-  }
-
+  // flush the wal and so we know we are getting everything
   flushWal(*httpClient);
+
+  // extract the vpack body inventory
   std::shared_ptr<VPackBuilder> parsedBody;
   try {
     parsedBody = response->getBodyVelocyPack();
@@ -836,13 +681,12 @@ Result DumpFeature::runDump(std::string& dbName) {
     return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
   }
   VPackSlice const body = parsedBody->slice();
-
   if (!body.isObject()) {
     return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
   }
 
+  // get the collections list
   VPackSlice const collections = body.get("collections");
-
   if (!collections.isArray()) {
     return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
   }
@@ -850,13 +694,12 @@ Result DumpFeature::runDump(std::string& dbName) {
   // read the server's max tick value
   std::string const tickString =
       arangodb::basics::VelocyPackHelper::getStringValue(body, "tick", "");
-
   if (tickString == "") {
     return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
   }
-
   std::cout << "Last tick provided by server is: " << tickString << std::endl;
 
+  // set the local max tick value
   uint64_t maxTick = StringUtils::uint64(tickString);
   // check if the user specified a max tick value
   if (_tickEnd > 0 && maxTick > _tickEnd) {
@@ -871,40 +714,24 @@ Result DumpFeature::runDump(std::string& dbName) {
     meta.close();
 
     // save last tick in file
-    std::string fileName =
+    std::string filename =
         _outputDirectory + TRI_DIR_SEPARATOR_STR + "dump.json";
-
     int fd;
-
-    // remove an existing file first
-    if (TRI_ExistsFile(fileName.c_str())) {
-      TRI_UnlinkFile(fileName.c_str());
+    result = ::prepareFileForWriting(_fileHandler, filename, fd, true);
+    if (result.fail()) {
+      return result;
     }
-
-    fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                                 O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                                 S_IRUSR | S_IWUSR);
-
-    if (fd < 0) {
-      return {TRI_ERROR_CANNOT_WRITE_FILE,
-              "cannot write to file '" + fileName + "'"};
-    }
-
-    _fileHandler.beginEncryption(fd);
 
     std::string const metaString = meta.slice().toJson();
-    bool result =
+    bool written =
         _fileHandler.writeData(fd, metaString.c_str(), metaString.size());
-
-    if (!result) {
-      _fileHandler.endEncryption(fd);
-      TRI_TRACKED_CLOSE_FILE(fd);
+    if (!written) {
+      ::finalizeWritingFile(_fileHandler, fd);
       return {TRI_ERROR_CANNOT_WRITE_FILE,
-              "cannot write to file '" + fileName + "'"};
+              "cannot write to file '" + filename + "'"};
     }
 
-    _fileHandler.endEncryption(fd);
-    TRI_TRACKED_CLOSE_FILE(fd);
+    ::finalizeWritingFile(_fileHandler, fd);
   } catch (basics::Exception const& ex) {
     return {ex.code(), ex.what()};
   } catch (std::exception const& ex) {
@@ -921,16 +748,16 @@ Result DumpFeature::runDump(std::string& dbName) {
 
   // iterate over collections
   for (VPackSlice const& collection : VPackArrayIterator(collections)) {
+    // extract parameters about the individual collection
     if (!collection.isObject()) {
       return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
     }
-
     VPackSlice const parameters = collection.get("parameters");
-
     if (!parameters.isObject()) {
       return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
     }
 
+    // extract basic info about the collection
     uint64_t const cid =
         arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
     std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
@@ -941,30 +768,31 @@ Result DumpFeature::runDump(std::string& dbName) {
         parameters, "type", 2);
     std::string const collectionType(type == 2 ? "document" : "edge");
 
+    // basic filtering
     if (cid == 0 || name == "") {
       return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
     }
-
     if (deleted) {
       continue;
     }
-
     if (name[0] == '_' && !_includeSystemCollections) {
       continue;
     }
 
+    // filter by specified names
     if (!restrictList.empty() &&
         restrictList.find(name) == restrictList.end()) {
       // collection name not in list
       continue;
     }
 
+    // queue job to actually dump collection
     auto jobData = std::make_unique<DumpFeatureJobData>(
         *this, _fileHandler, collection, std::to_string(cid), name,
         collectionType, _batchId, _tickStart, maxTick, _chunkSize,
         _maxChunkSize, _clusterMode, _progress, _dumpData, _outputDirectory,
         _stats);
-    auto result = processJob(*httpClient, *jobData);
+    auto result = ::processJob(*httpClient, *jobData);
     if (result.fail()) {
       return result;
     }
@@ -979,26 +807,21 @@ Result DumpFeature::runDump(std::string& dbName) {
 
 // dump data from cluster via a coordinator
 Result DumpFeature::runClusterDump() {
+  // get an http client
+  auto httpClient = _clientManager.getConnectedClient();
+
+  // get the cluster inventory
   std::string const url =
       "/_api/replication/clusterInventory?includeSystem=" +
       std::string(_includeSystemCollections ? "true" : "false");
-
-  auto httpClient = _clientManager.getConnectedClient();
   std::unique_ptr<SimpleHttpResult> response(
       httpClient->request(rest::RequestType::GET, url, nullptr, 0));
+      auto check = ::checkHttpResponse(*httpClient, response);
+      if (check.fail()) {
+        return check;
+      }
 
-  if (response == nullptr || !response->isComplete()) {
-    return {TRI_ERROR_INTERNAL, "got invalid response from server: " +
-                                    httpClient->getErrorMessage()};
-  }
-
-  if (response->wasHttpError()) {
-    return {TRI_ERROR_INTERNAL,
-            "got invalid response from server: HTTP " +
-                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-                response->getHttpReturnMessage()};
-  }
-
+  // parse the inventory vpack body
   std::shared_ptr<VPackBuilder> parsedBody;
   try {
     parsedBody = response->getBodyVelocyPack();
@@ -1010,8 +833,8 @@ Result DumpFeature::runClusterDump() {
     return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
   }
 
+  // parse collections array
   VPackSlice const collections = body.get("collections");
-
   if (!collections.isArray()) {
     return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
   }
@@ -1024,6 +847,7 @@ Result DumpFeature::runClusterDump() {
 
   // iterate over collections
   for (auto const& collection : VPackArrayIterator(collections)) {
+    // extract parameters about the individual collection
     if (!collection.isObject()) {
       return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
     }
@@ -1033,6 +857,7 @@ Result DumpFeature::runClusterDump() {
       return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
     }
 
+// extract basic info about the collection
     uint64_t const cid =
         arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
     std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
@@ -1040,24 +865,25 @@ Result DumpFeature::runClusterDump() {
     bool const deleted = arangodb::basics::VelocyPackHelper::getBooleanValue(
         parameters, "deleted", false);
 
+    // simple filtering
     if (cid == 0 || name == "") {
       return {TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
     }
-
     if (deleted) {
       continue;
     }
-
     if (name[0] == '_' && !_includeSystemCollections) {
       continue;
     }
 
+    // filter by specified names
     if (!restrictList.empty() &&
         restrictList.find(name) == restrictList.end()) {
       // collection name not in list
       continue;
     }
 
+    // verify distributeShardsLike info
     if (!_ignoreDistributeShardsLikeErrors) {
       std::string prototypeCollection =
           arangodb::basics::VelocyPackHelper::getStringValue(
@@ -1078,12 +904,13 @@ Result DumpFeature::runClusterDump() {
       }
     }
 
+    // queue job to actually dump collection
     auto jobData = std::make_unique<DumpFeatureJobData>(
         *this, _fileHandler, collection, std::to_string(cid), name,
         "" /*collectionType*/, _batchId, _tickStart, 0 /*maxTick*/, _chunkSize,
         _maxChunkSize, _clusterMode, _progress, _dumpData, _outputDirectory,
         _stats);
-    auto result = processJob(*httpClient, *jobData);
+    auto result = ::processJob(*httpClient, *jobData);
     if (result.fail()) {
       return result;
     }
