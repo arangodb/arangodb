@@ -78,7 +78,6 @@ GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
 }
 
 GatherBlock::~GatherBlock() {
-  DEBUG_BEGIN_BLOCK();
   for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
     for (AqlItemBlock* y : x) {
       delete y;
@@ -86,7 +85,6 @@ GatherBlock::~GatherBlock() {
     x.clear();
   }
   _gatherBlockBuffer.clear();
-  DEBUG_END_BLOCK();
 }
 
 /// @brief initialize
