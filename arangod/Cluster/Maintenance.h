@@ -25,34 +25,12 @@
 #ifndef ARANGODB_MAINTENANCE_MAINTENANCE_H
 #define ARANGODB_MAINTENANCE_MAINTENANCE_H
 
-
-
 namespace arangodb {
 namespace maintenance {
 
-/// @brief Main class of maintenance infrastructure
-class Maintenance : public Thread {
+arangodb::Result executePlanForDatabases (
+  std::forward<Node> plan, std::forward<Node> current, std::forward<std::vector<std::string>>);
 
-public:
-  
-  /// @brief Construct
-  Maintenance();
-
-  /// @brief Clean up
-  ~Maintenance();
-
-private:
-
-  /// @brief execute snapshot of plan
-  arangodb::Result executePlan(Node const plan, Node const current);
-
-  /// @brief execute snapshot of plan for databases
-  arangodb::Result executeDatabasePlans(Node const plan, Node const current);
-
-  /// @brief execute snapshot of plan for collections
-  arangodb::Result executeCollectionPlans(Node const plan, Node const current);
-
-};
 
 }}
 

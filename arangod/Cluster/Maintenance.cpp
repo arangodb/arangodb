@@ -29,12 +29,15 @@
 
 namespace arangodb::maintenance;
 
-Maintenance::Maintenance() : Thread("Maintenance") {};
+/// @brief handle plan for local databases
+arangodb::Result executePlanForDatabases (
+  std::forward<Node> plan, std::forward<Node> current,
+  std::forward<std::vector<std::string>>) {
 
-Maintenance::~Maintenance() {};
+  arangodb::Result result;
 
-Maintenance::executePlan () {
-
+  // build difference between plan and local
   
+  return result;
   
 }
