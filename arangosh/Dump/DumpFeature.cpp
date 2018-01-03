@@ -505,7 +505,7 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _tickEnd{0},
       _outputDirectory{FileUtils::buildFilename(
           FileUtils::currentDirectory().result(), "dump")},
-      _threads{1} {
+      _threads{2} {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Client");
@@ -532,6 +532,10 @@ void DumpFeature::collectOptions(
   options->addOption("--batch-size",
                      "maximum size for individual data batches (in bytes)",
                      new UInt64Parameter(&_maxChunkSize));
+
+  options->addOption("--threads",
+                     "maximum number of collections to process in parallel",
+                     new UInt32Parameter(&_threads));
 
   options->addOption("--dump-data", "dump collection data",
                      new BooleanParameter(&_dumpData));
@@ -597,6 +601,12 @@ void DumpFeature::validateOptions(
       _outputDirectory.back() == TRI_DIR_SEPARATOR_CHAR) {
     TRI_ASSERT(_outputDirectory.size() > 0);
     _outputDirectory.pop_back();
+  }
+
+  auto clamped = boost::algorithm::clamp(_threads, 1, TRI_numberProcessors());
+  if (_threads != clamped) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "capping --threads value to " << clamped;
+    _threads = clamped;
   }
 }
 
@@ -903,7 +913,8 @@ Result DumpFeature::runClusterDump(SimpleHttpClient& client) noexcept {
                   "'s shard distribution is based on a that of collection " +
                   prototypeCollection +
                   ", which is not dumped along. You may dump the collection "
-                  "regardless of the missing prototype collection by using the "
+                  "regardless of the missing prototype collection by using "
+                  "the "
                   "--ignore-distribute-shards-like-errors parameter."};
         }
       }

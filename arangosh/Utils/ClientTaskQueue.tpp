@@ -76,9 +76,9 @@ ClientTaskQueue<JobData>::~ClientTaskQueue() {
 
 template <typename JobData>
 bool ClientTaskQueue<JobData>::spawnWorkers(ClientManager& manager,
-                                            size_t const& numWorkers) noexcept {
+                                            uint32_t const& numWorkers) noexcept {
   MUTEX_LOCKER(lock, _workersLock);
-  size_t spawned = 0;
+  uint32_t spawned = 0;
   for (; spawned < numWorkers; spawned++) {
     try {
       auto client = manager.getConnectedClient();

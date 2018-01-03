@@ -119,7 +119,7 @@ void ImportFeature::collectOptions(
                      "translate an attribute name (use as --translate "
                      "\"from=to\", for csv and tsv only)",
                      new VectorParameter<StringParameter>(&_translations));
-  
+
   options->addOption("--remove-attribute",
                      "remove an attribute before inserting an attribute"
                      " into a collection (for csv and tsv only)",
@@ -156,7 +156,7 @@ void ImportFeature::collectOptions(
 
   options->addOption("--progress", "show progress",
                      new BooleanParameter(&_progress));
-  
+
   options->addOption("--ignore-missing", "ignore missing columns in csv input",
                      new BooleanParameter(&_ignoreMissing));
 

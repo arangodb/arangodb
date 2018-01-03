@@ -122,7 +122,7 @@ public:
   uint64_t _tickStart;
   uint64_t _tickEnd;
   std::string _outputDirectory;
-  size_t _threads;
+  uint32_t _threads;
 };
 }  // namespace arangodb
 

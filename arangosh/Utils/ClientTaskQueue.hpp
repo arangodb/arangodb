@@ -91,7 +91,7 @@ class ClientTaskQueue {
    * @param  numWorkers The number of workers to spawn
    * @return            `true` if successful
    */
-  bool spawnWorkers(ClientManager& manager, size_t const& numWorkers) noexcept;
+  bool spawnWorkers(ClientManager& manager, uint32_t const& numWorkers) noexcept;
 
   /**
    * @brief Determines if the job queue is currently empty
