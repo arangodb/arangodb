@@ -44,6 +44,6 @@ For more information see the [Debugging](Debugging.md) section.
 Considerations for production environments
 ------------------------------------------
 So you have created your server side application utilizing Foxx services as their backend. 
-To get optimal performance you may want to implement [an HTTP connection pool using keepalive](../../GeneralHttp/README.md#http-keepalive).
+To get optimal performance you may want to implement [an HTTP connection pool using keepalive](../../GeneralHttp/README.md#http-keep-alive).
 
-You may even consider to implement [non blocking HTTP requests](../../GeneralHttp/README.md#blocking-vs-nonblocking-http-requests) to save resources on your connection pool.
+You may even consider to implement [non blocking HTTP requests](../../GeneralHttp/README.md#blocking-vs-non-blocking-http-requests) to save resources on your connection pool.

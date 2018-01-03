@@ -4,16 +4,16 @@ Foxx in a nutshell
 Quick navigation
 ----------------
 * [Quick start](#quick-start)
-* [Create a new Application](#new-application)
-* [Interactive Documentation](#interactive-doc)
-* [Developing in Foxx](#developing)
-* [Foxx folder structure](#folder-structure)
-* [List content of a collection](#list-elements)
-* [Create a new document](#create-document)
-* [Read a single document](#read-document)
-* [Update a document](#update-document)
-* [Delete a document](#delete-document)
-* [Execute a query](#execute-query)
+* [Create a new Application](#create-a-new-application)
+* [Interactive Documentation](#interactive-documentation)
+* [Developing in Foxx](#developing-in-foxx)
+* [Foxx folder structure](#app-folder-structure)
+* [List content of a collection](#list-content-of-a-collection)
+* [Create a new document](#create-a-new-document)
+* [Read a single document](#read-a-single-document)
+* [Update a document](#update-a-document)
+* [Delete a document](#delete-a-document)
+* [Execute a query](#adding-a-new-route--execute-a-query)
 * [Conclusion](#conclusion)
 
 <a id="quick-start"></a>
@@ -30,7 +30,6 @@ Start the interface from <a href="http://localhost:8529" target="_blank">http://
 
 ![ArangoDB WebInterface](applications-tab.png)
 
-<a id="new-application" />
 Create a new application
 ------------------------
 1. Click on `Add Application`.
@@ -50,7 +49,6 @@ Create a new application
 
 ![Generate Dialog](foxx_generate.png)
 
-<a id="interactive-doc" />
 ### Interactive documentation
 Now you should see your new application in the list of installed applications.
 Clicking on it will lead you to the details page.
@@ -62,7 +60,6 @@ So you can directly test if your modification has worked or not.
 
 ![Swagger Documentation](foxx_documentation.png)
 
-<a id="developing" />
 ### Developing in Foxx
 In order to develop your Foxx you now have two options. If you do not have access to the file-system of your ArangoDB instance you can only pick option 1).
 
@@ -85,7 +82,6 @@ In order to develop your Foxx you now have two options. If you do not have acces
 
   ![Activate Development Mode and App path](foxx_development.png)
 
-<a id="folder-structure" />
 ### App folder structure
 
 If you have opened the folder containing your App the folder structure should be the following:
@@ -120,7 +116,6 @@ Now open your favorite editor and have a deeper look into the code.
   <dd>Most of the code described in this tutorial is already generated</dd>
 </dl>
 
-<a id="list-elements" />
 ### List content of a collection
 The following route lists all elements of our collection:
 
@@ -151,7 +146,6 @@ Some details you should know about the code:
 * `res.json()` creates a JSON response for the client.
 * The comment above the function will generate a nice documentation.
 
-<a id="create-document" />
 ### Create a new document
 This code-snippet defines the route to create a new document in our collection:
 
@@ -233,7 +227,6 @@ Some details you should know about the code:
 * `forClient()` will create JSON output for the client
 * `bodyParam` defines that there is an body expected in each request and the body should correspond to a valid FirstCollection object. All other bodies will be rejected and a documentation will be generated for this body. It can be accessed in the request parameters via it's name 'firstCollection'
 
-<a id="read-document" />
 ### Read a single document
 This route allows to read a specific document in our collection, identified by Id:
 
@@ -270,7 +263,6 @@ unix> curl -X GET http://localhost:8529/_db/_system/firstApp/firstCollection/fir
 * `byId` fetches a document from the collection by it's unique identifier: `_key`
 * `pathParam` documents the path parameter `id` as described in the path. It also restricts it to be a string.
 
-<a id="update-document">
 ### Update a document
 This code shows how to update a specific document in our collection. The API call is:
 
@@ -324,7 +316,6 @@ Some details you should now about the code:
 * `controller.put(path, callback)` creates a `PUT` request handler on `path`. It will execute `callback` whenever triggered.
 * `replaceById` overwrites a document from the collection with a newer version.
 
-<a id="delete-document">
 ### Delete a document
 This call allows to delete a specific document in our collection:
 
@@ -366,7 +357,6 @@ Some details you should now about the code:
 * `errorResponse` defines the message that should be delivered to the client whenever there was an error. In this case the user will get a classical `404`.
 * If no `errorResponse` is given a internal `500` will be returned by the server.
 
-<a id="execute-query">
 ### Adding a new route / execute a query
 We now want to add some functionality, a simple search query. First we create an endpoint that allows to execute a simple AQL query.
 The query will search for all documents having a specific `name` attribute.
@@ -470,7 +460,6 @@ Some details you should know about the code:
 * `@collection` is a bindParameter for collections and will be replaced in the query.
 * `name` is a bindParameter for a variable value and will be replaced in the query.
 
-<a id="conclusion" />
 ### Conclusion
 
 Now we have managed to create a very basic CRUD based Foxx.

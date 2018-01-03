@@ -9,7 +9,7 @@ We provide packages for:
 * Centos
 * Debian
 * Fedora
-* [Linux-Mint](#linuxmint)
+* [Linux-Mint](#linux-mint)
 * Mandriva
 * OpenSUSE
 * RedHat RHEL
