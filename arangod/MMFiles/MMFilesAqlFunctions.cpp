@@ -222,11 +222,6 @@ AqlValue MMFilesAqlFunctions::Fulltext(
     return AqlValue(AqlValueHintNull());
   }
 
-  // NOTE: The shared_ptr is protected by trx lock.
-  // It is save to use the raw pointer directly.
-  // We are NOT allowed to delete the index.
-  arangodb::MMFilesFulltextIndex* fulltextIndex = nullptr;
-
   // split requested attribute name on '.' character to create a proper
   // vector of AttributeNames
   std::vector<std::vector<arangodb::basics::AttributeName>> search;
@@ -234,8 +229,15 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   for (auto const& it : basics::StringUtils::split(attributeName, '.')) {
     search.back().emplace_back(it, false);
   }
+  
+  // NOTE: The shared_ptr is protected by trx lock.
+  // It is safe to use the raw pointer directly.
+  // We are NOT allowed to delete the index.
+  arangodb::MMFilesFulltextIndex* fulltextIndex = nullptr;
 
-  for (auto const& idx : collection->getIndexes()) {
+
+  auto indexes = collection->getIndexes();
+  for (auto const& idx : indexes) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
       // test if index is on the correct field
       if (arangodb::basics::AttributeName::isIdentical(idx->fields(), search,
@@ -290,7 +292,6 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   builder->close();
   return AqlValue(builder.get());
 }
-
 
 /// @brief function NEAR
 AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
