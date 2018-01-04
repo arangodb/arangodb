@@ -25,6 +25,14 @@ if (env.BRANCH_NAME =~ /^PR-/) {
   sourceBranchLabel = sourceBranchLabel - reg
 }
 
+def deleteDirDocker(os) {
+    if (os == "linux") {
+        sh "docker run --rm -v \$(pwd):/workspace alpine rm -rf /workspace/build-deb"
+    }
+
+    deleteDir()
+}
+
 def checkoutCommunity(os) {
     if (cleanBuild || os == "windows") {
         deleteDirDocker(os)
