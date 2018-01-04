@@ -46,13 +46,14 @@ NearUtils::NearUtils(QueryParams&& qp)
       _maxBounds(qp.maxDistanceRad()) {
   qp.cover.configureS2RegionCoverer(&_coverer);
   reset();
-
-  /*LOG_TOPIC(ERR, Logger::FIXME)
+    
+  LOG_TOPIC(ERR, Logger::FIXME)
       << "--------------------------------------------------------";
   LOG_TOPIC(INFO, Logger::FIXME) << "[Near] centroid target: "
                                  << _params.centroid.toString();
-  LOG_TOPIC(INFO, Logger::FIXME) << "[Near] minBounds: " << _params.minDistance
-                                 << "  maxBounds:" << _params.maxDistance;*/
+  LOG_TOPIC(INFO, Logger::FIXME) << "[Near] minBounds: " << (size_t)(_params.minDistance * kEarthRadiusInMeters)
+        << "  maxBounds:" << (size_t)(_maxBounds * kEarthRadiusInMeters);//*/
+  TRI_ASSERT(_maxBounds > 0 && _maxBounds <= M_PI);
 }
 
 void NearUtils::reset() {
@@ -66,7 +67,7 @@ void NearUtils::reset() {
   if (_boundDelta <= 0) {  // do not reset everytime
     int level = std::max(1, _params.cover.bestIndexedLevel - 1);
     level = std::min(level, S2::kMaxCellLevel - 4);
-    _boundDelta = S2::kAvgEdge.GetValue(level);  // in radians ?
+    _boundDelta = S2::kAvgEdge.GetValue(level);  // in radians
     TRI_ASSERT(_boundDelta * kEarthRadiusInMeters > 250);
   }
   TRI_ASSERT(_boundDelta > 0);
@@ -79,26 +80,32 @@ void NearUtils::reset() {
 }
 
 std::vector<geo::Interval> NearUtils::intervals() {
+  TRI_ASSERT(_innerBound != _maxBounds);
   if (_innerBound > 0) {
+    double const minBounds = S2::kAvgEdge.GetValue(S2::kMaxCellLevel - 2);
     // we already scanned the entire planet, if this fails
     TRI_ASSERT(_innerBound != _outerBound && _innerBound != _maxBounds);
     if (_numFoundLastInterval < 256) {
       _boundDelta *= (_numFoundLastInterval == 0 ? 4 : 2);
-    } else if (_numFoundLastInterval > 512 && _boundDelta > DBL_MIN * 2) {
-      _boundDelta /= 2;
+    } else if (_numFoundLastInterval > 512 && _boundDelta > minBounds) {
+      _boundDelta /= 2.0;
     }
     _numFoundLastInterval = 0;
-    TRI_ASSERT(_boundDelta > 0);
   }
+  TRI_ASSERT(_boundDelta >= S2::kAvgEdge.GetValue(S2::kMaxCellLevel - 2));
 
-  _innerBound = _outerBound;
+  _innerBound = _outerBound; // initially _outerBounds == _innerBounds
   _outerBound = std::min(_outerBound + _boundDelta, _maxBounds);
   TRI_ASSERT(_innerBound <= _outerBound && _outerBound <= _maxBounds);
-
-  /*LOG_TOPIC(INFO, Logger::FIXME)
-      << "[Near] inner: " << _innerBound * kEarthRadiusInMeters
-      << "  outerBounds: " << _outerBound * kEarthRadiusInMeters
-      << " delta: " << _boundDelta;*/
+  
+  if (_outerBound == _maxBounds && _innerBound == _outerBound) {
+    return {};
+  }
+  LOG_TOPIC(INFO, Logger::FIXME) << "[Bounds] "
+    << (size_t)(_innerBound * kEarthRadiusInMeters) << " - "
+    << (size_t)(_outerBound * kEarthRadiusInMeters) << "  delta: "
+    << (size_t)(_boundDelta * kEarthRadiusInMeters);//*/
+  
 
   std::vector<S2CellId> cover;
   if (0.0 < _innerBound && _outerBound < _maxBounds) {
@@ -140,10 +147,7 @@ std::vector<geo::Interval> NearUtils::intervals() {
                                 intervals);
         TRI_ASSERT(!cover.empty());
         _scannedCells.Add(cover);
-      } /* else {
-         LOG_TOPIC(WARN, Logger::ENGINES) << "empty lookup cellunion"
-         << "inner " << _innerBound << " outer " << _outerBound;
-       }*/
+      }
     }
   }
 
@@ -175,27 +179,26 @@ void NearUtils::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
   S2LatLng cords = S2LatLng::FromDegrees(center.latitude, center.longitude);
   S2Point pp = cords.ToPoint();
   double rad = _centroid.Angle(pp);
-
-  /*LOG_TOPIC(INFO, Logger::FIXME)
-      << "[Found] " << rid << " at " << (center.toString())
-      << " distance: " << (rad * kEarthRadiusInMeters);*/
-
+  
+  LOG_TOPIC(INFO, Logger::FIXME)
+  << "[Found] " << rid << " at " << (center.toString())
+  << " distance: " << (rad * kEarthRadiusInMeters);
+  
   // cheap rejections based on distance to target
   if (rad < _innerBound || _maxBounds <= rad) {
     return;
   }
-
+  
+  _numFoundLastInterval++;  // we have to estimate scan bounds
   auto const& it = _seen.find(rid);
   if (it == _seen.end()) {
-    _numFoundLastInterval++;  // we have to estimate scan bounds
     _seen.emplace(rid, rad);
 
-    /*if (_params.region != nullptr) { // expensive rejection
-      TRI_ASSERT(_params.filter != geo::FilterType::NONE);
-      if (!_params.region->VirtualContainsPoint(pp)) {
+    if (_params.filterType != FilterType::NONE) { // expensive rejection
+      if (!_params.filterShape.contains(&center)) {
         return;
       }
-    }*/
+    }
     _buffer.emplace(rid, rad);
   } else {                          // deduplication
     TRI_ASSERT(it->second == rad);  // should never change

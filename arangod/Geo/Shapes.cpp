@@ -216,6 +216,7 @@ bool ShapeContainer::contains(Coordinate const* cc) const {
     }
 
     case ShapeContainer::Type::S2_POLYLINE: {
+      // containment is only numerically defined on the endpoints
       S2Polyline const* ll = static_cast<S2Polyline const*>(_data);
       for (int k = 0; k < ll->num_vertices(); k++) {
         if (ll->vertex(k) == pp) {

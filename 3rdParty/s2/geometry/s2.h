@@ -434,12 +434,12 @@ class S2 {
 
     // The "deriv" value of a metric is a derivative, and must be multiplied by
     // a length or area in (s,t)-space to get a useful value.
-    double deriv() const { return deriv_; }
+    constexpr double deriv() const { return deriv_; }
 
     // Return the value of a metric for cells at the given level. The value is
     // either a length or an area on the unit sphere, depending on the
     // particular metric.
-    double GetValue(int level) const { return ldexp(deriv_, -dim * level); }
+    constexpr double GetValue(int level) const { return ldexp(deriv_, -dim * level); }
 
     // Return the level at which the metric has approximately the given
     // value.  For example, S2::kAvgEdge.GetClosestLevel(0.1) returns the

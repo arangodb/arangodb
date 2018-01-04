@@ -265,7 +265,8 @@ function optimizerRuleTestSuite() {
           var pairs = result.json.map(function(res){
               return [res.lat,res.lon];
           });
-          assertEqual(expected[qindex].sort(), pairs.sort(), query[0]);
+
+          assertEqual(pairs.sort(), expected[qindex].sort(), query[0]);
         });
 
       }

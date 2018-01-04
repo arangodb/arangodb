@@ -121,7 +121,7 @@ class NearUtils {
   S2Point const _centroid;
 
   /// max distance on the unit spherer or M_PI
-  double const _maxBounds = M_PI;
+  double _maxBounds = M_PI;
 
   /// Amount to increment by (in radians on unit sphere)
   double _boundDelta = 0.0;

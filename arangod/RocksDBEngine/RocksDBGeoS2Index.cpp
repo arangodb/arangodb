@@ -170,11 +170,10 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
       
       // intervals are sorted and likely consecutive, try to avoid seeks
       // by checking whether we are in the range already
-      bool seek = true;
+      /*bool seek = true;
       if (i > 0) {
         TRI_ASSERT(scan[i - 1].max < it.min);
         if (!_iter->Valid()) { // no more valid keys after this
-          LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] reached end of index at: " << it.min;
           break;
         } else if (cmp->Compare(_iter->key(), bds.end()) > 0) {
           continue; // beyond range already
@@ -190,13 +189,13 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
           } while (--k > 0 && _iter->Valid() && cc < 0);
           seek = !_iter->Valid() || cc < 0;
         }
-      }
+      }*/
 
-      if (seek) { // try to avoid seeking at all cost
+      //if (seek) { // try to avoid seeking at all cost
         //LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] seeking:" << it.min;
         _iter->Seek(bds.start());
         seeks++;
-      }
+      //}
 
       uint64_t cellId = it.min.id();
       while (_iter->Valid() && cmp->Compare(_iter->key(), bds.end()) <= 0) {
