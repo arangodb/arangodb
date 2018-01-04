@@ -11,11 +11,11 @@ else {
     mainBranch = "3.3"
 }
 
+mainBranch = "feature/night-docker"
+
 if (! env.BRANCH_NAME) {
     env.BRANCH_NAME = mainBranch
 }
-
-mainBranch = "feature/night-docker"
 
 sourceBranchLabel = env.BRANCH_NAME
 
