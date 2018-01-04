@@ -25,6 +25,13 @@ if (env.BRANCH_NAME =~ /^PR-/) {
   sourceBranchLabel = sourceBranchLabel - reg
 }
 
+def shellAndPipe(command, logfile) {
+    def cmd = command.replaceAll(/"/, "\\\"")
+
+    echo "executing ${cmd}"
+    sh "(echo 1 > \"${logfile}.result\" ; ${cmd} ; echo \$? > \"${logfile}.result\") 2>&1 | ts '[%Y-%m-%d %H:%M:%S]' | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
+}
+
 def deleteDirDocker(os) {
     if (os == "linux") {
         sh "docker run --rm -v \$(pwd):/workspace alpine rm -rf /workspace/build-deb"
@@ -64,7 +71,7 @@ def checkoutCommunity(os) {
 
 timestamps {
     node("linux") {
-        echo sh(returnStdout: true, script: 'env')
+        echo sh(returnStdout: true, script: 'env | sort')
     }
 
     timeout(30) {
@@ -72,6 +79,7 @@ timestamps {
 
         node(os) {
             checkoutCommunity(os)
+            shellAndPipe("./Installation/CI/linux/nightly-docker.sh devel", "nightly-docker.log")
         }
     }
 }
