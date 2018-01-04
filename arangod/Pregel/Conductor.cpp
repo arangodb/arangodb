@@ -493,7 +493,7 @@ static void resolveInfo(
     ClusterInfo* ci = ClusterInfo::instance();
     std::shared_ptr<LogicalCollection> lc =
         ci->getCollection(vocbase->name(), collectionID);
-    if (!lc || lc->deleted()) {
+    if (lc->deleted()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                      collectionID);
     }
