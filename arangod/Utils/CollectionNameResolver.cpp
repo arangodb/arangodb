@@ -227,16 +227,17 @@ std::string CollectionNameResolver::getCollectionNameCluster(
   int tries = 0;
 
   while (tries++ < 2) {
-    auto ci = ClusterInfo::instance()->getCollection(
-        _vocbase->name(), arangodb::basics::StringUtils::itoa(cid));
-
-    if (ci == nullptr) {
+    try {
+      auto ci = ClusterInfo::instance()->getCollection(
+          _vocbase->name(), arangodb::basics::StringUtils::itoa(cid));
+    
+      name = ci->name();
+      _resolvedIds.emplace(cid, name);
+      return name;
+    } catch (...) {
+      // most likely collection not found. now try again
       ClusterInfo::instance()->flush();
-      continue;
     }
-    name = ci->name();
-    _resolvedIds.emplace(cid, name);
-    return name;
   }
 
   LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "CollectionNameResolver: was not able to resolve id " << cid;

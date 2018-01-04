@@ -502,7 +502,7 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 /// @brief getSome
 AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
   if (_done) {
     traceGetSomeEnd(nullptr);
     return nullptr;

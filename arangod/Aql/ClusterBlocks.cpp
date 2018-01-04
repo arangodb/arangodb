@@ -246,7 +246,7 @@ bool GatherBlock::hasMore() {
 /// @brief getSome
 AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
 
   if (_dependencies.empty()) {
     _done = true;
@@ -936,7 +936,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
                                            size_t& skipped,
                                            std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
 
@@ -1472,8 +1472,7 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
   
-  traceGetSomeBegin();
-
+  traceGetSomeBegin(atLeast, atMost);
   VPackBuilder builder;
   builder.openObject();
   builder.add("atLeast", VPackValue(atLeast));
