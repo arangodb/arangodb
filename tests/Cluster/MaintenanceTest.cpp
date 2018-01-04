@@ -40,6 +40,8 @@ const char *agency =
 #include "MaintenanceTest.json"
 ;
 
+VPackBuilder test2, test1;
+
 
 Node createNodeFromBuilder(Builder const& builder) {
 
@@ -74,18 +76,27 @@ Node createRootNode() {
   return createNode(agency);
 }
 
-TEST_CASE("Maintenance", "[cluster][maintenance]") {
+TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
 
   auto baseStructure = createRootNode();
 
   Builder builder;
   baseStructure.toBuilder(builder);
 
-  std::vector<std::string> local {"_system"};
+  { VPackObjectBuilder b(&test2);
+    test2.add("id",VPackValue("3"));
+    test2.add("name",VPackValue("test2")); }
+  
+  { VPackObjectBuilder b(&test1);
+    test1.add("id",VPackValue("2"));
+    test1.add("name",VPackValue("test1")); } 
 
+  // Plan and local in sync
   SECTION("Identical lists") {
     std::vector<std::string> toCreate, toDrop;
     Node plan = baseStructure(PLANNED_DATABASES);
+    
+    std::vector<std::string> local {"_system"};
     
     arangodb::maintenance::diffPlanLocalForDatabases(
       plan, local, toCreate, toDrop);
@@ -93,49 +104,69 @@ TEST_CASE("Maintenance", "[cluster][maintenance]") {
     REQUIRE(toCreate.size() == 0);
     REQUIRE(toDrop.size() == 0);
   }
-  
+
+  // Local has databases _system and test1
   SECTION("Local databases one more") {
     std::vector<std::string> toCreate, toDrop;
     Node plan = baseStructure(PLANNED_DATABASES);
 
-    local.push_back("test1");
-    
+    std::vector<std::string> local {"_system","test1"};
+
     arangodb::maintenance::diffPlanLocalForDatabases(
       plan, local, toCreate, toDrop);
 
     REQUIRE(toCreate.size() == 0);
+    
     REQUIRE(toDrop.size() == 1);
     REQUIRE(toDrop.front() == "test1");
 
+    local.pop_back();
+
   }
-  
+
+  // Plan has databases _system and test1
   SECTION("Plan has one more than local") {
     std::vector<std::string> toCreate, toDrop;
-    Node plan = baseStructure(PLANNED_DATABASES);
 
-    VPackBuilder test1;
-    { VPackObjectBuilder b(&test1);
-      test1.add(VPackValue("test1"));
-      { VPackObjectBuilder b(&test1);
-        test1.add("id",VPackValue("1"));
-        test1.add("name",VPackValue("test1"));
-      }}
-    
-    plan(PLANNED_DATABASES + "/test1") = test1.slice();
-    
+    Node plan = baseStructure(PLANNED_DATABASES);
+    plan("test1") = test1.slice();
+
+    std::vector<std::string> local {"_system"};
+
     arangodb::maintenance::diffPlanLocalForDatabases(
       plan, local, toCreate, toDrop);
 
-    for (auto const& i : toCreate) {
-      std::cout << i << std::endl;
-    }
-
-    /*REQUIRE(toCreate.size() == 1);
+    REQUIRE(toCreate.size() == 1);
     REQUIRE(toCreate.front() == "test1");
-    REQUIRE(toDrop.size() == 0);*/
+    
+    REQUIRE(toDrop.size() == 0);
 
     local.pop_back();
   }
+
+  // Local has databases _system and test1
+  // Plan has databases _system and test2
+  SECTION("Plan has one more than local and local has one more than plan") {
+    std::vector<std::string> toCreate, toDrop;
+
+    Node plan = baseStructure(PLANNED_DATABASES);
+    plan("test2") = test2.slice();
+
+    std::vector<std::string> local {"_system", "test1"};
+
+    arangodb::maintenance::diffPlanLocalForDatabases(
+      plan, local, toCreate, toDrop);
+
+    REQUIRE(toCreate.size() == 1);
+    REQUIRE(toCreate.front() == "test2");
+    
+    REQUIRE(toDrop.size() == 1);
+    REQUIRE(toDrop.front() == "test1");
+
+    local.pop_back();
+  }
+
+  
   
 }
 
