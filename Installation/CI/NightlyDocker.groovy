@@ -1,5 +1,5 @@
 // github proxy repository
-arangodbRepo = 'http://c1:8088/github.com/arangodb/arangodb'
+arangodbRepo = 'http://github-proxy.arangodb.biz:8088/github.com/arangodb/arangodb'
 
 // source branch for pull requests
 mainBranch = "unknown"
