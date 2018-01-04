@@ -15,6 +15,8 @@ if (! env.BRANCH_NAME) {
     env.BRANCH_NAME = mainBranch
 }
 
+mainBranch = "feature/night-docker"
+
 sourceBranchLabel = env.BRANCH_NAME
 
 if (env.BRANCH_NAME =~ /^PR-/) {
@@ -28,7 +30,7 @@ if (env.BRANCH_NAME =~ /^PR-/) {
 def shellAndPipe(command, logfile) {
     def cmd = command.replaceAll(/"/, "\\\"")
 
-    echo "executing ${cmd}"
+    sh "echo 'executing ${cmd}' > ${logfile}"
     sh "(echo 1 > \"${logfile}.result\" ; ${cmd} ; echo \$? > \"${logfile}.result\") 2>&1 | ts '[%Y-%m-%d %H:%M:%S]' | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
 }
 
