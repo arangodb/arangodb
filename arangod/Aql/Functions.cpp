@@ -1450,6 +1450,46 @@ AqlValue Functions::Keep(arangodb::aql::Query* query,
   return AqlValue(builder.get());
 }
 
+/// @brief function TRANSLATE
+AqlValue Functions::Translate(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "TRANSLATE", 2, 3);
+  AqlValue key = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue lookupDocument = ExtractFunctionParameterValue(trx, parameters, 1);
+
+  if (!lookupDocument.isObject()) {
+    RegisterInvalidArgumentWarning(query, "TRANSLATE");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(lookupDocument, true);
+  TRI_ASSERT(slice.isObject());
+
+  VPackSlice result;
+  if (key.isString()) {
+    result = slice.get(key.slice().copyString());
+  } else {
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    Functions::Stringify(trx, adapter, key.slice());
+    result = slice.get(buffer->toString());
+  }
+  
+  if (!result.isNone()) {
+    return AqlValue(result);
+  }
+  
+  // attribute not found, now return the default value
+  // we must create copy of it however
+  AqlValue defaultValue = ExtractFunctionParameterValue(trx, parameters, 2);
+  if (defaultValue.isNone()) {
+    return key.clone();
+  }
+  return defaultValue.clone();
+}
+
 /// @brief function MERGE
 AqlValue Functions::Merge(arangodb::aql::Query* query,
                           transaction::Methods* trx,
@@ -2419,7 +2459,7 @@ AqlValue Functions::JsonStringify(arangodb::aql::Query* query,
 
   VPackDumper dumper(&adapter, trx->transactionContextPtr()->getVPackOptions());
   dumper.dump(slice);
-    
+
   return AqlValue(buffer->begin(), buffer->length());
 }
 

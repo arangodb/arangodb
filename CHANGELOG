@@ -12,6 +12,8 @@ devel
   comparison order
   `SORTED_UNIQUE` will do the same, but additionally removes duplicates.
 
+* Added C++ implementation for the AQL TRANSLATE function
+
 * renamed arangoimp to arangoimport for consistency
   Release packages will still install arangoimp as a symlink so user scripts 
   invoking arangoimp do not need to be changed
