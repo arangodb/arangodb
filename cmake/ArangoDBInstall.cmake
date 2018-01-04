@@ -151,7 +151,7 @@ if (UNIX)
     pkg_check_modules(SYSTEMD systemd)
 
     if (SYSTEMD_FOUND)
-      message(STATUS "-- systemd found")
+      message(STATUS "systemd found")
 
       # get systemd_unit_dir -- e.g /lib/systemd/system/
       # cmake to old: pkg_get_variable(SYSTEMD_UNIT_DIR systemd systemdsystemunitdir)
@@ -193,7 +193,7 @@ if (UNIX)
       )
 
     else ()
-      message(STATUS "-- systemd not found")
+      message(STATUS "systemd not found")
       configure_file (
         ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.sysv
         ${PROJECT_BINARY_DIR}/arangod.sysv
