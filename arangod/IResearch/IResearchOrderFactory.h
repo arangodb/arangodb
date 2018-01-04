@@ -31,8 +31,8 @@
 NS_BEGIN(arangodb)
 NS_BEGIN(aql)
 
-class AstNode;
-class Variable;
+struct AstNode;
+struct Variable;
 
 NS_END // aql
 

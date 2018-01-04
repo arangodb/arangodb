@@ -1450,6 +1450,46 @@ AqlValue Functions::Keep(arangodb::aql::Query* query,
   return AqlValue(builder.get());
 }
 
+/// @brief function TRANSLATE
+AqlValue Functions::Translate(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "TRANSLATE", 2, 3);
+  AqlValue key = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue lookupDocument = ExtractFunctionParameterValue(trx, parameters, 1);
+
+  if (!lookupDocument.isObject()) {
+    RegisterInvalidArgumentWarning(query, "TRANSLATE");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(lookupDocument, true);
+  TRI_ASSERT(slice.isObject());
+
+  VPackSlice result;
+  if (key.isString()) {
+    result = slice.get(key.slice().copyString());
+  } else {
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    Functions::Stringify(trx, adapter, key.slice());
+    result = slice.get(buffer->toString());
+  }
+  
+  if (!result.isNone()) {
+    return AqlValue(result);
+  }
+  
+  // attribute not found, now return the default value
+  // we must create copy of it however
+  AqlValue defaultValue = ExtractFunctionParameterValue(trx, parameters, 2);
+  if (defaultValue.isNone()) {
+    return key.clone();
+  }
+  return defaultValue.clone();
+}
+
 /// @brief function MERGE
 AqlValue Functions::Merge(arangodb::aql::Query* query,
                           transaction::Methods* trx,
@@ -1899,6 +1939,33 @@ AqlValue Functions::Sha1(arangodb::aql::Query* query,
   arangodb::rest::SslInterface::sslHEX(hash, 20, p, length);
 
   return AqlValue(&hex[0], 40);
+}
+
+/// @brief function SHA512
+AqlValue Functions::Sha512(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+
+  // create sha512
+  char hash[65];
+  char* p = &hash[0];
+  size_t length;
+
+  arangodb::rest::SslInterface::sslSHA512(buffer->c_str(), buffer->length(), p,
+                                        length);
+
+  // as hex
+  char hex[129];
+  p = &hex[0];
+
+  arangodb::rest::SslInterface::sslHEX(hash, 64, p, length);
+
+  return AqlValue(&hex[0], 128);
 }
 
 /// @brief function HASH
@@ -2356,7 +2423,7 @@ AqlValue Functions::JsonStringify(arangodb::aql::Query* query,
 
   VPackDumper dumper(&adapter, trx->transactionContextPtr()->getVPackOptions());
   dumper.dump(slice);
-    
+
   return AqlValue(buffer->begin(), buffer->length());
 }
 

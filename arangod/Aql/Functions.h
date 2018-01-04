@@ -170,6 +170,8 @@ struct Functions {
                                   VPackFunctionParameters const&);
    static AqlValue Keep(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
+   static AqlValue Translate(arangodb::aql::Query*, transaction::Methods*,
+                        VPackFunctionParameters const&);
    static AqlValue Merge(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
    static AqlValue MergeRecursive(arangodb::aql::Query*, transaction::Methods*,
@@ -197,6 +199,8 @@ struct Functions {
    static AqlValue Md5(arangodb::aql::Query*, transaction::Methods*,
                        VPackFunctionParameters const&);
    static AqlValue Sha1(arangodb::aql::Query*, transaction::Methods*,
+                        VPackFunctionParameters const&);
+   static AqlValue Sha512(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
    static AqlValue Hash(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
