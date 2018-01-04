@@ -68,6 +68,10 @@ timestamps {
     }
 
     timeout(30) {
-        checkoutCommunity("linux")
+        def os = "linux"
+
+        node(os) {
+            checkoutCommunity(os)
+        }
     }
 }
