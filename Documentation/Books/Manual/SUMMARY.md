@@ -19,9 +19,10 @@
 * [Highlights](Highlights.md)
 #
 * [Scalability](Scalability/README.md)
-  * [Architecture](Scalability/Architecture.md)
-  * [Data models](Scalability/DataModels.md)
-  * [Limitations](Scalability/Limitations.md)
+  * [Cluster](Scalability/Cluster/README.md)
+    * [Architecture](Scalability/Architecture.md)
+    * [Data models](Scalability/DataModels.md)
+    * [Limitations](Scalability/Limitations.md)
 #
 * [Data models & modeling](DataModeling/README.md)
 # * [Collections](FirstSteps/CollectionsAndDocuments.md) #TODO
