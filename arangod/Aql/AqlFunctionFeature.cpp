@@ -351,6 +351,8 @@ void AqlFunctionFeature::addListFunctions() {
        &Functions::Unique});
   add({"SORTED_UNIQUE", ".", true, false, true, true,
        &Functions::SortedUnique});
+  add({"SORTED", ".", true, false, true, true,
+       &Functions::Sorted});
   add({"SLICE", ".,.|.", true, false, true, true,
        &Functions::Slice});
   add({"REVERSE", ".", true, false, true,
@@ -402,7 +404,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
        true, true, &Functions::UnsetRecursive});
   add({"KEEP", ".,.|+", true, false, true, true,
        &Functions::Keep});
-  add({"TRANSLATE", ".,.|.", true, false, true, true});
+  add({"TRANSLATE", ".,.|.", true, false, true, true, &Functions::Translate});
   add({"ZIP", ".,.", true, false, true, true,
        &Functions::Zip});
   add({"JSON_STRINGIFY", ".", true, false, true,

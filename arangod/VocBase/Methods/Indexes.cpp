@@ -106,17 +106,16 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     //std::string const cid = collection->cid_as_string();
     std::string const& cid = collection->name();
 
-    auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
-
     // add code for estimates here
     std::unordered_map<std::string,double> estimates;
 
-    int rv = selectivityEstimatesOnCoordinator(databaseName,cid,estimates);
+    int rv = selectivityEstimatesOnCoordinator(databaseName, cid, estimates);
     if (rv != TRI_ERROR_NO_ERROR){
       return Result(rv, "could not retrieve estimates");
     }
 
     VPackBuilder tmpInner;
+    auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
     c->getIndexesVPack(tmpInner, withFigures, false);
 
     tmp.openArray();
@@ -347,7 +346,6 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
   VPackSlice indexDef = defBuilder.slice();
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(indexDef.isObject());
-    auto c = ClusterInfo::instance()->getCollection(dbname, collname);
 
     // check if there is an attempt to create a unique index on non-shard keys
     if (create) {
@@ -371,6 +369,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
 
       if (v.isBoolean() && v.getBoolean()) {
         // unique index, now check if fields and shard keys match
+        auto c = ClusterInfo::instance()->getCollection(dbname, collname);
         VPackSlice flds = indexDef.get("fields");
         if (flds.isArray() && c->numberOfShards() > 1) {
           std::vector<std::string> const& shardKeys = c->shardKeys();
