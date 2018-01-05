@@ -193,6 +193,7 @@
       * [Implementation](Administration/Replication/Synchronous/Implementation.md)
       * [Configuration](Administration/Replication/Synchronous/Configuration.md)
     * [Satellite Collections](Administration/Replication/Synchronous/Satellites.md)
+  * [Cluster](Administration/Cluster/README.md)
   * [Sharding](Administration/Sharding/README.md)
 #    * [Authentication](Administration/Sharding/Authentication.md)
 #    * [Firewall setup](Administration/Sharding/FirewallSetup.md)
@@ -213,6 +214,7 @@
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
   * [Datafile Debugger](Troubleshooting/DatafileDebugger.md)
   * [Arangobench](Troubleshooting/Arangobench.md)
+  * [Cluster troubleshooting](Troubleshooting/Cluster/README.md)  
 #
 * [Architecture](Architecture/README.md)
   * [Write-ahead log](Architecture/WriteAheadLog.md)
