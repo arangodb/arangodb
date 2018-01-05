@@ -12,52 +12,52 @@ chapter.
 The components of _ArangoSync_ use (TCP) network connections to communicate with each other.
 Below you'll find an overview of these connections and the TCP ports that should be accessible.
 
-1.  The sync masters must be allowed to connect to the following components
-    within the same datacenter:
+1. The sync masters must be allowed to connect to the following components
+   within the same datacenter:
 
-    - ArangoDB agents and coordinators (default ports: `8531` and `8529`)
-    - Kafka brokers (default port `9092`)
-    - Sync workers (default port `8729`)
+   - ArangoDB agents and coordinators (default ports: `8531` and `8529`)
+   - Kafka brokers (default port `9092`)
+   - Sync workers (default port `8729`)
 
-    Additionally the sync masters must be allowed to connect to the sync masters in the other datacenter.
+   Additionally the sync masters must be allowed to connect to the sync masters in the other datacenter.
 
-    By default the sync masters will operate on port `8629`.
+   By default the sync masters will operate on port `8629`.
 
-2.  The sync workers must be allowed to connect to the following components within the same datacenter:
+1. The sync workers must be allowed to connect to the following components within the same datacenter:
 
-    - ArangoDB coordinators (default port `8529`)
-    - Kafka brokers (default port `9092`)
-    - Sync masters (default port `8629`)
+   - ArangoDB coordinators (default port `8529`)
+   - Kafka brokers (default port `9092`)
+   - Sync masters (default port `8629`)
 
-    By default the sync workers will operate on port `8729`.
+   By default the sync workers will operate on port `8729`.
 
-    Additionally the sync workers must be allowed to connect to the Kafka brokers in the other datacenter.
+   Additionally the sync workers must be allowed to connect to the Kafka brokers in the other datacenter.
 
-3.  Kafka
+1. Kafka
 
-    The kafka brokers must be allowed to connect to the following components within the same datacenter:
+   The kafka brokers must be allowed to connect to the following components within the same datacenter:
 
-    - Other kafka brokers (default port `9092`)
-    - Zookeeper (default ports `2181`, `2888` and `3888`)
+   - Other kafka brokers (default port `9092`)
+   - Zookeeper (default ports `2181`, `2888` and `3888`)
 
-    The default port for kafka is `9092`. The default kafka installation will also expose some prometheus
-    metrics on port `7071`. To gain more insight into kafka open this port for your prometheus
-    installation.
+   The default port for kafka is `9092`. The default kafka installation will also expose some prometheus
+   metrics on port `7071`. To gain more insight into kafka open this port for your prometheus
+   installation.
 
-4.  Zookeeper
+1. Zookeeper
 
-    The zookeeper agents must be allowed to connect to the following components within the same datacenter:
+   The zookeeper agents must be allowed to connect to the following components within the same datacenter:
 
-    - Other zookeeper agents
+   - Other zookeeper agents
 
-    The setup here is a bit special as zookeeper uses 3 ports for different operations. All agents need to
-    be able to connect to all of these ports.
+   The setup here is a bit special as zookeeper uses 3 ports for different operations. All agents need to
+   be able to connect to all of these ports.
 
-    By default Zookeeper uses:
+   By default Zookeeper uses:
     
-    - port `2181` for client communication
-    - port `2888` for follower communication
-    - port `3888` for leader elections
+   - port `2181` for client communication
+   - port `2888` for follower communication
+   - port `3888` for leader elections
 
 ## Certificates 
 
@@ -113,25 +113,29 @@ To create a certificate used for TLS servers in the **keyfile** format,
 you need the public key of the CA (`--cacert`), the private key of 
 the CA (`--cakey`) and one or more hostnames (or IP addresses).
 Then run:
-```
+
+```bash
 arangosync create tls keyfile \
     --cacert=my-tls-ca.crt --cakey=my-tls-ca.key \
     --host=<hostname> \
     --keyfile=my-tls-cert.keyfile
 ```
+
 Make sure to store the generated keyfile (`my-tls-cert.keyfile`) in a safe place.
 
 To create a certificate used for TLS servers in the **crt** & **key** format,
 you need the public key of the CA (`--cacert`), the private key of 
 the CA (`--cakey`) and one or more hostnames (or IP addresses).
 Then run:
-```
+
+```bash
 arangosync create tls certificate \
     --cacert=my-tls-ca.crt --cakey=my-tls-ca.key \
     --host=<hostname> \
     --cert=my-tls-cert.crt \
     --key=my-tls-cert.key \
 ```
+
 Make sure to protect and store the generated files (`my-tls-cert.crt` & `my-tls-cert.key`) in a safe place.
 
 #### Client authentication certificates
@@ -151,10 +155,12 @@ Make sure to protect and store the generated keyfile (`my-client-auth-cert.keyfi
 #### CA certificates
 
 To create a CA certificate used to **sign TLS certificates**, run:
-```
+
+```bash
 arangosync create tls ca \
     --cert=my-tls-ca.crt --key=my-tls-ca.key 
 ```
+
 Make sure to protect and store both generated files (`my-tls-ca.crt` & `my-tls-ca.key`) in a safe place.
 <br/>Note: CA certificates have a much longer lifetime than normal certificates. 
 Therefore even more care is needed to store them safely.
@@ -166,7 +172,7 @@ arangosync create client-auth ca \
 ```
 Make sure to protect and store both generated files (`my-client-auth-ca.crt` & `my-client-auth-ca.key`) 
 in a safe place.
-<br/>Note: CA certificates have a much longer lifetime than normal certificates. 
+<br/>Note: CA certificates have a much longer lifetime than normal certificates.
 Therefore even more care is needed to store them safely.
 
 ### Renewing certificates
@@ -182,7 +188,7 @@ If anything changes in function, target or lifetime you need a new certificate.
 
 The procedure for creating a renewed certificate is the same as for creating a "first" certificate.
 <br/> After creating the renewed certificate the process(es) using them have to be updated.
-This mean restarting them. All ArangoSync components are designed to support stopping and starting 
-single instances, but do not restart more than 1 instance at the same time. 
-As soon as 1 instance has been restarted, give it some time to "catch up" before restarting 
+This mean restarting them. All ArangoSync components are designed to support stopping and starting
+single instances, but do not restart more than 1 instance at the same time.
+As soon as 1 instance has been restarted, give it some time to "catch up" before restarting
 the next instance.

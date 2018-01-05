@@ -23,7 +23,8 @@ these endpoints are also accessible using a special bearer token specified using
 command line option.
 
 The Prometheus output (`/metrics`) looks like this:
-```
+
+```text
 ...
 # HELP arangosync_master_worker_registrations Total number of registrations
 # TYPE arangosync_master_worker_registrations counter
@@ -36,7 +37,8 @@ arangosync_master_worker_storage{kind="empty",op="load",result="success"} 1
 ```
 
 The JSON output (`/metrics.json`) looks like this:
-```
+
+```json
 {
   ...
   "arangosync_master_worker_registrations": {
@@ -75,7 +77,8 @@ The JSON output (`/metrics.json`) looks like this:
 ```
 
 Hint: To get a list of a metrics and their help information, run:
-```
+
+```bash
 alias jq='docker run --rm -i realguess/jq jq'
 curl -sk -u "<user>:<password>" https://<syncmaster-IP>:8629/metrics.json | \
   jq 'with_entries({key: .key, value:.value.help})'
