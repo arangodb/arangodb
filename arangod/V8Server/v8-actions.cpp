@@ -128,7 +128,7 @@ class v8_action_t final : public TRI_action_t {
 
     // note: the context might be nullptr in case of shut-down
     if (context == nullptr) {
-      return result;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, "unable to acquire V8 context in time");
     }
 
     TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));

@@ -200,21 +200,19 @@ TraditionalKeyGenerator::~TraditionalKeyGenerator() {}
 
 /// @brief validate a key
 bool TraditionalKeyGenerator::validateKey(char const* key, size_t len) {
+  if (len == 0 || len > TRI_VOC_KEY_MAX_LENGTH) {
+    return false;
+  }
+
   unsigned char const* p = reinterpret_cast<unsigned char const*>(key);
-  size_t pos = 0;
-
-  while (true) {
-    if (pos >= len || *p == '\0') {
-      return (pos > 0) && (pos <= TRI_VOC_KEY_MAX_LENGTH);
-    }
-
+  unsigned char const* e = p + len;
+  TRI_ASSERT(p != e);
+  do {
     if (!LookupTable[*p]) {
       return false;
     }
-
-    ++p;
-    ++pos;
-  }
+  } while (++p < e);
+  return true;
 }
 
 /// @brief generate a key
@@ -304,21 +302,19 @@ AutoIncrementKeyGenerator::~AutoIncrementKeyGenerator() {}
 
 /// @brief validate a numeric key
 bool AutoIncrementKeyGenerator::validateKey(char const* key, size_t len) {
+  if (len == 0 || len > TRI_VOC_KEY_MAX_LENGTH) {
+    return false;
+  }
+
   char const* p = key;
-  size_t pos = 0;
-
-  while (true) {
-    if (pos >= len || *p == '\0') {
-      return (pos > 0) && (pos <= TRI_VOC_KEY_MAX_LENGTH);
-    }
-
+  char const* e = p + len;
+  TRI_ASSERT(p != e);
+  do {
     if (*p < '0' || *p > '9') {
       return false;
     }
-
-    ++p;
-    ++pos;
-  }
+  } while (++p < e);
+  return true;
 }
 
 /// @brief generate a key
