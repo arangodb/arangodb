@@ -1257,9 +1257,14 @@ void ClusterCommThread::abortRequestsToFailedServers() {
 void ClusterCommThread::run() {
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
 
+  std::chrono::steady_clock clock;
+  auto lastAbortCheck = clock.now();
   while (!isStopping()) {
     try {
-      abortRequestsToFailedServers();
+      if (clock.now() - lastAbortCheck > std::chrono::duration<double>(3.0)) {
+        abortRequestsToFailedServers();
+        lastAbortCheck = clock.now();
+      }
       _cc->communicator()->work_once();
       _cc->communicator()->wait();
       LOG_TOPIC(TRACE, Logger::CLUSTER) << "done waiting in ClusterCommThread";

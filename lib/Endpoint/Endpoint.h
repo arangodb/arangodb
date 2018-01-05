@@ -67,6 +67,7 @@ class Endpoint {
   EndpointType type() const { return _type; }
   EncryptionType encryption() const { return _encryption; }
   std::string specification() const { return _specification; }
+  int listenBacklog() const { return _listenBacklog; }
 
  public:
   virtual TRI_socket_t connect(double, double) = 0;
