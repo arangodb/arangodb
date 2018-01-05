@@ -405,13 +405,12 @@ void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
 }
 
 std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) {
-  return _physical->getAllIterator(trx, mdr, reverse);
+    transaction::Methods* trx, bool reverse) {
+  return _physical->getAllIterator(trx, reverse);
 }
 
-std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr) {
-  return _physical->getAnyIterator(trx, mdr);
+std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(transaction::Methods* trx) {
+  return _physical->getAnyIterator(trx);
 }
 
 void LogicalCollection::invokeOnAllElements(

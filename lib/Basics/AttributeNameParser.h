@@ -53,8 +53,11 @@ struct AttributeName {
 
   AttributeName(arangodb::StringRef const& name, bool expand);
 
-  AttributeName(AttributeName const& other)
-      : name(other.name), shouldExpand(other.shouldExpand) {}
+  AttributeName(AttributeName const& other) = default;
+  AttributeName& operator=(AttributeName const& other) = default;
+  
+  AttributeName(AttributeName&& other) = default;
+  AttributeName& operator=(AttributeName&& other) = default;
 
   bool operator==(AttributeName const& other) const {
     return name == other.name && shouldExpand == other.shouldExpand;

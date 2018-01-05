@@ -140,16 +140,17 @@ static v8::Handle<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
                                               VPackOptions const* options,
                                               VPackSlice const* base) {
   TRI_ASSERT(slice.isArray());
+  
+  VPackArrayIterator it(slice);
+  
   v8::Handle<v8::Array> object =
-      v8::Array::New(isolate, static_cast<int>(slice.length()));
+      v8::Array::New(isolate, static_cast<int>(it.size()));
 
   if (object.IsEmpty()) {
     return v8::Undefined(isolate);
   }
 
   uint32_t j = 0;
-  VPackArrayIterator it(slice);
-
   while (it.valid()) {
     v8::Handle<v8::Value> val =
         TRI_VPackToV8(isolate, it.value(), options, &slice);

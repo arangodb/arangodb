@@ -166,7 +166,7 @@ class RocksDBKey {
   /// May be called on any valid key (in our keyspace)
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBEntryType type(RocksDBKey const&);
-  static inline RocksDBEntryType type(rocksdb::Slice const& slice) {
+  static RocksDBEntryType type(rocksdb::Slice const& slice) {
     return type(slice.data(), slice.size());
   }
 
@@ -269,7 +269,7 @@ class RocksDBKey {
   }
 
  private:
-  static inline RocksDBEntryType type(char const* data, size_t size) {
+  static RocksDBEntryType type(char const* data, size_t size) {
     TRI_ASSERT(data != nullptr);
     TRI_ASSERT(size >= sizeof(char));
 
