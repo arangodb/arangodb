@@ -80,8 +80,13 @@ timestamps {
         def os = "linux"
 
         node("${os}&&dockerhub") {
-            checkoutCommunity(os)
-            shellAndPipe("./Installation/CI/linux/nightly-docker.sh devel", "nightly-docker.log")
+            stage("checkout") {
+                checkoutCommunity(os)
+            }
+
+            stage("build") {
+                shellAndPipe("./Installation/CI/linux/nightly-docker.sh devel", "nightly-docker.log")
+            }
         }
     }
 }
