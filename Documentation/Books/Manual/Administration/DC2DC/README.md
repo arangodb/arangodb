@@ -14,6 +14,7 @@ running properly, _ArangoSync_ will not automatically replicate database structu
 and content. For that, it is is needed to configure synchronization.
 
 To configure synchronization, you need the following:
+
 - The endpoint of the sync master in the target datacenter.
 - The endpoint of the sync master in the source datacenter.
 - A certificate (in keyfile format) used for client authentication of the sync master 
@@ -23,7 +24,8 @@ To configure synchronization, you need the following:
   require with the sync master (in the target datacenter)
 
 With that information, run:
-```
+
+```bash
 arangosync configure sync \
   --master.endpoint=<endpoints of sync masters in target datacenter> \
   --master.keyfile=<keyfile of of sync masters in target datacenter> \
@@ -37,13 +39,15 @@ The command will finish quickly. Afterwards it will take some time until
 the clusters in both datacenters are in sync.
 
 Use the following command to inspect the status of the synchronization of a datacenter:
-```
+
+```bash
 arangosync get status \
   --master.endpoint=<endpoints of sync masters in datacenter of interest> \
   --auth.user=<username used for authentication of this command> \
   --auth.password=<password of auth.user> \
   -v
 ```
+
 Note: Invoking this command on the target datacenter will return different results from
 invoking it on the source datacenter. You need insight in both results to get a "complete picture".
 
@@ -51,7 +55,8 @@ Where the `get status` command gives insight in the status of synchronization, t
 are more detailed commands to give insight in tasks & registered workers.
 
 Use the following command to get a list of all synchronization tasks in a datacenter:
-```
+
+```bash
 arangosync get tasks \
   --master.endpoint=<endpoints of sync masters in datacenter of interest> \
   --auth.user=<username used for authentication of this command> \
@@ -60,7 +65,8 @@ arangosync get tasks \
 ```
 
 Use the following command to get a list of all masters in a datacenter and know which master is the current leader:
-```
+
+```bash
 arangosync get masters \
   --master.endpoint=<endpoints of sync masters in datacenter of interest> \
   --auth.user=<username used for authentication of this command> \
@@ -69,7 +75,8 @@ arangosync get masters \
 ```
 
 Use the following command to get a list of all workers in a datacenter:
-```
+
+```bash
 arangosync get workers \
   --master.endpoint=<endpoints of sync masters in datacenter of interest> \
   --auth.user=<username used for authentication of this command> \
@@ -82,7 +89,7 @@ arangosync get workers \
 If you no longer want to synchronize data from a source to a target datacenter 
 you must stop it. To do so, run the following command:
 
-```
+```bash
 arangosync stop sync \
   --master.endpoint=<endpoints of sync masters in target datacenter> \
   --auth.user=<username used for authentication of this command> \
@@ -95,7 +102,8 @@ the command will fail.
 
 If the source datacenter is no longer available it is not possible to stop synchronization in 
 a graceful manner. If that happens abort the synchronization with the following command:
-```
+
+```bash
 arangosync abort sync \
   --master.endpoint=<endpoints of sync masters in target datacenter> \
   --auth.user=<username used for authentication of this command> \
@@ -104,7 +112,8 @@ arangosync abort sync \
 If the source datacenter recovers after an `abort sync` has been executed, it is 
 needed to "cleanup" ArangoSync in the source datacenter. 
 To do so, execute the following command:
-```
+
+```bash
 arangosync abort outgoing sync \
   --master.endpoint=<endpoints of sync masters in source datacenter> \
   --auth.user=<username used for authentication of this command> \

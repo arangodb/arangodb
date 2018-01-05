@@ -21,7 +21,7 @@ _DBservers_ and _Agents_) and restart them in case of failure.
 
 To start the cluster using a `systemd` unit file use the following:
 
-```
+```text
 [Unit]
 Description=Run the ArangoDB Starter 
 After=network.target
