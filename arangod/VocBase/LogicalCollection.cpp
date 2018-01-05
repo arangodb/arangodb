@@ -826,7 +826,8 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
 
 void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                                         bool useSystem,
-                                                        bool isReady) const {
+                                                        bool isReady,
+                                                        bool allInSync) const {
   if (_isSystem && !useSystem) {
     return;
   }
@@ -855,6 +856,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   getIndexesVPack(result, false, false);
   result.add("planVersion", VPackValue(getPlanVersion()));
   result.add("isReady", VPackValue(isReady));
+  result.add("allInSync", VPackValue(allInSync));
   result.close();  // CollectionInfo
 }
 

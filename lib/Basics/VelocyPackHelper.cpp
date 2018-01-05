@@ -761,32 +761,40 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     case VPackValueType::SmallInt: {
       return compareNumberValues(lhsType, lhs, rhs);
     }
-    case VPackValueType::String: {
-      VPackValueLength nl;
-      char const* left = lhs.getString(nl);
-      TRI_ASSERT(left != nullptr);
-
-      VPackValueLength nr;
-      char const* right = rhs.getString(nr);
-      TRI_ASSERT(right != nullptr);
-
-      return compareStringValues(left, nl, right, nr, useUTF8);
-    }
+    case VPackValueType::String: 
     case VPackValueType::Custom: {
-      if (lhsBase == nullptr || rhsBase == nullptr || 
-          options == nullptr ||
-          options->customTypeHandler == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "Could not extract custom attribute.");
-      }
-      std::string lhsString(options->customTypeHandler->toString(lhs, options, *lhsBase));
-      char const* left = lhsString.data();
-      VPackValueLength nl = lhsString.size();
-      TRI_ASSERT(left != nullptr);
+      VPackValueLength nl;
+      VPackValueLength nr;
+      char const* left;
+      char const* right;
+      std::string lhsString;
+      std::string rhsString;
 
-      std::string rhsString(options->customTypeHandler->toString(rhs, options, *rhsBase));
-      char const* right = rhsString.data();
-      VPackValueLength nr = rhsString.size();
+      if (lhs.isCustom()) {
+        if (lhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "Could not extract custom attribute.");
+        }
+        lhsString = options->customTypeHandler->toString(lhs, options, *lhsBase);
+        left = lhsString.data();
+        nl = lhsString.size();
+      } else {
+        left = lhs.getString(nl);
+      }
+      
+      if (rhs.isCustom()) {
+        if (rhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "Could not extract custom attribute.");
+        }
+        rhsString = options->customTypeHandler->toString(rhs, options, *rhsBase);
+        right = rhsString.data();
+        nr = rhsString.size();
+      } else {
+        right = rhs.getString(nr);
+      }
+
+      TRI_ASSERT(left != nullptr);
       TRI_ASSERT(right != nullptr);
 
       return compareStringValues(left, nl, right, nr, useUTF8);
