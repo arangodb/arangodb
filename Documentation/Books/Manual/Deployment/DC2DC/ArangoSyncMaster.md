@@ -21,6 +21,7 @@ After=network.target
 Restart=on-failure
 EnvironmentFile=/etc/arangodb.env 
 EnvironmentFile=/etc/arangodb.env.local
+LimitNOFILE=8192
 ExecStart=/usr/sbin/arangosync run master \
     --log.level=debug \
     --cluster.endpoint=${CLUSTERENDPOINTS} \

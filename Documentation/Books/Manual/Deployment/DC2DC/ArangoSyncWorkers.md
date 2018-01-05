@@ -23,6 +23,7 @@ Restart=on-failure
 EnvironmentFile=/etc/arangodb.env 
 EnvironmentFile=/etc/arangodb.env.local
 Environment=PORT=8729
+LimitNOFILE=1000000
 ExecStart=/usr/sbin/arangosync run worker \
     --log.level=debug \
     --server.port=${PORT} \
@@ -37,6 +38,10 @@ WantedBy=multi-user.target
 
 The _ArangoSync Worker_ must be reachable on a TCP port `${PORT}` (used with `--server.port`
 option). This port must be reachable from inside the datacenter (by _sync masters_).
+
+Note the large file descriptor limit. The _sync worker_ requires about 30 file descriptors per
+shard. If you use hardware with huge resources, and still run out of file descriptors,
+you can decide to run multiple _sync workers_ on each machine in order to spread the tasks across them.
 
 ## Recommended deployment environment
 
