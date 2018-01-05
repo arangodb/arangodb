@@ -2,7 +2,7 @@
 
 This Section includes information related to the administration of an ArangoDB Cluster.
 
-For a general introduction to the ArangoDB Cluster, please refer to the Cluster chapter.
+For a general introduction to the ArangoDB Cluster, please refer to the Cluster [chapter](../../Scalability/Cluster/README.md).
 
 ## Replacing Agents
 
