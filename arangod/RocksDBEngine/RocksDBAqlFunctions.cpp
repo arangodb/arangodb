@@ -414,7 +414,7 @@ void RocksDBAqlFunctions::registerResources() {
   TRI_ASSERT(functions != nullptr);
 
   // fulltext functions
-  functions->add({"FULLTEXT", ".h,.,.|.", true, false,
+  functions->add({"FULLTEXT", ".h,.,.|.", false, false,
                   false, true, &RocksDBAqlFunctions::Fulltext,
                   NotInCoordinator});
   functions->add({"NEAR", ".h,.,.|.,.", false, true, false,
