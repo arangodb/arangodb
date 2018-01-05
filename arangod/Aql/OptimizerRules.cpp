@@ -4492,7 +4492,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   AstNode* attrArg = fargs->getMember(1);
   AstNode* queryArg = fargs->getMember(2);
   AstNode* limitArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
-  if ((collArg->type != NODE_TYPE_COLLECTION && !isValueTypeString(collArg)) ||
+  if ((collArg->type != NODE_TYPE_COLLECTION) ||
       !isValueTypeString(attrArg) || !isValueTypeString(queryArg) ||
       (limitArg != nullptr && !isValueTypeNumber(limitArg))) {
     return false;
@@ -4508,7 +4508,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
     return false;
   }
   
-  //check for suitiable indexes
+  // check for suitable indexes
   std::shared_ptr<LogicalCollection> logical = coll->getCollection();
   std::shared_ptr<arangodb::Index> index;
   for (auto idx : logical->getIndexes()) {
@@ -4525,7 +4525,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   }
   
   Ast* ast = plan->getAst();  
-  AstNode* args = ast->createNodeArray(2);
+  AstNode* args = ast->createNodeArray(3 + (limitArg != nullptr ? 0 : 1));
   args->addMember(ast->clone(collArg));  // only so createNodeFunctionCall doesn't throw
   args->addMember(attrArg);
   args->addMember(queryArg);
