@@ -239,9 +239,9 @@ bool IResearchViewBlockBase::readDocument(
   );
 }
 
-AqlItemBlock* IResearchViewBlockBase::getSome(size_t, size_t atMost) {
+AqlItemBlock* IResearchViewBlockBase::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
 
   if (_done) {
     traceGetSomeEnd(nullptr);
