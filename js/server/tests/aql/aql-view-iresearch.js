@@ -44,6 +44,9 @@ function iResearchAqlTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
+      db._drop("AnotherUnitTestsCollection");
+      ac = db._create("AnotherUnitTestsCollection");
+
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "iresearch", {});
       var meta = { 
@@ -59,6 +62,9 @@ function iResearchAqlTestSuite () {
         }
       };
       v.properties(meta);
+
+      ac.save({ a: "foo", id : 0 });
+      ac.save({ a: "ba", id : 1 });
 
       for (let i = 0; i < 5; i++) {
         c.save({ a: "foo", b: "bar", c: i });
@@ -82,6 +88,7 @@ function iResearchAqlTestSuite () {
       v.properties(meta);
       v.drop();
       db._drop("UnitTestsCollection");
+      db._drop("AnotherUnitTestsCollection");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -328,6 +335,93 @@ function iResearchAqlTestSuite () {
       assertEqual(expected.size, 0);
     },
 
+    testViewInInnerLoop : function() {
+      var expected = new Set(); // FIXME is there a better way to compare objects in js?
+      expected.add(JSON.stringify({ a: "foo", b: "bar", c: 0 }));
+      expected.add(JSON.stringify({ a: "foo", b: "baz", c: 0 }));
+      expected.add(JSON.stringify({ a: "bar", b: "foo", c: 1 }));
+      expected.add(JSON.stringify({ a: "baz", b: "foo", c: 1 }));
+
+      var result = AQL_EXECUTE(
+        "FOR adoc IN AnotherUnitTestsCollection" +
+        "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
+        "RETURN doc"
+      , null, { waitForSync: true }).json;
+
+
+      assertEqual(result.length, expected.size);
+      result.forEach(function(res) {
+        assertTrue(expected.delete(JSON.stringify({ a: res.a, b: res.b, c: res.c })));
+      });
+      assertEqual(expected.size, 0);
+    },
+
+    testViewInInnerLoopMultipleFilters : function() {
+      var expected = new Set(); // FIXME is there a better way to compare objects in js?
+      expected.add(JSON.stringify({ a: "foo", b: "bar", c: 0 }));
+      expected.add(JSON.stringify({ a: "foo", b: "baz", c: 0 }));
+
+      var result = AQL_EXECUTE(
+        "FOR adoc IN AnotherUnitTestsCollection FILTER adoc.id < 1" +
+        "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
+        "RETURN doc"
+      , null, { waitForSync: true }).json;
+
+
+      assertEqual(result.length, expected.size);
+      result.forEach(function(res) {
+        assertTrue(expected.delete(JSON.stringify({ a: res.a, b: res.b, c: res.c })));
+      });
+      assertEqual(expected.size, 0);
+    },
+
+    testViewInInnerLoopSortByAttribute : function() {
+      var expected = new Array();
+      expected.push({ a: "bar", b: "foo", c: 1 });
+      expected.push({ a: "baz", b: "foo", c: 1 });
+      expected.push({ a: "foo", b: "bar", c: 0 });
+      expected.push({ a: "foo", b: "baz", c: 0 });
+
+      var result = AQL_EXECUTE(
+        "FOR adoc IN AnotherUnitTestsCollection" +
+        "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
+        "SORT doc.c DESC, doc.a, doc.b " +
+        "RETURN doc"
+      , null, { waitForSync: true }).json;
+
+      assertEqual(result.length, expected.length);
+      var i = 0;
+      result.forEach(function(res) {
+        var doc = expected[i++];
+        assertEqual(doc.a, res.a);
+        assertEqual(doc.b, res.b);
+        assertEqual(doc.c, res.c);
+      });
+    },
+
+    testViewInInnerLoopSortByTFIDF_BM25_Attribute : function() {
+      var expected = new Array();
+      expected.push({ a: "baz", b: "foo", c: 1 });
+      expected.push({ a: "bar", b: "foo", c: 1 });
+      expected.push({ a: "foo", b: "bar", c: 0 });
+      expected.push({ a: "foo", b: "baz", c: 0 });
+
+      var result = AQL_EXECUTE(
+        "FOR adoc IN AnotherUnitTestsCollection" +
+        "  FOR doc IN VIEW UnitTestsView FILTER adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
+        "SORT TFIDF(doc) DESC, BM25(doc) DESC, doc.a DESC, doc.b " +
+        "RETURN doc"
+      , null, { waitForSync: true }).json;
+
+      assertEqual(result.length, expected.length);
+      var i = 0;
+      result.forEach(function(res) {
+        var doc = expected[i++];
+        assertEqual(doc.a, res.a);
+        assertEqual(doc.b, res.b);
+        assertEqual(doc.c, res.c);
+      });
+    },
   };
 }
 
