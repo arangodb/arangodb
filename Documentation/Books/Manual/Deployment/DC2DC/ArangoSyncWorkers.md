@@ -38,3 +38,9 @@ WantedBy=multi-user.target
 The _ArangoSync Worker_ must be reachable on a TCP port `${PORT}` (used with `--server.port`
 option). This port must be reachable from inside the datacenter (by _sync masters_).
 
+## Recommended deployment environment
+
+The _sync workers_ should be run on all machines that also contain an ArangoDB _DBServer_.
+The _sync worker_ can be memory intensive when running lots of databases & collections.
+
+Consider these machines "cattle".

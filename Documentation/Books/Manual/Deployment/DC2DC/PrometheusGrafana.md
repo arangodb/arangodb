@@ -84,3 +84,11 @@ scrape_configs:
 Note: The above example assumes 2 datacenters, with 2 _sync masters_ & 2 _sync workers_ 
 per datacenter. You have to replace all `${...}` variables in the above configuration 
 with applicable values from your environment.
+
+## Recommended deployment environment
+
+_Prometheus_ can be a memory & CPU intensive process. It is recommended to keep them
+on other machines than used to run the ArangoDB cluster or _ArangoSync_ components.
+
+Consider these machines "cattle", unless you configure alerting on _prometheus_,
+in which case it is recommended to consider these machines "pets".

@@ -67,3 +67,9 @@ The _ArangoSync Master_ must be reachable on a TCP port `${MASTERPORT}` (used wi
 This port must be reachable from inside the datacenter (by sync workers and operations) 
 and from inside of the other datacenter (by sync masters in the other datacenter).
 
+## Recommended deployment environment
+
+Since the _sync masters_ can be CPU intensive when running lots of databases & collections,
+it is recommended to run them on dedicated machines with a lot of CPU power.
+
+Consider these machines "pets".

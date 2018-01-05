@@ -70,3 +70,10 @@ ports are available on all machines:
 - `8531` for Agents
 
 The _Starter_ itself will use port `8528`.
+
+## Recommended deployment environment
+
+Since the _Agents_ are so critical to the availability of both the ArangoDB and the ArangoSync cluster,
+it is recommended to run _Agents_ on dedicated machines. Consider these machines "pets".
+
+_Coordinators_ and _DBServers_ can be deployed of other machines that should be considered "cattle".
