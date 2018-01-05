@@ -79,7 +79,7 @@ properties([
     ])
 ])
 
-buildType = params.Type;
+buildType = params.Type
 cleanBuild = params.CleanBuild
 restrictions = [:]
 

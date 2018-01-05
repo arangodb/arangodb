@@ -1,3 +1,15 @@
+properties([
+    parameters([
+        booleanParam(
+            defaultValue: false,
+            description: 'clean build directories',
+            name: 'CleanBuild'
+        )
+    ])
+])
+
+cleanBuild = params.CleanBuild
+
 // github proxy repository
 arangodbRepo = 'http://github-proxy.arangodb.biz:8088/github.com/arangodb/arangodb'
 
