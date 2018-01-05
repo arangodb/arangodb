@@ -79,7 +79,7 @@ timestamps {
     timeout(30) {
         def os = "linux"
 
-        node(os) {
+        node("${os}&&dockerhub") {
             checkoutCommunity(os)
             shellAndPipe("./Installation/CI/linux/nightly-docker.sh devel", "nightly-docker.log")
         }
