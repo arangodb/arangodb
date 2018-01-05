@@ -48,6 +48,7 @@
 #include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "V8Server/v8-collection.h"
@@ -1450,6 +1451,46 @@ AqlValue Functions::Keep(arangodb::aql::Query* query,
   return AqlValue(builder.get());
 }
 
+/// @brief function TRANSLATE
+AqlValue Functions::Translate(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "TRANSLATE", 2, 3);
+  AqlValue key = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue lookupDocument = ExtractFunctionParameterValue(trx, parameters, 1);
+
+  if (!lookupDocument.isObject()) {
+    RegisterInvalidArgumentWarning(query, "TRANSLATE");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(lookupDocument, true);
+  TRI_ASSERT(slice.isObject());
+
+  VPackSlice result;
+  if (key.isString()) {
+    result = slice.get(key.slice().copyString());
+  } else {
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    Functions::Stringify(trx, adapter, key.slice());
+    result = slice.get(buffer->toString());
+  }
+  
+  if (!result.isNone()) {
+    return AqlValue(result);
+  }
+  
+  // attribute not found, now return the default value
+  // we must create copy of it however
+  AqlValue defaultValue = ExtractFunctionParameterValue(trx, parameters, 2);
+  if (defaultValue.isNone()) {
+    return key.clone();
+  }
+  return defaultValue.clone();
+}
+
 /// @brief function MERGE
 AqlValue Functions::Merge(arangodb::aql::Query* query,
                           transaction::Methods* trx,
@@ -1941,6 +1982,21 @@ AqlValue Functions::Hash(arangodb::aql::Query* query,
   return AqlValue(AqlValueHintUInt(hash));
 }
 
+/// @brief function IS_KEY
+AqlValue Functions::IsKey(arangodb::aql::Query* query,
+                          transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  if (!value.isString()) {
+    // not a string, so no valid key
+    return AqlValue(AqlValueHintBool(false));
+  }
+
+  VPackValueLength l;
+  char const* p = value.slice().getString(l);
+  return AqlValue(AqlValueHintBool(TraditionalKeyGenerator::validateKey(p, l)));
+}
+
 /// @brief function UNIQUE
 AqlValue Functions::Unique(arangodb::aql::Query* query,
                            transaction::Methods* trx,
@@ -1988,7 +2044,6 @@ AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
 
   if (!value.isArray()) {
     // not an array
-    // this is an internal function - do NOT issue a warning here
     return AqlValue(AqlValueHintNull());
   }
   
@@ -2007,6 +2062,43 @@ AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
   builder->openArray();
   for (auto const& it : values) {
     builder->add(it);
+  }
+  builder->close();
+  return AqlValue(builder.get());
+}
+
+/// @brief function SORTED
+AqlValue Functions::Sorted(arangodb::aql::Query* query,
+                           transaction::Methods* trx,
+                           VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "SORTED", 1, 1);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (!value.isArray()) {
+    // not an array
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+
+  arangodb::basics::VelocyPackHelper::VPackLess<true> less(trx->transactionContext()->getVPackOptions(), &slice, &slice);
+  std::map<VPackSlice, size_t, arangodb::basics::VelocyPackHelper::VPackLess<true>> values(less);
+  for (auto const& it : VPackArrayIterator(slice)) {
+    if (!it.isNone()) {
+      auto f = values.emplace(it, 1);
+      if (!f.second) {
+        ++(*f.first).second;
+      }
+    }
+  }
+
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  for (auto const& it : values) {
+    for (size_t i = 0; i < it.second; ++i) {
+      builder->add(it.first);
+    }
   }
   builder->close();
   return AqlValue(builder.get());
@@ -2383,7 +2475,7 @@ AqlValue Functions::JsonStringify(arangodb::aql::Query* query,
 
   VPackDumper dumper(&adapter, trx->transactionContextPtr()->getVPackOptions());
   dumper.dump(slice);
-    
+
   return AqlValue(buffer->begin(), buffer->length());
 }
 
