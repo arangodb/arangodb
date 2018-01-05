@@ -76,21 +76,24 @@ switching your applications to the target (backup) datacenter.
 This is what you must do in that case:
 
 1. [Stop synchronization](..\..\Administration\DC2DC\README.md#stoping-synchronization) using:
+
    ```bash
    arangosync stop sync ...
    ```
-   <br/>When the source datacenter is completely unresponsive this will not
-   succeed. In that case use:
+   When the source datacenter is completely unresponsive this will not succeed.
+   In that case use:
+   
    ```bash
    arangosync abort sync ...
    ```   
-   <br/>See [Stoping synchronization](..\..\Administration\DC2DC\README.md#stoping-synchronization)
+   
+   See [Stoping synchronization](..\..\Administration\DC2DC\README.md#stoping-synchronization)
    for how to cleanup the source datacenter when it becomes available again.
-2. Verify that configuration has completely stopped using:
+1. Verify that configuration has completely stopped using:
    ```bash
    arangosync get status ... -v
    ```
-3. Reconfigure your applications to use the target (backup) datacenter.
+1. Reconfigure your applications to use the target (backup) datacenter.
 
 When the original source datacenter is restored, you may switch roles and 
 make it the target datacenter. To do so, use `arangosync configure sync ...` 
