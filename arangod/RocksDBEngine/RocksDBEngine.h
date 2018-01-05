@@ -268,6 +268,7 @@ class RocksDBEngine final : public StorageEngine {
   virtual void releaseTick(TRI_voc_tick_t);
 
  private:
+  void shutdownRocksDBInstance() noexcept;
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key, int& status);
   int removeReplicationApplierConfiguration(RocksDBKey const& key);
   int saveReplicationApplierConfiguration(RocksDBKey const& key, arangodb::velocypack::Slice slice, bool doSync);

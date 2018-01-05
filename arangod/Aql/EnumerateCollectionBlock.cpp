@@ -117,10 +117,10 @@ int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
 }
 
 /// @brief getSome
-AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
+AqlItemBlock* EnumerateCollectionBlock::getSome(size_t atLeast,
                                                 size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
 
   TRI_ASSERT(_cursor.get() != nullptr);
   // Invariants:

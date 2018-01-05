@@ -406,6 +406,9 @@ bool IndexBlock::skipIndex(size_t atMost) {
     }
   }
   return false;
+  
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
 }
 
 // this is called every time we need to fetch data from the indexes
@@ -486,7 +489,7 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 /// @brief getSome
 AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
   if (_done) {
     traceGetSomeEnd(nullptr);
     return nullptr;

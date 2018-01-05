@@ -216,7 +216,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual std::string versionFilename(TRI_voc_tick_t) const override;
   virtual void waitForSyncTick(TRI_voc_tick_t tick) override;
   virtual void waitForSyncTimeout(double maxWait) override;
-  virtual arangodb::Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile);
+  virtual arangodb::Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override;
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
   virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
 

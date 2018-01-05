@@ -257,7 +257,8 @@ class LogicalCollection {
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&,
                                                bool useSystem,
-                                               bool isReady) const;
+                                               bool isReady,
+                                               bool allInSync) const;
 
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 

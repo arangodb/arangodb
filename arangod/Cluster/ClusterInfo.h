@@ -307,6 +307,8 @@ class ClusterInfo {
   /// @brief ask about a collection
   /// If it is not found in the cache, the cache is reloaded once. The second
   /// argument can be a collection ID or a collection name (both cluster-wide).
+  /// if the collection is not found afterwards, this method will throw an 
+  /// exception
   //////////////////////////////////////////////////////////////////////////////
 
   virtual std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,

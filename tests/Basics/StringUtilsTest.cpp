@@ -190,10 +190,10 @@ SECTION("test_uint64") {
   CHECK(12ULL ==  StringUtils::uint64("012"));
   CHECK(12ULL ==  StringUtils::uint64("00012"));
   CHECK(1234ULL ==  StringUtils::uint64("1234"));
-  CHECK(0ULL ==  StringUtils::uint64("1234a"));
-  CHECK(0ULL ==  StringUtils::uint64("-1"));
-  CHECK(0ULL ==  StringUtils::uint64("-12345"));
-  CHECK(0ULL ==  StringUtils::uint64("1234.56"));
+  CHECK(1234ULL ==  StringUtils::uint64("1234a"));
+  CHECK(18446744073709551615ULL ==  StringUtils::uint64("-1"));
+  CHECK(18446744073709539271ULL ==  StringUtils::uint64("-12345"));
+  CHECK(1234ULL ==  StringUtils::uint64("1234.56"));
   CHECK(0ULL ==  StringUtils::uint64("1234567890123456789012345678901234567890"));
   CHECK(0ULL ==  StringUtils::uint64("@"));
 

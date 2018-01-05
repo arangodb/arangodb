@@ -119,7 +119,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   uint64_t _maxHLC = 0;
 
  public:
-  explicit WBReader(std::unordered_map<uint64_t, rocksdb::SequenceNumber> seqs)
+  explicit WBReader(std::unordered_map<uint64_t, rocksdb::SequenceNumber> const& seqs)
       : currentSeqNum(0), _seqStart(seqs) {}
 
   ~WBReader() {
