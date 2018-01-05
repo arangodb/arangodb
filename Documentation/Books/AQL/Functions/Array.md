@@ -331,6 +331,29 @@ SLICE( [ 1, 2, 3, 4, 5 ], 0, -2 ) // [ 1, 2, 3 ]
 SLICE( [ 1, 2, 3, 4, 5 ], -3, 2 ) // [ 3, 4 ]
 ```
 
+### SORTED()
+
+`SORTED(anyArray) → newArray`
+
+Sort all elements in *anyArray*. The function will use the default comparison 
+order for AQL value types.
+
+- **anyArray** (array): array with elements of arbitrary type
+- returns **newArray** (array): *anyArray*, with elements sorted
+
+
+### SORTED_UNIQUE()
+
+`SORTED_UNIQUE(anyArray) → newArray`
+
+Sort all elements in *anyArray*. The function will use the default comparison 
+order for AQL value types. Additionally, the values in the result array will
+be made unique.
+
+- **anyArray** (array): array with elements of arbitrary type
+- returns **newArray** (array): *anyArray*, with elements sorted and duplicates
+  removed
+
 ### UNION()
 
 `UNION(array1, array2, ... arrayN) → newArray`

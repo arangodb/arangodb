@@ -208,6 +208,8 @@ struct Functions {
                           VPackFunctionParameters const&);
    static AqlValue SortedUnique(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
+   static AqlValue Sorted(arangodb::aql::Query*, transaction::Methods*,
+                          VPackFunctionParameters const&);
    static AqlValue Union(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
    static AqlValue UnionDistinct(arangodb::aql::Query*, transaction::Methods*,
