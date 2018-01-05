@@ -912,8 +912,8 @@ class Parser;
 
 #define YY_EXTRA_TYPE arangodb::aql::Parser*
 
-#define YY_USER_ACTION                                                   \ 
-  yylloc->first_line = static_cast<int>(yylineno);                       \ 
+#define YY_USER_ACTION                                                   \
+  yylloc->first_line = static_cast<int>(yylineno);                       \
   yylloc->first_column = static_cast<int>(yycolumn);                     \
   yylloc->last_column = static_cast<int>(yycolumn + yyleng - 1);         \
   yycolumn += static_cast<int>(yyleng);                                  \
