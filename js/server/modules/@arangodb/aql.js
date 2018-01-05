@@ -2691,6 +2691,27 @@ function AQL_ARRAYIZE (value) {
   return value;
 }
 
+function AQL_IS_KEY (value) {
+  'use strict';
+
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_STRING) {
+    return false;
+  }
+
+  for (var i = 0; i < value.length; ++i) {
+    var c = value[i];
+    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+          (c >= '0' && c <= '9') || c === '_' || c === ':' || c === '-' ||
+          c === '@' || c === '.' || c === '(' || c === ')' || c === '+' || c === ',' ||
+          c === '=' || c === ';' || c === '$' || c === '!' || c === '*' || c === '\'' ||
+          c === '%')) {
+      return false;
+    }
+  }
+
+  return (value.length > 0 && value.length <= 254);
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test if value is of type null
 // /
@@ -5662,6 +5683,7 @@ exports.AQL_TO_STRING = AQL_TO_STRING;
 exports.AQL_TO_ARRAY = AQL_TO_ARRAY;
 exports.AQL_ARRAYIZE = AQL_ARRAYIZE;
 exports.AQL_TO_LIST = AQL_TO_ARRAY; // alias
+exports.AQL_IS_KEY = AQL_IS_KEY;
 exports.AQL_IS_NULL = AQL_IS_NULL;
 exports.AQL_IS_BOOL = AQL_IS_BOOL;
 exports.AQL_IS_NUMBER = AQL_IS_NUMBER;

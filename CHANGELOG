@@ -6,6 +6,10 @@ devel
 
 * added C++ implementation for AQL function `SHA512()`
 
+* added AQL function `IS_KEY`
+  this function checks if the value passed to it can be used as a document key,
+  i.e. as the value of the `_key` attribute
+
 * add AQL functions `SORTED` and `SORTED_UNIQUE`
   
   `SORTED` will return a sorted version of the input array using AQL's internal 

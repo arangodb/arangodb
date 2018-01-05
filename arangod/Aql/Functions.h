@@ -204,6 +204,8 @@ struct Functions {
                         VPackFunctionParameters const&);
    static AqlValue Hash(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
+   static AqlValue IsKey(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
    static AqlValue Unique(arangodb::aql::Query*, transaction::Methods*,
                           VPackFunctionParameters const&);
    static AqlValue SortedUnique(arangodb::aql::Query*, transaction::Methods*,

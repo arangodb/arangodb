@@ -48,6 +48,7 @@
 #include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "V8Server/v8-collection.h"
@@ -1979,6 +1980,21 @@ AqlValue Functions::Hash(arangodb::aql::Query* query,
   uint64_t hash = value.hash(trx) & 0x0007ffffffffffffULL;
 
   return AqlValue(AqlValueHintUInt(hash));
+}
+
+/// @brief function IS_KEY
+AqlValue Functions::IsKey(arangodb::aql::Query* query,
+                          transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  if (!value.isString()) {
+    // not a string, so no valid key
+    return AqlValue(AqlValueHintBool(false));
+  }
+
+  VPackValueLength l;
+  char const* p = value.slice().getString(l);
+  return AqlValue(AqlValueHintBool(TraditionalKeyGenerator::validateKey(p, l)));
 }
 
 /// @brief function UNIQUE
