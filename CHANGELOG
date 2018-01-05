@@ -1,6 +1,9 @@
 v3.2.11 (2018-XX-XX)
 --------------------
 
+* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' 
+  at 98,7: ArangoError 4: Expecting type String 
+
 * UI: displayed wrong "waitForSync" property for a collection when 
   using RocksDB as storage engine
 
