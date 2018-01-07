@@ -271,6 +271,8 @@ SET(ARANGOD_SOURCES
   Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/Maintenance.cpp
+  Cluster/MaintenanceFeature.cpp
+  Cluster/MaintenanceRestHandler.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
