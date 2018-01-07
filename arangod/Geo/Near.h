@@ -77,7 +77,7 @@ class NearUtils {
   geo::ShapeContainer const& filterShape() const { return _params.filterShape; }
 
   /// @brief has buffered results
-  bool hasNearest() const {
+  inline bool hasNearest() const {
     // we need to not return results in the search area
     // between _innerBound and _maxBound. Otherwise results may appear
     // too early in the result list

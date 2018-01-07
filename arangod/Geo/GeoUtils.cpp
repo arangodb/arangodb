@@ -158,11 +158,11 @@ void GeoUtils::scanIntervals(int worstIndexedLevel,
 
   // prefix matches
   for (S2CellId const& prefix : cover) {
-    /*if (prefix.is_leaf()) {
+    if (prefix.is_leaf()) {
       sortedIntervals.emplace_back(prefix, prefix);
-    } else {*/
-    sortedIntervals.emplace_back(prefix.range_min(), prefix.range_max());
-    //}
+    } else {
+      sortedIntervals.emplace_back(prefix.range_min(), prefix.range_max());
+    }
   }
 
   // we need to find larger cells that may still contain (parts of) the cover,
@@ -182,7 +182,7 @@ void GeoUtils::scanIntervals(int worstIndexedLevel,
       parentSet.insert(cell);
     }
   }
-  // just add them sorting them later
+  // just add them, sort them later
   for (S2CellId const& exact : parentSet) {
     sortedIntervals.emplace_back(exact, exact);
   }
@@ -200,5 +200,7 @@ void GeoUtils::scanIntervals(int worstIndexedLevel,
       sortedIntervals[i].max = sortedIntervals.min
     }*/
   }
+  TRI_ASSERT(!sortedIntervals.empty());
+  TRI_ASSERT(sortedIntervals[0].min < sortedIntervals.back().max);
 #endif
 }

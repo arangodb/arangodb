@@ -90,9 +90,6 @@ struct QueryParams {
   
 
   // ============== Near Query Params =============
-
-  /// Centroid from which to start
-  geo::Coordinate centroid;
   
   /// @brief Min distance from centroid a result has to be
   double minDistance = 0.0;
@@ -109,6 +106,9 @@ struct QueryParams {
   bool sorted = false;
   /// @brief Default order is from closest to farthest
   bool ascending = true;
+  
+  /// @brief Centroid from which to sort by distance
+  geo::Coordinate centroid;
 
   // ============= Filtered Params ===============
 

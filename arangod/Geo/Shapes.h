@@ -42,7 +42,8 @@ namespace geo {
 struct Coordinate {
   Coordinate(double lat, double lon) : latitude(lat), longitude(lon) {}
   Coordinate(Coordinate&& c) : latitude(c.latitude), longitude(c.longitude) {}
-  
+  Coordinate(Coordinate const& c) : latitude(c.latitude), longitude(c.longitude) {}
+
   static Coordinate fromLatLng(S2LatLng const&);
   static inline Coordinate Invalid() { return Coordinate(-1, -1); }
   

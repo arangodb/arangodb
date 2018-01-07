@@ -65,10 +65,11 @@ void NearUtils::reset() {
   }
 
   if (_boundDelta <= 0) {  // do not reset everytime
-    int level = std::max(1, _params.cover.bestIndexedLevel - 1);
-    level = std::min(level, S2::kMaxCellLevel - 4);
-    _boundDelta = S2::kAvgEdge.GetValue(level);  // in radians
-    TRI_ASSERT(_boundDelta * kEarthRadiusInMeters > 250);
+    int level = std::max(1, _params.cover.bestIndexedLevel - 2);
+    // Level 15 == 474.142m
+    level = std::min(level, S2::kMaxDiag.GetClosestLevel(500 / kEarthRadiusInMeters));
+    _boundDelta = S2::kMaxDiag.GetValue(level);  // in radians
+    TRI_ASSERT(_boundDelta * kEarthRadiusInMeters >= 450);
   }
   TRI_ASSERT(_boundDelta > 0);
 
@@ -82,6 +83,9 @@ void NearUtils::reset() {
 std::vector<geo::Interval> NearUtils::intervals() {
   TRI_ASSERT(_innerBound != _maxBounds);
   if (_innerBound > 0) {
+    if (_outerBound == _maxBounds) {
+      return {}; // search is finished
+    }
     double const minBounds = S2::kAvgEdge.GetValue(S2::kMaxCellLevel - 2);
     // we already scanned the entire planet, if this fails
     TRI_ASSERT(_innerBound != _outerBound && _innerBound != _maxBounds);
@@ -97,16 +101,12 @@ std::vector<geo::Interval> NearUtils::intervals() {
   _innerBound = _outerBound; // initially _outerBounds == _innerBounds
   _outerBound = std::min(_outerBound + _boundDelta, _maxBounds);
   TRI_ASSERT(_innerBound <= _outerBound && _outerBound <= _maxBounds);
-  
-  if (_outerBound == _maxBounds && _innerBound == _outerBound) {
-    return {};
-  }
+  TRI_ASSERT(_innerBound != _outerBound);
   LOG_TOPIC(INFO, Logger::FIXME) << "[Bounds] "
     << (size_t)(_innerBound * kEarthRadiusInMeters) << " - "
     << (size_t)(_outerBound * kEarthRadiusInMeters) << "  delta: "
     << (size_t)(_boundDelta * kEarthRadiusInMeters);//*/
   
-
   std::vector<S2CellId> cover;
   if (0.0 < _innerBound && _outerBound < _maxBounds) {
     // create a search ring
@@ -201,6 +201,7 @@ void NearUtils::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
     }
     _buffer.emplace(rid, rad);
   } else {                          // deduplication
+    LOG_TOPIC(ERR, Logger::FIXME) << "[Duplicate] " << rid;
     TRI_ASSERT(it->second == rad);  // should never change
   }
 }
@@ -220,8 +221,7 @@ void NearUtils::estimateDensity(geo::Coordinate const& found) {
 bool NearUtils::isDone() const {
   TRI_ASSERT(_innerBound >= 0 && _innerBound <= _outerBound);
   TRI_ASSERT(_outerBound <= _maxBounds && _maxBounds <= M_PI);
-  return _buffer.empty() && _innerBound == _outerBound &&
-         _outerBound == _maxBounds;
+  return _buffer.empty() && _innerBound > 0 && _outerBound == _maxBounds;
 }
 
 void NearUtils::invalidate() {
