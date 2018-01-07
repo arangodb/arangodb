@@ -286,6 +286,23 @@ function importTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImport6 : function () {
+      var expected = [ 
+        { a: 1, b: 2, c: 3, d: 4, e: 5 },
+        { a: 1, b: 2, c: 3, d: 4 },
+        { a: 1, b: 2, c: 3 },
+        { a: 1, b: 2 },
+        { a: 1 }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsv6 SORT TO_NUMBER(i._key) RETURN i");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import without converting
 ////////////////////////////////////////////////////////////////////////////////
     

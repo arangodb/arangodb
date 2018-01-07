@@ -378,4 +378,12 @@
     delete global.SYS_CLUSTER_SHARD_DISTRIBUTION;
   }
 
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief getCollectionShardDistrbiution
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_CLUSTER_COLLETION_SHARD_DISTRIBUTION) {
+    exports.getCollectionShardDistribution = global.SYS_CLUSTER_COLLETION_SHARD_DISTRIBUTION;
+    delete global.SYS_CLUSTER_COLLETION_SHARD_DISTRIBUTION;
+  }
 }());

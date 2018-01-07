@@ -4,6 +4,7 @@ Release Notes
 Whats New
 ---------
 
+- [Whats New in 3.3](NewFeatures33.md)
 - [Whats New in 3.2](NewFeatures32.md)
 - [Whats New in 3.1](NewFeatures31.md)
 - [Whats New in 3.0](NewFeatures30.md)
@@ -29,6 +30,7 @@ Incompatible changes
 Also see [Upgrading](../Administration/Upgrading/README.md) in the 
 Administration chapter.
 
+- [Incompatible changes in 3.3](UpgradingChanges33.md)
 - [Incompatible changes in 3.2](UpgradingChanges32.md)
 - [Incompatible changes in 3.1](UpgradingChanges31.md)
 - [Incompatible changes in 3.0](UpgradingChanges30.md)

@@ -24,6 +24,7 @@
 
 #include "TailingSyncer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -142,8 +143,7 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
   std::string const tick = VelocyPackHelper::getStringValue(slice, "tick", "");
 
   if (!tick.empty()) {
-    tooOld = (static_cast<TRI_voc_tick_t>(StringUtils::uint64(
-                  tick.c_str(), tick.size())) < firstRegularTick);
+    tooOld = (NumberUtils::atoi_zero<TRI_voc_tick_t>(tick.data(), tick.data() + tick.size()) < firstRegularTick);
 
     if (tooOld) {
       int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
@@ -161,8 +161,7 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
             VelocyPackHelper::getStringValue(slice, "tid", "");
 
         if (!id.empty()) {
-          TRI_voc_tid_t tid = static_cast<TRI_voc_tid_t>(
-              StringUtils::uint64(id.c_str(), id.size()));
+          TRI_voc_tid_t tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(id.data(), id.data() + id.size());
 
           if (tid > 0 &&
               _ongoingTransactions.find(tid) != _ongoingTransactions.end()) {
@@ -333,8 +332,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
   if (!transactionId.empty()) {
     // operation is part of a transaction
-    tid = static_cast<TRI_voc_tid_t>(
-        StringUtils::uint64(transactionId.c_str(), transactionId.size()));
+    tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(transactionId.data(), transactionId.data() + transactionId.size());
   }
 
   if (tid > 0) { // part of a transaction
@@ -417,8 +415,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
 
   // transaction id
   // note: this is the remote transaction id!
-  TRI_voc_tid_t tid =
-      static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
+  TRI_voc_tid_t tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(id.data(), id.data() + id.size());
 
   auto it = _ongoingTransactions.find(tid);
 
@@ -461,8 +458,7 @@ Result TailingSyncer::abortTransaction(VPackSlice const& slice) {
 
   // transaction id
   // note: this is the remote transaction id!
-  TRI_voc_tid_t const tid =
-      static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
+  TRI_voc_tid_t const tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(id.data(), id.data() + id.size());
 
   auto it = _ongoingTransactions.find(tid);
 
@@ -499,9 +495,8 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
   }
 
   // transaction id
-  // note: this is the remote trasnaction id!
-  TRI_voc_tid_t const tid =
-      static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
+  // note: this is the remote transaction id!
+  TRI_voc_tid_t const tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(id.data(), id.data() + id.size());
 
   auto it = _ongoingTransactions.find(tid);
 
@@ -618,8 +613,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
   std::string const tick = VelocyPackHelper::getStringValue(slice, "tick", "");
 
   if (!tick.empty()) {
-    TRI_voc_tick_t newTick = static_cast<TRI_voc_tick_t>(
-        StringUtils::uint64(tick.c_str(), tick.size()));
+    TRI_voc_tick_t newTick = NumberUtils::atoi_zero<TRI_voc_tick_t>(tick.data(), tick.data() + tick.size());
     if (newTick >= firstRegularTick) {
       WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
       if (newTick > _applier->_state._lastProcessedContinuousTick) {

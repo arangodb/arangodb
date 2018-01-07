@@ -54,7 +54,7 @@ class ManagedDocumentResult {
       setManaged(std::move(other._string), other._localDocumentId);
       other._managed = false;
       other.reset();
-    } else if (other._managed){
+    } else if (other._managed) {
       reset();
       _vpack = other._vpack;
       _length = other._length;

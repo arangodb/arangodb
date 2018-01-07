@@ -25,6 +25,7 @@
 #include "ClusterInfo.h"
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -782,6 +783,7 @@ void ClusterInfo::loadCurrent() {
 
 /// @brief ask about a collection
 /// If it is not found in the cache, the cache is reloaded once
+/// if the collection is not found afterwards, this method will throw an exception
 
 std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(
     DatabaseID const& databaseID, CollectionID const& collectionID) {
@@ -1321,7 +1323,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
           LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
         }
       } else {
-        errorMsg += std::string("file: ") + __FILE__ + 
+        errorMsg += std::string("file: ") + __FILE__ +
                     " line: " + std::to_string(__LINE__);
         errorMsg += " HTTP code: " + std::to_string(res.httpCode());
         errorMsg += " error message: " + res.errorMessage();
@@ -1409,7 +1411,6 @@ int ClusterInfo::dropCollectionCoordinator(
   // First check that no other collection has a distributeShardsLike
   // entry pointing to us:
   auto coll = getCollection(databaseName, collectionID);
-  // not used # std::string id = std::to_string(coll->cid());
   auto colls = getCollections(databaseName);
   std::vector<std::string> clones;
   for (std::shared_ptr<LogicalCollection> const& p : colls) {
@@ -1420,8 +1421,8 @@ int ClusterInfo::dropCollectionCoordinator(
   }
 
   if (!clones.empty()){
-    errorMsg += "Collection must not be dropped while it is sharding "
-      "prototype for collection[s]";
+    errorMsg += "Collection must not be dropped while it is a sharding "
+      "prototype for collection(s)";
     for (auto const& i : clones) {
         errorMsg +=  std::string(" ") + i;
     }
@@ -1660,7 +1661,7 @@ Result ClusterInfo::setCollectionStatusCoordinator(
   if (res.successful()) {
     loadPlan();
     return Result();
-  } 
+  }
 
   return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, res.errorMessage());
 }
@@ -1690,10 +1691,16 @@ int ClusterInfo::ensureIndexCoordinator(
   }
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
-  int errorCode = ensureIndexCoordinatorWithoutRollback(
-    databaseName, collectionID, idString, slice, create, compare, resultBuilder, errorMsg, timeout);
-
-  if (errorCode == TRI_ERROR_NO_ERROR) {
+  int errorCode;
+  try {
+    errorCode = ensureIndexCoordinatorWithoutRollback(
+      databaseName, collectionID, idString, slice, create, compare, resultBuilder, errorMsg, timeout);
+  } catch (basics::Exception const& ex) {
+    errorCode = ex.code();
+  } catch (...) {
+    errorCode = TRI_ERROR_INTERNAL;
+  }
+  if (errorCode == TRI_ERROR_NO_ERROR || application_features::ApplicationServer::isStopping()) {
     return errorCode;
   }
 
@@ -1798,11 +1805,6 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   {
     std::shared_ptr<LogicalCollection> c =
         getCollection(databaseName, collectionID);
-
-    if (c == nullptr) {
-      return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
-    }
-
     std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
     c->getIndexesVPack(*(tmp.get()), false, false);
     {
@@ -2172,9 +2174,6 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
     READ_LOCKER(readLocker, _planProt.lock);
 
-    if (c == nullptr) {
-      return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
-    }
     c->getIndexesVPack(tmp, false, false);
     indexes = tmp.slice();
 

@@ -2,9 +2,9 @@
 
 ## Problem
 
-You have a very big database and want to set up a `master-slave` replication between two or more ArangoDB instances. Transfering the entire database over the network may take a long time, if the database is big. In order to speed-up the replication initilization process the **slave** can be initialized using a backup of the **master**.
+You have a very big database and want to set up a `master-slave` replication between two or more ArangoDB instances. Transfering the entire database over the network may take a long time, if the database is big. In order to speed-up the replication initialization process the **slave** can be initialized using a backup of the **master**.
 
-For the following example setup, we will use the instance `tcp://master.domain.org:8529` as master, and the instance `tcp://slave.domain.org:8530` as slave.
+For the following example setup, we will use the instance with endpoint `tcp://master.domain.org:8529` as master, and the instance with endpoint `tcp://slave.domain.org:8530` as slave.
 
 The goal is to have all data from the database ` _system` on master replicated to the database `_system` on the slave (the same process can be applied for other databases) .
 
@@ -21,13 +21,15 @@ Depending on your storage-engine you also want to adjust the following options:
 For MMFiles:
 
 ```sh
---wal.historic-logfiles		(maximum number of historic logfiles to keep after collection (default: 10))
+--wal.historic-logfiles		(maximum number of historic logfiles to keep after collection
+                                (default: 10))
 ```
 
 For RocksDB:
 
 ```sh
---rocksdb.wal-file-timeout	(timeout after which unused WAL files are deleted (in seconds) (default: 10))
+--rocksdb.wal-file-timeout	(timeout after which unused WAL files are deleted
+                                in seconds (default: 10))
 ```
 
 The options above prevent the premature removal of old WAL files from the master, and are useful in case intense write operations happen on the master while you are initializing the slave. In fact, if you do not tune these options, what can happen is that the master WAL files do not include all the write operations happened after the backup is taken. This may lead to situations in which the initialized slave is missing some data, or fails to start.

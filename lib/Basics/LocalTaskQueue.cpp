@@ -61,7 +61,7 @@ void LocalTask::dispatch() {
 ////////////////////////////////////////////////////////////////////////////////
 
 LocalCallbackTask::LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue,
-                                     std::function<void()> cb)
+                                     std::function<void()> const& cb)
     : _queue(queue), _cb(cb) {}
 
 ////////////////////////////////////////////////////////////////////////////////

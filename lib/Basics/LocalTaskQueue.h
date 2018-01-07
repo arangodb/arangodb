@@ -64,7 +64,7 @@ class LocalCallbackTask
   LocalCallbackTask(LocalCallbackTask const&) = delete;
   LocalCallbackTask& operator=(LocalCallbackTask const&) = delete;
 
-  LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue, std::function<void()> cb);
+  LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue, std::function<void()> const& cb);
   virtual ~LocalCallbackTask() {}
 
   virtual void run();

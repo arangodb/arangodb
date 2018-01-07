@@ -30,7 +30,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Cursor.h"
 #include "Utils/DatabaseGuard.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -67,7 +66,6 @@ class RocksDBExportCursor final : public Cursor {
   std::unique_ptr<arangodb::CollectionGuard> _collectionGuard;
   LogicalCollection* _collection;
   std::unique_ptr<transaction::Methods> _trx;
-  ManagedDocumentResult _mdr;
   std::unique_ptr<IndexIterator> _iter;
   size_t _size;
 };

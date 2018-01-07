@@ -176,21 +176,21 @@ AqlValue MMFilesAqlFunctions::Fulltext(
     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "FULLTEXT", 3, 4);
 
-  AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue collectionValue = ExtractFunctionParameterValue(parameters, 0);
   if (!collectionValue.isString()) {
     RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
   std::string const cname(collectionValue.slice().copyString());
 
-  AqlValue attribute = ExtractFunctionParameterValue(trx, parameters, 1);
+  AqlValue attribute = ExtractFunctionParameterValue(parameters, 1);
   if (!attribute.isString()) {
     RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
   std::string const attributeName(attribute.slice().copyString());
 
-  AqlValue queryValue = ExtractFunctionParameterValue(trx, parameters, 2);
+  AqlValue queryValue = ExtractFunctionParameterValue(parameters, 2);
   if (!queryValue.isString()) {
     RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
@@ -199,7 +199,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
 
   size_t maxResults = 0;  // 0 means "all results"
   if (parameters.size() >= 4) {
-    AqlValue limit = ExtractFunctionParameterValue(trx, parameters, 3);
+    AqlValue limit = ExtractFunctionParameterValue(parameters, 3);
     if (!limit.isNull(true) && !limit.isNumber()) {
       RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return AqlValue(AqlValueHintNull());
@@ -222,11 +222,6 @@ AqlValue MMFilesAqlFunctions::Fulltext(
     return AqlValue(AqlValueHintNull());
   }
 
-  // NOTE: The shared_ptr is protected by trx lock.
-  // It is save to use the raw pointer directly.
-  // We are NOT allowed to delete the index.
-  arangodb::MMFilesFulltextIndex* fulltextIndex = nullptr;
-
   // split requested attribute name on '.' character to create a proper
   // vector of AttributeNames
   std::vector<std::vector<arangodb::basics::AttributeName>> search;
@@ -234,8 +229,15 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   for (auto const& it : basics::StringUtils::split(attributeName, '.')) {
     search.back().emplace_back(it, false);
   }
+  
+  // NOTE: The shared_ptr is protected by trx lock.
+  // It is safe to use the raw pointer directly.
+  // We are NOT allowed to delete the index.
+  arangodb::MMFilesFulltextIndex* fulltextIndex = nullptr;
 
-  for (auto const& idx : collection->getIndexes()) {
+
+  auto indexes = collection->getIndexes();
+  for (auto const& idx : indexes) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
       // test if index is on the correct field
       if (arangodb::basics::AttributeName::isIdentical(idx->fields(), search,
@@ -291,14 +293,13 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   return AqlValue(builder.get());
 }
 
-
 /// @brief function NEAR
 AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
                                    transaction::Methods* trx,
                                    VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "NEAR", 3, 5);
 
-  AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue collectionValue = ExtractFunctionParameterValue(parameters, 0);
   if (!collectionValue.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
@@ -306,8 +307,8 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
 
   std::string const collectionName(collectionValue.slice().copyString());
 
-  AqlValue latitude = ExtractFunctionParameterValue(trx, parameters, 1);
-  AqlValue longitude = ExtractFunctionParameterValue(trx, parameters, 2);
+  AqlValue latitude = ExtractFunctionParameterValue(parameters, 1);
+  AqlValue longitude = ExtractFunctionParameterValue(parameters, 2);
 
   if (!latitude.isNumber() || !longitude.isNumber()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -318,7 +319,7 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
   int64_t limitValue = 100;
 
   if (parameters.size() > 3) {
-    AqlValue limit = ExtractFunctionParameterValue(trx, parameters, 3);
+    AqlValue limit = ExtractFunctionParameterValue(parameters, 3);
 
     if (limit.isNumber()) {
       limitValue = limit.toInt64(trx);
@@ -331,7 +332,7 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
   std::string attributeName;
   if (parameters.size() > 4) {
     // have a distance attribute
-    AqlValue distanceValue = ExtractFunctionParameterValue(trx, parameters, 4);
+    AqlValue distanceValue = ExtractFunctionParameterValue(parameters, 4);
 
     if (!distanceValue.isNull(true) && !distanceValue.isString()) {
       THROW_ARANGO_EXCEPTION_PARAMS(
@@ -361,7 +362,7 @@ AqlValue MMFilesAqlFunctions::Within(
     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "WITHIN", 4, 5);
 
-  AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue collectionValue = ExtractFunctionParameterValue(parameters, 0);
 
   if (!collectionValue.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -370,9 +371,9 @@ AqlValue MMFilesAqlFunctions::Within(
 
   std::string const collectionName(collectionValue.slice().copyString());
 
-  AqlValue latitudeValue = ExtractFunctionParameterValue(trx, parameters, 1);
-  AqlValue longitudeValue = ExtractFunctionParameterValue(trx, parameters, 2);
-  AqlValue radiusValue = ExtractFunctionParameterValue(trx, parameters, 3);
+  AqlValue latitudeValue = ExtractFunctionParameterValue(parameters, 1);
+  AqlValue longitudeValue = ExtractFunctionParameterValue(parameters, 2);
+  AqlValue radiusValue = ExtractFunctionParameterValue(parameters, 3);
 
   if (!latitudeValue.isNumber() || !longitudeValue.isNumber() || !radiusValue.isNumber()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -382,7 +383,7 @@ AqlValue MMFilesAqlFunctions::Within(
   std::string attributeName;
   if (parameters.size() > 4) {
     // have a distance attribute
-    AqlValue distanceValue = ExtractFunctionParameterValue(trx, parameters, 4);
+    AqlValue distanceValue = ExtractFunctionParameterValue(parameters, 4);
 
     if (!distanceValue.isNull(true) && !distanceValue.isString()) {
       THROW_ARANGO_EXCEPTION_PARAMS(

@@ -108,6 +108,9 @@ bool RocksDBTransactionCollection::isLocked(AccessMode::Type accessType,
 
 /// @brief check whether a collection is locked at all
 bool RocksDBTransactionCollection::isLocked() const {
+  if (_collection == nullptr) {
+    return false;
+  }
   if (CollectionLockState::_noLockHeaders != nullptr) {
     std::string collName(_collection->name());
     auto it = CollectionLockState::_noLockHeaders->find(collName);
@@ -411,7 +414,7 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type,
   TRI_ASSERT(physical != nullptr);
 
   LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;
-  if (!AccessMode::isExclusive(type)) {
+  if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be releasing the collection's RW lock in
     // write mode
     physical->unlockWrite();

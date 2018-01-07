@@ -139,15 +139,36 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
 }
 
 RocksDBEngine::~RocksDBEngine() {
-  // turn off RocksDBThrottle, and release our pointers to it
-  if (nullptr != _listener.get()) {
-    _listener->StopThread();
-    _listener.reset();
-    _options.listeners.clear();
-  } // if
+  shutdownRocksDBInstance(); 
+}
 
-  delete _db;
-  _db = nullptr;
+/// shuts down the RocksDB instance. this is called from unprepare
+/// and the dtor
+void RocksDBEngine::shutdownRocksDBInstance() noexcept {
+  if (_db) {
+    // turn off RocksDBThrottle, and release our pointers to it
+    if (nullptr != _listener.get()) {
+      _listener->StopThread();
+      _listener.reset();
+      _options.listeners.clear();
+    } // if
+    
+    for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
+      _db->DestroyColumnFamilyHandle(h);
+    }
+    
+    // now prune all obsolete WAL files
+    try {
+      determinePrunableWalFiles(0);
+      pruneWalFiles();
+    } catch (...) {
+      // this is allowed to go wrong on shutdown
+      // we must not throw an exception from here
+    }
+
+    delete _db;
+    _db = nullptr;
+  }
 }
 
 // inherited from ApplicationFeature
@@ -611,18 +632,7 @@ void RocksDBEngine::unprepare() {
     return;
   }
 
-  if (_db) {
-    for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
-      _db->DestroyColumnFamilyHandle(h);
-    }
-
-    // now prune all obsolete WAL files
-    determinePrunableWalFiles(0);
-    pruneWalFiles();
-
-    delete _db;
-    _db = nullptr;
-  }
+  shutdownRocksDBInstance();
 }
 
 TransactionManager* RocksDBEngine::createTransactionManager() {
@@ -1015,14 +1025,6 @@ std::string RocksDBEngine::createCollection(
       {"path", "statusString"}, /*translate cid*/ true,
       /*for persistence*/ true);
 
-  // should cause counter to be added to the manager
-  // in case the collection is created for the first time
-  VPackSlice objectId = builder.slice().get("objectId");
-  if (objectId.isInteger()) {
-    RocksDBSettingsManager::CounterAdjustment adj;
-    _settingsManager->updateCounter(objectId.getUInt(), adj);
-  }
-
   TRI_ASSERT(cid != 0);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
 
@@ -1402,6 +1404,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       auto const& f = files[current].get();
       if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
         if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
+          LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "RocksDB WAL file '" << f->PathName() << "' added to prunable list";
           _prunableWalFiles.emplace(f->PathName(),
                                     TRI_microtime() + _pruneWaitTime);
         }
