@@ -50,6 +50,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -119,7 +120,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
   try {
     context.installSegv();
     context.runStartupChecks();
-    
+
     std::string name = context.binaryName();
 
     auto options = std::make_shared<options::ProgramOptions>(
@@ -131,7 +132,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     std::vector<std::string> nonServerFeatures = {
         "Action",        "Agency",
         "Cluster",       "Daemon",
-        "FoxxQueues",    "GeneralServer", 
+        "FoxxQueues",    "GeneralServer",
         "Greetings",     "LoggerBufferFeature",
         "Server",        "SslServer",
         "Statistics",    "Supervisor"};
@@ -169,6 +170,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new LockfileFeature(&server));
     server.addFeature(new LoggerBufferFeature(&server));
     server.addFeature(new LoggerFeature(&server, true));
+    server.addFeature(new MaintenanceFeature(&server));
     server.addFeature(new MaxMapCountFeature(&server));
     server.addFeature(new NonceFeature(&server));
     server.addFeature(new PageSizeFeature(&server));
