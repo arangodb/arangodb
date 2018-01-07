@@ -574,10 +574,9 @@ Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cname,
       return res;
     }
     
-    ManagedDocumentResult mmdr;
     // We directly read the entire cursor. so batchsize == limit
     std::unique_ptr<OperationCursor> opCursor =
-    trx.indexScan(cname, transaction::Methods::CursorType::ALL, &mmdr, false);
+    trx.indexScan(cname, transaction::Methods::CursorType::ALL, false);
     if (!opCursor->hasMore()) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
