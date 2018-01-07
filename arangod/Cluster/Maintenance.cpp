@@ -26,29 +26,31 @@
 #include "Cluster/Maintenance.h"
 
 #include <algorithm>
-
-static std::string const PLANNED_DATABASES("Plan/Databases");
+#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace arangodb::maintenance;
 
-arangodb::Result diffPlanLocalForDatabases(
+
+/// @brief calculate difference between plan and local for for databases
+arangodb::Result arangodb::maintenance::diffPlanLocalForDatabases(
   Node const& plan, std::vector<std::string> const& local,
   std::vector<std::string>& toCreate, std::vector<std::string>& toDrop) {
 
   arangodb::Result result;
   
-  TRI_ASSERT(plan.has(PLANNED_DATABASES));
-  Node const& plannedDatabases = plan(PLANNED_DATABASES);
-  std::vector<std::string> planv;
-  for (auto const i : plannedDatabases.children()) {
+  std::vector<std::string> planv, localv = local;
+  for (auto const i : plan.children()) {
     planv.emplace_back(i.first);
   }
+  std::sort(planv.begin(), planv.end());
+  std::sort(localv.begin(), localv.end());
     
   std::vector<std::string> isect;
   std::set_intersection(
-    planv.begin(), planv.end(), local.begin(), local.end(), isect.begin());
+    planv.begin(), planv.end(), localv.begin(), localv.end(),
+    std::back_inserter(isect));
 
   // In plan but not in intersection => toCreate
   for (auto const i : planv) {
@@ -58,7 +60,7 @@ arangodb::Result diffPlanLocalForDatabases(
   }
 
   // Local but not in intersection => toDrop
-  for (auto const i : local) {
+  for (auto const i : localv) {
     if (std::find(isect.begin(), isect.end(), i) == isect.end()) {
       toDrop.emplace_back(i);
     }
@@ -69,7 +71,7 @@ arangodb::Result diffPlanLocalForDatabases(
 }
 
 /// @brief handle plan for local databases
-arangodb::Result executePlanForDatabases (
+arangodb::Result arangodb::maintenance::executePlanForDatabases (
   Node plan, Node current, std::vector<std::string> local) {
 
   arangodb::Result result;

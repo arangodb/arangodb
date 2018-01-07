@@ -267,6 +267,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterTraverser.cpp
   Cluster/CollectionLockState.cpp
   Cluster/CreateDatabase.cpp
+  Cluster/DropDatabase.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
