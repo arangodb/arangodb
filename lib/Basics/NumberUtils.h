@@ -198,18 +198,32 @@ inline T atoi_positive(char const* p, char const* e, bool& valid) noexcept {
 // false.
 // this function will not modify errno.
 template<typename T>
-inline T atoi(char const* p, char const* e, bool& valid) noexcept {
+inline typename std::enable_if<std::is_signed<T>::value, T>::type atoi(char const* p, char const* e, bool& valid) noexcept {
   if (TRI_UNLIKELY(p == e)) {
     valid = false;
     return T();
   }
 
   if (*p == '-') {
-    if (!std::is_signed<T>::value) {
-      valid = false;
-      return T();
-    }
     return atoi_negative<T>(++p, e, valid);
+  } 
+  if (TRI_UNLIKELY(*p == '+')) {
+    ++p;
+  }
+  
+  return atoi_positive<T>(p, e, valid);
+}
+
+template<typename T>
+inline typename std::enable_if<std::is_unsigned<T>::value, T>::type atoi(char const* p, char const* e, bool& valid) noexcept {
+  if (TRI_UNLIKELY(p == e)) {
+    valid = false;
+    return T();
+  }
+
+  if (*p == '-') {
+    valid = false;
+    return T();
   } 
   if (TRI_UNLIKELY(*p == '+')) {
     ++p;
