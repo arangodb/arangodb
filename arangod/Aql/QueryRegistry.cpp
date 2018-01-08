@@ -225,7 +225,7 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
   }
 
   TRI_ASSERT(queryInfo != nullptr);
-  TRI_ASSERT(queryInfo->_isOpen);
+  TRI_ASSERT(!queryInfo->_isOpen);
 
   // If the query was open, we can delete it right away, if not, we need
   // to register the transaction with the current context and adjust
