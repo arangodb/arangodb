@@ -66,6 +66,91 @@
 
 #include <thread>
 
+namespace {
+
+  template<typename T>
+  class RecursiveReadLocker {
+   public:
+    RecursiveReadLocker(
+        T& mutex,
+        std::atomic<std::thread::id>& owner,
+        char const* file,
+        int line
+    ): _locker(&mutex, arangodb::basics::LockerType::TRY, true, file, line) {
+      if (!_locker.isLocked() && owner.load() != std::this_thread::get_id()) {
+        _locker.lock();
+      }
+    }
+
+   private:
+    arangodb::basics::ReadLocker<T> _locker;
+  };
+
+  template<typename T>
+  class RecursiveWriteLocker {
+   public:
+    RecursiveWriteLocker(
+        T& mutex,
+        std::atomic<std::thread::id>& owner,
+        arangodb::basics::LockerType type,
+        bool aquire,
+        char const* file,
+        int line
+    ): _finally(noop), _locker(&mutex, type, false, file, line), _owner(owner) {
+      if (aquire) {
+        lock();
+      }
+    }
+
+    ~RecursiveWriteLocker() {
+      unlock();
+    }
+
+    bool isLocked() {
+      return _locker.isLocked();
+    }
+
+    void lock() {
+      // recursive locking of the same instance is not yet supported (create a new instance instead)
+      TRI_ASSERT(_finally != owned);
+
+      if (_locker.tryLock()) {
+        _owner.store(std::this_thread::get_id());
+        _finally = owned;
+      } else if (std::this_thread::get_id() != _owner.load()) { // not recursive
+        _locker.lock();
+        _owner.store(std::this_thread::get_id());
+        _finally = owned;
+      }
+    }
+
+    void unlock() {
+      _locker.unlock();
+      _finally(*this);
+    }
+
+   private:
+    void (*_finally)(RecursiveWriteLocker& locker);
+    arangodb::basics::WriteLocker<T> _locker;
+    std::atomic<std::thread::id>& _owner;
+
+    static void noop(RecursiveWriteLocker&) {}
+    static void owned(RecursiveWriteLocker& locker) {
+      static std::thread::id unowned;
+      locker._owner.store(unowned);
+      locker._finally = noop;
+    }
+  };
+
+  #define NAME__(name, line) name ## line
+  #define NAME_EXPANDER__(name, line) NAME__(name, line)
+  #define NAME(name) NAME_EXPANDER__(name, __LINE__)
+  #define RECURSIVE_READ_LOCKER(lock, owner) RecursiveReadLocker<typename std::decay<decltype (lock)>::type> NAME(RecursiveLocker)(lock, owner, __FILE__, __LINE__)
+  #define RECURSIVE_WRITE_LOCKER_NAMED(name, lock, owner, aquire) RecursiveWriteLocker<typename std::decay<decltype (lock)>::type> name(lock, owner, arangodb::basics::LockerType::BLOCKING, aquire, __FILE__, __LINE__)
+  #define RECURSIVE_WRITE_LOCKER(lock, owner) RECURSIVE_WRITE_LOCKER_NAMED(NAME(RecursiveLocker), lock, owner, true)
+
+}
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -151,7 +236,7 @@ void TRI_vocbase_t::registerCollection(
   std::string name = collection->name();
   TRI_voc_cid_t cid = collection->cid();
   {
-    CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock, doLock);
+    RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _collectionsLock, _collectionsLockWriteOwner, doLock);
 
     checkCollectionInvariants();
     TRI_DEFER(checkCollectionInvariants());
@@ -245,7 +330,7 @@ void TRI_vocbase_t::registerView(bool doLock,
   std::string const name = view->name();
   TRI_voc_cid_t const id = view->id();
   {
-    CONDITIONAL_WRITE_LOCKER(writeLocker, _viewsLock, doLock);
+    RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _viewsLock, _viewsLockWriteOwner, doLock);
 
     // check name
     auto it = _viewsByName.emplace(name, view);
@@ -325,7 +410,7 @@ bool TRI_vocbase_t::DropCollectionCallback(
   TRI_vocbase_t* vocbase = collection->vocbase();
 
   {
-    WRITE_LOCKER(writeLocker, vocbase->_collectionsLock);
+    RECURSIVE_WRITE_LOCKER(vocbase->_collectionsLock, vocbase->_collectionsLockWriteOwner);
 
     auto it = std::find(vocbase->_collections.begin(),
                         vocbase->_collections.end(), collection);
@@ -358,7 +443,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
       std::make_unique<arangodb::LogicalCollection>(this, parameters, false);
   TRI_ASSERT(collection != nullptr);
 
-  WRITE_LOCKER(writeLocker, _collectionsLock);
+  RECURSIVE_WRITE_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
 
   // reserve room for the new collection
   _collections.reserve(_collections.size() + 1);
@@ -565,7 +650,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   double startTime = TRI_microtime();
 
   // do not acquire these locks instantly
-  CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock,
+  RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _collectionsLock, _collectionsLockWriteOwner,
                            basics::ConditionalLocking::DoNotLock);
   CONDITIONAL_WRITE_LOCKER(locker, collection->_lock,
                            basics::ConditionalLocking::DoNotLock);
@@ -718,7 +803,7 @@ void TRI_vocbase_t::shutdown() {
   std::vector<arangodb::LogicalCollection*> collections;
 
   {
-    READ_LOCKER(readLocker, _collectionsLock);
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
     collections = _collections;
   }
 
@@ -741,7 +826,7 @@ void TRI_vocbase_t::shutdown() {
   setState(TRI_vocbase_t::State::SHUTDOWN_CLEANUP);
 
   {
-    WRITE_LOCKER(readLocker, _collectionsLock);
+    RECURSIVE_WRITE_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
     
     checkCollectionInvariants();
 
@@ -770,7 +855,7 @@ void TRI_vocbase_t::shutdown() {
 std::vector<std::string> TRI_vocbase_t::collectionNames() {
   std::vector<std::string> result;
 
-  READ_LOCKER(readLocker, _collectionsLock);
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
 
   result.reserve(_collectionsByName.size());
   for (auto const& it : _collectionsByName) {
@@ -799,7 +884,7 @@ void TRI_vocbase_t::inventory(
   // copy collection pointers into vector so we can work with the copy without
   // the global lock
   {
-    READ_LOCKER(readLocker, _collectionsLock);
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
     collections = _collections;
   }
   
@@ -863,7 +948,7 @@ void TRI_vocbase_t::inventory(
 /// the name is fetched under a lock to make this thread-safe.
 /// returns empty string if the collection does not exist.
 std::string TRI_vocbase_t::collectionName(TRI_voc_cid_t id) {
-  READ_LOCKER(readLocker, _collectionsLock);
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
 
   auto it = _collectionsById.find(id);
 
@@ -877,7 +962,7 @@ std::string TRI_vocbase_t::collectionName(TRI_voc_cid_t id) {
 /// @brief looks up a collection by uuid
 LogicalCollection* TRI_vocbase_t::lookupCollectionByUuid(std::string const& uuid) const {
   // otherwise we'll look up the collection by name
-  READ_LOCKER(readLocker, _collectionsLock);
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
 
   auto it = _collectionsByUuid.find(uuid);
   if (it == _collectionsByUuid.end()) {
@@ -899,7 +984,7 @@ LogicalCollection* TRI_vocbase_t::lookupCollection(std::string const& name) cons
     return lookupCollection(StringUtils::uint64(name));
   }
   
-  READ_LOCKER(readLocker, _collectionsLock);
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
 
   // otherwise we'll look up the collection by name
   auto it = _collectionsByName.find(name);
@@ -947,7 +1032,7 @@ LogicalCollection* TRI_vocbase_t::lookupCollectionNoLock(
 
 /// @brief looks up a collection by identifier
 LogicalCollection* TRI_vocbase_t::lookupCollection(TRI_voc_cid_t id) const {
-  READ_LOCKER(readLocker, _collectionsLock);
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
 
   auto it = _collectionsById.find(id);
   if (it == _collectionsById.end()) {
@@ -971,7 +1056,7 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
   }
 
   // otherwise we'll look up the view by name
-  READ_LOCKER(readLocker, _viewsLock);
+  RECURSIVE_READ_LOCKER(_viewsLock, _viewsLockWriteOwner);
 
   auto it = _viewsByName.find(name);
 
@@ -983,7 +1068,7 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
 
 /// @brief looks up a view by identifier
 std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(TRI_voc_cid_t id) {
-  READ_LOCKER(readLocker, _viewsLock);
+  RECURSIVE_READ_LOCKER(_viewsLock, _viewsLockWriteOwner);
 
   auto it = _viewsById.find(id);
 
@@ -1161,7 +1246,7 @@ int TRI_vocbase_t::renameView(std::shared_ptr<arangodb::LogicalView> view,
 
   READ_LOCKER(readLocker, _inventoryLock);
 
-  WRITE_LOCKER(writeLocker, _viewsLock);
+  RECURSIVE_WRITE_LOCKER(_viewsLock, _viewsLockWriteOwner);
 
   // Check for duplicate name
   auto it = _viewsByName.find(newName);
@@ -1228,7 +1313,7 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
 
   READ_LOCKER(readLocker, _inventoryLock);
 
-  CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock, false);
+  RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _collectionsLock, _collectionsLockWriteOwner, false);
   CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, false);
 
   while (true) {
@@ -1315,7 +1400,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::useCollection(
   // check that we have an existing name
   arangodb::LogicalCollection* collection = nullptr;
   {
-    READ_LOCKER(readLocker, _collectionsLock);
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
 
     auto it = _collectionsById.find(cid);
 
@@ -1334,7 +1419,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::useCollection(
   arangodb::LogicalCollection* collection = nullptr;
 
   {
-    READ_LOCKER(readLocker, _collectionsLock);
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
 
     auto it = _collectionsByName.find(name);
 
@@ -1353,7 +1438,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::useCollectionByUuid(
   arangodb::LogicalCollection* collection = nullptr;
 
   {
-    READ_LOCKER(readLocker, _collectionsLock);
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
 
     auto it = _collectionsByUuid.find(uuid);
 
@@ -1413,7 +1498,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
       std::make_shared<arangodb::LogicalView>(this, parameters);
   TRI_ASSERT(view != nullptr);
 
-  WRITE_LOCKER(writeLocker, _viewsLock);
+  RECURSIVE_WRITE_LOCKER(_viewsLock, _viewsLockWriteOwner);
 
   auto it = _viewsByName.find(name);
 
@@ -1491,7 +1576,7 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
   READ_LOCKER(readLocker, _inventoryLock);
 
   // do not acquire these locks instantly
-  CONDITIONAL_WRITE_LOCKER(writeLocker, _viewsLock,
+  RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _viewsLock, _viewsLockWriteOwner,
                            basics::ConditionalLocking::DoNotLock);
   CONDITIONAL_WRITE_LOCKER(locker, view->_lock,
                            basics::ConditionalLocking::DoNotLock);
@@ -1699,7 +1784,7 @@ std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
   std::vector<std::shared_ptr<arangodb::LogicalView>> views;
 
   {
-    READ_LOCKER(readLocker, _viewsLock);
+    RECURSIVE_READ_LOCKER(_viewsLock, _viewsLockWriteOwner);
     views.reserve(_viewsById.size());
     for (auto const& it : _viewsById) {
       views.emplace_back(it.second);
@@ -1710,7 +1795,7 @@ std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
 
 void TRI_vocbase_t::processCollections(
     std::function<void(LogicalCollection*)> const& cb, bool includeDeleted) {
-  READ_LOCKER(readLocker, _collectionsLock);
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
 
   if (includeDeleted) {
     for (auto const& it : _collections) {
@@ -1728,7 +1813,7 @@ std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections(
   std::vector<arangodb::LogicalCollection*> collections;
 
   {
-    READ_LOCKER(readLocker, _collectionsLock);
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
     if (includeDeleted) {
       // return deleted collections as well. the cleanup thread needs them
       collections.reserve(_collections.size());
@@ -1846,3 +1931,7 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld,
   isOld = false;
   return HybridLogicalClock::decodeTimeStamp(p, len);
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
