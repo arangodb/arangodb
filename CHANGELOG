@@ -1,6 +1,8 @@
 devel
 -----
 
+* UI: optimized error messages for invalid query bind parameter
+
 * issue #3504: added option `--force-same-database` for arangorestore
 
   with this option set to true, it is possible to make any arangorestore attempt
