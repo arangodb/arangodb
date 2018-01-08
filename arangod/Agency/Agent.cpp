@@ -394,7 +394,7 @@ void Agent::sendAppendEntriesRPC() {
       auto startTime = steady_clock::now();
       SteadyTimePoint earliestPackage;
       SteadyTimePoint lastAcked;
-      
+
       {
         t = this->term();
         MUTEX_LOCKER(tiLocker, _tiLock);
@@ -452,7 +452,7 @@ void Agent::sendAppendEntriesRPC() {
           _lastSent[followerId].time_since_epoch().count() != 0) {
         LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Note: sent out last AppendEntriesRPC "
-          << "to follower " << followerId << " more than minPing ago: " 
+          << "to follower " << followerId << " more than minPing ago: "
           << m.count() << " lastAcked: "
           << duration_cast<duration<double>>(lastAcked.time_since_epoch()).count();
       }
@@ -539,7 +539,7 @@ void Agent::sendAppendEntriesRPC() {
         resign();
         return;
       }
-      
+
       // Postpone sending the next message for 30 seconds or until an
       // error or successful result occurs.
       earliestPackage = steady_clock::now() + std::chrono::seconds(30);
@@ -813,7 +813,7 @@ bool Agent::challengeLeadership() {
 
 /// Get last acknowledged responses on leader
 query_t Agent::lastAckedAgo() const {
-  
+
   std::unordered_map<std::string, SteadyTimePoint> lastAcked;
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
@@ -1251,7 +1251,7 @@ void Agent::beginShutdown() {
 
 
 bool Agent::prepareLead() {
-  
+
   {
     // Erase _earliestPackage, which allows for immediate sending of
     // AppendEntriesRPC when we become a leader.
@@ -1529,7 +1529,14 @@ arangodb::consensus::index_t Agent::readDB(Node& node) const {
   return _commitIndex;
 }
 
-void Agent::executeLocked(std::function<void()> const& cb) {
+void Agent::executeLockedRead(std::function<void()> const& cb) {
+  _tiLock.assertNotLockedByCurrentThread();
+  MUTEX_LOCKER(ioLocker, _ioLock);
+  READ_LOCKER(oLocker, _outputLock);
+  cb();
+}
+
+void Agent::executeLockedWrite(std::function<void()> const& cb) {
   _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(ioLocker, _ioLock);
   WRITE_LOCKER(oLocker, _outputLock);

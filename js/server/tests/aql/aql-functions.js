@@ -693,6 +693,64 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN UNIQUE({ })"); 
     },
 
+    testSorted : function () {
+      var tests = [
+        [ [ null, { b: 2 }, { a: 1 }, 1, "1", [], 2, "2", 3, "3", 0, false, -1, true, [2], [1] ], [ null, false, true, -1, 0, 1, 2, 3, "1", "2", "3", [], [1], [2], { b: 2 }, { a: 1 } ] ],
+        [ [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
+        [ [ 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1 ], [ -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
+        [ [ 1, 10, 100, 1000, 99, 2, 7, 8, 13, 4, 242, 123 ], [ 1, 2, 4, 7, 8, 10, 13, 99, 100, 123, 242, 1000 ] ],
+        [ [ 13, 1000, 99, 7, 8, 1, 10, 4, 242, 100, 123, 2 ], [ 1, 2, 4, 7, 8, 10, 13, 99, 100, 123, 242, 1000 ] ],
+        [ [ "foo", "bar", "foo", "food", "baz", "bark", "foo", "sauron", "bar" ], [ "bar", "bar", "bark", "baz", "foo", "foo", "foo", "food", "sauron" ] ],
+        [ [ 1, 2, 1, 2, 3, 4, -1, 2, -1, -2, 0 ], [ -2, -1, -1, 0, 1, 1, 2, 2, 2, 3, 4 ] ],
+        [ [ true, true, false, null, false, true, null ], [ null, null, false, false, true, true, true ] ],
+        [ [ -3.5, 12.4777, 12.477777, 12.436, 12.46777, -12.4777, 10000, 10000.1, 9999.9999, 9999.999 ], [ -12.4777, -3.5, 12.436, 12.46777, 12.4777, 12.477777, 9999.999, 9999.9999, 10000, 10000.1 ] ],
+      ];
+
+      tests.forEach(function(test) {
+        var actual = getQueryResults("RETURN NOOPT(V8(SORTED(" + JSON.stringify(test[0]) + ")))");
+        assertEqual([ test[1] ], actual);
+        
+        actual = getQueryResults("RETURN V8(SORTED(" + JSON.stringify(test[0]) + "))");
+        assertEqual([ test[1] ], actual);
+        
+        actual = getQueryResults("RETURN NOOPT(SORTED(" + JSON.stringify(test[0]) + "))");
+        assertEqual([ test[1] ], actual);
+        
+        actual = getQueryResults("RETURN SORTED(" + JSON.stringify(test[0]) + ")");
+        assertEqual([ test[1] ], actual);
+      });
+    },
+    
+    testSortedUnique : function () {
+      var tests = [
+        [ [ null, { b: 2 }, { a: 1 }, 1, "1", [], 2, "2", 3, "3", 0, false, -1, true, [2], [1] ], [ null, false, true, -1, 0, 1, 2, 3, "1", "2", "3", [], [1], [2], { b: 2 }, { a: 1 } ] ],
+        [ [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
+        [ [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 ], [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
+        [ [ 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1 ], [ -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
+        [ [ 1, 10, 100, 1000, 99, 2, 7, 8, 13, 4, 242, 123 ], [ 1, 2, 4, 7, 8, 10, 13, 99, 100, 123, 242, 1000 ] ],
+        [ [ 1, 4, 10, 100, 99, 1000, 99, 2, 1, 7, 8, 13, 4, 10, 2, 242, 123, 1000 ], [ 1, 2, 4, 7, 8, 10, 13, 99, 100, 123, 242, 1000 ] ],
+        [ [ 13, 1000, 99, 7, 8, 1, 10, 4, 242, 100, 123, 2 ], [ 1, 2, 4, 7, 8, 10, 13, 99, 100, 123, 242, 1000 ] ],
+        [ [ "foo", "bar", "foo", "food", "baz", "bark", "foo", "sauron", "bar" ], [ "bar", "bark", "baz", "foo", "food", "sauron" ] ],
+        [ [ 1, 2, 1, 2, 3, 4, -1, 2, -1, -2, 0 ], [ -2, -1, 0, 1, 2, 3, 4 ] ],
+        [ [ true, true, false, null, false, true, null ], [ null, false, true ] ],
+        [ [ -3.5, 12.4777, 12.477777, 12.436, 12.46777, 1, 1.0, -12.4777, 10000, 10000.1, 9999.9999, 9999.999, 10000.0 ], [ -12.4777, -3.5, 1, 12.436, 12.46777, 12.4777, 12.477777, 9999.999, 9999.9999, 10000, 10000.1 ] ],
+      ];
+
+      tests.forEach(function(test) {
+        var actual = getQueryResults("RETURN NOOPT(V8(SORTED_UNIQUE(" + JSON.stringify(test[0]) + ")))");
+        assertEqual([ test[1] ], actual);
+        
+        actual = getQueryResults("RETURN V8(SORTED_UNIQUE(" + JSON.stringify(test[0]) + "))");
+        assertEqual([ test[1] ], actual);
+        
+        actual = getQueryResults("RETURN NOOPT(SORTED_UNIQUE(" + JSON.stringify(test[0]) + "))");
+        assertEqual([ test[1] ], actual);
+        
+        actual = getQueryResults("RETURN SORTED_UNIQUE(" + JSON.stringify(test[0]) + ")");
+        assertEqual([ test[1] ], actual);
+      });
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test slice function
 ////////////////////////////////////////////////////////////////////////////////

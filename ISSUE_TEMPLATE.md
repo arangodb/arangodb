@@ -4,6 +4,7 @@ I'm using the latest ArangoDB of the respective release series:
 - [ ] 3.0
 - [ ] 3.1
 - [ ] 3.2
+- [ ] 3.3
 - [ ] self-compiled devel branch
 
 Mode:

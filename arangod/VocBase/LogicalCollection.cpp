@@ -405,13 +405,12 @@ void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
 }
 
 std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) {
-  return _physical->getAllIterator(trx, mdr, reverse);
+    transaction::Methods* trx, bool reverse) {
+  return _physical->getAllIterator(trx, reverse);
 }
 
-std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr) {
-  return _physical->getAnyIterator(trx, mdr);
+std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(transaction::Methods* trx) {
+  return _physical->getAnyIterator(trx);
 }
 
 void LogicalCollection::invokeOnAllElements(
@@ -827,7 +826,8 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
 
 void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                                         bool useSystem,
-                                                        bool isReady) const {
+                                                        bool isReady,
+                                                        bool allInSync) const {
   if (_isSystem && !useSystem) {
     return;
   }
@@ -856,6 +856,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   getIndexesVPack(result, false, false);
   result.add("planVersion", VPackValue(getPlanVersion()));
   result.add("isReady", VPackValue(isReady));
+  result.add("allInSync", VPackValue(allInSync));
   result.close();  // CollectionInfo
 }
 
