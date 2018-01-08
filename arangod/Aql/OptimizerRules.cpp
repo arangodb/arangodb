@@ -4606,6 +4606,9 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   plan->registerNode(indexNode);
   condition.release();
   plan->replaceNode(elnode, indexNode);
+  // mark removable, because it will not throw for most params
+  // FIXME: technically we need to validate the query parameter
+  calcNode->canRemoveIfThrows(true);
 
   if (limitArg != nullptr && limitNode == nullptr) { // add LIMIT
     size_t limit = static_cast<size_t>(limitArg->getIntValue());
@@ -4620,6 +4623,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
     }
     limitNode->addDependency(indexNode);
   }
+  
   return true;
 }
 

@@ -178,22 +178,22 @@ AqlValue MMFilesAqlFunctions::Fulltext(
 
   AqlValue collectionValue = ExtractFunctionParameterValue(parameters, 0);
   if (!collectionValue.isString()) {
-    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(AqlValueHintNull());
+    THROW_ARANGO_EXCEPTION_PARAMS(
+                                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
   std::string const cname(collectionValue.slice().copyString());
 
   AqlValue attribute = ExtractFunctionParameterValue(parameters, 1);
   if (!attribute.isString()) {
-    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(AqlValueHintNull());
+    THROW_ARANGO_EXCEPTION_PARAMS(
+                                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
   std::string const attributeName(attribute.slice().copyString());
 
   AqlValue queryValue = ExtractFunctionParameterValue(parameters, 2);
   if (!queryValue.isString()) {
-    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(AqlValueHintNull());
+    THROW_ARANGO_EXCEPTION_PARAMS(
+                                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
   std::string const queryString = queryValue.slice().copyString();
 
@@ -201,8 +201,8 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   if (parameters.size() >= 4) {
     AqlValue limit = ExtractFunctionParameterValue(parameters, 3);
     if (!limit.isNull(true) && !limit.isNumber()) {
-      RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-      return AqlValue(AqlValueHintNull());
+      THROW_ARANGO_EXCEPTION_PARAMS(
+                                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
     } 
     if (limit.isNumber()) {
       int64_t value = limit.toInt64(trx);
@@ -218,8 +218,8 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   trx->addCollectionAtRuntime(cid, cname);
   LogicalCollection* collection = trx->documentCollection(cid);
   if (collection == nullptr) {
-    RegisterWarning(query, "FULLTEXT", TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    return AqlValue(AqlValueHintNull());
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                  "", cname.c_str());
   }
 
   // split requested attribute name on '.' character to create a proper
@@ -251,8 +251,8 @@ AqlValue MMFilesAqlFunctions::Fulltext(
 
   if (fulltextIndex == nullptr) {
     // fiddle collection name into error message
-    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING);
-    return AqlValue(AqlValueHintNull());
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING,
+                                  cname.c_str());
   }
 
   trx->pinData(cid);
@@ -261,8 +261,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
       TRI_CreateQueryMMFilesFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS, maxResults);
 
   if (ft == nullptr) {
-    RegisterWarning(query, "FULLTEXT", TRI_ERROR_OUT_OF_MEMORY);
-    return AqlValue(AqlValueHintNull());
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   bool isSubstringQuery = false;
@@ -271,8 +270,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeQueryMMFilesFulltextIndex(ft);
-    RegisterWarning(query, "FULLTEXT", res);
-    return AqlValue(AqlValueHintNull());
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   // note: the following call will free "ft"!
@@ -412,7 +410,7 @@ void MMFilesAqlFunctions::registerResources() {
   TRI_ASSERT(functions != nullptr);
 
   // fulltext functions
-  functions->add({"FULLTEXT", ".h,.,.|.", false, false,
+  functions->add({"FULLTEXT", ".h,.,.|.", false, true,
                  false, true, &MMFilesAqlFunctions::Fulltext,
                  NotInCoordinator});
   functions->add({"NEAR", ".h,.,.|.,.", false, true, false,
