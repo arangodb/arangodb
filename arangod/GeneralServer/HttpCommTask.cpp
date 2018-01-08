@@ -215,15 +215,14 @@ void HttpCommTask::addResponse(GeneralResponse* baseResponse,
 
 // reads data from the socket
 // caller must hold the _lock
-std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
-  Result rv;
+bool HttpCommTask::processRead(double startTime) {
   _lock.assertLockedByCurrentThread();
   
   cancelKeepAlive();
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
 
   if (_requestPending) {
-    return {false, rv};
+    return false;
   }
 
   RequestStatistics* stat = nullptr;
@@ -235,7 +234,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
     char const* etr = _readBuffer.end();
 
     if (ptr == etr) {
-      return {false, rv};
+      return false;
     }
 
     // starting a new request
@@ -258,7 +257,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
 
     // read buffer contents are way too small. we can exit here directly
     if (ptr >= end) {
-      return {false, rv};
+      return false;
     }
 
     // check for the end of the request
@@ -283,7 +282,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
                         1);  // ID does not matter for http (http default is 1)
 
       _closeRequested = true;
-      return {false, rv};
+      return false;
     }
 
     if (_readBuffer.length() >= 11 &&
@@ -296,7 +295,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
       if (!abandon()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "task is already abandoned");
       }
-      
+
       std::shared_ptr<GeneralCommTask> commTask = std::make_shared<VstCommTask>(
           _loop, _server, std::move(_peer), std::move(_connectionInfo),
           GeneralServerFeature::keepAliveTimeout(), 
@@ -308,7 +307,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
         commTask->processAll();
       }
       commTask->start();
-      return {false, rv};
+      return false;
     }
 
     // header is complete
@@ -321,7 +320,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
       if (slen == 11 && std::memcmp(sptr, "VST/1.1\r\n\r\n", 11) == 0) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "got VST request on HTTP port";
         _closeRequested = true;
-        return {false, rv};
+        return false;
       }
 
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "HTTP READ FOR " << (void*)this << ": "
@@ -344,7 +343,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
         handleSimpleError(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED, *_incompleteRequest, 1);
 
         _closeRequested = true;
-        return {false, rv};
+        return false;
       }
 
       // check max URL length
@@ -354,7 +353,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
         handleSimpleError(rest::ResponseCode::REQUEST_URI_TOO_LONG, *_incompleteRequest, 1);
 
         _closeRequested = true;
-        return {false, rv};
+        return false;
       }
 
       // update the connection information, i. e. client and server addresses
@@ -432,7 +431,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
           if (!checkContentLength(_incompleteRequest.get(),
                                   expectContentLength)) {
             _closeRequested = true;
-            return {false, rv};
+            return false;
           }
 
           if (_bodyLength == 0) {
@@ -456,7 +455,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
           handleSimpleError(rest::ResponseCode::METHOD_NOT_ALLOWED, *_incompleteRequest, 1);
 
           _closeRequested = true;
-          return {false, rv};
+          return false;
         }
       }
 
@@ -489,7 +488,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
   if (_readRequestBody) {
     if (_readBuffer.length() - _bodyPosition < _bodyLength) {
       // let client send more
-      return {false, rv};
+      return false;
     }
 
     bool handled = false;
@@ -502,7 +501,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
                                          _bodyLength, uncompressed)) {
           handleSimpleError(rest::ResponseCode::BAD, *_incompleteRequest, TRI_ERROR_BAD_PARAMETER,
                             "gzip decoding error", 1);
-          return {false, rv};
+          return false;
         }
         _incompleteRequest->setBody(uncompressed.c_str(), uncompressed.size());
         handled = true;
@@ -512,7 +511,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
                                       _bodyLength, uncompressed)) {
           handleSimpleError(rest::ResponseCode::BAD, *_incompleteRequest, TRI_ERROR_BAD_PARAMETER,
                             "gzip deflate error", 1);
-          return {false, rv};
+          return false;
         }
         _incompleteRequest->setBody(uncompressed.c_str(), uncompressed.size());
         handled = true;
@@ -533,7 +532,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
   }
 
   if (!handleRequest) {
-    return {false, rv};
+    return false;
   }
 
   auto bytes = _bodyPosition - _startPosition + _bodyLength;
@@ -607,7 +606,7 @@ std::pair<bool, Result> HttpCommTask::processRead(double startTime) {
   }
 
   _incompleteRequest.reset(nullptr);
-  return {true, rv};
+  return true;
 }
 
 void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {

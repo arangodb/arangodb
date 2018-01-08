@@ -480,16 +480,19 @@ bool SocketTask::processAll() {
   _lock.assertLockedByCurrentThread();
 
   double startTime = StatisticsFeature::time();
+  Result res;
+  bool rv = true;
+  while (rv) {
+    try {
+      rv = processRead(startTime);
+    } CATCH_TO_RESULT(res, TRI_ERROR_INTERNAL)
 
-  std::pair<bool, Result> rv{true,TRI_ERROR_NO_ERROR};
-  while (rv.first) {
-    rv = processRead(startTime);
     if (_abandoned) {
       return false;
     }
 
-    if(rv.second.fail()){
-      LOG_TOPIC(ERR, Logger::COMMUNICATION) << rv.second.errorMessage();
+    if(res.fail()){
+      LOG_TOPIC(ERR, Logger::COMMUNICATION) << res.errorMessage();
       _closeRequested = true;
       break;
     }

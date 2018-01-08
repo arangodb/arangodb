@@ -64,7 +64,7 @@ class SocketTask : virtual public Task {
 
  protected:
   // caller will hold the _lock
-  virtual std::pair<bool, Result> processRead(double startTime) = 0;
+  virtual bool processRead(double startTime) = 0;
   virtual void compactify() {}
 
   // This function is used during the protocol switch from http

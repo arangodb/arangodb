@@ -30,7 +30,7 @@ class HttpCommTask final : public GeneralCommTask {
                    RequestStatistics* stat) override;
 
  private:
-  std::pair<bool, Result> processRead(double startTime) override;
+  bool processRead(double startTime) override;
   void compactify() override;
 
   std::unique_ptr<GeneralResponse> createResponse(

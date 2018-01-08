@@ -294,142 +294,138 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
 }
 
 // reads data from the socket
-std::pair<bool,Result> VstCommTask::processRead(double startTime) {
-  Result rv;
-  try {
-    _lock.assertLockedByCurrentThread();
+bool VstCommTask::processRead(double startTime) {
+  _lock.assertLockedByCurrentThread();
 
-    auto& prv = _processReadVariables;
+  auto& prv = _processReadVariables;
 
-    auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;
-    if (chunkBegin == nullptr || !isChunkComplete(chunkBegin)) {
-      return {false,rv};  // no data or incomplete
+  auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;
+  if (chunkBegin == nullptr || !isChunkComplete(chunkBegin)) {
+    return false;  // no data or incomplete
+  }
+
+  ChunkHeader chunkHeader = readChunkHeader();
+  auto chunkEnd = chunkBegin + chunkHeader._chunkLength;
+  auto vpackBegin = chunkBegin + chunkHeader._headerLength;
+  bool doExecute = false;
+  bool read_maybe_only_part_of_buffer = false;
+  VstInputMessage message;  // filled in CASE 1 or CASE 2b
+
+  if (chunkHeader._isFirst) {
+    // create agent for new messages
+    RequestStatistics* stat = acquireStatistics(chunkHeader._messageID);
+    RequestStatistics::SET_READ_START(stat, startTime);
+  }
+
+  if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
+    // CASE 1: message is in one chunk
+    if (!getMessageFromSingleChunk(chunkHeader, message, doExecute,
+                                   vpackBegin, chunkEnd)) {
+      return false;
+    }
+  } else {
+    if (!getMessageFromMultiChunks(chunkHeader, message, doExecute,
+                                   vpackBegin, chunkEnd)) {
+      return false;
+    }
+  }
+
+  read_maybe_only_part_of_buffer = true;
+  prv._currentChunkLength = 0;  // we have read a complete chunk
+  prv._readBufferOffset = std::distance(_readBuffer.begin(), chunkEnd);
+
+  // clean buffer up to length of chunk
+  if (prv._readBufferOffset > prv._cleanupLength) {
+    _readBuffer.move_front(prv._readBufferOffset);
+    prv._readBufferOffset = 0;  // the positon will be set at the
+                                // begin of this function
+  }
+
+  if (doExecute) {
+    VPackSlice header = message.header();
+
+    LOG_TOPIC(DEBUG, Logger::REQUESTS)
+        << "\"vst-request-header\",\"" << (void*)this << "/"
+        << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
+
+    LOG_TOPIC(DEBUG, Logger::REQUESTS)
+        << "\"vst-request-payload\",\"" << (void*)this << "/"
+        << chunkHeader._messageID << "\"," << message.payload().toJson()
+        << "\"";
+
+    // get type of request
+    int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
+    try {
+      type = header.at(1).getNumber<int>();
+    } catch (std::exception const& e) {
+      VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0);
+      handleSimpleError(rest::ResponseCode::BAD, fakeRequest, chunkHeader._messageID);
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "VstCommTask: "
+          << "VPack Validation failed: " << e.what();
+      closeTask(rest::ResponseCode::BAD);
+      return false;
     }
 
-    ChunkHeader chunkHeader = readChunkHeader();
-    auto chunkEnd = chunkBegin + chunkHeader._chunkLength;
-    auto vpackBegin = chunkBegin + chunkHeader._headerLength;
-    bool doExecute = false;
-    bool read_maybe_only_part_of_buffer = false;
-    VstInputMessage message;  // filled in CASE 1 or CASE 2b
-
-    if (chunkHeader._isFirst) {
-      // create agent for new messages
-      RequestStatistics* stat = acquireStatistics(chunkHeader._messageID);
-      RequestStatistics::SET_READ_START(stat, startTime);
-    }
-
-    if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
-      // CASE 1: message is in one chunk
-      if (!getMessageFromSingleChunk(chunkHeader, message, doExecute,
-                                     vpackBegin, chunkEnd)) {
-        return {false, rv};
-      }
+    // handle request types
+    if (type == 1000) {
+      handleAuthHeader(header, chunkHeader._messageID);
     } else {
-      if (!getMessageFromMultiChunks(chunkHeader, message, doExecute,
-                                     vpackBegin, chunkEnd)) {
-        return {false, rv};
-      }
-    }
-
-    read_maybe_only_part_of_buffer = true;
-    prv._currentChunkLength = 0;  // we have read a complete chunk
-    prv._readBufferOffset = std::distance(_readBuffer.begin(), chunkEnd);
-
-    // clean buffer up to length of chunk
-    if (prv._readBufferOffset > prv._cleanupLength) {
-      _readBuffer.move_front(prv._readBufferOffset);
-      prv._readBufferOffset = 0;  // the positon will be set at the
-                                  // begin of this function
-    }
-
-    if (doExecute) {
-      VPackSlice header = message.header();
-
-      LOG_TOPIC(DEBUG, Logger::REQUESTS)
-          << "\"vst-request-header\",\"" << (void*)this << "/"
-          << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
-
-      LOG_TOPIC(DEBUG, Logger::REQUESTS)
-          << "\"vst-request-payload\",\"" << (void*)this << "/"
-          << chunkHeader._messageID << "\"," << message.payload().toJson()
-          << "\"";
-
-      // get type of request
-      int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
-      try {
-        type = header.at(1).getNumber<int>();
-      } catch (std::exception const& e) {
-        VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0);
-        handleSimpleError(rest::ResponseCode::BAD, fakeRequest, chunkHeader._messageID);
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-            << "VstCommTask: "
-            << "VPack Validation failed: " << e.what();
-        closeTask(rest::ResponseCode::BAD);
-        return {false, rv};
-      }
-
-      // handle request types
-      if (type == 1000) {
-        handleAuthHeader(header, chunkHeader._messageID);
+      // the handler will take ownership of this pointer
+      std::unique_ptr<VstRequest> request(new VstRequest(
+          _connectionInfo, std::move(message), chunkHeader._messageID));
+      request->setAuthorized(_authorized);
+      request->setUser(_authenticatedUser);
+      bool res = GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
+      if (!res || request->requestContext() == nullptr) {
+        handleSimpleError(rest::ResponseCode::NOT_FOUND, *request,
+                          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                          TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
+                          chunkHeader._messageID);
       } else {
-        // the handler will take ownership of this pointer
-        std::unique_ptr<VstRequest> request(new VstRequest(
-            _connectionInfo, std::move(message), chunkHeader._messageID));
-        request->setAuthorized(_authorized);
-        request->setUser(_authenticatedUser);
-        bool res = GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
-        if (!res || request->requestContext() == nullptr) {
-          handleSimpleError(rest::ResponseCode::NOT_FOUND, *request,
-                            TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                            TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
+        request->setClientTaskId(_taskId);
+
+        // will determine if the user can access this path.
+        // checks db permissions and contains exceptions for the
+        // users API to allow logins
+        rest::ResponseCode code = GeneralCommTask::canAccessPath(request.get());
+        if (code != rest::ResponseCode::OK) {
+          events::NotAuthorized(request.get());
+          handleSimpleError(rest::ResponseCode::UNAUTHORIZED, *request, TRI_ERROR_FORBIDDEN,
+                            "not authorized to execute this request",
                             chunkHeader._messageID);
         } else {
-          request->setClientTaskId(_taskId);
-
-          // will determine if the user can access this path.
-          // checks db permissions and contains exceptions for the
-          // users API to allow logins
-          rest::ResponseCode code = GeneralCommTask::canAccessPath(request.get());
-          if (code != rest::ResponseCode::OK) {
-            events::NotAuthorized(request.get());
-            handleSimpleError(rest::ResponseCode::UNAUTHORIZED, *request, TRI_ERROR_FORBIDDEN,
-                              "not authorized to execute this request",
+          // now that we are authorized we do the request
+          // make sure we have a database
+          if (request->requestContext() == nullptr) {
+            handleSimpleError(
+                              rest::ResponseCode::NOT_FOUND, *request,
+                              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                              TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
                               chunkHeader._messageID);
           } else {
-            // now that we are authorized we do the request
-            // make sure we have a database
-            if (request->requestContext() == nullptr) {
-              handleSimpleError(
-                                rest::ResponseCode::NOT_FOUND, *request,
-                                TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                                TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
-                                chunkHeader._messageID);
-            } else {
-              request->setClientTaskId(_taskId);
+            request->setClientTaskId(_taskId);
 
-              // temporarily release the mutex
-              MUTEX_UNLOCKER(locker, _lock);
+            // temporarily release the mutex
+            MUTEX_UNLOCKER(locker, _lock);
 
-              std::unique_ptr<VstResponse> response(new VstResponse(
-                   rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
-              response->setContentTypeRequested(request->contentTypeResponse());
-              executeRequest(std::move(request), std::move(response));
-            }
+            std::unique_ptr<VstResponse> response(new VstResponse(
+                 rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
+            response->setContentTypeRequested(request->contentTypeResponse());
+            executeRequest(std::move(request), std::move(response));
           }
         }
       }
     }
+  }
 
-    if (read_maybe_only_part_of_buffer) {
-      if (prv._readBufferOffset == _readBuffer.length()) {
-        return {false,rv};
-      }
-      return {true,rv};
+  if (read_maybe_only_part_of_buffer) {
+    if (prv._readBufferOffset == _readBuffer.length()) {
+      return false;
     }
-    return {doExecute,rv};
-  } CATCH_TO_RESULT(rv, TRI_ERROR_INTERNAL)
-  return {false,rv};
+    return true;
+  }
+  return doExecute;
 }
 
 void VstCommTask::closeTask(rest::ResponseCode code) {
