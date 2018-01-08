@@ -24,6 +24,7 @@
 
 #include "RocksDBValue.h"
 #include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -214,9 +215,10 @@ uint64_t RocksDBValue::keyValue(char const* data, size_t size) {
   VPackSlice slice(data);
   VPackSlice key = slice.get(StaticStrings::KeyString);
   if (key.isString()) {
-    std::string s = key.copyString();
-    if (s.size() > 0 && s[0] >= '0' && s[0] <= '9') {
-      return basics::StringUtils::uint64(s);
+    VPackValueLength l;
+    char const* p = key.getString(l);
+    if (l > 0 && *p >= '0' && *p <= '9') {
+      return NumberUtils::atoi_zero<uint64_t>(p, p + l);
     }
   }
 

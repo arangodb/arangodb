@@ -296,14 +296,14 @@ class EdgeIndexMock final : public arangodb::Index {
       // a.b IN values
       if (!valNode->isArray()) {
         // a.b IN non-array
-        return new arangodb::EmptyIndexIterator(_collection, trx, mmdr, this);
+        return new arangodb::EmptyIndexIterator(_collection, trx, this);
       }
 
       return createInIterator(trx, mmdr, attrNode, valNode);
     }
 
     // operator type unsupported
-    return new arangodb::EmptyIndexIterator(_collection, trx, mmdr, this);
+    return new arangodb::EmptyIndexIterator(_collection, trx, this);
   }
 
   arangodb::aql::AstNode* specializeCondition(
@@ -433,9 +433,8 @@ class ReverseAllIteratorMock final : public arangodb::IndexIterator {
   ReverseAllIteratorMock(
       uint64_t size,
       arangodb::LogicalCollection* coll,
-      arangodb::transaction::Methods* trx,
-      arangodb::ManagedDocumentResult* mmdr)
-    : arangodb::IndexIterator(coll, trx, mmdr, &EMPTY_INDEX),
+      arangodb::transaction::Methods* trx)
+    : arangodb::IndexIterator(coll, trx, &EMPTY_INDEX),
       _end(size), _size(size) {
   }
 
@@ -466,9 +465,8 @@ class AllIteratorMock final : public arangodb::IndexIterator {
   AllIteratorMock(
       uint64_t size,
       arangodb::LogicalCollection* coll,
-      arangodb::transaction::Methods* trx,
-      arangodb::ManagedDocumentResult* mmdr)
-    : arangodb::IndexIterator(coll, trx, mmdr, &EMPTY_INDEX),
+      arangodb::transaction::Methods* trx)
+    : arangodb::IndexIterator(coll, trx, &EMPTY_INDEX),
       _end(size) {
   }
 
@@ -602,19 +600,19 @@ void PhysicalCollectionMock::figuresSpecific(std::shared_ptr<arangodb::velocypac
   TRI_ASSERT(false);
 }
 
-std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAllIterator(arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* mdr, bool reverse) const {
+std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAllIterator(arangodb::transaction::Methods* trx, bool reverse) const {
   before();
 
   if (reverse) {
-    return irs::memory::make_unique<ReverseAllIteratorMock>(documents.size(), this->_logicalCollection, trx, mdr);
+    return irs::memory::make_unique<ReverseAllIteratorMock>(documents.size(), this->_logicalCollection, trx);
   }
 
-  return irs::memory::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx, mdr);
+  return irs::memory::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx);
 }
 
-std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAnyIterator(arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* mdr) const {
+std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAnyIterator(arangodb::transaction::Methods* trx) const {
   before();
-  return irs::memory::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx, mdr);
+  return irs::memory::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx);
 }
 
 void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) const {

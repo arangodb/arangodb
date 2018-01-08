@@ -54,9 +54,9 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
 
 MMFilesPrimaryIndexIterator::MMFilesPrimaryIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, MMFilesPrimaryIndex const* index,
+    MMFilesPrimaryIndex const* index,
     std::unique_ptr<VPackBuilder>& keys)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _index(index),
       _keys(keys.get()),
       _iterator(_keys->slice()) {
@@ -77,6 +77,7 @@ bool MMFilesPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t
     return false;
   }
   while (_iterator.valid() && limit > 0) {
+    // TODO: use version that hands in an existing mmdr
     MMFilesSimpleIndexElement result =
         _index->lookupKey(_trx, _iterator.value());
     _iterator.next();
@@ -92,21 +93,16 @@ void MMFilesPrimaryIndexIterator::reset() { _iterator.reset(); }
 
 MMFilesAllIndexIterator::MMFilesAllIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, MMFilesPrimaryIndex const* index,
-    MMFilesPrimaryIndexImpl const* indexImpl, bool reverse)
-    : IndexIterator(collection, trx, mmdr, index),
+    MMFilesPrimaryIndex const* index,
+    MMFilesPrimaryIndexImpl const* indexImpl)
+    : IndexIterator(collection, trx, index),
       _index(indexImpl),
-      _reverse(reverse),
       _total(0) {}
 
 bool MMFilesAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   while (limit > 0) {
-    MMFilesSimpleIndexElement element;
-    if (_reverse) {
-      element = _index->findSequentialReverse(&_context, _position);
-    } else {
-      element = _index->findSequential(&_context, _position, _total);
-    }
+    MMFilesSimpleIndexElement element = _index->findSequential(nullptr, _position, _total);
+    
     if (element) {
       cb(LocalDocumentId{element.localDocumentId()});
       --limit;
@@ -123,12 +119,8 @@ bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t li
 
   bool done = false;
   while (limit > 0) {
-    MMFilesSimpleIndexElement element;
-    if (_reverse) {
-      element = _index->findSequentialReverse(&_context, _position);
-    } else {
-      element = _index->findSequential(&_context, _position, _total);
-    }
+    MMFilesSimpleIndexElement element = _index->findSequential(nullptr, _position, _total);
+    
     if (element) {
       _documentIds.emplace_back(std::make_pair(element.localDocumentId(), nullptr));
       --limit;
@@ -146,12 +138,8 @@ bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t li
 // Skip the first count-many entries
 void MMFilesAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
   while (count > 0) {
-    MMFilesSimpleIndexElement element;
-    if (_reverse) {
-      element = _index->findSequentialReverse(&_context, _position);
-    } else {
-      element = _index->findSequential(&_context, _position, _total);
-    }
+    MMFilesSimpleIndexElement element = _index->findSequential(nullptr, _position, _total);
+    
     if (element) {
       ++skipped;
       --count;
@@ -165,9 +153,9 @@ void MMFilesAllIndexIterator::reset() { _position.reset(); }
 
 MMFilesAnyIndexIterator::MMFilesAnyIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, MMFilesPrimaryIndex const* index,
+    MMFilesPrimaryIndex const* index,
     MMFilesPrimaryIndexImpl const* indexImpl)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _index(indexImpl),
       _step(0),
       _total(0) {}
@@ -175,7 +163,7 @@ MMFilesAnyIndexIterator::MMFilesAnyIndexIterator(
 bool MMFilesAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   while (limit > 0) {
     MMFilesSimpleIndexElement element =
-        _index->findRandom(&_context, _initial, _position, _step, _total);
+        _index->findRandom(nullptr, _initial, _position, _step, _total);
     if (element) {
       cb(LocalDocumentId{element.localDocumentId()});
       --limit;
@@ -336,20 +324,15 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequential(
 
 /// @brief request an iterator over all elements in the index in
 ///        a sequential order.
-IndexIterator* MMFilesPrimaryIndex::allIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mmdr,
-                                                bool reverse) const {
-  return new MMFilesAllIndexIterator(_collection, trx, mmdr, this,
-                                     _primaryIndex.get(), reverse);
+IndexIterator* MMFilesPrimaryIndex::allIterator(transaction::Methods* trx) const {
+  return new MMFilesAllIndexIterator(_collection, trx, this, _primaryIndex.get());
 }
 
 /// @brief request an iterator over all elements in the index in
 ///        a random order. It is guaranteed that each element is found
 ///        exactly once unless the collection is modified.
-IndexIterator* MMFilesPrimaryIndex::anyIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr) const {
-  return new MMFilesAnyIndexIterator(_collection, trx, mmdr, this,
-                                     _primaryIndex.get());
+IndexIterator* MMFilesPrimaryIndex::anyIterator(transaction::Methods* trx) const {
+  return new MMFilesAnyIndexIterator(_collection, trx, this, _primaryIndex.get());
 }
 
 /// @brief a method to iterate over all elements in the index in
@@ -365,26 +348,12 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequentialReverse(
 }
 
 /// @brief adds a key/element to the index
-/// returns a status code, and *found will contain a found element (if any)
 Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
                                       VPackSlice const& doc,
                                       OperationMode mode) {
-  ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, 1);
-  MMFilesSimpleIndexElement element(buildKeyElement(documentId, doc));
-
-  int res = _primaryIndex->insert(&context, element);
-
-  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-    std::string existingId(doc.get(StaticStrings::KeyString).copyString());
-    if (mode == OperationMode::internal) {
-      return IndexResult(res, std::move(existingId));
-    }
-    return IndexResult(res, this, existingId);
-  }
-
-  return IndexResult(res, this);
+  ManagedDocumentResult mmdr;
+  return insertKey(trx, documentId, doc, mmdr, mode);
 }
 
 Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
@@ -395,6 +364,9 @@ Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
   IndexLookupContext context(trx, _collection, &mmdr, 1);
   MMFilesSimpleIndexElement element(buildKeyElement(documentId, doc));
 
+// TODO: we can pass in a special IndexLookupContext which has some more on the information 
+// about the to-be-inserted document. this way we can spare one lookup in 
+// IsEqualElementElementByKey
   int res = _primaryIndex->insert(&context, element);
 
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
@@ -408,23 +380,13 @@ Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
   return IndexResult(res, this);
 }
 
-/// @brief removes an key/element from the index
+/// @brief removes a key/element from the index
 Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
-                                      LocalDocumentId const&,
+                                      LocalDocumentId const& documentId,
                                       VPackSlice const& doc,
                                       OperationMode mode) {
-  ManagedDocumentResult result;
-  IndexLookupContext context(trx, _collection, &result, 1);
-
-  VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(doc));
-  MMFilesSimpleIndexElement found =
-      _primaryIndex->removeByKey(&context, keySlice.begin());
-
-  if (!found) {
-    return IndexResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, this);
-  }
-
-  return Result(TRI_ERROR_NO_ERROR);
+  ManagedDocumentResult mmdr;
+  return removeKey(trx, documentId, doc, mmdr, mode);
 }
 
 Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
@@ -442,7 +404,7 @@ Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
     return IndexResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, this);
   }
 
-  return Result(TRI_ERROR_NO_ERROR);
+  return Result();
 }
 
 /// @brief resizes the index
@@ -506,14 +468,14 @@ IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(_collection, trx, mmdr, this);
+      return new EmptyIndexIterator(_collection, trx, this);
     }
 
     return createInIterator(trx, mmdr, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(_collection, trx, mmdr, this);
+  return new EmptyIndexIterator(_collection, trx, this);
 }
 
 /// @brief specializes the condition for use with the index
@@ -553,7 +515,7 @@ IndexIterator* MMFilesPrimaryIndex::createInIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new MMFilesPrimaryIndexIterator(_collection, trx, mmdr, this, keys);
+  return new MMFilesPrimaryIndexIterator(_collection, trx, this, keys);
 }
 
 /// @brief create the iterator, for a single attribute, EQ operator
@@ -576,7 +538,7 @@ IndexIterator* MMFilesPrimaryIndex::createEqIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new MMFilesPrimaryIndexIterator(_collection, trx, mmdr, this, keys);
+  return new MMFilesPrimaryIndexIterator(_collection, trx, this, keys);
 }
 
 /// @brief add a single value node to the iterator's keys

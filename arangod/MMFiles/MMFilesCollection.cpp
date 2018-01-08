@@ -77,8 +77,8 @@ namespace {
 class MMFilesIndexFillerTask : public basics::LocalTask {
  public:
   MMFilesIndexFillerTask(
-      std::shared_ptr<basics::LocalTaskQueue> queue, transaction::Methods* trx, Index* idx,
-      std::shared_ptr<std::vector<std::pair<LocalDocumentId, VPackSlice>>> documents)
+      std::shared_ptr<basics::LocalTaskQueue> const& queue, transaction::Methods* trx, Index* idx,
+      std::shared_ptr<std::vector<std::pair<LocalDocumentId, VPackSlice>>> const& documents)
       : LocalTask(queue), _trx(trx), _idx(idx), _documents(documents) {}
 
   void run() {
@@ -2439,15 +2439,13 @@ bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
   return false;
 }
 
-std::unique_ptr<IndexIterator> MMFilesCollection::getAllIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr) const {
-  return std::unique_ptr<IndexIterator>(
-      primaryIndex()->allIterator(trx, mdr, false));
+std::unique_ptr<IndexIterator> MMFilesCollection::getAllIterator(transaction::Methods* trx) const {
+  return std::unique_ptr<IndexIterator>(primaryIndex()->allIterator(trx));
 }
 
 std::unique_ptr<IndexIterator> MMFilesCollection::getAnyIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr) const {
-  return std::unique_ptr<IndexIterator>(primaryIndex()->anyIterator(trx, mdr));
+    transaction::Methods* trx) const {
+  return std::unique_ptr<IndexIterator>(primaryIndex()->anyIterator(trx));
 }
 
 void MMFilesCollection::invokeOnAllElements(
@@ -2910,7 +2908,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  VPackSlice doc(marker->vpack());
+  VPackSlice const doc(marker->vpack());
   operation.setDocumentIds(MMFilesDocumentDescriptor(),
                            MMFilesDocumentDescriptor(documentId, doc.begin()));
 
@@ -2966,11 +2964,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
   }
 
   if (res.ok()) {
-    uint8_t const* vpack = lookupDocumentVPack(documentId);
-    if (vpack != nullptr) {
-      result.setUnmanaged(vpack, documentId);
-    }
-
+    result.setManaged(doc.begin(), documentId);
     // store the tick that was used for writing the document
     resultMarkerTick = operation.tick();
   }
@@ -3286,10 +3280,9 @@ Result MMFilesCollection::update(
     return res;
   }
 
-  uint8_t const* vpack = previous.vpack();
   LocalDocumentId const oldDocumentId = previous.localDocumentId();
-  VPackSlice oldDoc(vpack);
-  TRI_voc_rid_t oldRevisionId =
+  VPackSlice const oldDoc(previous.vpack());
+  TRI_voc_rid_t const oldRevisionId =
       transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
 
@@ -3321,7 +3314,7 @@ Result MMFilesCollection::update(
     if (_logicalCollection->waitForSync()) {
       options.waitForSync = true;
     }
-    return Result(TRI_ERROR_NO_ERROR);
+    return Result();
   }
 
   // merge old and new values
@@ -3370,11 +3363,6 @@ Result MMFilesCollection::update(
     operation.setDocumentIds(MMFilesDocumentDescriptor(oldDocumentId, oldDoc.begin()),
                              MMFilesDocumentDescriptor(documentId, newDoc.begin()));
 
-    if (oldRevisionId == revisionId) {
-      // update with same revision id => can happen if isRestore = true
-      result.reset();
-    }
-
     res = updateDocument(trx, revisionId, oldDocumentId, oldDoc, documentId,
                          newDoc, operation, marker, options,
                          options.waitForSync);
@@ -3391,10 +3379,8 @@ Result MMFilesCollection::update(
   if (res.fail()) {
     operation.revert(trx);
   } else {
-    uint8_t const* vpack = lookupDocumentVPack(documentId);
-    if (vpack != nullptr) {
-      result.setUnmanaged(vpack, documentId);
-    }
+    result.setManaged(newDoc.begin(), documentId);
+    
     if (options.waitForSync) {
       // store the tick that was used for writing the new document
       resultMarkerTick = operation.tick();
@@ -3507,11 +3493,6 @@ Result MMFilesCollection::replace(
     operation.setDocumentIds(MMFilesDocumentDescriptor(oldDocumentId, oldDoc.begin()),
                              MMFilesDocumentDescriptor(documentId, newDoc.begin()));
 
-    if (oldDocumentId == documentId) {
-      // update with same revision id => can happen if isRestore = true
-      result.reset();
-    }
-
     res = updateDocument(trx, revisionId, oldDocumentId, oldDoc, documentId,
                          newDoc, operation, marker, options,
                          options.waitForSync);
@@ -3528,14 +3509,7 @@ Result MMFilesCollection::replace(
   if (res.fail()) {
     operation.revert(trx);
   } else {
-    if (oldDocumentId == documentId) {
-      // update with same revision id => can happen if isRestore = true
-      result.reset();
-    }
-    uint8_t const* vpack = lookupDocumentVPack(documentId);
-    if (vpack != nullptr) {
-      result.setUnmanaged(vpack, documentId);
-    }
+    result.setManaged(newDoc.begin(), documentId);
 
     if (options.waitForSync) {
       // store the tick that was used for writing the new document
@@ -3611,8 +3585,7 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
     return res;
   }
 
-  uint8_t const* vpack = previous.vpack();
-  VPackSlice oldDoc(vpack);
+  VPackSlice const oldDoc(previous.vpack());
   LocalDocumentId const oldDocumentId = previous.localDocumentId();
   TRI_voc_rid_t oldRevisionId = arangodb::transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
@@ -3669,7 +3642,7 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
         static_cast<MMFilesTransactionState*>(trx->state())
             ->addOperation(documentId, revisionId, operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
-    res = Result(ex.code());
+    res = Result(ex.code(), ex.what());
   } catch (std::bad_alloc const&) {
     res = Result(TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
@@ -3896,7 +3869,7 @@ Result MMFilesCollection::updateDocument(
                                       options.indexOperationMode);
 
   if (res.fail()) {
-    // re-enter the document in case of failure, ignore errors during rollback
+    // re-insert the document in case of failure, ignore errors during rollback
     insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
                            Index::OperationMode::rollback);
     return res;
@@ -3915,8 +3888,9 @@ Result MMFilesCollection::updateDocument(
     return res;
   }
 
-  // update the index element (primary index only - other index have been
+  // update the index element (primary index only - other indexes have been
   // adjusted)
+  // TODO: pass key into this function so it does not have to be looked up again
   VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(newDoc));
   MMFilesSimpleIndexElement* element =
       primaryIndex()->lookupKeyRef(trx, keySlice);
@@ -3928,11 +3902,9 @@ Result MMFilesCollection::updateDocument(
 
   operation.indexed();
 
-  if (oldDocumentId != newDocumentId) {
-    try {
-      removeLocalDocumentId(oldDocumentId, true);
-    } catch (...) {
-    }
+  try {
+    removeLocalDocumentId(oldDocumentId, true);
+  } catch (...) {
   }
 
   TRI_IF_FAILURE("UpdateDocumentNoOperation") {

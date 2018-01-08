@@ -102,7 +102,7 @@ class LogicalCollection {
   static constexpr uint32_t currentVersion() { return VERSION_33; }
 
   /// @brief determine whether a collection name is a system collection name
-  static inline bool IsSystemName(std::string const& name) {
+  static bool IsSystemName(std::string const& name) {
     return (!name.empty() && name[0] == '_');
   }
 
@@ -183,10 +183,8 @@ class LogicalCollection {
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mdr);
-  std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mdr);
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx);
+  std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
 
   void invokeOnAllElements(
       transaction::Methods* trx,

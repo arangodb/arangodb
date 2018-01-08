@@ -45,9 +45,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
  public:
   RocksDBAllIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           RocksDBPrimaryIndex const* index);
-
   ~RocksDBAllIndexIterator() {}
 
   char const* typeName() const override { return "all-index-iterator"; }
@@ -70,7 +68,6 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
   RocksDBAnyIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           RocksDBPrimaryIndex const* index);
 
   ~RocksDBAnyIndexIterator() {}
@@ -100,7 +97,6 @@ class RocksDBSortedAllIterator final : public IndexIterator {
  public:
   RocksDBSortedAllIterator(LogicalCollection* collection,
                            transaction::Methods* trx,
-                           ManagedDocumentResult* mmdr,
                            RocksDBPrimaryIndex const* index);
 
   ~RocksDBSortedAllIterator() {}

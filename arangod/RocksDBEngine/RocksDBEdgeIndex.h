@@ -28,8 +28,8 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
-#include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "VocBase/voc-types.h"
@@ -173,7 +173,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
 
-  std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const override;
+  virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const override;
 
  protected:
   Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,

@@ -471,7 +471,6 @@ IndexIterator* RocksDBFulltextIndex::iteratorForCondition(transaction::Methods* 
   size_t numMembers = args->numMembers();
   TRI_ASSERT(numMembers == 3 || numMembers == 4);
   
-  std::string attr = args->getMember(1)->getString();
   std::string query = args->getMember(2)->getString();
   
   FulltextQuery parsedQuery;

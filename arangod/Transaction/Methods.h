@@ -366,8 +366,7 @@ class Methods {
   /// calling this method
   ENTERPRISE_VIRT
   std::unique_ptr<OperationCursor> indexScan(std::string const& collectionName,
-                                             CursorType cursorType,
-                                             ManagedDocumentResult*);
+                                             CursorType cursorType);
 
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*,
