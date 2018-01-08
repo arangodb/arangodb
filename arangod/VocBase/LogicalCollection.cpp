@@ -174,6 +174,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _planVersion(other._planVersion) {
   
   TRI_ASSERT(_physical != nullptr);
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
@@ -182,7 +183,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
   TRI_ASSERT(!_globallyUniqueId.empty());
 }
 
-// @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this collection.
 LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
