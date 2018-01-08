@@ -157,7 +157,7 @@ public:
     TRI_ASSERT(limit > 0);
     while (_pos != _docs.end() && limit > 0) {
       cb(*_pos);
-      _pos++;
+      ++_pos;
       limit--;
     }
     return _pos != _docs.end();
@@ -167,7 +167,7 @@ public:
   
   void skip(uint64_t count, uint64_t& skipped) override {
     while (_pos != _docs.end()) {
-      _pos++;
+      ++_pos;
       skipped++;
     }
   }

@@ -215,7 +215,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
                            rocksdb::Slice const& value) override;
 
-  virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const;
+  virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const override;
 
  private:
   bool isDuplicateOperator(arangodb::aql::AstNode const*,
