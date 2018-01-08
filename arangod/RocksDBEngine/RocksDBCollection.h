@@ -264,7 +264,7 @@ class RocksDBCollection final : public PhysicalCollection {
   void destroyCache() const;
 
   /// is this collection using a cache
-  inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
+  inline bool useCache() const noexcept { return (_cacheEnabled && _cachePresent); }
 
   void blackListKey(char const* data, std::size_t len) const;
 
@@ -273,7 +273,6 @@ class RocksDBCollection final : public PhysicalCollection {
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<TRI_voc_rid_t> _revisionId;
   mutable std::atomic<bool> _needToPersistIndexEstimates;
-  uint64_t _indexesSerializedSeq;
 
   /// upgrade write locks to exclusive locks if this flag is set
   bool _hasGeoIndex;
