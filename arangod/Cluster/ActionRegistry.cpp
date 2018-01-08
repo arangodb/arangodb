@@ -80,9 +80,11 @@ std::size_t ActionRegistry::size () const {
 /// @brief print to ostream
 VPackBuilder ActionRegistry::toVelocyPack() const {
   VPackBuilder b;
-  { VPackArrayBuilder bb(&b);
+  { VPackArrayBuilder a(&b);
     for (auto const i : _registry) {
-      b.add(i.first.toVelocyPack().slice());
+      VPackObjectBuilder o(&b);
+      b.add("description", i.first.toVelocyPack().slice());
+      b.add("address", VPackValue(size_t(i.second.get())));
     }}
   return b;
 }

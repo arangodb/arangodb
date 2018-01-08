@@ -35,11 +35,13 @@
 namespace arangodb {
 namespace maintenance {
 
+enum ActionModel { BACKGROUND, FOREGROUND };
+
 class ActionBase {
   
 public:
-  ActionBase(ActionDescription const& d);
-  
+  ActionBase(ActionDescription const&, ActionModel const& m = BACKGROUND);
+
   virtual ~ActionBase();
 
   virtual arangodb::Result run(
@@ -54,6 +56,7 @@ public:
 private:
 
   ActionDescription _description;
+  ActionModel _model;
   
 };
 

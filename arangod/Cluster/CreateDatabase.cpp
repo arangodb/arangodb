@@ -26,7 +26,8 @@
 
 using namespace arangodb::maintenance;
 
-CreateDatabase::CreateDatabase(ActionDescription const& d) : ActionBase(d) {}
+CreateDatabase::CreateDatabase(ActionDescription const& d) :
+  ActionBase(d, arangodb::maintenance::FOREGROUND) {}
 
 CreateDatabase::~CreateDatabase() {};
 

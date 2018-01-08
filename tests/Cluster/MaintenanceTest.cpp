@@ -183,10 +183,13 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     plan("test2") = test2.slice();
 
     arangodb::maintenance::executePlanForDatabases(plan, plan, local);
+    auto before = ActionRegistry::instance()->toVelocyPack().toJson();
     REQUIRE(ActionRegistry::instance()->size() == 2);
 
-    std::cout << ActionRegistry::instance()->toVelocyPack().toJson() << std::endl;
-
+    // New runs should not add new actions
+    arangodb::maintenance::executePlanForDatabases(plan, plan, local);
+    auto after = ActionRegistry::instance()->toVelocyPack().toJson();
+    REQUIRE(before == after);
     
   }
   

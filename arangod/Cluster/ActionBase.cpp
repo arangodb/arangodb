@@ -26,7 +26,9 @@
 
 using namespace arangodb::maintenance;
 
-ActionBase::ActionBase(ActionDescription const& d) : _description(d) {}
+ActionBase::ActionBase(
+  ActionDescription const& d, ActionModel const& m) :
+  _description(d), _model(m) {}
 
 ActionBase::~ActionBase() {}
 
