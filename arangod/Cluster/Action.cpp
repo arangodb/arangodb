@@ -41,7 +41,7 @@ Action::Action(ActionDescription const& d) : _action(nullptr) {
     _action = new DropDatabase(d);
   } else {
     // We should never get here
-    LOG_TOPIC(ERR, Logger::CLUSTER) << "Unknown maintenance action" << name;
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Unknown maintenance action" << name;
     TRI_ASSERT(false);
   }
 }
