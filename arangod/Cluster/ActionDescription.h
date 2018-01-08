@@ -25,6 +25,8 @@
 #ifndef ARANGODB_CLUSTER_MAINTENANCE_ACTION_DESCRIPTION_H
 #define ARANGODB_CLUSTER_MAINTENANCE_ACTION_DESCRIPTION_H
 
+#include "Basics/VelocyPackHelper.h"
+
 #include <map>
 #include <string>
 
@@ -64,6 +66,12 @@ public:
 
   /// @brief Set property
   void set(std::pair<std::string, std::string> const& kvpair);
+
+  /// @brief Print this action to ostream
+  VPackBuilder toVelocyPack() const;
+
+  /// @brief Print this action to ostream
+  std::ostream& print(std::ostream&) const;
 
 private:
   /// @brief Action properties

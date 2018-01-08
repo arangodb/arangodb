@@ -26,8 +26,8 @@
 
 #include "Cluster/ActionRegistry.h"
 #include "Cluster/Action.h"
-
 #include "Basics/ReadLocker.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 
 using namespace arangodb::maintenance;
@@ -51,29 +51,39 @@ ActionRegistry* ActionRegistry::instance() {
 
 /// @brief proposal entry for dispatching new actions through registry
 arangodb::Result ActionRegistry::dispatch (ActionDescription const& desc) {
-  
   arangodb::Result result;
-  
   {
     WRITE_LOCKER(guard, _registryLock);
     if (_registry.find(desc) == _registry.end()) {
       _registry.emplace(desc,std::make_shared<Action>(desc));
+    } else {
+      result.reset(TRI_ERROR_ACTION_ALREADY_REGISTERED);
     }
   }
-  
   return result;
-  
 }
 
-/// @brief get 
+/// @brief get action through its description
 std::shared_ptr<Action> ActionRegistry::get (ActionDescription const& desc) {
   READ_LOCKER(guard, _registryLock);
   return (_registry.find(desc) != _registry.end()) ?
     _registry.at(desc) : nullptr;
 }
 
-/// @brief size 
+/// @brief size of the registry, i.e. number of active jobs
 std::size_t ActionRegistry::size () const {
   READ_LOCKER(guard, _registryLock);
   return _registry.size();
 }
+
+
+/// @brief print to ostream
+VPackBuilder ActionRegistry::toVelocyPack() const {
+  VPackBuilder b;
+  { VPackArrayBuilder bb(&b);
+    for (auto const i : _registry) {
+      b.add(i.first.toVelocyPack().slice());
+    }}
+  return b;
+}
+

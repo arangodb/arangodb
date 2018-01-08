@@ -172,5 +172,24 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   }
   
   
+  // Check that not a new action is create for same difference =================
+  SECTION("Execute plan for database") {
+    arangodb::Result executePlanForDatabases (
+      arangodb::consensus::Node plan, arangodb::consensus::Node current,
+      std::vector<std::string>);
+
+    std::vector<std::string> local {"_system", "test1"}, toCreate, toDrop;
+    Node plan = baseStructure(PLANNED_DATABASES);
+    plan("test2") = test2.slice();
+
+    arangodb::maintenance::executePlanForDatabases(plan, plan, local);
+    REQUIRE(ActionRegistry::instance()->size() == 2);
+
+    std::cout << ActionRegistry::instance()->toVelocyPack().toJson() << std::endl;
+
+    
+  }
+  
+  
 }
 

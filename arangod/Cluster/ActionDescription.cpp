@@ -26,6 +26,7 @@
 
 #include <functional>
 
+using namespace arangodb;
 using namespace arangodb::maintenance;
 
 /// @brief ctor
@@ -74,6 +75,16 @@ bool ActionDescription::operator==(
 /// @brief Get action name
 std::string ActionDescription::name() const {
   return _properties.at("name");
+}
+
+// @brief summary to velocypack
+VPackBuilder ActionDescription::toVelocyPack() const {
+  VPackBuilder b;
+  { VPackObjectBuilder bb(&b);
+    for (auto const& i : _properties) {
+      b.add(i.first, VPackValue(i.second));
+    }}
+  return b;
 }
 
 /// @brief hash implementation for ActionRegistry

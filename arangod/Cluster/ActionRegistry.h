@@ -60,7 +60,10 @@ public:
 
   /// @brief get number of current action (registry size)
   std::size_t size() const;
-  
+
+  /// @brief Print this action to ostream
+  VPackBuilder toVelocyPack() const;
+
 private:
 
   /// @brief single instance
