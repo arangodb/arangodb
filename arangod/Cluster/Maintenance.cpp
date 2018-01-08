@@ -26,7 +26,6 @@
 #include "Cluster/Maintenance.h"
 
 #include <algorithm>
-#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::consensus;

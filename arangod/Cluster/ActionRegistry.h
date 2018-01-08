@@ -57,6 +57,9 @@ public:
   
   /// @brief get a dispatched action
   std::shared_ptr<Action> kill (ActionDescription const&, Signal const& signal);
+
+  /// @brief get number of current action (registry size)
+  std::size_t size() const;
   
 private:
 

@@ -33,7 +33,7 @@
 using namespace arangodb::maintenance;
 
 Action::Action(ActionDescription const& d) : _action(nullptr) {
-  TRI_ASSERT(!d.has("name"));
+  TRI_ASSERT(d.has("name"));
   std::string name = d.name();
   if (name == "CreateDatabase") {
     _action = new CreateDatabase(d);

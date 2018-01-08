@@ -57,7 +57,7 @@ arangodb::Result ActionRegistry::dispatch (ActionDescription const& desc) {
   {
     WRITE_LOCKER(guard, _registryLock);
     if (_registry.find(desc) == _registry.end()) {
-      _registry.emplace(desc, std::make_shared<Action>(desc));
+      _registry.emplace(desc,std::make_shared<Action>(desc));
     }
   }
   
@@ -68,5 +68,12 @@ arangodb::Result ActionRegistry::dispatch (ActionDescription const& desc) {
 /// @brief get 
 std::shared_ptr<Action> ActionRegistry::get (ActionDescription const& desc) {
   READ_LOCKER(guard, _registryLock);
-  return _registry.at(desc);
+  return (_registry.find(desc) != _registry.end()) ?
+    _registry.at(desc) : nullptr;
+}
+
+/// @brief size 
+std::size_t ActionRegistry::size () const {
+  READ_LOCKER(guard, _registryLock);
+  return _registry.size();
 }
