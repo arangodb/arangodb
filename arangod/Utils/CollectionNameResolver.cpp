@@ -28,6 +28,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -51,6 +52,13 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(
   if (collection != nullptr) {
     return collection->cid();
   }
+
+  auto view = _vocbase->lookupView(name);
+
+  if (view) {
+    return view->id();
+  }
+
   return 0;
 }
 
@@ -81,10 +89,19 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
     // We have to look up the collection info:
     ClusterInfo* ci = ClusterInfo::instance();
     auto cinfo = ci->getCollection(_vocbase->name(), name);
-    TRI_ASSERT(cinfo != nullptr);
-    return cinfo->cid();
+
+    if (cinfo) {
+      return cinfo->cid();
+    }
+
+    auto vinfo = ci->getView(_vocbase->name(), name);
+
+    if (vinfo) {
+      return vinfo->id();
+    }
   } catch (...) {
   }
+
   return 0;
 }
 
@@ -298,3 +315,33 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
   }
   return name;
 }
+
+bool CollectionNameResolver::visitCollections(
+    std::function<bool(TRI_voc_cid_t)> const& visitor, TRI_voc_cid_t cid
+) const {
+  if (!_vocbase) {
+    return false; // no way to determine what to visit
+  }
+
+  auto* collection = _vocbase->lookupCollection(cid);
+
+  if (collection) {
+    // TODO resolve smart edge collection CIDs here
+    return visitor(cid);
+  }
+
+  auto view = _vocbase->lookupView(cid);
+
+  if (view) {
+    // each CID in a view might need further resolution
+    return view->visitCollections([this, &visitor, cid](TRI_voc_cid_t ccid)->bool {
+      return ccid == cid ? visitor(ccid) : visitCollections(visitor, ccid);
+    });
+  }
+
+  return false; // no way to determine what to visit
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

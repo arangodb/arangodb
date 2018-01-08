@@ -899,6 +899,13 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
   return std::make_shared<CollectionInfoCurrent>(0);
 }
 
+std::shared_ptr<LogicalView> ClusterInfo::getView(
+    DatabaseID const& vocbase, CollectionID const& view
+) {
+  // FIXME TODO implement
+  return nullptr;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create database in coordinator, the return value is an ArangoDB
 /// error code and the errorMsg is set accordingly. One possible error
@@ -2914,3 +2921,7 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   }
   return ret;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

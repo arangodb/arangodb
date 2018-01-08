@@ -310,7 +310,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   ///////////////////////////////////////////////////////////////////////////////
   bool visitCollections(
     std::function<bool(TRI_voc_cid_t)> const& visitor
-  ) const;
+  ) const override;
 
  private:
   struct DataStore {
