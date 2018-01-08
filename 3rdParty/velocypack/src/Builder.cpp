@@ -51,6 +51,17 @@ std::string Builder::toJson() const {
   Dumper::dump(slice(), &sink);
   return buffer;
 }
+  
+// Add a subvalue into an object from a Value:
+uint8_t* Builder::add(std::string const& attrName, Value const& sub) {
+  return addInternal<Value>(attrName, sub);
+}
+uint8_t* Builder::add(char const* attrName, Value const& sub) {
+  return addInternal<Value>(attrName, sub);
+}
+uint8_t* Builder::add(char const* attrName, size_t attrLength, Value const& sub) {
+  return addInternal<Value>(attrName, attrLength, sub);
+}
 
 void Builder::doActualSort(std::vector<SortEntry>& entries) {
   VELOCYPACK_ASSERT(entries.size() > 1);
