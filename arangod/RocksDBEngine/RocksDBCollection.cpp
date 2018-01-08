@@ -1280,15 +1280,6 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
 /// from this collection
 arangodb::Result RocksDBCollection::fillIndexes(
     transaction::Methods* trx, std::shared_ptr<arangodb::Index> added) {
-  // LOCKED from the outside, can't use lookupIndex
-  RocksDBPrimaryIndex* primIndex = nullptr;
-  for (std::shared_ptr<Index> idx : _indexes) {
-    if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-      primIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
-      break;
-    }
-  }
-  TRI_ASSERT(primIndex != nullptr);
   // FIXME: assert for an exclusive lock on this collection
   TRI_ASSERT(trx->state()->collection(_logicalCollection->cid(),
                                       AccessMode::Type::EXCLUSIVE) != nullptr);

@@ -492,6 +492,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection,
       _persistentIndexes(0),
       _indexBuckets(Helper::readNumericValue<uint32_t>(
           info, "indexBuckets", defaultIndexBuckets)),
+      _primaryIndex(nullptr),
       _useSecondaryIndexes(true),
       _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
       _maxTick(0) {
@@ -530,6 +531,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
   _lastCompactionStamp = mmfiles._lastCompactionStamp;
   _journalSize = mmfiles._journalSize;
   _indexBuckets = mmfiles._indexBuckets;
+  _primaryIndex = mmfiles._primaryIndex;
   _path = mmfiles._path;
   _doCompact = mmfiles._doCompact;
   _maxTick = mmfiles._maxTick;
@@ -1556,30 +1558,6 @@ void MMFilesCollection::fillIndex(
 
 uint32_t MMFilesCollection::indexBuckets() const { return _indexBuckets; }
 
-// @brief return the primary index
-// WARNING: Make sure that this LogicalCollection Instance
-// is somehow protected. If it goes out of all scopes
-// or it's indexes are freed the pointer returned will get invalidated.
-arangodb::MMFilesPrimaryIndex* MMFilesCollection::primaryIndex() const {
-  // The primary index always has iid 0
-  auto primary = _logicalCollection->lookupIndex(0);
-  TRI_ASSERT(primary != nullptr);
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (primary->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "got invalid indexes for collection '" << _logicalCollection->name()
-        << "'";
-    for (auto const& it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
-    }
-  }
-#endif
-  TRI_ASSERT(primary->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  // the primary index must be the index at position #0
-  return static_cast<arangodb::MMFilesPrimaryIndex*>(primary.get());
-}
-
 int MMFilesCollection::fillAllIndexes(transaction::Methods* trx) {
   return fillIndexes(trx, _indexes);
 }
@@ -2192,6 +2170,7 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   int res = saveIndex(trx, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(ERR, Logger::FIXME) << info.toJson();
     THROW_ARANGO_EXCEPTION(res);
   }
 
@@ -2235,6 +2214,7 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
   try {
     builder = idx->toVelocyPack(false, true);
   } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition: " << ex.what();
     return ex.code();
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition: " << ex.what();
@@ -2264,7 +2244,11 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
           MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
       res = slotInfo.errorCode;
     } catch (arangodb::basics::Exception const& ex) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition: " << ex.what();
       res = ex.code();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition: " << ex.what();
+      return TRI_ERROR_INTERNAL;
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
     }
@@ -2284,6 +2268,10 @@ bool MMFilesCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
   _indexes.emplace_back(idx);
+  if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    TRI_ASSERT(idx->id() == 0);
+    _primaryIndex = static_cast<MMFilesPrimaryIndex*>(idx.get());
+  }
   return true;
 }
 
