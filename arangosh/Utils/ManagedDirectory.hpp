@@ -97,6 +97,10 @@ class ManagedDirectory {
 
  public:
 #ifdef USE_ENTERPRISE
+  /**
+   * @brief Returns a pointer to the `EncryptionFeature` instance
+   * @return A pointer to the feature
+   */
   EncryptionFeature const* encryptionFeature() const noexcept;
 #endif
 
@@ -127,20 +131,20 @@ class ManagedDirectory {
   std::string const& path() const noexcept;
 
   /**
-   * [readableFile description]
-   * @param  name  [description]
-   * @param  flags [description]
-   * @return       [description]
+   * @brief Opens a readable file
+   * @param  filename The filename, relative to the directory
+   * @param  flags    Flags (will be XORed with `DefaultReadFlags`
+   * @return          Unique pointer to file, if opened
    */
   std::unique_ptr<File> readableFile(std::string const& filename,
                                      int flags = 0) noexcept;
 
   /**
-   * [writeableFile description]
-   * @param  name      [description]
-   * @param  overwrite [description]
-   * @param  flags     [description]
-   * @return           [description]
+   * @brief Opens a writable file
+   * @param  name      The filename, relative to the directory
+   * @param  overwrite Whether to overwrite file if it exists (otherwise fail)
+   * @param  flags     Flags (will be XORed with `DefaultWriteFlags`
+   * @return           Unique pointer to file, if opened
    */
   std::unique_ptr<File> writableFile(std::string const& filename,
                                       bool overwrite, int flags = 0) noexcept;
