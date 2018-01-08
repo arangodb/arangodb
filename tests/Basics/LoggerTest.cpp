@@ -75,9 +75,8 @@ TEST_CASE("LoggerTest", "[loggertest]") {
     content = FileUtils::slurp(logfile2); 
     CHECK(content.find("some error message") == std::string::npos);
     CHECK(content.find("some warning message") != std::string::npos);
-  }
-  
-  SECTION("test_fdds_after_reopen") {
+    
+    LogAppenderFile::clear();
   }
   
   SECTION("test_fds_after_reopen") {
@@ -122,10 +121,10 @@ TEST_CASE("LoggerTest", "[loggertest]") {
     CHECK(content.find("some error message") == std::string::npos);
     CHECK(content.find("some warning message") == std::string::npos);
     CHECK(content.find("some other warning message") != std::string::npos);
+  
+    LogAppenderFile::clear();
   }
 
-  LogAppenderFile::clear();
-  
   // restore old state
   LogAppenderFile::setFds(backup);
   LogAppenderFile::reopenAll();
