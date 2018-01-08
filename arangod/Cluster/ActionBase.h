@@ -53,7 +53,7 @@ public:
 
   ActionDescription describe() const;
 
-private:
+protected:
 
   ActionDescription _description;
   ActionModel _model;
