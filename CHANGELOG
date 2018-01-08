@@ -1,6 +1,8 @@
 v3.2.11 (2018-XX-XX)
 --------------------
 
+* UI: optimized error messages for invalid query bind parameter
+
 * fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' 
   at 98,7: ArangoError 4: Expecting type String 
 
