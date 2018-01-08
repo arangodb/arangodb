@@ -598,7 +598,16 @@ AstNode* Ast::createNodeView(char const* name) {
   AstNode* node = createNode(NODE_TYPE_VIEW);
   node->setStringValue(name, strlen(name));
 
-  return node;
+  auto* collections = _query->collections();
+
+  // all available view implementations allow read-only access to collections
+  if (!collections || collections->add(name, AccessMode::Type::READ)) {
+    return node;
+  }
+
+  _query->registerErrorCustom(TRI_ERROR_INTERNAL, "AQL Collections addition of LogicalView failure while creating VIEW node");
+
+  return nullptr;
 }
 
 /// @brief create an AST reference node
@@ -3451,3 +3460,7 @@ AstNode* Ast::createNode(AstNodeType type) {
 
   return node;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

@@ -1122,6 +1122,13 @@ void IResearchView::drop() {
 }
 
 int IResearchView::drop(TRI_voc_cid_t cid) {
+  // FIXME TODO fix IResearchLink to remove itself properly via updateProperties, then remove this code
+  {
+    WriteMutex mutex(_mutex);
+    SCOPED_LOCK(mutex);
+    _meta._collections.erase(cid);
+  }
+
   std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
   ReadMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);

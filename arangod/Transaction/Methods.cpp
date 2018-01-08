@@ -2808,10 +2808,34 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
   }
 
   if (_state->isEmbeddedTransaction()) {
-    return addCollectionEmbedded(cid, name, type);
+    Result err;
+    auto visitor = [this, name, type, &err](TRI_voc_cid_t cid)->bool {
+      auto res = addCollectionEmbedded(cid, name, type);
+
+      if (err.ok()) {
+        err = res; // track first error
+      }
+
+      return true; // add the remaining collections
+    };
+
+    return resolver()->visitCollections(visitor, cid)
+      ? err : Result(TRI_ERROR_INTERNAL);
   }
 
-  return addCollectionToplevel(cid, name, type);
+  Result err;
+  auto visitor = [this, name, type, &err](TRI_voc_cid_t cid)->bool {
+    auto res = addCollectionToplevel(cid, name, type);
+
+    if (err.ok()) {
+      err = res; // track first error
+    }
+
+    return true; // add the remaining collections
+  };
+
+  return resolver()->visitCollections(visitor, cid)
+    ? err : Result(TRI_ERROR_INTERNAL);
 }
 
 /// @brief add a collection by id, with the name supplied
@@ -3096,3 +3120,7 @@ void transaction::CallbackInvoker::invoke() noexcept {
     }
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
