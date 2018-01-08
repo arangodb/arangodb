@@ -55,22 +55,22 @@ AqlValue RocksDBAqlFunctions::Fulltext(
 
   AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
   if (!collectionValue.isString()) {
-    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(AqlValueHintNull());
+    THROW_ARANGO_EXCEPTION_PARAMS(
+                                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
   std::string const cname(collectionValue.slice().copyString());
   
   AqlValue attribute = ExtractFunctionParameterValue(trx, parameters, 1);
   if (!attribute.isString()) {
-    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(AqlValueHintNull());
+    THROW_ARANGO_EXCEPTION_PARAMS(
+                                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
   std::string const attributeName(attribute.slice().copyString());
 
   AqlValue queryValue = ExtractFunctionParameterValue(trx, parameters, 2);
   if (!queryValue.isString()) {
-    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(AqlValueHintNull());
+    THROW_ARANGO_EXCEPTION_PARAMS(
+                                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
   std::string const queryString = queryValue.slice().copyString();
 
@@ -78,8 +78,8 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   if (parameters.size() >= 4) {
     AqlValue limit = ExtractFunctionParameterValue(trx, parameters, 3);
     if (!limit.isNull(true) && !limit.isNumber()) {
-      RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-      return AqlValue(AqlValueHintNull());
+      THROW_ARANGO_EXCEPTION_PARAMS(
+                                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
     }
     if (limit.isNumber()) {
       int64_t value = limit.toInt64(trx);
@@ -95,8 +95,8 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   trx->addCollectionAtRuntime(cid, cname);
   LogicalCollection* collection = trx->documentCollection(cid);
   if (collection == nullptr) {
-    RegisterWarning(query, "FULLTEXT", TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    return AqlValue(AqlValueHintNull());
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "",
+                                  cname.c_str());
   }
 
   // NOTE: The shared_ptr is protected by trx lock.
@@ -126,8 +126,8 @@ AqlValue RocksDBAqlFunctions::Fulltext(
 
   if (fulltextIndex == nullptr) {
     // fiddle collection name into error message
-    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING);
-    return AqlValue(AqlValueHintNull());
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING,
+                                  cname.c_str());
   }
   // do we need this in rocksdb?
   trx->pinData(cid);
@@ -135,14 +135,12 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   FulltextQuery parsedQuery;
   Result res = fulltextIndex->parseQueryString(queryString, parsedQuery);
   if (res.fail()) {
-    RegisterWarning(query, "FULLTEXT", res.errorNumber());
-    return AqlValue(AqlValueHintNull());
+    THROW_ARANGO_EXCEPTION(res);
   }
   std::set<LocalDocumentId> results;
   res = fulltextIndex->executeQuery(trx, parsedQuery, results);
   if (res.fail()) {
-    RegisterWarning(query, "FULLTEXT", res.errorNumber());
-    return AqlValue(AqlValueHintNull());
+    THROW_ARANGO_EXCEPTION(res);
   }
   
   PhysicalCollection* physical = collection->getPhysical();
@@ -413,7 +411,7 @@ void RocksDBAqlFunctions::registerResources() {
   TRI_ASSERT(functions != nullptr);
 
   // fulltext functions
-  functions->add({"FULLTEXT", ".h,.,.|.", false, false,
+  functions->add({"FULLTEXT", ".h,.,.|.", false, true,
                   false, true, &RocksDBAqlFunctions::Fulltext,
                   NotInCoordinator});
   functions->add({"NEAR", ".h,.,.|.,.", false, true, false,
