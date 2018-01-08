@@ -124,6 +124,8 @@ void Constituent::termNoLock(term_t t) {
         body.add("_key", Value(i_str.str()));
         body.add("term", Value(t));
         body.add("voted_for", Value(_votedFor)); }
+
+      LOG_TOPIC(WARN, Logger::AGENCY) << body.toJson();
       
       TRI_ASSERT(_vocbase != nullptr);
       auto ctx = transaction::StandaloneContext::Create(_vocbase);
@@ -335,7 +337,7 @@ bool Constituent::checkLeader(
     }
 
     _cast = false;
-    _votedFor = "";
+    _votedFor = id;
   }
 
   if ((prevLogIndex != 0 || prevLogTerm != 0) &&
@@ -381,6 +383,7 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id, index_t prevLog
     << ") in (my) term " << _term;
 
   if (termOfPeer > _term) {
+    _votedFor = id;
     termNoLock(termOfPeer);
     _agent->endPrepareLeadership();
 
@@ -389,7 +392,6 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id, index_t prevLog
     }
 
     _cast = false;
-    _votedFor = "";
   } else if (termOfPeer < _term) {
     // termOfPeer < _term, simply ignore and do not vote:
     LOG_TOPIC(DEBUG, Logger::AGENCY)
@@ -444,10 +446,12 @@ void Constituent::callElection() {
   term_t savedTerm;
   {
     MUTEX_LOCKER(locker, _castLock);
-    this->termNoLock(_term + 1);  // raise my term
+    if (_votedFor != _id) {
+      _votedFor = _id;
+      this->termNoLock(_term + 1);  // raise my term
+    }
     _agent->endPrepareLeadership();
     _cast     = true;
-    _votedFor = _id;
     savedTerm = _term;
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER"
       << " in term " << _term;
@@ -681,7 +685,7 @@ void Constituent::run() {
         int64_t randTimeout = RandomGenerator::interval(a, b);
         int64_t randWait = randTimeout;
 
-        {
+       {
           MUTEX_LOCKER(guard, _castLock);
 
           // in the beginning, pure random, after that, we might have to
