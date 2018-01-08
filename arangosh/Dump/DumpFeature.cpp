@@ -42,6 +42,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
+#include "Utils/ManagedDirectory.hpp"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
@@ -82,43 +83,24 @@ Result checkHttpResponse(SimpleHttpClient& client,
 }  // namespace
 
 namespace {
-/// @brief prepare file for writing
-Result prepareFileForWriting(FileHandler& fileHandler,
-                             std::string const& filename, int& fd,
-                             bool overwrite) noexcept {
-  // deal with existing file first if it exists
-  bool fileExists = TRI_ExistsFile(filename.c_str());
-  if (fileExists) {
-    if (overwrite) {
-      TRI_UnlinkFile(filename.c_str());
-    } else {
-      return {TRI_ERROR_CANNOT_WRITE_FILE,
-              "cannot write to file '" + filename + "', already exists!"};
-    }
-  }
-
-  // create file
-  fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
-                               O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                               S_IRUSR | S_IWUSR);
-  if (fd < 0) {
-    return {TRI_ERROR_CANNOT_WRITE_FILE,
-            "cannot write to file '" + filename + "'"};
-  }
-
-  // begin encryption if eanabled
-  fileHandler.beginEncryption(fd);
-  return {TRI_ERROR_NO_ERROR};
+/// @brief checks that a file pointer is valid and file status is ok
+inline bool fileOk(ManagedDirectory::File* file) {
+  return (file && file->status().ok());
 }
 }  // namespace
 
 namespace {
-/// @brief prepare file for writing
-int finalizeWritingFile(FileHandler& fileHandler, int const& fd) noexcept {
-  // end encryption if enabled
-  fileHandler.endEncryption(fd);
-  // now actually close the file
-  return TRI_TRACKED_CLOSE_FILE(fd);
+/// @brief assuming file pointer is not ok, generate/extract proper error
+inline Result fileError(ManagedDirectory::File* file,
+                        bool isWritable) noexcept {
+  if (!file) {
+    if (isWritable) {
+      return {TRI_ERROR_CANNOT_WRITE_FILE};
+    } else {
+      return {TRI_ERROR_CANNOT_READ_FILE};
+    }
+  }
+  return file->status();
 }
 }  // namespace
 
@@ -219,7 +201,7 @@ void flushWal(httpclient::SimpleHttpClient& client) noexcept {
 namespace {
 /// @brief dump the actual data from an individual collection
 Result dumpCollection(httpclient::SimpleHttpClient& client,
-                      DumpFeatureJobData& jobData, int fd,
+                      DumpFeatureJobData& jobData, ManagedDirectory::File& file,
                       std::string const& name, std::string const& server,
                       uint64_t batchId, uint64_t minTick,
                       uint64_t maxTick) noexcept {
@@ -287,9 +269,8 @@ Result dumpCollection(httpclient::SimpleHttpClient& client,
 
     // now actually write retrieved data to dump file
     StringBuffer const& body = response->getBody();
-    bool written =
-        jobData.fileHandler.writeData(fd, body.c_str(), body.length());
-    if (!written) {
+    auto writeStatus = file.write(body.c_str(), body.length());
+    if (writeStatus.fail()) {
       return {TRI_ERROR_CANNOT_WRITE_FILE};
     } else {
       jobData.stats.totalWritten += (uint64_t)body.length();
@@ -318,20 +299,22 @@ Result dumpCollection(httpclient::SimpleHttpClient& client,
 namespace {
 /// @brief processes a single collection dumping job in single-server mode
 Result handleCollection(httpclient::SimpleHttpClient& client,
-                        DumpFeatureJobData& jobData, int fd) noexcept {
+                        DumpFeatureJobData& jobData,
+                        ManagedDirectory::File& file) noexcept {
   // keep the batch alive
   ::extendBatch(client, "", jobData.batchId);
 
   // do the hard work in another function...
-  return ::dumpCollection(client, jobData, fd, jobData.name, "",
-                          jobData.batchId, jobData.tickStart, jobData.maxTick);
+  return ::dumpCollection(client, jobData, file, jobData.name, "",
+                          jobData.batchId, jobData.tickStart, jobData.tickEnd);
 }
 }  // namespace
 
 namespace {
 /// @brief handle a single collection dumping job in cluster mode
 Result handleCollectionCluster(httpclient::SimpleHttpClient& client,
-                               DumpFeatureJobData& jobData, int fd) noexcept {
+                               DumpFeatureJobData& jobData,
+                               ManagedDirectory::File& file) noexcept {
   Result result{TRI_ERROR_NO_ERROR};
 
   // First we have to go through all the shards, what are they?
@@ -347,7 +330,6 @@ Result handleCollectionCluster(httpclient::SimpleHttpClient& client,
     // extract dbserver id
     if (!it.value.isArray() || it.value.length() == 0 ||
         !it.value[0].isString()) {
-      ::finalizeWritingFile(jobData.fileHandler, fd);
       return {TRI_ERROR_BAD_PARAMETER,
               "unexpected value for 'shards' attribute"};
     }
@@ -363,7 +345,7 @@ Result handleCollectionCluster(httpclient::SimpleHttpClient& client,
     std::tie(result, batchId) = ::startBatch(client, DBserver);
     if (result.ok()) {
       // do the hard work elsewhere
-      result = ::dumpCollection(client, jobData, fd, shardName, DBserver,
+      result = ::dumpCollection(client, jobData, file, shardName, DBserver,
                                 batchId, 0, UINT64_MAX);
       ::endBatch(client, DBserver, batchId);
     }
@@ -397,46 +379,35 @@ Result processJob(httpclient::SimpleHttpClient& client,
 
   {
     // save meta data
-    std::string filename =
-        jobData.outputDirectory + TRI_DIR_SEPARATOR_STR + jobData.name +
-        (jobData.clusterMode ? "" : ("_" + hexString)) + ".structure.json";
-    int fd;
-    result = ::prepareFileForWriting(jobData.fileHandler, filename, fd, true);
-    if (result.fail()) {
-      return result;
+    auto file = jobData.directory.writableFile(
+        jobData.name + (jobData.clusterMode ? "" : ("_" + hexString)) +
+            ".structure.json",
+        true);
+    if (!::fileOk(file.get())) {
+      return ::fileError(file.get(), true);
     }
 
     std::string const collectionInfo = jobData.collectionInfo.toJson();
-    bool written = jobData.fileHandler.writeData(fd, collectionInfo.c_str(),
-                                                 collectionInfo.size());
-    ::finalizeWritingFile(jobData.fileHandler, fd);
-    if (!written) {
+    auto writeStatus =
+        file->write(collectionInfo.c_str(), collectionInfo.size());
+    if (writeStatus.fail()) {
       // close file and bail out
-      result = {TRI_ERROR_CANNOT_WRITE_FILE,
-                "cannot write to file '" + filename + "'"};
+      result = writeStatus;
     }
   }
 
   if (result.ok() && jobData.dumpData) {
     // save the actual data
-    std::string filename = jobData.outputDirectory + TRI_DIR_SEPARATOR_STR +
-                           jobData.name + "_" + hexString + ".data.json";
-    int fd;
-    result = ::prepareFileForWriting(jobData.fileHandler, filename, fd, true);
-    if (result.fail()) {
-      return result;
+    auto file = jobData.directory.writableFile(
+        jobData.name + "_" + hexString + ".data.json", true);
+    if (!::fileOk(file.get())) {
+      return ::fileError(file.get(), true);
     }
 
     if (jobData.clusterMode) {
-      result = handleCollectionCluster(client, jobData, fd);
+      result = ::handleCollectionCluster(client, jobData, *file);
     } else {
-      result = handleCollection(client, jobData, fd);
-    }
-
-    // close out file for collection
-    int fileStatus = ::finalizeWritingFile(jobData.fileHandler, fd);
-    if (fileStatus != TRI_ERROR_NO_ERROR && result.fail()) {
-      result = {fileStatus};
+      result = ::handleCollection(client, jobData, *file);
     }
   }
 
@@ -458,28 +429,26 @@ DumpFeatureStats::DumpFeatureStats(uint64_t b, uint64_t c, uint64_t w) noexcept
     : totalBatches{b}, totalCollections{c}, totalWritten{w} {}
 
 DumpFeatureJobData::DumpFeatureJobData(
-    DumpFeature& feat, FileHandler& handler, VPackSlice const& info,
-    std::string const& c, std::string const& n, std::string const& t,
-    uint64_t const& batch, uint64_t const& tStart, uint64_t const& tMax,
-    uint64_t const& chunkInitial, uint64_t const& chunkMax, bool const& cluster,
-    bool const& prog, bool const& data, std::string const& directory,
-    DumpFeatureStats& s) noexcept
+    DumpFeature& feat, ManagedDirectory& dir, DumpFeatureStats& stat,
+    VPackSlice const& info, bool const& cluster, bool const& prog,
+    bool const& data, uint64_t const& chunkInitial, uint64_t const& chunkMax,
+    uint64_t const& tStart, uint64_t const& tEnd, uint64_t const batch,
+    std::string const& c, std::string const& n, std::string const& t) noexcept
     : feature{feat},
-      fileHandler{handler},
+      directory{dir},
+      stats{stat},
       collectionInfo{info},
-      cid{c},
-      name{n},
-      type{t},
-      batchId{batch},
-      tickStart{tStart},
-      maxTick{tMax},
-      initialChunkSize{chunkInitial},
-      maxChunkSize{chunkMax},
       clusterMode{cluster},
       showProgress{prog},
       dumpData{data},
-      outputDirectory{directory},
-      stats{s} {}
+      initialChunkSize{chunkInitial},
+      maxChunkSize{chunkMax},
+      tickStart{tStart},
+      tickEnd{tEnd},
+      batchId{batch},
+      cid{c},
+      name{n},
+      type{t} {}
 
 DumpFeature::DumpFeature(application_features::ApplicationServer* server,
                          int& exitCode)
@@ -487,13 +456,11 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _exitCode{exitCode},
       _clientManager{},
       _clientTaskQueue{::processJob, ::handleJobResult},
-      _fileHandler{},
+      _directory{nullptr},
       _stats{0, 0, 0},
       _collections{},
       _workerErrorLock{},
       _workerErrors{},
-      _chunkSize{1024 * 1024 * 8},
-      _maxChunkSize{1024 * 1024 * 64},
       _dumpData{true},
       _force{false},
       _ignoreDistributeShardsLikeErrors{false},
@@ -501,11 +468,13 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _overwrite{false},
       _progress{true},
       _clusterMode{false},
+      _initialChunkSize{1024 * 1024 * 8},
+      _maxChunkSize{1024 * 1024 * 64},
       _tickStart{0},
       _tickEnd{0},
-      _outputDirectory{FileUtils::buildFilename(
-          FileUtils::currentDirectory().result(), "dump")},
-      _threads{2} {
+      _threadCount{2},
+      _outputPath{FileUtils::buildFilename(
+          FileUtils::currentDirectory().result(), "dump")} {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Client");
@@ -527,7 +496,7 @@ void DumpFeature::collectOptions(
 
   options->addOption("--initial-batch-size",
                      "initial size for individual data batches (in bytes)",
-                     new UInt64Parameter(&_chunkSize));
+                     new UInt64Parameter(&_initialChunkSize));
 
   options->addOption("--batch-size",
                      "maximum size for individual data batches (in bytes)",
@@ -535,7 +504,7 @@ void DumpFeature::collectOptions(
 
   options->addOption("--threads",
                      "maximum number of collections to process in parallel",
-                     new UInt32Parameter(&_threads));
+                     new UInt32Parameter(&_threadCount));
 
   options->addOption("--dump-data", "dump collection data",
                      new BooleanParameter(&_dumpData));
@@ -554,7 +523,7 @@ void DumpFeature::collectOptions(
                      new BooleanParameter(&_includeSystemCollections));
 
   options->addOption("--output-directory", "output directory",
-                     new StringParameter(&_outputDirectory));
+                     new StringParameter(&_outputPath));
 
   options->addOption("--overwrite", "overwrite data in output directory",
                      new BooleanParameter(&_overwrite));
@@ -575,7 +544,7 @@ void DumpFeature::validateOptions(
   size_t n = positionals.size();
 
   if (1 == n) {
-    _outputDirectory = positionals[0];
+    _outputPath = positionals[0];
   } else if (1 < n) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "expecting at most one directory, got " +
@@ -584,10 +553,10 @@ void DumpFeature::validateOptions(
   }
 
   // clamp chunk values to allowed ranges
-  _chunkSize =
-      boost::algorithm::clamp(_chunkSize, ::MinChunkSize, ::MaxChunkSize);
+  _initialChunkSize = boost::algorithm::clamp(_initialChunkSize, ::MinChunkSize,
+                                              ::MaxChunkSize);
   _maxChunkSize =
-      boost::algorithm::clamp(_maxChunkSize, _chunkSize, ::MaxChunkSize);
+      boost::algorithm::clamp(_maxChunkSize, _initialChunkSize, ::MaxChunkSize);
 
   if (_tickStart < _tickEnd) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
@@ -597,73 +566,17 @@ void DumpFeature::validateOptions(
 
   // trim trailing slash from path because it may cause problems on ...
   // Windows
-  if (!_outputDirectory.empty() &&
-      _outputDirectory.back() == TRI_DIR_SEPARATOR_CHAR) {
-    TRI_ASSERT(_outputDirectory.size() > 0);
-    _outputDirectory.pop_back();
+  if (!_outputPath.empty() && _outputPath.back() == TRI_DIR_SEPARATOR_CHAR) {
+    TRI_ASSERT(_outputPath.size() > 0);
+    _outputPath.pop_back();
   }
 
-  auto clamped = boost::algorithm::clamp(_threads, 1, TRI_numberProcessors());
-  if (_threads != clamped) {
+  auto clamped =
+      boost::algorithm::clamp(_threadCount, 1, TRI_numberProcessors());
+  if (_threadCount != clamped) {
     LOG_TOPIC(WARN, Logger::FIXME) << "capping --threads value to " << clamped;
-    _threads = clamped;
+    _threadCount = clamped;
   }
-}
-
-void DumpFeature::prepare() {
-  // set up the output directory, not much else
-
-  bool isDirectory = false;
-  bool isEmptyDirectory = false;
-
-  // need to make sure we actually have a name specified
-  if (!_outputDirectory.empty()) {
-    // see if it exists already as a directory
-    isDirectory = TRI_IsDirectory(_outputDirectory.c_str());
-    if (isDirectory) {
-      // if so, check if it already has some files in it
-      std::vector<std::string> files(
-          TRI_FullTreeDirectory(_outputDirectory.c_str()));
-      isEmptyDirectory = (files.size() <= 1);
-      // TODO: TRI_FullTreeDirectory always returns at least one element ("")
-      // even if directory is empty?
-    }
-  }
-
-  // no directory specified, or points to non-directory file
-  if (_outputDirectory.empty() ||
-      (TRI_ExistsFile(_outputDirectory.c_str()) && !isDirectory)) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "cannot write to output directory '" << _outputDirectory << "'";
-    FATAL_ERROR_EXIT();
-  }
-
-  // directory exists, has files, and we aren't allowed to overwrite
-  if (isDirectory && !isEmptyDirectory && !_overwrite) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "output directory '" << _outputDirectory
-        << "' already exists. use \"--overwrite true\" to "
-           "overwrite data in it";
-    FATAL_ERROR_EXIT();
-  }
-
-  // create directory if it doesn't exist
-  if (!isDirectory) {
-    long systemError;
-    std::string errorMessage;
-    int res = TRI_CreateDirectory(_outputDirectory.c_str(), systemError,
-                                  errorMessage);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "unable to create output directory '" << _outputDirectory
-          << "': " << errorMessage;
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  _fileHandler.initializeEncryption();
-  _fileHandler.initializeEncryptedDirectory(_outputDirectory);
 }
 
 // dump data from server
@@ -733,21 +646,15 @@ Result DumpFeature::runDump(SimpleHttpClient& client,
     meta.close();
 
     // save last tick in file
-    std::string filename =
-        _outputDirectory + TRI_DIR_SEPARATOR_STR + "dump.json";
-    int fd;
-    result = ::prepareFileForWriting(_fileHandler, filename, fd, true);
-    if (result.fail()) {
-      return result;
+    auto file = _directory->writableFile("dump.json", true);
+    if (file->status().fail()) {
+      return file->status();
     }
 
     std::string const metaString = meta.slice().toJson();
-    bool written =
-        _fileHandler.writeData(fd, metaString.c_str(), metaString.size());
-    ::finalizeWritingFile(_fileHandler, fd);
-    if (!written) {
-      return {TRI_ERROR_CANNOT_WRITE_FILE,
-              "cannot write to file '" + filename + "'"};
+    auto writeStatus = file->write(metaString.c_str(), metaString.size());
+    if (writeStatus.fail()) {
+      return writeStatus;
     }
   } catch (basics::Exception const& ex) {
     return {ex.code(), ex.what()};
@@ -805,9 +712,9 @@ Result DumpFeature::runDump(SimpleHttpClient& client,
 
     // queue job to actually dump collection
     auto jobData = std::make_unique<DumpFeatureJobData>(
-        *this, _fileHandler, collection, std::to_string(cid), name,
-        collectionType, batchId, _tickStart, maxTick, _chunkSize, _maxChunkSize,
-        _clusterMode, _progress, _dumpData, _outputDirectory, _stats);
+        *this, *_directory, _stats, collection, _clusterMode, _progress,
+        _dumpData, _initialChunkSize, _maxChunkSize, _tickStart, maxTick,
+        batchId, std::to_string(cid), name, collectionType);
     _clientTaskQueue.queueJob(std::move(jobData));
   }
 
@@ -922,10 +829,10 @@ Result DumpFeature::runClusterDump(SimpleHttpClient& client) noexcept {
 
     // queue job to actually dump collection
     auto jobData = std::make_unique<DumpFeatureJobData>(
-        *this, _fileHandler, collection, std::to_string(cid), name,
-        "" /*collectionType*/, 0, _tickStart, 0 /*maxTick*/, _chunkSize,
-        _maxChunkSize, _clusterMode, _progress, _dumpData, _outputDirectory,
-        _stats);
+        *this, *_directory, _stats, collection, _clusterMode, _progress,
+        _dumpData, _initialChunkSize, _maxChunkSize, _tickStart,
+        0 /* _tickEnd */, 0 /* batchId */, std::to_string(cid), name,
+        "" /* collectionType */);
     _clientTaskQueue.queueJob(std::move(jobData));
   }
 
@@ -953,6 +860,29 @@ void DumpFeature::reportError(Result const& error) noexcept {
 /// @brief main method to run dump
 void DumpFeature::start() {
   _exitCode = EXIT_SUCCESS;
+
+  // set up the output directory, not much else
+  _directory = std::make_unique<ManagedDirectory>(_outputPath, true, true);
+  if (_directory->status().fail()) {
+    switch (_directory->status().errorNumber()) {
+      case TRI_ERROR_FILE_EXISTS:
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "cannot write to output directory '" << _outputPath << "'";
+
+        break;
+      case TRI_ERROR_CANNOT_OVERWRITE_FILE:
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "output directory '" << _outputPath
+            << "' already exists. use \"--overwrite true\" to "
+               "overwrite data in it";
+        break;
+      default:
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << _directory->status().errorMessage();
+        break;
+    }
+    FATAL_ERROR_EXIT();
+  }
 
   // get database name to operate on
   auto client =
@@ -992,19 +922,17 @@ void DumpFeature::start() {
     FATAL_ERROR_EXIT();
   }
   if (usingRocksDB) {
-    _threads = 1;
-  } else if (_fileHandler.encryptionEnabled()) {
-    _threads = 1;
+    _threadCount = 1;
   }
-  _clientTaskQueue.spawnWorkers(_clientManager, _threads);
+  _clientTaskQueue.spawnWorkers(_clientManager, _threadCount);
 
   if (_progress) {
     std::cout << "Connected to ArangoDB '" << client->endpoint()
               << "', database: '" << dbName << "', username: '"
               << client->username() << "'" << std::endl;
 
-    std::cout << "Writing dump to output directory '" << _outputDirectory << "'"
-              << std::endl;
+    std::cout << "Writing dump to output directory '" << _directory->path()
+              << "'" << std::endl;
   }
 
   Result res;

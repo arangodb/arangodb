@@ -27,6 +27,7 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "Shell/ClientFeature.h"
+#include "Utils/ManagedDirectory.hpp"
 #include "V8Client/ArangoClientHelper.h"
 
 namespace arangodb {
@@ -53,7 +54,8 @@ class RestoreFeature final : public application_features::ApplicationFeature,
   uint64_t _chunkSize;
   bool _includeSystemCollections;
   bool _createDatabase;
-  std::string _inputDirectory;
+  std::string _inputPath;
+  std::unique_ptr<ManagedDirectory> _directory;
   bool _importData;
   bool _importStructure;
   bool _progress;
@@ -72,13 +74,9 @@ class RestoreFeature final : public application_features::ApplicationFeature,
   int sendRestoreData(std::string const& cname, char const* buffer,
                       size_t bufferSize, std::string& errorMsg);
   int processInputDirectory(std::string& errorMsg);
-  ssize_t readData(int fd, char* data, size_t len);
-  void beginDecryption(int fd);
-  void endDecryption(int fd);
 
  private:
   int* _result;
-  EncryptionFeature* _encryption;
 
   // statistics
   struct {

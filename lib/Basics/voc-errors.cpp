@@ -37,6 +37,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_SHUTTING_DOWN, "shutdown in progress");
   REG_ERROR(ERROR_ONLY_ENTERPRISE, "only enterprise version");
   REG_ERROR(ERROR_RESOURCE_LIMIT, "resource limit exceeded");
+  REG_ERROR(ERROR_CANNOT_READ_FILE, "cannot read file");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");

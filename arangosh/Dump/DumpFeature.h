@@ -28,7 +28,6 @@
 #include "Basics/Mutex.h"
 #include "Utils/ClientManager.hpp"
 #include "Utils/ClientTaskQueue.hpp"
-#include "Utils/FileHandler.hpp"
 
 namespace arangodb {
 namespace httpclient {
@@ -36,6 +35,7 @@ class SimpleHttpResult;
 }
 class DumpFeature;
 class EncryptionFeature;
+class ManagedDirectory;
 
 struct DumpFeatureStats {
   DumpFeatureStats(uint64_t b, uint64_t c, uint64_t w) noexcept;
@@ -45,28 +45,26 @@ struct DumpFeatureStats {
 };
 
 struct DumpFeatureJobData {
-  DumpFeatureJobData(DumpFeature&, FileHandler& filehandler, VPackSlice const&,
-                     std::string const&, std::string const&, std::string const&,
+  DumpFeatureJobData(DumpFeature&, ManagedDirectory&, DumpFeatureStats&,
+                     VPackSlice const&, bool const&, bool const&, bool const&,
                      uint64_t const&, uint64_t const&, uint64_t const&,
-                     uint64_t const&, uint64_t const&, bool const&, bool const&,
-                     bool const&, std::string const&,
-                     DumpFeatureStats&) noexcept;
+                     uint64_t const&, uint64_t const, std::string const&, std::string const&,
+                     std::string const&) noexcept;
   DumpFeature& feature;
-  FileHandler& fileHandler;
+  ManagedDirectory& directory;
+  DumpFeatureStats& stats;
   VPackSlice const collectionInfo;
-  std::string const cid;
-  std::string const name;
-  std::string const type;
-  uint64_t batchId;
-  uint64_t const tickStart;
-  uint64_t const maxTick;
-  uint64_t const initialChunkSize;
-  uint64_t const maxChunkSize;
   bool const clusterMode;
   bool const showProgress;
   bool const dumpData;
-  std::string const& outputDirectory;
-  DumpFeatureStats& stats;
+  uint64_t const initialChunkSize;
+  uint64_t const maxChunkSize;
+  uint64_t const tickStart;
+  uint64_t const tickEnd;
+  uint64_t const batchId;
+  std::string const cid;
+  std::string const name;
+  std::string const type;
 };
 extern template class ClientTaskQueue<DumpFeatureJobData>;
 
@@ -80,11 +78,9 @@ class DumpFeature : public application_features::ApplicationFeature {
       std::shared_ptr<options::ProgramOptions>) override final;
   virtual void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override final;
-  virtual void prepare() override final;
   virtual void start() override final;
 
-public:
-
+ public:
   /**
    * @brief Returns the feature name (for registration with `ApplicationServer`)
    * @return The name of the feature
@@ -98,20 +94,23 @@ public:
   void reportError(Result const& error) noexcept;
 
  private:
-  Result runDump(httpclient::SimpleHttpClient& client, std::string& dbName) noexcept;
+  Result runDump(httpclient::SimpleHttpClient& client,
+                 std::string& dbName) noexcept;
   Result runClusterDump(httpclient::SimpleHttpClient& client) noexcept;
 
  private:
   int& _exitCode;
+
+ private:
   ClientManager _clientManager;
   ClientTaskQueue<DumpFeatureJobData> _clientTaskQueue;
-  FileHandler _fileHandler;
+  std::unique_ptr<ManagedDirectory> _directory;
   DumpFeatureStats _stats;
   std::vector<std::string> _collections;
   Mutex _workerErrorLock;
   std::queue<Result> _workerErrors;
-  uint64_t _chunkSize;
-  uint64_t _maxChunkSize;
+
+ private:
   bool _dumpData;
   bool _force;
   bool _ignoreDistributeShardsLikeErrors;
@@ -119,10 +118,12 @@ public:
   bool _overwrite;
   bool _progress;
   bool _clusterMode;
+  uint64_t _initialChunkSize;
+  uint64_t _maxChunkSize;
   uint64_t _tickStart;
   uint64_t _tickEnd;
-  std::string _outputDirectory;
-  uint32_t _threads;
+  uint32_t _threadCount;
+  std::string _outputPath;
 };
 }  // namespace arangodb
 

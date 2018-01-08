@@ -158,6 +158,11 @@ constexpr int TRI_ERROR_ONLY_ENTERPRISE                                         
 /// configured maximum value.
 constexpr int TRI_ERROR_RESOURCE_LIMIT                                          = 32;
 
+/// 33: ERROR_CANNOT_READ_FILE
+/// "cannot read file"
+/// Will be raised when a file cannot be read.
+constexpr int TRI_ERROR_CANNOT_READ_FILE                                        = 33;
+
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.
