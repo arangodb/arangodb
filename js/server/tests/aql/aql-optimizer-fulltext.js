@@ -56,11 +56,11 @@ function optimizerRuleTestSuite() {
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, query + " Has no FilterNode");
   };
   var hasNoIndexNode = function (plan,query) {
-    assertEqual(findExecutionNodes(plan, "IndexNode").length, 0, query + " Has no IndexNode");
+    assertEqual(findExecutionNodes(plan, "IndexNode").length, 0, query + " Has IndexNode, but should not have one");
   };
   var hasIndexNode = function (plan,query) {
     var rn = findExecutionNodes(plan,"IndexNode");
-    assertEqual(rn.length, 1, query + " Has IndexNode");
+    assertEqual(rn.length, 1, query + " Has no IndexNode, but should have one");
     assertEqual(rn[0].indexes.length, 1);
     var indexType = rn[0].indexes[0].type;
     assertTrue(indexType === "fulltext", indexType + " wrong type");
@@ -151,8 +151,21 @@ function optimizerRuleTestSuite() {
       checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'prefix:quergestreift,|koedern,|prefix:römer,-melken') SORT d.id RETURN d.id", [ 2, 4, 7 ]);
       checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'prefix:quergestreift,|koedern,|prefix:römer,-melken', 2) SORT d.id RETURN d.id", [ 2, 4 ]);
       checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'prefix:quergestreift,|koedern,|prefix:römer,-melken', 2) LIMIT 1 SORT d.id RETURN d.id", [ 2]);            
-    } // testRuleBasics
+    }, // testRuleBasics
 
+    testRuleStringCollection : function() {
+      // collection is not known to query before optimizer rule is applied
+      let q = "FOR d IN FULLTEXT('" + colName + "', 't1', 'möchten,müller') RETURN d.id";
+      let plan = AQL_EXPLAIN(q, {});
+      hasIndexNode(plan,q);
+      hasNoFilterNode(plan,q);
+
+      let r = [ 3, 6 ];
+      let r1 = AQL_EXECUTE(q, {}, { optimizer: { rules: [ "-all" ] } });
+      let r2 = AQL_EXECUTE(q, {});
+      assertEqual(r1.json, r, "Invalid fulltext result");
+      assertEqual(r2.json, r, "Invalid fulltext result");
+    } // testRuleBasics
 
   }; // test dictionary (return)
 } // optimizerRuleTestSuite
