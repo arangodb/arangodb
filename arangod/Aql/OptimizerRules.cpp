@@ -52,6 +52,7 @@
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include "Transaction/Methods.h"
+#include "VocBase/Methods/Collections.h"
 
 #include <boost/optional.hpp>
 #include <tuple>
@@ -4489,8 +4490,12 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-static bool isValueTypeString(AstNode* node) {
+static bool isValueTypeString(AstNode const* node) {
   return (node->type == NODE_TYPE_VALUE && node->value.type == VALUE_TYPE_STRING);
+}
+
+static bool isValueTypeCollection(AstNode const* node) {
+  return node->type == NODE_TYPE_COLLECTION || isValueTypeString(node);
 }
 
 static bool isValueTypeNumber(AstNode* node) {
@@ -4535,16 +4540,14 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   AstNode* attrArg = fargs->getMember(1);
   AstNode* queryArg = fargs->getMember(2);
   AstNode* limitArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
-  if ((collArg->type != NODE_TYPE_COLLECTION) ||
-      !isValueTypeString(attrArg) || !isValueTypeString(queryArg) ||
+  if (!isValueTypeCollection(collArg) || !isValueTypeString(attrArg) ||
+      !isValueTypeString(queryArg) || // (...  || queryArg->type == NODE_TYPE_REFERENCE)
       (limitArg != nullptr && !isValueTypeNumber(limitArg))) {
     return false;
   }
   
   std::string name = collArg->getString();
   TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
-  aql::Collections* colls = plan->getAst()->query()->collections();
-  aql::Collection const* coll = colls->add(name, AccessMode::Type::READ);
   std::vector<basics::AttributeName> field;
   TRI_ParseAttributeString(attrArg->getString(), field, /*allowExpansion*/false);
   if (field.empty()) {
@@ -4552,17 +4555,18 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   }
   
   // check for suitable indexes
-  std::shared_ptr<LogicalCollection> logical = coll->getCollection();
   std::shared_ptr<arangodb::Index> index;
-  for (auto idx : logical->getIndexes()) {
-    if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-      TRI_ASSERT(idx->fields().size() == 1);
-      if (basics::AttributeName::isIdentical(idx->fields()[0], field, false)) {
-        index = idx;
-        break;
+  methods::Collections::lookup(vocbase, name, [&](LogicalCollection* logical) {
+    for (auto idx : logical->getIndexes()) {
+      if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+        TRI_ASSERT(idx->fields().size() == 1);
+        if (basics::AttributeName::isIdentical(idx->fields()[0], field, false)) {
+          index = idx;
+          break;
+        }
       }
     }
-  }
+  });
   if (!index) { // no index found
     return false;
   }
@@ -4580,6 +4584,19 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   auto condition = std::make_unique<Condition>(ast);
   condition->andCombine(cond);
   condition->normalize(plan);
+  
+  // we assume by now that collection `name` exists
+  aql::Collections* colls = plan->getAst()->query()->collections();
+  aql::Collection* coll = colls->get(name);
+  if (coll == nullptr) { // TODO: cleanup this mess
+    coll = colls->add(name, AccessMode::Type::READ);
+    if (!ServerState::instance()->isCoordinator()) {
+      TRI_ASSERT(coll != nullptr);
+      coll->setCollection(vocbase->lookupCollection(name));
+      // FIXME: does this need to happen in the coordinator?
+      plan->getAst()->query()->trx()->addCollectionAtRuntime(name);
+    }
+  }
   
   auto indexNode = new IndexNode(plan, plan->nextId(), vocbase,
                                  coll, elnode->outVariable(),
