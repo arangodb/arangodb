@@ -5,10 +5,11 @@ Foxx services can define configuration parameters to make them more re-usable.
 
 The `configuration` object maps names to configuration parameters:
 
-* The key is the name under which the parameter will be available
-  on the [service context's](Context.md) `configuration` property.
+* The key is the name under which the parameter will be available on the [service context's](Context.md) `configuration` property.
 
 * The value is a parameter definition.
+
+The key should be a valid identifier following the case-insensitive format `/^[_$a-z][-_$a-z0-9]*$/`.
 
 The parameter definition can have the following properties:
 

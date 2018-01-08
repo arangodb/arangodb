@@ -35,7 +35,6 @@ class ManagedDocumentResult;
 namespace transaction {
 class Methods;
 }
-;
 
 namespace traverser {
 class ClusterEdgeCursor;

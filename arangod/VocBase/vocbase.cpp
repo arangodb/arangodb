@@ -36,6 +36,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -896,7 +897,7 @@ LogicalCollection* TRI_vocbase_t::lookupCollection(std::string const& name) cons
   // lookupbyid function
   // this is safe because collection names must not start with a digit
   if (name[0] >= '0' && name[0] <= '9') {
-    return lookupCollection(StringUtils::uint64(name));
+    return lookupCollection(NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size()));
   }
   
   READ_LOCKER(readLocker, _collectionsLock);
@@ -927,7 +928,7 @@ LogicalCollection* TRI_vocbase_t::lookupCollectionNoLock(
   // function
   // this is safe because collection names must not start with a digit
   if (name[0] >= '0' && name[0] <= '9') {
-    TRI_voc_cid_t id = StringUtils::uint64(name);
+    TRI_voc_cid_t id = NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
     auto it = _collectionsById.find(id);
 
     if (it == _collectionsById.end()) {
@@ -967,7 +968,7 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
   // function
   // this is safe because view names must not start with a digit
   if (name[0] >= '0' && name[0] <= '9') {
-    return lookupView(StringUtils::uint64(name));
+    return lookupView(NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size()));
   }
 
   // otherwise we'll look up the view by name
@@ -1834,7 +1835,7 @@ TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld,
 TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld,
                               bool warn) {
   if (len > 0 && *p >= '1' && *p <= '9') {
-    TRI_voc_rid_t r = arangodb::basics::StringUtils::uint64_check(p, len);
+    auto r = NumberUtils::atoi_positive_unchecked<TRI_voc_rid_t>(p, p + len);
     if (warn && r > tickLimit) {
       // An old tick value that could be confused with a time stamp
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)

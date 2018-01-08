@@ -43,7 +43,6 @@ class ManagedDocumentResult;
 namespace transaction {
 class Methods;
 }
-;
 
 namespace velocypack {
 class Builder;

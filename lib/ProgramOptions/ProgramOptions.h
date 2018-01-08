@@ -97,7 +97,7 @@ class ProgramOptions {
 
   // sets a value translator
   void setTranslator(
-      std::function<std::string(std::string const&, char const*)> translator);
+      std::function<std::string(std::string const&, char const*)> const& translator);
 
   // return a const reference to the processing result
   ProcessingResult const& processingResult() const { return _processingResult; }

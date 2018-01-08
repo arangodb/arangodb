@@ -73,6 +73,16 @@ struct MMFilesPrimaryIndexHelper {
   inline bool IsEqualElementElement(void* userData,
                                     MMFilesSimpleIndexElement const& left,
                                     MMFilesSimpleIndexElement const& right) const {
+    return (left.localDocumentId() == right.localDocumentId());
+  }
+
+  inline bool IsEqualElementElementByKey(void* userData,
+                                         MMFilesSimpleIndexElement const& left,
+                                         MMFilesSimpleIndexElement const& right) const {
+    if (left.hash() != right.hash()) {
+      // TODO: check if we have many collisions here
+      return false;
+    }
     IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
     TRI_ASSERT(context != nullptr);
 
@@ -81,12 +91,6 @@ struct MMFilesPrimaryIndexHelper {
     TRI_ASSERT(l.isString());
     TRI_ASSERT(r.isString());
     return l.equals(r);
-  }
-
-  inline bool IsEqualElementElementByKey(void* userData,
-                                         MMFilesSimpleIndexElement const& left,
-                                         MMFilesSimpleIndexElement const& right) const {
-    return IsEqualElementElement(userData, left, right);
   }
 };
 
@@ -97,7 +101,6 @@ class MMFilesPrimaryIndexIterator final : public IndexIterator {
  public:
   MMFilesPrimaryIndexIterator(LogicalCollection* collection,
                               transaction::Methods* trx,
-                              ManagedDocumentResult* mmdr,
                               MMFilesPrimaryIndex const* index,
                               std::unique_ptr<VPackBuilder>& keys);
 
@@ -119,7 +122,6 @@ class MMFilesAllIndexIterator final : public IndexIterator {
  public:
   MMFilesAllIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           MMFilesPrimaryIndex const* index,
                           MMFilesPrimaryIndexImpl const* indexImpl,
                           bool reverse);
@@ -147,7 +149,6 @@ class MMFilesAnyIndexIterator final : public IndexIterator {
  public:
   MMFilesAnyIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           MMFilesPrimaryIndex const* index,
                           MMFilesPrimaryIndexImpl const* indexImpl);
 
@@ -232,14 +233,12 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   /// @brief request an iterator over all elements in the index in
   ///        a sequential order.
-  IndexIterator* allIterator(transaction::Methods*, ManagedDocumentResult*,
-                             bool reverse) const;
+  IndexIterator* allIterator(transaction::Methods*, bool reverse) const;
 
   /// @brief request an iterator over all elements in the index in
   ///        a random order. It is guaranteed that each element is found
   ///        exactly once unless the collection is modified.
-  IndexIterator* anyIterator(transaction::Methods*,
-                             ManagedDocumentResult*) const;
+  IndexIterator* anyIterator(transaction::Methods*) const;
 
   /// @brief a method to iterate over all elements in the index in
   ///        reversed sequential order.
