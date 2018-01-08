@@ -340,15 +340,9 @@ class Builder {
   }
 
   // Add a subvalue into an object from a Value:
-  uint8_t* add(std::string const& attrName, Value const& sub) {
-    return addInternal<Value>(attrName, sub);
-  }
-  uint8_t* add(char const* attrName, Value const& sub) {
-    return addInternal<Value>(attrName, sub);
-  }
-  uint8_t* add(char const* attrName, size_t attrLength, Value const& sub) {
-    return addInternal<Value>(attrName, attrLength, sub);
-  }
+  uint8_t* add(std::string const& attrName, Value const& sub);
+  uint8_t* add(char const* attrName, Value const& sub);
+  uint8_t* add(char const* attrName, size_t attrLength, Value const& sub);
 
   // Add a subvalue into an object from a Slice:
   uint8_t* add(std::string const& attrName, Slice const& sub) {
