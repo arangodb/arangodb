@@ -54,7 +54,7 @@ std::vector<bucket_size_t> compute_bucket_meta() {
   std::vector<bucket_size_t> bucket_meta(num_buckets);
 
   if (!num_buckets) {
-    return std::move(bucket_meta);
+    return bucket_meta;
   }
 
   bucket_meta[0].size = 1 << skip_bits;
@@ -69,7 +69,7 @@ std::vector<bucket_size_t> compute_bucket_meta() {
   // all subsequent buckets should have the same meta as the last bucket
   bucket_meta.back().next = &(bucket_meta.back());
 
-  return std::move(bucket_meta);
+  return bucket_meta;
 }
 MSVC_ONLY(__pragma(warning(pop)))
 

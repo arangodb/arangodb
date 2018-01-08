@@ -58,7 +58,6 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
-
 /// @brief estimateCost
 double RemoteNode::estimateCost(size_t& nrItems) const {
   if (_dependencies.size() == 1) {

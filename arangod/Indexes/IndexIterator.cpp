@@ -45,6 +45,18 @@ IndexIterator::IndexIterator(LogicalCollection* collection,
   TRI_ASSERT(_mmdr != nullptr);
 }
 
+IndexIterator::IndexIterator(LogicalCollection* collection, 
+                             transaction::Methods* trx, 
+                             arangodb::Index const* index)
+      : _collection(collection), 
+        _trx(trx), 
+        _mmdr(nullptr),
+        _context(trx, collection, nullptr, index->fields().size()),
+        _responsible(false) {
+  TRI_ASSERT(_collection != nullptr);
+  TRI_ASSERT(_trx != nullptr);
+}
+
 /// @brief default destructor. Does not free anything
 IndexIterator::~IndexIterator() {
   if (_responsible) {

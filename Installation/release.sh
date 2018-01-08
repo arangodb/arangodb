@@ -17,6 +17,10 @@ PARALLEL=8
 SED=sed
 IS_MAC=0
 
+NOTIFY='if test -x /usr/games/oneko; then /usr/games/oneko& fi'
+trap "$NOTIFY"
+
+
 if test "$(uname)" == "Darwin"; then
     SED=gsed
     OSNAME=darwin
@@ -178,7 +182,7 @@ OAUTH_ID=$(echo "$OAUTH_REPLY" | \
         )
 
 # shellcheck disable=SC2064
-trap "curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
+trap "$NOTIFY; curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
 
 
 GET_SYNCER_REV=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases?access_token=${OAUTH_TOKEN}")

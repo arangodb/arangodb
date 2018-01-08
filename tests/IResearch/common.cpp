@@ -75,7 +75,6 @@ void init(bool withICU /*= false*/) {
   SINGLETON = &singleton;
 
   arangodb::ServerIdFeature::setId(12345);
-  arangodb::KeyGenerator::Initialize();
 
   if (withICU) {
     // initialize ICU, required for Utf8Helper which is used by the optimizer
