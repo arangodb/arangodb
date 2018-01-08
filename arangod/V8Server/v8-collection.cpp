@@ -247,7 +247,7 @@ static int V8ToVPackNoKeyRevId(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get all cluster collections
+/// @brief get all cluster collections cloned, caller needs to cleanupb
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<LogicalCollection*> GetCollectionsCluster(

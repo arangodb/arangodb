@@ -2170,7 +2170,6 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   int res = saveIndex(trx, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, Logger::FIXME) << info.toJson();
     THROW_ARANGO_EXCEPTION(res);
   }
 
