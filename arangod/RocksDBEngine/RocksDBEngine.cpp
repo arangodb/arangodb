@@ -1344,7 +1344,7 @@ Result RocksDBEngine::registerRecoveryHelper(
     std::shared_ptr<RocksDBRecoveryHelper> helper) {
   try {
     _recoveryHelpers.emplace_back(helper);
-  } catch (std::bad_alloc const& ex) {
+  } catch (std::bad_alloc const&) {
     return {TRI_ERROR_OUT_OF_MEMORY};
   }
 
