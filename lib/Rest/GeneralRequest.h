@@ -191,6 +191,10 @@ class GeneralRequest {
     optionsWithUniquenessCheck.checkAttributeUniqueness = true;
     return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck), &optionsWithUniquenessCheck);
   };
+  
+  std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtrNoUniquenessChecks() {
+    return std::make_shared<VPackBuilder>(payload());
+  };
 
   ContentType contentType() const { return _contentType; }
   ContentType contentTypeResponse() const { return _contentTypeResponse; }

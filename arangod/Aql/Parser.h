@@ -30,28 +30,9 @@
 
 namespace arangodb {
 namespace aql {
-
 struct AstNode;
 class Query;
 struct QueryResult;
-class Parser;
-}
-}
-
-/// @brief forwards for the parse function provided by the parser (.y)
-int Aqlparse(arangodb::aql::Parser*);
-
-/// @brief forward for the init function provided by the lexer (.l)
-int Aqllex_init(void**);
-
-/// @brief forward for the shutdown function provided by the lexer (.l)
-int Aqllex_destroy(void*);
-
-/// @brief forward for the context function provided by the lexer (.l)
-void Aqlset_extra(arangodb::aql::Parser*, void*);
-
-namespace arangodb {
-namespace aql {
 
 /// @brief the parser
 class Parser {
@@ -184,5 +165,17 @@ class Parser {
 };
 }
 }
+
+/// @brief forward for the parse function provided by the parser (.y)
+int Aqlparse(arangodb::aql::Parser*);
+
+/// @brief forward for the init function provided by the lexer (.l)
+int Aqllex_init(void**);
+
+/// @brief forward for the shutdown function provided by the lexer (.l)
+int Aqllex_destroy(void*);
+
+/// @brief forward for the context function provided by the lexer (.l)
+void Aqlset_extra(arangodb::aql::Parser*, void*);
 
 #endif

@@ -1283,7 +1283,7 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
                                      // will have _fields many entries.
     TRI_ASSERT(mapping.size() == _fields.size());
     if (!findMatchingConditions(node, reference, mapping, usesIn)) {
-      return new EmptyIndexIterator(_collection, trx, mmdr, this);
+      return new EmptyIndexIterator(_collection, trx, this);
     }
   } else {
     TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {

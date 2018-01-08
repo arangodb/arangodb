@@ -430,8 +430,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
   void writeCommitMarker() {
     TRI_ASSERT(_seenBeginTransaction && !_singleOp);
-    LOG_TOPIC(_LOG, Logger::PREGEL) << "tick: " << _currentSequence
-                                    << " commit transaction";
+    LOG_TOPIC(_LOG, Logger::ROCKSDB) << "tick: " << _currentSequence
+                                     << " commit transaction";
 
     _builder.openObject();
     _builder.add("tick", VPackValue(std::to_string(_currentSequence)));

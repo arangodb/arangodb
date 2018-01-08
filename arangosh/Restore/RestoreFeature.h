@@ -51,11 +51,13 @@ class RestoreFeature final : public application_features::ApplicationFeature,
 
  private:
   std::vector<std::string> _collections;
+  std::string _inputDirectory;
   uint64_t _chunkSize;
   bool _includeSystemCollections;
   bool _createDatabase;
   std::string _inputPath;
   std::unique_ptr<ManagedDirectory> _directory;
+  bool _forceSameDatabase;
   bool _importData;
   bool _importStructure;
   bool _progress;
@@ -73,6 +75,8 @@ class RestoreFeature final : public application_features::ApplicationFeature,
   int sendRestoreIndexes(VPackSlice const& slice, std::string& errorMsg);
   int sendRestoreData(std::string const& cname, char const* buffer,
                       size_t bufferSize, std::string& errorMsg);
+  Result readEncryptionInfo();
+  Result readDumpInfo();
   int processInputDirectory(std::string& errorMsg);
 
  private:

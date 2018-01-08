@@ -406,6 +406,9 @@ bool IndexBlock::skipIndex(size_t atMost) {
     }
   }
   return false;
+  
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
 }
 
 // this is called every time we need to fetch data from the indexes

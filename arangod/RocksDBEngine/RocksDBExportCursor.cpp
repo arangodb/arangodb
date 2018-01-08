@@ -25,6 +25,7 @@
 #include "RocksDBEngine/RocksDBExportCursor.h"
 #include "Basics/WriteLocker.h"
 #include "Indexes/IndexIterator.h"
+#include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -34,8 +35,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
-
-#include "Logger/Logger.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -53,8 +52,7 @@ RocksDBExportCursor::RocksDBExportCursor(
       _guard(vocbase),
       _resolver(vocbase),
       _restrictions(restrictions),
-      _name(name),
-      _mdr() {
+      _name(name) {
   // prevent the collection from being unloaded while the export is ongoing
   // this may throw
   _collectionGuard.reset(
@@ -76,7 +74,7 @@ RocksDBExportCursor::RocksDBExportCursor(
 
   auto rocksCollection =
       static_cast<RocksDBCollection*>(_collection->getPhysical());
-  _iter = rocksCollection->getAllIterator(_trx.get(), &_mdr, false);
+  _iter = rocksCollection->getAllIterator(_trx.get(), false);
 
   _size = _collection->numberDocuments(_trx.get());
   if (limit > 0 && limit < _size) {

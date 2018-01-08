@@ -56,7 +56,7 @@ TEST_CASE("requests are properly aborted", "[communicator]" ) {
   request->setRequestType(RequestType::GET);
   communicator::Options opt;
   auto destination = Destination("http://www.example.com");
-  communicator.addRequest(destination, std::move(request), callbacks, opt);
+  communicator.addRequest(std::move(destination), std::move(request), callbacks, opt);
   communicator.work_once();
   communicator.abortRequests();
   while (communicator.work_once() > 0) {
@@ -83,7 +83,7 @@ TEST_CASE("requests will call the progress callback", "[communicator]") {
   });
   
   auto destination = Destination("http://www.example.com");
-  communicator.addRequest(destination, std::move(request), callbacks, opt);
+  communicator.addRequest(std::move(destination), std::move(request), callbacks, opt);
   communicator.work_once();
   communicator.abortRequests();
   while (communicator.work_once() > 0) {

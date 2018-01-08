@@ -23,6 +23,7 @@
 
 #include "ClusterMethods.h"
 #include "Basics/conversions.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
@@ -293,8 +294,7 @@ static void extractErrorCodes(ClusterCommResult const& res,
     for (auto const& code : VPackObjectIterator(codesSlice)) {
       VPackValueLength codeLength;
       char const* codeString = code.key.getString(codeLength);
-      int codeNr = static_cast<int>(arangodb::basics::StringUtils::int64(
-          codeString, static_cast<size_t>(codeLength)));
+      int codeNr = NumberUtils::atoi_zero<int>(codeString, codeString + codeLength);
       if (includeNotFound || codeNr != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         errorCounter[codeNr] += code.value.getNumericValue<size_t>();
       }
@@ -458,7 +458,7 @@ static void collectResultsFromAllShards(
     } else {
       TRI_ASSERT(res.answer != nullptr);
       resultMap.emplace(res.shardID,
-                        res.answer->toVelocyPackBuilderPtr());
+                        res.answer->toVelocyPackBuilderPtrNoUniquenessChecks());
       extractErrorCodes(res, errorCounter, true);
       responseCode = res.answer_code;
     }
@@ -1001,7 +1001,7 @@ int createDocumentOnCoordinator(
 
   // Now prepare the requests:
   std::vector<ClusterCommRequest> requests;
-  auto body = std::make_shared<std::string>();
+  std::shared_ptr<std::string> body;
 
   for (auto const& it : shardMap) {
     if (!useMultiple) {
@@ -1056,7 +1056,7 @@ int createDocumentOnCoordinator(
 
     responseCode = res.answer_code;
     TRI_ASSERT(res.answer != nullptr);
-    auto parsedResult = res.answer->toVelocyPackBuilderPtr();
+    auto parsedResult = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     resultBody.swap(parsedResult);
     return TRI_ERROR_NO_ERROR;
   }
@@ -1220,7 +1220,7 @@ int deleteDocumentOnCoordinator(
 
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
-      auto parsedResult = res.answer->toVelocyPackBuilderPtr();
+      auto parsedResult = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1272,7 +1272,7 @@ int deleteDocumentOnCoordinator(
 
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPackBuilderPtr();
+          auto parsedResult = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
           resultBody.swap(parsedResult);
         }
       }
@@ -1303,7 +1303,7 @@ int deleteDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr());
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtrNoUniquenessChecks());
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -1580,7 +1580,7 @@ int getDocumentOnCoordinator(
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
 
-      auto parsedResult = res.answer->toVelocyPackBuilderPtr();
+      auto parsedResult = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -1652,7 +1652,7 @@ int getDocumentOnCoordinator(
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPackBuilderPtr();
+          auto parsedResult = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
           resultBody.swap(parsedResult);
         }
       } else {
@@ -1687,7 +1687,7 @@ int getDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr());
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtrNoUniquenessChecks());
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -1761,7 +1761,7 @@ int fetchEdgesFromEngines(
       return commError;
     }
     TRI_ASSERT(res.answer != nullptr);
-    auto resBody = res.answer->toVelocyPackBuilderPtr();
+    auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice resSlice = resBody->slice();
     if (!resSlice.isObject()) {
       // Response has invalid format
@@ -1856,7 +1856,7 @@ void fetchVerticesFromEngines(
       THROW_ARANGO_EXCEPTION(commError);
     }
     TRI_ASSERT(res.answer != nullptr);
-    auto resBody = res.answer->toVelocyPackBuilderPtr();
+    auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice resSlice = resBody->slice();
     if (!resSlice.isObject()) {
       // Response has invalid format
@@ -1961,7 +1961,7 @@ void fetchVerticesFromEngines(
       THROW_ARANGO_EXCEPTION(commError);
     }
     TRI_ASSERT(res.answer != nullptr);
-    auto resBody = res.answer->toVelocyPackBuilderPtr();
+    auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice resSlice = resBody->slice();
     if (!resSlice.isObject()) {
       // Response has invalid format
@@ -2068,7 +2068,7 @@ int getFilteredEdgesOnCoordinator(
       return error;
     }
     TRI_ASSERT(res.answer != nullptr);
-    std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPackBuilderPtr();
+    std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
 
     if (shardResult == nullptr) {
       return TRI_ERROR_INTERNAL;
@@ -2285,7 +2285,7 @@ int modifyDocumentOnCoordinator(
 
       responseCode = res.answer_code;
       TRI_ASSERT(res.answer != nullptr);
-      auto parsedResult = res.answer->toVelocyPackBuilderPtr();
+      auto parsedResult = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
       resultBody.swap(parsedResult);
       return TRI_ERROR_NO_ERROR;
     }
@@ -2342,7 +2342,7 @@ int modifyDocumentOnCoordinator(
           nrok++;
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
-          auto parsedResult = res.answer->toVelocyPackBuilderPtr();
+          auto parsedResult = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
           resultBody.swap(parsedResult);
         }
       } else {
@@ -2377,7 +2377,7 @@ int modifyDocumentOnCoordinator(
       responseCode = res.answer_code;
     }
     TRI_ASSERT(res.answer != nullptr);
-    allResults.emplace_back(res.answer->toVelocyPackBuilderPtr());
+    allResults.emplace_back(res.answer->toVelocyPackBuilderPtrNoUniquenessChecks());
     extractErrorCodes(res, errorCounter, false);
   }
   // If we get here we get exactly one result for every shard.
@@ -2771,7 +2771,7 @@ int fetchEdgesFromEngines(
       return commError;
     }
     TRI_ASSERT(res.answer != nullptr);
-    auto resBody = res.answer->toVelocyPackBuilderPtr();
+    auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice resSlice = resBody->slice();
     if (!resSlice.isObject()) {
       // Response has invalid format

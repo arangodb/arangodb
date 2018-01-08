@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestImportHandler.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -677,7 +678,7 @@ bool RestImportHandler::createFromKeyValueList() {
   std::string const& lineNumValue = _request->value("line", found);
 
   if (found) {
-    lineNumber = StringUtils::int64(lineNumValue);
+    lineNumber = NumberUtils::atoi_zero<int64_t>(lineNumValue.data(), lineNumValue.data() + lineNumValue.size());
   }
 
   HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());

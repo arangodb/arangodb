@@ -173,7 +173,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
 
-  virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const;
+  virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const override;
 
  protected:
   Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
