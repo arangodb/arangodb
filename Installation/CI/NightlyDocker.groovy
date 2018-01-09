@@ -17,20 +17,11 @@ def getGitBranchName() {
     return scm.branches[0].name
 }
 
-echo "BRANCH NAME: " + getGitBranchName()
+mainBranch = getGitBranchName()
 
-
-// source branch for pull requests
-mainBranch = "unknown"
-
-if ("devel" == "devel") {
-    mainBranch = "devel"
+if (mainBranch =~ /^refs\/heads\/) {
+    mainBranch -= ~/^refs\/heads\/
 }
-else { 
-    mainBranch = "3.3"
-}
-
-mainBranch = "feature/night-docker"
 
 if (! env.BRANCH_NAME) {
     env.BRANCH_NAME = mainBranch
