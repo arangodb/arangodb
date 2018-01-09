@@ -19,8 +19,8 @@ def getGitBranchName() {
 
 mainBranch = getGitBranchName()
 
-if (mainBranch =~ /^refs\/heads\/) {
-    mainBranch -= ~/^refs\/heads\/
+if (mainBranch =~ /^refs\/heads\//) {
+    mainBranch -= ~/^refs\/heads\//
 }
 
 if (! env.BRANCH_NAME) {
