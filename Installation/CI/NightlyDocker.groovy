@@ -86,10 +86,10 @@ timestamps {
         echo sh(returnStdout: true, script: 'env | sort')
     }
 
-    timeout(30) {
-        def os = "linux"
+    def os = "linux"
 
-        node("${os}&&dockerhub") {
+    node("${os} && docker") {
+        timeout(30) {
             stage("checkout") {
                 checkoutCommunity(os)
             }
