@@ -27,7 +27,7 @@
 #include "search/scorers.hpp"
 #include "search/score.hpp"
 #include "store/memory_directory.hpp"
-#include "store/fs_directory.hpp"
+#include "store/mmap_directory.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/misc.hpp"
@@ -172,7 +172,7 @@ arangodb::Result createPersistedDataDirectory(
     TRI_voc_cid_t viewId
 ) noexcept {
   try {
-    auto directory = irs::directory::make<irs::fs_directory>(dstDataPath);
+    auto directory = irs::directory::make<irs::mmap_directory>(dstDataPath);
 
     if (!directory) {
       return arangodb::Result(
@@ -1599,7 +1599,7 @@ void IResearchView::open() {
 
     if (format && appendAbsolutePersistedDataPath(absoluteDataPath, *this, _meta)) {
       _storePersisted._directory =
-        irs::directory::make<irs::fs_directory>(absoluteDataPath);
+        irs::directory::make<irs::mmap_directory>(absoluteDataPath);
 
       if (_storePersisted._directory) {
         // create writer before reader to ensure data directory is present
