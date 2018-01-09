@@ -490,9 +490,9 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection,
       _isVolatile(arangodb::basics::VelocyPackHelper::readBooleanValue(
           info, "isVolatile", false)),
       _persistentIndexes(0),
+      _primaryIndex(nullptr),
       _indexBuckets(Helper::readNumericValue<uint32_t>(
           info, "indexBuckets", defaultIndexBuckets)),
-      _primaryIndex(nullptr),
       _useSecondaryIndexes(true),
       _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
       _maxTick(0) {
