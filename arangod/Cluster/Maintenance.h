@@ -29,31 +29,44 @@
 #include "Agency/Node.h"
 
 namespace arangodb {
+
+class LogicalCollection;
+
 namespace maintenance {
+
+using LocalState = std::map<std::string,std::vector<LogicalCollection*>>;
+using AgencyState = arangodb::consensus::Node;
+
 
 static std::string const PLANNED_DATABASES("/arango/Plan/Databases");
 
 arangodb::Result diffPlanLocalForDatabases(
-  arangodb::consensus::Node const&, std::vector<std::string> const&,
+  AgencyState const&, std::vector<std::string> const&,
   std::vector<std::string>&, std::vector<std::string>&);
 
 arangodb::Result executePlanForDatabases (
-  arangodb::consensus::Node plan, arangodb::consensus::Node current,
-  std::vector<std::string>);
+  AgencyState const&, AgencyState const&, LocalState const&);
 
-arangodb::Result diffLocalCurrentForDatabases(
-  std::vector<std::string> const&, arangodb::consensus::Node const&, 
-  VPackBuilder&);
+arangodb::Result diffPlanLocalForCollections(
+  AgencyState const&, LocalState const&,
+  std::vector<std::string>&, std::vector<std::string>&,
+  std::vector<std::string>&);
+
+arangodb::Result executePlanForCollections (
+  AgencyState const&, AgencyState const&, LocalState const&);
+
+arangodb::Result synchroniseShards (
+  AgencyState const&, AgencyState const&, LocalState const&);
 
 arangodb::Result reportLocalForDatabases (
-  arangodb::consensus::Node plan, arangodb::consensus::Node current,
+  AgencyState plan, AgencyState current,
   std::vector<std::string>);
 
 arangodb::Result phaseOne (
-  arangodb::consensus::Node const& plan, arangodb::consensus::Node const& cur);
+  AgencyState const& plan, AgencyState const& cur, LocalState const& local);
 
 arangodb::Result phaseTwo (
-  arangodb::consensus::Node const& plan, arangodb::consensus::Node const& cur);
+  AgencyState const& plan, AgencyState const& cur);
 
 }}
 

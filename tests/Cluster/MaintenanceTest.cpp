@@ -156,7 +156,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     REQUIRE(toDrop.front() == "test1");
   }
 
-
+/*
   // Check executePlanForDatabase ==============================================
   SECTION("Execute plan for database") {
     arangodb::Result executePlanForDatabases (
@@ -192,7 +192,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     REQUIRE(before == after);
     
   }
-  
+*/
   
 }
 
