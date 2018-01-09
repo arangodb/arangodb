@@ -29,9 +29,9 @@
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/Methods/Databases.h"
 
-using namespace arangodb;
-using namespace arangodb::methods;
+using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
+using namespace arangodb::methods;
 
 CreateDatabase::CreateDatabase(ActionDescription const& d) :
   ActionBase(d, arangodb::maintenance::FOREGROUND) {
@@ -42,20 +42,17 @@ CreateDatabase::~CreateDatabase() {};
 
 arangodb::Result CreateDatabase::run(
   std::chrono::duration<double> const&, bool& finished) {
-
   arangodb::Result res;
   VPackSlice users, options;
-
-  /* DatabaseFeature* database =
+  auto* database =
     ApplicationServer::getFeature<DatabaseFeature>("Database");
-  auto vocbase = database->systemDatabase();
+  auto* vocbase = database->systemDatabase();
   if (vocbase == nullptr) {
     LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
     FATAL_ERROR_EXIT();
-    }*/
-  
-  auto result = Databases::create(_description.get("database"), users, options);
-  return res;
+  }
+  return Databases::create(_description.get("database"), users, options);
+
 }
 
 arangodb::Result CreateDatabase::kill(Signal const& signal) {

@@ -24,6 +24,13 @@
 
 #include "DropDatabase.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/VelocyPackHelper.h"
+#include "RestServer/DatabaseFeature.h"
+#include "VocBase/Methods/Databases.h"
+
+using namespace arangodb::application_features;
+using namespace arangodb::methods;
 using namespace arangodb::maintenance;
 
 DropDatabase::DropDatabase(ActionDescription const& d) : ActionBase(d) {}
@@ -33,7 +40,15 @@ DropDatabase::~DropDatabase() {};
 arangodb::Result DropDatabase::run(
   std::chrono::duration<double> const&, bool& finished) {
   arangodb::Result res;
-  return res;
+  VPackSlice users, options;
+  auto* database =
+    ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto* vocbase = database->systemDatabase();
+  if (vocbase == nullptr) {
+    LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
+    FATAL_ERROR_EXIT();
+  }
+  return Databases::drop(vocbase, _description.get("database"));
 }
 
 arangodb::Result DropDatabase::kill(Signal const& signal) {

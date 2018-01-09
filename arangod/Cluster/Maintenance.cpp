@@ -27,7 +27,6 @@
 
 #include <algorithm>
 
-using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace arangodb::maintenance;
 
@@ -69,6 +68,21 @@ arangodb::Result arangodb::maintenance::diffPlanLocalForDatabases(
   
 }
 
+
+arangodb::Result arangodb::maintenance::diffLocalCurrentForDatabases(
+  std::vector<std::string> const& local, Node const& Current,
+  VPackBuilder& agencyTransaction) {
+  
+  arangodb::Result result;
+  std::vector<std::string> localv, current;
+  
+  { VPackObjectBuilder o(&agencyTransaction);
+  }
+
+  return result;
+  
+}
+
 /// @brief handle plan for local databases
 arangodb::Result arangodb::maintenance::executePlanForDatabases (
   Node plan, Node current, std::vector<std::string> local) {
@@ -99,3 +113,21 @@ arangodb::Result arangodb::maintenance::executePlanForDatabases (
   return result;
   
 }
+
+
+/// @brief Phase one: Compare plan and local and create descriptions
+arangodb::Result arangodb::maintenance::phaseOne (
+  arangodb::consensus::Node const& plan, arangodb::consensus::Node const& cur) {
+  arangodb::Result result;
+  return result;
+}
+
+
+/// @brief Phase two: See, what we can report to the agency
+arangodb::Result arangodb::maintenance::phaseTwo (
+  arangodb::consensus::Node const& plan, arangodb::consensus::Node const& cur) {
+  arangodb::Result result;
+  return result;
+}
+
+
