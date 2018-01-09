@@ -204,7 +204,7 @@ void Constituent::followNoLock(term_t t) {
   if (t > 0 && t != _term) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Changing term from " << _term << " to " <<  t;
-    _term = t;
+    termNoLock(t);
   }
   _role = FOLLOWER;
 
