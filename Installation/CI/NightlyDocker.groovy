@@ -13,6 +13,13 @@ cleanBuild = params.CleanBuild
 // github proxy repository
 arangodbRepo = 'http://github-proxy.arangodb.biz:8088/github.com/arangodb/arangodb'
 
+def getGitBranchName() {
+    return scm.branches[0].name
+}
+
+echo "BRANCH NAME: " + getGitBranchName()
+
+
 // source branch for pull requests
 mainBranch = "unknown"
 
