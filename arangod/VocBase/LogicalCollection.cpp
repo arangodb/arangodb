@@ -174,7 +174,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _planVersion(other._planVersion) {
   
   TRI_ASSERT(_physical != nullptr);
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
