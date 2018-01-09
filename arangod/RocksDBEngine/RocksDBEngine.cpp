@@ -149,8 +149,6 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
     // turn off RocksDBThrottle, and release our pointers to it
     if (nullptr != _listener.get()) {
       _listener->StopThread();
-      _listener.reset();
-      _options.listeners.clear();
     } // if
     
     for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
