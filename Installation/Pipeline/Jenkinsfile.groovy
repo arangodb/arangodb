@@ -634,8 +634,8 @@ def setBuildsAndTests() {
     else if (buildType == "Quick Test") {
         restrictions = [
             // OS EDITION MAINTAINER
-            "build-windows-community-user" : true,
-            // "build-linux-enterprise-maintainer" : true,
+            // "build-windows-community-user" : true,
+            "build-linux-enterprise-maintainer" : true,
 
             // OS EDITION MAINTAINER MODE ENGINE
             "test-linux-enterprise-maintainer-cluster-rocksdb" : true,
