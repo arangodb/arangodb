@@ -74,7 +74,6 @@ Constituent::Constituent()
       _vocbase(nullptr),
       _queryRegistry(nullptr),
       _term(0),
-      _cast(false),
       _leaderID(NO_LEADER),
       _lastHeartbeatSeen(0.0),
       _role(FOLLOWER),
@@ -98,49 +97,50 @@ term_t Constituent::term() const {
 }
 
 /// Update my term
-void Constituent::term(term_t t) {
+void Constituent::term(term_t t, std::string const& votedFor) {
   MUTEX_LOCKER(guard, _castLock);
-  termNoLock(t);
+  termNoLock(t, votedFor);
 }
 
-void Constituent::termNoLock(term_t t) {
+void Constituent::termNoLock(term_t t, std::string const& votedFor) {
   // Only call this when you have the _castLock
   _castLock.assertLockedByCurrentThread();
 
   term_t tmp = _term;
   _term = t;
+  std::string tmpVotedFor = _votedFor;
+  _votedFor = votedFor;
 
-  if (tmp != t) {
-    LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": changing term, current role:"
-      << roleStr[_role] << " new term " << t;
+  if (tmp != t || tmpVotedFor != votedFor) {
+    LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": changing term or votedFor, "
+      << "current role:" << roleStr[_role] << " term " << t << " votedFor: "
+      << votedFor;
 
-    _cast = false;
+    Builder body;
+    { VPackObjectBuilder b(&body);
+      std::ostringstream i_str;
+      i_str << std::setw(20) << std::setfill('0') << t;
+      body.add("_key", Value(i_str.str()));
+      body.add("term", Value(t));
+      body.add("voted_for", Value(_votedFor)); }
 
-    if (!_votedFor.empty()) {
-      Builder body;
-      { VPackObjectBuilder b(&body);
-        std::ostringstream i_str;
-        i_str << std::setw(20) << std::setfill('0') << t;
-        body.add("_key", Value(i_str.str()));
-        body.add("term", Value(t));
-        body.add("voted_for", Value(_votedFor)); }
-
-      LOG_TOPIC(WARN, Logger::AGENCY) << body.toJson();
-      
-      TRI_ASSERT(_vocbase != nullptr);
-      auto ctx = transaction::StandaloneContext::Create(_vocbase);
-      SingleCollectionTransaction trx(ctx, "election", AccessMode::Type::WRITE);
-      
-      Result res = trx.begin();
-      if (!res.ok()) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      
-      OperationOptions options;
-      options.waitForSync = _agent->config().waitForSync();
-      options.silent = true;
-      
-      OperationResult result;
+    LOG_TOPIC(WARN, Logger::AGENCY) << body.toJson();
+    
+    TRI_ASSERT(_vocbase != nullptr);
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    SingleCollectionTransaction trx(ctx, "election", AccessMode::Type::WRITE);
+    
+    Result res = trx.begin();
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    
+    OperationOptions options;
+    options.waitForSync = _agent->config().waitForSync();
+    options.silent = true;
+    
+    OperationResult result;
+    if (tmp != t) {
       try {
         result = trx.insert("election", body.slice(), options);
       } catch (std::exception const& e) {
@@ -148,9 +148,17 @@ void Constituent::termNoLock(term_t t) {
           << "Failed to persist RAFT election ballot: " << e.what() << ". Bailing out.";
         FATAL_ERROR_EXIT();
       }
-
-      res = trx.finish(result.errorNumber());
+    } else {
+      try {
+        result = trx.replace("election", body.slice(), options);
+      } catch (std::exception const& e) {
+        LOG_TOPIC(FATAL, Logger::AGENCY)
+          << "Failed to persist RAFT election ballot: " << e.what() << ". Bailing out.";
+        FATAL_ERROR_EXIT();
+      }
     }
+
+    res = trx.finish(result.errorNumber());
   }
 }
 
@@ -193,18 +201,18 @@ role_t Constituent::role() const {
 }
 
 /// Become follower in term
-void Constituent::follow(term_t t) {
+void Constituent::follow(term_t t, std::string const& votedFor) {
   MUTEX_LOCKER(guard, _castLock);
-  followNoLock(t);
+  followNoLock(t, votedFor);
 }
 
-void Constituent::followNoLock(term_t t) {
+void Constituent::followNoLock(term_t t, std::string const& votedFor) {
   _castLock.assertLockedByCurrentThread();
 
-  if (t > 0 && t != _term) {
+  if (t > 0 && (t != _term || votedFor != _votedFor)) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Changing term from " << _term << " to " <<  t;
-    termNoLock(t);
+    termNoLock(t, votedFor);
   }
   _role = FOLLOWER;
 
@@ -229,7 +237,7 @@ void Constituent::lead(term_t term) {
 
     // if we already have a higher term, ignore this request
     if (term < _term) {
-      followNoLock(_term);
+      followNoLock(0);  // leave _term and _votedFor unchanged
       return;
     }
 
@@ -330,14 +338,8 @@ bool Constituent::checkLeader(
     << "setting last heartbeat: " << _lastHeartbeatSeen;
   
   if (term > _term) {
-    termNoLock(term);
     _agent->endPrepareLeadership();
-    if (_role != FOLLOWER) {
-      followNoLock(term);
-    }
-
-    _cast = false;
-    _votedFor = id;
+    followNoLock(term, NO_LEADER);
   }
 
   if ((prevLogIndex != 0 || prevLogTerm != 0) &&
@@ -358,7 +360,7 @@ bool Constituent::checkLeader(
 
     TRI_ASSERT(_leaderID != _id);
     if (_role != FOLLOWER) {
-      followNoLock(term);
+      followNoLock(0);  // do not adjust _term or _votedFor
     }
   }
   
@@ -383,15 +385,12 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id, index_t prevLog
     << ") in (my) term " << _term;
 
   if (termOfPeer > _term) {
-    _votedFor = id;
-    termNoLock(termOfPeer);
-    _agent->endPrepareLeadership();
-
     if (_role != FOLLOWER) {
-      followNoLock(_term);
+      followNoLock(termOfPeer, NO_LEADER);
+    } else {
+      termNoLock(termOfPeer, NO_LEADER);
     }
-
-    _cast = false;
+    _agent->endPrepareLeadership();
   } else if (termOfPeer < _term) {
     // termOfPeer < _term, simply ignore and do not vote:
     LOG_TOPIC(DEBUG, Logger::AGENCY)
@@ -400,7 +399,7 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id, index_t prevLog
     return false;
   }
 
-  if (_cast) {   // already voted in this term
+  if (_votedFor != NO_LEADER) {   // already voted in this term
     if (_votedFor == id) {
       LOG_TOPIC(DEBUG, Logger::AGENCY) << "repeating vote for " << id;
       return true;
@@ -420,8 +419,7 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id, index_t prevLog
        prevLogIndex >= myLastLogEntry.index)) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "voting for " << id << " in term "
       << _term;
-    _cast = true;
-    _votedFor = id;
+    termNoLock(_term, id);
     return true;
   }
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "not voting for " << id
@@ -447,11 +445,9 @@ void Constituent::callElection() {
   {
     MUTEX_LOCKER(locker, _castLock);
     
-    _votedFor = _id;
-    this->termNoLock(_term + 1);  // raise my term
+    this->termNoLock(_term + 1, _id);  // raise my term, vote for us
     
     _agent->endPrepareLeadership();
-    _cast     = true;
     savedTerm = _term;
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER"
       << " in term " << _term;
@@ -511,7 +507,7 @@ void Constituent::callElection() {
 
     if (steady_clock::now() >= timeout) {       // Timeout. 
       MUTEX_LOCKER(locker, _castLock);
-      followNoLock(_term);        
+      followNoLock(0);   // do not adjust _term or _votedFor
       break;
     }
 
@@ -528,14 +524,13 @@ void Constituent::callElection() {
         if (slc.isObject() && slc.hasKey("term") && slc.hasKey("voteGranted")) {
           
           // Follow right away?
-          term_t t = slc.get("term").getUInt(), term;
+          term_t t = slc.get("term").getUInt();
           {
             MUTEX_LOCKER(locker, _castLock);
-            term = _term;
-          }
-          if (t > term) {
-            follow(t);
-            break;
+            if (t > _term) {
+              followNoLock(t, NO_LEADER);
+              break;
+            }
           }
           
           // Check result and counts
@@ -552,12 +547,7 @@ void Constituent::callElection() {
     }
     // Count the vote as a nay
     if (++nay >= majority) {                  // Network: majority against?
-      term_t term;
-      {
-        MUTEX_LOCKER(locker, _castLock);
-        term = _term;
-      }
-      follow(term);
+      follow(0);  // do not adjust _term or _votedFor
       break;
     }
     

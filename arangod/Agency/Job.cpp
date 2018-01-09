@@ -32,6 +32,22 @@ static std::string const DBServer = "DBServer";
 using namespace arangodb::basics;
 using namespace arangodb::consensus;
 
+std::string const mapUniqueToShortID = "/Target/MapUniqueToShortID/";
+std::string const pendingPrefix = "/Target/Pending/";
+std::string const failedPrefix = "/Target/Failed/";
+std::string const finishedPrefix = "/Target/Finished/";
+std::string const toDoPrefix = "/Target/ToDo/";
+std::string const cleanedPrefix = "/Target/CleanedServers";
+std::string const failedServersPrefix = "/Target/FailedServers";
+std::string const planColPrefix = "/Plan/Collections/";
+std::string const curColPrefix = "/Current/Collections/";
+std::string const blockedServersPrefix = "/Supervision/DBServers/";
+std::string const blockedShardsPrefix = "/Supervision/Shards/";
+std::string const serverStatePrefix = "/Sync/ServerStates/";
+std::string const planVersion = "/Plan/Version";
+std::string const plannedServers = "/Plan/DBServers";
+std::string const healthPrefix = "/Supervision/Health/";
+
 Job::Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
          std::string const& jobId, std::string const& creator)
   : _status(status),
