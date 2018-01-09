@@ -154,13 +154,13 @@ if (env.BRANCH_NAME =~ /^PR-/) {
 branchLabel = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
 
 buildJenkins = [
-    "linux": "linux && build",
+    "linux": "linux && build && arangodb",
     "mac" : "mac",
     "windows": "windows"
 ]
 
 testJenkins = [
-    "linux": "linux && tests",
+    "linux": "linux && tests && arangodb",
     "mac" : "mac",
     "windows": "windows"
 ]
@@ -635,10 +635,10 @@ def setBuildsAndTests() {
         restrictions = [
             // OS EDITION MAINTAINER
             "build-windows-community-user" : true,
-            "build-linux-enterprise-maintainer" : true,
+            // "build-linux-enterprise-maintainer" : true,
 
             // OS EDITION MAINTAINER MODE ENGINE
-            "test-linux-enterprise-maintainer-cluster-mmfiles" : true,
+            "test-linux-enterprise-maintainer-cluster-rocksdb" : true,
         ]
     }
     else if (buildType == "PR Test") {
@@ -889,13 +889,25 @@ def getTests(os, edition, maintainer, mode, engine) {
         ["dump_authentication", "dump_authentication" , ""],
         ["endpoints", "endpoints", ""],
         ["server_http", "server_http", ""],
-        ["shell_client", "shell_client", ""],
-        ["shell_server", "shell_server", ""],
-        ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0"],
-        ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1"],
-        ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2"],
-        ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3"],
         ["upgrade", "upgrade" , ""],
+
+        ["shell_client_1", "shell_client", "--testBuckets 4/0"],
+        ["shell_client_2", "shell_client", "--testBuckets 4/1"],
+        ["shell_client_3", "shell_client", "--testBuckets 4/2"],
+        ["shell_client_4", "shell_client", "--testBuckets 4/3"],
+
+        ["shell_server_1", "shell_server", "--testBuckets 4/0"],
+        ["shell_server_2", "shell_server", "--testBuckets 4/1"],
+        ["shell_server_3", "shell_server", "--testBuckets 4/2"],
+        ["shell_server_4", "shell_server", "--testBuckets 4/3"],
+
+        ["shell_server_aql_1", "shell_server_aql", "--testBuckets 6/0"],
+        ["shell_server_aql_2", "shell_server_aql", "--testBuckets 6/1"],
+        ["shell_server_aql_3", "shell_server_aql", "--testBuckets 6/2"],
+        ["shell_server_aql_4", "shell_server_aql", "--testBuckets 6/3"],
+        ["shell_server_aql_5", "shell_server_aql", "--testBuckets 6/4"],
+        ["shell_server_aql_6", "shell_server_aql", "--testBuckets 6/5"],
+
         rspecify(os, "http_server"),
         rspecify(os, "ssl_server")
     ]
