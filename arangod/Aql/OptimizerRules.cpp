@@ -4496,16 +4496,12 @@ static bool isValueOrReference(AstNode const* node) {
   return node->type == NODE_TYPE_VALUE || node->type == NODE_TYPE_REFERENCE;
 }
 
-static bool isValueTypeString(AstNode* node) {
+static bool isValueTypeString(AstNode const* node) {
   return (node->type == NODE_TYPE_VALUE && node->value.type == VALUE_TYPE_STRING);
 }
 
 static bool isValueTypeCollection(AstNode const* node) {
-  return node->type == NODE_TYPE_COLLECTION || node->value.type == VALUE_TYPE_STRING;
-}
-
-static bool isValueTypeString(AstNode const* node) {
-  return (node->type == NODE_TYPE_VALUE && node->value.type == VALUE_TYPE_STRING);
+  return node->type == NODE_TYPE_COLLECTION || isValueTypeString(node);
 }
 
 static bool isValueTypeNumber(AstNode const* node) {

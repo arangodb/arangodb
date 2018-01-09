@@ -132,7 +132,7 @@ class NearUtils {
   double _outerBound = 0.0;
 
   /// for adjusting _boundDelta on the fly
-  size_t _numFoundLastInterval = 0;
+  size_t _statsFoundLastInterval = 0;
 
   /// buffer of found documents
   GeoDocumentsQueue _buffer;

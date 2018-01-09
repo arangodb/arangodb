@@ -46,7 +46,8 @@ NearUtils::NearUtils(QueryParams&& qp)
       _maxBounds(qp.maxDistanceRad()) {
   qp.cover.configureS2RegionCoverer(&_coverer);
   reset();
-    
+  TRI_ASSERT(_params.sorted && _params.ascending);
+        
   LOG_TOPIC(ERR, Logger::FIXME)
       << "--------------------------------------------------------";
   LOG_TOPIC(INFO, Logger::FIXME) << "[Near] centroid target: "
@@ -76,28 +77,31 @@ void NearUtils::reset() {
   // this initial interval is never used like that, see intervals()
   _innerBound = 0;
   _outerBound = std::max(0.0, _params.minDistance / kEarthRadiusInMeters);
-  _numFoundLastInterval = 0;
+  _statsFoundLastInterval = 0;
   TRI_ASSERT(_innerBound <= _outerBound && _outerBound <= _maxBounds);
 }
 
 std::vector<geo::Interval> NearUtils::intervals() {
   TRI_ASSERT(_innerBound != _maxBounds);
+  TRI_ASSERT(!hasNearest());
+  
   if (_innerBound > 0) {
     if (_outerBound == _maxBounds) {
+      _innerBound = _outerBound;
       return {}; // search is finished
     }
     double const minBounds = S2::kAvgEdge.GetValue(S2::kMaxCellLevel - 2);
     // we already scanned the entire planet, if this fails
     TRI_ASSERT(_innerBound != _outerBound && _innerBound != _maxBounds);
-    if (_numFoundLastInterval < 256) {
-      _boundDelta *= (_numFoundLastInterval == 0 ? 4 : 2);
-    } else if (_numFoundLastInterval > 512 && _boundDelta > minBounds) {
+    if (_statsFoundLastInterval < 256) {
+      _boundDelta *= (_statsFoundLastInterval == 0 ? 4 : 2);
+    } else if (_statsFoundLastInterval > 512 && _boundDelta > minBounds) {
       _boundDelta /= 2.0;
     }
-    _numFoundLastInterval = 0;
+    _statsFoundLastInterval = 0;
   }
   TRI_ASSERT(_boundDelta >= S2::kAvgEdge.GetValue(S2::kMaxCellLevel - 2));
-
+  
   _innerBound = _outerBound; // initially _outerBounds == _innerBounds
   _outerBound = std::min(_outerBound + _boundDelta, _maxBounds);
   TRI_ASSERT(_innerBound <= _outerBound && _outerBound <= _maxBounds);
@@ -108,7 +112,12 @@ std::vector<geo::Interval> NearUtils::intervals() {
     << (size_t)(_boundDelta * kEarthRadiusInMeters);//*/
   
   std::vector<S2CellId> cover;
-  if (0.0 < _innerBound && _outerBound < _maxBounds) {
+  if (0.0 == _innerBound && _outerBound <= _maxBounds) {
+    LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] 0 to something";
+    S2Cap ob = S2Cap::FromAxisAngle(_centroid, S1Angle::Radians(_outerBound));
+    _coverer.GetCovering(ob, &cover);
+  } else if (0.0 < _innerBound && _outerBound <= _maxBounds) {
+    LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] something inbetween";
     // create a search ring
     std::vector<S2Region*> regions;
     S2Cap ib = S2Cap::FromAxisAngle(_centroid, S1Angle::Radians(_innerBound));
@@ -117,37 +126,33 @@ std::vector<geo::Interval> NearUtils::intervals() {
     regions.push_back(new S2Cap(ob));
     S2RegionIntersection ring(&regions);
     _coverer.GetCovering(ring, &cover);
-  } else if (0.0 == _innerBound && _outerBound <= _maxBounds) {
-    S2Cap ob = S2Cap::FromAxisAngle(_centroid, S1Angle::Radians(_outerBound));
-    _coverer.GetCovering(ob, &cover);
-  } else if (0.0 < _innerBound && _outerBound >= _maxBounds) {
-    // no need to add region to scan entire earth
-    S2Cap ib = S2Cap::FromAxisAngle(_centroid, S1Angle::Radians(_innerBound));
-    _coverer.GetCovering(ib, &cover);
-  } else {  // done or invalid bounds
-    TRI_ASSERT(_innerBound == _outerBound && _outerBound == _maxBounds);
+  } else { // invalid bounds
+    TRI_ASSERT(false);
     return {};
   }
 
   std::vector<geo::Interval> intervals;
   if (!cover.empty()) {  // not sure if this can ever happen
-    if (_scannedCells.num_cells() == 0) {
+    if (_scannedCells.num_cells() != 0) {
+      // substract already scanned areas from cover
+      S2CellUnion coverUnion;
+      coverUnion.InitSwap(&cover);
+      TRI_ASSERT(cover.empty());
+      S2CellUnion lookup;
+      lookup.GetDifference(&coverUnion, &_scannedCells);
+      cover = lookup.cell_ids();
+      
+      /*for (auto cellId : lookup.cell_ids()) {
+        if (region->MayIntersect(S2Cell(cellId))) {
+          cover.push_back(cellId);
+        }
+      }*/
+    }
+    
+    if (!cover.empty()) {
       GeoUtils::scanIntervals(_params.cover.worstIndexedLevel, cover,
                               intervals);
       _scannedCells.Add(cover);
-    } else {
-      S2CellUnion coverUnion;
-      coverUnion.Init(cover);
-      S2CellUnion lookup;
-      lookup.GetDifference(&coverUnion, &_scannedCells);
-
-      if (lookup.num_cells() > 0) {
-        cover = lookup.cell_ids();
-        GeoUtils::scanIntervals(_params.cover.worstIndexedLevel, cover,
-                                intervals);
-        TRI_ASSERT(!cover.empty());
-        _scannedCells.Add(cover);
-      }
     }
   }
 
@@ -163,14 +168,14 @@ std::vector<geo::Interval> NearUtils::intervals() {
   */
 
   // prune the _seen list revision IDs
-  auto it = _seen.begin();
+  /*auto it = _seen.begin();
   while (it != _seen.end()) {
     if (it->second < _innerBound) {
       it = _seen.erase(it);
     } else {
       it++;
     }
-  }
+  }*/
 
   return intervals;
 }
@@ -189,7 +194,7 @@ void NearUtils::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
     return;
   }
   
-  _numFoundLastInterval++;  // we have to estimate scan bounds
+  _statsFoundLastInterval++;  // we have to estimate scan bounds
   auto const& it = _seen.find(rid);
   if (it == _seen.end()) {
     _seen.emplace(rid, rad);
