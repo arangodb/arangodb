@@ -143,7 +143,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
         result = trx.insert("election", body.slice(), options);
       } catch (std::exception const& e) {
         LOG_TOPIC(FATAL, Logger::AGENCY)
-          << "Failed to persist RAFT election ballot: " << e.what() << ". Bailing out.";
+          << "Failed to insert RAFT election ballot: " << e.what() << ". Bailing out.";
         FATAL_ERROR_EXIT();
       }
     } else {
@@ -151,7 +151,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
         result = trx.replace("election", body.slice(), options);
       } catch (std::exception const& e) {
         LOG_TOPIC(FATAL, Logger::AGENCY)
-          << "Failed to persist RAFT election ballot: " << e.what() << ". Bailing out.";
+          << "Failed to replace  RAFT election ballot: " << e.what() << ". Bailing out.";
         FATAL_ERROR_EXIT();
       }
     }
