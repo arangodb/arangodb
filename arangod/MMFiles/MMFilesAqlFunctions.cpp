@@ -212,15 +212,16 @@ AqlValue MMFilesAqlFunctions::Fulltext(
     }
   }
 
+  TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(cname);
+  if (cid == 0) {
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "%s",
+                                  cname.c_str());
+  }
   // add the collection to the query for proper cache handling
   query->collections()->add(cname, AccessMode::Type::READ);
-  TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(cname);
-  trx->addCollectionAtRuntime(cid, cname);
-  LogicalCollection* collection = trx->documentCollection(cid);
-  if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                  "", cname.c_str());
-  }
+  trx->addCollectionAtRuntime(cid, cname, AccessMode::Type::READ);
+  LogicalCollection const* collection = trx->documentCollection(cid);
+  TRI_ASSERT(collection != nullptr);
 
   // split requested attribute name on '.' character to create a proper
   // vector of AttributeNames

@@ -51,6 +51,7 @@ static ExecutionCondition const NotInCoordinator = [] {
 AqlValue RocksDBAqlFunctions::Fulltext(
     arangodb::aql::Query* query, transaction::Methods* trx,
     VPackFunctionParameters const& parameters) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   ValidateParameters(parameters, "FULLTEXT", 3, 4);
 
   AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
@@ -89,15 +90,16 @@ AqlValue RocksDBAqlFunctions::Fulltext(
     }
   }
 
-  // add the collection to the query for proper cache handling
-  query->collections()->add(cname, AccessMode::Type::READ);
   TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(cname);
-  trx->addCollectionAtRuntime(cid, cname);
-  LogicalCollection* collection = trx->documentCollection(cid);
-  if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "",
+  if (cid == 0) {
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "%s",
                                   cname.c_str());
   }
+  // add the collection to the query for proper cache handling
+  query->collections()->add(cname, AccessMode::Type::READ);
+  trx->addCollectionAtRuntime(cid, cname);
+  LogicalCollection const* collection = trx->documentCollection(cid);
+  TRI_ASSERT(collection != nullptr);
 
   // NOTE: The shared_ptr is protected by trx lock.
   // It is save to use the raw pointer directly.
