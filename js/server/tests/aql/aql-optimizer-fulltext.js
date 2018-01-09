@@ -165,7 +165,19 @@ function optimizerRuleTestSuite() {
       let r2 = AQL_EXECUTE(q, {});
       assertEqual(r1.json, r, "Invalid fulltext result");
       assertEqual(r2.json, r, "Invalid fulltext result");
-    } // testRuleBasics
+    }, // testRuleBasics
+
+    testInvalidQuery : function () {
+      let q = "FOR d IN FULLTEXT('" + colName + "', 't1', 'möchten,müller',3) RETURN 1";
+      let plan = AQL_EXPLAIN(q, {});
+      hasIndexNode(plan,q);
+
+      let r = [ 1, 1 ];
+      let r1 = AQL_EXECUTE(q, {}, { optimizer: { rules: [ "-all" ] } });
+      let r2 = AQL_EXECUTE(q, {});
+      assertEqual(r1.json, r, "Invalid fulltext result");
+      assertEqual(r2.json, r, "Invalid fulltext result");
+    }
 
   }; // test dictionary (return)
 } // optimizerRuleTestSuite
