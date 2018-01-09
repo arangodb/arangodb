@@ -29,8 +29,8 @@
 
 static std::string const DBServer = "DBServer";
 
-using namespace arangodb::basics;
-using namespace arangodb::consensus;
+namespace arangodb {
+namespace consensus {
 
 std::string const mapUniqueToShortID = "/Target/MapUniqueToShortID/";
 std::string const pendingPrefix = "/Target/Pending/";
@@ -47,6 +47,12 @@ std::string const serverStatePrefix = "/Sync/ServerStates/";
 std::string const planVersion = "/Plan/Version";
 std::string const plannedServers = "/Plan/DBServers";
 std::string const healthPrefix = "/Supervision/Health/";
+
+}  // namespace arangodb::consensus
+}  // namespace arangodb
+
+using namespace arangodb::basics;
+using namespace arangodb::consensus;
 
 Job::Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
          std::string const& jobId, std::string const& creator)
