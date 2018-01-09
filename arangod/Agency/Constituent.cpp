@@ -124,8 +124,6 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
       body.add("term", Value(t));
       body.add("voted_for", Value(_votedFor)); }
 
-    LOG_TOPIC(WARN, Logger::AGENCY) << body.toJson();
-    
     TRI_ASSERT(_vocbase != nullptr);
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, "election", AccessMode::Type::WRITE);
