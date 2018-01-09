@@ -446,10 +446,10 @@ void Constituent::callElection() {
   term_t savedTerm;
   {
     MUTEX_LOCKER(locker, _castLock);
-    if (_votedFor != _id) {
-      _votedFor = _id;
-      this->termNoLock(_term + 1);  // raise my term
-    }
+    
+    _votedFor = _id;
+    this->termNoLock(_term + 1);  // raise my term
+    
     _agent->endPrepareLeadership();
     _cast     = true;
     savedTerm = _term;
