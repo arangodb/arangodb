@@ -11,7 +11,7 @@ v3.3.3 (XXXX-XX-XX)
   The option is set to `false` by default to ensure backwards-compatibility
 
 
-v3.3.2 (XXXX-XX-XX)
+v3.3.2 (2018-01-04)
 -------------------
 
 * fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' at 98,7: ArangoError 4: Expecting type String

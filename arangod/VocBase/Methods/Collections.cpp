@@ -88,15 +88,13 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
   if (ServerState::instance()->isCoordinator()) {
     try {
       auto coll = ClusterInfo::instance()->getCollection(vocbase->name(), name);
-      if (coll) {
-        // check authentication after ensuring the collection exists
-        if (exec != nullptr &&
-            !exec->canUseCollection(vocbase->name(), coll->name(), AuthLevel::RO)) {
-          return Result(TRI_ERROR_FORBIDDEN, "No access to collection '" + name + "'");
-        }
-        func(coll.get());
-        return Result();
+      // check authentication after ensuring the collection exists
+      if (exec != nullptr &&
+          !exec->canUseCollection(vocbase->name(), coll->name(), AuthLevel::RO)) {
+        return Result(TRI_ERROR_FORBIDDEN, "No access to collection '" + name + "'");
       }
+      func(coll.get());
+      return Result();
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
