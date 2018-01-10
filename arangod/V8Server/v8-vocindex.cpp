@@ -247,8 +247,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   bool createWaitsForSyncReplication = cluster->createWaitsForSyncReplication();
   bool enforceReplicationFactor = true;
 
-  if (args.Length() >= 3 && args[args.Length()-1]->IsObject()) {
-    v8::Handle<v8::Object> obj = args[args.Length()-1]->ToObject();
+  if (args.Length() >= 3 && args[args.Length() - 1]->IsObject()) {
+    v8::Handle<v8::Object> obj = args[args.Length() - 1]->ToObject();
     createWaitsForSyncReplication = TRI_GetOptionalBooleanProperty(isolate,
       obj, "waitForSyncReplication", createWaitsForSyncReplication);
 
