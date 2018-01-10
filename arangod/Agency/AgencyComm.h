@@ -204,7 +204,7 @@ class AgencyOperation {
   AgencyOperationType type() const;
 
  public:
-  uint32_t _ttl = 0;
+  uint64_t _ttl = 0;
   VPackSlice _oldValue;
 
  private:
@@ -250,7 +250,7 @@ class AgencyCommResult {
   void clear();
 
   VPackSlice slice() const;
-  void setVPack(std::shared_ptr<velocypack::Builder> vpack) { _vpack = vpack; }
+  void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) { _vpack = vpack; }
 
  public:
   std::string _location;

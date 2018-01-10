@@ -609,6 +609,7 @@ def setBuildsAndTests() {
         useLinux = false
         useMac = false
         useWindows = false
+        useDocker = false
     }
     else if (buildType == "Customized") {
         useLinux = params.Linux
@@ -624,6 +625,11 @@ def setBuildsAndTests() {
 
         runTests = params.RunTests
         runResilience = params.RunResilience
+
+        if (!useLinux && !userMac && !useWindows && !useDocker){
+            throw("No build type selected for custom build!")
+        }
+
     }
     else if (buildType == "Quick Test") {
         restrictions = [
@@ -1366,7 +1372,7 @@ def buildEdition(os, edition, maintainer) {
         logExceptionStage(os, logFile, logFile, exc)
 
         def msg = exc.toString()
-
+        
         if (os == 'linux' || os == 'mac') {
             sh "echo \"${msg}\" >> ${logFile}"
         }

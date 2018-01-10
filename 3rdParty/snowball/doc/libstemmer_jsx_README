@@ -1,0 +1,79 @@
+Snowball stemming library collection for JSX
+============================================
+
+How to use library
+------------------
+
+You can use each stemming modules from JSX program.
+
+.. code-block:: javascript
+
+   import "english-stemmer.jsx";
+
+   class _Main
+   {
+       function constructor (argv string[]) : void
+       {
+           var stemmer = new EnglishStemmer();
+           log stemmer.stemWord("We are the world");
+       }
+   }
+
+Following modules are common modules. Don't forget bundle these modules to your program:
+
+* ``stemmer.jsx``
+* ``among.jsx``
+* ``snowball-stemmer.jsx``
+
+Following modules are optiona modules. Select your needed language modules:
+
+* ``danish-stemmer.jsx``
+* ``dutch-stemmer.jsx``
+* ``english-stemmer.jsx``
+* ``finnish-stemmer.jsx``
+* ``french-stemmer.jsx``
+* ``german-stemmer.jsx``
+* ``hungarian-stemmer.jsx``
+* ``italian-stemmer.jsx``
+* ``norwegian-stemmer.jsx``
+* ``porter-stemmer.jsx``
+* ``portuguese-stemmer.jsx``
+* ``romanian-stemmer.jsx``
+* ``russian-stemmer.jsx``
+* ``spanish-stemmer.jsx``
+* ``swedish-stemmer.jsx``
+* ``turkish-stemmer.jsx``
+
+You can use this module from JavaScript. Following command converts your needed module into JavaScript.
+
+.. code-block:: bash
+
+   $ jsx --executable web --output stemmer.js english-stemmer.jsx
+
+.. code-block:: html
+
+   <html>
+   <script type="text/javascript" src="stemmer.js"></script>
+   <script type="text/javascript">
+   window.onload = function() {
+       var Stemmer require("english-stemmer.jsx").EnglishStemmer$;
+       var stemmer = new Stemmer();
+       var result = stemmer.stemWord$S("We are the world");
+   };
+   </script>
+   </html>
+
+
+The TestApp example
+-------------------
+
+The :file:`testapp.jsx` example program allows you to run any of the stemmers
+on a sample vocabulary.
+
+Usage::
+
+   testapp.jsx <algorithm> "sentences ... "
+
+.. code-block:: bash
+
+   $ jsx --run --add-search-path ./lib ./bin/testapp.jsx English "sentences... "

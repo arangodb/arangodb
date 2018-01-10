@@ -40,8 +40,8 @@ constexpr bool AnyIteratorFillBlockCache = false;
 
 RocksDBAllIndexIterator::RocksDBAllIndexIterator(
     LogicalCollection* col, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index, bool reverse)
-    : IndexIterator(col, trx, mmdr, index),
+    RocksDBPrimaryIndex const* index, bool reverse)
+    : IndexIterator(col, trx, index),
       _reverse(reverse),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
@@ -175,8 +175,8 @@ void RocksDBAllIndexIterator::reset() {
 
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     LogicalCollection* col, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
-    : IndexIterator(col, trx, mmdr, index),
+    RocksDBPrimaryIndex const* index)
+    : IndexIterator(col, trx, index),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
@@ -279,13 +279,10 @@ bool RocksDBAnyIndexIterator::outOfRange() const {
 
 RocksDBSortedAllIterator::RocksDBSortedAllIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
-    : IndexIterator(collection, trx, mmdr, index),
+    RocksDBPrimaryIndex const* index)
+    : IndexIterator(collection, trx, index),
       _trx(trx),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      _index(index),
-#endif
       _cmp(index->comparator()) {
  
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);

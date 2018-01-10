@@ -36,9 +36,9 @@ void AcceptorTcp::open() {
 
   boost::asio::ip::tcp::endpoint asioEndpoint;
   boost::system::error_code err;
-  auto address = boost::asio::ip::address::from_string(hostname,err);
+  auto address = boost::asio::ip::address::from_string(hostname, err);
   if (!err) {
-    asioEndpoint = boost::asio::ip::tcp::endpoint(address,portNumber);
+    asioEndpoint = boost::asio::ip::tcp::endpoint(address, portNumber);
   } else { // we need to resolve the string containing the ip
     std::unique_ptr<boost::asio::ip::tcp::resolver::query> query;
     if (_endpoint->domain() == AF_INET6) {
@@ -51,7 +51,7 @@ void AcceptorTcp::open() {
 
     boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(*query, err);
     if (err) {
-      LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to to resolve endpoint: " << err.message();
+      LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to to resolve endpoint ' " << _endpoint->specification() << "': " << err.message();
       throw std::runtime_error(err.message());
     }
 
@@ -63,33 +63,32 @@ void AcceptorTcp::open() {
   }
   _acceptor.open(asioEndpoint.protocol());
 
-  _acceptor.set_option(
-      boost::asio::ip::tcp::acceptor::reuse_address(
-        ((EndpointIp*)_endpoint)->reuseAddress()));
-
-#if 0
 #ifdef _WIN32
   // on Windows everything is different of course:
   // we need to set SO_EXCLUSIVEADDRUSE to prevent others from binding to our
   // ip/port.
   // https://msdn.microsoft.com/en-us/library/windows/desktop/ms740621(v=vs.85).aspx
-  int trueOption = 1;
+  BOOL trueOption = 1;
 
-  if (::setsockopt(_acceptor.native(), SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (char const*) &trueOption, sizeof(int)) != 0) {
+  if (::setsockopt(_acceptor.native(), SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (char const*) &trueOption, sizeof(BOOL)) != 0) {
     LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to set acceptor socket option: " << WSAGetLastError();
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "unable to set acceptor socket option");
   }
-#endif
+#else
+  _acceptor.set_option(
+      boost::asio::ip::tcp::acceptor::reuse_address(
+        ((EndpointIp*)_endpoint)->reuseAddress()));
+
 #endif
 
   _acceptor.bind(asioEndpoint, err);
   if (err) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to bind endpoint: " << err.message();
+    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to bind to endpoint '" << _endpoint->specification() << "': " << err.message();
     throw std::runtime_error(err.message());
   }
   _acceptor.listen(_endpoint->listenBacklog(), err);
   if (err) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to bind endpoint: " << err.message();
+    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to listen to endpoint '" << _endpoint->specification() << ": " << err.message();
     throw std::runtime_error(err.message());
   }
 }

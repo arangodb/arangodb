@@ -39,7 +39,7 @@
 using namespace arangodb::velocypack;
 using VT = arangodb::velocypack::ValueType;
 
-ValueLength const SliceStaticData::FixedTypeLengths[256] = {
+uint8_t const SliceStaticData::FixedTypeLengths[256] = {
     /* 0x00 */ 1,                    /* 0x01 */ 1,
     /* 0x02 */ 0,                    /* 0x03 */ 0,
     /* 0x04 */ 0,                    /* 0x05 */ 0,
@@ -512,10 +512,7 @@ Slice Slice::get(std::string const& attribute) const {
   // otherwise we'll always use the linear search
   constexpr ValueLength SortedSearchEntriesThreshold = 4;
 
-  // bool const isSorted = (h >= 0x0b && h <= 0x0e);
   if (n >= SortedSearchEntriesThreshold && (h >= 0x0b && h <= 0x0e)) {
-    // This means, we have to handle the special case n == 1 only
-    // in the linear search!
     switch (offsetSize) {
       case 1:
         return searchObjectKeyBinary<1>(attribute, ieBase, n);
@@ -666,7 +663,7 @@ bool Slice::isEqualString(std::string const& attribute) const {
   if (static_cast<size_t>(keyLength) != attribute.size()) {
     return false;
   }
-  return (memcmp(k, attribute.c_str(), attribute.size()) == 0);
+  return (memcmp(k, attribute.data(), attribute.size()) == 0);
 }
 
 Slice Slice::getFromCompactObject(std::string const& attribute) const {

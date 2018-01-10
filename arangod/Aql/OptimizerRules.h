@@ -203,7 +203,7 @@ void patchUpdateStatementsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// merges filter nodes into graph traversal nodes
 void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                             OptimizerRule const* rule);
-  
+
 /// @brief removes filter nodes already covered by the traversal and removes unused variables
 void removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                      OptimizerRule const* rule);
@@ -219,12 +219,12 @@ void prepareTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
 /// @brief moves simple subqueries one level higher
 void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
-  
+
 /// @brief replace FILTER and SORT containing DISTANCE function
-void geoIndexRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
-  
+void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>, OptimizerRule const*);
+
 /// @brief replace FULLTEXT function
-void fulltextIndexRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
+void fulltextIndexRule(aql::Optimizer*, std::unique_ptr<aql::ExecutionPlan>, aql::OptimizerRule const*);
 
 }  // namespace aql
 }  // namespace arangodb

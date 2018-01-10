@@ -28,7 +28,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -43,6 +42,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -105,17 +105,16 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     //std::string const cid = collection->cid_as_string();
     std::string const& cid = collection->name();
 
-    auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
-
     // add code for estimates here
     std::unordered_map<std::string,double> estimates;
 
-    int rv = selectivityEstimatesOnCoordinator(databaseName,cid,estimates);
+    int rv = selectivityEstimatesOnCoordinator(databaseName, cid, estimates);
     if (rv != TRI_ERROR_NO_ERROR){
       return Result(rv, "could not retrieve estimates");
     }
 
     VPackBuilder tmpInner;
+    auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
     c->getIndexesVPack(tmpInner, withFigures, false);
 
     tmp.openArray();
@@ -248,7 +247,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(collection->vocbase()),
+      transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
       collection->cid(),
       create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ);
 
@@ -260,17 +259,12 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   bool created = false;
   std::shared_ptr<arangodb::Index> idx;
   if (create) {
-    // TODO Encapsulate in try{}catch(){} instead of errno()
     try {
       idx = collection->createIndex(&trx, definition, created);
     } catch (arangodb::basics::Exception const& e) {
-      return Result(e.code());
+      return Result(e.code(), e.what());
     }
-    if (idx == nullptr) {
-      // something went wrong during creation
-      int res = TRI_errno();
-      return Result(res);
-    }
+    TRI_ASSERT(idx != nullptr);
   } else {
     idx = collection->lookupIndex(definition);
     if (idx == nullptr) {
@@ -278,6 +272,8 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
       return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     }
   }
+    
+  TRI_ASSERT(idx != nullptr);
 
   VPackBuilder tmp;
   try {
@@ -349,7 +345,6 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
   VPackSlice indexDef = defBuilder.slice();
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(indexDef.isObject());
-    auto c = ClusterInfo::instance()->getCollection(dbname, collname);
 
     // check if there is an attempt to create a unique index on non-shard keys
     if (create) {
@@ -373,6 +368,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
 
       if (v.isBoolean() && v.getBoolean()) {
         // unique index, now check if fields and shard keys match
+        auto c = ClusterInfo::instance()->getCollection(dbname, collname);
         VPackSlice flds = indexDef.get("fields");
         if (flds.isArray() && c->numberOfShards() > 1) {
           std::vector<std::string> const& shardKeys = c->shardKeys();
@@ -541,7 +537,7 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
     READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(collection->vocbase()),
+        transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
         collection->cid(), AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();

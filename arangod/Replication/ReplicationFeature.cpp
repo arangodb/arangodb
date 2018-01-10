@@ -83,6 +83,14 @@ void ReplicationFeature::prepare() {
 
 void ReplicationFeature::start() { 
   _globalReplicationApplier.reset(new GlobalReplicationApplier(GlobalReplicationApplier::loadConfiguration()));
+ 
+  try {
+    _globalReplicationApplier->loadState();
+  } catch (...) {
+    // :snake:
+  }
+ 
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "checking global applier startup. autoStart: " << _globalReplicationApplier->autoStart() << ", hasState: " << _globalReplicationApplier->hasState();
   
   if (_globalReplicationApplier->autoStart() &&
       _globalReplicationApplier->hasState() &&

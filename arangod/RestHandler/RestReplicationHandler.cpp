@@ -688,13 +688,18 @@ void RestReplicationHandler::handleCommandClusterInventory() {
         ci->getCollectionCurrent(dbName, basics::StringUtils::itoa(c->cid()));
     // Check all shards:
     bool isReady = true;
+    bool allInSync = true;
     for (auto const& p : *shardMap) {
       auto currentServerList = cic->servers(p.first /* shardId */);
-      if (!ClusterHelpers::compareServerLists(p.second, currentServerList)) {
+      if (currentServerList.size() == 0 || p.second.size() == 0 ||
+          currentServerList[0] != p.second[0]) {
         isReady = false;
       }
+      if (!ClusterHelpers::compareServerLists(p.second, currentServerList)) {
+        allInSync = false;
+      }
     }
-    c->toVelocyPackForClusterInventory(resultBuilder, includeSystem, isReady);
+    c->toVelocyPackForClusterInventory(resultBuilder, includeSystem, isReady, allInSync);
   }
   resultBuilder.close();  // collections
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
@@ -1537,6 +1542,11 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, collection->cid(),
                                     AccessMode::Type::EXCLUSIVE);
+
+    // collection status lock was already acquired by collection guard 
+    // above
+    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+    
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -2441,10 +2451,11 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   if (!name.empty() && name[0] == '_' && !slice.hasKey("isSystem")) {
     // system collection?
     patch.add("isSystem", VPackValue(true));
-    patch.add("objectId", VPackSlice::nullSlice());
-    patch.add("cid", VPackSlice::nullSlice());
-    patch.add("id", VPackSlice::nullSlice());
   }
+  patch.add("objectId", VPackSlice::nullSlice());
+  patch.add("cid", VPackSlice::nullSlice());
+  patch.add("id", VPackSlice::nullSlice());
+  
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   engine->addParametersForNewCollection(patch, slice);

@@ -188,9 +188,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
-  void serializeEstimate(std::string& output) const override;
+  void serializeEstimate(std::string& output, uint64_t seq) const override;
 
-  bool deserializeEstimate(arangodb::RocksDBCounterManager* mgr) override;
+  bool deserializeEstimate(arangodb::RocksDBSettingsManager* mgr) override;
 
   void recalculateEstimates() override;
 
@@ -214,6 +214,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
                            rocksdb::Slice const& value) override;
+
+  virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const override;
 
  private:
   bool isDuplicateOperator(arangodb::aql::AstNode const*,
@@ -285,6 +287,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.
   std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> _estimator;
+  mutable uint64_t _estimatorSerializedSeq;
 };
 }  // namespace arangodb
 

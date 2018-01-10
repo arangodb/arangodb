@@ -109,6 +109,8 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
   FILE* _toAuditFile;
   // amount of time the last executed shell operation took
   double _lastDuration;
+  // timestamp of startup time
+  double const _startTime;
 };
 }
 

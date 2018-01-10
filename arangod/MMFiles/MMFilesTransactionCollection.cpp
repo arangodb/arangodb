@@ -46,13 +46,17 @@ MMFilesTransactionCollection::MMFilesTransactionCollection(TransactionState* trx
 MMFilesTransactionCollection::~MMFilesTransactionCollection() {}
 
 /// @brief request a main-level lock for a collection
-int MMFilesTransactionCollection::lock() {
-  return lock(_accessType, 0);
-}
+/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
+/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
+/// returns any other error code otherwise
+int MMFilesTransactionCollection::lockRecursive() { return lockRecursive(_accessType, 0); }
 
 /// @brief request a lock for a collection
-int MMFilesTransactionCollection::lock(AccessMode::Type accessType,
-                                       int nestingLevel) {
+/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
+/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
+/// returns any other error code otherwise
+int MMFilesTransactionCollection::lockRecursive(AccessMode::Type accessType,
+                                                int nestingLevel) {
   if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_accessType)) {
     // wrong lock type
     return TRI_ERROR_INTERNAL;
@@ -67,8 +71,8 @@ int MMFilesTransactionCollection::lock(AccessMode::Type accessType,
 }
 
 /// @brief request an unlock for a collection
-int MMFilesTransactionCollection::unlock(AccessMode::Type accessType,
-                                         int nestingLevel) {
+int MMFilesTransactionCollection::unlockRecursive(AccessMode::Type accessType,
+                                                  int nestingLevel) {
   if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_accessType)) {
     // wrong lock type: write-unlock requested but collection is read-only
     return TRI_ERROR_INTERNAL;
@@ -95,6 +99,16 @@ bool MMFilesTransactionCollection::isLocked(AccessMode::Type accessType, int nes
   
 /// @brief check whether a collection is locked at all
 bool MMFilesTransactionCollection::isLocked() const {
+  if (_collection == nullptr) {
+    return false;
+  }
+  if (CollectionLockState::_noLockHeaders != nullptr) {
+    std::string collName(_collection->name());
+    auto it = CollectionLockState::_noLockHeaders->find(collName);
+    if (it != CollectionLockState::_noLockHeaders->end()) {
+      return true;
+    }
+  }
   return (_lockType != AccessMode::Type::NONE);
 }
   
@@ -151,8 +165,8 @@ bool MMFilesTransactionCollection::canAccess(AccessMode::Type accessType) const 
   }
 
   // check if access type matches
-  if (AccessMode::AccessMode::isWriteOrExclusive(accessType) && 
-      !AccessMode::AccessMode::isWriteOrExclusive(_accessType)) {
+  if (AccessMode::isWriteOrExclusive(accessType) && 
+      !AccessMode::isWriteOrExclusive(_accessType)) {
     // type doesn't match. probably also a mistake by the caller
     return false;
   }
@@ -161,8 +175,8 @@ bool MMFilesTransactionCollection::canAccess(AccessMode::Type accessType) const 
 }
 
 int MMFilesTransactionCollection::updateUsage(AccessMode::Type accessType, int nestingLevel) {
-  if (AccessMode::AccessMode::isWriteOrExclusive(accessType) && 
-      !AccessMode::AccessMode::isWriteOrExclusive(_accessType)) {
+  if (AccessMode::isWriteOrExclusive(accessType) && 
+      !AccessMode::isWriteOrExclusive(_accessType)) {
     if (nestingLevel > 0) {
       // trying to write access a collection that is only marked with
       // read-access
@@ -226,7 +240,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
   TRI_ASSERT(physical != nullptr);
 
   if (nestingLevel == 0 &&
-      AccessMode::AccessMode::isWriteOrExclusive(_accessType)) {
+      AccessMode::isWriteOrExclusive(_accessType)) {
     // read-lock the compaction lock
     if (!_transaction->hasHint(transaction::Hints::Hint::NO_COMPACTION_LOCK)) {
       if (!_compactionLocked) {
@@ -239,19 +253,23 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
   bool shouldLock = _transaction->hasHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
   if (!shouldLock) {
-    shouldLock = (AccessMode::AccessMode::isWriteOrExclusive(_accessType) && !_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
+    shouldLock = (!AccessMode::isNone(_accessType) && !_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
   }
 
   if (shouldLock && !isLocked()) {
     // r/w lock the collection
     int res = doLock(_accessType, nestingLevel);
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_LOCKED) {
+      // TRI_ERROR_LOCKED is not an error, but it indicates that the lock operation has actually acquired the lock
+      // (and that the lock has not been held before)
+      res = TRI_ERROR_NO_ERROR;
+    } else if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
   }
   
-  if (AccessMode::AccessMode::isWriteOrExclusive(_accessType) && _originalRevision == 0) {
+  if (AccessMode::isWriteOrExclusive(_accessType) && _originalRevision == 0) {
     // store original revision at transaction start
     _originalRevision = physical->revision();
   }
@@ -269,7 +287,7 @@ void MMFilesTransactionCollection::unuse(int nestingLevel) {
   // the top level transaction releases all collections
   if (nestingLevel == 0 && _collection != nullptr) {
     if (!_transaction->hasHint(transaction::Hints::Hint::NO_COMPACTION_LOCK)) {
-      if (AccessMode::AccessMode::isWriteOrExclusive(_accessType) && _compactionLocked) {
+      if (AccessMode::isWriteOrExclusive(_accessType) && _compactionLocked) {
         auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
         TRI_ASSERT(physical != nullptr);
         // read-unlock the compaction lock
@@ -294,6 +312,9 @@ void MMFilesTransactionCollection::release() {
 }
 
 /// @brief lock a collection
+/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
+/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
+/// returns any other error code otherwise
 int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel) {
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     // never lock
@@ -339,7 +360,11 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   if (res == TRI_ERROR_NO_ERROR) {
     _lockType = type;
-  } else if (res == TRI_ERROR_LOCK_TIMEOUT && timeout >= 0.1) {
+    // not an error, but we use TRI_ERROR_LOCKED to indicate that we actually acquired the lock ourselves
+    return TRI_ERROR_LOCKED;
+  }
+
+  if (res == TRI_ERROR_LOCK_TIMEOUT && timeout >= 0.1) {
     LOG_TOPIC(WARN, Logger::QUERIES) << "timed out after " << timeout << " s waiting for " << AccessMode::typeString(type) << "-lock on collection '" << _collection->name() << "'";
   } else if (res == TRI_ERROR_DEADLOCK) {
     LOG_TOPIC(WARN, Logger::QUERIES) << "deadlock detected while trying to acquire " << AccessMode::typeString(type) << "-lock on collection '" << _collection->name() << "'";
