@@ -156,39 +156,40 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
 
   // Check executePlanForDatabase ==============================================
   SECTION("Execute plan for database") {
-    auto local = createBuilder(localStr);
+    auto local = createNode(localStr);
+    local("db2") = local("_system");
+
+    plan("/arango/Plan/Databases/db3") = db3.slice();
 
     arangodb::maintenance::executePlanForDatabases(
-      plan.toBuilder().slice(), current.toBuilder().slice(), local.slice());
+      plan.toBuilder().slice(), current.toBuilder().slice(), local.toBuilder().slice());
     
+    REQUIRE(ActionRegistry::instance()->size() == 2);
   }
   
-/*
   // Check that not a new action is create for same difference =================
   SECTION("Execute plan for database") {
-    arangodb::Result executePlanForDatabases (
-      arangodb::consensus::Node plan, arangodb::consensus::Node current,
-      std::vector<std::string>);
 
-    LocalState local (
-      {{std::string("_system"), std::vector<arangodb::LogicalCollection*>()},
-        {std::string("db2"), std::vector<arangodb::LogicalCollection*>()}});
-    
-    std::vector<std::string> toCreate, toDrop;
-    Node plan = baseStructure(PLANNED_DATABASES);
-    plan("db3") = db3.slice();
+    auto local = createNode(localStr);
+    local("db2") = local("_system");
 
-    arangodb::maintenance::executePlanForDatabases(plan, plan, local);
+    plan("/arango/Plan/Databases/db3") = db3.slice();
+
+    arangodb::maintenance::executePlanForDatabases(
+      plan.toBuilder().slice(), current.toBuilder().slice(),
+      local.toBuilder().slice());
     auto before = ActionRegistry::instance()->toVelocyPack().toJson();
+    
     REQUIRE(ActionRegistry::instance()->size() == 2);
 
-    // New runs should not add new actions
-    arangodb::maintenance::executePlanForDatabases(plan, plan, local);
+    arangodb::maintenance::executePlanForDatabases(
+      plan.toBuilder().slice(), current.toBuilder().slice(),
+      local.toBuilder().slice());
     auto after = ActionRegistry::instance()->toVelocyPack().toJson();
+    
     REQUIRE(before == after);
     
   }
 
-*/  
 }
 
