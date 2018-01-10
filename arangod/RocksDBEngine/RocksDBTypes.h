@@ -68,17 +68,17 @@ enum class RocksDBLogType : char {
   IndexDrop = '8',
   ViewCreate = '9',
   ViewDrop = ':',
-  ViewRename = 'A',
   ViewChange = ';',
-#ifdef USE_IRESEARCH
-  IResearchLinkDrop = 'B',
-#endif
   BeginTransaction = '<',
   DocumentOperationsPrologue = '=',
   DocumentRemove = '>',
   SinglePut = '?',
   SingleRemove = '@',
-  DocumentRemoveAsPartOfUpdate = 'A'
+  DocumentRemoveAsPartOfUpdate = 'A',
+  ViewRename = 'B',
+#ifdef USE_IRESEARCH
+  IResearchLinkDrop = 'C'
+#endif
 };
 
 enum class RocksDBSettingsType : char {
