@@ -117,6 +117,11 @@ RocksDBLogValue RocksDBLogValue::DocumentRemove(
   return RocksDBLogValue(RocksDBLogType::DocumentRemove, key);
 }
 
+RocksDBLogValue RocksDBLogValue::DocumentRemoveAsPartOfUpdate(
+    arangodb::StringRef const& key) {
+  return RocksDBLogValue(RocksDBLogType::DocumentRemoveAsPartOfUpdate, key);
+}
+
 RocksDBLogValue RocksDBLogValue::SinglePut(TRI_voc_tick_t vocbaseId,
                                            TRI_voc_cid_t cid) {
   return RocksDBLogValue(RocksDBLogType::SinglePut, vocbaseId, cid);
@@ -255,7 +260,8 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
 RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, StringRef const& data)
     : _buffer() {
   switch (type) {
-    case RocksDBLogType::DocumentRemove: {
+    case RocksDBLogType::DocumentRemove: 
+    case RocksDBLogType::DocumentRemoveAsPartOfUpdate: {
       _buffer.reserve(data.length() + sizeof(RocksDBLogType));
       _buffer.push_back(static_cast<char>(type));
       _buffer.append(data.data(), data.length());  // primary key
@@ -382,7 +388,8 @@ StringRef RocksDBLogValue::oldCollectionName(
 StringRef RocksDBLogValue::documentKey(rocksdb::Slice const& slice) {
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::SingleRemove ||
-             type == RocksDBLogType::DocumentRemove);
+             type == RocksDBLogType::DocumentRemove ||
+             type == RocksDBLogType::DocumentRemoveAsPartOfUpdate);
   size_t off = sizeof(RocksDBLogType);
   // only single remove contains vocbase id and cid
   if (type == RocksDBLogType::SingleRemove) {
