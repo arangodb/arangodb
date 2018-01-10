@@ -116,7 +116,6 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     REQUIRE(toDrop.size() == 1);
     REQUIRE(toDrop.front() == "db2");
 
-    local.pop_back();
   }
 
 
@@ -190,6 +189,19 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     REQUIRE(before == after);
     
   }
+
+  // Local has databases _system and db2 =====================================
+  SECTION("Local collections") {
+    std::vector<std::string> toCreate, toDrop, toSync;
+
+    auto local = createNode(localStr);
+
+    arangodb::maintenance::diffPlanLocal (
+      plan.toBuilder().slice(), local.toBuilder().slice(),
+      toCreate, toDrop, toSync);
+
+  }
+
 
 }
 

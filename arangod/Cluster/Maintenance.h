@@ -42,7 +42,7 @@ arangodb::Result diffPlanLocalForDatabases(
 arangodb::Result executePlanForDatabases (
   VPackSlice const&, VPackSlice const&, VPackSlice const&);
 
-arangodb::Result diffPlanLocalForCollections(
+arangodb::Result diffPlanLocal(
   VPackSlice const&, VPackSlice const&, std::vector<std::string>&,
   std::vector<std::string>&, std::vector<std::string>&);
 
