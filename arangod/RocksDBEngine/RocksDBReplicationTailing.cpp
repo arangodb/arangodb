@@ -223,7 +223,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         }
         break;
       }
-      case RocksDBLogType::DocumentRemove: {
+      case RocksDBLogType::DocumentRemove:
+      case RocksDBLogType::DocumentRemoveAsPartOfUpdate: {
         // part of an ongoing transaction
         if (_currentDbId != 0 && _currentTrxId != 0 && _currentCid != 0) {
           // collection may be ignored
@@ -369,6 +370,11 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       return rocksdb::Status();
     }
 
+    if (_lastLogType == RocksDBLogType::DocumentRemoveAsPartOfUpdate) {
+      _removeDocumentKey.clear();
+      return rocksdb::Status();
+    }
+    
     // document removes, because of a collection drop is not transactional and
     // should not appear in the WAL.
     if (!(_seenBeginTransaction || _singleOp)) {
