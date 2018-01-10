@@ -768,7 +768,7 @@ function CollectionTruncateFailuresSuite() {
       }
     },
 
-  }
+  };
 }
 
 
