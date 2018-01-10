@@ -544,7 +544,7 @@ void Constituent::callElection() {
       }
     }
     // Count the vote as a nay
-    if (++nay >= majority) {                  // Network: majority against?
+    if (++nay > size() - majority) {         // Network: majority against?
       follow(0);  // do not adjust _term or _votedFor
       break;
     }
