@@ -26,6 +26,7 @@
 #define ARANGODB_MAINTENANCE_MAINTENANCE_H
 
 #include "Basics/Result.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Agency/Node.h"
 
 namespace arangodb {
@@ -34,39 +35,31 @@ class LogicalCollection;
 
 namespace maintenance {
 
-using LocalState = std::map<std::string,std::vector<LogicalCollection*>>;
-using AgencyState = arangodb::consensus::Node;
-
-
-static std::string const PLANNED_DATABASES("/arango/Plan/Databases");
-
 arangodb::Result diffPlanLocalForDatabases(
-  AgencyState const&, std::vector<std::string> const&,
+  VPackSlice const&, std::vector<std::string> const&,
   std::vector<std::string>&, std::vector<std::string>&);
 
 arangodb::Result executePlanForDatabases (
-  AgencyState const&, AgencyState const&, LocalState const&);
+  VPackSlice const&, VPackSlice const&, VPackSlice const&);
 
 arangodb::Result diffPlanLocalForCollections(
-  AgencyState const&, LocalState const&,
-  std::vector<std::string>&, std::vector<std::string>&,
-  std::vector<std::string>&);
+  VPackSlice const&, VPackSlice const&, std::vector<std::string>&,
+  std::vector<std::string>&, std::vector<std::string>&);
 
 arangodb::Result executePlanForCollections (
-  AgencyState const&, AgencyState const&, LocalState const&);
+  VPackSlice const&, VPackSlice const&, VPackSlice const&);
 
 arangodb::Result synchroniseShards (
-  AgencyState const&, AgencyState const&, LocalState const&);
+  VPackSlice const&, VPackSlice const&, VPackSlice const&);
 
 arangodb::Result reportLocalForDatabases (
-  AgencyState plan, AgencyState current,
-  std::vector<std::string>);
+  VPackSlice plan, VPackSlice current, std::vector<std::string>);
 
 arangodb::Result phaseOne (
-  AgencyState const& plan, AgencyState const& cur, LocalState const& local);
+  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local);
 
 arangodb::Result phaseTwo (
-  AgencyState const& plan, AgencyState const& cur);
+  VPackSlice const& plan, VPackSlice const& cur);
 
 }}
 

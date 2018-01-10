@@ -23,9 +23,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ActionRegistry.h"
 #include "Cluster/Maintenance.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 
@@ -33,18 +37,18 @@ using namespace arangodb::basics;
 using namespace arangodb::consensus;
 using namespace arangodb::maintenance;
 
-
-
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocalForDatabases(
-  AgencyState const& plan, std::vector<std::string> const& local,
+  VPackSlice const& plan, std::vector<std::string> const& local,
   std::vector<std::string>& toCreate, std::vector<std::string>& toDrop) {
 
   arangodb::Result result;
   
   std::vector<std::string> planv, isect;
-  for (auto const i : plan.children()) {
-    planv.emplace_back(i.first);
+  VPackSlice pdbs = plan.get(
+    std::vector<std::string>{"arango","Plan","Databases"});
+  for (auto const& i : VPackObjectIterator(pdbs)) {
+    planv.emplace_back(i.key.copyString());
   }
   std::sort(planv.begin(), planv.end());
 
@@ -74,21 +78,22 @@ arangodb::Result arangodb::maintenance::diffPlanLocalForDatabases(
 
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocalForCollections(
-  AgencyState const& plan, LocalState const& local,
+  VPackSlice const& plan, VPackSlice const& local,
   std::vector<std::string>& toCreate, std::vector<std::string>& toDrop,
   std::vector<std::string>& toSync) {
   
   arangodb::Result result;
 
-  for (auto const& l : local) {
+  for (auto const& l : VPackObjectIterator(local)) {
 
     // sorted list of collections (local)
     //std::string const& database = l.first;
-    std::vector<arangodb::LogicalCollection*> collections = l.second;
+/*    auto collections = l.value;
     std::sort(
       collections.begin(), collections.end(),
       [](arangodb::LogicalCollection* l, arangodb::LogicalCollection* r) -> bool {
-        return StringUtils::tolower(l->name())<StringUtils::tolower(r->name()); });      
+        return StringUtils::tolower(l->name())<StringUtils::tolower(r->name()); });
+*/  
   }
 
   return result;
@@ -97,7 +102,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocalForCollections(
 
 /*
 arangodb::Result arangodb::maintenance::diffLocalCurrentForDatabases(
-  LocalState const& local, AgencyState const& Current,
+  VPackSlice const& local, VPackSlice const& Current,
   VPackBuilder& agencyTransaction) {
   
   arangodb::Result result;
@@ -113,7 +118,7 @@ arangodb::Result arangodb::maintenance::diffLocalCurrentForDatabases(
 
 /// @brief handle plan for local databases
 arangodb::Result arangodb::maintenance::executePlanForDatabases (
-  AgencyState const& plan, AgencyState const& current, LocalState const& local) {
+  VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local) {
 
   arangodb::Result result;
   ActionRegistry* actreg = ActionRegistry::instance();
@@ -121,9 +126,10 @@ arangodb::Result arangodb::maintenance::executePlanForDatabases (
   // build difference between plan and local
   std::vector<std::string> toCreate, toDrop;
   std::vector<std::string> localv;
-  for (auto const& i : local) {
-    localv.emplace_back(i.first);
+  for (auto const& i : VPackObjectIterator(local)) {
+    localv.emplace_back(i.key.copyString());
   }
+  std::sort(localv.begin(), localv.end());
   diffPlanLocalForDatabases(plan, localv, toCreate, toDrop);
 
   // dispatch creations
@@ -149,7 +155,7 @@ arangodb::Result arangodb::maintenance::executePlanForDatabases (
 
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne (
-  AgencyState const& plan, AgencyState const& cur, LocalState const& local) {
+  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local) {
 
   arangodb::Result result;
 
@@ -174,20 +180,20 @@ arangodb::Result arangodb::maintenance::phaseOne (
 
 /// @brief Phase two: See, what we can report to the agency
 arangodb::Result arangodb::maintenance::phaseTwo (
-  AgencyState const& plan, AgencyState const& cur) {
+  VPackSlice const& plan, VPackSlice const& cur) {
   arangodb::Result result;
   return result;
 }
 
 
 arangodb::Result arangodb::maintenance::executePlanForCollections (
-  AgencyState const& plan, AgencyState const& current, LocalState const& local) {
+  VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local) {
   arangodb::Result result;
   return result;
 }
 
 arangodb::Result arangodb::maintenance::synchroniseShards (
-  AgencyState const&, AgencyState const&, LocalState const&) {
+  VPackSlice const&, VPackSlice const&, VPackSlice const&) {
   arangodb::Result result;
   return result;
 }
