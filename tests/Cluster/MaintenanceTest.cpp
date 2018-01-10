@@ -41,8 +41,10 @@ const char *agency =
 #include "MaintenanceTest.json"
 ;
 
-VPackBuilder test2, test1;
+const char* db2str = R"=({"id":"2","name":"db2"})=";
+const char* db3str = R"=({"id":"3","name":"db3"})=";
 
+VPackBuilder db2, db3;
 
 Node createNodeFromBuilder(Builder const& builder) {
 
@@ -77,6 +79,10 @@ Node createRootNode() {
   return createNode(agency);
 }
 
+namespace arangodb {
+class LogicalCollection;
+}
+
 TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
 
   auto baseStructure = createRootNode();
@@ -84,13 +90,8 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   Builder builder;
   baseStructure.toBuilder(builder);
 
-  { VPackObjectBuilder b(&test2);
-    test2.add("id",VPackValue("3"));
-    test2.add("name",VPackValue("test2")); }
-  
-  { VPackObjectBuilder b(&test1);
-    test1.add("id",VPackValue("2"));
-    test1.add("name",VPackValue("test1")); } 
+  db2 = createBuilder(db2str);
+  db3 = createBuilder(db3str);
 
   // Plan and local in sync
   SECTION("Identical lists") {
@@ -105,9 +106,9 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   }
 
 
-  // Local has databases _system and test1 =====================================
+  // Local has databases _system and db2 =====================================
   SECTION("Local databases one more") {
-    std::vector<std::string> local{"_system","test1"}, toCreate, toDrop;
+    std::vector<std::string> local{"_system","db2"}, toCreate, toDrop;
     Node plan = baseStructure(PLANNED_DATABASES);
 
     arangodb::maintenance::diffPlanLocalForDatabases(
@@ -116,71 +117,81 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     REQUIRE(toCreate.size() == 0);
     
     REQUIRE(toDrop.size() == 1);
-    REQUIRE(toDrop.front() == "test1");
+    REQUIRE(toDrop.front() == "db2");
 
     local.pop_back();
   }
 
 
-  // Plan has databases _system and test1 ======================================
+  // Plan has databases _system and db2 ======================================
   SECTION("Plan has one more than local") {
-    std::vector<std::string> local{"_system"}, toCreate, toDrop;
+    std::vector<std::string> toCreate, toDrop;
+
+    std::vector<std::string> local {"_system"};
 
     Node plan = baseStructure(PLANNED_DATABASES);
-    plan("test1") = test1.slice();
+    plan("db2") = db2.slice();
 
     arangodb::maintenance::diffPlanLocalForDatabases(
       plan, local, toCreate, toDrop);
 
     REQUIRE(toCreate.size() == 1);
-    REQUIRE(toCreate.front() == "test1");
+    REQUIRE(toCreate.front() == "db2");
     
     REQUIRE(toDrop.size() == 0);
   }
 
 
-  // Local has databases _system and test1 =====================================
-  // Plan has databases _system and test2
+  // Local has databases _system and db2 =====================================
+  // Plan has databases _system and db3
   SECTION("Plan has one more than local and local has one more than plan") {
-    std::vector<std::string> local {"_system", "test1"}, toCreate, toDrop;
+    std::vector<std::string> local {"_system", "db2"}, toCreate, toDrop;
     Node plan = baseStructure(PLANNED_DATABASES);
-    plan("test2") = test2.slice();
+    plan("db3") = db3.slice();
 
     arangodb::maintenance::diffPlanLocalForDatabases(
       plan, local, toCreate, toDrop);
 
     REQUIRE(toCreate.size() == 1);
-    REQUIRE(toCreate.front() == "test2");
+    REQUIRE(toCreate.front() == "db3");
     
     REQUIRE(toDrop.size() == 1);
-    REQUIRE(toDrop.front() == "test1");
+    REQUIRE(toDrop.front() == "db2");
   }
 
-/*
+
   // Check executePlanForDatabase ==============================================
   SECTION("Execute plan for database") {
     arangodb::Result executePlanForDatabases (
       arangodb::consensus::Node plan, arangodb::consensus::Node current,
       std::vector<std::string>);
 
-    std::vector<std::string> local {"_system", "test1"}, toCreate, toDrop;
+    LocalState local (
+      {{std::string("_system"), std::vector<arangodb::LogicalCollection*>()},
+        {std::string("db2"), std::vector<arangodb::LogicalCollection*>()}});
+    
+    std::vector<std::string> toCreate, toDrop;
     Node plan = baseStructure(PLANNED_DATABASES);
-    plan("test2") = test2.slice();
+    plan("db3") = db3.slice();
 
     arangodb::maintenance::executePlanForDatabases(plan, plan, local);
     REQUIRE(ActionRegistry::instance()->size() == 2);
   }
   
-  
+
   // Check that not a new action is create for same difference =================
   SECTION("Execute plan for database") {
     arangodb::Result executePlanForDatabases (
       arangodb::consensus::Node plan, arangodb::consensus::Node current,
       std::vector<std::string>);
 
-    std::vector<std::string> local {"_system", "test1"}, toCreate, toDrop;
+    LocalState local (
+      {{std::string("_system"), std::vector<arangodb::LogicalCollection*>()},
+        {std::string("db2"), std::vector<arangodb::LogicalCollection*>()}});
+    
+    std::vector<std::string> toCreate, toDrop;
     Node plan = baseStructure(PLANNED_DATABASES);
-    plan("test2") = test2.slice();
+    plan("db3") = db3.slice();
 
     arangodb::maintenance::executePlanForDatabases(plan, plan, local);
     auto before = ActionRegistry::instance()->toVelocyPack().toJson();
@@ -192,7 +203,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     REQUIRE(before == after);
     
   }
-*/
+
   
 }
 
