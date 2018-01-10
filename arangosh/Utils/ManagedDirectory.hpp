@@ -61,18 +61,28 @@ class ManagedDirectory {
      * @brief Writes data to the given file, using encryption if enabled
      * @param  data   Beginning of data to write
      * @param  length Length of data to write
-     * @return        Reference to file status
      */
-    Result const& write(char const* data, size_t length) noexcept;
+    void write(char const* data, size_t length) noexcept;
 
     /**
      * @brief Reads data from the given file, using decryption if enabled
      * @param  buffer Buffer to store the read data
      * @param  length Maximum amount of data to read (no more than buffer
      *                length)
-     * @return        Reference to file status
      */
-    std::pair<Result const&, ssize_t> read(char* buffer, size_t length) noexcept;
+    ssize_t read(char* buffer, size_t length) noexcept;
+
+    /**
+     * @brief Read file contents into string
+     * @return File contents
+     */
+    std::string slurp() noexcept;
+
+    /**
+     * @brief Write a string to file
+     * @param content String to write
+     */
+    void spit(std::string const& content) noexcept;
 
     /**
      * @brief Closes file (now, as opposed to when the object is destroyed)
@@ -92,18 +102,21 @@ class ManagedDirectory {
   };
 
  public:
+  /**
+   * Open a new managed directory, handling en/decryption transparently.
+   *
+   * If the directory exists, the encryption type will be detected. If not, and
+   * the directory is created, the encryption file will be written, enabling
+   * encryption if the `EncryptionFeature` is enabled.
+   *
+   * @param path         The path to the directory
+   * @param requireEmpty If `true`, opening a non-empty directory will fail
+   * @param create       If `true` and directory does not exist, create it
+   */
   ManagedDirectory(std::string const& path, bool requireEmpty, bool create);
   ~ManagedDirectory();
 
  public:
-#ifdef USE_ENTERPRISE
-  /**
-   * @brief Returns a pointer to the `EncryptionFeature` instance
-   * @return A pointer to the feature
-   */
-  EncryptionFeature const* encryptionFeature() const noexcept;
-#endif
-
   /**
    * @brief Returns a reference to the status of the directory
    *
@@ -119,16 +132,37 @@ class ManagedDirectory {
   void resetStatus() noexcept;
 
   /**
-   * @brief Determines if encryption is enabled on the directory
-   * @return `true` if encryption is enabled
-   */
-  bool encryptionEnabled() const noexcept;
-
-  /**
    * @brief Returns the path to the directory under management
    * @return Path under management
    */
   std::string const& path() const noexcept;
+
+  /**
+   * @brief Build the fully-qualified file name
+   * @param  filename File to retrieve path for
+   * @return          Fully qualified filename
+   */
+  std::string pathToFile(std::string const& filename) const noexcept;
+
+  /**
+   * @brief Determines if encryption is enabled on the directory
+   * @return `true` if directory is encrypted
+   */
+  bool isEncrypted() const noexcept;
+
+  /**
+   * @brief Returns the type of encryption used for the directory
+   * @return The type of encryption used (may be none)
+   */
+  std::string const& encryptionType() const noexcept;
+
+#ifdef USE_ENTERPRISE
+  /**
+   * @brief Returns a pointer to the `EncryptionFeature` instance
+   * @return A pointer to the feature
+   */
+  EncryptionFeature const* encryptionFeature() const noexcept;
+#endif
 
   /**
    * @brief Opens a readable file
@@ -147,13 +181,36 @@ class ManagedDirectory {
    * @return           Unique pointer to file, if opened
    */
   std::unique_ptr<File> writableFile(std::string const& filename,
-                                      bool overwrite, int flags = 0) noexcept;
+                                     bool overwrite, int flags = 0) noexcept;
+
+  /**
+   * @brief Write a string to file
+   * @param filename Name of file to write to
+   * @param content  String to write to file
+   */
+  void spitFile(std::string const& filename,
+                std::string const& content) noexcept;
+
+  /**
+   * @brief Read file content into string
+   * @param  filename File to read from
+   * @return          Contents of file as string
+   */
+  std::string slurpFile(std::string const& filename) noexcept;
+
+  /**
+   * @brief Read file content into `VPackBuilder`
+   * @param  filename File to read from
+   * @return          Parsed vpack contents of file
+   */
+  VPackBuilder vpackFromJsonFile(std::string const& filename) noexcept(false);
 
  private:
 #ifdef USE_ENTERPRISE
   EncryptionFeature* const _encryptionFeature;
 #endif
   std::string const _path;
+  std::string _encryptionType;
   Result _status;
 };
 }  // namespace arangodb

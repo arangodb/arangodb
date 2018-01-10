@@ -112,9 +112,10 @@ void RestoreFeature::collectOptions(
                      "create the target database if it does not exist",
                      new BooleanParameter(&_createDatabase));
 
-  options->addOption("--force-same-database",
-                     "force usage of the same database name as in the source dump.json file",
-                     new BooleanParameter(&_forceSameDatabase));
+  options->addOption(
+      "--force-same-database",
+      "force usage of the same database name as in the source dump.json file",
+      new BooleanParameter(&_forceSameDatabase));
 
   options->addOption("--input-directory", "input directory",
                      new StringParameter(&_inputPath));
@@ -380,28 +381,12 @@ static bool SortCollections(VPackBuilder const& l, VPackBuilder const& r) {
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
 
-Result RestoreFeature::readEncryptionInfo() {
-  std::string encryptionType;
-  try {
-    std::string const encryptionFilename =
-        FileUtils::buildFilename(_inputPath, "ENCRYPTION");
-    if (FileUtils::exists(encryptionFilename)) {
-      encryptionType = StringUtils::trim(FileUtils::slurp(encryptionFilename));
-    } else {
-      encryptionType = "none";
-    }
-  } catch (basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    // file not found etc.
-  }
-
-  if (encryptionType != "none") {
+Result RestoreFeature::checkEncryption() {
+  if (_directory->isEncrypted()) {
 #ifdef USE_ENTERPRISE
     if (!_directory->encryptionFeature()->keyOptionSpecified()) {
-      std::cerr << "the dump data seems to be encrypted with " << encryptionType
+      std::cerr << "the dump data seems to be encrypted with "
+                << _directory->encryptionType()
                 << ", but no key information was specified to decrypt the dump"
                 << std::endl;
       std::cerr << "it is recommended to specify either "
@@ -409,7 +394,7 @@ Result RestoreFeature::readEncryptionInfo() {
                    "when invoking arangorestore with an encrypted dump"
                 << std::endl;
     } else {
-      std::cout << "# using encryption type " << encryptionType
+      std::cout << "# using encryption type " << _directory->encryptionType()
                 << " for reading dump" << std::endl;
     }
 #endif
@@ -422,33 +407,27 @@ Result RestoreFeature::readDumpInfo() {
   std::string databaseName;
 
   try {
-    std::string const fqn = _inputDirectory + TRI_DIR_SEPARATOR_STR + "dump.json";
-#ifdef USE_ENTERPRISE
     VPackBuilder fileContentBuilder =
-        (_encryption != nullptr)
-            ? _encryption->velocyPackFromFile(fqn)
-            : basics::VelocyPackHelper::velocyPackFromFile(fqn);
-#else
-    VPackBuilder fileContentBuilder =
-        basics::VelocyPackHelper::velocyPackFromFile(fqn);
-#endif
+        _directory->vpackFromJsonFile("dump.json");
     VPackSlice const fileContent = fileContentBuilder.slice();
-
     databaseName = fileContent.get("database").copyString();
   } catch (...) {
     // the above may go wrong for several reasons
   }
 
   if (!databaseName.empty()) {
-    std::cout << "Database name in source dump is '" << databaseName << "'" << std::endl;
+    std::cout << "Database name in source dump is '" << databaseName << "'"
+              << std::endl;
   }
-
 
   ClientFeature* client =
       application_features::ApplicationServer::getFeature<ClientFeature>(
           "Client");
   if (_forceSameDatabase && databaseName != client->databaseName()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, std::string("database name in dump.json ('") + databaseName + "') does not match specified database name ('" + client->databaseName() + "')");
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  std::string("database name in dump.json ('") + databaseName +
+                      "') does not match specified database name ('" +
+                      client->databaseName() + "')");
   }
 
   return Result();
@@ -485,20 +464,11 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
           continue;
         }
 
-        std::string const fqn = _inputPath + TRI_DIR_SEPARATOR_STR + file;
-#ifdef USE_ENTERPRISE
-        VPackBuilder fileContentBuilder =
-            (_directory->encryptionFeature() != nullptr)
-                ? _directory->encryptionFeature()->velocyPackFromFile(fqn)
-                : basics::VelocyPackHelper::velocyPackFromFile(fqn);
-#else
-        VPackBuilder fileContentBuilder =
-            basics::VelocyPackHelper::velocyPackFromFile(fqn);
-#endif
+        VPackBuilder fileContentBuilder = _directory->vpackFromJsonFile(file);
         VPackSlice const fileContent = fileContentBuilder.slice();
-
         if (!fileContent.isObject()) {
-          errorMsg = "could not read collection structure file '" + fqn + "'";
+          errorMsg = "could not read collection structure file '" +
+                     _directory->pathToFile(file) + "'";
           return TRI_ERROR_INTERNAL;
         }
 
@@ -506,7 +476,8 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         VPackSlice const indexes = fileContent.get("indexes");
 
         if (!parameters.isObject() || !indexes.isArray()) {
-          errorMsg = "could not read collection structure file '" + fqn + "'";
+          errorMsg = "could not read collection structure file '" +
+                     _directory->pathToFile(file) + "'";
           return TRI_ERROR_INTERNAL;
         }
 
@@ -524,13 +495,15 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
             // we cannot go on if there is a mismatch
             errorMsg =
                 "collection name mismatch in collection structure file '" +
-                fqn + "' (offending value: '" + cname + "')";
+                _directory->pathToFile(file) + "' (offending value: '" + cname +
+                "')";
             return TRI_ERROR_INTERNAL;
           } else {
             // we can patch the name in our array and go on
             std::cout << "ignoring collection name mismatch in collection "
                          "structure file '" +
-                             fqn + "' (offending value: '" + cname + "')"
+                             _directory->pathToFile(file) +
+                             "' (offending value: '" + cname + "')"
                       << std::endl;
 
             overwriteName = true;
@@ -620,13 +593,11 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
-            Result readStatus;
-            ssize_t numRead;
-            std::tie(readStatus, numRead) = datafile->read(buffer.end(), 16384);
-            if (readStatus.fail()) {
+            ssize_t numRead = datafile->read(buffer.end(), 16384);
+            if (datafile->status().fail()) {
               // error while reading
-              errorMsg = readStatus.errorMessage();
-              return readStatus.errorNumber();
+              errorMsg = datafile->status().errorMessage();
+              return datafile->status().errorNumber();
             }
 
             // read something
@@ -765,7 +736,7 @@ void RestoreFeature::start() {
 
   // read encryption info
   {
-    Result r = readEncryptionInfo();
+    Result r = checkEncryption();
 
     if (r.fail()) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << r.errorMessage();

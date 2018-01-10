@@ -23,20 +23,51 @@
 
 #include "ManagedDirectory.hpp"
 
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/FileUtils.h"
 #include "Basics/OpenFilesTracker.h"
+#include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::velocypack;
+
+namespace {
+/// @brief the filename for the encryption file
+static constexpr auto EncryptionFilename = "ENCRYPTION";
+/// @brief encryption type specification for no encryption
+static constexpr auto EncryptionTypeNone = "none";
+/// @brief size of char buffer to use for file slurping
+static constexpr size_t DefaultIOChunkSize = 8192;
+}  // namespace
+
+namespace {
+/// @brief determines whether a given bit flag is set
+inline bool flagIsSet(int value, int flagToCheck) noexcept {
+  TRI_ASSERT(0 != flagToCheck);  // does not work correctly if flag is 0
+  return (flagToCheck == (value & flagToCheck));
+}
+}  // namespace
+
+namespace {
+/// @brief determines whether a given bit flag is not set
+inline bool flagNotSet(int value, int flagToCheck) noexcept {
+  TRI_ASSERT(0 != flagToCheck);  // does not work correctly if flag is 0
+  return (flagToCheck != (value & flagToCheck));
+}
+}  // namespace
 
 namespace {
 /// @brief Generates a generic I/O error based on the path and flags
 inline Result genericError(std::string const& path, int flags) noexcept {
-  if (flags & O_RDONLY) {
-    return {TRI_ERROR_CANNOT_READ_FILE, "error while reading file " + path};
+  if (::flagIsSet(flags, O_WRONLY)) {
+    return {TRI_ERROR_CANNOT_WRITE_FILE, "error while writing file " + path};
   }
-  return {TRI_ERROR_CANNOT_WRITE_FILE, "error while writing file " + path};
+  return {TRI_ERROR_CANNOT_READ_FILE, "error while reading file " + path};
 }
 }  // namespace
 
@@ -44,14 +75,22 @@ namespace {
 /// @brief Assembles the file path from the directory and filename
 inline std::string filePath(ManagedDirectory const& directory,
                             std::string const& filename) noexcept {
-  return basics::FileUtils::buildFilename(directory.path(), filename);
+  return FileUtils::buildFilename(directory.path(), filename);
+}
+}  // namespace
+
+namespace {
+/// @brief Assembles the file path from the directory path and filename
+inline std::string filePath(std::string const& directory,
+                            std::string const& filename) noexcept {
+  return FileUtils::buildFilename(directory, filename);
 }
 }  // namespace
 
 namespace {
 /// @brief Opens a file given a path and flags
 inline int openFile(std::string const& path, int flags) noexcept {
-  return ((flags & O_CREAT)
+  return (::flagIsSet(flags, O_CREAT)
               ? TRI_TRACKED_CREATE_FILE(path.c_str(), flags, S_IRUSR | S_IWUSR)
               : TRI_TRACKED_OPEN_FILE(path.c_str(), flags));
 }
@@ -59,8 +98,48 @@ inline int openFile(std::string const& path, int flags) noexcept {
 
 namespace {
 /// @brief Closes an open file and sets the status
-inline void closeFile(int fd, Result& status) noexcept {
+inline void closeFile(int& fd, Result& status) noexcept {
+  TRI_ASSERT(fd >= 0);
   status = Result{TRI_TRACKED_CLOSE_FILE(fd)};
+  fd = -1;
+}
+}  // namespace
+
+namespace {
+/// @brief determines if a file is writable
+bool isWritable(int fd, int flags, std::string const& path,
+                Result& status) noexcept {
+  if (::flagNotSet(flags, O_WRONLY)) {
+    status = {
+        TRI_ERROR_CANNOT_WRITE_FILE,
+        "attempted to write to file " + path + " opened in read-only mode!"};
+    return false;
+  }
+  if (fd < 0) {
+    status = {TRI_ERROR_CANNOT_WRITE_FILE,
+              "attempted to write to file " + path + " which is not open"};
+    return false;
+  }
+  return status.ok();
+}
+}  // namespace
+
+namespace {
+/// @brief determines if a file is readable
+bool isReadable(int fd, int flags, std::string const& path,
+                Result& status) noexcept {
+  if (::flagIsSet(flags, O_WRONLY)) {
+    status = {
+        TRI_ERROR_CANNOT_READ_FILE,
+        "attempted to read from file " + path + " opened in write-only mode!"};
+    return false;
+  }
+  if (fd < 0) {
+    status = {TRI_ERROR_CANNOT_READ_FILE,
+              "attempted to read from file " + path + " which is not open"};
+    return false;
+  }
+  return status.ok();
 }
 }  // namespace
 
@@ -73,9 +152,9 @@ inline std::unique_ptr<EncryptionFeature::Context> getContext(
     return {nullptr};
   }
 
-  return ((flags & O_RDONLY)
-              ? directory.encryptionFeature()->beginDecryption(fd)
-              : directory.encryptionFeature()->beginEncryption(fd));
+  return (::flagIsSet(flags, O_WRONLY)
+              ? directory.encryptionFeature()->beginEncryption(fd)
+              : directory.encryptionFeature()->beginDecryption(fd));
 }
 }  // namespace
 #endif
@@ -105,10 +184,15 @@ namespace {
 /// @brief Performs a raw (non-encrypted) write
 inline void rawWrite(int fd, char const* data, size_t length, Result& status,
                      std::string const& path, int flags) noexcept {
-  bool written = TRI_WritePointer(fd, data, length);
-  if (!written) {
+ while (length > 0) {
+  ssize_t written = TRI_WRITE(fd, data, length);
+  if (written < 0) {
     status = ::genericError(path, flags);
+    break;
   }
+  length -= written;
+  data += written;
+}
 }
 }  // namespace
 
@@ -116,11 +200,39 @@ namespace {
 /// @brief Performs a raw (non-decrypted) read
 inline ssize_t rawRead(int fd, char* buffer, size_t length, Result& status,
                        std::string const& path, int flags) noexcept {
-  ssize_t bytesRead = TRI_ReadPointer(fd, buffer, length);
+  ssize_t bytesRead = TRI_READ(fd, buffer, length);
   if (bytesRead < 0) {
     status = ::genericError(path, flags);
   }
   return bytesRead;
+}
+}  // namespace
+
+namespace {
+void readEncryptionFile(std::string const& directory, std::string& type) {
+  type = ::EncryptionTypeNone;
+  auto filename = ::filePath(directory, ::EncryptionFilename);
+  if (TRI_ExistsFile(filename.c_str())) {
+    type = StringUtils::trim(FileUtils::slurp(filename));
+  }
+}
+}  // namespace
+
+namespace {
+#ifdef USE_ENTERPRISE
+void writeEncryptionFile(std::string const& directory, std::string& type,
+                         EncryptionFeature* encryptionFeature) {
+#else
+void writeEncryptionFile(std::string const& directory, std::string& type) {
+#endif
+  type = ::EncryptionTypeNone;
+  auto filename = ::filePath(directory, ::EncryptionFilename);
+#ifdef USE_ENTERPRISE
+  if (nullptr != encryptionFeature) {
+    type = encryptionFeature->encryptionType();
+  }
+#endif
+  FileUtils::spit(filename, type);
 }
 }  // namespace
 
@@ -132,6 +244,7 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty,
           EncryptionFeature>("Encryption")},
 #endif
       _path{path},
+      _encryptionType{::EncryptionTypeNone},
       _status{TRI_ERROR_NO_ERROR} {
   if (_path.empty()) {
     _status = {TRI_ERROR_BAD_PARAMETER, "must specify a path"};
@@ -139,32 +252,33 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty,
   }
 
   bool exists = TRI_ExistsFile(_path.c_str());
-  bool isDirectory = TRI_IsDirectory(_path.c_str());
-  bool isEmptyDirectory = false;
-  if (isDirectory) {
-    // if it's a directory, check if it has files
+  if (exists) {
+    bool isDirectory = TRI_IsDirectory(_path.c_str());
+    // path exists, but is a file, not a directory
+    if (!isDirectory) {
+      _status = {TRI_ERROR_FILE_EXISTS,
+                 "path specified already exists as a non-directory file"};
+      return;
+    }
+
     std::vector<std::string> files(TRI_FullTreeDirectory(_path.c_str()));
-    isEmptyDirectory = (files.size() <= 1);
+    bool isEmpty = (files.size() <= 1);
     // TODO: TRI_FullTreeDirectory always returns at least one element ("")
     // even if directory is empty?
-  }
 
-  // path exists, but is a file, not a directory
-  if (exists && !isDirectory) {
-    _status = {TRI_ERROR_FILE_EXISTS,
-               "path specified already exists as a non-directory file"};
-    return;
-  }
-
-  // directory exists, has files, and we aren't allowed to overwrite
-  if (requireEmpty && isDirectory && !isEmptyDirectory) {
-    _status = {TRI_ERROR_CANNOT_OVERWRITE_FILE,
-               "path specified is a non-empty directory"};
-    return;
-  }
-
-  // create directory if it doesn't exist
-  if (!isDirectory) {
+    if (!isEmpty) {
+      // directory exists, has files, and we aren't allowed to overwrite
+      if (requireEmpty) {
+        _status = {TRI_ERROR_CANNOT_OVERWRITE_FILE,
+                   "path specified is a non-empty directory"};
+        return;
+      }
+      ::readEncryptionFile(_path, _encryptionType);
+      return;
+    }
+    // fall through to write encryption file
+  } else {
+    // create directory if it doesn't exist
     if (create) {
       long systemError;
       std::string errorMessage;
@@ -177,25 +291,21 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty,
                             "': " + errorMessage};
         return;
       }
+      // fall through to write encryption file
     } else {
       _status = {TRI_ERROR_FILE_NOT_FOUND};
+      return;
     }
   }
 
 #ifdef USE_ENTERPRISE
-  if (_encryptionFeature) {
-    _encryptionFeature->writeEncryptionFile(_path);
-  }
+  ::writeEncryptionFile(_path, _encryptionType, _encryptionFeature);
+#else
+  ::writeEncryptionFile(_path, _encryptionType);
 #endif
 }
 
 ManagedDirectory::~ManagedDirectory() {}
-
-#ifdef USE_ENTERPRISE
-EncryptionFeature const* ManagedDirectory::encryptionFeature() const noexcept {
-  return _encryptionFeature;
-}
-#endif
 
 Result const& ManagedDirectory::status() const noexcept { return _status; }
 
@@ -203,24 +313,32 @@ void ManagedDirectory::resetStatus() noexcept {
   _status = {TRI_ERROR_NO_ERROR};
 }
 
-bool ManagedDirectory::encryptionEnabled() const noexcept {
-#if USE_ENTERPRISE
-  if (!_encryptionFeature) {
-    return false;
-  }
-  return _encryptionFeature->enabled();
-#else
-  return false;
-#endif
+std::string const& ManagedDirectory::path() const noexcept { return _path; }
+
+std::string ManagedDirectory::pathToFile(std::string const& filename) const
+    noexcept {
+  return ::filePath(*this, filename);
 }
 
-std::string const& ManagedDirectory::path() const noexcept { return _path; }
+bool ManagedDirectory::isEncrypted() const noexcept {
+  return (::EncryptionTypeNone != _encryptionType);
+}
+
+std::string const& ManagedDirectory::encryptionType() const noexcept {
+  return _encryptionType;
+}
+
+#ifdef USE_ENTERPRISE
+EncryptionFeature const* ManagedDirectory::encryptionFeature() const noexcept {
+  return _encryptionFeature;
+}
+#endif
 
 std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(
     std::string const& filename, int flags) noexcept {
   std::unique_ptr<File> file{nullptr};
 
-  if (_status.fail()) {
+  if (_status.fail()) {  // directory is in a bad state
     return std::move(file);
   }
 
@@ -241,7 +359,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
     std::string const& filename, bool overwrite, int flags) noexcept {
   std::unique_ptr<File> file{nullptr};
 
-  if (_status.fail()) {
+  if (_status.fail()) {  // directory is in a bad state
     return std::move(file);
   }
 
@@ -268,6 +386,44 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
   return std::move(file);
 }
 
+void ManagedDirectory::spitFile(std::string const& filename,
+                                std::string const& content) noexcept {
+  auto file = writableFile(filename, true);
+  if (!file) {
+    _status = ::genericError(filename, O_WRONLY);
+  } else if (file->status().fail()) {
+    _status = file->status();
+  }
+  file->spit(content);
+}
+
+std::string ManagedDirectory::slurpFile(std::string const& filename) noexcept {
+  std::string content;
+  auto file = readableFile(filename);
+  if (!file || file->status().fail()) {
+    return content;
+  }
+  content = file->slurp();
+  return content;
+}
+
+VPackBuilder ManagedDirectory::vpackFromJsonFile(
+    std::string const& filename) noexcept(false) {
+  VPackBuilder builder;
+  auto content = slurpFile(filename);
+  if (!content.empty()) {
+    // The Parser might throw;
+    try {
+      VPackParser parser(builder);
+      parser.parse(reinterpret_cast<uint8_t const*>(content.data()),
+                   content.size());
+    } catch (...) {
+      throw;  // TODO determine what to actually do here?
+    }
+  }
+  return builder;
+}
+
 ManagedDirectory::File::File(ManagedDirectory const& directory,
                              std::string const& filename, int flags)
     : _directory{directory},
@@ -285,13 +441,11 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
 }
 #endif
 {
-  TRI_ASSERT(O_RDWR != (_flags & O_RDWR));
-  TRI_ASSERT(O_RDONLY == (_flags & O_RDONLY) ||
-             O_WRONLY == (_flags & O_WRONLY));
+  TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
 }
 
 ManagedDirectory::File::~File() {
-  if (_fd > 0) {
+  if (_fd >= 0) {
     ::closeFile(_fd, _status);
   }
 }
@@ -304,16 +458,13 @@ std::string const& ManagedDirectory::File::path() const noexcept {
   return _path;
 }
 
-Result const& ManagedDirectory::File::write(char const* data,
-                                            size_t length) noexcept {
-  if (O_WRONLY != (_flags & O_WRONLY)) {
-    _status = {
-        TRI_ERROR_CANNOT_WRITE_FILE,
-        "attempted to write to file " + _path + " opened in read-only mode!"};
-    return _status;
+void ManagedDirectory::File::write(char const* data, size_t length) noexcept {
+  if (!::isWritable(_fd, _flags, _path, _status)) {
+    return;
   }
+
 #ifdef USE_ENTERPRISE
-  if (_context) {
+  if (_context && _directory.isEncrypted()) {
     bool written =
         _directory.encryptionFeature()->writeData(*_context, data, length);
     if (!written) {
@@ -325,20 +476,16 @@ Result const& ManagedDirectory::File::write(char const* data,
 #else
   ::rawWrite(_fd, data, length, _status, _path, _flags);
 #endif
-  return _status;
 }
 
-std::pair<Result const&, ssize_t> ManagedDirectory::File::read(
-    char* buffer, size_t length) noexcept {
+ssize_t ManagedDirectory::File::read(char* buffer, size_t length) noexcept {
   ssize_t bytesRead = -1;
-  if (O_RDONLY != (_flags & O_RDONLY)) {
-    _status = {
-        TRI_ERROR_CANNOT_READ_FILE,
-        "attempted to read from file " + _path + " opened in write-only mode!"};
-    return std::make_pair(_status, bytesRead);
+  if (!::isReadable(_fd, _flags, _path, _status)) {
+    return bytesRead;
   }
+
 #ifdef USE_ENTERPRISE
-  if (_context) {
+  if (_context && _directory.isEncrypted()) {
     bytesRead =
         _directory.encryptionFeature()->readData(*_context, buffer, length);
     if (bytesRead < 0) {
@@ -350,10 +497,54 @@ std::pair<Result const&, ssize_t> ManagedDirectory::File::read(
 #else
   bytesRead = ::rawRead(_fd, buffer, length, _status, _path, _flags);
 #endif
-  return std::make_pair(_status, bytesRead);
+  return bytesRead;
+}
+
+std::string ManagedDirectory::File::slurp() noexcept {
+  std::string content;
+  if (!::isReadable(_fd, _flags, _path, _status)) {
+    return content;
+  }
+
+  ssize_t bytesRead = 0;
+  char buffer[::DefaultIOChunkSize];
+  while (true) {
+    bytesRead = read(buffer, ::DefaultIOChunkSize);
+    if (_status.ok()) {
+      content.append(buffer, bytesRead);
+    }
+    if (bytesRead <= 0) {
+      break;
+    }
+  }
+
+  return content;
+}
+
+void ManagedDirectory::File::spit(std::string const& content) noexcept {
+  if (!::isWritable(_fd, _flags, _path, _status)) {
+    return;
+  }
+
+  size_t leftToWrite = content.size();
+  auto data = content.data();
+  while (true) {
+    size_t n = std::min(leftToWrite, ::DefaultIOChunkSize);
+    write(data, n);
+    if (_status.fail()) {
+      break;
+    }
+    data += n;
+    leftToWrite -= n;
+    if (0 == leftToWrite) {
+      break;
+    }
+  }
 }
 
 Result const& ManagedDirectory::File::close() noexcept {
-  ::closeFile(_fd, _status);
+  if (_fd >= 0) {
+    ::closeFile(_fd, _status);
+  }
   return _status;
 }

@@ -75,7 +75,7 @@ class RestoreFeature final : public application_features::ApplicationFeature,
   int sendRestoreIndexes(VPackSlice const& slice, std::string& errorMsg);
   int sendRestoreData(std::string const& cname, char const* buffer,
                       size_t bufferSize, std::string& errorMsg);
-  Result readEncryptionInfo();
+  Result checkEncryption();
   Result readDumpInfo();
   int processInputDirectory(std::string& errorMsg);
 

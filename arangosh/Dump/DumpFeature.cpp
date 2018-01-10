@@ -269,8 +269,8 @@ Result dumpCollection(httpclient::SimpleHttpClient& client,
 
     // now actually write retrieved data to dump file
     StringBuffer const& body = response->getBody();
-    auto writeStatus = file.write(body.c_str(), body.length());
-    if (writeStatus.fail()) {
+    file.write(body.c_str(), body.length());
+    if (file.status().fail()) {
       return {TRI_ERROR_CANNOT_WRITE_FILE};
     } else {
       jobData.stats.totalWritten += (uint64_t)body.length();
@@ -388,11 +388,10 @@ Result processJob(httpclient::SimpleHttpClient& client,
     }
 
     std::string const collectionInfo = jobData.collectionInfo.toJson();
-    auto writeStatus =
-        file->write(collectionInfo.c_str(), collectionInfo.size());
-    if (writeStatus.fail()) {
+    file->write(collectionInfo.c_str(), collectionInfo.size());
+    if (file->status().fail()) {
       // close file and bail out
-      result = writeStatus;
+      result = file->status();
     }
   }
 
@@ -647,14 +646,14 @@ Result DumpFeature::runDump(SimpleHttpClient& client,
 
     // save last tick in file
     auto file = _directory->writableFile("dump.json", true);
-    if (file->status().fail()) {
-      return file->status();
+    if (!::fileOk(file.get())) {
+      return ::fileError(file.get(), true);
     }
 
     std::string const metaString = meta.slice().toJson();
-    auto writeStatus = file->write(metaString.c_str(), metaString.size());
-    if (writeStatus.fail()) {
-      return writeStatus;
+    file->write(metaString.c_str(), metaString.size());
+    if (file->status().fail()) {
+      return file->status();
     }
   } catch (basics::Exception const& ex) {
     return {ex.code(), ex.what()};
