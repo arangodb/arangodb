@@ -726,7 +726,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
     state->prepareOperation(_logicalCollection->cid(), docId.id(),
                             StringRef(key),TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    auto res = removeDocument(trx, docId, doc, options, false, wfs);
+    auto res = removeDocument(trx, docId, doc, options);
     if (res.fail()) {
       // Failed to remove document in truncate.
       // Throw
