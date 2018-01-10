@@ -1582,6 +1582,72 @@ function ReplicationLoggerSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test actions
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerTransactionMultiCollection : function () {
+      var c1 = db._create(cn);
+      var c2 = db._create(cn2);
+
+      c1.insert({ _key: "foo", value: 1 });
+      c2.insert({ _key: "bar", value: "A" });
+
+      var tick = getLastLogTick();
+
+      db._executeTransaction({
+        collections: {
+          write: [ cn, cn2 ]
+        },
+        action: function (params) {
+          var c1 = require("internal").db._collection(params.cn);
+          var c2 = require("internal").db._collection(params.cn2);
+              
+          c1.replace("foo", { value: 2 });
+          c1.insert({ _key: "foo2", value: 3 });
+              
+          c2.replace("bar", { value: "B" });
+          c2.insert({ _key: "bar2", value: "C" });
+        },
+        params: {
+          cn: cn,
+          cn2: cn2
+        }
+      });
+
+      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
+      assertEqual(6, entry.length);
+
+      assertEqual(2200, entry[0].type);
+      assertEqual(2300, entry[1].type);
+      assertEqual(2300, entry[2].type);
+      assertEqual(2300, entry[3].type);
+      assertEqual(2300, entry[4].type);
+      assertEqual(2201, entry[5].type);
+
+      assertEqual(entry[0].tid, entry[1].tid);
+      assertEqual(entry[1].tid, entry[2].tid);
+      assertEqual(entry[2].tid, entry[3].tid);
+      assertEqual(entry[3].tid, entry[4].tid);
+      assertEqual(entry[4].tid, entry[5].tid);
+        
+      assertEqual("UnitTestsReplication", entry[1].cname);
+      assertEqual("foo", entry[1].data._key);
+      assertEqual(2, entry[1].data.value);
+      
+      assertEqual("UnitTestsReplication", entry[2].cname);
+      assertEqual("foo2", entry[2].data._key);
+      assertEqual(3, entry[2].data.value);
+      
+      assertEqual("UnitTestsReplication2", entry[3].cname);
+      assertEqual("bar", entry[3].data._key);
+      assertEqual("B", entry[3].data.value);
+      
+      assertEqual("UnitTestsReplication2", entry[4].cname);
+      assertEqual("bar2", entry[4].data._key);
+      assertEqual("C", entry[4].data.value);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test collection exclusion
 ////////////////////////////////////////////////////////////////////////////////
 

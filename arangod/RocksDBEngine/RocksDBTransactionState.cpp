@@ -244,6 +244,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
     rocksdb::SequenceNumber latestSeq =
         rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+
     if (result.ok()) {
       for (auto& trxCollection : _collections) {
         RocksDBTransactionCollection* collection =
@@ -390,11 +391,21 @@ void RocksDBTransactionState::prepareOperation(
       }
     }
   }
+  
   // we need to log the remove log entry, if we don't have the single
   // optimization
-  if (!singleOp && operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    RocksDBLogValue logValue = RocksDBLogValue::DocumentRemove(key);
-    _rocksTransaction->PutLogData(logValue.slice());
+  if (!singleOp && (
+    operationType == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+    operationType == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
+    operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE
+  )) {
+    if (operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+      RocksDBLogValue logValue = RocksDBLogValue::DocumentRemove(key);
+      _rocksTransaction->PutLogData(logValue.slice());
+    } else {
+      RocksDBLogValue logValue = RocksDBLogValue::DocumentRemoveAsPartOfUpdate(key);
+      _rocksTransaction->PutLogData(logValue.slice());
+    }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     ++_numLogdata;
 #endif
