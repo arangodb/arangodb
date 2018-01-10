@@ -690,7 +690,7 @@ void Constituent::run() {
             }
           }
         }
-       
+
         LOG_TOPIC(TRACE, Logger::AGENCY)
           << "Random timeout: " << randTimeout << ", wait: " << randWait;
 
@@ -701,18 +701,14 @@ void Constituent::run() {
 
         bool isTimeout = false;
 
-        {
-          MUTEX_LOCKER(guard, _termVoteLock);
+        if (_lastHeartbeatSeen <= 0.0) {
+          LOG_TOPIC(TRACE, Logger::AGENCY) << "no heartbeat seen";
+          isTimeout = true;
+        } else {
+          double diff = TRI_microtime() - _lastHeartbeatSeen;
+          LOG_TOPIC(TRACE, Logger::AGENCY) << "last heartbeat: " << diff << "sec ago";
 
-          if (_lastHeartbeatSeen <= 0.0) {
-            LOG_TOPIC(TRACE, Logger::AGENCY) << "no heartbeat seen";
-            isTimeout = true;
-          } else { 
-            double diff = TRI_microtime() - _lastHeartbeatSeen;
-            LOG_TOPIC(TRACE, Logger::AGENCY) << "last heartbeat: " << diff << "sec ago";
-        
-            isTimeout = (static_cast<int64_t>(M * diff) > randTimeout);
-          }
+          isTimeout = (static_cast<int64_t>(M * diff) > randTimeout);
         }
 
         if (isTimeout) {
