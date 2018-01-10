@@ -221,7 +221,7 @@ void Constituent::followNoLock(term_t t, std::string const& votedFor) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Setting _leaderID to NO_LEADER.";
   } else {
     LOG_TOPIC(INFO, Logger::AGENCY)
-      << _id << ": following " << _leaderID << " in term " << _term;
+      << _id << ": following '" << _leaderID << "' in term " << _term;
   }
   
   CONDITION_LOCKER(guard, _cv);
@@ -347,7 +347,7 @@ bool Constituent::checkLeader(
   
   if (_leaderID != id) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "Set _leaderID to " << id << " in term " << _term;
+      << "Set _leaderID to '" << id << "' in term " << _term;
     _leaderID = id;
 
     // Recall time of this leadership change:
@@ -568,8 +568,8 @@ void Constituent::update(std::string const& leaderID, term_t t) {
 
   if (_leaderID != leaderID) {
     LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Constituent::update: setting _leaderID to " << leaderID
-      << " in term " << _term;
+      << "Constituent::update: setting _leaderID to '" << leaderID
+      << "' in term " << _term;
     _leaderID = leaderID;
     _role = FOLLOWER;
   }
@@ -646,8 +646,8 @@ void Constituent::run() {
   if (size() == 1) {
     MUTEX_LOCKER(guard, _termVoteLock);
     _leaderID = _agent->config().id();
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << _leaderID
-      << " in term " << _term;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to '" << _leaderID
+      << "' in term " << _term;
   } else {
 
     {
