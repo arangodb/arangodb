@@ -56,7 +56,7 @@ const std::vector<std::string> roleStr({"Follower", "Candidate", "Leader"});
 
 /// Configure with agent's configuration
 void Constituent::configure(Agent* agent) {
-  MUTEX_LOCKER(guard, _castLock);
+  MUTEX_LOCKER(guard, _termVoteLock);
 
   _agent = agent;
   TRI_ASSERT(_agent != nullptr);
@@ -92,19 +92,19 @@ bool Constituent::waitForSync() const { return _agent->config().waitForSync(); }
 
 /// Get my term
 term_t Constituent::term() const {
-  MUTEX_LOCKER(guard, _castLock);
+  MUTEX_LOCKER(guard, _termVoteLock);
   return _term;
 }
 
 /// Update my term
 void Constituent::term(term_t t, std::string const& votedFor) {
-  MUTEX_LOCKER(guard, _castLock);
+  MUTEX_LOCKER(guard, _termVoteLock);
   termNoLock(t, votedFor);
 }
 
 void Constituent::termNoLock(term_t t, std::string const& votedFor) {
-  // Only call this when you have the _castLock
-  _castLock.assertLockedByCurrentThread();
+  // Only call this when you have the _termVoteLock
+  _termVoteLock.assertLockedByCurrentThread();
 
   term_t tmp = _term;
   _term = t;
@@ -194,18 +194,18 @@ bool Constituent::logMatches(
 
 /// My role
 role_t Constituent::role() const {
-  MUTEX_LOCKER(guard, _castLock);
+  MUTEX_LOCKER(guard, _termVoteLock);
   return _role;
 }
 
 /// Become follower in term
 void Constituent::follow(term_t t, std::string const& votedFor) {
-  MUTEX_LOCKER(guard, _castLock);
+  MUTEX_LOCKER(guard, _termVoteLock);
   followNoLock(t, votedFor);
 }
 
 void Constituent::followNoLock(term_t t, std::string const& votedFor) {
-  _castLock.assertLockedByCurrentThread();
+  _termVoteLock.assertLockedByCurrentThread();
 
   if (t > 0 && (t != _term || votedFor != _votedFor)) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
@@ -231,7 +231,7 @@ void Constituent::followNoLock(term_t t, std::string const& votedFor) {
 /// Become leader
 void Constituent::lead(term_t term) {
   {
-    MUTEX_LOCKER(guard, _castLock);
+    MUTEX_LOCKER(guard, _termVoteLock);
 
     // if we already have a higher term, ignore this request
     if (term < _term) {
@@ -265,7 +265,7 @@ void Constituent::lead(term_t term) {
 
 /// Become candidate
 void Constituent::candidate() {
-  MUTEX_LOCKER(guard, _castLock);
+  MUTEX_LOCKER(guard, _termVoteLock);
 
   if (_leaderID != NO_LEADER) {
     _leaderID = NO_LEADER;
@@ -284,25 +284,25 @@ void Constituent::candidate() {
 
 /// Leading?
 bool Constituent::leading() const {
-  MUTEX_LOCKER(guard, _castLock);
+  MUTEX_LOCKER(guard, _termVoteLock);
   return _role == LEADER;
 }
 
 /// Following?
 bool Constituent::following() const {
-  MUTEX_LOCKER(guard, _castLock);
+  MUTEX_LOCKER(guard, _termVoteLock);
   return _role == FOLLOWER;
 }
 
 /// Running as candidate?
 bool Constituent::running() const {
-  MUTEX_LOCKER(guard, _castLock);
+  MUTEX_LOCKER(guard, _termVoteLock);
   return _role == CANDIDATE;
 }
 
 /// Get current leader's id
 std::string Constituent::leaderID() const {
-  MUTEX_LOCKER(guard, _castLock);
+  MUTEX_LOCKER(guard, _termVoteLock);
   return _leaderID;
 }
 
@@ -320,7 +320,7 @@ bool Constituent::checkLeader(
 
   TRI_ASSERT(_vocbase != nullptr);
 
-  MUTEX_LOCKER(guard, _castLock);
+  MUTEX_LOCKER(guard, _termVoteLock);
 
   LOG_TOPIC(TRACE, Logger::AGENCY)
     << "checkLeader(term: " << term << ", leaderId: "<< id
@@ -375,7 +375,7 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id, index_t prevLog
   
   TRI_ASSERT(_vocbase != nullptr);
  
-  MUTEX_LOCKER(guard, _castLock);
+  MUTEX_LOCKER(guard, _termVoteLock);
   
   LOG_TOPIC(TRACE, Logger::AGENCY)
     << "vote(termOfPeer: " << termOfPeer << ", leaderId: " << id
@@ -441,7 +441,7 @@ void Constituent::callElection() {
   
   term_t savedTerm;
   {
-    MUTEX_LOCKER(locker, _castLock);
+    MUTEX_LOCKER(locker, _termVoteLock);
     
     this->termNoLock(_term + 1, _id);  // raise my term, vote for us
     
@@ -504,7 +504,7 @@ void Constituent::callElection() {
   while (true) {
 
     if (steady_clock::now() >= timeout) {       // Timeout. 
-      MUTEX_LOCKER(locker, _castLock);
+      MUTEX_LOCKER(locker, _termVoteLock);
       followNoLock(0);   // do not adjust _term or _votedFor
       break;
     }
@@ -524,7 +524,7 @@ void Constituent::callElection() {
           // Follow right away?
           term_t t = slc.get("term").getUInt();
           {
-            MUTEX_LOCKER(locker, _castLock);
+            MUTEX_LOCKER(locker, _termVoteLock);
             if (t > _term) {
               followNoLock(t, NO_LEADER);
               break;
@@ -563,7 +563,7 @@ void Constituent::callElection() {
 }
 
 void Constituent::update(std::string const& leaderID, term_t t) {
-  MUTEX_LOCKER(guard, _castLock);
+  MUTEX_LOCKER(guard, _termVoteLock);
   _term = t;
 
   if (_leaderID != leaderID) {
@@ -621,7 +621,7 @@ void Constituent::run() {
       for (auto const& i : VPackArrayIterator(result)) {
         auto ii = i.resolveExternals();
         try {
-          MUTEX_LOCKER(locker, _castLock);
+          MUTEX_LOCKER(locker, _termVoteLock);
           _term = ii.get("term").getUInt();
           _votedFor = ii.get("voted_for").copyString();
         } catch (std::exception const&) {
@@ -644,14 +644,14 @@ void Constituent::run() {
   }
 
   if (size() == 1) {
-    MUTEX_LOCKER(guard, _castLock);
+    MUTEX_LOCKER(guard, _termVoteLock);
     _leaderID = _agent->config().id();
     LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << _leaderID
       << " in term " << _term;
   } else {
 
     {
-      MUTEX_LOCKER(guard, _castLock);
+      MUTEX_LOCKER(guard, _termVoteLock);
       LOG_TOPIC(INFO, Logger::AGENCY) << "Setting role to follower"
         " in term " << _term;
       _role = FOLLOWER;
@@ -660,7 +660,7 @@ void Constituent::run() {
       
       role_t role;
       {
-        MUTEX_LOCKER(guard, _castLock);
+        MUTEX_LOCKER(guard, _termVoteLock);
         role = _role;
       }
 
@@ -674,7 +674,7 @@ void Constituent::run() {
         int64_t randWait = randTimeout;
 
        {
-          MUTEX_LOCKER(guard, _castLock);
+          MUTEX_LOCKER(guard, _termVoteLock);
 
           // in the beginning, pure random, after that, we might have to
           // wait for less than planned, since the last heartbeat we have
@@ -702,7 +702,7 @@ void Constituent::run() {
         bool isTimeout = false;
 
         {
-          MUTEX_LOCKER(guard, _castLock);
+          MUTEX_LOCKER(guard, _termVoteLock);
 
           if (_lastHeartbeatSeen <= 0.0) {
             LOG_TOPIC(TRACE, Logger::AGENCY) << "no heartbeat seen";

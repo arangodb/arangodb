@@ -171,8 +171,15 @@ class Constituent : public Thread {
                           // followNoLock or follow), termNoLock persists
                           // the pair for every change
 
-  arangodb::basics::ConditionVariable _cv;  // agency callbacks
-  mutable arangodb::Mutex _castLock;
+  arangodb::basics::ConditionVariable _cv;  // this is  only used to wake
+                                            // up the Constituent thread
+                                            // when an AgentCallback
+                                            // arrives
+  mutable arangodb::Mutex _termVoteLock;
+    // This mutex protects _term, _votedFor, _role and _leaderID, note that
+    // all this Constituent data is usually only accessed from the Constituent
+    // thread. However, the AgentCallback is executed in a Scheduler thread
+    // which calls methods of Constituent. This is why we need mutexes here.
 
   // Keep track of times of last few elections:
   mutable arangodb::Mutex _recentElectionsMutex;
