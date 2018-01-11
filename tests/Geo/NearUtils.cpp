@@ -220,21 +220,23 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
     REQUIRE(coords[4] == geo::Coordinate(1,0));
   }
   
-  /*SECTION("query sorted ascending with different inital delta") {
+  SECTION("query sorted ascending with different inital delta") {
     params.maxDistance = 111200;
     geo::NearUtils near(std::move(params));
     
     near.estimateDensity(geo::Coordinate(0,1));
     
-    std::vector<geo::Coordinate> result = nearSearch(index, docs, near, 5);
+    std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, 1000);
     REQUIRE(result.size() == 5);
-    std::sort(result.begin(), result.end(), CoordCompare());
-    REQUIRE(result[0] == geo::Coordinate(-1,0));
-    REQUIRE(result[1] == geo::Coordinate(0,-1));
-    REQUIRE(result[2] == geo::Coordinate(0,0));
-    REQUIRE(result[3] == geo::Coordinate(0,1));
-    REQUIRE(result[4] == geo::Coordinate(1,0));
-  }*/
+    
+    std::vector<geo::Coordinate> coords = convert(docs, result);
+    std::sort(coords.begin(), coords.end(), CoordCompare());
+    REQUIRE(coords[0] == geo::Coordinate(-1,0));
+    REQUIRE(coords[1] == geo::Coordinate(0,-1));
+    REQUIRE(coords[2] == geo::Coordinate(0,0));
+    REQUIRE(coords[3] == geo::Coordinate(0,1));
+    REQUIRE(coords[4] == geo::Coordinate(1,0));
+  }
 }
 
 

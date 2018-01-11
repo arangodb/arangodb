@@ -28,6 +28,7 @@
 
 #include <geometry/s2.h>
 #include <geometry/s2cap.h>
+#include <geometry/s2cell.h>
 #include <geometry/s2latlngrect.h>
 #include <geometry/s2pointregion.h>
 #include <geometry/s2polygon.h>
@@ -235,6 +236,19 @@ bool ShapeContainer::contains(Coordinate const* cc) const {
       break;
   }
 }
+
+/// @brief may intersect cell
+bool ShapeContainer::mayIntersect(S2CellId cell) const {
+  TRI_ASSERT(_data != nullptr);
+  return _data->MayIntersect(S2Cell(cell));
+}
+
+double ShapeContainer::capBoundRadius() const {
+  TRI_ASSERT(_data != nullptr);
+  S1Angle angle = _data->GetCapBound().angle();
+  return angle.radians();
+}
+
 /*bool ShapeContainer::contains(S2LatLngRect const& rect) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT:{

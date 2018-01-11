@@ -88,6 +88,8 @@ struct QueryParams {
   centroid(geo::Coordinate::Invalid()),
   cover(queryMaxCoverCells, queryWorstLevel, queryBestLevel) {}
   
+  /// This query only needs to support points no polygons etc
+  bool onlyPoints = false;
 
   // ============== Near Query Params =============
   
@@ -120,6 +122,9 @@ struct QueryParams {
   RegionCoverParams cover;
   
 public:
+  /// minimum distance
+  double minDistanceRad() const;
+
   /// depending on @{filter} and @{region} uses maxDistance or
   /// maxDistance / kEarthRadius or a bounding circle around
   /// the area in region

@@ -28,6 +28,8 @@
 #include <velocypack/Slice.h>
 #include <string>
 
+#include <geometry/s2cellid.h>
+
 class S2Region;
 class S2LatLng;
 class S2LatLngRect;
@@ -114,6 +116,8 @@ class ShapeContainer final {
   geo::Coordinate centroid() const;
   /// @brief distance from center in meters
   double distanceFromCentroid(geo::Coordinate const&);
+  bool mayIntersect(S2CellId) const;
+  double capBoundRadius() const;
 
   bool contains(Coordinate const*) const;
   // bool contains(S2LatLngRect const&) const;

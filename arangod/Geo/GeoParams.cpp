@@ -73,12 +73,16 @@ void RegionCoverParams::configureS2RegionCoverer(
   coverer->set_max_level(bestIndexedLevel);
 }
 
+double geo::QueryParams::minDistanceRad() const {
+  return std::max(0.0, std::min(minDistance / kEarthRadiusInMeters, M_PI));
+}
+
+
 double geo::QueryParams::maxDistanceRad() const {
-  double mm = std::min(maxDistance / kEarthRadiusInMeters, M_PI);
-  /*if (filter != FilterType::NONE) {
-    TRI_ASSERT(region != nullptr);
-    S1Angle angle = region->GetCapBound().angle();
-    return std::min(angle.radians(), mm);
-  }*/
+  double mm = std::max(0.0, std::min(maxDistance / kEarthRadiusInMeters, M_PI));
+  if (filterType != FilterType::NONE) {
+    TRI_ASSERT(filterShape.type() != ShapeContainer::Type::UNDEFINED);
+    return std::min(filterShape.capBoundRadius(), mm);
+  }
   return mm;
 }

@@ -75,13 +75,23 @@ class NearUtils {
   geo::FilterType filterType() const { return _params.filterType; }
 
   geo::ShapeContainer const& filterShape() const { return _params.filterShape; }
+  
+  /// @brief all intervals are covered, no more buffered results
+  bool isDone() const {
+    TRI_ASSERT(_innerBound >= 0 && _innerBound <= _outerBound);
+    TRI_ASSERT(_outerBound <= _maxBound && _maxBound <= M_PI);
+    return _buffer.empty() &&
+          ((_params.ascending && _innerBound == _maxBound && _outerBound == _maxBound) ||
+          (!_params.ascending && _innerBound == 0 && _outerBound == 0));
+  }
 
   /// @brief has buffered results
   inline bool hasNearest() const {
     // we need to not return results in the search area
     // between _innerBound and _maxBound. Otherwise results may appear
     // too early in the result list
-    return !_buffer.empty() && _buffer.top().distRad <= _innerBound;
+    return !_buffer.empty() && ((_params.ascending && _buffer.top().distRad <= _innerBound) ||
+                                (!_params.ascending && _buffer.top().distRad >= _outerBound));
   }
 
   /// @brief closest buffered result
@@ -108,11 +118,16 @@ class NearUtils {
   /// to the target coordinates
   void estimateDensity(geo::Coordinate const& found);
 
-  /// @brief all intervals are covered, no more buffered results
-  bool isDone() const;
-
   /// @brief make isDone return true
-  void invalidate();
+  void invalidate() {
+    _innerBound = _maxBound;
+    _outerBound = _maxBound;
+  }
+  
+ private:
+  
+  /// @brief adjust the bounds delta
+  void estimateDelta();
 
  private:
   geo::QueryParams const _params;
@@ -120,12 +135,13 @@ class NearUtils {
   /// target from which distances are measured
   S2Point const _centroid;
 
+  /// min distance on the unit spherer or <M_PI
+  double const _minBound = 0;
   /// max distance on the unit spherer or M_PI
-  double _maxBounds = M_PI;
+  double const _maxBound = M_PI;
 
   /// Amount to increment by (in radians on unit sphere)
   double _boundDelta = 0.0;
-
   /// inner limit (in radians on unit sphere) of search area
   double _innerBound = 0.0;
   /// outer limit (in radians on unit sphere) of search area
@@ -142,8 +158,7 @@ class NearUtils {
 
   /// Track the already scanned region
   S2CellUnion _scannedCells;
-  /// full area to scan
-  // S2Cap _fullScanBounds;
+  /// Coverer instance to use
   S2RegionCoverer _coverer;
 };
 
