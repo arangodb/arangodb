@@ -50,7 +50,7 @@ class RocksDBRecoveryManager final
   bool inRecovery() const;
 
  protected:
-  bool parseRocksWAL();
+  Result parseRocksWAL();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief rocksdb instance
