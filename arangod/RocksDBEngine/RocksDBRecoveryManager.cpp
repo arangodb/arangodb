@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/Exceptions.h"
+#include "Basics/exitcodes.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -98,8 +99,12 @@ void RocksDBRecoveryManager::start() {
 /// parse recent RocksDB WAL entries and notify the
 /// DatabaseFeature about the successful recovery
 void RocksDBRecoveryManager::runRecovery() {
-  if (parseRocksWAL().fail()) {
-    //fatal error exit
+  auto res = parseRocksWAL();
+  if (res.fail()) {
+    LOG_TOPIC(FATAL, Logger::ENGINES)
+      << "Failed during rocksdb WAL recovery - "
+      << res.errorNumber() << " - " << res.errorMessage();
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_FAILED); //TODO - add exit recovery
   }
 }
 
