@@ -129,7 +129,9 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   SECTION("Add db2 to plan should have no actions again") {
 
     std::vector<ActionDescription> actions;
-    plan("/arango/Plan/DBServers/db2") =
+    localNodes[0]("db2") =
+      arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+    plan("/arango/Plan/Collections/db2") =
       arangodb::basics::VelocyPackHelper::EmptyObjectValue();
     
     arangodb::maintenance::diffPlanLocal(
@@ -144,7 +146,8 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   SECTION("Add db2 to plan should have no actions again") {
 
     std::vector<ActionDescription> actions;
-    plan("/arango/Plan/DBServers/db2") = plan("/arango/Plan/DBServers/_system");
+    plan("/arango/Plan/Collections/db2") =
+      plan("/arango/Plan/Collections/_system");
     localNodes[0]("db2") =
       arangodb::basics::VelocyPackHelper::EmptyObjectValue();
 
@@ -152,82 +155,32 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
       plan.toBuilder().slice(), localNodes[0].toBuilder().slice(),
       plan("/arango/Plan/DBServers").children().begin()->first, actions);
 
-    REQUIRE(actions.size() == 18);
+    REQUIRE(actions.size() == 17);
     for (auto const& action : actions) {
       REQUIRE(action.name() == "CreateCollection");
     }
 
   }
-/*
-  // Plan has databases _system and db3 ======================================
+  
+  // Plan also now has db3 =====================================================
   SECTION("Add db2 to plan should have no actions again") {
 
     std::vector<ActionDescription> actions;
-    plan("db2") = plan("_system");
-    
+    plan("/arango/Plan/Collections/db2") =
+      plan("/arango/Plan/Collections/_system");
+    localNodes[0]("db2") = localNodes[0]("_system");
+
     arangodb::maintenance::diffPlanLocal(
       plan.toBuilder().slice(), localNodes[0].toBuilder().slice(),
       plan("/arango/Plan/DBServers").children().begin()->first, actions);
 
-    REQUIRE(actions.size() == 0);
+    REQUIRE(actions.size() == 17);
+    for (auto const& action : actions) {
+      REQUIRE(action.name() == "DropCollection");
+    }
 
-  }
-
-  // Local has databases _system and db2 =====================================
-  // Plan has databases _system and db3
-  SECTION("Plan has one more than local and local has one more than plan") {
-    std::vector<std::string> local{"_system","db2"}, toCreate, toDrop;
-
-    plan("/arango/Plan/Databases/db3") = db3.slice();
-
-    arangodb::maintenance::diffPlanLocalForDatabases(
-      plan.toBuilder().slice(), local, toCreate, toDrop);
-
-    REQUIRE(toCreate.size() == 1);
-    REQUIRE(toCreate.front() == "db3");
-    
-    REQUIRE(toDrop.size() == 1);
-    REQUIRE(toDrop.front() == "db2");
-  }
-
-
-  // Check executePlanForDatabase ==============================================
-  SECTION("Execute plan for database") {
-    auto local = localNodes[0];
-    local("db2") = local("_system");
-
-    plan("/arango/Plan/Databases/db3") = db3.slice();
-
-    arangodb::maintenance::executePlanForDatabases(
-      plan.toBuilder().slice(), current.toBuilder().slice(), local.toBuilder().slice());
-    
-    REQUIRE(ActionRegistry::instance()->size() == 2);
   }
   
-  // Check that not a new action is create for same difference =================
-  SECTION("Execute plan for database") {
-
-    auto local = localNodes[0];
-    local("db2") = local("_system");
-
-    plan("/arango/Plan/Databases/db3") = db3.slice();
-
-    arangodb::maintenance::executePlanForDatabases(
-      plan.toBuilder().slice(), current.toBuilder().slice(),
-      local.toBuilder().slice());
-    auto before = ActionRegistry::instance()->toVelocyPack().toJson();
-    
-    REQUIRE(ActionRegistry::instance()->size() == 2);
-
-    arangodb::maintenance::executePlanForDatabases(
-      plan.toBuilder().slice(), current.toBuilder().slice(),
-      local.toBuilder().slice());
-    auto after = ActionRegistry::instance()->toVelocyPack().toJson();
-    
-    REQUIRE(before == after);
-    
-  }
-*/
   // Local has databases _system and db2 =====================================
   SECTION("Local collections") {
     size_t i = 0;
