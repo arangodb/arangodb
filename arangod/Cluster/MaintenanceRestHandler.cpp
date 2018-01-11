@@ -23,7 +23,7 @@
 
 #include "MaintenanceRestHandler.h"
 
-#include <velocypack/Builder.h>
+#include <velocypack/vpack.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StringUtils.h"
@@ -46,28 +46,90 @@ bool MaintenanceRestHandler::isDirect() const { return true; }
 RestStatus MaintenanceRestHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
-#if 0
-  if (type == rest::RequestType::GET) {
-    getJob();
-  } else if (type == rest::RequestType::PUT) {
-    std::vector<std::string> const& suffixes = _request->suffixes();
 
-    if (suffixes.size() == 1) {
-      putJob();
-    } else if (suffixes.size() == 2) {
-      putJobMethod();
-    } else {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    }
-  } else if (type == rest::RequestType::DELETE_REQ) {
-    deleteJob();
-  } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
-  }
-#endif
+  switch(type) {
+
+    // retrieve list of all actions
+    case rest::RequestType::GET:
+      break;
+
+    // add an action to the list (or execute it directly)
+    case rest::RequestType::PUT:
+      putAction();
+      break;
+
+    // remove an action, stopping it if executing
+    case rest::RequestType::DELETE_REQ:
+      break;
+
+    default:
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
+      break;
+  } // switch
+
   return RestStatus::DONE;
 }
+
+
+void MaintenanceRestHandler::putAction() {
+  bool good(true);
+  VPackSlice parameters;
+  std::map<std::string, std::string> param_map;
+
+  try {
+    parameters = _request->payload();
+  } catch (VPackException const& ex) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  std::string("expecting a valid JSON object in the request. got: ") + ex.what());
+    good=false;
+  } // catch
+
+  if (good && _request->payload().isEmptyObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
+    good=false;
+  }
+
+  // convert vpack into key/value map
+  if (good) {
+    VPackObjectIterator it(parameters, true);
+
+    for ( ; it.valid() && good; ++it) {
+      VPackSlice key, value;
+
+      key = it.key();
+      value = it.value();
+
+      good = key.isString() && value.isString();
+
+      // attempt insert into map ... but needs to be unique
+      if (good) {
+        good = param_map.insert(std::pair<std::string,std::string>(key.copyString(), value.copyString())).second;
+      }
+    } // for
+
+    // bad json
+    if (!good) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    std::string("unable to parse JSON object into key/value pairs. got: "));
+    } // if
+  } // if
+
+  if (good) {
+    Result result;
+
+    // build the action
+    auto maintenance = ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
+    result = maintenance->addAction(param_map);
+
+    if (!result.ok()) {
+      // possible errors? TRI_ERROR_BAD_PARAMETER    TRI_ERROR_TASK_DUPLICATE_ID  TRI_ERROR_SHUTTING_DOWN
+
+    } // if
+  } // if
+
+} // MaintenanceRestHandler::putAction
+
 
 #if 0
 void MaintenanceRestHandler::putJob() {

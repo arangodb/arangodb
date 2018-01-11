@@ -50,7 +50,7 @@ public:
 
   /// @brief what is this action doing right now
   enum State {
-    NOSTATECHANGE, // used for calls with a state param, but should not change state
+    ANYSTATE,      // used for calls with a state comparison, NOT a valid state for object
     READY,         // Action is ready to start/resume execution
     EXECUTING,     // thread working the task
     WAITING,       // a predecessor Action must complete first
@@ -62,41 +62,44 @@ public:
 
 
   /// @brief construct with parameter description
-  MaintenanceAction(ActionDescription_t description);
+  MaintenanceAction(ActionDescription_t && description, uint64_t id);
 
   /// @brief clean up
   virtual ~MaintenanceAction();
 
   /// @brief let external users and inherited classes adjust state
-  void setState(State NewState) {_state = NewState; };
+  void setState(State NewState) noexcept;
 
   /// @brief external routine, calls firstWrapped() virtual function.
   ///  MaintenanceWorker calls this for first piece of work for this action.
   ///  Short / atomic actions might perform all work in this call.  If so,
   ///  set state to COMPLETE  or FAILED during such atomic calls.
   ///  Wrapper will set FAILED state if result is not ok().
-  arangodb::Result first();
+  arangodb::Result first() noexcept;
 
   /// @brief external routine, calls nextWrapped() virtual function.
   ///  For continued iteration work.  Set state to COMPLETE or FAILED
   ///  once last iteration completed.  Wrapper will set FAILED state if
   ///  result is not ok().
-  arangodb::Result next();
+  arangodb::Result next() noexcept;
 
   /// @brief thread safe mechanism for changing state.  Optional precondition
   ///  is to prevent a Rest API from changing a COMPLETE to FAILED (or similar)
   ///  in a race condition between external thread and internal thread making changes
-  arangodb::Result setState(State NewState, State PreconditionState=NOSTATECHANGE);
+  arangodb::Result setState(State NewState, State PreconditionState=ANYSTATE) noexcept;
 
 
   /// @brief external routine, puts state information into builder then calls
   ///  toJsonWrapped for inherited classes to added whatever.  No exceptions,
   ///  set a bad Result code
-  arangodb::Result toJson(/* vpackbuilder & ToDo */);
+  arangodb::Result toJson(/* vpackbuilder & ToDo */) noexcept;
 
 protected:
   /// @brief map of options needed to execute this action
   ActionDescription_t _description;
+
+  /// @brief unique, process specific identifier set at construction
+  uint64_t _id;
 
   //
   // state variables
@@ -129,17 +132,17 @@ protected:
   ///  Note: only called when _activityCount is zero (non-zero
   ///  occurs on restart of PAUSED or WAITING tasks)
   ///  Default implementation returns an error Result.
-  virtual Result firstWrapped();
+  virtual Result firstWrapped() noexcept;
 
   /// @brief actual iteration for long running tasks.  This can
   ///  call could push a predecessor task, but why?
   ///  Default implementation returns an error Result.
-  virtual Result nextWrapped();
+  virtual Result nextWrapped() noexcept;
 
   /// @brief Optional.  Allows inheriting classes to add information
   ///  to status json.  No throws.  Send back errors via Result.
   ///  Default implementation is a no-op returning ok() Result.
-  virtual Result toJsonWrapped();
+  virtual Result toJsonWrapped() noexcept;
 
 };
 
