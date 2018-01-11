@@ -710,7 +710,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   iter->Seek(documentBounds.start());
 
   uint64_t found = 0;
-  bool wfs = false;
 
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     ++found;
