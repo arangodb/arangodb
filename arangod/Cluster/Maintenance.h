@@ -42,9 +42,11 @@ arangodb::Result diffPlanLocalForDatabases(
 arangodb::Result executePlanForDatabases (
   VPackSlice const&, VPackSlice const&, VPackSlice const&);
 
+/// @brief calculate difference between plan and local for dbs/cols
+///        come up with list of actions, which need to be performed
 arangodb::Result diffPlanLocal(
-  VPackSlice const&, VPackSlice const&, std::vector<std::string>&,
-  std::vector<std::string>&, std::vector<std::string>&);
+  VPackSlice const&, VPackSlice const&, std::string const& serverId,
+  std::vector<ActionDescription>&);
 
 arangodb::Result executePlanForCollections (
   VPackSlice const&, VPackSlice const&, VPackSlice const&);

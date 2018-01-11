@@ -41,7 +41,8 @@ struct ActionDescription {
 public:
   
   /// @brief Construct with properties
-  ActionDescription(std::map<std::string, std::string> const&);
+  ActionDescription(std::map<std::string, std::string> const&,
+                    VPackBuilder const& = VPackBuilder());
 
   /// @brief Clean up
   virtual ~ActionDescription();
@@ -55,16 +56,16 @@ public:
   /// @brief Name of action
   std::string name() const;
 
-  /// @brief Has named property
+  /// @brief Check for a description key
   bool has(std::string const& p) const noexcept;
 
-  /// @brief Get property
+  /// @brief Get a description key
   std::string get(std::string const& key) const;
 
-  /// @brief Set property
+  /// @brief Set a description key
   void set(std::string const& key, std::string const& value);
 
-  /// @brief Set property
+  /// @brief Set a description key
   void set(std::pair<std::string, std::string> const& kvpair);
 
   /// @brief Print this action to ostream
@@ -74,8 +75,11 @@ public:
   std::ostream& print(std::ostream&) const;
 
 private:
-  /// @brief Action properties
-  std::map<std::string, std::string> _properties;
+  /// @brief Action description
+  std::map<std::string, std::string> _description;
+
+  /// @bries Properties passed on to actual action
+  VPackBuilder _properties;
 };
 
 }}

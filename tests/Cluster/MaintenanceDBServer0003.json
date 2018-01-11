@@ -1,0 +1,55 @@
+R"=(
+{ "_system" : { 
+  "s4026974" : { 
+    "id" : "3010006", 
+    "name" : "s4026974", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 33554432, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s4026975" : { 
+    "id" : "3010004", 
+    "name" : "s4026975", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 33554432, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s4026976" : { 
+    "id" : "3010005", 
+    "name" : "s4026976", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 33554432, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  } 
+}}
+)="

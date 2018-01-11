@@ -43,8 +43,14 @@ char const* planStr =
 char const* currentStr =
 #include "MaintenanceCurrent.json"
 ;
-char const* localStr =
-#include "MaintenanceLocal.json"
+char const* dbs1Str = 
+#include "MaintenanceDBServer0001.json"
+;
+char const* dbs2Str = 
+#include "MaintenanceDBServer0002.json"
+;
+char const* dbs3Str =
+#include "MaintenanceDBServer0003.json"
 ;
 
 const char* db2Str = R"=({"id":"2","name":"db2"})=";
@@ -92,6 +98,9 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   db2 = createBuilder(db2Str);
   db3 = createBuilder(db3Str);
 
+  std::vector<Node> localNodes {
+    createNode(dbs1Str),  createNode(dbs2Str),  createNode(dbs3Str)};
+  
   // Plan and local in sync
   SECTION("Identical lists") {
     std::vector<std::string> local {"_system"}, toCreate, toDrop;
@@ -155,7 +164,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
 
   // Check executePlanForDatabase ==============================================
   SECTION("Execute plan for database") {
-    auto local = createNode(localStr);
+    auto local = localNodes[0];
     local("db2") = local("_system");
 
     plan("/arango/Plan/Databases/db3") = db3.slice();
@@ -169,7 +178,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   // Check that not a new action is create for same difference =================
   SECTION("Execute plan for database") {
 
-    auto local = createNode(localStr);
+    auto local = localNodes[0];
     local("db2") = local("_system");
 
     plan("/arango/Plan/Databases/db3") = db3.slice();
@@ -192,16 +201,17 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
 
   // Local has databases _system and db2 =====================================
   SECTION("Local collections") {
-    std::vector<std::string> toCreate, toDrop, toSync;
-
-    auto local = createNode(localStr);
-
-    arangodb::maintenance::diffPlanLocal (
-      plan.toBuilder().slice(), local.toBuilder().slice(),
-      toCreate, toDrop, toSync);
-
-  }
-
-
+    size_t i = 0;
+    
+    for (auto const& dbServer : plan("/arango/Plan/DBServers").children()) {
+      std::vector<ActionDescription> actions;
+      arangodb::maintenance::diffPlanLocal (
+        plan.toBuilder().slice(), localNodes[i++].toBuilder().slice(), dbServer.first,
+        actions);
+      REQUIRE(actions.size() == 0);
+    } 
+    
+  } 
+  
 }
 

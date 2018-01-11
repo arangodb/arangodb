@@ -31,36 +31,36 @@ using namespace arangodb::maintenance;
 
 /// @brief ctor
 ActionDescription::ActionDescription(
-  std::map<std::string, std::string> const& p) : _properties(p) {
-}
+  std::map<std::string, std::string> const& d, VPackBuilder const& p) :
+  _description(d), _properties(p) {}
 
 /// @brief Default dtor
 ActionDescription::~ActionDescription() {}
 
 /// @brief Does this description have a "p" parameter?
 bool ActionDescription::has(std::string const& p) const noexcept {
-  return _properties.find(p) != _properties.end();
+  return _description.find(p) != _description.end();
 }
 
 /// @brief Does this description have a "p" parameter?
 std::string ActionDescription::get(std::string const& p) const {
-  return _properties.at(p);
+  return _description.at(p);
 }
 
 /// @brief Does this description have a "p" parameter?
 void ActionDescription::set(std::string const& key, std::string const& value) {
-  _properties.emplace(key, value);
+  _description.emplace(key, value);
 }
 
 /// @brief Does this description have a "p" parameter?
 void ActionDescription::set(std::pair<std::string, std::string> const& kvpair) {
-  _properties.emplace(kvpair);
+  _description.emplace(kvpair);
 }
 
 /// @brief Hash function
 std::size_t ActionDescription::hash() const {
   std::string propstr;
-  for (auto const& i : _properties) {
+  for (auto const& i : _description) {
     propstr += i.first + i.second;
   }
   return std::hash<std::string>{}(propstr); 
@@ -69,23 +69,27 @@ std::size_t ActionDescription::hash() const {
 /// @brief Equality operator
 bool ActionDescription::operator==(
   ActionDescription const& other) const noexcept {
-  return _properties==other._properties;
+  return _description==other._description;
 }
 
 /// @brief Get action name
 std::string ActionDescription::name() const {
-  return _properties.at("name");
+  return _description.at("name");
 }
 
-// @brief summary to velocypack
+/// @brief summary to velocypack
 VPackBuilder ActionDescription::toVelocyPack() const {
   VPackBuilder b;
   { VPackObjectBuilder bb(&b);
-    for (auto const& i : _properties) {
+    for (auto const& i : _description) {
       b.add(i.first, VPackValue(i.second));
+    }
+    if (!_properties.isEmpty()) {
+      b.add("properties", _properties.slice());
     }}
   return b;
 }
+
 
 /// @brief hash implementation for ActionRegistry
 namespace std {
