@@ -108,13 +108,13 @@ class EngineInfoContainerDBServer {
 
     void buildMessage(Query* query, velocypack::Builder& infoBuilder) const;
 
-    void addTraverserEngine(GraphNode* node, TraverserEngineShardLists&& shards);
+    void addTraverserEngine(GraphNode* node,
+                            TraverserEngineShardLists&& shards);
 
     void combineTraverserEngines(ServerID const& serverID,
                                  arangodb::velocypack::Slice const ids);
 
    private:
-
     void injectTraverserEngines(VPackBuilder& infoBuilder) const;
 
     void injectQueryOptions(Query* query,
@@ -129,7 +129,8 @@ class EngineInfoContainerDBServer {
         _engineInfos;
 
     // @brief List of all information required for traverser engines
-    std::vector<std::pair<GraphNode*, TraverserEngineShardLists>> _traverserEngineInfos;
+    std::vector<std::pair<GraphNode*, TraverserEngineShardLists>>
+        _traverserEngineInfos;
   };
 
  public:
@@ -172,7 +173,7 @@ class EngineInfoContainerDBServer {
   // them
   std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>
   createDBServerMapping(std::unordered_set<std::string> const& restrictToShards,
-      std::unordered_set<ShardID>* lockedShards) const;
+                        std::unordered_set<ShardID>* lockedShards) const;
 
   // @brief Helper to inject the TraverserEngines into the correct infos
   void injectGraphNodesToMapping(
@@ -180,6 +181,13 @@ class EngineInfoContainerDBServer {
       std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>&
           dbServerMapping) const;
 
+#ifdef USE_ENTERPRISE
+  void prepareSatellites(
+      std::map<ServerID, DBServerInfo>& dbServerMapping,
+      std::unordered_set<std::string> const& restrictToShards) const;
+
+  void resetSatellites() const;
+#endif
 
  private:
   // @brief Reference to the last inserted EngineInfo, used for back linking of
@@ -194,8 +202,10 @@ class EngineInfoContainerDBServer {
   // @brief Mapping of used collection names to lock type required
   std::unordered_map<Collection const*, AccessMode::Type> _collections;
 
+#ifdef USE_ENTERPRISE
   // @brief List of all satellite collections
   std::unordered_set<Collection const*> _satellites;
+#endif
 
   // @brief List of all graphNodes that need to create TraverserEngines on
   // DBServers

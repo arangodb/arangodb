@@ -193,6 +193,7 @@ void EngineInfoContainerDBServer::closeSnippet(QueryId coordinatorEngineId) {
 // This first defines the lock required for this collection
 // Then we update the collection pointer of the last engine.
 
+#ifndef USE_ENTERPRISE
 void EngineInfoContainerDBServer::handleCollection(Collection const* col,
                                                    bool isWrite,
                                                    bool updateCollection) {
@@ -209,14 +210,11 @@ void EngineInfoContainerDBServer::handleCollection(Collection const* col,
   if (updateCollection) {
     TRI_ASSERT(!_engineStack.empty());
     auto e = _engineStack.top();
-    auto formerCol = e->collection();
-    if (formerCol != nullptr && formerCol->isSatellite()) {
-      _satellites.emplace(formerCol);
-    }
     // ... const_cast
     e->collection(const_cast<Collection*>(col));
   }
 }
+#endif
 
 EngineInfoContainerDBServer::DBServerInfo::DBServerInfo() {}
 EngineInfoContainerDBServer::DBServerInfo::~DBServerInfo() {}
@@ -410,6 +408,10 @@ EngineInfoContainerDBServer::createDBServerMapping(
       }
     }
   }
+
+#ifdef USE_ENTERPRISE
+  prepareSatellites(dbServerMapping, restrictToShards);
+#endif
 
   return dbServerMapping;
 }
@@ -667,6 +669,10 @@ void EngineInfoContainerDBServer::buildEngines(
       it.second.combineTraverserEngines(it.first, travEngines);
     }
   }
+
+#ifdef USE_ENTERPRISE
+  resetSatellites();
+#endif
 }
 
 void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
