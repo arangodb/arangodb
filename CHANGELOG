@@ -1,6 +1,8 @@
 devel
 -----
 
+* issue #1190: added option `--create-database` for arangoimp
+
 * issue #3504: added option `--force-same-database` for arangorestore
 
   with this option set to true, it is possible to make any arangorestore attempt
