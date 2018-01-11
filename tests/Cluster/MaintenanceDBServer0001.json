@@ -1,0 +1,293 @@
+R"=(
+{ "_system" : { 
+  "s1010002" : { 
+    "id" : "4", 
+    "name" : "s1010002", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 1048576, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s1010004" : { 
+    "id" : "5", 
+    "name" : "s1010004", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 4194304, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 1010030 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s1010007" : { 
+    "id" : "6", 
+    "name" : "s1010007", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 1048576, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s1010009" : { 
+    "id" : "7", 
+    "name" : "s1010009", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 4194304, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s1010011" : { 
+    "id" : "8", 
+    "name" : "s1010011", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 4194304, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 1010014 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s1010016" : { 
+    "id" : "9", 
+    "name" : "s1010016", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 1048576, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s1010018" : { 
+    "id" : "10", 
+    "name" : "s1010018", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 1048576, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s1010020" : { 
+    "id" : "11", 
+    "name" : "s1010020", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 1048576, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s1010022" : { 
+    "id" : "12", 
+    "name" : "s1010022", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 2097152, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s1010026" : { 
+    "id" : "13", 
+    "name" : "s1010026", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 2097152, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s1010029" : { 
+    "id" : "14", 
+    "name" : "s1010029", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 2097152, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s1010032" : { 
+    "id" : "15", 
+    "name" : "s1010032", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 8388608, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 4030264 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s1010035" : { 
+    "id" : "16", 
+    "name" : "s1010035", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 8388608, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 4030265 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s1010038" : { 
+    "id" : "17", 
+    "name" : "s1010038", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 8388608, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 4030103 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s4026974" : { 
+    "id" : "20", 
+    "name" : "s4026974", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 33554432, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s4026975" : { 
+    "id" : "18", 
+    "name" : "s4026975", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 33554432, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  }, 
+  "s4026976" : { 
+    "id" : "19", 
+    "name" : "s4026976", 
+    "type" : 2, 
+    "status" : 3, 
+    "doCompact" : true, 
+    "journalSize" : 33554432, 
+    "isSystem" : false, 
+    "isVolatile" : false, 
+    "waitForSync" : false, 
+    "keyOptions" : { 
+      "type" : "traditional", 
+      "allowUserKeys" : true, 
+      "lastValue" : 0 
+    }, 
+    "indexBuckets" : 8 
+  } 
+}}
+)="

@@ -77,104 +77,111 @@ arangodb::Result arangodb::maintenance::diffPlanLocalForDatabases(
 }
 
 
+VPackBuilder createProps(VPackSlice const& s) {
+  VPackBuilder builder;
+  TRI_ASSERT(s.isObject());
+  { VPackObjectBuilder b(&builder);
+    for (auto const& attr : VPackObjectIterator(s)) {
+      std::string const key = attr.key.copyString();
+      if (key == "id" || key == "name") {
+        continue;
+      }
+      builder.add(key, attr.value);
+    }}
+  return builder;
+}
+
+
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal (
-  VPackSlice const& plan, VPackSlice const& local,
-  std::vector<std::string>& toCreate, std::vector<std::string>& toDrop,
-  std::vector<std::string>& toSync) {
+  VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
+  std::vector<ActionDescription>& actions) {
 
-  arangodb::Result result;
-  /*
-  ActionRegistry* ar = ActionRegistry::instance();
+  std::unordered_set<std::string> intersection;
   
+  arangodb::Result result;
   auto const& pdbs =
     plan.get(std::vector<std::string>{"arango", "Plan", "Collections"});
 
-  // Plan to local mismatch
-  for (auto const& pdb : VPackObjectIterator(plan)) {
+  // Plan to local mismatch ----------------------------------------------------
+  // Create or modify if local collections are affected
+  
+  for (auto const& pdb : VPackObjectIterator(pdbs)) {
     auto const& dbname = pdb.key.copyString();
     if (local.hasKey(dbname)) {    // have database in both see to collections
       auto const& ldb = local.get(dbname);
       for (auto const& pcol : VPackObjectIterator(pdb.value)) {
         auto const& cname = pcol.key.copyString();
         auto const& cprops = pcol.value;
-        std::map<std::string, std::string> props;
+        VPackBuilder props;
         auto const& shards = cprops.get("shards");
-        for (auto const& shard : VPackObjectIterator(shards.value)) {
+        for (auto const& shard : VPackObjectIterator(shards)) {
           auto const& shname = shard.key.copyString();
-          size_t pos = 0;
+          size_t pos = 0; // Want to understand leadership
           for (auto const& db : VPackArrayIterator(shard.value)) {
-
-            if (db.copyString() == _id)  { // We have some responsibility
-              
-              if (props.empty()) { // Only do this once
-                props = stdMapFromCollectionVPack(cprops);
-                props["collection"] = shname;
+            if (db.copyString() == serverId)  {  // We have some responsibility
+              intersection.emplace(shname);
+              if (props.isEmpty()) {             // Must not have name and id in props
+                props = createProps(pcol.value); // Only do this once might need more often
               }
-              
-              if (ldb.hasKey(shname)) { // Have local collection with that name
-                
-                // see to properties / indexes
-                LOG_TOPIC(WARN, Logger::MAINTENANCE) << "Props  " << shname;
-                ar->dispatch(
-                  ActionDescription({{"name", "AlterCollection"}, {"collection", shname}}));
-              } else {                 // Create the sucker!
-                LOG_TOPIC(ERR,  Logger::MAINTENANCE) << "Create " << shname;
-                auto description (
-                  {{"name", "CreateCollection"}, {"collection", shname}});
-                for (auto const& i : VPackObjectIterator(props))
-                ar->dispatch(desciption);
+              if (ldb.hasKey(shname)) {   // Have local collection with that name
+                /*actions.push_back(
+                  ActionDescription(
+                  {{"name", "AlterCollection"}, {"collection", shname}}, props));*/
+              } else {                   // Create the sucker!
+                actions.push_back(
+                  ActionDescription(
+                    {{"name", "CreateCollection"}, {"collection", shname}}, props));
               }
-              
             }
             ++pos;
           }
         }
       }
     } else {
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Create  " << dbname;
-      ar->dispatch(
+      actions.push_back(
         ActionDescription({{"name", "CreateDatabase"}, {"database", dbname}}));
     }
-
-    
   }
+  
 
-    //
+  // Compare local to plan -----------------------------------------------------
+  
   for (auto const& db : VPackObjectIterator(local)) {
     auto const& dbname = db.key.copyString();
 
     if (pdbs.hasKey(dbname)) {
-      LOG_TOPIC(WARN, Logger::MAINTENANCE) << "modify " << dbname;
-      auto const& pdbs = 
+
       for (auto const& col : VPackObjectIterator(db.value)) {
-        
+        bool drop = false;
+        auto const& colname = col.key.copyString();
+        std::unordered_set<std::string>::const_iterator it;
+        if (intersection.empty()) {
+          drop = true;
+        } else {
+          it = std::find(intersection.begin(), intersection.end(), colname);
+          if (it == intersection.end()) {
+            drop = true;
+          }
+        }
+
+        if (drop) {
+          actions.push_back(
+            ActionDescription({
+                {"name", "DropCollection"}, {"database", dbname}, {"collection", colname}}));
+        } else {
+          intersection.erase(it);
+        }
       }
     } else {
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "database not existing yet " << name;
+      actions.push_back(
+        ActionDescription({{"name", "DropDatabase"}, {"database", dbname}}));
     }
   }
-    */
-
+  
   return result;
   
 }
-
-/*
-arangodb::Result arangodb::maintenance::diffLocalCurrentForDatabases(
-  VPackSlice const& local, VPackSlice const& Current,
-  VPackBuilder& agencyTransaction) {
-  
-  arangodb::Result result;
-  std::vector<std::string> localv, current;
-  
-  { VPackObjectBuilder o(&agencyTransaction);
-  }
-
-  return result;
-  
-  }*/
-
 
 /// @brief handle plan for local databases
 arangodb::Result arangodb::maintenance::executePlanForDatabases (
