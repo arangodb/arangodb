@@ -53,10 +53,6 @@ char const* dbs3Str =
 #include "MaintenanceDBServer0003.json"
 ;
 
-const char* db2Str = R"=({"id":"2","name":"db2"})=";
-const char* db3Str = R"=({"id":"3","name":"db3"})=";
-VPackBuilder db2, db3;
-
 Node createNodeFromBuilder(Builder const& builder) {
 
   Builder opBuilder;
@@ -95,54 +91,87 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   auto plan = createNode(planStr);
   auto current = createNode(currentStr);
 
-  db2 = createBuilder(db2Str);
-  db3 = createBuilder(db3Str);
-
   std::vector<Node> localNodes {
     createNode(dbs1Str),  createNode(dbs2Str),  createNode(dbs3Str)};
   
   // Plan and local in sync
   SECTION("Identical lists") {
-    std::vector<std::string> local {"_system"}, toCreate, toDrop;
-    
-    arangodb::maintenance::diffPlanLocalForDatabases(
-      plan.toBuilder().slice(), local, toCreate, toDrop);
 
-    REQUIRE(toCreate.size() == 0);
-    REQUIRE(toDrop.size() == 0);
+    std::vector<ActionDescription> actions;
+    
+    arangodb::maintenance::diffPlanLocal(
+      plan.toBuilder().slice(), localNodes[0].toBuilder().slice(),
+      plan("/arango/Plan/DBServers").children().begin()->first, actions);
+
+    REQUIRE(actions.size() == 0);
+
   }
 
-
-  // Local has databases _system and db2 =====================================
+  // Local additionally has db2 ================================================
   SECTION("Local databases one more") {
-    std::vector<std::string> local{"_system","db2"}, toCreate, toDrop;
 
-    arangodb::maintenance::diffPlanLocalForDatabases(
-      plan.toBuilder().slice(), local, toCreate, toDrop);
-
-    REQUIRE(toCreate.size() == 0);
+    std::vector<ActionDescription> actions;
+    localNodes[0]("db2") =
+      arangodb::basics::VelocyPackHelper::EmptyObjectValue();
     
-    REQUIRE(toDrop.size() == 1);
-    REQUIRE(toDrop.front() == "db2");
+    arangodb::maintenance::diffPlanLocal(
+      plan.toBuilder().slice(), localNodes[0].toBuilder().slice(),
+      plan("/arango/Plan/DBServers").children().begin()->first, actions);
+
+    REQUIRE(actions.size() == 1);
+    REQUIRE(actions.front().name() == "DropDatabase");
+    REQUIRE(actions.front().get("database") == "db2");
 
   }
 
 
+  // Plan also now has db2 =====================================================
+  SECTION("Add db2 to plan should have no actions again") {
+
+    std::vector<ActionDescription> actions;
+    plan("/arango/Plan/DBServers/db2") =
+      arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+    
+    arangodb::maintenance::diffPlanLocal(
+      plan.toBuilder().slice(), localNodes[0].toBuilder().slice(),
+      plan("/arango/Plan/DBServers").children().begin()->first, actions);
+
+    REQUIRE(actions.size() == 0);
+
+  }
+
+  // Plan also now has db3 =====================================================
+  SECTION("Add db2 to plan should have no actions again") {
+
+    std::vector<ActionDescription> actions;
+    plan("/arango/Plan/DBServers/db2") = plan("/arango/Plan/DBServers/_system");
+    localNodes[0]("db2") =
+      arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+
+    arangodb::maintenance::diffPlanLocal(
+      plan.toBuilder().slice(), localNodes[0].toBuilder().slice(),
+      plan("/arango/Plan/DBServers").children().begin()->first, actions);
+
+    REQUIRE(actions.size() == 18);
+    for (auto const& action : actions) {
+      REQUIRE(action.name() == "CreateCollection");
+    }
+
+  }
+/*
   // Plan has databases _system and db3 ======================================
-  SECTION("Plan has one more than local") {
-    std::vector<std::string> local{"_system"}, toCreate, toDrop;
+  SECTION("Add db2 to plan should have no actions again") {
 
-    plan("/arango/Plan/Databases/db3") = db3.slice();
-
-    arangodb::maintenance::diffPlanLocalForDatabases(
-      plan.toBuilder().slice(), local, toCreate, toDrop);
-
-    REQUIRE(toCreate.size() == 1);
-    REQUIRE(toCreate.front() == "db3");
+    std::vector<ActionDescription> actions;
+    plan("db2") = plan("_system");
     
-    REQUIRE(toDrop.size() == 0);
-  }
+    arangodb::maintenance::diffPlanLocal(
+      plan.toBuilder().slice(), localNodes[0].toBuilder().slice(),
+      plan("/arango/Plan/DBServers").children().begin()->first, actions);
 
+    REQUIRE(actions.size() == 0);
+
+  }
 
   // Local has databases _system and db2 =====================================
   // Plan has databases _system and db3
@@ -198,7 +227,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     REQUIRE(before == after);
     
   }
-
+*/
   // Local has databases _system and db2 =====================================
   SECTION("Local collections") {
     size_t i = 0;

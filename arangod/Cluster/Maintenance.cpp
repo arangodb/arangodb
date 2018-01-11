@@ -38,45 +38,6 @@ using namespace arangodb::basics;
 using namespace arangodb::consensus;
 using namespace arangodb::maintenance;
 
-/// @brief calculate difference between plan and local for for databases
-arangodb::Result arangodb::maintenance::diffPlanLocalForDatabases(
-  VPackSlice const& plan, std::vector<std::string> const& local,
-  std::vector<std::string>& toCreate, std::vector<std::string>& toDrop) {
-
-  arangodb::Result result;
-  
-  std::vector<std::string> planv, isect;
-  VPackSlice pdbs = plan.get(
-    std::vector<std::string>{"arango","Plan","Databases"});
-  for (auto const& i : VPackObjectIterator(pdbs)) {
-    planv.emplace_back(i.key.copyString());
-  }
-  std::sort(planv.begin(), planv.end());
-
-  // Build intersection
-  std::set_intersection(
-    planv.begin(), planv.end(), local.begin(), local.end(),
-    std::back_inserter(isect));
-
-  // In plan but not in intersection => toCreate
-  for (auto const i : planv) {
-    if (std::find(isect.begin(), isect.end(), i) == isect.end()) {
-      toCreate.emplace_back(i);
-    }
-  }
-
-  // Local but not in intersection => toDrop
-  for (auto const i : local) {
-    if (std::find(isect.begin(), isect.end(), i) == isect.end()) {
-      toDrop.emplace_back(i);
-    }
-  }
-
-  return result;
-  
-}
-
-
 VPackBuilder createProps(VPackSlice const& s) {
   VPackBuilder builder;
   TRI_ASSERT(s.isObject());
@@ -121,17 +82,19 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
           for (auto const& db : VPackArrayIterator(shard.value)) {
             if (db.copyString() == serverId)  {  // We have some responsibility
               intersection.emplace(shname);
-              if (props.isEmpty()) {             // Must not have name and id in props
-                props = createProps(pcol.value); // Only do this once might need more often
+              if (props.isEmpty()) {             // Must not have name or id 
+                props = createProps(pcol.value); // Only once might need often!
               }
               if (ldb.hasKey(shname)) {   // Have local collection with that name
+                
                 /*actions.push_back(
                   ActionDescription(
                   {{"name", "AlterCollection"}, {"collection", shname}}, props));*/
               } else {                   // Create the sucker!
                 actions.push_back(
                   ActionDescription(
-                    {{"name", "CreateCollection"}, {"collection", shname}}, props));
+                    {{"name", "CreateCollection"}, {"collection", shname}},
+                    props));
               }
             }
             ++pos;
@@ -164,7 +127,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
             drop = true;
           }
         }
-
         if (drop) {
           actions.push_back(
             ActionDescription({
@@ -184,60 +146,38 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
 }
 
 /// @brief handle plan for local databases
-arangodb::Result arangodb::maintenance::executePlanForDatabases (
-  VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local) {
+arangodb::Result arangodb::maintenance::executePlan (
+  VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
+  std::string const& serverId) {
 
   arangodb::Result result;
-  ActionRegistry* actreg = ActionRegistry::instance();
+  ActionRegistry* registry = ActionRegistry::instance();
 
   // build difference between plan and local
   std::vector<std::string> toCreate, toDrop;
-  std::vector<std::string> localv;
-  for (auto const& i : VPackObjectIterator(local)) {
-    localv.emplace_back(i.key.copyString());
-  }
-  std::sort(localv.begin(), localv.end());
-  diffPlanLocalForDatabases(plan, localv, toCreate, toDrop);
+  std::vector<ActionDescription> actions;
+  diffPlanLocal(plan, local, serverId, actions);
 
-  // dispatch creations
-  for (auto const& i : toCreate) {
-    auto desc = ActionDescription({{"name", "CreateDatabase"}, {"database", i}});
-    if (actreg->get(desc) == nullptr) {
-      actreg->dispatch(desc);
-    }
-  }
-
-  // dispatch drops
-  for (auto const& i : toDrop) {
-    auto desc = ActionDescription({{"name", "DropDatabase"}, {"database", i}});
-    if (actreg->get(desc) == nullptr) {
-      actreg->dispatch(desc);
-    }
+  for (auto const& action : actions) {
+    registry->dispatch(action);
   }
 
   return result;
   
 }
 
-
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne (
-  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local) {
+  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
+  std::string const& serverId) {
 
   arangodb::Result result;
 
   // Execute database changes
-  result = executePlanForDatabases(plan, cur, local);
+  result = executePlan(plan, cur, local, serverId);
   if (result.fail()) {
     return result;
   }
-  
-  // Execute collection changes
-  result = executePlanForCollections(plan, cur, local);
-  if (result.fail()) {
-    return result;
-  }
-  
   // Synchronise shards
   result = synchroniseShards(plan, cur, local);
   
@@ -252,12 +192,6 @@ arangodb::Result arangodb::maintenance::phaseTwo (
   return result;
 }
 
-
-arangodb::Result arangodb::maintenance::executePlanForCollections (
-  VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local) {
-  arangodb::Result result;
-  return result;
-}
 
 arangodb::Result arangodb::maintenance::synchroniseShards (
   VPackSlice const&, VPackSlice const&, VPackSlice const&) {
