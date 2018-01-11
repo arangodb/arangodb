@@ -139,23 +139,23 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     }
     
     bool found;
-    std::string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
+    std::string header = response->getHeaderField(StaticStrings::ReplicationHeaderCheckMore, found);
     bool checkMore = false;
     if (found) {
       checkMore = StringUtils::boolean(header);
     }
     
     header =
-    response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
+    response->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded, found);
     if (!found) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                    _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED + " is missing");
+                    _masterInfo._endpoint + ": required header " + StaticStrings::ReplicationHeaderLastIncluded + " is missing");
     }
     TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
     
     // was the specified from value included the result?
     bool fromIncluded = false;
-    header = response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
+    header = response->getHeaderField(StaticStrings::ReplicationHeaderFromPresent, found);
     if (found) {
       fromIncluded = StringUtils::boolean(header);
     }
