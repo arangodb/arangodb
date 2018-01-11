@@ -39,26 +39,21 @@ arangodb::Result diffPlanLocalForDatabases(
   VPackSlice const&, std::vector<std::string> const&,
   std::vector<std::string>&, std::vector<std::string>&);
 
-arangodb::Result executePlanForDatabases (
-  VPackSlice const&, VPackSlice const&, VPackSlice const&);
-
 /// @brief calculate difference between plan and local for dbs/cols
 ///        come up with list of actions, which need to be performed
 arangodb::Result diffPlanLocal(
   VPackSlice const&, VPackSlice const&, std::string const& serverId,
   std::vector<ActionDescription>&);
 
-arangodb::Result executePlanForCollections (
-  VPackSlice const&, VPackSlice const&, VPackSlice const&);
+arangodb::Result executePlan (
+  VPackSlice const&, VPackSlice const&, VPackSlice const&, std::string const&);
 
 arangodb::Result synchroniseShards (
   VPackSlice const&, VPackSlice const&, VPackSlice const&);
 
-arangodb::Result reportLocalForDatabases (
-  VPackSlice plan, VPackSlice current, std::vector<std::string>);
-
 arangodb::Result phaseOne (
-  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local);
+  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
+  std::string const&);
 
 arangodb::Result phaseTwo (
   VPackSlice const& plan, VPackSlice const& cur);
