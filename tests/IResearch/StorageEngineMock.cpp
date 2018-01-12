@@ -30,6 +30,7 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationOptions.h"
 #include "velocypack/Iterator.h"
 #include "VocBase/KeyGenerator.h"
@@ -1342,11 +1343,18 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
   unuseCollections(_nestingLevel);
+  trx->registerCallback([](arangodb::transaction::Methods* trx)->void {
+    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+    static_cast<TransactionStateMock*>(trx->state())->_id = 0;
+  });
   return arangodb::Result();
 }
 
 arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
+  static std::atomic<TRI_voc_tid_t> lastId(0);
+
   ++beginTransactionCount;
+  _id = ++lastId; // ensure each transaction state has a unique ID
   useCollections(_nestingLevel);
   updateStatus(arangodb::transaction::Status::RUNNING);
   return arangodb::Result();
@@ -1356,6 +1364,10 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   unuseCollections(_nestingLevel);
+  trx->registerCallback([](arangodb::transaction::Methods* trx)->void {
+    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+    static_cast<TransactionStateMock*>(trx->state())->_id = 0;
+  });
   return arangodb::Result();
 }
 

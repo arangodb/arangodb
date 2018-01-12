@@ -1797,6 +1797,135 @@ SECTION("test_transaction_registration") {
     CHECK((expectedNames.empty()));
     CHECK((trx.commit().ok()));
   }
+
+  // drop collection from vocbase
+  CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(logicalCollection1, true, 0)));
+
+  // read transaction (by id) (one collection dropped)
+  {
+    arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      logicalView->id(),
+      arangodb::AccessMode::Type::READ
+    );
+    CHECK((trx.begin().ok()));
+    CHECK((1 == trx.state()->numCollections()));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
+    std::unordered_set<std::string> expectedNames = { "testCollection0" };
+    auto actualNames = trx.state()->collectionNames();
+
+    for(auto& entry: actualNames) {
+      CHECK((1 == expectedNames.erase(entry)));
+    }
+
+    CHECK((expectedNames.empty()));
+    CHECK((trx.commit().ok()));
+  }
+
+  // read transaction (by name) (one collection dropped)
+  {
+    arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      logicalView->name(),
+      arangodb::AccessMode::Type::READ
+    );
+    CHECK((trx.begin().ok()));
+    CHECK((1 == trx.state()->numCollections()));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
+    std::unordered_set<std::string> expectedNames = { "testCollection0" };
+    auto actualNames = trx.state()->collectionNames();
+
+    for(auto& entry: actualNames) {
+      CHECK((1 == expectedNames.erase(entry)));
+    }
+
+    CHECK((expectedNames.empty()));
+    CHECK((trx.commit().ok()));
+  }
+
+  // write transaction (by id) (one collection dropped)
+  {
+    arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      logicalView->id(),
+      arangodb::AccessMode::Type::WRITE
+    );
+    CHECK((trx.begin().ok()));
+    CHECK((1 == trx.state()->numCollections()));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
+    std::unordered_set<std::string> expectedNames = { "testCollection0" };
+    auto actualNames = trx.state()->collectionNames();
+
+    for(auto& entry: actualNames) {
+      CHECK((1 == expectedNames.erase(entry)));
+    }
+
+    CHECK((expectedNames.empty()));
+    CHECK((trx.commit().ok()));
+  }
+
+  // write transaction (by name) (one collection dropped)
+  {
+    arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      logicalView->name(),
+      arangodb::AccessMode::Type::WRITE
+    );
+    CHECK((trx.begin().ok()));
+    CHECK((1 == trx.state()->numCollections()));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
+    std::unordered_set<std::string> expectedNames = { "testCollection0" };
+    auto actualNames = trx.state()->collectionNames();
+
+    for(auto& entry: actualNames) {
+      CHECK((1 == expectedNames.erase(entry)));
+    }
+
+    CHECK((expectedNames.empty()));
+    CHECK((trx.commit().ok()));
+  }
+
+  // exclusive transaction (by id) (one collection dropped)
+  {
+    arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      logicalView->id(),
+      arangodb::AccessMode::Type::READ
+    );
+    CHECK((trx.begin().ok()));
+    CHECK((1 == trx.state()->numCollections()));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
+    std::unordered_set<std::string> expectedNames = { "testCollection0" };
+    auto actualNames = trx.state()->collectionNames();
+
+    for(auto& entry: actualNames) {
+      CHECK((1 == expectedNames.erase(entry)));
+    }
+
+    CHECK((expectedNames.empty()));
+    CHECK((trx.commit().ok()));
+  }
+
+  // exclusive transaction (by name) (one collection dropped)
+  {
+    arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      logicalView->name(),
+      arangodb::AccessMode::Type::READ
+    );
+    CHECK((trx.begin().ok()));
+    CHECK((1 == trx.state()->numCollections()));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
+    std::unordered_set<std::string> expectedNames = { "testCollection0" };
+    auto actualNames = trx.state()->collectionNames();
+
+    for(auto& entry: actualNames) {
+      CHECK((1 == expectedNames.erase(entry)));
+    }
+
+    CHECK((expectedNames.empty()));
+    CHECK((trx.commit().ok()));
+  }
 }
 
 SECTION("test_update_overwrite") {
