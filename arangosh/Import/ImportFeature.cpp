@@ -316,7 +316,7 @@ void ImportFeature::start() {
     }
     std::cout << "create:                 " << (_createCollection ? "yes" : "no")
               << std::endl;
-    std::cout << "created database:       " << (_createDatabase ? "yes" : "no")
+    std::cout << "create database:        " << (_createDatabase ? "yes" : "no")
               << std::endl;
     std::cout << "source filename:        " << _filename << std::endl;
     std::cout << "file type:              " << _typeImport << std::endl;

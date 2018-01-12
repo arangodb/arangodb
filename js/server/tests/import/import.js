@@ -446,29 +446,33 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     testCreateDatabase : function () {
       var db = require("@arangodb").db;
-      var testdb = db._useDatabase("UnitTestImportCreateDatabase");
-      var expected = [ { "id": 1,
-                         "one": 1,
-                         "three": 3,
-                         "two": 2 },
-                       { "a": 1234,
-                         "b": "the quick fox",
-                         "id": 2,
-                         "jumped":
-                         "over the fox",
-                         "null": null },
-                       { "id": 3,
-                         "not": "important",
-                         "spacing": "is" },
-                       { "  c  ": "h\"'ihi",
-                         "a": true,
-                         "b": false,
-                         "d": "",
-                         "id": 4 },
-                       { "id": 5 } ];
+      try {
+        var testdb = db._useDatabase("UnitTestImportCreateDatabase");
+        var expected = [ { "id": 1,
+                           "one": 1,
+                           "three": 3,
+                           "two": 2 },
+                         { "a": 1234,
+                           "b": "the quick fox",
+                           "id": 2,
+                           "jumped":
+                           "over the fox",
+                           "null": null },
+                         { "id": 3,
+                           "not": "important",
+                           "spacing": "is" },
+                         { "  c  ": "h\"'ihi",
+                           "a": true,
+                           "b": false,
+                           "d": "",
+                           "id": 4 },
+                         { "id": 5 } ];
 
-      var actual = getQueryResults("FOR i IN UnitTestsImportJson1 SORT i.id RETURN i");
-      assertEqual(expected, actual);
+        var actual = getQueryResults("FOR i IN UnitTestsImportJson1 SORT i.id RETURN i");
+        assertEqual(expected, actual);
+      } finally {
+        db._useDatabase("_system");
+      }
     },
 
 // END OF TEST DEFINITIONS /////////////////////////////////////////////////////
