@@ -42,7 +42,10 @@ struct Collection {
 
   Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type);
 
-  ~Collection();
+  ~Collection() {}
+
+  /// @brief upgrade the access type to exclusive
+  void setExclusiveAccess();
 
   /// @brief set the current shard
   inline void setCurrentShard(std::string const& shard) {

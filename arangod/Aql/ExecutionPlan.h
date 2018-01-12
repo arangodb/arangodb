@@ -64,6 +64,9 @@ class ExecutionPlan {
   static ExecutionPlan* instantiateFromVelocyPack(
       Ast* ast, arangodb::velocypack::Slice const);
   
+  /// @brief whether or not the exclusive flag is set in the write options
+  static bool hasExclusiveAccessOption(AstNode const* node);
+
   ExecutionPlan* clone(Ast*);
 
   /// @brief clone the plan by recursively cloning starting from the root

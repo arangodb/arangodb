@@ -489,6 +489,31 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
   return en;
 }
 
+bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
+  // parse the modification options we got
+  if (node == nullptr || node->type != NODE_TYPE_OBJECT) {
+    return false;
+  }
+
+  size_t n = node->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMember(i);
+
+    if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
+      std::string const name = member->getString();
+      auto value = member->getMember(0);
+
+      TRI_ASSERT(value->isConstant());
+      if (name == "exclusive") {
+        return value->isTrue();
+      }
+    }
+  }
+
+  return false;
+}
+
 /// @brief create modification options from an AST node
 ModificationOptions ExecutionPlan::createModificationOptions(
     AstNode const* node) {
@@ -516,6 +541,8 @@ ModificationOptions ExecutionPlan::createModificationOptions(
           options.nullMeansRemove = value->isFalse();
         } else if (name == "mergeObjects") {
           options.mergeObjects = value->isTrue();
+        } else if (name == "exclusive") {
+          options.exclusive = value->isTrue();
         }
       }
     }
@@ -1294,10 +1321,12 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "no collection for RemoveNode");
   }
+  if (options.exclusive) {
+    collection->setExclusiveAccess();
+  }
 
   auto expression = node->getMember(2);
   ExecutionNode* en = nullptr;
-
   auto returnVarNode = node->getMember(3);
   Variable const* outVariableOld =
       static_cast<Variable*>(returnVarNode->getData());
@@ -1330,8 +1359,16 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
   std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
-  auto expression = node->getMember(2);
+  
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no collection for InsertNode");
+  }
+  if (options.exclusive) {
+    collection->setExclusiveAccess();
+  }
 
+  auto expression = node->getMember(2);
   auto returnVarNode = node->getMember(3);
   Variable const* outVariableNew =
       static_cast<Variable*>(returnVarNode->getData());
@@ -1366,9 +1403,17 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
   std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
+  
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no collection for UpdateNode");
+  }
+  if (options.exclusive) {
+    collection->setExclusiveAccess();
+  }
+  
   auto docExpression = node->getMember(2);
   auto keyExpression = node->getMember(3);
-
   Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
 
@@ -1424,9 +1469,17 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
   std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
+
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no collection for ReplaceNode");
+  }
+  if (options.exclusive) {
+    collection->setExclusiveAccess();
+  }
+
   auto docExpression = node->getMember(2);
   auto keyExpression = node->getMember(3);
-
   Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
 
@@ -1482,10 +1535,18 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
   std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
+
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no collection for UpsertNode");
+  }
+  if (options.exclusive) {
+    collection->setExclusiveAccess();
+  }
+
   auto docExpression = node->getMember(2);
   auto insertExpression = node->getMember(3);
   auto updateExpression = node->getMember(4);
-
   Variable const* outVariableNew =
       static_cast<Variable*>(node->getMember(6)->getData());
 
