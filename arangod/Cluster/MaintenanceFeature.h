@@ -24,10 +24,12 @@
 #ifndef ARANGOD_CLUSTER_MAINTENANCE_FEATURE
 #define ARANGOD_CLUSTER_MAINTENANCE_FEATURE 1
 
-#include "Basics/Common.h"
-#include "lib/Basics/Result.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
+#include "Cluster/MaintenanceAction.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
@@ -46,7 +48,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   virtual void prepare() override;
 
   // start the feature
-  virtual void start() override;
+  virtual void start() override {};
 
   // notify the feature about a shutdown request
   virtual void beginShutdown() override {_isShuttingDown=true;};
@@ -64,14 +66,14 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   /// @brief This is the  API for creating an Action and executing it.
   ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
-  ///  ActionDescription parameter will be MOVED to new object.
-  Result addAction(ActionDescription_t && description, bool executeNow=false) noexcept;
+  ///  not yet:  ActionDescription parameter will be MOVED to new object.
+  Result addAction(maintenance::ActionDescription_t & description, bool executeNow=false) noexcept;
 
   /// @brief This is the API for MaintenanceAction objects to call to create and
   ///  start a preprocess Action.  The Action executes on the caller's thread AFTER
   ///  returning to the MaintenanceWorker object.
   ///  ActionDescription parameter will be COPIED to new object.
-  Result addPreprocess(ActionDescription_t & description, std::shared_ptr<class MaintenanceAction> existingAction) noexcept;
+  Result addPreprocess(maintenance::ActionDescription_t & description, std::shared_ptr<class MaintenanceAction> existingAction) noexcept;
 
   /// @brief This API will attempt to fail an existing Action that is waiting
   ///  or executing.  Will not fail Actions that have already succeeded or failed.

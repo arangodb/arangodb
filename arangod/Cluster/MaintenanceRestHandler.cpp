@@ -26,12 +26,15 @@
 #include <velocypack/vpack.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 

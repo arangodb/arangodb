@@ -26,7 +26,6 @@
 using namespace arangodb;
 using namespace arangodb::options;
 
-int32_t MaintenanceFeature::maintenanceThreadsMax = 2;
 
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Maintenance") {
@@ -36,7 +35,8 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer* 
   startsBefore("StorageEngine");
 
   _maintenanceThreadsMax = static_cast<int32_t>(TRI_numberProcessors()/4 +1);
-
+  _secondsActionsBlock = 30;
+  _secondsActionsLinger = 300;
 }
 
 void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
