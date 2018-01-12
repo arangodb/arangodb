@@ -66,6 +66,11 @@ constexpr int TRI_EXIT_COULD_NOT_BIND_PORT                                      
 /// fill me
 constexpr int TRI_EXIT_COULD_NOT_LOCK                                           = 22;
 
+/// 23: EXIT_RECOVERY
+/// recovery failed
+/// Will be returned if the recovery fails
+constexpr int TRI_EXIT_RECOVERY                                                 = 23;
+
 
 /// register all exit codes for ArangoDB
 void TRI_InitializeExitMessages();

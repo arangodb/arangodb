@@ -103,8 +103,8 @@ void RocksDBRecoveryManager::runRecovery() {
   if (res.fail()) {
     LOG_TOPIC(FATAL, Logger::ENGINES)
       << "Failed during rocksdb WAL recovery - "
-      << res.errorNumber() << " - " << res.errorMessage();
-    FATAL_ERROR_EXIT_CODE(TRI_EXIT_FAILED); //TODO - add exit recovery
+      << " - " << res.errorMessage();
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_RECOVERY);
   }
 }
 
@@ -416,12 +416,12 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
           s = batch.writeBatchPtr->Iterate(handler.get());
         }
 
-        std::string const msg = "error during WAL scan ";
 
         if (!s.ok()) {
-          LOG_TOPIC(ERR, Logger::ENGINES) << msg;
           rv = rocksutils::convertStatus(s);
-          rv.reset(rv.errorNumber(), msg + rv.errorMessage());
+          std::string msg = "error during WAL scan: " + rv.errorMessage();
+          LOG_TOPIC(ERR, Logger::ENGINES) << msg;
+          rv.reset(rv.errorNumber(), msg); // update message
           break;
         }
 
@@ -439,7 +439,12 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
               << pair.second.removed() << " DELETEs for objectID " << pair.first;
         }
 
-        if(!(handler->deltas.size() > 0)){
+        // TODO POSSIBLE BUG - What happens if we have operations that do not modify documents?
+        //                     Up to now the rv of the recovery was not checked. Now we force
+        //                     a fatal exit on failure! This could result in a not starting
+        //                     arangod if we just drop a view and do nothing else for example.
+
+        if(handler->deltas.empty()){
           rv.reset(TRI_ERROR_INTERNAL, "error in wal recovery - deltas size less equal than 0");
         }
       }
@@ -452,7 +457,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     rv = std::move(shutdownRv);
   } else {
     if(shutdownRv.fail()){
-      rv.reset(rv.errorNumber(), rv.errorMessage() + shutdownRv.errorMessage());
+      rv.reset(rv.errorNumber(), rv.errorMessage() + " - " + shutdownRv.errorMessage());
     }
   }
 

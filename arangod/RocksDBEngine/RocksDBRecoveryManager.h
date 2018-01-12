@@ -49,8 +49,10 @@ class RocksDBRecoveryManager final
   void runRecovery();
   bool inRecovery() const;
 
- protected:
+ private:
   Result parseRocksWAL();
+
+ protected:
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief rocksdb instance
