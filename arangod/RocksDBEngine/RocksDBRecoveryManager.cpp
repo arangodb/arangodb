@@ -102,8 +102,8 @@ void RocksDBRecoveryManager::runRecovery() {
   auto res = parseRocksWAL();
   if (res.fail()) {
     LOG_TOPIC(FATAL, Logger::ENGINES)
-      << "Failed during rocksdb WAL recovery - "
-      << " - " << res.errorMessage();
+      << "failed during rocksdb WAL recovery: "
+      << res.errorMessage();
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_RECOVERY);
   }
 }
@@ -437,15 +437,6 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
           LOG_TOPIC(TRACE, Logger::ENGINES)
               << "WAL recovered " << pair.second.added() << " PUTs and "
               << pair.second.removed() << " DELETEs for objectID " << pair.first;
-        }
-
-        // TODO POSSIBLE BUG - What happens if we have operations that do not modify documents?
-        //                     Up to now the rv of the recovery was not checked. Now we force
-        //                     a fatal exit on failure! This could result in a not starting
-        //                     arangod if we just drop a view and do nothing else for example.
-
-        if(handler->deltas.empty()){
-          rv.reset(TRI_ERROR_INTERNAL, "error in wal recovery - deltas size less equal than 0");
         }
       }
     }
