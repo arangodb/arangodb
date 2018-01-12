@@ -178,22 +178,19 @@ AqlValue MMFilesAqlFunctions::Fulltext(
 
   AqlValue collectionValue = ExtractFunctionParameterValue(parameters, 0);
   if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-                                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
   std::string const cname(collectionValue.slice().copyString());
 
   AqlValue attribute = ExtractFunctionParameterValue(parameters, 1);
   if (!attribute.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-                                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
   std::string const attributeName(attribute.slice().copyString());
 
   AqlValue queryValue = ExtractFunctionParameterValue(parameters, 2);
   if (!queryValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-                                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
   std::string const queryString = queryValue.slice().copyString();
 
@@ -201,8 +198,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   if (parameters.size() >= 4) {
     AqlValue limit = ExtractFunctionParameterValue(parameters, 3);
     if (!limit.isNull(true) && !limit.isNumber()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-                                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
     } 
     if (limit.isNumber()) {
       int64_t value = limit.toInt64(trx);
