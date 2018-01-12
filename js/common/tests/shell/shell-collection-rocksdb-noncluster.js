@@ -653,12 +653,33 @@ function CollectionTruncateFailuresSuite() {
         let res2 = db._query(q, {"@c": cn, i: 101}).toArray();
         assertEqual(res2.length, 0);
       }
+
+      // Test Selectivity Estimates
+      {
+        let indexes = c.getIndexes(true);
+        for (let i of indexes) {
+          switch (i.type) {
+            case 'primary':
+              assertEqual(i.selectivityEstimate, 1);
+              break;
+            case 'hash':
+              assertEqual(i.selectivityEstimate, 1);
+              break;
+            case 'skiplist':
+              assertEqual(i.selectivityEstimate, 1);
+              break;
+            default:
+              fail();
+          }
+        }
+      }
     },
 
     testTruncateFailsBeforeCommit: function () {
       const docsWithEqHash = 20000 / 250;
       const docsWithEqSkip = 20000 / 100;
       internal.debugSetFailAt("FailBeforeIntermediateCommit");
+      internal.print(c.getIndexes(true));
       try {
         c.truncate();
         fail();
@@ -666,6 +687,7 @@ function CollectionTruncateFailuresSuite() {
         // Validate that we died with debug
         assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
       }
+      internal.print(c.getIndexes(true));
 
       // All docments should be removed through intermediate commits.
       // We have two packs that fill up those commits.
@@ -706,6 +728,27 @@ function CollectionTruncateFailuresSuite() {
         let res2 = db._query(q, {"@c": cn, i: 101}).toArray();
         assertEqual(res2.length, 0);
       }
+
+      // Test Selectivity Estimates
+      {
+        let indexes = c.getIndexes(true);
+        for (let i of indexes) {
+          switch (i.type) {
+            case 'primary':
+              assertEqual(i.selectivityEstimate, 1);
+              break;
+            case 'hash':
+              assertEqual(i.selectivityEstimate, 0.0125);
+              break;
+            case 'skiplist':
+              assertEqual(i.selectivityEstimate, 0.005);
+              break;
+              default:
+              fail();
+          }
+        }
+      }
+ 
     },
 
     testTruncateFailsBetweenCommits: function () {
@@ -766,6 +809,27 @@ function CollectionTruncateFailuresSuite() {
         let res2 = db._query(q, {"@c": cn, i: 101}).toArray();
         assertEqual(res2.length, 0);
       }
+
+      // Test Selectivity Estimates
+      // This may be fuzzy...
+      {
+        let indexes = c.getIndexes(true);
+        for (let i of indexes) {
+          switch (i.type) {
+            case 'primary':
+              assertEqual(i.selectivityEstimate, 1);
+              break;
+            case 'hash':
+              assertEqual(i.selectivityEstimate, 0.025);
+              break;
+            case 'skiplist':
+              assertEqual(i.selectivityEstimate, 0.01);
+              break;
+            default:
+              fail();
+          }
+        }
+      }
     },
 
   };
@@ -776,8 +840,8 @@ function CollectionTruncateFailuresSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(CollectionSuite);
-jsunity.run(CollectionCacheSuite);
+//jsunity.run(CollectionSuite);
+//jsunity.run(CollectionCacheSuite);
 
 if (internal.debugCanUseFailAt()) {
   jsunity.run(CollectionTruncateFailuresSuite);

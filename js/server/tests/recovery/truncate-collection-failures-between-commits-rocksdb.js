@@ -113,6 +113,25 @@ const recoverySuite = function () {
       // just validate that no other values are inserted.
       let res2 = db._query(q, {"@c": colName, i: 101}).toArray();
       assertEqual(res2.length, 0);
+    },
+
+    testSelectivityEstimates: () => {
+      let indexes = c.getIndexes(true);
+      for (let i of indexes) {
+        switch (i.type) {
+          case 'primary':
+            assertEqual(i.selectivityEstimate, 1);
+            break;
+          case 'hash':
+            assertEqual(i.selectivityEstimate, 0.025);
+            break;
+          case 'skiplist':
+            assertEqual(i.selectivityEstimate, 0.01);
+            break;
+          default:
+            fail();
+        }
+      }
     }
   };
 
