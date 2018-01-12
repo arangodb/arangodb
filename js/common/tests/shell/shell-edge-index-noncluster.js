@@ -399,7 +399,36 @@ function EdgeIndexSuite () {
         }
         edge.save(vn + '/from' + (i % 20), vn + '/to' + i, { });
       }
-    }
+    },
+
+    testIndexSelectivityAfterAbortion: function () {
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({_from: `${vn}/from${i % 32}`, _to: `${vn}/to${i % 47}`});
+      }
+      edge.save(docs);
+      let idx = edge.getIndexes()[1];
+      let estimateBefore = idx.selectivityEstimate;
+      try {
+        internal.db._executeTransaction({
+          collections: {write: en},
+          action: function () {
+            // This should significantly modify the estimate
+            // if successful
+            edge.save(docs);
+            throw "banana";
+          }
+        });
+        fail();
+      } catch (e) {
+        assertEqual(e.errorMessage, "banana");
+        // Insert failed.
+        // Validate that estimate is non modified
+        idx = edge.getIndexes()[1];
+        assertEqual(idx.selectivityEstimate, estimateBefore);
+      }
+
+    },
   };
 }
 
