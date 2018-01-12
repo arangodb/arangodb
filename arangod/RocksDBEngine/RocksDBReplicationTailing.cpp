@@ -201,7 +201,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       }
       case RocksDBLogType::ViewCreate:
       case RocksDBLogType::ViewDrop:
-      case RocksDBLogType::ViewChange: {
+      case RocksDBLogType::ViewChange:
+      case RocksDBLogType::ViewRename: {
         resetTransientState(); // finish ongoing trx
         // TODO
         break;
