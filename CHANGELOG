@@ -1,6 +1,11 @@
 v3.3.3 (XXXX-XX-XX)
 -------------------
 
+* make the default value of `--rocksdb.block-cache-shard-bits` use the RocksDB
+  default value. This will mostly mean the default number block cache shard
+  bits is lower than before, allowing each shard to store more data and cause
+  less evictions from block cache
+
 * fixed issue #4255: AQL SORT consuming too much memory
 
 
