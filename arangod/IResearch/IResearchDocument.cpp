@@ -564,13 +564,11 @@ bool FieldIterator::setRegularAttribute(IResearchLinkMeta const& context) {
 void FieldIterator::next() {
   TRI_ASSERT(valid());
 
-  auto const& prev = *_begin;
-
-  while (++_begin != _end) {
+  for (auto const* prev = _begin; ++_begin != _end; ) {
     auto& name = nameBuffer();
 
     // remove previous suffix
-    arangodb::iresearch::kludge::unmangleStringField(name, prev);
+    arangodb::iresearch::kludge::unmangleStringField(name, *prev);
 
     // can have multiple analyzers for string values only
     if (setStringValue(topValue().value, name, _value, *_begin)) {
