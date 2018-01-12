@@ -614,7 +614,7 @@ void HeartbeatThread::runSingleServer() {
         }
         config._endpoint = endpoint;
         config._autoResync = true;
-        config._autoResyncRetries = 3;
+        config._autoResyncRetries = 2;
         // TODO: how do we initially configure the applier
         
         // start initial synchronization

@@ -47,6 +47,7 @@ using namespace arangodb::rest;
 GlobalInitialSyncer::GlobalInitialSyncer(
   ReplicationApplierConfiguration const& configuration)
     : InitialSyncer(configuration) {
+   // has to be set here, otherwise broken
   _databaseName = TRI_VOC_SYSTEM_DATABASE;
 }
 
@@ -66,7 +67,6 @@ Result GlobalInitialSyncer::run(bool incremental) {
   
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state";
   Result r = getMasterState();
-    
   if (r.fail()) {
     return r;
   }

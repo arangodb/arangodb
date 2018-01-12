@@ -211,12 +211,12 @@ void BootstrapFeature::start() {
       TRI_ASSERT(false);
     }
   } else {
-
+    std::string const myId = ServerState::instance()->getId(); // local cluster UUID
+    
     // become leader before running server.js to ensure the leader
     // is the foxxmaster. Everything else is handled in heartbeat
     if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
       std::string const leaderPath = "Plan/AsyncReplication/Leader";
-      std::string const myId = ServerState::instance()->getId();
       
       try {
         VPackBuilder myIdBuilder;
@@ -236,13 +236,15 @@ void BootstrapFeature::start() {
             } // heartbeat thread will take care later
           } else {
             ss->setFoxxmaster(leaderSlice.copyString());
-            LOG_TOPIC(INFO, Logger::STARTUP) << "Following " << ss->getFoxxmaster();
+            LOG_TOPIC(INFO, Logger::STARTUP) << "Following leader: " << ss->getFoxxmaster();
           }
         }
       } catch(...) {} // weglaecheln
+    } else {
+      ss->setFoxxmaster(myId); // could be empty, but set anyway
     }
     
-    // will run foxx/manager.js internally and start queues etc
+    // will run foxx/manager.js::_startup() and more (start queues, load routes, etc)
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
     V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js", nullptr);
     // Agency is not allowed to call this

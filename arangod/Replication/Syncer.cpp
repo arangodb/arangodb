@@ -100,13 +100,16 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
         (uint32_t)_configuration._sslProtocol);
 
     if (_connection != nullptr) {
+      std::string retryMsg = std::string("retrying failed HTTP request for endpoint '") +
+      _configuration._endpoint  + std::string("' for replication applier");
+      if (!_databaseName.empty()) {
+        retryMsg += std::string(" in database '") + _databaseName + std::string("'");
+      }
+                  
       SimpleHttpClientParams params(_configuration._requestTimeout, false);
       params.setMaxRetries(2);
-      params.setRetryWaitTime(2 * 1000 * 1000);
-      params.setRetryMessage(std::string("retrying failed HTTP request for endpoint '") +
-                             _configuration._endpoint +
-                             std::string("' for replication applier in database '" +
-                                         _databaseName + "'"));
+      params.setRetryWaitTime(2 * 1000 * 1000); // 2s
+      params.setRetryMessage(retryMsg);
       
       std::string username = _configuration._username;
       std::string password = _configuration._password;
@@ -714,7 +717,7 @@ Result Syncer::getMasterState() {
 
   // apply settings that prevent endless waiting here
   _client->params().setMaxRetries(1);
-  _client->params().setRetryWaitTime(500 * 1000);
+  _client->params().setRetryWaitTime(500 * 1000); // 0.5s
 
   std::unique_ptr<SimpleHttpResult> response(
       _client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
@@ -729,7 +732,6 @@ Result Syncer::getMasterState() {
 
   VPackBuilder builder;
   Result r = parseResponse(builder, response.get());
-
   if (r.fail()) {
     return r;
   }
