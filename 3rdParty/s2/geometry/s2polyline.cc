@@ -45,7 +45,7 @@ S2Polyline::~S2Polyline() {
 
 void S2Polyline::Init(vector<S2Point> const& vertices) {
   if (FLAGS_s2debug) {
-    CHECK(IsValid(vertices));
+    assert(IsValid(vertices));
   }
 
   delete[] vertices_;
@@ -66,7 +66,7 @@ void S2Polyline::Init(vector<S2LatLng> const& vertices) {
   }
   if (FLAGS_s2debug) {
     vector<S2Point> vertex_vector(vertices_, vertices_ + num_vertices_);
-    CHECK(IsValid(vertex_vector));
+    assert(IsValid(vertex_vector));
   }
 }
 
@@ -75,7 +75,7 @@ bool S2Polyline::IsValid(vector<S2Point> const& v) {
   int n = v.size();
   for (int i = 0; i < n; ++i) {
     if (!S2::IsUnitLength(v[i])) {
-      LOG(INFO) << "Vertex " << i << " is not unit length";
+      S2_LOG(1) << "Vertex " << i << " is not unit length";
       return false;
     }
   }
@@ -83,7 +83,7 @@ bool S2Polyline::IsValid(vector<S2Point> const& v) {
   // Adjacent vertices must not be identical or antipodal.
   for (int i = 1; i < n; ++i) {
     if (v[i-1] == v[i] || v[i-1] == -v[i]) {
-      LOG(INFO) << "Vertices " << (i - 1) << " and " << i
+      S2_LOG(1) << "Vertices " << (i - 1) << " and " << i
                 << " are identical or antipodal";
       return false;
     }
@@ -120,14 +120,14 @@ S2Point S2Polyline::GetCentroid() const {
     S2Point vdiff = vertex(i-1) - vertex(i);   // Length == 2*sin(theta)
     double cos2 = vsum.Norm2();
     double sin2 = vdiff.Norm2();
-    DCHECK_GT(cos2, 0);  // Otherwise edge is undefined, and result is NaN.
+    assert(cos2 > 0);  // Otherwise edge is undefined, and result is NaN.
     centroid += sqrt(sin2 / cos2) * vsum;  // Length == 2*sin(theta)
   }
   return centroid;
 }
 
 S2Point S2Polyline::GetSuffix(double fraction, int* next_vertex) const {
-  DCHECK_GT(num_vertices(), 0);
+  assert(num_vertices() > 0);
   // We intentionally let the (fraction >= 1) case fall through, since
   // we need to handle it in the loop below in any case because of
   // possible roundoff errors.
@@ -163,7 +163,7 @@ S2Point S2Polyline::Interpolate(double fraction) const {
 }
 
 double S2Polyline::UnInterpolate(S2Point const& point, int next_vertex) const {
-  DCHECK_GT(num_vertices(), 0);
+  assert(num_vertices() > 0);
   if (num_vertices() < 2) {
     return 0;
   }
@@ -181,7 +181,7 @@ double S2Polyline::UnInterpolate(S2Point const& point, int next_vertex) const {
 }
 
 S2Point S2Polyline::Project(S2Point const& point, int* next_vertex) const {
-  DCHECK_GT(num_vertices(), 0);
+  assert(num_vertices() > 0);
 
   if (num_vertices() == 1) {
     // If there is only one vertex, it is always closest to any given point.
@@ -202,7 +202,7 @@ S2Point S2Polyline::Project(S2Point const& point, int* next_vertex) const {
       min_index = i;
     }
   }
-  DCHECK_NE(min_index, -1);
+  assert(min_index != -1);
 
   // Compute the point on the segment found that is closest to the point given.
   S2Point closest_point = S2EdgeUtil::GetClosestPoint(
@@ -213,13 +213,13 @@ S2Point S2Polyline::Project(S2Point const& point, int* next_vertex) const {
 }
 
 bool S2Polyline::IsOnRight(S2Point const& point) const {
-  DCHECK_GE(num_vertices(), 2);
+  assert(num_vertices() >= 2);
 
   int next_vertex;
   S2Point closest_point = Project(point, &next_vertex);
 
-  DCHECK_GE(next_vertex, 1);
-  DCHECK_LE(next_vertex, num_vertices());
+  assert(next_vertex >= 1);
+  assert(next_vertex <= num_vertices());
 
   // If the closest point C is an interior vertex of the polyline, let B and D
   // be the previous and next vertices.  The given point P is on the right of
@@ -311,7 +311,7 @@ void S2Polyline::Encode(Encoder* const encoder) const {
   encoder->put32(num_vertices_);
   encoder->putn(vertices_, sizeof(*vertices_) * num_vertices_);
 
-  DCHECK_GE(encoder->avail(), 0);
+  assert(encoder->avail() >= 0);
 }
 
 bool S2Polyline::Decode(Decoder* const decoder) {
@@ -325,7 +325,7 @@ bool S2Polyline::Decode(Decoder* const decoder) {
 
   if (FLAGS_s2debug) {
     vector<S2Point> vertex_vector(vertices_, vertices_ + num_vertices_);
-    CHECK(IsValid(vertex_vector));
+    assert(IsValid(vertex_vector));
   }
 
   return decoder->avail() >= 0;
@@ -338,8 +338,8 @@ namespace {
 // vertices passes within "tolerance" of all interior vertices, in order.
 int FindEndVertex(S2Polyline const& polyline,
                   S1Angle const& tolerance, int index) {
-  DCHECK_GE(tolerance.radians(), 0);
-  DCHECK_LT((index + 1), polyline.num_vertices());
+  assert(tolerance.radians() >= 0);
+  assert((index + 1) < polyline.num_vertices());
 
   // The basic idea is to keep track of the "pie wedge" of angles from the
   // starting vertex such that a ray from the starting vertex at that angle
@@ -405,7 +405,7 @@ int FindEndVertex(S2Polyline const& polyline,
     double half_angle = asin(sin(tolerance.radians()) / sin(distance));
     S1Interval target = S1Interval::FromPoint(center).Expanded(half_angle);
     current_wedge = current_wedge.Intersection(target);
-    DCHECK(!current_wedge.is_empty());
+    assert(!current_wedge.is_empty());
   }
   // We break out of the loop when we reach a vertex index that can't be
   // included in the line segment, so back up by one vertex.

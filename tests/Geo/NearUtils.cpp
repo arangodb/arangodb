@@ -73,12 +73,12 @@ static index_t::const_iterator seek(index_t const& index, S2CellId target) {
   return it;
 }
 
+template<typename CMP>
 static std::vector<TRI_voc_rid_t> nearSearch(index_t const& index,
                                              coords_t const& coords,
-                                             geo::NearUtils& near,
+                                             geo::NearUtils<CMP>& near,
                                              size_t limit) {
   std::vector<TRI_voc_rid_t> result;
-  double dist = 0;
   
   while (!near.isDone()) {
     std::vector<geo::Interval> intervals = near.intervals();
@@ -93,9 +93,7 @@ static std::vector<TRI_voc_rid_t> nearSearch(index_t const& index,
     }
     
     while (near.hasNearest()) {
-      geo::GeoDocument doc = near.nearest();
-      REQUIRE(doc.distRad >= dist);
-      dist = doc.distRad;
+      geo::Document doc = near.nearest();
       result.push_back(doc.rid);
       near.popNearest();
       
@@ -162,11 +160,11 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
   
   geo::QueryParams params;
   params.sorted = true;
-  params.ascending = true;
   params.centroid = geo::Coordinate(0,0);
   
   SECTION("query all sorted ascending") {
-    geo::NearUtils near(std::move(params));
+    params.ascending = true;
+    geo::NearUtils<geo::DocumentsAscending> near(std::move(params));
     
     std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, SIZE_T_MAX);
     std::set<TRI_voc_rid_t> unique;
@@ -174,11 +172,11 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
     
     double lastRad = 0;
     for (TRI_voc_rid_t rev : result) {
-      // check that we received every document
+      // check that we get every document exactly once
       REQUIRE(unique.find(rev) == unique.end());
       unique.insert(rev);
       
-      // check the correct sort order
+      // check sort order
       geo::Coordinate const& cc = docs.at(rev);
       S2LatLng cords = S2LatLng::FromDegrees(cc.latitude, cc.longitude);
       S2Point pp = cords.ToPoint();
@@ -190,8 +188,9 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
   }
   
   SECTION("query all sorted ascending with limit") {
-    geo::NearUtils near(std::move(params));
-    
+    params.ascending = true;
+    geo::NearUtils<geo::DocumentsAscending> near(std::move(params));
+
     std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, 5);
     REQUIRE(result.size() == 5);
     
@@ -205,9 +204,10 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
   }
   
   SECTION("query sorted ascending with limit and max distance") {
+    params.ascending = true;
     params.maxDistance = 111200.0;
-    geo::NearUtils near(std::move(params));
-   
+    geo::NearUtils<geo::DocumentsAscending> near(std::move(params));
+
     std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, 1000);
     REQUIRE(result.size() == 5);
     
@@ -221,9 +221,10 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
   }
   
   SECTION("query sorted ascending with different inital delta") {
+    params.ascending = true;
     params.maxDistance = 111200;
-    geo::NearUtils near(std::move(params));
-    
+    geo::NearUtils<geo::DocumentsAscending> near(std::move(params));
+
     near.estimateDensity(geo::Coordinate(0,1));
     
     std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, 1000);
@@ -236,6 +237,69 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
     REQUIRE(coords[2] == geo::Coordinate(0,0));
     REQUIRE(coords[3] == geo::Coordinate(0,1));
     REQUIRE(coords[4] == geo::Coordinate(1,0));
+  }
+  
+  SECTION("query sorted ascending with different inital delta") {
+    params.ascending = true;
+    params.maxDistance = 111200;
+    geo::NearUtils<geo::DocumentsAscending> near(std::move(params));
+
+    near.estimateDensity(geo::Coordinate(0,1));
+    
+    std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, 1000);
+    REQUIRE(result.size() == 5);
+    
+    std::vector<geo::Coordinate> coords = convert(docs, result);
+    std::sort(coords.begin(), coords.end(), CoordCompare());
+    REQUIRE(coords[0] == geo::Coordinate(-1,0));
+    REQUIRE(coords[1] == geo::Coordinate(0,-1));
+    REQUIRE(coords[2] == geo::Coordinate(0,0));
+    REQUIRE(coords[3] == geo::Coordinate(0,1));
+    REQUIRE(coords[4] == geo::Coordinate(1,0));
+  }
+  
+  SECTION("query all sorted descending") {
+    params.ascending = false;
+    geo::NearUtils<geo::DocumentsDescending> near(std::move(params));
+
+    std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, SIZE_T_MAX);
+    std::set<TRI_voc_rid_t> unique;
+    REQUIRE(result.size() == counter);
+    
+    double lastRad = geo::kEarthRadiusInMeters;
+    for (TRI_voc_rid_t rev : result) {
+      // check that we get every document exactly once
+      REQUIRE(unique.find(rev) == unique.end());
+      unique.insert(rev);
+      
+      // check sort order
+      geo::Coordinate const& cc = docs.at(rev);
+      S2LatLng cords = S2LatLng::FromDegrees(cc.latitude, cc.longitude);
+      S2Point pp = cords.ToPoint();
+      double rad = near.centroid().Angle(pp);
+      REQUIRE(rad <= lastRad);
+      lastRad = rad;
+    }
+    REQUIRE(lastRad == 0);
+  }
+  
+  SECTION("query all sorted descending") {
+    params.ascending = false;
+    params.maxDistance = 111200;
+    geo::NearUtils<geo::DocumentsDescending> near(std::move(params));
+    
+    std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, SIZE_T_MAX);
+    std::set<TRI_voc_rid_t> unique;
+    REQUIRE(result.size() == 5);
+    
+    std::vector<geo::Coordinate> coords = convert(docs, result);
+    REQUIRE(coords[4] == geo::Coordinate(0,0));
+
+    for (size_t i = 0; i < 4; i++) {
+      double lat = std::abs(coords[i].latitude),
+             lng = std::abs(coords[i].longitude);
+      REQUIRE(lat + lng == 1); // lat == 1 => lng == 0, etc
+    }
   }
 }
 

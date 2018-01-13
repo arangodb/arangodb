@@ -98,7 +98,6 @@
 #include <limits.h>
 #include <iostream>
 #include <string>
-#include "base/logging.h"
 #include "openssl/bn.h"
 
 class ExactFloat {

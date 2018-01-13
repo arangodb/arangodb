@@ -3,7 +3,6 @@
 //
 //
 
-#include "base/logging.h"
 #include "util/coding/coder.h"
 
 // An initialization value used when we are allowed to 
@@ -31,7 +30,7 @@ int Encoder::varint64_length(uint64_t v) {
 }
 
 void Encoder::EnsureSlowPath(int N) {
-  CHECK(ensure_allowed());
+  assert(ensure_allowed());
   assert(avail() < N);
   assert(length() == 0 || orig_ == underlying_buffer_);
 
@@ -49,16 +48,16 @@ void Encoder::EnsureSlowPath(int N) {
   orig_ = new_buffer;
   limit_ = new_buffer + new_capacity;
   buf_ = orig_ + current_len;
-  CHECK(avail() >= N);
+  assert(avail() >= N);
 }
 
 void Encoder::RemoveLast(int N) {
-  CHECK(length() >= N);
+  assert(length() >= N);
   buf_ -= N;
 }
 
 void Encoder::Resize(int N) {
-  CHECK(length() >= N);
+  assert(length() >= N);
   buf_ = orig_ + N;
   assert(length() == N);
 }

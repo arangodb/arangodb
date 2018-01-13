@@ -42,7 +42,6 @@ using std::string;
 using std::vector;
 
 
-#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "split.h"
 
@@ -249,7 +248,7 @@ char* FastUInt64ToBufferLeft(uint64_t u64, char* buffer) {
   u = u64 - (top_11_digits * 1000000000);
 
   digits = u / 10000000;  // 10,000,000
-  DCHECK_LT(digits, 100);
+  assert(digits < 100);
   ASCII_digits = two_ASCII_digits[digits];
   buffer[0] = ASCII_digits[0];
   buffer[1] = ASCII_digits[1];
@@ -333,7 +332,7 @@ char *FastInt32ToBuffer(int32_t i, char* buffer) {
 }
 
 char *FastHexToBuffer(int i, char* buffer) {
-  CHECK(i >= 0) << "FastHexToBuffer() wants non-negative integers, not " << i;
+  assert(i >= 0); // "FastHexToBuffer() wants non-negative integers, not " << i;
 
   static const char *hexdigits = "0123456789abcdef";
   char *p = buffer + 21;
@@ -364,8 +363,8 @@ char *FastHex32ToBuffer(uint32_t value, char* buffer) {
 }
 
 static inline void PutTwoDigits(int i, char* p) {
-  DCHECK_GE(i, 0);
-  DCHECK_LT(i, 100);
+  assert(i >= 0);
+  assert(i < 100);
   p[0] = two_ASCII_digits[i][0];
   p[1] = two_ASCII_digits[i][1];
 }
@@ -389,7 +388,7 @@ char* FastTimeToBuffer(time_t s, char* buffer) {
 
   const char* weekday_name = "Xxx";
   switch (tm.tm_wday) {
-    default: { DCHECK(false); } break;
+    default: { assert(false); } break;
     case 0:  weekday_name = "Sun"; break;
     case 1:  weekday_name = "Mon"; break;
     case 2:  weekday_name = "Tue"; break;
@@ -401,7 +400,7 @@ char* FastTimeToBuffer(time_t s, char* buffer) {
 
   const char* month_name = "Xxx";
   switch (tm.tm_mon) {
-    default:  { DCHECK(false); } break;
+    default:  { assert(false); } break;
     case 0:   month_name = "Jan"; break;
     case 1:   month_name = "Feb"; break;
     case 2:   month_name = "Mar"; break;

@@ -24,7 +24,6 @@
 #ifndef UTIL_GEOMETRY_S2MULTIPOINTREGION_H__
 #define UTIL_GEOMETRY_S2MULTIPOINTREGION_H__
 
-#include "base/logging.h"
 #include "base/macros.h"
 #include "s2.h"
 #include "s2region.h"

@@ -2,7 +2,6 @@
 
 #include "s2cell.h"
 
-#include "base/logging.h"
 #include "s2.h"
 #include "s2cap.h"
 #include "s2latlngrect.h"
@@ -186,7 +185,7 @@ S2LatLngRect S2Cell::GetRectBound() const {
   static double const kPoleMinLat = asin(sqrt(1./3));  // 35.26 degrees
 
   // The face centers are the +X, +Y, +Z, -X, -Y, -Z axes in that order.
-  DCHECK_EQ(((face_ < 3) ? 1 : -1), S2::GetNorm(face_)[face_ % 3]);
+  assert(((face_ < 3) ? 1 : -1) == S2::GetNorm(face_)[face_ % 3]);
   switch (face_) {
     case 0:  return S2LatLngRect(R1Interval(-M_PI_4, M_PI_4),
                                  S1Interval(-M_PI_4, M_PI_4));

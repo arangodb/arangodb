@@ -6,7 +6,6 @@
 using std::vector;
 
 #include "stringprintf.h"
-#include "logging.h"
 
 void StringAppendV(string* dst, const char* format, va_list ap) {
   // First try with a small fixed size buffer

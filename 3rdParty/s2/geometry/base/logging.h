@@ -11,16 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef BASE_LOGGING_H
-#define BASE_LOGGING_H
+#ifndef S2_BASE_LOGGING_H
+#define S2_BASE_LOGGING_H
 
-#include <stdlib.h>
 #include <iostream>
 
-#include "macros.h"
-
 // Always-on checking
-#define CHECK(x)	if(x){}else LogMessageFatal(__FILE__, __LINE__).stream() << "Check failed: " #x
+/*#define CHECK(x)	if(x){}else LogMessageFatal(__FILE__, __LINE__).stream() << "Check failed: " #x
 #define CHECK_LT(x, y)	CHECK((x) < (y))
 #define CHECK_GT(x, y)	CHECK((x) > (y))
 #define CHECK_LE(x, y)	CHECK((x) <= (y))
@@ -46,8 +43,8 @@
 #define DCHECK_LT(val1, val2) CHECK(true)
 #define DCHECK_GE(val1, val2) CHECK(true)
 #define DCHECK_GT(val1, val2) CHECK(true)
-#endif
-
+#endif*/
+/*
 #define LOG_INFO LogMessage(__FILE__, __LINE__)
 #define LOG_ERROR LOG_INFO
 #define LOG_WARNING LOG_INFO
@@ -101,6 +98,21 @@ class LogMessageFatal : public LogMessage {
   }
  private:
   DISALLOW_COPY_AND_ASSIGN(LogMessageFatal);
+};*/
+
+class S2NullStream : public std::ostream {
+  class S2NullBuffer : public std::streambuf {
+  public:
+    int overflow( int c ) { return c; }
+  } m_nb;
+public:
+  S2NullStream() : std::ostream( &m_nb ) {}
 };
+
+#ifndef NDEBUG
+#define S2_LOG(i) (i > 0 ? std::cerr : std::cout)
+#else
+#define S2_LOG(i) (S2NullStream())
+#endif
 
 #endif  // BASE_LOGGING_H

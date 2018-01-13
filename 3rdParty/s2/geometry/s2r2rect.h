@@ -162,7 +162,7 @@ class S2R2Rect : public S2Region {
   virtual bool Contains(S2Cell const& cell) const;
   virtual bool MayIntersect(S2Cell const& cell) const;
   virtual void Encode(Encoder* const encoder) const {
-    LOG(FATAL) << "Unimplemented";
+    assert(false);
   }
   virtual bool Decode(Decoder* const decoder) { return false; }
 
@@ -173,12 +173,12 @@ class S2R2Rect : public S2Region {
 
 inline S2R2Rect::S2R2Rect(R2Point const& lo, R2Point const& hi)
   : x_(lo.x(), hi.x()), y_(lo.y(), hi.y()) {
-  DCHECK(is_valid());
+  assert(is_valid());
 }
 
 inline S2R2Rect::S2R2Rect(R1Interval const& x, R1Interval const& y)
   : x_(x), y_(y) {
-  DCHECK(is_valid());
+  assert(is_valid());
 }
 
 inline S2R2Rect S2R2Rect::Empty() {

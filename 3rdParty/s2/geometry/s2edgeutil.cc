@@ -8,8 +8,6 @@ using std::reverse;
 
 #include "s2edgeutil.h"
 
-#include "base/logging.h"
-
 bool S2EdgeUtil::SimpleCrossing(S2Point const& a, S2Point const& b,
                                 S2Point const& c, S2Point const& d) {
   // We compute SimpleCCW() for triangles ACB, CBD, BDA, and DAC.  All
@@ -51,7 +49,7 @@ bool S2EdgeUtil::VertexCrossing(S2Point const& a, S2Point const& b,
   if (a == c) return S2::OrderedCCW(S2::Ortho(a), d, b, a);
   if (b == d) return S2::OrderedCCW(S2::Ortho(b), c, a, b);
 
-  LOG(DFATAL) << "VertexCrossing called with 4 distinct vertices";
+  std::cerr << "VertexCrossing called with 4 distinct vertices";
   return false;
 }
 
@@ -77,7 +75,7 @@ static void ReplaceIfCloser(S2Point const& x, S2Point const& y,
 
 S2Point S2EdgeUtil::GetIntersection(S2Point const& a0, S2Point const& a1,
                                     S2Point const& b0, S2Point const& b1) {
-  DCHECK_GT(RobustCrossing(a0, a1, b0, b1), 0);
+  assert(RobustCrossing(a0, a1, b0, b1) > 0);
 
   // We use RobustCrossProd() to get accurate results even when two endpoints
   // are close together, or when the two line segments are nearly parallel.
@@ -114,8 +112,8 @@ S2Point S2EdgeUtil::GetIntersection(S2Point const& a0, S2Point const& a1,
   if (S2::OrderedCCW(a0, b0, a1, a_norm)) ReplaceIfCloser(x, b0, &dmin2, &vmin);
   if (S2::OrderedCCW(a0, b1, a1, a_norm)) ReplaceIfCloser(x, b1, &dmin2, &vmin);
 
-  DCHECK(S2::OrderedCCW(a0, vmin, a1, a_norm));
-  DCHECK(S2::OrderedCCW(b0, vmin, b1, b_norm));
+  assert(S2::OrderedCCW(a0, vmin, a1, a_norm));
+  assert(S2::OrderedCCW(b0, vmin, b1, b_norm));
   return vmin;
 }
 
@@ -133,7 +131,7 @@ S1Angle const S2EdgeUtil::kIntersectionTolerance = S1Angle::Radians(1.5e-15);
 
 double S2EdgeUtil::GetDistanceFraction(S2Point const& x,
                                        S2Point const& a0, S2Point const& a1) {
-  DCHECK_NE(a0, a1);
+  assert(a0 != a1);
   double d0 = x.Angle(a0);
   double d1 = x.Angle(a1);
   return d0 / (d0 + d1);
@@ -142,8 +140,8 @@ double S2EdgeUtil::GetDistanceFraction(S2Point const& x,
 S2Point S2EdgeUtil::InterpolateAtDistance(S1Angle const& ax,
                                           S2Point const& a, S2Point const& b,
                                           S1Angle const& ab) {
-  DCHECK(S2::IsUnitLength(a));
-  DCHECK(S2::IsUnitLength(b));
+  assert(S2::IsUnitLength(a));
+  assert(S2::IsUnitLength(b));
 
   // As of crosstool v14, gcc tries to calculate sin(ax_radians),
   // cos(ax_radians), sin(ab_radians), cos(ab_radians) in the
@@ -193,9 +191,9 @@ S2Point S2EdgeUtil::Interpolate(double t, S2Point const& a, S2Point const& b) {
 S1Angle S2EdgeUtil::GetDistance(S2Point const& x,
                                 S2Point const& a, S2Point const& b,
                                 S2Point const& a_cross_b) {
-  DCHECK(S2::IsUnitLength(a));
-  DCHECK(S2::IsUnitLength(b));
-  DCHECK(S2::IsUnitLength(x));
+  assert(S2::IsUnitLength(a));
+  assert(S2::IsUnitLength(b));
+  assert(S2::IsUnitLength(x));
 
   // There are three cases.  If X is located in the spherical wedge defined by
   // A, B, and the axis A x B, then the closest point is on the segment AB.
@@ -208,7 +206,7 @@ S1Angle S2EdgeUtil::GetDistance(S2Point const& x,
     // to the corresponding great circle.  The result is accurate for small
     // distances but not necessarily for large distances (approaching Pi/2).
 
-    DCHECK_NE(a, b);  // Due to the guarantees of SimpleCCW().
+    assert(a != b);  // Due to the guarantees of SimpleCCW().
     double sin_dist = fabs(x.DotProd(a_cross_b)) / a_cross_b.Norm();
     return S1Angle::Radians(asin(min(1.0, sin_dist)));
   }
@@ -229,9 +227,9 @@ S1Angle S2EdgeUtil::GetDistance(S2Point const& x,
 S2Point S2EdgeUtil::GetClosestPoint(S2Point const& x,
                                     S2Point const& a, S2Point const& b,
                                     S2Point const& a_cross_b) {
-  DCHECK(S2::IsUnitLength(a));
-  DCHECK(S2::IsUnitLength(b));
-  DCHECK(S2::IsUnitLength(x));
+  assert(S2::IsUnitLength(a));
+  assert(S2::IsUnitLength(b));
+  assert(S2::IsUnitLength(x));
 
   // Find the closest point to X along the great circle through AB.
   S2Point p = x - (x.DotProd(a_cross_b) / a_cross_b.Norm2()) * a_cross_b;
@@ -252,8 +250,8 @@ S2Point S2EdgeUtil::GetClosestPoint(S2Point const& x,
 bool S2EdgeUtil::IsEdgeBNearEdgeA(S2Point const& a0, S2Point const& a1,
                                   S2Point const& b0, S2Point const& b1,
                                   S1Angle const& tolerance) {
-  DCHECK_LT(tolerance.radians(), M_PI / 2);
-  DCHECK_GT(tolerance.radians(), 0);
+  assert(tolerance.radians() < M_PI / 2);
+  assert(tolerance.radians() > 0);
   // The point on edge B=b0b1 furthest from edge A=a0a1 is either b0, b1, or
   // some interior point on B.  If it is an interior point on B, then it must be
   // one of the two points where the great circle containing B (circ(B)) is
@@ -322,7 +320,7 @@ bool S2EdgeUtil::IsEdgeBNearEdgeA(S2Point const& a0, S2Point const& a1,
   // the two points along circ(B) where it is furthest from circ(A).  The other
   // is -1 times the normalized projection.
   S2Point furthest = (a_ortho - a_ortho.DotProd(b_ortho) * b_ortho).Normalize();
-  DCHECK(S2::IsUnitLength(furthest));
+  assert(S2::IsUnitLength(furthest));
   S2Point furthest_inv = -1 * furthest;
 
   // A point p lies on B if you can proceed from b_ortho to b0 to p to b1 and
@@ -401,7 +399,7 @@ int S2EdgeUtil::EdgeCrosser::RobustCrossingInternal(S2Point const* d) {
 }
 
 void S2EdgeUtil::RectBounder::AddPoint(S2Point const* b) {
-  DCHECK(S2::IsUnitLength(*b));
+  assert(S2::IsUnitLength(*b));
   S2LatLng b_latlng(*b);
   if (bound_.is_empty()) {
     bound_.AddPoint(b_latlng);

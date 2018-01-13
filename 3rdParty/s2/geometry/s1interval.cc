@@ -3,7 +3,6 @@
 #include "s1interval.h"
 
 #include <cmath>
-#include "base/logging.h"
 
 S1Interval S1Interval::FromPoint(double p) {
   if (p == -M_PI) p = M_PI;
@@ -48,14 +47,14 @@ bool S1Interval::FastContains(double p) const {
 
 bool S1Interval::Contains(double p) const {
   // Works for empty, full, and singleton intervals.
-  DCHECK_LE(fabs(p), M_PI);
+  assert(fabs(p) <= M_PI);
   if (p == -M_PI) p = M_PI;
   return FastContains(p);
 }
 
 bool S1Interval::InteriorContains(double p) const {
   // Works for empty, full, and singleton intervals.
-  DCHECK_LE(fabs(p), M_PI);
+  assert(fabs(p) <= M_PI);
   if (p == -M_PI) p = M_PI;
 
   if (is_inverted()) {
@@ -135,13 +134,13 @@ double S1Interval::GetDirectedHausdorffDistance(S1Interval const& y) const {
         PositiveDistance(y.hi(), hi()) : 0;
     double lo_lo = S1Interval(y_complement_center, y.lo()).Contains(lo()) ?
         PositiveDistance(lo(), y.lo()) : 0;
-    DCHECK(hi_hi > 0 || lo_lo > 0);
+    assert(hi_hi > 0 || lo_lo > 0);
     return std::max(hi_hi, lo_lo);
   }
 }
 
 void S1Interval::AddPoint(double p) {
-  DCHECK_LE(fabs(p), M_PI);
+  assert(fabs(p) <= M_PI);
   if (p == -M_PI) p = M_PI;
 
   if (FastContains(p)) return;
@@ -162,8 +161,8 @@ void S1Interval::AddPoint(double p) {
 }
 
 S1Interval S1Interval::FromPointPair(double p1, double p2) {
-  DCHECK_LE(fabs(p1), M_PI);
-  DCHECK_LE(fabs(p2), M_PI);
+  assert(fabs(p1) <= M_PI);
+  assert(fabs(p2) <= M_PI);
   if (p1 == -M_PI) p1 = M_PI;
   if (p2 == -M_PI) p2 = M_PI;
   if (PositiveDistance(p1, p2) <= M_PI) {
@@ -174,7 +173,7 @@ S1Interval S1Interval::FromPointPair(double p1, double p2) {
 }
 
 S1Interval S1Interval::Expanded(double radius) const {
-  DCHECK_GE(radius, 0);
+  assert(radius >= 0);
   if (is_empty()) return *this;
 
   // Check whether this interval will be full after expansion, allowing
@@ -239,7 +238,7 @@ S1Interval S1Interval::Intersection(S1Interval const& y) const {
   // contains all of this interval, or the two intervals are disjoint.
 
   if (y.FastContains(lo())) return *this;  // is_empty() okay here
-  DCHECK(!Intersects(y));
+  assert(!Intersects(y));
   return Empty();
 }
 

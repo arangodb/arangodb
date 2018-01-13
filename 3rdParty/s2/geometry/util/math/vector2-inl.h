@@ -151,15 +151,15 @@ VType Vector2<VType>::CrossProd(const Self &vb) const {
 
 template <typename VType>
 VType& Vector2<VType>::operator[](const int b) {
-  DCHECK(b >= 0);
-  DCHECK(b <= 1);
+  assert(b >= 0);
+  assert(b <= 1);
   return c_[b];
 }
 
 template <typename VType>
 VType Vector2<VType>::operator[](const int b) const {
-  DCHECK(b >= 0);
-  DCHECK(b <= 1);
+  assert(b >= 0);
+  assert(b <= 1);
   return c_[b];
 }
 

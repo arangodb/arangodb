@@ -33,6 +33,7 @@
 #include <geometry/s2regioncoverer.h>
 #include <queue>
 #include <vector>
+#include <type_traits>
 
 namespace arangodb {
 namespace velocypack {
@@ -42,17 +43,23 @@ class Slice;
 namespace geo {
 
 /// result of a geospatial index query. distance may or may not be set
-struct GeoDocument {
-  GeoDocument(TRI_voc_rid_t doc, double rad) : rid(doc), distRad(rad) {}
+struct Document {
+  Document(TRI_voc_rid_t doc, double rad) : rid(doc), distRad(rad) {}
   /// @brief LocalDocumentId
   TRI_voc_rid_t rid;
   /// @brief distance from centroids on the unit sphere
   double distRad;
 };
 
-struct GeoDocumentCompare {
-  bool operator()(GeoDocument const& a, GeoDocument const& b) {
+struct DocumentsAscending {
+  bool operator()(Document const& a, Document const& b) {
     return a.distRad > b.distRad;
+  }
+};
+  
+struct DocumentsDescending {
+  bool operator()(Document const& a, Document const& b) {
+    return a.distRad < b.distRad;
   }
 };
 
@@ -60,11 +67,22 @@ struct GeoDocumentCompare {
 /// Will return points sorted by distance to the target point, can
 /// also filter contains / intersect in regions (on rsesult points and
 /// search intervals). Should be storage engine agnostic
+template<typename CMP = DocumentsAscending>
 class NearUtils {
+  
+  static_assert(std::is_same<CMP, DocumentsAscending>::value ||
+                std::is_same<CMP, DocumentsDescending>::value, "Invalid template type");
+  static constexpr bool isAcending() {
+    return std::is_same<CMP, DocumentsAscending>::value;
+  }
+  static constexpr bool isDescending() {
+    return std::is_same<CMP, DocumentsDescending>::value;
+  }
+  
  public:
-  typedef std::priority_queue<GeoDocument, std::vector<GeoDocument>,
-                              GeoDocumentCompare>
-      GeoDocumentsQueue;
+  
+  /// @brief Type of documents buffer
+  typedef std::priority_queue<Document, std::vector<Document>, CMP> GeoDocumentsQueue;
 
   NearUtils(geo::QueryParams&& params);
 
@@ -81,8 +99,8 @@ class NearUtils {
     TRI_ASSERT(_innerBound >= 0 && _innerBound <= _outerBound);
     TRI_ASSERT(_outerBound <= _maxBound && _maxBound <= M_PI);
     return _buffer.empty() &&
-          ((_params.ascending && _innerBound == _maxBound && _outerBound == _maxBound) ||
-          (!_params.ascending && _innerBound == 0 && _outerBound == 0));
+          ((isAcending() && _innerBound == _maxBound && _outerBound == _maxBound) ||
+          (isDescending() && _innerBound == 0 && _outerBound == 0));
   }
 
   /// @brief has buffered results
@@ -90,13 +108,14 @@ class NearUtils {
     // we need to not return results in the search area
     // between _innerBound and _maxBound. Otherwise results may appear
     // too early in the result list
-    return !_buffer.empty() && ((_params.ascending && _buffer.top().distRad <= _innerBound) ||
-                                (!_params.ascending && _buffer.top().distRad >= _outerBound));
+    return !_buffer.empty() && ((isAcending() && _buffer.top().distRad <= _innerBound) ||
+                                (isDescending() && _buffer.top().distRad >= _outerBound));
   }
 
   /// @brief closest buffered result
-  GeoDocument const& nearest() const {
-    TRI_ASSERT(_buffer.top().distRad <= _innerBound);
+  geo::Document const& nearest() const {
+    TRI_ASSERT(isAcending() && _buffer.top().distRad <= _innerBound ||
+               isDescending() && _buffer.top().distRad >= _outerBound);
     return _buffer.top();
   }
 
@@ -118,16 +137,16 @@ class NearUtils {
   /// to the target coordinates
   void estimateDensity(geo::Coordinate const& found);
 
+ private:
+  
+  /// @brief adjust the bounds delta
+  void estimateDelta();
+  
   /// @brief make isDone return true
   void invalidate() {
     _innerBound = _maxBound;
     _outerBound = _maxBound;
   }
-  
- private:
-  
-  /// @brief adjust the bounds delta
-  void estimateDelta();
 
  private:
   geo::QueryParams const _params;

@@ -2,7 +2,6 @@
 
 #include "s2r2rect.h"
 
-#include "base/logging.h"
 #include "r1interval.h"
 #include "s2.h"
 #include "s2cap.h"
@@ -83,8 +82,8 @@ void S2R2Rect::AddPoint(R2Point const& p) {
 }
 
 S2R2Rect S2R2Rect::Expanded(R2Point const& margin) const {
-  DCHECK_GE(margin.x(), 0);
-  DCHECK_GE(margin.y(), 0);
+  assert(margin.x() >= 0);
+  assert(margin.y() >= 0);
   return S2R2Rect(x_.Expanded(margin.x()), y_.Expanded(margin.y()));
 }
 

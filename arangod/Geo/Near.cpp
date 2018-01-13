@@ -38,7 +38,8 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
-NearUtils::NearUtils(QueryParams&& qp)
+template<typename CMP>
+NearUtils<CMP>::NearUtils(QueryParams&& qp)
   : _params(std::move(qp)),
       _centroid(
           S2LatLng::FromDegrees(qp.centroid.latitude, qp.centroid.longitude)
@@ -49,8 +50,11 @@ NearUtils::NearUtils(QueryParams&& qp)
   reset();
   TRI_ASSERT(_params.sorted);
   TRI_ASSERT(_maxBound > 0 && _maxBound <= M_PI);
+  static_assert(isAcending() || isDescending(), "Invalid template");
+  TRI_ASSERT(!isAcending() || _params.ascending);
+  TRI_ASSERT(!isDescending() || !_params.ascending);
     
-  LOG_TOPIC(ERR, Logger::FIXME)
+  /*LOG_TOPIC(ERR, Logger::FIXME)
       << "--------------------------------------------------------";
   LOG_TOPIC(INFO, Logger::FIXME) << "[Near] centroid target: "
                                  << _params.centroid.toString();
@@ -59,7 +63,8 @@ NearUtils::NearUtils(QueryParams&& qp)
         << "  sorted " << (_params.ascending ? "asc" : "desc");//*/
 }
 
-void NearUtils::reset() {
+template<typename CMP>
+void NearUtils<CMP>::reset() {
   if (!_seen.empty() || !_buffer.empty()) {
     _seen.clear();
     while (!_buffer.empty()) {
@@ -77,27 +82,29 @@ void NearUtils::reset() {
   TRI_ASSERT(_boundDelta > 0);
 
   // this initial interval is never used like that, see intervals()
-  _innerBound = _params.ascending ? _minBound : _maxBound;
-  _outerBound = _params.ascending ? _minBound : _maxBound;
+  _innerBound = isAcending() ? _minBound : _maxBound;
+  _outerBound = isAcending() ? _minBound : _maxBound;
   _statsFoundLastInterval = 0;
   TRI_ASSERT(_innerBound <= _outerBound && _outerBound <= _maxBound);
 }
 
-std::vector<geo::Interval> NearUtils::intervals() {
-  TRI_ASSERT(_innerBound != _maxBound);
+template<typename CMP>
+std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   TRI_ASSERT(!hasNearest());
+  TRI_ASSERT(!isDone());
+  TRI_ASSERT(!_params.ascending || _innerBound != _maxBound);
   
   TRI_ASSERT(_boundDelta >= S2::kMaxEdge.GetValue(S2::kMaxCellLevel - 2));
   estimateDelta();
-  if (_params.ascending) {
+  if (isAcending()) {
     _innerBound = _outerBound; // initially _outerBounds == _innerBounds
     _outerBound = std::min(_outerBound + _boundDelta, _maxBound);
     if (_innerBound == _maxBound && _outerBound == _maxBound) {
       return {}; // search is finished
     }
-  } else {
+  } else if (isDescending()) {
     _outerBound = _innerBound; // initially _outerBounds == _innerBounds
-    _innerBound = std::min(_innerBound - _boundDelta, _minBound);
+    _innerBound = std::max(_innerBound - _boundDelta, _minBound);
     if (_outerBound == _minBound && _innerBound == _minBound) {
       return {}; // search is finished
     }
@@ -105,17 +112,17 @@ std::vector<geo::Interval> NearUtils::intervals() {
   
   TRI_ASSERT(_innerBound <= _outerBound && _outerBound <= _maxBound);
   TRI_ASSERT(_innerBound != _outerBound);
-  LOG_TOPIC(INFO, Logger::FIXME) << "[Bounds] "
+  /*LOG_TOPIC(INFO, Logger::FIXME) << "[Bounds] "
     << (size_t)(_innerBound * kEarthRadiusInMeters) << " - "
     << (size_t)(_outerBound * kEarthRadiusInMeters) << "  delta: "
     << (size_t)(_boundDelta * kEarthRadiusInMeters);//*/
   
   std::vector<S2CellId> cover;
-  if (_minBound == _innerBound && _outerBound <= _maxBound) {
+  if (_innerBound == _minBound) {
     //LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] 0 to something";
     S2Cap ob = S2Cap::FromAxisAngle(_centroid, S1Angle::Radians(_outerBound));
     _coverer.GetCovering(ob, &cover);
-  } else if (_minBound < _innerBound && _outerBound <= _maxBound) {
+  } else if (_innerBound > _minBound) {
     //LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] something inbetween";
     // create a search ring
     std::vector<S2Region*> regions;
@@ -183,7 +190,8 @@ std::vector<geo::Interval> NearUtils::intervals() {
   return intervals;
 }
 
-void NearUtils::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
+template<typename CMP>
+void NearUtils<CMP>::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
   S2LatLng cords = S2LatLng::FromDegrees(center.latitude, center.longitude);
   double rad = _centroid.Angle(cords.ToPoint()); // distance in radians
   
@@ -192,8 +200,8 @@ void NearUtils::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
   << " distance: " << (rad * kEarthRadiusInMeters);//*/
   
   // cheap rejections based on distance to target
-  if ((_params.ascending && rad < _innerBound) ||
-      (!_params.ascending && rad > _outerBound) ||
+  if ((isAcending() && rad < _innerBound) ||
+      (isDescending() && rad > _outerBound) ||
       rad > _maxBound || rad < _minBound) {
     return;
   }
@@ -216,10 +224,12 @@ void NearUtils::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
   }
 }
 
-void NearUtils::estimateDensity(geo::Coordinate const& found) {
+template<typename CMP>
+void NearUtils<CMP>::estimateDensity(geo::Coordinate const& found) {
+  double const minBound = S2::kAvgDiag.GetValue(S2::kMaxCellLevel - 3);
   S2LatLng cords = S2LatLng::FromDegrees(found.latitude, found.longitude);
   double delta = _centroid.Angle(cords.ToPoint()) * 4;
-  if (delta > 0) {
+  if (minBound < delta && delta < M_PI) {
     _boundDelta = delta;
     TRI_ASSERT(_innerBound == 0 && _buffer.empty());  // only call after reset
     LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Estimating density with "
@@ -229,17 +239,22 @@ void NearUtils::estimateDensity(geo::Coordinate const& found) {
 }
 
 /// @brief adjust the bounds delta
-void NearUtils::estimateDelta() {
-  if ((_params.ascending && _innerBound > _minBound) ||
-      (!_params.ascending && _outerBound < _maxBound)) {
-    double const minBound = S2::kMaxDiag.GetValue(S2::kMaxCellLevel - 2);
+template<typename CMP>
+void NearUtils<CMP>::estimateDelta() {
+  if ((isAcending() && _innerBound > _minBound) ||
+      (isDescending() && _innerBound < _maxBound)) {
+    double const minBound = S2::kMaxDiag.GetValue(S2::kMaxCellLevel - 3);
     // we already scanned the entire planet, if this fails
     TRI_ASSERT(_innerBound != _outerBound && _innerBound != _maxBound);
     if (_statsFoundLastInterval < 256) {
       _boundDelta *= (_statsFoundLastInterval == 0 ? 4 : 2);
-    } else if (_statsFoundLastInterval > 512 && _boundDelta > minBound) {
+    } else if (_statsFoundLastInterval > 1024 && _boundDelta > minBound) {
       _boundDelta /= 2.0;
     }
+    TRI_ASSERT(_boundDelta > 0);
     _statsFoundLastInterval = 0;
   }
 }
+
+template class arangodb::geo::NearUtils<arangodb::geo::DocumentsAscending>;
+template class arangodb::geo::NearUtils<arangodb::geo::DocumentsDescending>;

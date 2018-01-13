@@ -12,7 +12,6 @@ using std::reverse;
 using std::vector;
 
 
-#include "base/logging.h"
 #include "s2.h"
 #include "s2cap.h"
 #include "s2cell.h"
@@ -140,10 +139,10 @@ bool S2CellUnion::Normalize() {
 
 void S2CellUnion::Denormalize(int min_level, int level_mod,
                               vector<S2CellId>* output) const {
-  DCHECK_GE(min_level, 0);
-  DCHECK_LE(min_level, S2CellId::kMaxLevel);
-  DCHECK_GE(level_mod, 1);
-  DCHECK_LE(level_mod, 3);
+  assert(min_level >= 0);
+  assert(min_level <= S2CellId::kMaxLevel);
+  assert(level_mod >= 1);
+  assert(level_mod <= 3);
 
   output->clear();
   output->reserve(num_cells());
@@ -249,8 +248,8 @@ bool S2CellUnion::Intersects(S2CellUnion const* y) const {
 }
 
 void S2CellUnion::GetUnion(S2CellUnion const* x, S2CellUnion const* y) {
-  DCHECK_NE(this, x);
-  DCHECK_NE(this, y);
+  assert(this != x);
+  assert(this != y);
   cell_ids_.reserve(x->num_cells() + y->num_cells());
   cell_ids_ = x->cell_ids_;
   cell_ids_.insert(cell_ids_.end(), y->cell_ids_.begin(), y->cell_ids_.end());
@@ -258,7 +257,7 @@ void S2CellUnion::GetUnion(S2CellUnion const* x, S2CellUnion const* y) {
 }
 
 void S2CellUnion::GetIntersection(S2CellUnion const* x, S2CellId const& id) {
-  DCHECK_NE(this, x);
+  assert(this != x);
   cell_ids_.clear();
   if (x->Contains(id)) {
     cell_ids_.push_back(id);
@@ -272,8 +271,8 @@ void S2CellUnion::GetIntersection(S2CellUnion const* x, S2CellId const& id) {
 }
 
 void S2CellUnion::GetIntersection(S2CellUnion const* x, S2CellUnion const* y) {
-  DCHECK_NE(this, x);
-  DCHECK_NE(this, y);
+  assert(this != x);
+  assert(this != y);
 
   // This is a fairly efficient calculation that uses binary search to skip
   // over sections of both input vectors.  It takes constant time if all the
@@ -313,8 +312,8 @@ void S2CellUnion::GetIntersection(S2CellUnion const* x, S2CellUnion const* y) {
   }
   // The output is generated in sorted order, and there should not be any
   // cells that can be merged (provided that both inputs were normalized).
-  DCHECK(IsSorted(cell_ids_));
-  DCHECK(!Normalize());
+  assert(IsSorted(cell_ids_));
+  assert(!Normalize());
 }
 
 static void GetDifferenceInternal(S2CellId cell,
@@ -336,8 +335,8 @@ static void GetDifferenceInternal(S2CellId cell,
 }
 
 void S2CellUnion::GetDifference(S2CellUnion const* x, S2CellUnion const* y) {
-  DCHECK_NE(this, x);
-  DCHECK_NE(this, y);
+  assert(this != x);
+  assert(this != y);
   // TODO: this is approximately O(N*log(N)), but could probably use similar
   // techniques as GetIntersection() to be more efficient.
 
@@ -347,8 +346,8 @@ void S2CellUnion::GetDifference(S2CellUnion const* x, S2CellUnion const* y) {
   }
   // The output is generated in sorted order, and there should not be any
   // cells that can be merged (provided that both inputs were normalized).
-  DCHECK(IsSorted(cell_ids_));
-  DCHECK(!Normalize());
+  assert(IsSorted(cell_ids_));
+  assert(!Normalize());
 }
 
 void S2CellUnion::Expand(int level) {
@@ -385,14 +384,14 @@ void S2CellUnion::Expand(S1Angle const& min_radius, int max_level_diff) {
 
 void S2CellUnion::InitFromRange(S2CellId const& min_id,
                                 S2CellId const& max_id) {
-  DCHECK(min_id.is_leaf());
-  DCHECK(max_id.is_leaf());
-  DCHECK_LE(min_id, max_id);
+  assert(min_id.is_leaf());
+  assert(max_id.is_leaf());
+  assert(min_id <= max_id);
 
   // We repeatedly add the largest cell we can.
   cell_ids_.clear();
   for (S2CellId next_min_id = min_id; next_min_id <= max_id; ) {
-    DCHECK(next_min_id.is_leaf());
+    assert(next_min_id.is_leaf());
 
     // Find the largest cell that starts at "next_min_id" and doesn't extend
     // beyond "max_id".
@@ -407,8 +406,8 @@ void S2CellUnion::InitFromRange(S2CellId const& min_id,
   }
 
   // The output is already normalized.
-  DCHECK(IsSorted(cell_ids_));
-  DCHECK(!Normalize());
+  assert(IsSorted(cell_ids_));
+  assert(!Normalize());
 }
 
 uint64_t S2CellUnion::LeafCellsCovered() const {

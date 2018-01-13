@@ -53,7 +53,7 @@ class S2MultiPolyline : public S2Region {
   
   int num_lines() const { return lines_.size(); }
   S2Polyline const& line(int k) const {
-    DCHECK_GE(k, 0);
+    assert(k >= 0);
     //DCHECK_LT(k, lines_.size());
     return lines_[k];
   }

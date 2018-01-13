@@ -207,15 +207,15 @@ Vector3<VType> Vector3<VType>::CrossProd(const Self& vb) const {
 
 template <typename VType>
 VType& Vector3<VType>::operator[](const int b) {
-  DCHECK(b >=0);
-  DCHECK(b <=2);
+  assert(b >=0);
+  assert(b <=2);
   return c_[b];
 }
 
 template <typename VType>
 VType Vector3<VType>::operator[](const int b) const {
-  DCHECK(b >=0);
-  DCHECK(b <=2);
+  assert(b >=0);
+  assert(b <=2);
   return c_[b];
 }
 

@@ -4,7 +4,6 @@
 #define UTIL_GEOMETRY_S2POLYLINE_H__
 
 #include <vector>
-#include "base/logging.h"
 #include "base/macros.h"
 #include "s2.h"
 #include "s2region.h"
@@ -47,8 +46,8 @@ class S2Polyline final : public S2Region {
 
   int num_vertices() const { return num_vertices_; }
   S2Point const& vertex(int k) const {
-    DCHECK_GE(k, 0);
-    DCHECK_LT(k, num_vertices_);
+    assert(k >= 0);
+    assert(k < num_vertices_);
     return vertices_[k];
   }
   

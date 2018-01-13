@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include "base/logging.h"
 #include "base/macros.h"
 #include "s2cellid.h"
 #include "s2edgeutil.h"
@@ -231,12 +230,12 @@ inline bool S2EdgeIndex::Iterator::Done() const {
 }
 
 inline int S2EdgeIndex::Iterator::Index() const {
-  DCHECK(!Done());
+  assert(!Done());
   return current_index_;
 }
 
 inline void S2EdgeIndex::Iterator::Next() {
-  DCHECK(!Done());
+  assert(!Done());
   if (is_brute_force_) {
     current_index_++;
   } else {

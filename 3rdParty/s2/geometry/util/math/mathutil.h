@@ -13,7 +13,6 @@
 #include <vector>
 
 #include "mathlimits.h"
-#include <geometry/base/logging.h>
 #include <geometry/base/casts.h>
 
 // Returns the sign of x:
@@ -116,7 +115,7 @@ class MathUtil {
                                         long double *r2) {
     if (discriminant <= 0 || a == 0) {
       // A case that should have been excluded by the caller.
-      DCHECK(false);
+      assert(false);
       return false;
     }
 
@@ -197,9 +196,9 @@ class MathUtil {
   // --------------------------------------------------------------------
   static double Sigmoid2(double x, double start_x,
                          double finish_x, double tolerance) {
-    DCHECK_GT(tolerance, 0);
-    DCHECK_LT(tolerance, 1);
-    DCHECK_NE(finish_x - start_x, 0);
+    assert(tolerance > 0.0);
+    assert(tolerance < 1.0);
+    assert(finish_x - start_x != 0.0);
     double lambda = log((1-tolerance)/tolerance)*2/(finish_x - start_x);
     return Sigmoid(x - 0.5 * (start_x + finish_x), lambda);
   }
@@ -234,14 +233,14 @@ class MathUtil {
   // Converts a non-zero double value representing an odds into its
   // probability value.
   static double OddsToProbability(double odds) {
-    DCHECK_GE(odds, 0.0);
+    assert(odds >= 0.0);
     return odds / (1.0 + odds);
   }
 
   // Converts a probability with range [0-1.0) into its odds value.
   static double ProbabilityToOdds(double prob) {
-    DCHECK_GE(prob, 0.0);
-    DCHECK_LT(prob, 1.0);
+    assert(prob >= 0.0);
+    assert(prob < 1.0);
     return prob / (1.0 - prob);
   }
 
@@ -520,7 +519,7 @@ class MathUtil {
   // work correctly for signed types and special floating point values.
   template<typename T>
   static bool WithinMargin(const T x, const T y, const T margin) {
-    DCHECK_GE(margin, 0);
+    assert(margin >= 0);
     // this is a little faster than x <= y + margin  &&  x >= y - margin
     return AbsDiff(x, y) <= margin;
   }
@@ -672,7 +671,7 @@ inline int64_t MathUtil::Round<int64_t, float>(float x) {
 template<typename T>
 bool MathUtil::WithinFraction(const T x, const T y, const T fraction) {
   // not just "0 <= fraction" to fool the compiler for unsigned types
-  DCHECK((0 < fraction || 0 == fraction)  &&  fraction < 1);
+  assert((0 < fraction || 0 == fraction)  &&  fraction < 1);
 
   // Template specialization will convert the if() condition to a constant,
   // which will cause the compiler to generate code for either the "if" part
@@ -691,7 +690,7 @@ template<typename T>
 bool MathUtil::WithinFractionOrMargin(const T x, const T y,
                                       const T fraction, const T margin) {
   // not just "0 <= fraction" to fool the compiler for unsigned types
-  DCHECK((0 < fraction || 0 == fraction)  &&  fraction < 1  &&  margin >= 0);
+  assert((0 < fraction || 0 == fraction)  &&  fraction < 1  &&  margin >= 0);
 
   // Template specialization will convert the if() condition to a constant,
   // which will cause the compiler to generate code for either the "if" part

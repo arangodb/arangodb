@@ -4,7 +4,6 @@
 using std::numeric_limits;
 
 
-#include "base/logging.h"
 #include "base/macros.h"
 #include "base/strtoint.h"
 #include "split.h"

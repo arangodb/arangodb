@@ -109,7 +109,7 @@ Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
   centroid.latitude = lat.getNumericValue<double>();
   centroid.longitude = lon.getNumericValue<double>();
   S2LatLng ll = S2LatLng::FromDegrees(centroid.latitude, centroid.longitude);
-  cells.push_back(S2CellId::FromLatLng(ll));
+  cells.emplace_back(S2CellId::FromLatLng(ll));
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -117,7 +117,7 @@ Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
 Result GeoUtils::indexCells(geo::Coordinate const& c,
                             std::vector<S2CellId>& cells) {
   S2LatLng ll = S2LatLng::FromDegrees(c.latitude, c.longitude);
-  cells.push_back(S2CellId::FromLatLng(ll));
+  cells.emplace_back(S2CellId::FromLatLng(ll));
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -172,7 +172,7 @@ void GeoUtils::scanIntervals(int worstIndexedLevel,
   // not need
   // to look at [47|1|40] or [47|11|60] because these cells don't intersect,
   // but polygons indexed with exact cell id [47|11] still might.
-  std::unordered_set<S2CellId> parentSet;
+  std::set<S2CellId> parentSet;
   for (const S2CellId& interval : cover) {
     S2CellId cell = interval;
 

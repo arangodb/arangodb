@@ -2445,7 +2445,6 @@ static AqlValue GeoContainsIntersect(arangodb::aql::Query* query,
                                      geo::ShapeContainer const& outer,
                                      AqlValue const& toTest,
                                      bool contains) {
-  TRI_ASSERT(outer.isAreaType());
   Result res(TRI_ERROR_BAD_PARAMETER, "Second arg requires coordinate pair or GeoJSON");
   AqlValueMaterializer materializer(trx);
   VPackSlice doc = materializer.slice(toTest, true);
@@ -2486,7 +2485,7 @@ static AqlValue GeoContainsIntersect(arangodb::aql::Query* query,
     Functions::RegisterWarning(query, func, res);
     return AqlValue(AqlValueHintNull());
   }
-  if (!outer.isAreaType()) {
+  if (contains && !outer.isAreaType()) {
     Functions::RegisterWarning(query, func, Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                     "Only polygons, circle and rect are supported as filter geometry"));
     return AqlValue(AqlValueHintNull());

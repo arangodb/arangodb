@@ -20,7 +20,7 @@ S2RegionIntersection::~S2RegionIntersection() {
 }
 
 void S2RegionIntersection::Init(std::vector<S2Region*>* regions) {
-  DCHECK(regions_.empty());
+  assert(regions_.empty());
   // We copy the vector rather than calling swap() to optimize storage.
   regions_ = *regions;
   regions->clear();

@@ -3,7 +3,6 @@
 #include "s2.h"
 
 #include "base/commandlineflags.h"
-#include "base/logging.h"
 #include "util/math/matrix3x3-inl.h"
 #include "util/math/vector2-inl.h"
 
@@ -69,7 +68,7 @@ inline uint32_t CollapseZero(uint32_t bits) {
 size_t hash<S2Point>::operator()(S2Point const& p) const {
   // This function is significantly faster than calling HashTo32().
   uint32_t const* data = reinterpret_cast<uint32_t const*>(p.Data());
-  DCHECK_EQ((6 * sizeof(*data)), sizeof(p));
+  static_assert((6 * sizeof(*data)) == sizeof(p), "wrong datatypes");
 
   // We call CollapseZero() on every 32-bit chunk to avoid having endian
   // dependencies.
@@ -108,7 +107,7 @@ S2Point S2::Ortho(S2Point const& a) {
 }
 
 void S2::GetFrame(S2Point const& z, Matrix3x3_d* m) {
-  DCHECK(IsUnitLength(z));
+  assert(IsUnitLength(z));
   m->SetCol(2, z);
   m->SetCol(1, Ortho(z));
   m->SetCol(0, m->Col(1).CrossProd(z));  // Already unit-length.
@@ -140,8 +139,8 @@ S2Point S2::RobustCrossProd(S2Point const& a, S2Point const& b) {
   // yields a result that is nearly orthogonal to both "a" and "b" even if
   // these two values differ only in the lowest bit of one component.
 
-  DCHECK(IsUnitLength(a));
-  DCHECK(IsUnitLength(b));
+  assert(IsUnitLength(a));
+  assert(IsUnitLength(b));
   S2Point x = (b + a).CrossProd(b - a);
   if (x != S2Point(0, 0, 0)) return x;
 
@@ -232,7 +231,7 @@ static int SymbolicallyPerturbedCCW(
   // the sign of the permutation, but it is more efficient to do this before
   // converting the inputs to the multi-precision representation, and this
   // also lets us re-use the result of the cross product B x C.
-  DCHECK(a < b && b < c);
+  assert(a < b && b < c);
 
   // Every input coordinate x[i] is assigned a symbolic perturbation dx[i].
   // We then compute the sign of the determinant of the perturbed points,
@@ -300,7 +299,7 @@ static int SymbolicallyPerturbedCCW(
   if (det_sign != 0) return det_sign;
   // The following test is listed in the paper, but it is redundant because
   // the previous tests guarantee that C == (0, 0, 0).
-  DCHECK_EQ(0, (c[1]*a[2] - c[2]*a[1]).sgn()); // db[0]
+  assert(0 == (c[1]*a[2] - c[2]*a[1]).sgn()); // db[0]
 
   det_sign = (a[0]*b[1] - a[1]*b[0]).sgn();    // dc[2]
   if (det_sign != 0) return det_sign;
@@ -324,7 +323,7 @@ int S2::ExpensiveCCW(S2Point const& a, S2Point const& b, S2Point const& c) {
   if (pa > pb) { std::swap(pa, pb); perm_sign = -perm_sign; }
 if (pb > pc) { std::swap(pb, pc); perm_sign = -perm_sign; }
   if (pa > pb) { std::swap(pa, pb); perm_sign = -perm_sign; }
-  DCHECK(pa < pb && pb < pc);
+  assert(pa < pb && pb < pc);
 
   // Construct multiple-precision versions of the sorted points and compute
   // their exact 3x3 determinant.
@@ -336,8 +335,8 @@ if (pb > pc) { std::swap(pb, pc); perm_sign = -perm_sign; }
 
   // The precision of ExactFloat is high enough that the result should always
   // be exact (no rounding was performed).
-  DCHECK(!det.is_nan());
-  DCHECK_LT(det.prec(), det.max_prec());
+  assert(!det.is_nan());
+  assert(det.prec() < det.max_prec());
 
   // If the exact determinant is non-zero, we're done.
   int det_sign = det.sgn();
@@ -346,7 +345,7 @@ if (pb > pc) { std::swap(pb, pc); perm_sign = -perm_sign; }
     // sign of the determinant.
     det_sign = SymbolicallyPerturbedCCW(xa, xb, xc, xb_cross_xc);
   }
-  DCHECK(det_sign != 0);
+  assert(det_sign != 0);
   return perm_sign * det_sign;
 }
 
@@ -484,9 +483,9 @@ double S2::TurnAngle(S2Point const& a, S2Point const& b, S2Point const& c) {
 }
 
 double S2::Area(S2Point const& a, S2Point const& b, S2Point const& c) {
-  DCHECK(IsUnitLength(a));
-  DCHECK(IsUnitLength(b));
-  DCHECK(IsUnitLength(c));
+  assert(IsUnitLength(a));
+  assert(IsUnitLength(b));
+  assert(IsUnitLength(c));
   // This method is based on l'Huilier's theorem,
   //
   //   tan(E/4) = sqrt(tan(s/2) tan((s-a)/2) tan((s-b)/2) tan((s-c)/2))
@@ -563,9 +562,9 @@ S2Point S2::PlanarCentroid(S2Point const& a, S2Point const& b,
 
 S2Point S2::TrueCentroid(S2Point const& a, S2Point const& b,
                          S2Point const& c) {
-  DCHECK(IsUnitLength(a));
-  DCHECK(IsUnitLength(b));
-  DCHECK(IsUnitLength(c));
+  assert(IsUnitLength(a));
+  assert(IsUnitLength(b));
+  assert(IsUnitLength(c));
 
   // I couldn't find any references for computing the true centroid of a
   // spherical triangle...  I have a truly marvellous demonstration of this

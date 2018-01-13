@@ -414,9 +414,7 @@ bool ShapeContainer::contains(ShapeContainer const* cc) const {
       S2Point const& p = static_cast<S2PointRegion*>(cc->_data)->point();
       return _data->VirtualContainsPoint(p);
     }
-    case ShapeContainer::Type::S2_LATLNGRECT: {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-    }
+    case ShapeContainer::Type::S2_LATLNGRECT:
     case ShapeContainer::Type::S2_CAP: {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }

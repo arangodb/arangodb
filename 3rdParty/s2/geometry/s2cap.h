@@ -3,7 +3,6 @@
 #ifndef UTIL_GEOMETRY_S2CAP_H_
 #define UTIL_GEOMETRY_S2CAP_H_
 
-#include "base/logging.h"
 #include "s1angle.h"
 #include "s2region.h"
 
@@ -132,7 +131,7 @@ class S2Cap : public S2Region {
   bool Contains(S2Point const& p) const;
 
   virtual void Encode(Encoder* const encoder) const {
-    LOG(FATAL) << "Unimplemented";
+    std::cerr << "Unimplemented";
   }
   virtual bool Decode(Decoder* const decoder) { return false; }
 
@@ -150,7 +149,7 @@ class S2Cap : public S2Region {
  private:
   S2Cap(S2Point const& axis, double height)
     : axis_(axis), height_(height) {
-    DCHECK(is_valid());
+    assert(is_valid());
   }
 
   // Return true if the cap intersects 'cell', given that the cap
@@ -162,12 +161,12 @@ class S2Cap : public S2Region {
 };
 
 inline S2Cap S2Cap::FromAxisHeight(S2Point const& axis, double height) {
-  DCHECK(S2::IsUnitLength(axis));
+  assert(S2::IsUnitLength(axis));
   return S2Cap(axis, height);
 }
 
 inline S2Cap S2Cap::FromAxisArea(S2Point const& axis, double area) {
-  DCHECK(S2::IsUnitLength(axis));
+  assert(S2::IsUnitLength(axis));
   return S2Cap(axis, area / (2 * M_PI));
 }
 

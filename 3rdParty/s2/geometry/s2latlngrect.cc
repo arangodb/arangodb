@@ -9,7 +9,6 @@ using std::reverse;
 
 #include "s2latlngrect.h"
 
-#include "base/logging.h"
 #include "util/coding/coder.h"
 #include "s2cap.h"
 #include "s2cell.h"
@@ -25,14 +24,14 @@ S2LatLngRect S2LatLngRect::FromCenterSize(S2LatLng const& center,
 }
 
 S2LatLngRect S2LatLngRect::FromPoint(S2LatLng const& p) {
-  DCHECK(p.is_valid());
+  assert(p.is_valid());
   return S2LatLngRect(p, p);
 }
 
 S2LatLngRect S2LatLngRect::FromPointPair(S2LatLng const& p1,
                                          S2LatLng const& p2) {
-  DCHECK(p1.is_valid()) << p1;
-  DCHECK(p2.is_valid()) << p2;
+  assert(p1.is_valid());// << p1;
+  assert(p2.is_valid());// << p2;
   return S2LatLngRect(R1Interval::FromPointPair(p1.lat().radians(),
                                                 p2.lat().radians()),
                       S1Interval::FromPointPair(p1.lng().radians(),
@@ -65,7 +64,7 @@ double S2LatLngRect::Area() const {
 }
 
 bool S2LatLngRect::Contains(S2LatLng const& ll) const {
-  DCHECK(ll.is_valid());
+  assert(ll.is_valid());
   return (lat_.Contains(ll.lat().radians()) &&
           lng_.Contains(ll.lng().radians()));
 }
@@ -84,7 +83,7 @@ bool S2LatLngRect::InteriorContains(S2Point const& p) const {
 }
 
 bool S2LatLngRect::InteriorContains(S2LatLng const& ll) const {
-  DCHECK(ll.is_valid());
+  assert(ll.is_valid());
   return (lat_.InteriorContains(ll.lat().radians()) &&
           lng_.InteriorContains(ll.lng().radians()));
 }
@@ -123,14 +122,14 @@ void S2LatLngRect::AddPoint(S2Point const& p) {
 }
 
 void S2LatLngRect::AddPoint(S2LatLng const& ll) {
-  DCHECK(ll.is_valid());
+  assert(ll.is_valid());
   lat_.AddPoint(ll.lat().radians());
   lng_.AddPoint(ll.lng().radians());
 }
 
 S2LatLngRect S2LatLngRect::Expanded(S2LatLng const& margin) const {
-  DCHECK_GE(margin.lat().radians(), 0);
-  DCHECK_GE(margin.lng().radians(), 0);
+  assert(margin.lat().radians() >= 0);
+  assert(margin.lng().radians() >= 0);
   return S2LatLngRect(
       lat_.Expanded(margin.lat().radians()).Intersection(FullLat()),
       lng_.Expanded(margin.lng().radians()));
@@ -237,7 +236,7 @@ void S2LatLngRect::Encode(Encoder* encoder) const {
   encoder->putdouble(lng_.lo());
   encoder->putdouble(lng_.hi());
 
-  DCHECK_GE(encoder->avail(), 0);
+  assert(encoder->avail() >= 0);
 }
 
 bool S2LatLngRect::Decode(Decoder* decoder) {
@@ -251,7 +250,7 @@ bool S2LatLngRect::Decode(Decoder* decoder) {
   double lng_hi = decoder->getdouble();
   lng_ = S1Interval(lng_lo, lng_hi);
 
-  DCHECK(is_valid());
+  assert(is_valid());
 
   return decoder->avail() >= 0;
 }
@@ -272,8 +271,8 @@ bool S2LatLngRect::IntersectsLatEdge(S2Point const& a, S2Point const& b,
   // Return true if the segment AB intersects the given edge of constant
   // latitude.  Unfortunately, lines of constant latitude are curves on
   // the sphere.  They can intersect a straight edge in 0, 1, or 2 points.
-  DCHECK(S2::IsUnitLength(a));
-  DCHECK(S2::IsUnitLength(b));
+  assert(S2::IsUnitLength(a));
+  assert(S2::IsUnitLength(b));
 
   // First, compute the normal to the plane AB that points vaguely north.
   S2Point z = S2::RobustCrossProd(a, b).Normalize();
@@ -283,8 +282,8 @@ bool S2LatLngRect::IntersectsLatEdge(S2Point const& a, S2Point const& b,
   // where the great circle through AB achieves its maximium latitude.
   S2Point y = S2::RobustCrossProd(z, S2Point(0, 0, 1)).Normalize();
   S2Point x = y.CrossProd(z);
-  DCHECK(S2::IsUnitLength(x));
-  DCHECK_GE(x[2], 0);
+  assert(S2::IsUnitLength(x));
+  assert(x[2] >= 0);
 
   // Compute the angle "theta" from the x-axis (in the x-y plane defined
   // above) where the great circle intersects the given line of latitude.
@@ -292,7 +291,7 @@ bool S2LatLngRect::IntersectsLatEdge(S2Point const& a, S2Point const& b,
   if (fabs(sin_lat) >= x[2]) {
     return false;  // The great circle does not reach the given latitude.
   }
-  DCHECK_GT(x[2], 0);
+  assert(x[2] > 0);
   double cos_theta = sin_lat / x[2];
   double sin_theta = sqrt(1 - cos_theta * cos_theta);
   double theta = atan2(sin_theta, cos_theta);
@@ -371,8 +370,8 @@ bool S2LatLngRect::Intersects(S2Cell const& cell) const {
 S1Angle S2LatLngRect::GetDistance(S2LatLngRect const& other) const {
   S2LatLngRect const& a = *this;
   S2LatLngRect const& b = other;
-  DCHECK(!a.is_empty());
-  DCHECK(!b.is_empty());
+  assert(!a.is_empty());
+  assert(!b.is_empty());
 
   // First, handle the trivial cases where the longitude intervals overlap.
   if (a.lng().Intersects(b.lng())) {
@@ -431,8 +430,8 @@ S1Angle S2LatLngRect::GetDistance(S2LatLng const& p) const {
   // The algorithm here is the same as in GetDistance(S2LagLngRect), only
   // with simplified calculations.
   S2LatLngRect const& a = *this;
-  DCHECK(!a.is_empty());
-  DCHECK(p.is_valid());
+  assert(!a.is_empty());
+  assert(p.is_valid());
 
   if (a.lng().Contains(p.lng().radians())) {
     return S1Angle::Radians(max(0.0, max(p.lat().radians() - a.lat().hi(),
@@ -468,7 +467,7 @@ S1Angle S2LatLngRect::GetDirectedHausdorffDistance(
   }
 
   double lng_distance = lng().GetDirectedHausdorffDistance(other.lng());
-  DCHECK_GE(lng_distance, 0);
+  assert(lng_distance >= 0);
   return GetDirectedHausdorffDistance(lng_distance, lat(), other.lat());
 }
 
@@ -504,8 +503,8 @@ S1Angle S2LatLngRect::GetDirectedHausdorffDistance(
   //     b_hi to the interior of U, if any, where D (resp. U) is the portion
   //     of edge a below (resp. above) the intersection point from B2.
 
-  DCHECK_GE(lng_diff, 0);
-  DCHECK_LE(lng_diff, M_PI);
+  assert(lng_diff >= 0);
+  assert(lng_diff <= M_PI);
 
   if (lng_diff == 0) {
     return S1Angle::Radians(a.GetDirectedHausdorffDistance(b));

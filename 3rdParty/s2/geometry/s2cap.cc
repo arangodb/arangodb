@@ -17,7 +17,7 @@ double const kRoundUp = 1.0 + 1.0 / (uint64_t(1) << 52);
 // Return the cap height corresponding to the given non-negative cap angle in
 // radians.  Cap angles of Pi radians or larger yield a full cap.
 double S2Cap::GetHeightForAngle(double radians) {
-  DCHECK_GE(radians, 0);
+  assert(radians >= 0);
 
   // Caps of Pi radians or more are full.
   if (radians >= M_PI) return 2;
@@ -30,8 +30,8 @@ double S2Cap::GetHeightForAngle(double radians) {
 }
 
 S2Cap S2Cap::FromAxisAngle(S2Point const& axis, S1Angle const& angle) {
-  DCHECK(S2::IsUnitLength(axis));
-  DCHECK_GE(angle.radians(), 0);
+  assert(S2::IsUnitLength(axis));
+  assert(angle.radians() >= 0);
   return S2Cap(axis, S2Cap::GetHeightForAngle(angle.radians()));
 }
 
@@ -73,7 +73,7 @@ bool S2Cap::InteriorIntersects(S2Cap const& other) const {
 
 void S2Cap::AddPoint(S2Point const& p) {
   // Compute the squared chord length, then convert it into a height.
-  DCHECK(S2::IsUnitLength(p));
+  assert(S2::IsUnitLength(p));
   if (is_empty()) {
     axis_ = p;
     height_ = 0;
@@ -98,7 +98,7 @@ void S2Cap::AddCap(S2Cap const& other) {
 }
 
 S2Cap S2Cap::Expanded(S1Angle const& distance) const {
-  DCHECK_GE(distance.radians(), 0);
+  assert(distance.radians() >= 0);
   if (is_empty()) return Empty();
   return FromAxisAngle(axis_, angle() + distance);
 }
@@ -231,12 +231,12 @@ bool S2Cap::MayIntersect(S2Cell const& cell) const {
 }
 
 bool S2Cap::Contains(S2Point const& p) const {
-  DCHECK(S2::IsUnitLength(p));
+  assert(S2::IsUnitLength(p));
   return (axis_ - p).Norm2() <= 2 * height_;
 }
 
 bool S2Cap::InteriorContains(S2Point const& p) const {
-  DCHECK(S2::IsUnitLength(p));
+  assert(S2::IsUnitLength(p));
   return is_full() || (axis_ - p).Norm2() < 2 * height_;
 }
 

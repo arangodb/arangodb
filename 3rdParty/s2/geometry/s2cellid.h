@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "base/integral_types.h"
-#include "base/logging.h"
 #include "s2.h"
 #include "util/math/vector2.h"
 
@@ -376,7 +375,7 @@ inline bool S2CellId::is_face() const {
 }
 
 inline int S2CellId::child_position(int level) const {
-  DCHECK(is_valid());
+  assert(is_valid());
   return static_cast<int>(id_ >> (2 * (kMaxLevel - level) + 1)) & 3;
 }
 
@@ -389,35 +388,35 @@ inline S2CellId S2CellId::range_max() const {
 }
 
 inline bool S2CellId::contains(S2CellId const& other) const {
-  DCHECK(is_valid());
-  DCHECK(other.is_valid());
+  assert(is_valid());
+  assert(other.is_valid());
   return other >= range_min() && other <= range_max();
 }
 
 inline bool S2CellId::intersects(S2CellId const& other) const {
-  DCHECK(is_valid());
-  DCHECK(other.is_valid());
+  assert(is_valid());
+  assert(other.is_valid());
   return other.range_min() <= range_max() && other.range_max() >= range_min();
 }
 
 inline S2CellId S2CellId::parent(int level) const {
-  DCHECK(is_valid());
-  DCHECK_GE(level, 0);
-  DCHECK_LE(level, this->level());
+  assert(is_valid());
+  assert(level >= 0);
+  assert(level <= this->level());
   uint64_t new_lsb = lsb_for_level(level);
   return S2CellId((id_ & -new_lsb) | new_lsb);
 }
 
 inline S2CellId S2CellId::parent() const {
-  DCHECK(is_valid());
-  DCHECK(!is_face());
+  assert(is_valid());
+  assert(!is_face());
   uint64_t new_lsb = lsb() << 2;
   return S2CellId((id_ & -new_lsb) | new_lsb);
 }
 
 inline S2CellId S2CellId::child(int position) const {
-  DCHECK(is_valid());
-  DCHECK(!is_leaf());
+  assert(is_valid());
+  assert(!is_leaf());
   // To change the level, we need to move the least-significant bit two
   // positions downward.  We do this by subtracting (4 * new_lsb) and adding
   // new_lsb.  Then to advance to the given child cell, we add
@@ -427,30 +426,30 @@ inline S2CellId S2CellId::child(int position) const {
 }
 
 inline S2CellId S2CellId::child_begin() const {
-  DCHECK(is_valid());
-  DCHECK(!is_leaf());
+  assert(is_valid());
+  assert(!is_leaf());
   uint64_t old_lsb = lsb();
   return S2CellId(id_ - old_lsb + (old_lsb >> 2));
 }
 
 inline S2CellId S2CellId::child_begin(int level) const {
-  DCHECK(is_valid());
-  DCHECK_GE(level, this->level());
-  DCHECK_LE(level, kMaxLevel);
+  assert(is_valid());
+  assert(level >= this->level());
+  assert(level <= kMaxLevel);
   return S2CellId(id_ - lsb() + lsb_for_level(level));
 }
 
 inline S2CellId S2CellId::child_end() const {
-  DCHECK(is_valid());
-  DCHECK(!is_leaf());
+  assert(is_valid());
+  assert(!is_leaf());
   uint64_t old_lsb = lsb();
   return S2CellId(id_ + old_lsb + (old_lsb >> 2));
 }
 
 inline S2CellId S2CellId::child_end(int level) const {
-  DCHECK(is_valid());
-  DCHECK_GE(level, this->level());
-  DCHECK_LE(level, kMaxLevel);
+  assert(is_valid());
+  assert(level >= this->level());
+  assert(level <= kMaxLevel);
   return S2CellId(id_ + lsb() + lsb_for_level(level));
 }
 
@@ -463,14 +462,14 @@ inline S2CellId S2CellId::prev() const {
 }
 
 inline S2CellId S2CellId::next_wrap() const {
-  DCHECK(is_valid());
+  assert(is_valid());
   S2CellId n = next();
   if (n.id_ < kWrapOffset) return n;
   return S2CellId(n.id_ - kWrapOffset);
 }
 
 inline S2CellId S2CellId::prev_wrap() const {
-  DCHECK(is_valid());
+  assert(is_valid());
   S2CellId p = prev();
   if (p.id_ < kWrapOffset) return p;
   return S2CellId(p.id_ + kWrapOffset);

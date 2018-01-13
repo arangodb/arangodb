@@ -8,7 +8,6 @@
 #ifndef UTIL_ENDIAN_ENDIAN_H_
 #define UTIL_ENDIAN_ENDIAN_H_
 
-#include <geometry/base/logging.h>
 #include <geometry/base/port.h>
 #include <geometry/base/int128.h>
 
@@ -131,8 +130,8 @@ class LittleEndian {
   // For speed reasons this function does not work for len == 0.
   // The caller needs to guarantee that 1 <= len <= 8.
   static uint64_t Load64VariableLength(const void * const p, int len) {
-    DCHECK_GE(len, 1);
-    DCHECK_LE(len, 8);
+    assert(len >= 1);
+    assert(len <= 8);
     const char * const buf = static_cast<const char * const>(p);
     uint64_t val = 0;
     --len;

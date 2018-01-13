@@ -82,20 +82,20 @@ S2RegionCoverer::~S2RegionCoverer() {
 }
 
 void S2RegionCoverer::set_min_level(int min_level) {
-  DCHECK_GE(min_level, 0);
-  DCHECK_LE(min_level, S2CellId::kMaxLevel);
+  assert(min_level >= 0);
+  assert(min_level <= S2CellId::kMaxLevel);
   min_level_ = max(0, min(S2CellId::kMaxLevel, min_level));
 }
 
 void S2RegionCoverer::set_max_level(int max_level) {
-  DCHECK_GE(max_level, 0);
-  DCHECK_LE(max_level, S2CellId::kMaxLevel);
+  assert(max_level >= 0);
+  assert(max_level <= S2CellId::kMaxLevel);
   max_level_ = max(0, min(S2CellId::kMaxLevel, max_level));
 }
 
 void S2RegionCoverer::set_level_mod(int level_mod) {
-  DCHECK_GE(level_mod, 1);
-  DCHECK_LE(level_mod, 3);
+  assert(level_mod >= 1);
+  assert(level_mod <= 3);
   level_mod_ = max(1, min(3, level_mod));
 }
 
@@ -172,7 +172,7 @@ void S2RegionCoverer::AddCandidate(Candidate* candidate) {
     DeleteCandidate(candidate, true);
     return;
   }
-  DCHECK_EQ(0, candidate->num_children);
+  assert(0 == candidate->num_children);
 
   // Expand one level at a time until we hit min_level_ to ensure that
   // we don't skip over it.
@@ -203,7 +203,7 @@ void S2RegionCoverer::AddCandidate(Candidate* candidate) {
                        + candidate->num_children) << max_children_shift())
                      + num_terminals);
     pq_->push(std::make_pair(priority, candidate));
-    VLOG(2) << "Push: " << candidate->cell.id() << " (" << priority << ") ";
+    //S2_LOG(2) << "Push: " << candidate->cell.id() << " (" << priority << ") ";
   }
 }
 
@@ -257,8 +257,8 @@ void S2RegionCoverer::GetCoveringInternal(S2Region const& region) {
   // children first), and then by the number of fully contained children
   // (fewest children first).
 
-  DCHECK(pq_->empty());
-  DCHECK(result_->empty());
+  assert(pq_->empty());
+  assert(result_->empty());
   region_ = &region;
   candidates_created_counter_ = 0;
 
@@ -267,7 +267,7 @@ void S2RegionCoverer::GetCoveringInternal(S2Region const& region) {
          (!interior_covering_ || result_->size() < (size_t)max_cells_)) {
     Candidate* candidate = pq_->top().second;
     pq_->pop();
-    VLOG(2) << "Pop: " << candidate->cell.id();
+    //S2_LOG(2) << "Pop: " << candidate->cell.id();
     if (candidate->cell.level() < min_level_ ||
         candidate->num_children == 1 ||
         (int)result_->size() + (int)(interior_covering_ ? 0 : (int)pq_->size()) +
@@ -284,9 +284,9 @@ void S2RegionCoverer::GetCoveringInternal(S2Region const& region) {
       AddCandidate(candidate);
     }
   }
-  VLOG(2) << "Created " << result_->size() << " cells, " <<
+  /*S2_LOG(2) << "Created " << result_->size() << " cells, " <<
       candidates_created_counter_ << " candidates created, " <<
-      pq_->size() << " left";
+      pq_->size() << " left";*/
   while (!pq_->empty()) {
     DeleteCandidate(pq_->top().second, true);
     pq_->pop();

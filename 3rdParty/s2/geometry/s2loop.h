@@ -6,7 +6,6 @@
 #include <map>
 #include <vector>
 
-#include "base/logging.h"
 #include "base/macros.h"
 #include "s2edgeindex.h"
 #include "s2region.h"
@@ -107,8 +106,8 @@ class S2Loop : public S2Region {
   // For convenience, we make two entire copies of the vertex list available:
   // vertex(n..2*n-1) is mapped to vertex(0..n-1), where n == num_vertices().
   S2Point const& vertex(int i) const {
-    DCHECK_GE(i, 0);
-    DCHECK_LT(i, (2 * num_vertices_));
+    assert(i >= 0);
+    assert(i < (2 * num_vertices_));
     int j = i - num_vertices();
     return vertices_[j >= 0 ? j : i];
   }
@@ -395,8 +394,8 @@ T S2Loop::GetSurfaceIntegral(T f_tri(S2Point const&, S2Point const&,
     //  2. Either O == V_0, or O is approximately perpendicular to V_0.
     //  3. "sum" is the oriented integral of f over the area defined by
     //     (O, V_0, V_1, ..., V_i).
-    DCHECK(i == 1 || origin.Angle(vertex(i)) < kMaxLength);
-    DCHECK(origin == vertex(0) || fabs(origin.DotProd(vertex(0))) < 1e-15);
+    assert(i == 1 || origin.Angle(vertex(i)) < kMaxLength);
+    assert(origin == vertex(0) || fabs(origin.DotProd(vertex(0))) < 1e-15);
 
     if (vertex(i+1).Angle(origin) > kMaxLength) {
       // We are about to create an unstable edge, so choose a new origin O'

@@ -34,7 +34,6 @@ using std::multiset;
 using std::vector;
 
 
-#include "base/logging.h"
 #include "base/macros.h"
 #include "base/scoped_ptr.h"
 #include "s2.h"
@@ -59,7 +58,7 @@ void S2PolygonBuilderOptions::set_vertex_merge_radius(S1Angle const& angle) {
 }
 
 void S2PolygonBuilderOptions::set_edge_splice_fraction(double fraction) {
-  CHECK(fraction < sqrt(3) / 2);
+  assert(fraction < sqrt(3) / 2);
   edge_splice_fraction_ = fraction;
 }
 
@@ -113,13 +112,13 @@ void S2PolygonBuilder::EraseEdge(S2Point const& v0, S2Point const& v1) {
   // them, so a VertexSet is a multiset.
 
   VertexSet* vset = &(*edges_)[v0];
-  DCHECK(vset->find(v1) != vset->end());
+  assert(vset->find(v1) != vset->end());
   vset->erase(vset->find(v1));
   if (vset->empty()) edges_->erase(v0);
 
   if (options_.undirected_edges()) {
     vset = &(*edges_)[v1];
-    DCHECK(vset->find(v0) != vset->end());
+    assert(vset->find(v0) != vset->end());
     vset->erase(vset->find(v0));
     if (vset->empty()) edges_->erase(v1);
   }
@@ -286,7 +285,7 @@ class S2PolygonBuilder::PointIndex {
     for (int i = ids_.size(); --i >= 0; ) {
       Map::iterator j = map_.lower_bound(ids_[i]);
       for (; j->second != p; ++j) {
-        DCHECK_EQ(ids_[i], j->first);
+        assert(ids_[i] == j->first);
       }
       map_.erase(j);
     }

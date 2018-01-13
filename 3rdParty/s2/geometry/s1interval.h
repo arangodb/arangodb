@@ -69,8 +69,8 @@ class S1Interval {
   // interval; use a constructor instead.  For example:
   //
   //   *lng_bounds = S1Interval(lng_lo, lng_hi);
-  void set_lo(double p) { bounds_[0] = p; DCHECK(is_valid()); }
-  void set_hi(double p) { bounds_[1] = p; DCHECK(is_valid()); }
+  void set_lo(double p) { bounds_[0] = p; assert(is_valid()); }
+  void set_hi(double p) { bounds_[1] = p; assert(is_valid()); }
 
   // An interval is valid if neither bound exceeds Pi in absolute value,
   // and the value -Pi appears only in the Empty() and Full() intervals.
@@ -180,12 +180,12 @@ DECLARE_POD(S1Interval);
 inline S1Interval::S1Interval(double lo, double hi) : bounds_(lo, hi) {
   if (lo == -M_PI && hi != M_PI) set_lo(M_PI);
   if (hi == -M_PI && lo != M_PI) set_hi(M_PI);
-  DCHECK(is_valid());
+  assert(is_valid());
 }
 
 inline S1Interval::S1Interval(double lo, double hi, ArgsChecked dummy)
   : bounds_(lo, hi) {
-  DCHECK(is_valid());
+  assert(is_valid());
 }
 
 inline S1Interval::S1Interval() : bounds_(M_PI, -M_PI) {

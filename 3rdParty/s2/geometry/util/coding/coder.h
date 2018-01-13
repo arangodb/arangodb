@@ -10,7 +10,7 @@
 #include <algorithm>
 // for min
 #include "util/coding/varint.h"
-#include "base/logging.h"
+#include "base/macros.h"
 #include "base/port.h"
 #include "util/endian/endian.h"
 
@@ -202,7 +202,7 @@ inline void Encoder::clear() {
 }
 
 inline void Encoder::Ensure(int N) {
-  DCHECK(ensure_allowed());
+  assert(ensure_allowed());
   if (avail() < N) {
     EnsureSlowPath(N);
   }
@@ -331,25 +331,25 @@ inline bool Decoder::get_varsigned32(int32_t* v) {
 }
 
 inline void Encoder::put8(unsigned char v) {
-  DCHECK_GE(avail(), sizeof(v));
+  assert(avail() >= sizeof(v));
   *buf_ = v;
   buf_ += sizeof(v);
 }
 
 inline void Encoder::put16(uint16_t v) {
-  DCHECK_GE(avail(), sizeof(v));
+  assert(avail() >= sizeof(v));
   LittleEndian::Store16(buf_, v);
   buf_ += sizeof(v);
 }
 
 inline void Encoder::put32(uint32_t v) {
-  DCHECK_GE(avail(), sizeof(v));
+  assert(avail() >= sizeof(v));
   LittleEndian::Store32(buf_, v);
   buf_ += sizeof(v);
 }
 
 inline void Encoder::put64(uint64_t v) {
-  DCHECK_GE(avail(), sizeof(v));
+  assert(avail() >= sizeof(v));
   LittleEndian::Store64(buf_, v);
   buf_ += sizeof(v);
 }

@@ -3,7 +3,6 @@
 #include "s2latlng.h"
 
 #include <algorithm>
-#include "base/logging.h"
 #include "base/stringprintf.h"
 
 S2LatLng S2LatLng::Normalized() const {
@@ -14,7 +13,7 @@ S2LatLng S2LatLng::Normalized() const {
 }
 
 S2Point S2LatLng::ToPoint() const {
-  DCHECK(is_valid());
+  assert(is_valid());
   // As of crosstool v14, gcc tries to calculate sin(phi), cos(phi),
   // sin(theta), cos(theta) on the following section by two sincos()
   // calls. However, for some inputs, sincos() returns significantly
@@ -33,7 +32,7 @@ S2Point S2LatLng::ToPoint() const {
 S2LatLng::S2LatLng(S2Point const& p)
   : coords_(Latitude(p).radians(), Longitude(p).radians()) {
   // The latitude and longitude are already normalized.
-  DCHECK(is_valid());
+  assert(is_valid());
 }
 
 S1Angle S2LatLng::GetDistance(S2LatLng const& o) const {
@@ -47,8 +46,8 @@ S1Angle S2LatLng::GetDistance(S2LatLng const& o) const {
   // distance that way (which gives about 15 digits of accuracy for all
   // distances).
 
-  DCHECK(is_valid());
-  DCHECK(o.is_valid());
+  assert(is_valid());
+  assert(o.is_valid());
   double lat1 = lat().radians();
   double lat2 = o.lat().radians();
   double lng1 = lng().radians();

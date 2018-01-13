@@ -6,7 +6,6 @@
 #include <cmath>
 #include <iostream>
 
-#include "base/logging.h"
 #include "util/math/vector2-inl.h"
 
 // An R1Interval represents a closed, bounded interval on the real line.
@@ -131,7 +130,7 @@ class R1Interval {
   // a point in this interval.  Note that the expansion of an empty interval
   // is always empty.
   R1Interval Expanded(double radius) const {
-    DCHECK_GE(radius, 0);
+    assert(radius >= 0);
     if (is_empty()) return *this;
     return R1Interval(lo() - radius, hi() + radius);
   }

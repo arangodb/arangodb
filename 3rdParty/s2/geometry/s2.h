@@ -582,13 +582,13 @@ inline S2Point S2::Origin() {
 
 inline int S2::TriageCCW(S2Point const& a, S2Point const& b, S2Point const& c,
                          S2Point const& a_cross_b) {
-  DCHECK(IsUnitLength(a));
-  DCHECK(IsUnitLength(b));
-  DCHECK(IsUnitLength(c));
+  assert(IsUnitLength(a));
+  assert(IsUnitLength(b));
+  assert(IsUnitLength(c));
   double det = a_cross_b.DotProd(c);
 
   // Double-check borderline cases in debug mode.
-  DCHECK(fabs(det) < kMaxDetError || fabs(det) > 100 * kMaxDetError ||
+  assert(fabs(det) < kMaxDetError || fabs(det) > 100 * kMaxDetError ||
          det * ExpensiveCCW(a, b, c) > 0);
 
   if (det > kMaxDetError) return 1;
@@ -721,7 +721,7 @@ inline S2Point S2::FaceUVtoXYZ(int face, double u, double v) {
 
 inline void S2::ValidFaceXYZtoUV(int face, S2Point const& p, double* pu,
                                  double* pv) {
-  DCHECK_GT(p.DotProd(FaceUVtoXYZ(face, 0, 0)), 0);
+  assert(p.DotProd(FaceUVtoXYZ(face, 0, 0)) > 0);
   switch (face) {
     case 0:
       *pu = p[1] / p[0];
@@ -848,8 +848,8 @@ int S2::Metric<dim>::GetMinLevel(double value) const {
   int level;
   frexp(value / deriv_, &level);
   level = std::max(0, std::min(S2::kMaxCellLevel, -((level - 1) >> (dim - 1))));
-  DCHECK(level == S2::kMaxCellLevel || GetValue(level) <= value);
-  DCHECK(level == 0 || GetValue(level - 1) > value);
+  assert(level == S2::kMaxCellLevel || GetValue(level) <= value);
+  assert(level == 0 || GetValue(level - 1) > value);
   return level;
 }
 
@@ -862,8 +862,8 @@ int S2::Metric<dim>::GetMaxLevel(double value) const {
   int level;
   frexp(deriv_ / value, &level);
   level = std::max(0, std::min(S2::kMaxCellLevel, (level - 1) >> (dim - 1)));
-  DCHECK(level == 0 || GetValue(level) >= value);
-  DCHECK(level == S2::kMaxCellLevel || GetValue(level + 1) < value);
+  assert(level == 0 || GetValue(level) >= value);
+  assert(level == S2::kMaxCellLevel || GetValue(level + 1) < value);
   return level;
 }
 

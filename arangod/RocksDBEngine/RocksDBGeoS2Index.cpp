@@ -89,6 +89,7 @@ private:
   std::vector<geo::GeoCover::Interval> _intervals;
 };*/
 
+template <typename CMP = geo::DocumentsAscending>
 class NearIterator final : public RocksDBGeoS2IndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
@@ -229,15 +230,15 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
     if (_iter->Valid()) {
       geo::Coordinate first = RocksDBValue::centroid(_iter->value());
       _near.estimateDensity(first);
-    } else {
+    }/* else {
       LOG_TOPIC(INFO, Logger::ROCKSDB)
           << "Apparently the s2 index is empty";
       _near.invalidate();
-    }
+    }*/
   }
 
  private:
-  geo::NearUtils _near;
+  geo::NearUtils<CMP> _near;
 };
 
 RocksDBGeoS2Index::RocksDBGeoS2Index(TRI_idx_iid_t iid,
@@ -392,7 +393,11 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
     // it is unnessesary to use a better level than configured
     params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
   }
-  return new NearIterator(_collection, trx, mmdr, this, std::move(params));
+  if (params.ascending) {
+    return new NearIterator<geo::DocumentsAscending>(_collection, trx, mmdr, this, std::move(params));
+  } else {
+    return new NearIterator<geo::DocumentsDescending>(_collection, trx, mmdr, this, std::move(params));
+  }
 }
 
 Result RocksDBGeoS2Index::parse(VPackSlice const& doc,

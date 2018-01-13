@@ -28,7 +28,6 @@ using std::multiset;
 using std::vector;
 
 #include "base/commandlineflags.h"
-#include "base/logging.h"
 #include "util/math/matrix3x3-inl.h"
 
 #include "s2multipolyline.h"
@@ -98,7 +97,7 @@ void S2MultiPolyline::Encode(Encoder* const encoder) const {
     S2Polyline const& line = lines_[k];
     line.Encode(encoder);
   }
-  DCHECK_GE(encoder->avail(), 0);
+  assert(encoder->avail() >= 0);
 }
 
 bool S2MultiPolyline::Decode(Decoder* const decoder) {

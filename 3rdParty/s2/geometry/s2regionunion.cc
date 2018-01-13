@@ -20,7 +20,7 @@ S2RegionUnion::~S2RegionUnion() {
 }
 
 void S2RegionUnion::Init(std::vector<S2Region*>* regions) {
-  DCHECK(regions_.empty());
+  assert(regions_.empty());
   // We copy the vector rather than calling swap() to optimize storage.
   regions_ = *regions;
   regions->clear();

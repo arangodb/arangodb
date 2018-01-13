@@ -97,13 +97,13 @@ void S2Loop::Init(vector<S2Point> const& vertices) {
 bool S2Loop::IsValid() const {
   // Loops must have at least 3 vertices.
   if (num_vertices() < 3) {
-    VLOG(2) << "Degenerate loop";
+    S2_LOG(2) << "Degenerate loop";
     return false;
   }
   // All vertices must be unit length.
   for (int i = 0; i < num_vertices(); ++i) {
     if (!S2::IsUnitLength(vertex(i))) {
-      VLOG(2) << "Vertex " << i << " is not unit length";
+      S2_LOG(2) << "Vertex " << i << " is not unit length";
       return false;
     }
   }
@@ -111,7 +111,7 @@ bool S2Loop::IsValid() const {
   unordered_map<S2Point, int> vmap;
   for (int i = 0; i < num_vertices(); ++i) {
     if (!vmap.insert(make_pair(vertex(i), i)).second) {
-      VLOG(2) << "Duplicate vertices: " << vmap[vertex(i)] << " and " << i;
+      S2_LOG(2) << "Duplicate vertices: " << vmap[vertex(i)] << " and " << i;
       return false;
     }
   }
@@ -134,9 +134,9 @@ bool S2Loop::IsValid() const {
         crosses = crosser.RobustCrossing(&vertex(ai+1)) > 0;
         previous_index = ai + 1;
         if (crosses) {
-          VLOG(2) << "Edges " << i << " and " << ai << " cross";
+          S2_LOG(2) << "Edges " << i << " and " << ai << " cross";
           // additional debugging information:
-          VLOG(2) << "Edge locations in degrees: "
+          S2_LOG(2) << "Edge locations in degrees: "
                   << S2LatLng(vertex(i)) << "-" << S2LatLng(vertex(i+1))
                   << " and "
                   << S2LatLng(vertex(ai)) << "-" << S2LatLng(vertex(ai+1));
@@ -165,7 +165,7 @@ void S2Loop::InitOrigin() {
   // The bounding box does not need to be correct before calling this
   // function, but it must at least contain vertex(1) since we need to
   // do a Contains() test on this point below.
-  DCHECK(bound_.Contains(vertex(1)));
+  assert(bound_.Contains(vertex(1)));
 
   // To ensure that every point is contained in exactly one face of a
   // subdivision of the sphere, all containment tests are done by counting the
@@ -287,13 +287,13 @@ bool S2Loop::IsNormalized() const {
 }
 
 void S2Loop::Normalize() {
-  CHECK(owns_vertices_);
+  assert(owns_vertices_);
   if (!IsNormalized()) Invert();
-  DCHECK(IsNormalized());
+  assert(IsNormalized());
 }
 
 void S2Loop::Invert() {
-  CHECK(owns_vertices_);
+  assert(owns_vertices_);
 
   ResetMutableFields();
   reverse(vertices_, vertices_ + num_vertices());
@@ -309,7 +309,7 @@ void S2Loop::Invert() {
 double S2Loop::GetArea() const {
   double area = GetSurfaceIntegral(S2::SignedArea);
   // The signed area should be between approximately -4*Pi and 4*Pi.
-  DCHECK_LE(fabs(area), 4 * M_PI + 1e-12);
+  assert(fabs(area) <= 4 * M_PI + 1e-12);
   if (area < 0) {
     // We have computed the negative of the area of the loop exterior.
     area += 4 * M_PI;
@@ -422,7 +422,7 @@ void S2Loop::Encode(Encoder* const encoder) const {
   encoder->putn(vertices_, sizeof(*vertices_) * num_vertices_);
   encoder->put8(origin_inside_);
   encoder->put32(depth_);
-  DCHECK_GE(encoder->avail(), 0);
+  assert(encoder->avail() >= 0);
 
   bound_.Encode(encoder);
 }
@@ -456,7 +456,7 @@ bool S2Loop::DecodeInternal(Decoder* const decoder,
   depth_ = decoder->get32();
   if (!bound_.Decode(decoder)) return false;
 
-  DCHECK(IsValid());
+  assert(IsValid());
 
   return decoder->avail() >= 0;
 }

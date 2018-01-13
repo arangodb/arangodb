@@ -69,7 +69,6 @@ using std::make_pair;
 
 
 #include "base/commandlineflags.h"
-#include "base/logging.h"
 #include "s2cell.h"
 #include "s2edgeutil.h"
 #include "s2polyline.h"
@@ -89,7 +88,7 @@ void S2EdgeIndex::Reset() {
 }
 
 void S2EdgeIndex::ComputeIndex() {
-  DCHECK(!index_computed_);
+  assert(!index_computed_);
 
   for (int i = 0; i < num_edges(); ++i) {
     S2Point from, to;
@@ -182,9 +181,9 @@ void S2EdgeIndex::GetEdgesInParentCells(
 // zero.
 static bool LenientCrossing(S2Point const& a, S2Point const& b,
                             S2Point const& c, S2Point const& d) {
-  DCHECK(S2::IsUnitLength(a));
-  DCHECK(S2::IsUnitLength(b));
-  DCHECK(S2::IsUnitLength(c));
+  assert(S2::IsUnitLength(a));
+  assert(S2::IsUnitLength(b));
+  assert(S2::IsUnitLength(c));
   // See comment for RobustCCW() in s2.h
   const double kMaxDetError = 1.e-14;
   double acb = a.CrossProd(c).DotProd(b);
@@ -281,7 +280,7 @@ void S2EdgeIndex::GetEdgesInChildrenCells(
       }
     }
   }
-  VLOG(1) << "Num cells traversed: " << num_cells;
+  //VLOG(1) << "Num cells traversed: " << num_cells;
 }
 
 // Appends to "candidate_crossings" all edge references which may cross the
@@ -292,7 +291,7 @@ void S2EdgeIndex::GetEdgesInChildrenCells(
 void S2EdgeIndex::FindCandidateCrossings(
     S2Point const& a, S2Point const& b,
     std::vector<int>* candidate_crossings) const {
-  DCHECK(index_computed_);
+  assert(index_computed_);
   std::vector<S2CellId> cover;
   GetCovering(a, b, false, &cover);
   GetEdgesInParentCells(cover, mapping_, minimum_s2_level_used_,

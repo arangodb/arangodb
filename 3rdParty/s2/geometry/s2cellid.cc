@@ -10,7 +10,6 @@ using std::max;
 #include <vector>
 
 #include "base/integral_types.h"
-#include "base/logging.h"
 #include "base/stringprintf.h"
 #include "strings/strutil.h"
 #include "s2.h"
@@ -131,8 +130,8 @@ int S2CellId::level() const {
   if (x & 0x00550055) level += 4;
   if (x & 0x05050505) level += 2;
   if (x & 0x11111111) level += 1;
-  DCHECK_GE(level, 0);
-  DCHECK_LE(level, kMaxLevel);
+  assert(level >= 0);
+  assert(level <= kMaxLevel);
   return level;
 }
 
@@ -155,7 +154,7 @@ S2CellId S2CellId::advance(int64_t steps) const {
 }
 
 S2CellId S2CellId::advance_wrap(int64_t steps) const {
-  DCHECK(is_valid());
+  assert(is_valid());
   if (steps == 0) return *this;
 
   int step_shift = 2 * (kMaxLevel - level()) + 1;
@@ -329,8 +328,8 @@ int S2CellId::ToFaceIJOrientation(int* pi, int* pj, int* orientation) const {
     // by (kMaxLevel-n-1) repetitions of "00", followed by "0".  The "10" has
     // no effect, while each occurrence of "00" has the effect of reversing
     // the kSwapMask bit.
-    DCHECK_EQ(0, S2::kPosToOrientation[2]);
-    DCHECK_EQ(S2::kSwapMask, S2::kPosToOrientation[0]);
+    assert(0 == S2::kPosToOrientation[2]);
+    assert(S2::kSwapMask == S2::kPosToOrientation[0]);
     if (lsb() & GG_ULONGLONG(0x1111111111111110)) {
       bits ^= S2::kSwapMask;
     }
@@ -445,7 +444,7 @@ void S2CellId::AppendVertexNeighbors(int level,
                                      std::vector<S2CellId>* output) const {
   // "level" must be strictly less than this cell's level so that we can
   // determine which vertex this cell is closest to.
-  DCHECK_LT(level, this->level());
+  assert(level < this->level());
   int i, j;
   int face = ToFaceIJOrientation(&i, &j, NULL);
 
@@ -495,7 +494,7 @@ void S2CellId::AppendAllNeighbors(int nbr_level,
   j &= -size;
 
   int nbr_size = GetSizeIJ(nbr_level);
-  DCHECK_LE(nbr_size, size);
+  assert(nbr_size <= size);
 
   // We compute the N-S, E-W, and diagonal neighbors in one pass.
   // The loop test is at the end of the loop to avoid 32-bit overflow.

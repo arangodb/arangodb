@@ -41,7 +41,7 @@ class S2PointRegion : public S2Region {
 };
 
 S2PointRegion::S2PointRegion(S2Point const& point) : point_(point) {
-  DCHECK(S2::IsUnitLength(point));
+  assert(S2::IsUnitLength(point));
 }
 
 #endif  // UTIL_GEOMETRY_S2POINTREGION_H__

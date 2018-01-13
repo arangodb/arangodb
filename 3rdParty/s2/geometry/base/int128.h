@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <iostream>
-#include "logging.h"
 
 // An unsigned 128-bit integer type. Thread-compatible.
 class uint128 {
@@ -151,7 +150,7 @@ LOGIC128(^)
 // Shift operators.
 
 inline uint128 uint128::operator<<(int amount) const {
-  DCHECK_GE(amount, 0);
+  assert(amount >= 0);
 
   // uint64 shifts of >= 64 are undefined, so we will need some special-casing.
   if (amount < 64) {
@@ -169,7 +168,7 @@ inline uint128 uint128::operator<<(int amount) const {
 }
 
 inline uint128 uint128::operator>>(int amount) const {
-  DCHECK_GE(amount, 0);
+  assert(amount >= 0);
 
   // uint64 shifts of >= 64 are undefined, so we will need some special-casing.
   if (amount < 64) {

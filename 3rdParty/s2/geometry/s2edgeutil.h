@@ -3,7 +3,6 @@
 #ifndef UTIL_GEOMETRY_S2EDGEUTIL_H__
 #define UTIL_GEOMETRY_S2EDGEUTIL_H__
 
-#include "base/logging.h"
 #include "base/macros.h"
 #include "s2.h"
 #include "s2latlngrect.h"

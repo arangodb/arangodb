@@ -109,7 +109,7 @@ class S2Cell : public S2Region {
   bool Contains(S2Point const& p) const;
 
   virtual void Encode(Encoder* const encoder) const {
-    LOG(FATAL) << "Unimplemented";
+    std::cerr << "Unimplemented";
   }
   virtual bool Decode(Decoder* const decoder) { return false; }
 
