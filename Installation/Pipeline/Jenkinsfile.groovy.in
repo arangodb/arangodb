@@ -393,51 +393,57 @@ def logExceptionStage(os, logFile, link, exc) {
 }
 
 def generateResult() {
-    def html = "<html><body><table>\n"
-    html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Total Time</th><th>Message</th></tr>\n"
+    node("master") {
+        lock("generate-result") {
+	    def html = "<html><body><table>\n"
+	    html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Total Time</th><th>Message</th></tr>\n"
 
-    for (key in resultsKeys.sort()) {
-        def start = resultsStart[key] ?: ""
-        def stop = resultsStop[key] ?: ""
-        def msg = resultsStatus[key] ?: ""
-        def link = resultsLink[key] ?: ""
+	    for (key in resultsKeys.sort()) {
+		def start = resultsStart[key] ?: ""
+		def stop = resultsStop[key] ?: ""
+		def msg = resultsStatus[key] ?: ""
+		def link = resultsLink[key] ?: ""
 
-        if (start != "" && stop == "") {
-            stop = new Date()
+		if (start != "" && stop == "") {
+		    stop = new Date()
+		}
+
+		def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
+		def startf = start == "" ? "-" : start.format('yyyy/MM/dd HH:mm:ss')
+		def stopf = stop == "" ? "-" : stop.format('yyyy/MM/dd HH:mm:ss')
+		def color = 'bgcolor="#FFA0A0"'
+
+		def la = ""
+		def lb = ""
+
+		if (link != "") {
+		    la = "<a href=\"$link\">"
+		    lb = "</a>"
+		}
+
+		if (msg == "finished") {
+		    color = 'bgcolor="#A0FFA0"'
+		}
+		else if (msg == "started") {
+		    color = 'bgcolor="#A0A0FF"'
+		    la = ""
+		    lb = ""
+		}
+
+		def total = resultsDuration[key] ?: ""
+
+		html += "<tr ${color}><td>${la}${key}${lb}</td><td>${startf}</td><td>${stopf}</td>"
+                html += "<td align=\"right\">${diff}</td><td align=\"right\">${total}</td>"
+		html += "<td align=\"right\">${msg}</td></tr>\n"
+	    }
+
+	    html += "</table></body></html>\n"
+
+	    fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
+
+	    archiveArtifacts(allowEmptyArchive: true, artifacts: "results.html")
         }
-
-        def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
-        def startf = start == "" ? "-" : start.format('yyyy/MM/dd HH:mm:ss')
-        def stopf = stop == "" ? "-" : stop.format('yyyy/MM/dd HH:mm:ss')
-        def color = 'bgcolor="#FFA0A0"'
-
-        def la = ""
-        def lb = ""
-
-        if (link != "") {
-            la = "<a href=\"$link\">"
-            lb = "</a>"
-        }
-
-        if (msg == "finished") {
-            color = 'bgcolor="#A0FFA0"'
-        }
-        else if (msg == "started") {
-            color = 'bgcolor="#A0A0FF"'
-            la = ""
-            lb = ""
-        }
-
-        def total = resultsDuration[key] ?: ""
-
-        html += "<tr ${color}><td>${la}${key}${lb}</td><td>${startf}</td><td>${stopf}</td><td align=\"right\">${diff}</td><td align=\"right\">${total}</td><td align=\"right\">${msg}</td></tr>\n"
     }
-
-    html += "</table></body></html>\n"
-
-    fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
-
-    archiveArtifacts(allowEmptyArchive: true, artifacts: "results.html")
 }
 
 def setBuildStatus(String message, String state, String commitSha) {
@@ -1157,12 +1163,12 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
 
         if (testCheck(os, edition, maintainer, mode, engine)) {
             try {
-                node("linux") { logStartStage(null, name, null) }
+                logStartStage(null, name, null)
                 executeTests(os, edition, maintainer, mode, engine, stageName)
-                node("linux") { logStopStage(null, name) }
+                logStopStage(null, name)
             }
             catch (exc) {
-                node("linux") { logExceptionStage(null, name, null, exc) }
+                logExceptionStage(null, name, null, exc)
                 throw exc
             }
         }
@@ -1183,12 +1189,12 @@ def testStepParallel(os, edition, maintainer, modeList) {
 
     if (branches) {
         try {
-            node("linux") { logStartStage(null, name, null) }
+            logStartStage(null, name, null)
             parallel branches
-            node("linux") { logStopStage(null, name) }
+            logStopStage(null, name)
         }
         catch (exc) {
-            node("linux") { logExceptionStage(null, name, null, exc) }
+            logExceptionStage(null, name, null, exc)
             throw exc
         }
     }
@@ -1317,12 +1323,12 @@ def testResilienceParallel(os, edition, maintainer) {
 
     if (branches) {
         try {
-            node("linux") { logStartStage(null, name, null) }
+            logStartStage(null, name, null)
             parallel branches
-            node("linux") { logStopStage(null, name) }
+            logStopStage(null, name)
         }
         catch (exc) {
-            node("linux") { logExceptionStage(null, name, null, exc) }
+            logExceptionStage(null, name, null, exc)
             throw exc
         }
     }
@@ -1493,7 +1499,7 @@ def runEdition(os, edition, maintainer, stageName) {
             def name = "${os}-${edition}-${maintainer}"
 
             try {
-                node("linux") { logStartStage(null, name, null) }
+                logStartStage(null, name, null)
 
                 node(buildJenkins[os]) {
                     stage(stageName) {
@@ -1545,10 +1551,10 @@ def runEdition(os, edition, maintainer, stageName) {
                 testStepParallel(os, edition, maintainer, ['cluster', 'singleserver'])
                 testResilienceParallel(os, edition, maintainer)
 
-                node("linux") { logStopStage(null, name) }
+                logStopStage(null, name)
             }
             catch (exc) {
-                node("linux") { logExceptionStage(null, name, null, exc) }
+                logExceptionStage(null, name, null, exc)
                 throw exc
             }
         }
@@ -1596,8 +1602,6 @@ timestamps {
         runOperatingSystems(['linux', 'mac', 'windows'])
     }
     finally {
-        node("linux") {
-            generateResult()
-        }
+        generateResult()
     }
 }
