@@ -14,17 +14,17 @@ node("master") {
 
 properties([
     parameters([
+        booleanParam(
+            defaultValue: false,
+            description: 'clean build directories',
+            name: 'CleanBuild'
+        ),
         choice(
             defaultValue: 'Auto',
             choices: 'Auto\nQuick Test\nPR Test\nNightly Test\nNone\nCustomized',
             description: 'Type of build/test configuration\n' +
                          'The values below are only relevant for type "Customized"',
             name: 'Type'
-        ),
-        booleanParam(
-            defaultValue: false,
-            description: 'clean build directories',
-            name: 'CleanBuild'
         ),
         booleanParam(
             defaultValue: false,
@@ -632,7 +632,7 @@ def setBuildsAndTests() {
         runTests = params.RunTests
         runResilience = params.RunResilience
 
-        if (!useLinux && !userMac && !useWindows && !useDocker){
+        if (!useLinux && !useMac && !useWindows && !useDocker){
             throw("No build type selected for custom build!")
         }
 
