@@ -632,7 +632,7 @@ def setBuildsAndTests() {
         runTests = params.RunTests
         runResilience = params.RunResilience
 
-        if (!useLinux && !userMac && !useWindows && !useDocker){
+        if (!useLinux && !useMac && !useWindows && !useDocker){
             throw("No build type selected for custom build!")
         }
 
