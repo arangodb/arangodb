@@ -77,7 +77,6 @@ double geo::QueryParams::minDistanceRad() const {
   return std::max(0.0, std::min(minDistance / kEarthRadiusInMeters, M_PI));
 }
 
-
 double geo::QueryParams::maxDistanceRad() const {
   double mm = std::max(0.0, std::min(maxDistance / kEarthRadiusInMeters, M_PI));
   if (filterType != FilterType::NONE) {

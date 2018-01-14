@@ -32,6 +32,7 @@
 #include "MMFiles/MMFilesEdgeIndex.h"
 #include "MMFiles/MMFilesFulltextIndex.h"
 #include "MMFiles/MMFilesGeoIndex.h"
+#include "MMFiles/MMFilesGeoS2Index.h"
 #include "MMFiles/MMFilesHashIndex.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
@@ -52,53 +53,47 @@
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process the fields list and add them to the json
+/// @brief process the fields list deduplicate and add them to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ProcessIndexFields(VPackSlice const definition,
-                              VPackBuilder& builder, int numFields,
-                              bool create) {
+static int ProcessIndexFields(VPackSlice const definition, VPackBuilder& builder,
+                              size_t minFields, size_t maxField, bool create) {
   TRI_ASSERT(builder.isOpenObject());
   std::unordered_set<StringRef> fields;
-
-  try {
-    VPackSlice fieldsSlice = definition.get("fields");
-    builder.add(VPackValue("fields"));
-    builder.openArray();
-    if (fieldsSlice.isArray()) {
-      // "fields" is a list of fields
-      for (auto const& it : VPackArrayIterator(fieldsSlice)) {
-        if (!it.isString()) {
-          return TRI_ERROR_BAD_PARAMETER;
-        }
-
-        StringRef f(it);
-
-        if (f.empty() || (create && f == StaticStrings::IdString)) {
-          // accessing internal attributes is disallowed
-          return TRI_ERROR_BAD_PARAMETER;
-        }
-
-        if (fields.find(f) != fields.end()) {
-          // duplicate attribute name
-          return TRI_ERROR_BAD_PARAMETER;
-        }
-
-        fields.insert(f);
-        builder.add(it);
+  
+  VPackSlice fieldsSlice = definition.get("fields");
+  builder.add(VPackValue("fields"));
+  builder.openArray();
+  if (fieldsSlice.isArray()) {
+    // "fields" is a list of fields
+    for (auto const& it : VPackArrayIterator(fieldsSlice)) {
+      if (!it.isString()) {
+        return TRI_ERROR_BAD_PARAMETER;
       }
+      
+      StringRef f(it);
+      
+      if (f.empty() || (create && f == StaticStrings::IdString)) {
+        // accessing internal attributes is disallowed
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+      
+      if (fields.find(f) != fields.end()) {
+        // duplicate attribute name
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+      
+      fields.insert(f);
+      builder.add(it);
     }
-
-    if (fields.empty() || (numFields > 0 && (int)fields.size() != numFields)) {
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-
-    builder.close();
-  } catch (std::bad_alloc const&) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  } catch (...) {
-    return TRI_ERROR_INTERNAL;
   }
+  
+  size_t cc = fields.size();
+  if (cc == 0 || cc < minFields || cc > maxField) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+  
+  builder.close();
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -148,7 +143,7 @@ static void ProcessIndexDeduplicateFlag(VPackSlice const definition,
 
 static int EnhanceJsonIndexHash(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 0, create);
+  int res = ProcessIndexFields(definition, builder, 1, INT_MAX, create);
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
@@ -163,7 +158,7 @@ static int EnhanceJsonIndexHash(VPackSlice const definition,
 
 static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
                                     VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 0, create);
+  int res = ProcessIndexFields(definition, builder, 1, INT_MAX, create);
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
@@ -178,7 +173,7 @@ static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
 
 static int EnhanceJsonIndexPersistent(VPackSlice const definition,
                                    VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 0, create);
+  int res = ProcessIndexFields(definition, builder, 1, INT_MAX, create);
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
@@ -208,7 +203,7 @@ static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
 
 static int EnhanceJsonIndexGeo1(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 1, create);
+  int res = ProcessIndexFields(definition, builder, 1, 1, create);
   if (res == TRI_ERROR_NO_ERROR) {
     if (ServerState::instance()->isCoordinator()) {
       builder.add("ignoreNull", VPackValue(true));
@@ -227,7 +222,26 @@ static int EnhanceJsonIndexGeo1(VPackSlice const definition,
 
 static int EnhanceJsonIndexGeo2(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 2, create);
+  int res = ProcessIndexFields(definition, builder, 2, 2, create);
+  if (res == TRI_ERROR_NO_ERROR) {
+    if (ServerState::instance()->isCoordinator()) {
+      builder.add("ignoreNull", VPackValue(true));
+      builder.add("constraint", VPackValue(false));
+    }
+    builder.add("sparse", VPackValue(true));
+    builder.add("unique", VPackValue(false));
+    ProcessIndexGeoJsonFlag(definition, builder);
+  }
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a s2 index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexGeoS2(VPackSlice const definition,
+                                 VPackBuilder& builder, bool create) {
+  int res = ProcessIndexFields(definition, builder, 1, 2, create);
   if (res == TRI_ERROR_NO_ERROR) {
     if (ServerState::instance()->isCoordinator()) {
       builder.add("ignoreNull", VPackValue(true));
@@ -246,7 +260,7 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
 
 static int EnhanceJsonIndexFulltext(VPackSlice const definition,
                                     VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 1, create);
+  int res = ProcessIndexFields(definition, builder, 1, 1, create);
   if (res == TRI_ERROR_NO_ERROR) {
     // hard-coded defaults
     builder.add("sparse", VPackValue(true));
@@ -334,6 +348,10 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       case Index::TRI_IDX_TYPE_GEO2_INDEX:
         res = EnhanceJsonIndexGeo2(definition, enhanced, create);
         break;
+        
+      case Index::TRI_IDX_TYPE_S2_INDEX:
+        res = EnhanceJsonIndexGeoS2(definition, enhanced, create);
+        break;
 
       case Index::TRI_IDX_TYPE_HASH_INDEX:
         res = EnhanceJsonIndexHash(definition, enhanced, create);
@@ -411,6 +429,9 @@ std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
   if (typeString == "geo1" || typeString == "geo2") {
     return std::make_shared<MMFilesGeoIndex>(iid, col, info);
   }
+  if (typeString == "s2index") {
+    return std::make_shared<MMFilesGeoS2Index>(iid, col, info);
+  }
   if (typeString == "hash") {
     return std::make_shared<MMFilesHashIndex>(iid, col, info);
   }
@@ -447,5 +468,6 @@ void MMFilesIndexFactory::fillSystemIndexes(
 }
 
 std::vector<std::string> MMFilesIndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{ "primary", "edge", "hash", "skiplist", "persistent", "geo", "fulltext" };
+  return std::vector<std::string>{ "primary", "edge", "hash", "skiplist", "persistent",
+                                  "geo", "s2index", "fulltext" };
 }

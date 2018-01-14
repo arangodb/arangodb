@@ -41,8 +41,8 @@ using namespace arangodb::basics;
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
-typedef std::multimap<S2CellId, TRI_voc_rid_t> index_t;
-typedef std::map<TRI_voc_rid_t, geo::Coordinate> coords_t;
+typedef std::multimap<S2CellId, LocalDocumentId> index_t;
+typedef std::map<LocalDocumentId, geo::Coordinate> coords_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -57,11 +57,11 @@ struct CoordAscCompare {
 
 /// Perform indexx scan
 template<typename CMP>
-static std::vector<TRI_voc_rid_t> nearSearch(index_t const& index,
+static std::vector<LocalDocumentId> nearSearch(index_t const& index,
                                              coords_t const& coords,
                                              geo::NearUtils<CMP>& near,
                                              size_t limit) {
-  std::vector<TRI_voc_rid_t> result;
+  std::vector<LocalDocumentId> result;
   
   while (!near.isDone()) {
     std::vector<geo::Interval> intervals = near.intervals();
@@ -78,7 +78,7 @@ static std::vector<TRI_voc_rid_t> nearSearch(index_t const& index,
     
     while (near.hasNearest()) {
       geo::Document doc = near.nearest();
-      result.push_back(doc.rid);
+      result.push_back(doc.document);
       near.popNearest();
       
       if (result.size() >= limit) {
@@ -93,9 +93,9 @@ static std::vector<TRI_voc_rid_t> nearSearch(index_t const& index,
 }
 
 static std::vector<geo::Coordinate> convert(coords_t const& coords,
-                                            std::vector<TRI_voc_rid_t> const& docs) {
+                                            std::vector<LocalDocumentId> const& docs) {
   std::vector<geo::Coordinate> result;
-  for (TRI_voc_rid_t rid : docs) {
+  for (LocalDocumentId rid : docs) {
     result.push_back(coords.at(rid));
   }
   return result;
@@ -122,7 +122,7 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
   // simulated index
   index_t index;
   coords_t docs;
-  TRI_voc_rid_t counter = 0;
+  size_t counter = 0;
   
   // add some entries to it
   for (double lat=-40; lat <=40 ; ++lat) {
@@ -136,7 +136,7 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
       REQUIRE(cells.size() == 1);
       REQUIRE(cells[0].level() == S2::kMaxCellLevel);
       
-      TRI_voc_rid_t rev = counter++;
+      LocalDocumentId rev(counter++);
       index.emplace(cells[0], rev);
       docs.emplace(rev, cc);
     }
@@ -150,12 +150,12 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
     params.ascending = true;
     geo::NearUtils<geo::DocumentsAscending> near(std::move(params));
     
-    std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, SIZE_T_MAX);
-    std::set<TRI_voc_rid_t> unique;
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, SIZE_T_MAX);
+    std::set<LocalDocumentId> unique;
     REQUIRE(result.size() == counter);
     
     double lastRad = 0;
-    for (TRI_voc_rid_t rev : result) {
+    for (LocalDocumentId rev : result) {
       // check that we get every document exactly once
       REQUIRE(unique.find(rev) == unique.end());
       unique.insert(rev);
@@ -175,7 +175,7 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
     params.ascending = true;
     geo::NearUtils<geo::DocumentsAscending> near(std::move(params));
 
-    std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, 5);
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 5);
     REQUIRE(result.size() == 5);
     
     std::vector<geo::Coordinate> coords = convert(docs, result);
@@ -192,7 +192,7 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
     params.maxDistance = 111200.0;
     geo::NearUtils<geo::DocumentsAscending> near(std::move(params));
 
-    std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, 1000);
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 1000);
     REQUIRE(result.size() == 5);
     
     std::vector<geo::Coordinate> coords = convert(docs, result);
@@ -211,7 +211,7 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
 
     near.estimateDensity(geo::Coordinate(0,1));
     
-    std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, 1000);
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 1000);
     REQUIRE(result.size() == 5);
     
     std::vector<geo::Coordinate> coords = convert(docs, result);
@@ -230,7 +230,7 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
 
     near.estimateDensity(geo::Coordinate(0,1));
     
-    std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, 1000);
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 1000);
     REQUIRE(result.size() == 5);
     
     std::vector<geo::Coordinate> coords = convert(docs, result);
@@ -246,12 +246,12 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
     params.ascending = false;
     geo::NearUtils<geo::DocumentsDescending> near(std::move(params));
 
-    std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, SIZE_T_MAX);
-    std::set<TRI_voc_rid_t> unique;
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, SIZE_T_MAX);
+    std::set<LocalDocumentId> unique;
     REQUIRE(result.size() == counter);
     
     double lastRad = geo::kEarthRadiusInMeters;
-    for (TRI_voc_rid_t rev : result) {
+    for (LocalDocumentId rev : result) {
       // check that we get every document exactly once
       REQUIRE(unique.find(rev) == unique.end());
       unique.insert(rev);
@@ -271,8 +271,8 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
     params.ascending = false;
     geo::NearUtils<geo::DocumentsDescending> near(std::move(params));
     
-    std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, 5);
-    std::set<TRI_voc_rid_t> unique;
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 5);
+    std::set<LocalDocumentId> unique;
     REQUIRE(result.size() == 5);
     
     std::vector<geo::Coordinate> coords = convert(docs, result);
@@ -288,8 +288,8 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
     params.maxDistance = 111200;
     geo::NearUtils<geo::DocumentsDescending> near(std::move(params));
     
-    std::vector<TRI_voc_rid_t> result = nearSearch(index, docs, near, 1000);
-    std::set<TRI_voc_rid_t> unique;
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 1000);
+    std::set<LocalDocumentId> unique;
     REQUIRE(result.size() == 5);
     
     std::vector<geo::Coordinate> coords = convert(docs, result);

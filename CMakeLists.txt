@@ -441,6 +441,7 @@ include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/s2)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/btree/include)
 
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)

@@ -38,9 +38,9 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
-template<typename CMP>
+template <typename CMP>
 NearUtils<CMP>::NearUtils(QueryParams&& qp)
-  : _params(std::move(qp)),
+    : _params(std::move(qp)),
       _centroid(
           S2LatLng::FromDegrees(qp.centroid.latitude, qp.centroid.longitude)
               .ToPoint()),
@@ -53,17 +53,18 @@ NearUtils<CMP>::NearUtils(QueryParams&& qp)
   static_assert(isAcending() || isDescending(), "Invalid template");
   TRI_ASSERT(!isAcending() || _params.ascending);
   TRI_ASSERT(!isDescending() || !_params.ascending);
-    
+
   /*LOG_TOPIC(ERR, Logger::FIXME)
       << "--------------------------------------------------------";
   LOG_TOPIC(INFO, Logger::FIXME) << "[Near] centroid target: "
                                  << _params.centroid.toString();
-  LOG_TOPIC(INFO, Logger::FIXME) << "[Near] minBounds: " << (size_t)(_params.minDistance * kEarthRadiusInMeters)
+  LOG_TOPIC(INFO, Logger::FIXME) << "[Near] minBounds: " <<
+  (size_t)(_params.minDistance * kEarthRadiusInMeters)
         << "  maxBounds:" << (size_t)(_maxBound * kEarthRadiusInMeters)
         << "  sorted " << (_params.ascending ? "asc" : "desc");//*/
 }
 
-template<typename CMP>
+template <typename CMP>
 void NearUtils<CMP>::reset() {
   if (!_seen.empty() || !_buffer.empty()) {
     _seen.clear();
@@ -75,7 +76,8 @@ void NearUtils<CMP>::reset() {
   if (_boundDelta <= 0) {  // do not reset everytime
     int level = std::max(1, _params.cover.bestIndexedLevel - 2);
     // Level 15 == 474.142m
-    level = std::min(level, S2::kMaxDiag.GetClosestLevel(500 / kEarthRadiusInMeters));
+    level = std::min(level,
+                     S2::kMaxDiag.GetClosestLevel(500 / kEarthRadiusInMeters));
     _boundDelta = S2::kMaxDiag.GetValue(level);  // in radians
     TRI_ASSERT(_boundDelta * kEarthRadiusInMeters >= 450);
   }
@@ -88,42 +90,42 @@ void NearUtils<CMP>::reset() {
   TRI_ASSERT(_innerBound <= _outerBound && _outerBound <= _maxBound);
 }
 
-template<typename CMP>
+template <typename CMP>
 std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   TRI_ASSERT(!hasNearest());
   TRI_ASSERT(!isDone());
   TRI_ASSERT(!_params.ascending || _innerBound != _maxBound);
-  
+
   TRI_ASSERT(_boundDelta >= S2::kMaxEdge.GetValue(S2::kMaxCellLevel - 2));
   estimateDelta();
   if (isAcending()) {
-    _innerBound = _outerBound; // initially _outerBounds == _innerBounds
+    _innerBound = _outerBound;  // initially _outerBounds == _innerBounds
     _outerBound = std::min(_outerBound + _boundDelta, _maxBound);
     if (_innerBound == _maxBound && _outerBound == _maxBound) {
-      return {}; // search is finished
+      return {};  // search is finished
     }
   } else if (isDescending()) {
-    _outerBound = _innerBound; // initially _outerBounds == _innerBounds
+    _outerBound = _innerBound;  // initially _outerBounds == _innerBounds
     _innerBound = std::max(_innerBound - _boundDelta, _minBound);
     if (_outerBound == _minBound && _innerBound == _minBound) {
-      return {}; // search is finished
+      return {};  // search is finished
     }
   }
-  
+
   TRI_ASSERT(_innerBound <= _outerBound && _outerBound <= _maxBound);
   TRI_ASSERT(_innerBound != _outerBound);
   /*LOG_TOPIC(INFO, Logger::FIXME) << "[Bounds] "
     << (size_t)(_innerBound * kEarthRadiusInMeters) << " - "
     << (size_t)(_outerBound * kEarthRadiusInMeters) << "  delta: "
     << (size_t)(_boundDelta * kEarthRadiusInMeters);//*/
-  
+
   std::vector<S2CellId> cover;
   if (_innerBound == _minBound) {
-    //LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] 0 to something";
+    // LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] 0 to something";
     S2Cap ob = S2Cap::FromAxisAngle(_centroid, S1Angle::Radians(_outerBound));
     _coverer.GetCovering(ob, &cover);
   } else if (_innerBound > _minBound) {
-    //LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] something inbetween";
+    // LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] something inbetween";
     // create a search ring
     std::vector<S2Region*> regions;
     S2Cap ib = S2Cap::FromAxisAngle(_centroid, S1Angle::Radians(_innerBound));
@@ -132,7 +134,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
     regions.push_back(new S2Cap(ob));
     S2RegionIntersection ring(&regions);
     _coverer.GetCovering(ring, &cover);
-  } else { // invalid bounds
+  } else {  // invalid bounds
     TRI_ASSERT(false);
     return {};
   }
@@ -145,10 +147,11 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
       coverUnion.InitSwap(&cover);
       S2CellUnion lookup;
       lookup.GetDifference(&coverUnion, &_scannedCells);
-      
-      TRI_ASSERT(cover.empty()); // swap should empty this
+
+      TRI_ASSERT(cover.empty());  // swap should empty this
       if (_params.filterType != geo::FilterType::NONE) {
-        TRI_ASSERT(_params.filterShape.type() != ShapeContainer::Type::UNDEFINED);
+        TRI_ASSERT(_params.filterShape.type() !=
+                   ShapeContainer::Type::UNDEFINED);
         for (S2CellId cellId : lookup.cell_ids()) {
           if (_params.filterShape.mayIntersect(cellId)) {
             cover.push_back(cellId);
@@ -158,7 +161,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
         cover = lookup.cell_ids();
       }
     }
-    
+
     if (!cover.empty()) {
       GeoUtils::scanIntervals(_params.cover.worstIndexedLevel, cover,
                               intervals);
@@ -179,41 +182,42 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   return intervals;
 }
 
-template<typename CMP>
-void NearUtils<CMP>::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
+template <typename CMP>
+void NearUtils<CMP>::reportFound(LocalDocumentId lid,
+                                 geo::Coordinate const& center) {
   S2LatLng cords = S2LatLng::FromDegrees(center.latitude, center.longitude);
-  double rad = _centroid.Angle(cords.ToPoint()); // distance in radians
-  
+  double rad = _centroid.Angle(cords.ToPoint());  // distance in radians
+
   /*LOG_TOPIC(INFO, Logger::FIXME)
   << "[Found] " << rid << " at " << (center.toString())
   << " distance: " << (rad * kEarthRadiusInMeters);//*/
-  
+
   // cheap rejections based on distance to target
   if ((isAcending() && rad < _innerBound) ||
-      (isDescending() && rad > _outerBound) ||
-      rad > _maxBound || rad < _minBound) {
+      (isDescending() && rad > _outerBound) || rad > _maxBound ||
+      rad < _minBound) {
     return;
   }
-  
-  _statsFoundLastInterval++;  // we have to estimate scan bounds
-  auto const& it = _seen.find(rid);
-  if (it == _seen.end()) {
-    _seen.emplace(rid, rad);
 
-    if (_params.filterType != FilterType::NONE) { // expensive rejection
+  _statsFoundLastInterval++;  // we have to estimate scan bounds
+  auto const& it = _seen.find(lid);
+  if (it == _seen.end()) {
+    _seen.emplace(lid, rad);
+
+    if (_params.filterType != FilterType::NONE) {  // expensive rejection
       if (!_params.filterShape.contains(&center)) {
         return;
       }
     }
-    _buffer.emplace(rid, rad);
-  } else {                          // deduplication
+    _buffer.emplace(lid, rad);
+  } else {  // deduplication
     // this can happen but probably shouldn't if we have just points
-    LOG_TOPIC(ERR, Logger::FIXME) << "[Duplicate] " << rid;
+    LOG_TOPIC(ERR, Logger::FIXME) << "[Duplicate] " << lid;
     TRI_ASSERT(it->second == rad);  // should never change
   }
 }
 
-template<typename CMP>
+template <typename CMP>
 void NearUtils<CMP>::estimateDensity(geo::Coordinate const& found) {
   double const minBound = S2::kAvgDiag.GetValue(S2::kMaxCellLevel - 3);
   S2LatLng cords = S2LatLng::FromDegrees(found.latitude, found.longitude);
@@ -228,7 +232,7 @@ void NearUtils<CMP>::estimateDensity(geo::Coordinate const& found) {
 }
 
 /// @brief adjust the bounds delta
-template<typename CMP>
+template <typename CMP>
 void NearUtils<CMP>::estimateDelta() {
   if ((isAcending() && _innerBound > _minBound) ||
       (isDescending() && _innerBound < _maxBound)) {

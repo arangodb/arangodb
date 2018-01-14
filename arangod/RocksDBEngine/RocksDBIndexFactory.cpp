@@ -208,8 +208,8 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
 /// @brief enhances the json of a s2 index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EnhanceJsonIndexS2(VPackSlice const definition,
-                                     VPackBuilder& builder, bool create) {
+static int EnhanceJsonIndexGeoS2(VPackSlice const definition,
+                                 VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 1, 2, create);
   if (res == TRI_ERROR_NO_ERROR) {
     if (ServerState::instance()->isCoordinator()) {
@@ -222,7 +222,6 @@ static int EnhanceJsonIndexS2(VPackSlice const definition,
   }
   return res;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of a fulltext index
@@ -323,7 +322,7 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       break;
       
     case Index::TRI_IDX_TYPE_S2_INDEX:
-      res = EnhanceJsonIndexS2(definition, enhanced, create);
+      res = EnhanceJsonIndexGeoS2(definition, enhanced, create);
       break;
 
     case Index::TRI_IDX_TYPE_HASH_INDEX:

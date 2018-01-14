@@ -25,6 +25,7 @@
 
 #include "Geo/GeoParams.h"
 #include "Geo/GeoUtils.h"
+#include "VocBase/LocalDocumentId.h"
 
 #include <geometry/s2cap.h>
 #include <geometry/s2cellid.h>
@@ -32,8 +33,8 @@
 #include <geometry/s2region.h>
 #include <geometry/s2regioncoverer.h>
 #include <queue>
-#include <vector>
 #include <type_traits>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
@@ -44,9 +45,9 @@ namespace geo {
 
 /// result of a geospatial index query. distance may or may not be set
 struct Document {
-  Document(TRI_voc_rid_t doc, double rad) : rid(doc), distRad(rad) {}
+  Document(LocalDocumentId d, double rad) : document(d), distRad(rad) {}
   /// @brief LocalDocumentId
-  TRI_voc_rid_t rid;
+  LocalDocumentId document;
   /// @brief distance from centroids on the unit sphere
   double distRad;
 };
@@ -56,7 +57,7 @@ struct DocumentsAscending {
     return a.distRad > b.distRad;
   }
 };
-  
+
 struct DocumentsDescending {
   bool operator()(Document const& a, Document const& b) {
     return a.distRad < b.distRad;
@@ -67,22 +68,22 @@ struct DocumentsDescending {
 /// Will return points sorted by distance to the target point, can
 /// also filter contains / intersect in regions (on rsesult points and
 /// search intervals). Should be storage engine agnostic
-template<typename CMP = DocumentsAscending>
+template <typename CMP = DocumentsAscending>
 class NearUtils {
-  
   static_assert(std::is_same<CMP, DocumentsAscending>::value ||
-                std::is_same<CMP, DocumentsDescending>::value, "Invalid template type");
+                    std::is_same<CMP, DocumentsDescending>::value,
+                "Invalid template type");
   static constexpr bool isAcending() {
     return std::is_same<CMP, DocumentsAscending>::value;
   }
   static constexpr bool isDescending() {
     return std::is_same<CMP, DocumentsDescending>::value;
   }
-  
+
  public:
-  
   /// @brief Type of documents buffer
-  typedef std::priority_queue<Document, std::vector<Document>, CMP> GeoDocumentsQueue;
+  typedef std::priority_queue<Document, std::vector<Document>, CMP>
+      GeoDocumentsQueue;
 
   NearUtils(geo::QueryParams&& params);
 
@@ -93,14 +94,15 @@ class NearUtils {
   geo::FilterType filterType() const { return _params.filterType; }
 
   geo::ShapeContainer const& filterShape() const { return _params.filterShape; }
-  
+
   /// @brief all intervals are covered, no more buffered results
   bool isDone() const {
     TRI_ASSERT(_innerBound >= 0 && _innerBound <= _outerBound);
     TRI_ASSERT(_outerBound <= _maxBound && _maxBound <= M_PI);
     return _buffer.empty() &&
-          ((isAcending() && _innerBound == _maxBound && _outerBound == _maxBound) ||
-          (isDescending() && _innerBound == 0 && _outerBound == 0));
+           ((isAcending() && _innerBound == _maxBound &&
+             _outerBound == _maxBound) ||
+            (isDescending() && _innerBound == 0 && _outerBound == 0));
   }
 
   /// @brief has buffered results
@@ -108,8 +110,9 @@ class NearUtils {
     // we need to not return results in the search area
     // between _innerBound and _maxBound. Otherwise results may appear
     // too early in the result list
-    return !_buffer.empty() && ((isAcending() && _buffer.top().distRad <= _innerBound) ||
-                                (isDescending() && _buffer.top().distRad >= _outerBound));
+    return !_buffer.empty() &&
+           ((isAcending() && _buffer.top().distRad <= _innerBound) ||
+            (isDescending() && _buffer.top().distRad >= _outerBound));
   }
 
   /// @brief closest buffered result
@@ -131,17 +134,16 @@ class NearUtils {
   std::vector<geo::Interval> intervals();
 
   /// buffer and sort results
-  void reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center);
+  void reportFound(LocalDocumentId lid, geo::Coordinate const& center);
 
   /// aid density estimation by reporting a result close
   /// to the target coordinates
   void estimateDensity(geo::Coordinate const& found);
 
  private:
-  
   /// @brief adjust the bounds delta
   void estimateDelta();
-  
+
   /// @brief make isDone return true
   void invalidate() {
     _innerBound = _maxBound;
@@ -173,7 +175,7 @@ class NearUtils {
   GeoDocumentsQueue _buffer;
 
   /// for deduplication of results
-  std::unordered_map<TRI_voc_rid_t, double> _seen;
+  std::unordered_map<LocalDocumentId, double> _seen;
 
   /// Track the already scanned region
   S2CellUnion _scannedCells;

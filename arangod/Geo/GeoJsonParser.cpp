@@ -103,7 +103,7 @@ Result GeoJsonParser::parseGeoJson(VPackSlice const& geoJSON,
   if (!geoJSON.isObject()) {
     return badParam;
   }
-  
+
   GeoJsonParser::GeoJSONType t = parseGeoJSONType(geoJSON);
   switch (t) {
     case GeoJSONType::POINT: {
@@ -151,8 +151,7 @@ Result GeoJsonParser::parseGeoJson(VPackSlice const& geoJSON,
     }
     case GeoJSONType::MULTI_POLYGON:
     case GeoJSONType::GEOMETRY_COLLECTION:
-      return Result(TRI_ERROR_NOT_IMPLEMENTED,
-                    "GeoJSON type is not supported");
+      return Result(TRI_ERROR_NOT_IMPLEMENTED, "GeoJSON type is not supported");
     case GeoJSONType::UNKNOWN: {
       return badParam;
     }
@@ -435,4 +434,3 @@ Result GeoJsonParser::parseLegacyAQLPolygon(VPackSlice const& coords,
 
   return TRI_ERROR_NO_ERROR;
 }
-

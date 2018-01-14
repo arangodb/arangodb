@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,33 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_GEO_S2_INDEX_H
-#define ARANGOD_ROCKSDB_GEO_S2_INDEX_H 1
+#ifndef ARANGOD_MMFILES_GEO_S2_INDEX_H
+#define ARANGOD_MMFILES_GEO_S2_INDEX_H 1
 
-#include "Basics/Result.h"
 #include "Geo/GeoParams.h"
-#include "RocksDBEngine/RocksDBIndex.h"
-#include "VocBase/voc-types.h"
+#include "MMFiles/MMFilesIndex.h"
+#include "VocBase/LocalDocumentId.h"
 
+#include <btree/btree_map.h>
 #include <geometry/s2cellid.h>
 #include <velocypack/Builder.h>
 
-class S2Region;
-
 namespace arangodb {
-class RocksDBGeoS2Index final : public arangodb::RocksDBIndex {
-  friend class RocksDBSphericalIndexIterator;
 
+class MMFilesGeoS2Index final : public MMFilesIndex {
  public:
-  RocksDBGeoS2Index() = delete;
+  MMFilesGeoS2Index() = delete;
 
-  RocksDBGeoS2Index(TRI_idx_iid_t, arangodb::LogicalCollection*,
-                    velocypack::Slice const&);
-
-  ~RocksDBGeoS2Index() override {}
+  MMFilesGeoS2Index(TRI_idx_iid_t, LogicalCollection*,
+                    arangodb::velocypack::Slice const&);
 
  public:
   /// @brief geo index variants
@@ -59,16 +55,20 @@ class RocksDBGeoS2Index final : public arangodb::RocksDBIndex {
     COMBINED_GEOJSON
   };
 
+  struct IndexValue {
+    IndexValue() : documentId(0), centroid(-1, -1) {}
+    IndexValue(LocalDocumentId lid, geo::Coordinate&& c)
+        : documentId(lid), centroid(c) {}
+    LocalDocumentId documentId;
+    geo::Coordinate centroid;
+  };
+
+  typedef btree::btree_multimap<S2CellId, IndexValue> IndexTree;
+
  public:
   IndexType type() const override { return TRI_IDX_TYPE_S2_INDEX; }
 
   char const* typeName() const override { return "s2index"; }
-
-  IndexIterator* iteratorForCondition(transaction::Methods*,
-                                      ManagedDocumentResult*,
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      IndexIteratorOptions const&) override;
 
   bool allowExpansion() const override { return false; }
 
@@ -78,24 +78,32 @@ class RocksDBGeoS2Index final : public arangodb::RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  void toVelocyPack(velocypack::Builder&, bool, bool) const override;
+  size_t memory() const override;
+
+  void toVelocyPack(velocypack::Builder&, bool withFigures,
+                    bool forPersistence) const override;
   // Uses default toVelocyPackFigures
 
   bool matchesDefinition(velocypack::Slice const& info) const override;
 
-  void truncate(transaction::Methods*) override;
+  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const&,
+                OperationMode mode) override;
 
-  /// insert index elements into the specified write batch.
-  Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
-                        LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) override;
+  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const&,
+                OperationMode mode) override;
 
-  /// remove index elements and put it in the specified write batch.
-  Result removeInternal(transaction::Methods*, RocksDBMethods*,
-                        LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) override;
+  IndexIterator* iteratorForCondition(transaction::Methods*,
+                                      ManagedDocumentResult*,
+                                      arangodb::aql::AstNode const*,
+                                      arangodb::aql::Variable const*,
+                                      IndexIteratorOptions const&) override;
+
+  void load() override {}
+  void unload() override;
+
+  IndexTree const& tree() const { return _tree; }
 
  private:
   Result parse(velocypack::Slice const& doc, std::vector<S2CellId>& cells,
@@ -111,8 +119,9 @@ class RocksDBGeoS2Index final : public arangodb::RocksDBIndex {
   std::vector<std::string> _location;
   std::vector<std::string> _latitude;
   std::vector<std::string> _longitude;
-  ;
+
+  MMFilesGeoS2Index::IndexTree _tree;
 };
-}  // namespace arangodb
+}
 
 #endif

@@ -42,36 +42,36 @@ namespace geo {
 
 /// coordinate point on the sphere in DEGREES
 struct Coordinate {
-public:
+ public:
   Coordinate(double lat, double lon) : latitude(lat), longitude(lon) {}
   Coordinate(Coordinate&& c) : latitude(c.latitude), longitude(c.longitude) {}
-  Coordinate(Coordinate const& c) : latitude(c.latitude), longitude(c.longitude) {}
+  Coordinate(Coordinate const& c)
+      : latitude(c.latitude), longitude(c.longitude) {}
 
   static Coordinate fromLatLng(S2LatLng const&);
   static inline Coordinate Invalid() { return Coordinate(-1, -1); }
-  
-public:
-  
+
+ public:
   Coordinate& operator=(Coordinate const& other) {
     latitude = other.latitude;
     longitude = other.longitude;
     return *this;
   }
-  
+
   bool operator==(Coordinate const& other) const {
     return latitude == other.latitude && longitude == other.longitude;
   }
-  
+
   bool operator!=(Coordinate const& other) const {
     return latitude != other.latitude || longitude != other.longitude;
   }
-  
+
   std::string toString() const {
     return "(lat: " + std::to_string(latitude) + ", lon: " +
            std::to_string(longitude) + ")";
   }
-  
-public:
+
+ public:
   double latitude;   // in degrees
   double longitude;  // in degrees
 };
@@ -79,9 +79,8 @@ public:
 /// Thin wrapper around S2Region combined with
 /// a type and helper methods for all special cases
 class ShapeContainer final {
-  
   ShapeContainer(ShapeContainer const&) = delete;
-  
+
  public:
   enum class Type {
     UNDEFINED = 0,
@@ -100,20 +99,20 @@ class ShapeContainer final {
       : _data(ptr.release()), _type(tt) {}
   ShapeContainer(S2Region* ptr, Type tt) : _data(ptr), _type(tt) {}*/
   ~ShapeContainer();
-  
+
  public:
-  
   /// Parses a coordinate pair
   Result parseCoordinates(velocypack::Slice const& json, bool geoJson);
 
   void reset(std::unique_ptr<S2Region>&& ptr, Type tt);
   void reset(S2Region* ptr, Type tt);
-  
+
   Type type() const { return _type; }
   bool isAreaType() const {
-    return _type == Type::S2_POLYGON || _type == Type::S2_CAP || _type == Type::S2_LATLNGRECT;
+    return _type == Type::S2_POLYGON || _type == Type::S2_CAP ||
+           _type == Type::S2_LATLNGRECT;
   }
-  
+
   /// @brief is an empty shape (can be expensive)
   bool isAreaEmpty() const;
   /// @brief centroid of this shape
@@ -136,7 +135,7 @@ class ShapeContainer final {
   bool intersects(S2Polyline const*) const;
   bool intersects(S2Polygon const*) const;
   bool intersects(ShapeContainer const*) const;
-  
+
  private:
   S2Region* _data;
   Type _type;

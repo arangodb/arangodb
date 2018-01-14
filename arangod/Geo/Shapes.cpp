@@ -50,13 +50,13 @@ Result ShapeContainer::parseCoordinates(VPackSlice const& json, bool geoJson) {
   if (!json.isArray() || json.length() < 2) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
   }
-  
+
   VPackSlice lat = json.at(geoJson ? 1 : 0);
   VPackSlice lng = json.at(geoJson ? 0 : 1);
   if (!lat.isNumber() || !lng.isNumber()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
   }
-  
+
   _type = Type::S2_POINT;
   S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
                                       lng.getNumericValue<double>());
@@ -116,7 +116,7 @@ Result ShapeContainer::parseGeoJson(VPackSlice const& json) {
 }*/
 
 ShapeContainer::ShapeContainer(ShapeContainer&& other)
-  : _data(other._data), _type(other._type) {
+    : _data(other._data), _type(other._type) {
   other._data = nullptr;
   other._type = ShapeContainer::Type::UNDEFINED;
 }
@@ -147,11 +147,11 @@ bool ShapeContainer::isAreaEmpty() const {
     case ShapeContainer::Type::S2_CAP: {
       return (static_cast<S2Cap const*>(_data))->is_empty();
     }
-      
+
     case ShapeContainer::Type::S2_POLYGON: {
       return (static_cast<S2Polygon const*>(_data))->GetArea() > 0;
     }
-      
+
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
       break;
@@ -174,7 +174,7 @@ geo::Coordinate ShapeContainer::centroid() const {
       return Coordinate(S2LatLng::Latitude(c).degrees(),
                         S2LatLng::Longitude(c).degrees());
     }
-    case ShapeContainer::Type::S2_POLYLINE:{
+    case ShapeContainer::Type::S2_POLYLINE: {
       S2Point const& c = (static_cast<S2Polyline const*>(_data))->GetCentroid();
       return Coordinate(S2LatLng::Latitude(c).degrees(),
                         S2LatLng::Longitude(c).degrees());
@@ -196,9 +196,9 @@ double ShapeContainer::distanceFromCentroid(geo::Coordinate const& other) {
   double p2 = other.latitude * (M_PI / 180.0);
   double d1 = (other.latitude - centroid.latitude) * (M_PI / 180.0);
   double d2 = (other.longitude - centroid.longitude) * (M_PI / 180.0);
-  double a = std::sin(d1 / 2.0) * std::sin(d1 / 2.0) +
-  std::cos(p1) * std::cos(p2) *
-  std::sin(d2 / 2.0) * std::sin(d2 / 2.0);
+  double a =
+      std::sin(d1 / 2.0) * std::sin(d1 / 2.0) +
+      std::cos(p1) * std::cos(p2) * std::sin(d2 / 2.0) * std::sin(d2 / 2.0);
   double c = 2.0 * std::atan2(std::sqrt(a), std::sqrt(1.0 - a));
   return c * geo::kEarthRadiusInMeters;
 }

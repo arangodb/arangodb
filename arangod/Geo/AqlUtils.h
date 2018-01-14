@@ -28,8 +28,8 @@
 
 namespace arangodb {
 namespace aql {
-  struct AstNode;
-  struct Variable;
+struct AstNode;
+struct Variable;
 }
 namespace geo {
 struct QueryParams;
@@ -40,11 +40,14 @@ struct AqlUtils {
   static void parseCondition(aql::AstNode const* node,
                              aql::Variable const* reference,
                              geo::QueryParams& params);
-  
-private:
-  static geo::Coordinate parseGeoDistance(aql::AstNode const* node, aql::Variable const* ref);
-  static geo::Coordinate parseDistFCall(aql::AstNode const* node, aql::Variable const* ref);
-  static void handleNode(aql::AstNode const* node, aql::Variable const* ref, geo::QueryParams& params);
+
+ private:
+  static geo::Coordinate parseGeoDistance(aql::AstNode const* node,
+                                          aql::Variable const* ref);
+  static geo::Coordinate parseDistFCall(aql::AstNode const* node,
+                                        aql::Variable const* ref);
+  static void handleNode(aql::AstNode const* node, aql::Variable const* ref,
+                         geo::QueryParams& params);
 };
 
 }  // namespace geo

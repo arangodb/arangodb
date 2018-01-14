@@ -84,31 +84,31 @@ struct RegionCoverParams {
 };
 
 struct QueryParams {
-  QueryParams() :
-  centroid(geo::Coordinate::Invalid()),
-  cover(queryMaxCoverCells, queryWorstLevel, queryBestLevel) {}
-  
+  QueryParams()
+      : centroid(geo::Coordinate::Invalid()),
+        cover(queryMaxCoverCells, queryWorstLevel, queryBestLevel) {}
+
   /// This query only needs to support points no polygons etc
   bool onlyPoints = false;
 
   // ============== Near Query Params =============
-  
+
   /// @brief Min distance from centroid a result has to be
   double minDistance = 0.0;
   /// @brief is minimum an exclusive bound
   bool minInclusive = false;
-  
+
   /// entire earth (halfaround in each direction),
   /// may not be larger than half earth circumference or larger
   /// than the bounding cap of the filter region (see _filter)
   double maxDistance = kEarthRadiusInMeters * M_PI;
   bool maxInclusive = false;
-  
+
   /// @brief results need to be sorted by distance to centroid
   bool sorted = false;
   /// @brief Default order is from closest to farthest
   bool ascending = true;
-  
+
   /// @brief Centroid from which to sort by distance
   geo::Coordinate centroid;
 
@@ -116,12 +116,12 @@ struct QueryParams {
 
   FilterType filterType = FilterType::NONE;
   geo::ShapeContainer filterShape;
-  
+
   // parameters to calculate the cover for index
   // lookup intervals
   RegionCoverParams cover;
-  
-public:
+
+ public:
   /// minimum distance
   double minDistanceRad() const;
 
@@ -129,13 +129,13 @@ public:
   /// maxDistance / kEarthRadius or a bounding circle around
   /// the area in region
   double maxDistanceRad() const;
-  
+
   /// some defaults for queries
   static constexpr int queryWorstLevel = 2;
   static constexpr int queryBestLevel = 23;  // about 1m
   static constexpr int queryMaxCoverCells = 20;
 };
-  
+
 }  // namespace geo
 }  // namespace arangodb
 
