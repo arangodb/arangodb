@@ -42,6 +42,7 @@ namespace geo {
 
 /// coordinate point on the sphere in DEGREES
 struct Coordinate {
+public:
   Coordinate(double lat, double lon) : latitude(lat), longitude(lon) {}
   Coordinate(Coordinate&& c) : latitude(c.latitude), longitude(c.longitude) {}
   Coordinate(Coordinate const& c) : latitude(c.latitude), longitude(c.longitude) {}
@@ -78,6 +79,9 @@ public:
 /// Thin wrapper around S2Region combined with
 /// a type and helper methods for all special cases
 class ShapeContainer final {
+  
+  ShapeContainer(ShapeContainer const&) = delete;
+  
  public:
   enum class Type {
     UNDEFINED = 0,

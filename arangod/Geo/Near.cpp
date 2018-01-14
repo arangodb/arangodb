@@ -166,17 +166,6 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
     }
   }
 
-  /*if (_params.region != nullptr) { // expensive rejection
-    TRI_ASSERT(_params.filter != geo::FilterType::NONE);
-   // FIXME: Use S2RegionIntersection instead ?
-   for (int i = 0; i < lookup.num_cells(); i++) {
-    if (region->MayIntersect(S2Cell(lookup.cell_id(i)))) {
-      cover.push_back(cellId);
-    }
-   }
-  }
-  */
-
   // prune the _seen list revision IDs
   /*auto it = _seen.begin();
   while (it != _seen.end()) {

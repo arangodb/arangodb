@@ -100,7 +100,7 @@ add_executable(
   Cluster/ClusterHelpersTest.cpp
   Cluster/ShardDistributionReporterTest.cpp
   Geo/georeg.cpp
-  Geo/NearUtils.cpp
+  Geo/NearUtilsTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/KeyTest.cpp

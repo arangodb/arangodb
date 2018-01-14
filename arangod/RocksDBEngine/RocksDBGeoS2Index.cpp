@@ -54,40 +54,6 @@ RocksDBGeoS2IndexIterator::RocksDBGeoS2IndexIterator(
   TRI_ASSERT(_index->columnFamily()->GetID() ==
              RocksDBColumnFamily::geo()->GetID());
 }
-/*
-class RegionIterator : public RocksDBGeoS2IndexIterator {
- public:
-  RegionIterator(LogicalCollection* collection, transaction::Methods* trx,
-                 ManagedDocumentResult* mmdr,
-                 RocksDBGeoS2Index const* index,
-                 std::unique_ptr<S2Region> region, geo::FilterType ft)
-      : RocksDBGeoS2IndexIterator(collection, trx, mmdr, index),
-        _region(region.release()),
-        _filterType(ft) {}
-
-  ~RegionIterator() { delete _region; }
-
-  geo::FilterType filterType() const override { return _filterType; };
-
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override {}
-
-  /// if you call this it's your own damn fault
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {}
-
-  void reset() override {
-    _seen.clear();
-    // TODO
-  }
-  
-private:
-  
-
- private:
-  S2Region* const _region;
-  geo::FilterType const _filterType;
-  std::unordered_set<TRI_voc_rid_t> _seen;
-  std::vector<geo::GeoCover::Interval> _intervals;
-};*/
 
 template <typename CMP = geo::DocumentsAscending>
 class NearIterator final : public RocksDBGeoS2IndexIterator {
@@ -101,13 +67,13 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
     estimateDensity();
   }
   
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override {
+  /// internal retrieval loop
+  inline bool nextToken(std::function<bool(LocalDocumentId token)>&& cb, size_t limit) {
     if (_near.isDone()) {
       // we already know that no further results will be returned by the index
       TRI_ASSERT(!_near.hasNearest());
       return false;
     }
-    geo::FilterType const ft = _near.filterType();
     
     while (limit > 0 && !_near.isDone()) {
       while (limit > 0 && _near.hasNearest()) {
@@ -116,24 +82,8 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
         
         LocalDocumentId token(_near.nearest().rid);
         _near.popNearest();
-        limit--;
-        
-        if (_collection->readDocument(_trx, token, *_mmdr)) {
-          VPackSlice doc(_mmdr->vpack());
-          if (ft != geo::FilterType::NONE) { // expensive test
-            geo::ShapeContainer const& filter = _near.filterShape();
-            geo::ShapeContainer test;
-            Result res = geo::GeoJsonParser::parseGeoJson(doc, test);
-            if (res.fail()) { // this should never fail here
-              THROW_ARANGO_EXCEPTION(res);
-            }
-            if ((ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
-              continue;
-            }
-          }
-          
-          cb(token, doc);
+        if (cb(token)) {
+          limit--;
         }
       }
       // need to fetch more geo results
@@ -144,9 +94,51 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
     }
     return !_near.isDone();
   }
+  
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override {
+    return nextToken([this, &cb](LocalDocumentId const& token) -> bool {
+      if (!_collection->readDocument(_trx, token, *_mmdr)) {
+        return false;
+      }
+      VPackSlice doc(_mmdr->vpack());
+      geo::FilterType const ft = _near.filterType();
+      if (ft != geo::FilterType::NONE) { // expensive test
+        geo::ShapeContainer const& filter = _near.filterShape();
+        TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::UNDEFINED);
+        geo::ShapeContainer test;
+        Result res = geo::GeoJsonParser::parseGeoJson(doc, test);
+        TRI_ASSERT(res.ok()); // this should never fail here
+        if (res.fail() || (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+            (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
+          return false;
+        }
+      }
+      cb(token, doc); // return result
+      return true;
+    }, limit);
+  }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
-    TRI_ASSERT(false); // I don't think this iterator should be used this way
+    return nextToken([this, &cb](LocalDocumentId const& token) -> bool {
+      geo::FilterType const ft = _near.filterType();
+      if (ft != geo::FilterType::NONE) {
+        geo::ShapeContainer const& filter = _near.filterShape();
+        TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::UNDEFINED);
+        if (!_collection->readDocument(_trx, token, *_mmdr)) {
+          return false;
+        }
+        geo::ShapeContainer test;
+        Result res = geo::GeoJsonParser::parseGeoJson(VPackSlice(_mmdr->vpack()), test);
+        TRI_ASSERT(res.ok()); // this should never fail here
+        if (res.fail() || (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+            (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
+          return false;
+        }
+      }
+      
+      cb(token); // return result
+      return true;
+    }, limit);
   }
 
   void reset() override { _near.reset(); }
@@ -171,7 +163,7 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
       
       // intervals are sorted and likely consecutive, try to avoid seeks
       // by checking whether we are in the range already
-      /*bool seek = true;
+      bool seek = true;
       if (i > 0) {
         TRI_ASSERT(scan[i - 1].max < it.min);
         if (!_iter->Valid()) { // no more valid keys after this
@@ -190,27 +182,20 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
           } while (--k > 0 && _iter->Valid() && cc < 0);
           seek = !_iter->Valid() || cc < 0;
         }
-      }*/
+      }
 
-      //if (seek) { // try to avoid seeking at all cost
+      if (seek) { // try to avoid seeking at all cost
         //LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] seeking:" << it.min;
         _iter->Seek(bds.start());
         seeks++;
-      //}
+      }
 
-      uint64_t cellId = it.min.id();
       while (_iter->Valid() && cmp->Compare(_iter->key(), bds.end()) <= 0) {
-        cellId = RocksDBKey::S2Value(_iter->key());
         TRI_voc_rid_t rid = RocksDBKey::revisionId(
             RocksDBEntryType::S2IndexValue, _iter->key());
-        geo::Coordinate cntrd = RocksDBValue::centroid(_iter->value());
-        _near.reportFound(rid, cntrd);
+        _near.reportFound(rid, RocksDBValue::centroid(_iter->value()));
         _iter->Next();
       }
-      /*if (cellId != it.min.id()) {
-        TRI_ASSERT(cellId <= it.max.id());
-        LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] ending:" << it.max;
-      }*/
     }
     
     LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
@@ -230,11 +215,7 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
     if (_iter->Valid()) {
       geo::Coordinate first = RocksDBValue::centroid(_iter->value());
       _near.estimateDensity(first);
-    }/* else {
-      LOG_TOPIC(INFO, Logger::ROCKSDB)
-          << "Apparently the s2 index is empty";
-      _near.invalidate();
-    }*/
+    }
   }
 
  private:
@@ -381,7 +362,7 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
   TRI_ASSERT(node != nullptr);
 
   geo::QueryParams params;
-  params.sorted = opts.sorted;
+  params.sorted = true;//opts.sorted;
   params.ascending = opts.ascending;
   geo::AqlUtils::parseCondition(node, reference, params);
   TRI_ASSERT(!opts.sorted || params.centroid != geo::Coordinate::Invalid());
@@ -473,6 +454,7 @@ Result RocksDBGeoS2Index::removeInternal(transaction::Methods* trx,
 
   Result res = parse(doc, cells, centroid);
   if (res.fail()) {
+    TRI_ASSERT(false); // this should never fail here
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
