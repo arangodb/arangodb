@@ -77,14 +77,10 @@ class NearIterator final : public RocksDBGeoS2IndexIterator {
     
     while (limit > 0 && !_near.isDone()) {
       while (limit > 0 && _near.hasNearest()) {
-        /*LOG_TOPIC(WARN, Logger::FIXME) << "[RETURN] " << _near.nearest().rid
-         << "  d: " << ( _near.nearest().radians * geo::kEarthRadiusInMeters);*/
-        
-        LocalDocumentId token(_near.nearest().rid);
-        _near.popNearest();
-        if (cb(token)) {
+        if (cb(LocalDocumentId(_near.nearest().rid))) {
           limit--;
         }
+        _near.popNearest();
       }
       // need to fetch more geo results
       if (limit > 0 && !_near.isDone()) {

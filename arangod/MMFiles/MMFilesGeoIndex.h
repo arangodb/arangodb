@@ -67,7 +67,7 @@ class MMFilesGeoIndexIterator final : public IndexIterator {
   MMFilesGeoIndex const* _index;
   ::GeoCursor* _cursor;
   ::GeoCoordinate _coor;
-  geo::QueryParams _params;
+  geo::QueryParams const _params;
   bool _near;
   bool _done;
 };
