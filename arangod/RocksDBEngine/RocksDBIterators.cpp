@@ -193,23 +193,40 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   TRI_ASSERT(_iterator);
 
   _total = col->numberDocuments(trx);
-  uint64_t off = RandomGenerator::interval(_total - 1);
+
+  auto checkIter = [&](bool forward){
+    if (!_iterator->Valid() || outOfRange()) {
+      if (forward) {
+        _iterator->Seek(_bounds.start());
+      } else {
+        _iterator->Seek(_bounds.end());
+      }
+      if(!_iterator->Valid()){
+        return false;
+      }
+    }
+    return true;
+  };
+
+  checkIter(true); // get some initial state
+
   if (_total > 0) {
-    if (off <= _total / 2) {
-      _iterator->Seek(_bounds.start());
-      while (_iterator->Valid() && off-- > 0) {
+    uint64_t steps = RandomGenerator::interval(_total - 1) % 500;
+    bool forward = RandomGenerator::interval(uint16_t(1)) ? true : false;
+
+    if (forward) {
+      while (_iterator->Valid() && steps-- > 0) {
         _iterator->Next();
+        if(!checkIter(forward)) break;
       }
     } else {
-      off = _total - (off + 1);
-      _iterator->SeekForPrev(_bounds.end());
-      while (_iterator->Valid() && off-- > 0) {
+      while (_iterator->Valid() && steps-- > 0) {
         _iterator->Prev();
+        if(!checkIter(forward)) break;
       }
     }
-    if (!_iterator->Valid() || outOfRange()) {
-      _iterator->Seek(_bounds.start());
-    }
+
+    checkIter(forward); // ensure some good state
   }
 }
 
