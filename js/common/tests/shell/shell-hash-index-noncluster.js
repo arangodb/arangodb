@@ -171,13 +171,14 @@ function HashIndexSuite() {
         internal.db._executeTransaction({
           collections: {write: cn},
           action: function () {
+            const cn = "UnitTestsCollectionHash";
             let docs = [];
             for (let i = 0; i < 1000; ++i) {
               docs.push({value: 1});
             }
             // This should significantly modify the estimate
             // if successful
-            internal.db[cn].save(docs);
+            require('@arangodb').db[cn].save(docs);
             throw "banana";
           }
         });

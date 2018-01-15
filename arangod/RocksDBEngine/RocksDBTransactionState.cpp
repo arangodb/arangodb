@@ -276,6 +276,12 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       }
     }
   } else {
+    for (auto& trxCollection : _collections) {
+      RocksDBTransactionCollection* collection =
+          static_cast<RocksDBTransactionCollection*>(trxCollection);
+      // We get here if we have filled indexes. So let us commit counts
+      collection->commitCounts();
+    }
     // don't write anything if the transaction is empty
     result = rocksutils::convertStatus(_rocksTransaction->Rollback());
   }

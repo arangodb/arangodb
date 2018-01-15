@@ -413,9 +413,15 @@ function EdgeIndexSuite () {
         internal.db._executeTransaction({
           collections: {write: en},
           action: function () {
+            const vn = 'UnitTestsCollectionVertex';
+            const en = 'UnitTestsCollectionEdge';
+            let docs = [];
+            for (let i = 0; i < 1000; ++i) {
+              docs.push({_from: `${vn}/from${i % 32}`, _to: `${vn}/to${i % 47}`});
+            }
             // This should significantly modify the estimate
             // if successful
-            edge.save(docs);
+            require('@arangodb').db[en].save(docs);
             throw "banana";
           }
         });
