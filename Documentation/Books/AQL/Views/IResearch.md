@@ -25,21 +25,21 @@ In plain terms this means a user can for example:
 * request documents where the 'name' attribute best matches gender
 * etc... (via custom analyzers described in the next section)
 
-To a limited degree the concept of 'analysis' is even available in non-ArangoSearch
-AQL, e.g. the *TOKENS(...)* function will utilize the power of ArangoSearch to break
+To a limited degree the concept of 'analysis' is even available in
+non-ArangoSearch AQL, e.g. the TOKENS(...) function will utilize the power of
 IResearch to break up a value into an AQL array that can be used anywhere in the
 AQL query.
 
 In plain terms this means a user can match a document attribute when its
 value matches at least one entry from a set,
-e.g. to match docs with `word == 'quick' OR word == 'brown' OR word == 'fox'`
+e.g. to match docs with 'word == quick' OR 'word == brown' OR 'word == fox'
 
     FOR doc IN someCollection
       FILTER doc.word IN TOKENS('a quick brown fox', 'text_en')
       RETRUN doc
 
 ArangoSearch filters
-====================
+--------------------
 
 The basic ArangoSearch functionality can be accessed via common AQL filters and
 operators, e.g.:
@@ -58,7 +58,6 @@ operators, e.g.:
 
 However, the full power of ArangoSearch is harnessed and exposed via functions,
 during both the filter and sort stages.
-
 
 The supported filter functions are:
 
@@ -174,8 +173,9 @@ or
       FILTER PHRASE(doc['description'], 'quick brown', 'text_en')
       RETURN doc
 
-to match documents where 'body' contains the phrase consisting of a sequence like this:
-'quick' * 'fox jumps' (where the asterisk can be any word)
+to match documents where 'body' contains the phrase consisting of a sequence
+like this:
+'quick' * 'fox jumps' (where the asterisk can be any single word)
 
     FOR doc IN VIEW someView
       FILTER PHRASE(doc.body, 'quick', 1, 'fox jumps', 'text_en')
@@ -212,8 +212,9 @@ to match documents where 'description' best matches 'a quick brown fox'
 ArangoSearch sort
 -----------------
 
-A major feature of ArangoSearch views is their capability of sorting results based
-on the filter conditions supplied at their creation and zero or more sorting functions.
+A major feature of ArangoSearch views is their capability of sorting results
+based on the creation-time filter conditions and zero or more sorting functions.
+The sorting functions are meant to be user-defined.
 
 Note: Similar to other sorting functions on regular collections the first
   argument to any sorting function is _always_ either the document emmited by 
@@ -249,7 +250,6 @@ At the extreme values of the coefficient *b*, BM25 turns into ranking functions 
 Sorts documents using the [**term frequency–inverse document frequency** algorithm](https://en.wikipedia.org/wiki/TF-IDF).
 
   optionally specifying that norms should be used via **with-norms**
-
 
 ### sorting examples:
 
