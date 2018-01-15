@@ -91,10 +91,16 @@ VPackBuilder ActionDescription::toVelocyPack() const {
 }
 
 
+/// @brief summary to JSON string
+std::string ActionDescription::toJson() const {
+  return toVelocyPack().toJson();
+}
+
 /// @brief hash implementation for ActionRegistry
 namespace std {
 std::size_t hash<ActionDescription>::operator()(
   ActionDescription const& a) const noexcept {
   return a.hash();
-}}
+}
+}
 

@@ -38,6 +38,9 @@ using namespace arangodb::basics;
 using namespace arangodb::consensus;
 using namespace arangodb::maintenance;
 
+static std::vector<std::string> cmp {
+  "journalSize", "waitForSync", "doCompact", "indexBuckets"};
+
 VPackBuilder createProps(VPackSlice const& s) {
   VPackBuilder builder;
   TRI_ASSERT(s.isObject());
@@ -50,6 +53,20 @@ VPackBuilder createProps(VPackSlice const& s) {
       builder.add(key, attr.value);
     }}
   return builder;
+}
+
+
+VPackBuilder compareRelevantProps (
+  VPackSlice const& first, VPackSlice const& second) {
+  VPackBuilder result;
+  { VPackObjectBuilder b(&result);
+    for (auto property : cmp) {
+      auto const& planned = first.get(property);
+      if (planned != second.get(property)) {
+        result.add(property,planned);
+      }
+    }}
+  return result;
 }
 
 
@@ -86,15 +103,19 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
                 props = createProps(pcol.value); // Only once might need often!
               }
               if (ldb.hasKey(shname)) {   // Have local collection with that name
-                
-                /*actions.push_back(
-                  ActionDescription(
-                  {{"name", "AlterCollection"}, {"collection", shname}}, props));*/
+                auto const properties = 
+                  compareRelevantProps(pcol.value, ldb.get(shname));
+                if (properties.slice() != VPackSlice::emptyObjectSlice()) {
+                  actions.push_back(
+                    ActionDescription(
+                      {{"name", "AlterCollection"}, {"collection", shname}},
+                      properties));
+                }
               } else {                   // Create the sucker!
                 actions.push_back(
                   ActionDescription(
-                    {{"name", "CreateCollection"}, {"collection", shname}},
-                    props));
+                    {{"name", "CreateCollection"}, {"collection", shname},
+                     {"database", dbname}}, props));
               }
             }
             ++pos;
@@ -112,9 +133,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   
   for (auto const& db : VPackObjectIterator(local)) {
     auto const& dbname = db.key.copyString();
-
     if (pdbs.hasKey(dbname)) {
-
       for (auto const& col : VPackObjectIterator(db.value)) {
         bool drop = false;
         auto const& colname = col.key.copyString();
@@ -129,8 +148,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
         }
         if (drop) {
           actions.push_back(
-            ActionDescription({
-                {"name", "DropCollection"}, {"database", dbname}, {"collection", colname}}));
+            ActionDescription({{"name", "DropCollection"},
+                {"database", dbname}, {"collection", colname}}));
         } else {
           intersection.erase(it);
         }

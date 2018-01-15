@@ -72,6 +72,9 @@ public:
   VPackBuilder toVelocyPack() const;
 
   /// @brief Print this action to ostream
+  std::string toJson() const;
+
+  /// @brief Print this action to ostream
   std::ostream& print(std::ostream&) const;
 
 private:
@@ -82,6 +85,11 @@ private:
   VPackBuilder _properties;
 };
 
+inline std::ostream& operator<< (std::ostream& o, ActionDescription const& d) {
+  o << d.toJson();
+  return o;
+}
+
 }}
 
 namespace std {
@@ -91,6 +99,7 @@ template<> struct hash<arangodb::maintenance::ActionDescription> {
   typedef std::size_t result_t;
   result_t operator()(argument_t const& a) const noexcept;
 };
+
 }
 
 #endif
