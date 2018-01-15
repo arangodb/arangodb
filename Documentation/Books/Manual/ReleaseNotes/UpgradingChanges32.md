@@ -57,7 +57,7 @@ REST API
 
 * The REST API for executing a server-side transaction (POST /_api/transaction) now accepts the optional attributes: `maxTransactionSize`, `intermediateCommitCount`, `intermediateCommitSize`
 
-* The REST API for creating a cursor (POST /_api/cursor) now accepts the optional attributes: `failOnWarning`, `maxTransactionSize`, `maxWarningCount`, `intermediateCommitCount`, `satelliteSyncWait`, `intermediateCommitSize`
+* The REST API for creating a cursor (POST /_api/cursor) now accepts the optional attributes: `failOnWarning`, `maxTransactionSize`, `maxWarningCount`, `intermediateCommitCount`, `satelliteSyncWait`, `intermediateCommitSize`. `skipInaccessibleCollections`
 
 JavaScript API
 --------------

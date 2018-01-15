@@ -3,6 +3,8 @@ devel
 
 * Updated Swagger UI to version 3.9.0
 
+* issue #1190: added option `--create-database` for arangoimport
+
 * issue #3504: added option `--force-same-database` for arangorestore
 
   with this option set to true, it is possible to make any arangorestore attempt
@@ -51,11 +53,26 @@ devel
   all shards of all collections at once.
 
 
-v3.3.2 (XXXX-XX-XX)
+v3.3.3 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #4255: AQL SORT consuming too much memory
+
+
+v3.3.2 (2018-01-04)
 -------------------
 
 * fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' 
   at 98,7: ArangoError 4: Expecting type String 
+
+* fixed issue in agency supervision with a good server being left in
+  failedServers
+
+* distinguish isReady and allInSync in clusterInventory
+
+* fixed issue #4197: AQL statement not working in 3.3.1 when upgraded from 3.2.10
+
+* do not reuse collection ids when restoring collections from a dump, but assign new collection ids, this should prevent collection id conflicts
 
 
 v3.3.1 (2017-12-28)

@@ -37,7 +37,7 @@ namespace arangodb {
 namespace rest {
 
 struct VstInputMessage {
-  VstInputMessage() : _buffer(), _id(0), _payloadAmount(0), _payload() {}
+  VstInputMessage() : _buffer(), _id(0), _payloadAmount(0), _header(VPackSlice::emptyArraySlice()), _payload() {}
 
   // cppcheck-suppress *
   VstInputMessage(uint64_t id, VPackBuffer<uint8_t>&& buff,
@@ -80,9 +80,14 @@ struct VstInputMessage {
   std::vector<VPackSlice> _payload;
 
   void init() {
+    // this is required for the empty message
+    if(_buffer.empty()){
+      _header = VPackSlice::emptyArraySlice();
+      return;
+    }
+
     _header = VPackSlice(_buffer.data());
     std::size_t offset = _header.byteSize();
-
     for (std::size_t sliceNum = 0; sliceNum < _payloadAmount; ++sliceNum) {
       _payload.emplace_back(_buffer.data() + offset);
       offset += _payload.back().byteSize();
