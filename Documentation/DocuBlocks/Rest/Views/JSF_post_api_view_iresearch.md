@@ -1,14 +1,14 @@
 
 @startDocuBlock JSF_post_api_view_iresearch
-@brief creates an iresearch view
+@brief creates an ArangoSearch view
 
-@RESTHEADER{POST /_api/view#iresearch, Create iresearch view}
+@RESTHEADER{POST /_api/view#iresearch, Create ArangoSearch view}
 
 @RESTBODYPARAM{name,string,required,string}
 The name of the view.
 
 @RESTBODYPARAM{type,string,required,string}
-The type of the view. must be equal to *"iresearch"*
+The type of the view. must be equal to *"arangosearch"*
 
 @RESTBODYPARAM{properties,object,optional,JSF_post_api_view_props}
 The view properties. If specified, then *properties*
@@ -72,7 +72,7 @@ For the case where the consolidation policies rarely merge segments (i.e. few in
 performance without any added benefits.
 
 @RESTSTRUCT{dataPath,JSF_post_api_view_props,string,optional,string}
-The filesystem path where to store persisted index data (default: *"<ArangoDB database path>/iresearch-<index id>"*).
+The filesystem path where to store persisted view data (default: *"<ArangoDB database path>/arangosearch-<view-id>"*).
 
 @RESTSTRUCT{locale,JSF_post_api_view_props,string,optional,string}
 The default locale used for queries on analyzed string values (default: *C*).
@@ -108,7 +108,7 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
     var url = "/_api/view";
     var body = {
       name: "testViewBasics",
-      type: "iresearch",
+      type: "arangosearch",
       properties: {}
     };
 

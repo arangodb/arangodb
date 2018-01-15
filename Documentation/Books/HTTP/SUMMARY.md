@@ -45,7 +45,7 @@
   * [Creating](Views/Creating.md)
   * [Modifying](Views/Modifying.md)
   * [Retrieving](Views/Getting.md)
-  * [IResarch Views](Views/IResearch.md)
+  * [ArangoSearch Views](Views/IResearch.md)
 * [Transactions](Transaction/README.md)
 * [Replication](Replications/README.md)
   * [Replication Dump](Replications/ReplicationDump.md)

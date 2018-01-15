@@ -15,9 +15,9 @@ change the view name, but not the view identifier.
 Views have a type that is specified by the user when the view
 is created. 
 
-The only available view type currently is: "iresearch".
+The only available view type currently is: "arangosearch".
 
-#### IResearch View
+#### ArangoSearch View
 
 A natively integrated AQL extension that allows one to:
  * evaluate together documents located in different collections

@@ -18,7 +18,7 @@ attributes:
 - *name*: The name of the view.
 
 - *type*: The type of the view as string
-  - iresearch : IResearch view
+  - arangosearch: ArangoSearch view
 
 - *properties* : The properties of the view.
 

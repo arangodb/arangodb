@@ -386,7 +386,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \
       \"name\": \"testView\", \
-      \"type\": \"iresearch\" \
+      \"type\": \"arangosearch\" \
     }");
 
     // add view

@@ -219,7 +219,7 @@ TEST_CASE("IResearchIndexTestValue", "[iresearch][iresearch-index]") {
 SECTION("test_analyzer") {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
   auto createCollection1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
-  auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\" }");
+  auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   auto* collection0 = vocbase.createCollection(createCollection0->slice());
   REQUIRE((nullptr != collection0));
@@ -338,7 +338,7 @@ SECTION("test_analyzer") {
 SECTION("test_async_index") {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
   auto createCollection1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
-  auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\" }");
+  auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   auto* collection0 = vocbase.createCollection(createCollection0->slice());
   REQUIRE((nullptr != collection0));
@@ -507,7 +507,7 @@ SECTION("test_async_index") {
 SECTION("test_fields") {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
   auto createCollection1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
-  auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\" }");
+  auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   auto* collection0 = vocbase.createCollection(createCollection0->slice());
   REQUIRE((nullptr != collection0));
