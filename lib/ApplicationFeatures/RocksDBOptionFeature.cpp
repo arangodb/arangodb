@@ -301,7 +301,8 @@ void RocksDBOptionFeature::validateOptions(
   if (_maxSubcompactions > _numThreadsLow) {
     _maxSubcompactions = _numThreadsLow;
   }
-  if (_blockCacheShardBits >= 20) {
+  if (_blockCacheShardBits >= 20 || _blockCacheShardBits < -1) {
+    // -1 is RocksDB default value, but anything less is invalid
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.block-cache-shard-bits'";
     FATAL_ERROR_EXIT();
