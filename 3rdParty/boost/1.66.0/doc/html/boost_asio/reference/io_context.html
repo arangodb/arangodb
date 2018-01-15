@@ -1,0 +1,729 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>io_context</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../reference.html" title="Reference">
+<link rel="prev" href="invalid_service_owner/invalid_service_owner.html" title="invalid_service_owner::invalid_service_owner">
+<link rel="next" href="io_context/add_service.html" title="io_context::add_service">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="invalid_service_owner/invalid_service_owner.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="io_context/add_service.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_asio.reference.io_context"></a><a class="link" href="io_context.html" title="io_context">io_context</a>
+</h3></div></div></div>
+<p>
+        Provides core I/O functionality.
+      </p>
+<pre class="programlisting">class io_context :
+  public execution_context
+</pre>
+<h5>
+<a name="boost_asio.reference.io_context.h0"></a>
+        <span class="phrase"><a name="boost_asio.reference.io_context.types"></a></span><a class="link" href="io_context.html#boost_asio.reference.io_context.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context__executor_type.html" title="io_context::executor_type"><span class="bold"><strong>executor_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Executor used to submit functions to an io_context.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context__service.html" title="io_context::service"><span class="bold"><strong>service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Base class for all io_context services.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context__strand.html" title="io_context::strand"><span class="bold"><strong>strand</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Provides serialised handler execution.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context__work.html" title="io_context::work"><span class="bold"><strong>work</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use executor_work_guard.) Class to inform the io_context
+                  when it has work to do.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/count_type.html" title="io_context::count_type"><span class="bold"><strong>count_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type used to count the number of handlers executed by the context.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/fork_event.html" title="io_context::fork_event"><span class="bold"><strong>fork_event</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Fork-related event notifications.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.io_context.h1"></a>
+        <span class="phrase"><a name="boost_asio.reference.io_context.member_functions"></a></span><a class="link" href="io_context.html#boost_asio.reference.io_context.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/dispatch.html" title="io_context::dispatch"><span class="bold"><strong>dispatch</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use boost::asio::dispatch().) Request the io_context
+                  to invoke the given handler.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/get_executor.html" title="io_context::get_executor"><span class="bold"><strong>get_executor</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Obtains the executor associated with the io_context.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/io_context.html" title="io_context::io_context"><span class="bold"><strong>io_context</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Constructor.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/notify_fork.html" title="io_context::notify_fork"><span class="bold"><strong>notify_fork</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Notify the execution_context of a fork-related event.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/poll.html" title="io_context::poll"><span class="bold"><strong>poll</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Run the io_context object's event processing loop to execute ready
+                  handlers.
+                </p>
+                <p>
+                  (Deprecated: Use non-error_code overload.) Run the io_context object's
+                  event processing loop to execute ready handlers.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/poll_one.html" title="io_context::poll_one"><span class="bold"><strong>poll_one</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Run the io_context object's event processing loop to execute one
+                  ready handler.
+                </p>
+                <p>
+                  (Deprecated: Use non-error_code overload.) Run the io_context object's
+                  event processing loop to execute one ready handler.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/post.html" title="io_context::post"><span class="bold"><strong>post</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use boost::asio::post().) Request the io_context to
+                  invoke the given handler and return immediately.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/reset.html" title="io_context::reset"><span class="bold"><strong>reset</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use restart().) Reset the io_context in preparation
+                  for a subsequent run() invocation.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/restart.html" title="io_context::restart"><span class="bold"><strong>restart</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Restart the io_context in preparation for a subsequent run() invocation.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/run.html" title="io_context::run"><span class="bold"><strong>run</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Run the io_context object's event processing loop.
+                </p>
+                <p>
+                  (Deprecated: Use non-error_code overload.) Run the io_context object's
+                  event processing loop.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/run_for.html" title="io_context::run_for"><span class="bold"><strong>run_for</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Run the io_context object's event processing loop for a specified
+                  duration.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/run_one.html" title="io_context::run_one"><span class="bold"><strong>run_one</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Run the io_context object's event processing loop to execute at
+                  most one handler.
+                </p>
+                <p>
+                  (Deprecated: Use non-error_code overlaod.) Run the io_context object's
+                  event processing loop to execute at most one handler.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/run_one_for.html" title="io_context::run_one_for"><span class="bold"><strong>run_one_for</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Run the io_context object's event processing loop for a specified
+                  duration to execute at most one handler.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/run_one_until.html" title="io_context::run_one_until"><span class="bold"><strong>run_one_until</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Run the io_context object's event processing loop until a specified
+                  time to execute at most one handler.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/run_until.html" title="io_context::run_until"><span class="bold"><strong>run_until</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Run the io_context object's event processing loop until a specified
+                  time.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/stop.html" title="io_context::stop"><span class="bold"><strong>stop</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Stop the io_context object's event processing loop.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/stopped.html" title="io_context::stopped"><span class="bold"><strong>stopped</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Determine whether the io_context object has been stopped.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/wrap.html" title="io_context::wrap"><span class="bold"><strong>wrap</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use boost::asio::bind_executor().) Create a new handler
+                  that automatically dispatches the wrapped handler on the io_context.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/_io_context.html" title="io_context::~io_context"><span class="bold"><strong>~io_context</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destructor.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.io_context.h2"></a>
+        <span class="phrase"><a name="boost_asio.reference.io_context.protected_member_functions"></a></span><a class="link" href="io_context.html#boost_asio.reference.io_context.protected_member_functions">Protected
+        Member Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/destroy.html" title="io_context::destroy"><span class="bold"><strong>destroy</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destroys all services in the context.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/shutdown.html" title="io_context::shutdown"><span class="bold"><strong>shutdown</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Shuts down all services in the context.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.io_context.h3"></a>
+        <span class="phrase"><a name="boost_asio.reference.io_context.friends"></a></span><a class="link" href="io_context.html#boost_asio.reference.io_context.friends">Friends</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/add_service.html" title="io_context::add_service"><span class="bold"><strong>add_service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use make_service().) Add a service object to the execution_context.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/has_service.html" title="io_context::has_service"><span class="bold"><strong>has_service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Determine if an execution_context contains a specified service
+                  type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/make_service.html" title="io_context::make_service"><span class="bold"><strong>make_service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Creates a service object and adds it to the execution_context.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="io_context/use_service.html" title="io_context::use_service"><span class="bold"><strong>use_service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Obtain the service object corresponding to the given type.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        The <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+        class provides the core I/O functionality for users of the asynchronous I/O
+        objects, including:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput">boost::asio::ip::tcp::socket</code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput">boost::asio::ip::tcp::acceptor</code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput">boost::asio::ip::udp::socket</code>
+          </li>
+<li class="listitem">
+            <a class="link" href="deadline_timer.html" title="deadline_timer"><code class="computeroutput">deadline_timer</code></a>.
+          </li>
+</ul></div>
+<p>
+        The <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+        class also includes facilities intended for developers of custom asynchronous
+        services.
+      </p>
+<h5>
+<a name="boost_asio.reference.io_context.h4"></a>
+        <span class="phrase"><a name="boost_asio.reference.io_context.thread_safety"></a></span><a class="link" href="io_context.html#boost_asio.reference.io_context.thread_safety">Thread
+        Safety</a>
+      </h5>
+<p>
+        <span class="emphasis"><em>Distinct</em></span> <span class="emphasis"><em>objects:</em></span> Safe.
+      </p>
+<p>
+        <span class="emphasis"><em>Shared</em></span> <span class="emphasis"><em>objects:</em></span> Safe, with the
+        specific exceptions of the <code class="computeroutput">restart()</code> and <code class="computeroutput">notify_fork()</code>
+        functions. Calling <code class="computeroutput">restart()</code> while there are unfinished <code class="computeroutput">run()</code>,
+        <code class="computeroutput">run_one()</code>, <code class="computeroutput">run_for()</code>, <code class="computeroutput">run_until()</code>,
+        <code class="computeroutput">poll()</code> or <code class="computeroutput">poll_one()</code> calls results in undefined
+        behaviour. The <code class="computeroutput">notify_fork()</code> function should not be called while
+        any <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+        function, or any function on an I/O object that is associated with the <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>,
+        is being called in another thread.
+      </p>
+<h5>
+<a name="boost_asio.reference.io_context.h5"></a>
+        <span class="phrase"><a name="boost_asio.reference.io_context.synchronous_and_asynchronous_operations"></a></span><a class="link" href="io_context.html#boost_asio.reference.io_context.synchronous_and_asynchronous_operations">Synchronous
+        and asynchronous operations</a>
+      </h5>
+<p>
+        Synchronous operations on I/O objects implicitly run the <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+        object for an individual operation. The <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+        functions <code class="computeroutput">run()</code>, <code class="computeroutput">run_one()</code>, <code class="computeroutput">run_for()</code>,
+        <code class="computeroutput">run_until()</code>, <code class="computeroutput">poll()</code> or <code class="computeroutput">poll_one()</code>
+        must be called for the <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+        to perform asynchronous operations on behalf of a C++ program. Notification
+        that an asynchronous operation has completed is delivered by invocation of
+        the associated handler. Handlers are invoked only by a thread that is currently
+        calling any overload of <code class="computeroutput">run()</code>, <code class="computeroutput">run_one()</code>, <code class="computeroutput">run_for()</code>,
+        <code class="computeroutput">run_until()</code>, <code class="computeroutput">poll()</code> or <code class="computeroutput">poll_one()</code>
+        for the <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>.
+      </p>
+<h5>
+<a name="boost_asio.reference.io_context.h6"></a>
+        <span class="phrase"><a name="boost_asio.reference.io_context.effect_of_exceptions_thrown_from_handlers"></a></span><a class="link" href="io_context.html#boost_asio.reference.io_context.effect_of_exceptions_thrown_from_handlers">Effect
+        of exceptions thrown from handlers</a>
+      </h5>
+<p>
+        If an exception is thrown from a handler, the exception is allowed to propagate
+        through the throwing thread's invocation of <code class="computeroutput">run()</code>, <code class="computeroutput">run_one()</code>,
+        <code class="computeroutput">run_for()</code>, <code class="computeroutput">run_until()</code>, <code class="computeroutput">poll()</code> or
+        <code class="computeroutput">poll_one()</code>. No other threads that are calling any of these functions
+        are affected. It is then the responsibility of the application to catch the
+        exception.
+      </p>
+<p>
+        After the exception has been caught, the <code class="computeroutput">run()</code>, <code class="computeroutput">run_one()</code>,
+        <code class="computeroutput">run_for()</code>, <code class="computeroutput">run_until()</code>, <code class="computeroutput">poll()</code> or
+        <code class="computeroutput">poll_one()</code> call may be restarted <span class="emphasis"><em>without</em></span>
+        the need for an intervening call to <code class="computeroutput">restart()</code>. This allows the
+        thread to rejoin the <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+        object's thread pool without impacting any other threads in the pool.
+      </p>
+<p>
+        For example:
+      </p>
+<pre class="programlisting">boost::asio::io_context io_context;
+...
+for (;;)
+{
+  try
+  {
+    io_context.run();
+    break; // run() exited normally
+  }
+  catch (my_exception&amp; e)
+  {
+    // Deal with exception as appropriate.
+  }
+}
+</pre>
+<h5>
+<a name="boost_asio.reference.io_context.h7"></a>
+        <span class="phrase"><a name="boost_asio.reference.io_context.submitting_arbitrary_tasks_to_the_io_context"></a></span><a class="link" href="io_context.html#boost_asio.reference.io_context.submitting_arbitrary_tasks_to_the_io_context">Submitting
+        arbitrary tasks to the io_context</a>
+      </h5>
+<p>
+        To submit functions to the <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>,
+        use the <a class="link" href="dispatch.html" title="dispatch"><code class="computeroutput">dispatch</code></a>
+        , <a class="link" href="post.html" title="post"><code class="computeroutput">post</code></a> or
+        <a class="link" href="defer.html" title="defer"><code class="computeroutput">defer</code></a> free
+        functions.
+      </p>
+<p>
+        For example:
+      </p>
+<pre class="programlisting">void my_task()
+{
+  ...
+}
+
+...
+
+boost::asio::io_context io_context;
+
+// Submit a function to the io_context.
+boost::asio::post(io_context, my_task);
+
+// Submit a lambda object to the io_context.
+boost::asio::post(io_context,
+    []()
+    {
+      ...
+    });
+
+// Run the io_context until it runs out of work.
+io_context.run();
+</pre>
+<h5>
+<a name="boost_asio.reference.io_context.h8"></a>
+        <span class="phrase"><a name="boost_asio.reference.io_context.stopping_the_io_context_from_running_out_of_work"></a></span><a class="link" href="io_context.html#boost_asio.reference.io_context.stopping_the_io_context_from_running_out_of_work">Stopping
+        the io_context from running out of work</a>
+      </h5>
+<p>
+        Some applications may need to prevent an <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+        object's <code class="computeroutput">run()</code> call from returning when there is no more work
+        to do. For example, the <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+        may be being run in a background thread that is launched prior to the application's
+        asynchronous operations. The <code class="computeroutput">run()</code> call may be kept running
+        by creating an object of type boost::asio::executor_work_guard&lt;io_context::executor_type&gt;:
+      </p>
+<pre class="programlisting">boost::asio::io_context io_context;
+boost::asio::executor_work_guard&lt;boost::asio::io_context::executor_type&gt;
+  = boost::asio::make_work_guard(io_context);
+...
+</pre>
+<p>
+        To effect a shutdown, the application will then need to call the <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+        object's <code class="computeroutput">stop()</code> member function. This will cause the <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+        <code class="computeroutput">run()</code> call to return as soon as possible, abandoning unfinished
+        operations and without permitting ready handlers to be dispatched.
+      </p>
+<p>
+        Alternatively, if the application requires that all operations and handlers
+        be allowed to finish normally, the work object may be explicitly reset.
+      </p>
+<pre class="programlisting">boost::asio::io_context io_context;
+boost::asio::executor_work_guard&lt;boost::asio::io_context::executor_type&gt;
+  = boost::asio::make_work_guard(io_context);
+...
+work.reset(); // Allow run() to exit.
+</pre>
+<h5>
+<a name="boost_asio.reference.io_context.h9"></a>
+        <span class="phrase"><a name="boost_asio.reference.io_context.requirements"></a></span><a class="link" href="io_context.html#boost_asio.reference.io_context.requirements">Requirements</a>
+      </h5>
+<p>
+        <span class="emphasis"><em>Header: </em></span><code class="literal">boost/asio/io_context.hpp</code>
+      </p>
+<p>
+        <span class="emphasis"><em>Convenience header: </em></span><code class="literal">boost/asio.hpp</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="invalid_service_owner/invalid_service_owner.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="io_context/add_service.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

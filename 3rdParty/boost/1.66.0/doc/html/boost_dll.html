@@ -1,0 +1,162 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;12.&#160;Boost.DLL</title>
+<link rel="stylesheet" href="../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="libraries.html" title="Part&#160;I.&#160;The Boost C++ Libraries (BoostBook Subset)">
+<link rel="prev" href="boost/local_time/tz_database.html" title="Type definition tz_database">
+<link rel="next" href="boost_dll/getting_started.html" title="Getting started">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../boost.png"></td>
+<td align="center"><a href="../../index.html">Home</a></td>
+<td align="center"><a href="../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost/local_time/tz_database.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="libraries.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost_dll/getting_started.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="boost_dll"></a>Chapter&#160;12.&#160;Boost.DLL</h2></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Renato</span> <span class="surname">Forti</span>
+</h3></div></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Antony</span> <span class="surname">Polukhin</span>
+</h3></div></div>
+<div><p class="copyright">Copyright &#169; 2014 Renato Tegon Forti, Antony Polukhin</p></div>
+<div><p class="copyright">Copyright &#169; 2015 Antony Polukhin</p></div>
+<div><p class="copyright">Copyright &#169; 2016 Antony Polukhin, Klemens Morgenstern</p></div>
+<div><div class="legalnotice">
+<a name="boost_dll.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="boost_dll.html#boost_dll.introduction">Motivation</a></span></dt>
+<dt><span class="section"><a href="boost_dll/getting_started.html">Getting started</a></span></dt>
+<dt><span class="section"><a href="boost_dll/tutorial.html">Tutorial</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_dll/tutorial.html#boost_dll.tutorial.plugin_basics">Plugin basics</a></span></dt>
+<dt><span class="section"><a href="boost_dll/tutorial.html#boost_dll.tutorial.factory_method_in_plugin">Factory
+      method in plugin</a></span></dt>
+<dt><span class="section"><a href="boost_dll/tutorial.html#boost_dll.tutorial.searching_for_a_symbol_in_multiple_plugins">Searching
+      for a symbol in multiple plugins</a></span></dt>
+<dt><span class="section"><a href="boost_dll/tutorial.html#boost_dll.tutorial.linking_plugin_into_the_executable">Linking
+      plugin into the executable</a></span></dt>
+<dt><span class="section"><a href="boost_dll/tutorial.html#boost_dll.tutorial.symbol_shadowing_problem__linux_">Symbol
+      shadowing problem (Linux)</a></span></dt>
+<dt><span class="section"><a href="boost_dll/tutorial.html#boost_dll.tutorial.executing_callbacks_on_library_unload">Executing
+      callbacks on library unload</a></span></dt>
+<dt><span class="section"><a href="boost_dll/tutorial.html#boost_dll.tutorial.querying_libraries_for_symbols">Querying
+      libraries for symbols</a></span></dt>
+<dt><span class="section"><a href="boost_dll/tutorial.html#boost_dll.tutorial.advanced_library_reference_counting">Advanced
+      library reference counting</a></span></dt>
+<dt><span class="section"><a href="boost_dll/tutorial.html#boost_dll.tutorial.importing_a_c_function_from_windows_dll">Importing
+      a C function from Windows dll</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_dll/mangled_import.html">Mangled Import</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_dll/mangled_import.html#boost_dll.mangled_import.support___requirements">Support
+      &amp; Requirements</a></span></dt>
+<dt><span class="section"><a href="boost_dll/mangled_import.html#boost_dll.mangled_import.mangled_import_example">Mangled
+      Import Example</a></span></dt>
+<dt><span class="section"><a href="boost_dll/mangled_import.html#boost_dll.mangled_import.class_import">Class Import</a></span></dt>
+<dt><span class="section"><a href="boost_dll/mangled_import.html#boost_dll.mangled_import.overloading_qualifiers">Overloading
+      qualifiers</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_dll/missuses.html">Missuses</a></span></dt>
+<dt><span class="section"><a href="boost_dll/reference.html">Reference</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_dll/reference.html#shared_library_reference">Shared Library Reference</a></span></dt>
+<dt><span class="section"><a href="boost_dll/reference.html#shared_library_refcountable_reference">Shared Library Refcountable Reference</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_dll/limitations.html">Limitations</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_dll/limitations.html#boost_dll.limitations.exporting_weak_symbols__fails_on_mingw__android_">Exporting
+      weak symbols (Fails on MinGW, Android)</a></span></dt>
+<dt><span class="section"><a href="boost_dll/limitations.html#boost_dll.limitations.user_defined_section_names__fails_on_sunos___oracle_solaris_studio_compilers_">User
+      defined section names (Fails on SunOS + Oracle Solaris Studio Compilers)</a></span></dt>
+<dt><span class="section"><a href="boost_dll/limitations.html#boost_dll.limitations.multithread">Thread safe library
+      loading (Fails on FreeBSD, MacOS, iOS and some other)</a></span></dt>
+<dt><span class="section"><a href="boost_dll/limitations.html#boost_dll.limitations.nested">Nested Function Definitions</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_dll/f_a_q_.html">F.A.Q.</a></span></dt>
+<dt><span class="section"><a href="boost_dll/design_rationale.html">Design Rationale</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_dll/design_rationale.html#boost_dll.design_rationale.abi_portability_across_compilers">ABI
+      portability across compilers</a></span></dt>
+<dt><span class="section"><a href="boost_dll/design_rationale.html#boost_dll.design_rationale.user_s_plugin_api">User's
+      plugin API</a></span></dt>
+<dt><span class="section"><a href="boost_dll/design_rationale.html#boost_dll.design_rationale.performance_and_memory_allocations">Performance
+      and memory allocations</a></span></dt>
+<dt><span class="section"><a href="boost_dll/design_rationale.html#boost_dll.design_rationale.self_loading">Self loading</a></span></dt>
+<dt><span class="section"><a href="boost_dll/design_rationale.html#boost_dll.design_rationale.aliases_vs_mangling">Aliases
+      vs Mangling</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_dll/dependencies.html">Dependencies</a></span></dt>
+<dt><span class="section"><a href="boost_dll/revision_history.html">Revision History</a></span></dt>
+<dt><span class="section"><a href="boost_dll/acknowledgements.html">Acknowledgements</a></span></dt>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_dll.introduction"></a><a class="link" href="boost_dll.html#boost_dll.introduction" title="Motivation">Motivation</a>
+</h2></div></div></div>
+<p>
+      Adding a specific features to an existing software applications at runtime
+      could be useful in many cases. Such extensions, or plugins, are usually implemented
+      using Dynamic Library Modules (DLL,SO/DSO) loaded at runtime.
+    </p>
+<p>
+      This library was designed to simplify plugin development using C++ in a portable
+      cross-platform manner.
+    </p>
+<p>
+      Library provides a portable across platforms way to:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          load libraries
+        </li>
+<li class="listitem">
+          import any native functions and variables
+        </li>
+<li class="listitem">
+          make alias names for C++ mangled functions and symbols
+        </li>
+<li class="listitem">
+          query libraries for sections and exported symbols
+        </li>
+<li class="listitem">
+          self loading and self querying
+        </li>
+<li class="listitem">
+          getting program and module location by exported symbol
+        </li>
+</ul></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: December 14, 2017 at 00:08:10 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost/local_time/tz_database.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="libraries.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost_dll/getting_started.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

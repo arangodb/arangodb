@@ -1,0 +1,35 @@
+# Copyright Stefan Seefeld 2016.
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import python ;
+import testing ;
+
+project quickstart
+  : requirements
+    <location>.
+    ;
+
+# Declare a Python extension called hello.
+python-extension extending : extending.cpp ;
+
+# Declare an executable called embedding that embeds Python
+exe embedding : embedding.cpp /python//python ;
+
+# Declare a test of the extension module
+testing.make-test run-pyd : extending test_extending.py : : test_ext ;
+
+# Declare a test of the embedding application
+testing.run embedding embedding.cpp
+  :              # any ordinary arguments
+  : script.py    # any arguments that should be treated as relative paths
+  :              # requirements
+  : test_embed ; # name of test
+
+# Create a "test" target that runs all the tests
+alias test : test_ext test_embed ;
+
+# make sure the tests don't run by default
+explicit test_ext test_embed test ;
+

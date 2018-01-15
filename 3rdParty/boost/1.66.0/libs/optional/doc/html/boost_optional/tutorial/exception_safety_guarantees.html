@@ -1,0 +1,176 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Exception Safety Guarantees</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Optional">
+<link rel="up" href="../../optional/tutorial.html" title="Tutorial">
+<link rel="prev" href="gotchas/false_positive_with__wmaybe_uninitialized.html" title="False positive with -Wmaybe-uninitialized">
+<link rel="next" href="type_requirements.html" title="Type requirements">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="gotchas/false_positive_with__wmaybe_uninitialized.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../optional/tutorial.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="type_requirements.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_optional.tutorial.exception_safety_guarantees"></a><a class="link" href="exception_safety_guarantees.html" title="Exception Safety Guarantees">Exception
+      Safety Guarantees</a>
+</h3></div></div></div>
+<p>
+        This library assumes that <code class="computeroutput"><span class="identifier">T</span></code>'s
+        destructor does not throw exceptions. If it does, the behaviour of many operations
+        on <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> is
+        undefined.
+      </p>
+<p>
+        The following mutating operations never throw exceptions:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="keyword">operator</span><span class="special">=</span> <span class="special">(</span> <span class="identifier">none_t</span>
+            <span class="special">)</span> <span class="keyword">noexcept</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">reset</span><span class="special">()</span> <span class="keyword">noexcept</span></code>
+          </li>
+</ul></div>
+<p>
+        In addition, the following constructors and the destructor never throw exceptions:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">optional</span><span class="special">()</span>
+            <span class="keyword">noexcept</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">optional</span><span class="special">(</span>
+            <span class="identifier">none_t</span> <span class="special">)</span>
+            <span class="keyword">noexcept</span></code>
+          </li>
+</ul></div>
+<p>
+        Regarding the following assignment functions:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="keyword">operator</span><span class="special">=</span> <span class="special">(</span> <span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="special">)</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="keyword">operator</span><span class="special">=</span> <span class="special">(</span> <span class="identifier">T</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="special">)</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">U</span><span class="special">&gt;</span> <span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="keyword">operator</span><span class="special">=</span> <span class="special">(</span> <span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="special">)</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">InPlaceFactory</span><span class="special">&gt;</span> <span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="keyword">operator</span><span class="special">=</span> <span class="special">(</span> <span class="identifier">InPlaceFactory</span>
+            <span class="keyword">const</span><span class="special">&amp;</span>
+            <span class="special">)</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">TypedInPlaceFactory</span><span class="special">&gt;</span> <span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="keyword">operator</span><span class="special">=</span> <span class="special">(</span> <span class="identifier">TypedInPlaceFactory</span>
+            <span class="keyword">const</span><span class="special">&amp;</span>
+            <span class="special">)</span> </code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">reset</span><span class="special">(</span> <span class="identifier">T</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="special">)</span></code>
+          </li>
+</ul></div>
+<p>
+        They forward calls to the corresponding <code class="computeroutput"><span class="identifier">T</span></code>'s
+        constructors or assignments (depending on whether the optional object is
+        initialized or not); so if both <code class="computeroutput"><span class="identifier">T</span></code>'s
+        constructor and the assignment provide strong exception safety guarantee,
+        <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>'s
+        assignment also provides strong exception safety guarantee; otherwise we
+        only get the basic guarantee. Additionally, if both involved <code class="computeroutput"><span class="identifier">T</span></code>'s constructor and the assignment never
+        throw, <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>'s
+        assignment also never throws.
+      </p>
+<p>
+        Unless <code class="computeroutput"><span class="identifier">T</span></code>'s constructor or
+        assignment throws, assignments to <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+        do not throw anything else on its own. A throw during assignment never changes
+        the initialization state of any optional object involved:
+      </p>
+<pre class="programlisting"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">opt1</span><span class="special">(</span><span class="identifier">val1</span><span class="special">);</span>
+<span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">opt2</span><span class="special">(</span><span class="identifier">val2</span><span class="special">);</span>
+<span class="identifier">assert</span><span class="special">(</span><span class="identifier">opt1</span><span class="special">);</span>
+<span class="identifier">assert</span><span class="special">(</span><span class="identifier">opt2</span><span class="special">);</span>
+
+<span class="keyword">try</span>
+<span class="special">{</span>
+  <span class="identifier">opt1</span> <span class="special">=</span> <span class="identifier">opt2</span><span class="special">;</span> <span class="comment">// throws</span>
+<span class="special">}</span>
+<span class="keyword">catch</span><span class="special">(...)</span>
+<span class="special">{</span>
+  <span class="identifier">assert</span><span class="special">(</span><span class="identifier">opt1</span><span class="special">);</span>
+  <span class="identifier">assert</span><span class="special">(</span><span class="identifier">opt2</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        This also applies to move assignments/constructors. However, move operations
+        are made no-throw more often.
+      </p>
+<p>
+        Operation <code class="computeroutput"><span class="identifier">emplace</span></code> provides
+        basic exception safety guarantee. If it throws, the optional object becomes
+        uninitialized regardless of its initial state, and its previous contained
+        value (if any) is destroyed. It doesn't call any assignment or move/copy
+        constructor on <code class="computeroutput"><span class="identifier">T</span></code>.
+      </p>
+<h5>
+<a name="boost_optional.tutorial.exception_safety_guarantees.h0"></a>
+        <span class="phrase"><a name="boost_optional.tutorial.exception_safety_guarantees.swap"></a></span><a class="link" href="exception_safety_guarantees.html#boost_optional.tutorial.exception_safety_guarantees.swap">Swap</a>
+      </h5>
+<p>
+        Unless <code class="computeroutput"><span class="identifier">swap</span></code> on optional is
+        customized, its primary implementation forwards calls to <code class="computeroutput"><span class="identifier">T</span></code>'s
+        <code class="computeroutput"><span class="identifier">swap</span></code> or move constructor
+        (depending on the initialization state of the optional objects). Thus, if
+        both <code class="computeroutput"><span class="identifier">T</span></code>'s <code class="computeroutput"><span class="identifier">swap</span></code>
+        and move constructor never throw, <code class="computeroutput"><span class="identifier">swap</span></code>
+        on <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> never
+        throws. similarly, if both <code class="computeroutput"><span class="identifier">T</span></code>'s
+        <code class="computeroutput"><span class="identifier">swap</span></code> and move constructor
+        offer strong guarantee, <code class="computeroutput"><span class="identifier">swap</span></code>
+        on <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> also
+        offers a strong guarantee.
+      </p>
+<p>
+        In case <code class="computeroutput"><span class="identifier">swap</span></code> on optional
+        is customized, the call to <code class="computeroutput"><span class="identifier">T</span></code>'s
+        move constructor are replaced with the calls to <code class="computeroutput"><span class="identifier">T</span></code>'s
+        default constructor followed by <code class="computeroutput"><span class="identifier">swap</span></code>.
+        (This is more useful on older compilers that do not support move semantics,
+        when one wants to acheive stronger exception safety guarantees.) In this
+        case the exception safety guarantees for <code class="computeroutput"><span class="identifier">swap</span></code>
+        are reliant on the guarantees of <code class="computeroutput"><span class="identifier">T</span></code>'s
+        <code class="computeroutput"><span class="identifier">swap</span></code> and default constructor
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2007 Fernando Luis Cacciola Carballal<br>Copyright &#169; 2014-2017 Andrzej
+      Krzemie&#324;ski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="gotchas/false_positive_with__wmaybe_uninitialized.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../optional/tutorial.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="type_requirements.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

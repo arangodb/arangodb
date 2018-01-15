@@ -1,0 +1,144 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Future work</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../poly_collection.html" title="Chapter&#160;27.&#160;Boost.PolyCollection">
+<link rel="prev" href="reference.html" title="Reference">
+<link rel="next" href="release_notes.html" title="Release notes">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="reference.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../poly_collection.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="release_notes.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="poly_collection.future_work"></a><a class="link" href="future_work.html" title="Future work">Future work</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="future_work.html#poly_collection.future_work.alternative_rtti_systems">Alternative
+      RTTI systems</a></span></dt>
+<dt><span class="section"><a href="future_work.html#poly_collection.future_work.copy_traits">Copy traits</a></span></dt>
+<dt><span class="section"><a href="future_work.html#poly_collection.future_work.parallel_algorithms">Parallel
+      algorithms</a></span></dt>
+<dt><span class="section"><a href="future_work.html#poly_collection.future_work.variant_collection"><code class="computeroutput"><span class="identifier">variant_collection</span></code></a></span></dt>
+<dt><span class="section"><a href="future_work.html#poly_collection.future_work.ordered_polymorphic_collections">Ordered
+      polymorphic collections</a></span></dt>
+</dl></div>
+<p>
+      A number of features asked by reviewers and users of Boost.PolyCollection are
+      considered for inclusion into future versions of the library.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="poly_collection.future_work.alternative_rtti_systems"></a><a class="link" href="future_work.html#poly_collection.future_work.alternative_rtti_systems" title="Alternative RTTI systems">Alternative
+      RTTI systems</a>
+</h3></div></div></div>
+<p>
+        Boost.PolyCollection can be extended to use <a href="../../../libs/type_index" target="_top">Boost.TypeIndex</a>
+        in RTTI-challenged scenarios. Taking this idea further, it is not unusual
+        that some environments (game engines, for instance) provide their own RTTI
+        framework: an even more ambitious extension to Boost.PolyCollection would
+        then be to make it configurable for user-provided RTTI through some sort
+        of traits class specifying replacements for <a href="http://en.cppreference.com/w/cpp/types/type_info" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">type_info</span></code></a>
+        and <a href="http://en.cppreference.com/w/cpp/language/typeid" target="_top"><code class="computeroutput"><span class="keyword">typeid</span></code></a>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="poly_collection.future_work.copy_traits"></a><a class="link" href="future_work.html#poly_collection.future_work.copy_traits" title="Copy traits">Copy traits</a>
+</h3></div></div></div>
+<p>
+        <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_collection</span></code> requires that stored objects
+        be <a href="http://en.cppreference.com/w/cpp/concept/MoveConstructible" target="_top"><span class="bold"><strong><code class="computeroutput"><span class="identifier">MoveConstructible</span></code></strong></span></a>
+        and <a href="http://en.cppreference.com/w/cpp/concept/MoveAssignable" target="_top"><span class="bold"><strong><code class="computeroutput"><span class="identifier">MoveAssignable</span></code></strong></span></a>;
+        unfortunately, it is customary to restrict copying in OOP hierarchies to
+        avoid slicing, which would force users to revisit their class definitions
+        in order to use Boost.PolyCollection. This can be alleviated by offering
+        a configurable traits class where copy and assignment can be defined externally
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">copy_traits</span>
+<span class="special">{</span>
+  <span class="keyword">void</span> <span class="identifier">construct</span><span class="special">(</span><span class="keyword">void</span><span class="special">*,</span><span class="identifier">T</span><span class="special">&amp;&amp;);</span>
+  <span class="keyword">void</span> <span class="identifier">assign</span><span class="special">(</span><span class="identifier">T</span><span class="special">&amp;,</span><span class="identifier">T</span><span class="special">&amp;&amp;);</span>
+<span class="special">};</span>
+</pre>
+<p>
+        with default implementations resorting to regular placement <code class="computeroutput"><span class="keyword">new</span></code> and <code class="computeroutput"><span class="identifier">T</span><span class="special">::</span><span class="keyword">operator</span><span class="special">=</span></code>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="poly_collection.future_work.parallel_algorithms"></a><a class="link" href="future_work.html#poly_collection.future_work.parallel_algorithms" title="Parallel algorithms">Parallel
+      algorithms</a>
+</h3></div></div></div>
+<p>
+        C++17 introduces <a href="http://en.cppreference.com/w/cpp/experimental/parallelism" target="_top">parallel
+        algorithms</a>, like for instance a parallel version of <a href="http://en.cppreference.com/w/cpp/algorithm/for_each" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span></code></a>;
+        it is only natural then to provide the corresponding <a class="link" href="tutorial.html#poly_collection.tutorial.algorithms" title="Algorithms">Boost.PolyCollection-specific
+        algorithms</a>. The segmented nature of polymorphic collections makes
+        them particularly amenable to parallel processing.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="poly_collection.future_work.variant_collection"></a><a class="link" href="future_work.html#poly_collection.future_work.variant_collection" title="variant_collection"><code class="computeroutput"><span class="identifier">variant_collection</span></code></a>
+</h3></div></div></div>
+<p>
+        <span class="emphasis"><em>Closed polymorphism</em></span> is a kind of dynamic polymorphism
+        where the set of implementation types is fixed at definition time: the prime
+        example of this paradigm in C++ is <a href="http://en.cppreference.com/w/cpp/utility/variant" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">variant</span></code></a>.
+        Although <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">any_collection</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mpl</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;&gt;&gt;</span></code> can act as a sort of replacement
+        for <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">variant</span><span class="special">&lt;</span><span class="identifier">T1</span><span class="special">,...,</span><span class="identifier">TN</span><span class="special">&gt;&gt;</span></code>, this is in fact more similar to
+        a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span></code><a href="http://en.cppreference.com/w/cpp/utility/any" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">any</span></code></a><code class="computeroutput"><span class="special">&gt;</span></code>, and a collection class <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">variant_collection</span><span class="special">&lt;</span><span class="identifier">T1</span><span class="special">,...,</span><span class="identifier">TN</span><span class="special">&gt;</span></code>
+        could be designed to better model closed polymorphism and take further advantage
+        of the fact that implementation types are fixed (for instance, internal virtual
+        calls can be completely eliminated). From a conceptual point of view, this
+        would require introducing a new <span class="bold"><strong><code class="computeroutput"><span class="identifier">ClosedPolymorphicCollection</span></code></strong></span>
+        notion and renaming the current <a class="link" href="reference.html#poly_collection.reference.polymorphic_containers.polymorphic_collections" title="Polymorphic collections"><span class="bold"><strong><code class="computeroutput"><span class="identifier">PolymorphicCollection</span></code></strong></span></a>
+        model to <span class="bold"><strong><code class="computeroutput"><span class="identifier">OpenPolymorphicCollection</span></code></strong></span>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="poly_collection.future_work.ordered_polymorphic_collections"></a><a class="link" href="future_work.html#poly_collection.future_work.ordered_polymorphic_collections" title="Ordered polymorphic collections">Ordered
+      polymorphic collections</a>
+</h3></div></div></div>
+<p>
+        Users have expressed interest in polymorphic collections where elements are
+        kept ordered within their segment and optionally duplicates are excluded,
+        much like <a href="http://boost.org/doc/html/container/non_standard_containers.html#container.non_standard_containers.flat_xxx" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">flat_set</span></code>/<code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">flat_multiset</span></code></a>
+        do over their internal data vector. The open question remains of whether
+        these collections should also guarantee some order between segments (current
+        ones don't) to allow for the definition of container-level <code class="computeroutput"><span class="keyword">operator</span><span class="special">&lt;</span></code>
+        and related operators.
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Joaqu&#237;n M L&#243;pez Mu&#241;oz<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="reference.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../poly_collection.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="release_notes.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

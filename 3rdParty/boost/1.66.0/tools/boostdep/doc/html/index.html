@@ -1,0 +1,974 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Boostdep</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.78.1">
+<link rel="home" href="index.html" title="Boostdep">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"></div>
+<div class="article">
+<div class="titlepage">
+<div>
+<div><h2 class="title">
+<a name="boostdep"></a>Boostdep</h2></div>
+<div><p class="copyright">Copyright &#169; 2014-2017 Peter
+      Dimov</p></div>
+<div><div class="legalnotice">
+<a name="boostdep.legal"></a><p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></div>
+</div>
+<hr>
+</div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="index.html#boostdep.introduction">Introduction</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="index.html#boostdep.introduction.modular_boost">Modular Boost</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.introduction.building_boostdep">Building Boostdep</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.introduction.running_boostdep">Running Boostdep</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="index.html#boostdep.usage">Usage</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="index.html#boostdep.usage.simple_queries">Simple Queries</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.usage.html_reports">HTML reports</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="index.html#boostdep.reference">Reference</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="index.html#boostdep.reference.list_modules">--list-modules</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.list_buildable">--list-buildable</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.list_dependencies">--list-dependencies</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.list_exceptions">--list-exceptions</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.list_missing_headers">--list-missing-headers</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.module_overview">--module-overview</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.module_levels">--module-levels</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.module_weights">--module-weights</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.primary">--primary</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.secondary">--secondary</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.reverse">--reverse</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.subset">--subset</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.header">--header</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.test">--test</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.cmake">--cmake</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.pkgconfig">--pkgconfig</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.subset_for">--subset-for</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.track_sources">--track-sources</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.track_tests">--track-tests</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.html_title">--html-title</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.html_footer">--html-footer</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.html_stylesheet">--html-stylesheet</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.html_prefix">--html-prefix</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.html">--html</a></span></dt>
+</dl></dd>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boostdep.introduction"></a><a class="link" href="index.html#boostdep.introduction" title="Introduction">Introduction</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="index.html#boostdep.introduction.modular_boost">Modular Boost</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.introduction.building_boostdep">Building Boostdep</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.introduction.running_boostdep">Running Boostdep</a></span></dt>
+</dl></div>
+<p>
+      <span class="emphasis"><em>Boostdep</em></span> is a tool for generating Boost dependency reports.
+      It scans the header or source files of the Boost libraries for <code class="computeroutput"><span class="preprocessor">#include</span></code> directives, builds a dependency
+      graph from this information and outputs its findings in plain text or HTML.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.introduction.modular_boost"></a><a class="link" href="index.html#boostdep.introduction.modular_boost" title="Modular Boost">Modular Boost</a>
+</h3></div></div></div>
+<p>
+        <span class="emphasis"><em>Boostdep</em></span> requires the so-called "modular Boost"
+        directory structure.
+      </p>
+<p>
+        If you already have a <a href="https://svn.boost.org/trac/boost/wiki/ModularBoost" target="_top">modular
+        Boost installation</a>, you can skip this section. Otherwise, read on.
+      </p>
+<p>
+        Boost libraries reside in subdirectories under the <code class="literal">libs</code>
+        directory. For example, the contents of the Boost.Filesystem library are
+        in <code class="literal">libs/filesystem</code>. This includes the build scripts (in
+        <code class="literal">libs/filesystem/build</code>), the source files (in <code class="literal">libs/filesystem/src</code>),
+        the tests (in <code class="literal">libs/filesystem/test</code>), the documentation
+        (in <code class="literal">libs/filesystem/doc</code>), and so on.
+      </p>
+<p>
+        In the past, when Boost used SVN as its version control system, the header
+        files were an exception. The header files of all libraries resided in the
+        <code class="literal">boost</code> subdirectory, and it wasn't possible to accurately
+        determine which header belonged to which library.
+      </p>
+<p>
+        When Boost moved to Git for version control, header files were moved to their
+        corresponding libraries, into an <code class="literal">include</code> subdirectory.
+        The header files of Boost.Filesystem are now in <code class="literal">libs/filesystem/include</code>.
+      </p>
+<p>
+        For compatibility, <code class="literal">boost</code> is now a "virtual"
+        directory, containing links to the headers. It's maintained automatically
+        by Boost.Build. (The command <code class="literal">b2 headers</code> creates or recreates
+        the contents of the <code class="literal">boost</code> directory.)
+      </p>
+<p>
+        This new structure allows <span class="emphasis"><em>Boostdep</em></span> to determine that,
+        when faced with an <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">filesystem</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+        directive, that this header is part of Boost.Filesystem, and that therefore,
+        the current library being scanned depends on Boost.Filesystem.
+      </p>
+<p>
+        Unfortunately, Boost releases do not have this structure. For backward compatibility,
+        they have an old-style <code class="literal">boost</code> directory containing all
+        header files, whereas the per-library <code class="literal">include</code> subdirectories
+        are missing. Therefore, <span class="emphasis"><em>Boostdep</em></span> will not work with
+        a downloaded Boost release.
+      </p>
+<p>
+        To use <span class="emphasis"><em>Boostdep</em></span>, you will have to clone the Boost Git
+        repository instead. To do that, execute the following command:
+      </p>
+<pre class="programlisting">git clone https://github.com/boostorg/boost.git boost
+</pre>
+<p>
+        This will download the Boost "superproject" (the master project,
+        without any libraries) and place it into the subdirectory <code class="literal">boost</code>
+        of the current directory. To override the directory name, pass it as a second
+        argument instead of <code class="literal">boost</code>:
+      </p>
+<pre class="programlisting">git clone https://github.com/boostorg/boost.git <span class="emphasis"><em>mydir</em></span>
+</pre>
+<p>
+        You can now <code class="literal">cd</code> into the newly created directory with
+      </p>
+<pre class="programlisting">cd <span class="emphasis"><em>mydir</em></span>
+</pre>
+<p>
+        This directory is called the "Boost root". All of the commands
+        below assume that it is the current directory.
+      </p>
+<p>
+        The above <code class="literal">git clone</code> commands download the default branch
+        of the Boost Git repository, which is <code class="literal">master</code>. This is
+        the current more-or-less stable version of Boost.
+      </p>
+<p>
+        To verify this, issue the command
+      </p>
+<pre class="programlisting">git status
+</pre>
+<p>
+        from the Boost root. This will output
+      </p>
+<pre class="programlisting"># On branch master
+nothing to commit, working directory clean
+</pre>
+<p>
+        To download a specific release instead, such as 1.58.0, issue the following
+        command after <code class="literal">git clone</code>, from the Boost root:
+      </p>
+<pre class="programlisting">git checkout boost-1.58.0
+</pre>
+<p>
+        <code class="literal">git status</code> will now say
+      </p>
+<pre class="programlisting"># HEAD detached at boost-1.58.0
+nothing to commit, working directory clean
+</pre>
+<p>
+        Then, download all the libraries:
+      </p>
+<pre class="programlisting">git submodule update --init
+</pre>
+<p>
+        This step will take a while.
+      </p>
+<p>
+        If all goes well, you will now have the complete contents of Boost's latest
+        <code class="literal">master</code> branch (if you didn't <code class="literal">checkout</code>
+        a specific release by name) or the corresponding Boost release (if you did).
+      </p>
+<p>
+        You can switch between the <code class="literal">master</code> branch, the <code class="literal">develop</code>
+        (unstable) branch, and a release, by issuing the following commands:
+      </p>
+<div class="blockquote"><blockquote class="blockquote"><p>
+          For the <code class="literal">master</code> branch:
+        </p></blockquote></div>
+<pre class="programlisting">git checkout master
+git pull
+git submodule update --init
+</pre>
+<div class="blockquote"><blockquote class="blockquote"><p>
+          (<code class="literal">git pull</code> updates your local copy of the <code class="literal">master</code>
+          branch from the server, in case it has changed since your initial checkout.)
+        </p></blockquote></div>
+<div class="blockquote"><blockquote class="blockquote"><p>
+          For the <code class="literal">develop</code> branch:
+        </p></blockquote></div>
+<pre class="programlisting">git checkout develop
+git pull
+git submodule update --init
+</pre>
+<div class="blockquote"><blockquote class="blockquote"><p>
+          For the <code class="literal">boost-1.58.0</code> release:
+        </p></blockquote></div>
+<pre class="programlisting">git checkout boost-1.58.0
+git submodule update --init
+</pre>
+<div class="blockquote"><blockquote class="blockquote"><p>
+          For the <code class="literal">boost-1.57.0</code> release:
+        </p></blockquote></div>
+<pre class="programlisting">git checkout boost-1.57.0
+git submodule update --init
+</pre>
+<p>
+        Note that, while the initial <code class="literal">git submodule update</code> is quite
+        slow, as it needs to download all the libraries, the subsequent invocations
+        are a lot faster.
+      </p>
+<p>
+        Also note that if a new Boost library (<code class="literal">libs/convert</code>, for
+        example) is present in, say, <code class="literal">master</code>, and you have it checked
+        out, when you later switch to <code class="literal">boost-1.58.0</code>, where this
+        library doesn't exist, Git will not delete <code class="literal">libs/convert</code>.
+        In this case, <code class="literal">git status</code> will output
+      </p>
+<pre class="programlisting"># HEAD detached at boost-1.58.0
+# Untracked files:
+#   (use "git add &lt;file&gt;..." to include in what will be committed)
+#
+#       libs/convert/
+nothing added to commit but untracked files present (use "git add" to track)
+</pre>
+<p>
+        and you will have to remove <code class="literal">libs/convert</code> by hand.
+      </p>
+<p>
+        Once you have the Boost contents which you want to analyze for dependencies,
+        proceed with the next step, building <span class="emphasis"><em>Boostdep</em></span>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.introduction.building_boostdep"></a><a class="link" href="index.html#boostdep.introduction.building_boostdep" title="Building Boostdep">Building Boostdep</a>
+</h3></div></div></div>
+<p>
+        To build <span class="emphasis"><em>Boostdep</em></span>, issue the following command from
+        the Boost root:
+      </p>
+<pre class="programlisting">b2 tools/boostdep/build
+</pre>
+<p>
+        This will build <span class="emphasis"><em>Boostdep</em></span> from source using the default
+        "toolset" (a Boost.Build term meaning "compiler") and
+        if successful, place it into the <code class="literal">dist/bin</code> subdirectory.
+        The command assumes that <code class="literal">b2</code> (the Boost.Build executable)
+        is somewhere in your path. If you don't have <code class="literal">b2</code>, execute
+      </p>
+<pre class="programlisting">.\bootstrap
+</pre>
+<p>
+        under Windows or
+      </p>
+<pre class="programlisting">./bootstrap.sh
+</pre>
+<p>
+        under Unix-like systems, which should build <code class="literal">b2</code> and place
+        it into the current directory. You can then use <code class="literal">./b2</code> instead
+        of <code class="literal">b2</code>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.introduction.running_boostdep"></a><a class="link" href="index.html#boostdep.introduction.running_boostdep" title="Running Boostdep">Running Boostdep</a>
+</h3></div></div></div>
+<p>
+        Once you have built <span class="emphasis"><em>Boostdep</em></span>, execute it with the following
+        command:
+      </p>
+<pre class="programlisting">dist/bin/boostdep
+</pre>
+<p>
+        or
+      </p>
+<pre class="programlisting">dist\bin\boostdep
+</pre>
+<p>
+        on Windows. The commands below are given as using <code class="literal">dist/bin/boostdep</code>;
+        if you're using Windows, use <code class="literal">dist\bin\boostdep</code> instead.
+      </p>
+<p>
+        This will print out the following help message:
+      </p>
+<pre class="programlisting">Usage:
+
+    boostdep --list-modules
+    boostdep --list-buildable
+    boostdep [--track-sources] [--track-tests] --list-dependencies
+    boostdep --list-exceptions
+    boostdep --list-missing-headers
+
+    boostdep [options] --module-overview
+    boostdep [options] --module-levels
+    boostdep [options] --module-weights
+
+    boostdep [options] [--primary] &lt;module&gt;
+    boostdep [options] --secondary &lt;module&gt;
+    boostdep [options] --reverse &lt;module&gt;
+    boostdep [options] --subset &lt;module&gt;
+    boostdep [options] [--header] &lt;header&gt;
+    boostdep --test &lt;module&gt;
+    boostdep --cmake &lt;module&gt;
+    boostdep --pkgconfig &lt;module&gt; &lt;version&gt; [&lt;var&gt;=&lt;value&gt;] [&lt;var&gt;=&lt;value&gt;]...
+    boostdep [options] --subset-for &lt;directory&gt;
+
+    [options]: [--[no-]track-sources] [--[no-]track-tests]
+               [--html-title &lt;title&gt;] [--html-footer &lt;footer&gt;]
+               [--html-stylesheet &lt;stylesheet&gt;] [--html-prefix &lt;prefix&gt;]
+               [--html]
+</pre>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boostdep.usage"></a><a class="link" href="index.html#boostdep.usage" title="Usage">Usage</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="index.html#boostdep.usage.simple_queries">Simple Queries</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.usage.html_reports">HTML reports</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.usage.simple_queries"></a><a class="link" href="index.html#boostdep.usage.simple_queries" title="Simple Queries">Simple Queries</a>
+</h3></div></div></div>
+<p>
+        To list the dependencies of a specific library, use the command
+      </p>
+<pre class="programlisting">dist/bin/boostdep <span class="emphasis"><em>library</em></span>
+</pre>
+<p>
+        For Boost.Filesystem, for example, type
+      </p>
+<pre class="programlisting">dist/bin/boostdep filesystem
+</pre>
+<p>
+        This will print out something similar to the following:
+      </p>
+<pre class="programlisting">Primary dependencies for filesystem:
+
+assert:
+    &lt;boost/assert.hpp&gt;
+        from &lt;boost/filesystem/operations.hpp&gt;
+        from &lt;boost/filesystem/path_traits.hpp&gt;
+
+config:
+    &lt;boost/config.hpp&gt;
+        from &lt;boost/filesystem/config.hpp&gt;
+        from &lt;boost/filesystem/convenience.hpp&gt;
+        from &lt;boost/filesystem/fstream.hpp&gt;
+        from &lt;boost/filesystem/operations.hpp&gt;
+        from &lt;boost/filesystem/path.hpp&gt;
+        from &lt;boost/filesystem/path_traits.hpp&gt;
+    <span class="emphasis"><em>...</em></span>
+
+functional:
+    &lt;boost/functional/hash_fwd.hpp&gt;
+        from &lt;boost/filesystem/path.hpp&gt;
+
+io:
+    &lt;boost/io/detail/quoted_manip.hpp&gt;
+        from &lt;boost/filesystem/path.hpp&gt;
+
+iterator:
+    &lt;boost/iterator/iterator_facade.hpp&gt;
+        from &lt;boost/filesystem/path.hpp&gt;
+    <span class="emphasis"><em>...</em></span>
+</pre>
+<p>
+        This lists the immediate dependencies of Boost.Filesystem. <code class="literal">assert:</code>
+        is the library, <code class="literal">&lt;boost/assert.hpp&gt;</code> is the file that
+        is being included, and <code class="literal">from &lt;boost/filesystem/config.hpp&gt;</code>
+        shows where <code class="literal">&lt;boost/assert.hpp&gt;</code> is being included.
+      </p>
+<p>
+        <span class="emphasis"><em>Boostdep</em></span> names libraries (or modules) after their directory
+        name. The <code class="literal">libs/filesystem</code> directory, for example, is the
+        <code class="literal">filesystem</code> module. The <code class="literal">libs/numeric/conversion</code>
+        directory is the <code class="literal">numeric~conversion</code> module, according
+        to the <span class="emphasis"><em>Boostdep</em></span> naming convention.
+      </p>
+<p>
+        The reason forward slashes are replaced with tildes is that <code class="literal">numeric~conversion</code>
+        is a valid file name, which makes generating HTML reports a bit easier.
+      </p>
+<p>
+        To see where a given header resides and who includes it, type
+      </p>
+<pre class="programlisting">dist/bin/boostdep <span class="emphasis"><em>header</em></span>
+</pre>
+<p>
+        For <code class="literal">boost/filesystem.hpp</code>, for example, type
+      </p>
+<pre class="programlisting">dist/bin/boostdep boost/filesystem.hpp
+</pre>
+<p>
+        This will print something along the lines of
+      </p>
+<pre class="programlisting">Inclusion report for &lt;boost/filesystem.hpp&gt; (in module filesystem):
+
+    from spirit:
+        &lt;boost/spirit/home/x3/support/utility/testing.hpp&gt;
+</pre>
+<p>
+        What this tells you is that <code class="literal">boost/filesystem.hpp</code> is part
+        of Boost.Filesystem and is only included once, from <code class="literal">&lt;boost/spirit/home/x3/support/utility/testing.hpp&gt;</code>.
+        Other headers, such as <code class="literal">boost/shared_ptr.hpp</code>, are more
+        widely used, as you can see if you try
+      </p>
+<pre class="programlisting">dist/bin/boostdep boost/shared_ptr.hpp
+</pre>
+<p>
+        To print the reverse dependencies of a library, use
+      </p>
+<pre class="programlisting">dist/bin/boostdep --reverse <span class="emphasis"><em>library</em></span>
+</pre>
+<p>
+        For example,
+      </p>
+<pre class="programlisting">dist/bin/boostdep --reverse filesystem
+</pre>
+<p>
+        will list which libraries depend on Boost.Filesystem:
+      </p>
+<pre class="programlisting">Reverse dependencies for filesystem:
+
+graph_parallel:
+    &lt;boost/filesystem/operations.hpp&gt;
+        from &lt;boost/graph/distributed/adjlist/serialization.hpp&gt;
+    &lt;boost/filesystem/path.hpp&gt;
+        from &lt;boost/graph/distributed/adjlist/serialization.hpp&gt;
+
+log:
+    &lt;boost/filesystem/config.hpp&gt;
+        from &lt;boost/log/detail/config.hpp&gt;
+    &lt;boost/filesystem/path.hpp&gt;
+        from &lt;boost/log/sinks/event_log_backend.hpp&gt;
+        from &lt;boost/log/sinks/text_file_backend.hpp&gt;
+        from &lt;boost/log/sinks/text_multifile_backend.hpp&gt;
+
+spirit:
+    &lt;boost/filesystem.hpp&gt;
+        from &lt;boost/spirit/home/x3/support/utility/testing.hpp&gt;
+    &lt;boost/filesystem/fstream.hpp&gt;
+        from &lt;boost/spirit/home/x3/support/utility/testing.hpp&gt;
+    &lt;boost/filesystem/path.hpp&gt;
+        from &lt;boost/spirit/home/x3/support/utility/error_reporting.hpp&gt;
+
+wave:
+    &lt;boost/filesystem/operations.hpp&gt;
+        from &lt;boost/wave/util/cpp_include_paths.hpp&gt;
+        from &lt;boost/wave/util/cpp_iterator.hpp&gt;
+        from &lt;boost/wave/util/filesystem_compatibility.hpp&gt;
+    &lt;boost/filesystem/path.hpp&gt;
+        from &lt;boost/wave/cpp_context.hpp&gt;
+        from &lt;boost/wave/util/cpp_include_paths.hpp&gt;
+        from &lt;boost/wave/util/cpp_iterator.hpp&gt;
+        from &lt;boost/wave/util/cpp_macromap.hpp&gt;
+        from &lt;boost/wave/util/filesystem_compatibility.hpp&gt;
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.usage.html_reports"></a><a class="link" href="index.html#boostdep.usage.html_reports" title="HTML reports">HTML reports</a>
+</h3></div></div></div>
+<p>
+        The primary purpose of <span class="emphasis"><em>Boostdep</em></span> is to generate HTML
+        dependency reports. In the typical case, two types of reports are generated:
+        overviews that contain information for all modules, and per-module ones that
+        list information for a specific library.
+      </p>
+<p>
+        <span class="emphasis"><em>Boostdep</em></span> can generate three types of the first kind
+        of report: module overview, module levels and module weights. To generate
+        a module overview, use the command
+      </p>
+<pre class="programlisting">dist/bin/boostdep --html --module-overview &gt; module-overview.html
+</pre>
+<p>
+        For a module level report, use
+      </p>
+<pre class="programlisting">dist/bin/boostdep --html --module-levels &gt; module-levels.html
+</pre>
+<p>
+        For a module weight report, use
+      </p>
+<pre class="programlisting">dist/bin/boostdep --html --module-weights &gt; module-weights.html
+</pre>
+<p>
+        In these reports, module names such as <span class="emphasis"><em>module</em></span> are HTML
+        links to <code class="literal"><span class="emphasis"><em>module</em></span>.html</code>.
+      </p>
+<p>
+        To make these links work as expected, you can generate HTML reports for each
+        module as follows:
+      </p>
+<pre class="programlisting">dist/bin/boostdep --html-title "Dependency Report for <span class="emphasis"><em>module</em></span>" --html --primary <span class="emphasis"><em>module</em></span> --secondary <span class="emphasis"><em>module</em></span> --reverse <span class="emphasis"><em>module</em></span> &gt; <span class="emphasis"><em>module</em></span>.html
+</pre>
+<p>
+        This step can be automated if you generate a module list first with
+      </p>
+<pre class="programlisting">dist/bin/boostdep --list-modules &gt; list-modules.txt
+</pre>
+<p>
+        that will contain one module name per line, and then use a script to issue
+        the previous command for each module name.
+      </p>
+<p>
+        For more information about the <span class="emphasis"><em>Boostdep</em></span> options and
+        commands, see the <a class="link" href="index.html#boostdep.reference" title="Reference">Reference</a> section.
+      </p>
+<p>
+        For an example of a report generation script, see the file <code class="literal">tools/boostdep/examples/report.bat</code>.
+        This is a Windows batch file, but translating it to a Unix-style shell script
+        should be straightforward.
+      </p>
+<p>
+        For convenience, the contents of <code class="literal">tools/boostdep/examples/report.bat</code>
+        are given below:
+      </p>
+<pre class="programlisting">SET BOOSTDEP=dist\bin\boostdep.exe
+
+FOR /f %%i IN ('git rev-parse HEAD') DO @SET REV=%%i
+
+FOR /f %%i IN ('git rev-parse --short HEAD') DO @SET SHREV=%%i
+
+FOR /f %%i IN ('git rev-parse --abbrev-ref HEAD') DO @SET BRANCH=%%i
+
+SET FOOTER=Generated on %DATE% %TIME% from revision %REV% on branch '%BRANCH%'
+
+SET OUTDIR=..\report-%BRANCH%-%SHREV%
+
+mkdir %OUTDIR%
+
+%BOOSTDEP% --list-modules &gt; %OUTDIR%\list-modules.txt
+
+%BOOSTDEP% --html-footer "%FOOTER%" --html --module-overview &gt; %OUTDIR%\module-overview.html
+%BOOSTDEP% --html-footer "%FOOTER%" --html --module-levels &gt; %OUTDIR%\module-levels.html
+%BOOSTDEP% --html-footer "%FOOTER%" --html --module-weights &gt; %OUTDIR%\module-weights.html
+
+FOR /f %%i IN (%OUTDIR%\list-modules.txt) DO %BOOSTDEP% --html-title "Dependency Report for %%i" --html-footer "%FOOTER%" --html --primary %%i --secondary %%i --reverse %%i &gt; %OUTDIR%%%i.html
+</pre>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boostdep.reference"></a><a class="link" href="index.html#boostdep.reference" title="Reference">Reference</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="index.html#boostdep.reference.list_modules">--list-modules</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.list_buildable">--list-buildable</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.list_dependencies">--list-dependencies</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.list_exceptions">--list-exceptions</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.list_missing_headers">--list-missing-headers</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.module_overview">--module-overview</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.module_levels">--module-levels</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.module_weights">--module-weights</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.primary">--primary</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.secondary">--secondary</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.reverse">--reverse</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.subset">--subset</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.header">--header</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.test">--test</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.cmake">--cmake</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.pkgconfig">--pkgconfig</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.subset_for">--subset-for</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.track_sources">--track-sources</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.track_tests">--track-tests</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.html_title">--html-title</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.html_footer">--html-footer</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.html_stylesheet">--html-stylesheet</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.html_prefix">--html-prefix</a></span></dt>
+<dt><span class="section"><a href="index.html#boostdep.reference.html">--html</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.list_modules"></a><a class="link" href="index.html#boostdep.reference.list_modules" title="--list-modules">--list-modules</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --list-modules</code> prints the module list. <span class="emphasis"><em>Boostdep</em></span>
+        considers a subdirectory of <code class="literal">libs</code> a module if it contains
+        an <code class="literal">include</code> subdirectory.
+      </p>
+<p>
+        This command is typically used from scripts which then use the list to execute
+        a command for each module.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.list_buildable"></a><a class="link" href="index.html#boostdep.reference.list_buildable" title="--list-buildable">--list-buildable</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --list-buildable</code> prints a list of the modules
+        that require building. <span class="emphasis"><em>Boostdep</em></span> considers a module to
+        require building if it contains subdirectories named <code class="literal">build</code>
+        and <code class="literal">src</code>.
+      </p>
+<p>
+        This command is typically used from scripts.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.list_dependencies"></a><a class="link" href="index.html#boostdep.reference.list_dependencies" title="--list-dependencies">--list-dependencies</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --list-dependencies</code> prints a module list in which
+        each line is of the form
+      </p>
+<pre class="programlisting">module -&gt; dependency1 dependency2 <span class="emphasis"><em>...</em></span>
+</pre>
+<p>
+        By default, only the <code class="literal">include</code> directory is scanned for
+        <code class="computeroutput"><span class="preprocessor">#include</span></code> directives. If
+        the option <code class="literal">--track-sources</code> is given, the <code class="literal">src</code>
+        directory is also scanned. If the option <code class="literal">--track-tests</code>
+        is given, the <code class="literal">test</code> directory is also scanned.
+      </p>
+<p>
+        This command is typically used from scripts. The output is virtually identical
+        to <code class="literal">--module-overview</code> in plain text, but slightly more
+        machine-friendly.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.list_exceptions"></a><a class="link" href="index.html#boostdep.reference.list_exceptions" title="--list-exceptions">--list-exceptions</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --list-exceptions</code> prints a list of the headers
+        that are not contained into the include directory ot their corresponding
+        module.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.list_missing_headers"></a><a class="link" href="index.html#boostdep.reference.list_missing_headers" title="--list-missing-headers">--list-missing-headers</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --list-missing-headers</code> prints a list of the headers
+        that are included by another header, but are missing.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.module_overview"></a><a class="link" href="index.html#boostdep.reference.module_overview" title="--module-overview">--module-overview</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --module-overview</code> generates a module overview,
+        in plain text or HTML. The plain text output is of the form
+      </p>
+<pre class="programlisting">Module Overview:
+
+accumulators -&gt; array assert circular_buffer concept_check config core fusion iterator mpl numeric~conversion numeric~ublas parameter preprocessor range static_assert throw_exception tuple type_traits typeof
+algorithm -&gt; array assert bind concept_check config core exception function iterator mpl range regex static_assert tuple type_traits unordered
+align -&gt; assert config core static_assert throw_exception
+</pre>
+<p>
+        whereas the HTML output is similar to
+      </p>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+          <span class="bold"><strong>Module Overview</strong></span>
+        </p>
+<p>
+          <span class="bold"><strong><span class="emphasis"><em>accumulators</em></span></strong></span>
+        </p>
+<p>
+          &#8674; array assert circular_buffer concept_check config core fusion
+          iterator mpl numeric~conversion numeric~ublas parameter preprocessor range
+          static_assert throw_exception tuple type_traits typeof
+        </p>
+</blockquote></div>
+<p>
+        where <span class="emphasis"><em>accumulators</em></span> is a link to <code class="literal">accumulators.html</code>.
+      </p>
+<p>
+        As before, if <code class="literal">--track-sources</code> is given, the <code class="literal">src</code>
+        subdirectory is scanned for <code class="computeroutput"><span class="preprocessor">#include</span></code>
+        directives.
+      </p>
+<p>
+        HTML output is enabled by the <code class="literal">--html</code> option. The <code class="literal">--html-title</code>
+        and <code class="literal">--html-footer</code> options set the HTML <code class="literal">&lt;title&gt;</code>
+        and the page footer and need to precede <code class="literal">--html</code>, like in
+        the following example:
+      </p>
+<pre class="programlisting">dist/bin/boostdep --html-title "Module Overview" --html-footer "Generated on 21.05.2015 20:53:11" --html --module-overview &gt; module-overview.html
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.module_levels"></a><a class="link" href="index.html#boostdep.reference.module_levels" title="--module-levels">--module-levels</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --module-levels</code> generates a report that groups
+        modules by level. Levels are determined in such a way so that a module of
+        level <code class="literal">N</code> never depends on modules of levels greater than
+        <code class="literal">N</code>, and in the absence of cyclic dependencies, doesn't
+        depend on other modules of level <code class="literal">N</code>. It takes the same
+        options as <code class="literal">--module-overview</code>.
+      </p>
+<pre class="programlisting">dist/bin/boostdep --html-title "Module Levels" --html-footer "Generated on 21.05.2015 20:53:11" --html --module-levels &gt; module-levels.html
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.module_weights"></a><a class="link" href="index.html#boostdep.reference.module_weights" title="--module-weights">--module-weights</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --module-weights</code> generates a report that lists
+        modules by weight. A module weight is the total number of its dependencies.
+        This includes the indirect dependencies.
+      </p>
+<p>
+        <code class="literal">--module-weights</code> takes the same options as <code class="literal">--module-overview</code>.
+      </p>
+<pre class="programlisting">dist/bin/boostdep --html-title "Module Weights" --html-footer "Generated on 21.05.2015 20:53:11" --html --module-weights &gt; module-weights.html
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.primary"></a><a class="link" href="index.html#boostdep.reference.primary" title="--primary">--primary</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --primary <span class="emphasis"><em>module</em></span></code> lists the
+        primary (direct) dependencies of <span class="emphasis"><em>module</em></span>. It takes the
+        same options as <code class="literal">--module-overview</code>.
+      </p>
+<pre class="programlisting">dist/bin/boostdep --html-title "Primary Dependencies of filesystem" --html-footer "Generated on 21.05.2015 20:53:11" --html --primary filesystem &gt; filesystem-primary.html
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.secondary"></a><a class="link" href="index.html#boostdep.reference.secondary" title="--secondary">--secondary</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --secondary <span class="emphasis"><em>module</em></span></code> lists
+        the secondary (indirect) dependencies of <span class="emphasis"><em>module</em></span>. It
+        takes the same options as <code class="literal">--module-overview</code>.
+      </p>
+<pre class="programlisting">dist/bin/boostdep --html-title "Secondary Dependencies of filesystem" --html-footer "Generated on 21.05.2015 20:53:11" --html --secondary filesystem &gt; filesystem-secondary.html
+</pre>
+<p>
+        You can combine <code class="literal">--primary</code> and <code class="literal">--secondary</code>
+        in one invocation.
+      </p>
+<pre class="programlisting">dist/bin/boostdep --html-title "Dependencies of filesystem" --html-footer "Generated on 21.05.2015 20:53:11" --html --primary filesystem --secondary filesystem &gt; filesystem.html
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.reverse"></a><a class="link" href="index.html#boostdep.reference.reverse" title="--reverse">--reverse</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --reverse <span class="emphasis"><em>module</em></span></code> lists the
+        reverse dependencies of <span class="emphasis"><em>module</em></span>, that is, it lists which
+        modules depend on <span class="emphasis"><em>module</em></span>. It takes the same options
+        as <code class="literal">--module-overview</code>.
+      </p>
+<pre class="programlisting">dist/bin/boostdep --html-title "Reverse Dependencies of filesystem" --html-footer "Generated on 21.05.2015 20:53:11" --html --reverse filesystem &gt; filesystem-reverse.html
+</pre>
+<p>
+        You can combine <code class="literal">--reverse</code> with <code class="literal">--primary</code>
+        and <code class="literal">--secondary</code> for a complete module report.
+      </p>
+<pre class="programlisting">dist/bin/boostdep --html-title "Dependency Report for filesystem" --html-footer "Generated on 21.05.2015 20:53:11" --html --primary filesystem --secondary filesystem --reverse filesystem &gt; filesystem.html
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.subset"></a><a class="link" href="index.html#boostdep.reference.subset" title="--subset">--subset</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --subset <span class="emphasis"><em>module</em></span></code> lists the
+        subset dependencies of <span class="emphasis"><em>module</em></span>, that is, it lists which
+        modules comprise the subset which <span class="emphasis"><em>module</em></span> requires in
+        order to be usable. The dependencies are determined by tracing the <code class="literal">#include</code>
+        directives starting from <span class="emphasis"><em>module</em></span>'s headers.
+      </p>
+<p>
+        The difference between using the modules reported by <code class="literal">--subset</code>
+        and those reported by the sum of <code class="literal">--primary</code> and <code class="literal">--secondary</code>
+        is that the former only guarantees that <span class="emphasis"><em>module</em></span> will
+        be usable, whereas the latter guarantees it for every module in the subset.
+      </p>
+<p>
+        <code class="literal">--subset</code> takes the same options as <code class="literal">--module-overview</code>.
+      </p>
+<pre class="programlisting">dist/bin/boostdep --html-title "Subset Dependencies of filesystem" --html-footer "Generated on 21.05.2015 20:53:11" --html --subset filesystem &gt; filesystem-subset.html
+</pre>
+<p>
+        You can combine <code class="literal">--subset</code> with the other module report
+        options.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.header"></a><a class="link" href="index.html#boostdep.reference.header" title="--header">--header</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --header <span class="emphasis"><em>header</em></span></code> creates
+        an inclusion report for <span class="emphasis"><em>header</em></span>. It takes the same options
+        as <code class="literal">--module-overview</code>.
+      </p>
+<pre class="programlisting">dist/bin/boostdep --html-title "Inclusion Report for &lt;boost/shared_ptr.hpp&gt;" --html-footer "Generated on 21.05.2015 20:53:11" --html --header boost/shared_ptr.hpp &gt; header-boost-shared_ptr.html
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.test"></a><a class="link" href="index.html#boostdep.reference.test" title="--test">--test</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --test <span class="emphasis"><em>module</em></span></code> lists the
+        test dependencies of <span class="emphasis"><em>module</em></span>, that is, it lists which
+        modules need to be present so that the tests of <span class="emphasis"><em>module</em></span>
+        can be run.
+      </p>
+<pre class="programlisting">dist/bin/boostdep --test filesystem
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.cmake"></a><a class="link" href="index.html#boostdep.reference.cmake" title="--cmake">--cmake</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --cmake <span class="emphasis"><em>module</em></span></code> lists the
+        dependencies of <span class="emphasis"><em>module</em></span> in a <code class="literal">cmake</code>-friendly
+        form. This is typically used to generate a <code class="literal">dependencies.cmake</code>
+        file.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.pkgconfig"></a><a class="link" href="index.html#boostdep.reference.pkgconfig" title="--pkgconfig">--pkgconfig</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --pkgconfig <span class="emphasis"><em>module</em></span> <span class="emphasis"><em>version</em></span>
+        <span class="emphasis"><em>var</em></span>=<span class="emphasis"><em>value</em></span>...</code> outputs
+        a <code class="literal">pkg-config</code> <code class="literal">.pc</code> file for <span class="emphasis"><em>module</em></span>.
+      </p>
+<pre class="programlisting">dist/bin/boostdep --pkgconfig system 1.65.0 prefix=/usr/local includedir=${prefix}/include libdir=${prefix}/lib
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.subset_for"></a><a class="link" href="index.html#boostdep.reference.subset_for" title="--subset-for">--subset-for</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">boostdep --subset-for <span class="emphasis"><em>directory</em></span></code> scans
+        <span class="emphasis"><em>directory</em></span> for <code class="computeroutput"><span class="preprocessor">#include</span></code>
+        directives and lists which Boost modules are reachable through these <code class="computeroutput"><span class="preprocessor">#include</span></code>s.
+      </p>
+<p>
+        Its use is in determining what subset of Boost is needed by a user application
+        or library.
+      </p>
+<pre class="programlisting">dist/bin/boostdep --subset-for d:\my_app
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.track_sources"></a><a class="link" href="index.html#boostdep.reference.track_sources" title="--track-sources">--track-sources</a>
+</h3></div></div></div>
+<p>
+        The <code class="literal">--track-sources</code> option instructs <span class="emphasis"><em>Boostdep</em></span>
+        to scan the <code class="literal">src</code> library subdirectory for <code class="computeroutput"><span class="preprocessor">#include</span></code> directives. By default, only
+        the <code class="literal">include</code> subdirectory is scanned.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.track_tests"></a><a class="link" href="index.html#boostdep.reference.track_tests" title="--track-tests">--track-tests</a>
+</h3></div></div></div>
+<p>
+        The <code class="literal">--track-tests</code> option instructs <span class="emphasis"><em>Boostdep</em></span>
+        to scan the <code class="literal">test</code> library subdirectory for <code class="computeroutput"><span class="preprocessor">#include</span></code> directives. By default, only
+        the <code class="literal">include</code> subdirectory is scanned.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.html_title"></a><a class="link" href="index.html#boostdep.reference.html_title" title="--html-title">--html-title</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">--html-title <span class="emphasis"><em>title</em></span></code> sets the contents
+        of the HTML <code class="literal">&lt;title&gt;</code> tag. It must precede <code class="literal">--html</code>
+        to have an effect.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.html_footer"></a><a class="link" href="index.html#boostdep.reference.html_footer" title="--html-footer">--html-footer</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">--html-footer <span class="emphasis"><em>footer</em></span></code> sets the HTML
+        page footer text. It has no effect if <code class="literal">--html</code> is not given.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.html_stylesheet"></a><a class="link" href="index.html#boostdep.reference.html_stylesheet" title="--html-stylesheet">--html-stylesheet</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">--html-stylesheet <span class="emphasis"><em>stylesheet</em></span></code> sets
+        the HTML stylesheet URL. It has no effect if <code class="literal">--html</code> is
+        not given.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.html_prefix"></a><a class="link" href="index.html#boostdep.reference.html_prefix" title="--html-prefix">--html-prefix</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">--html-prefix <span class="emphasis"><em>prefix</em></span></code> sets the HTML
+        prefix; the prefix is output immediately after the <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">body</span><span class="special">&gt;</span></code>
+        tag. It has no effect if <code class="literal">--html</code> is not given.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boostdep.reference.html"></a><a class="link" href="index.html#boostdep.reference.html" title="--html">--html</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">--html</code> switches to HTML output mode (the default is plain
+        text). It must precede the commands that generate output.
+      </p>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: July 28, 2017 at 08:41:10 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"></div>
+</body>
+</html>

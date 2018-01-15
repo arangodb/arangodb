@@ -1,0 +1,78 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>mat</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>mat</h3>
+</div>
+<div class="RenoIncludeDIV"><div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_mat_hpp.html">boost/qvm/mat.hpp</a></span>&gt;</p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        <span class="RenoIncludeSPAN">template &lt;class T,int Rows,int Cols&gt;
+        struct <span class="RenoLink">mat</span>
+        {
+            T a[Rows][Cols];
+        
+            template &lt;class R&gt;
+            operator R() const
+                {
+                R r;
+                <span class="RenoLink"><a href="assign_mat_mat_.html">assign</a></span>(r,*this);
+                return r;
+                }
+        };
+        
+        template &lt;class Matrix&gt;
+        struct <span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span>;
+        
+        template &lt;class T,int Rows,int Cols&gt;
+        struct <span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span>&lt; <span class="RenoLink">mat</span>&lt;T,Rows,Cols&gt; &gt;
+        {
+            typedef T scalar_type;
+            static int const rows=Rows;
+            static int const cols=Cols;
+        
+            template &lt;int Row,int Col&gt; static scalar_type <span class="RenoLink"><a href="mat_traits_M_read_element.html">read_element</a></span>( <span class="RenoLink">mat</span>&lt;T,Rows,Cols&gt; const &amp; x ) { return x.a[Row][Col]; }
+            template &lt;int Row,int Col&gt; static scalar_type &amp; <span class="RenoLink"><a href="mat_traits_M_write_element.html">write_element</a></span>( <span class="RenoLink">mat</span>&lt;T,Rows,Cols&gt; &amp; x ) { return x.a[Row][Col]; }
+        
+            static scalar_type <span class="RenoLink"><a href="mat_traits_M_read_element_idx.html">read_element_idx</a></span>( int row, int col, <span class="RenoLink">mat</span>&lt;T,Rows,Cols&gt; const &amp; x ) { return x.a[row][col]; }
+            static scalar_type &amp; <span class="RenoLink"><a href="mat_traits_M_write_element_idx.html">write_element_idx</a></span>( int row, int col, <span class="RenoLink">mat</span>&lt;T,Rows,Cols&gt; &amp; x ) { return x.a[row][col]; }
+        };</span></span>
+    }
+}</pre>
+</div></div><p>This is a simple matrix type. It converts to any other matrix type of compatible size.</p>
+<p>The partial specialization of the <i><span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span></i> template makes the <i><span class="RenoLink">mat</span></i> template compatible with the generic operations defined by Boost QVM.</p>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="boost_qvm_mat_hpp.html">boost/qvm/mat.hpp</a></span>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2016 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

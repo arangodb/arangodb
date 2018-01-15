@@ -1,0 +1,217 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Checkpoints for accurate failure location</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../test_tools_support_for_logging.html" title="Tools supports for logging">
+<link rel="prev" href="test_output_macro_message.html" title="Custom messages">
+<link rel="next" href="contexts.html" title="Contexts">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="test_output_macro_message.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_tools_support_for_logging.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="contexts.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.test_output.test_tools_support_for_logging.checkpoints"></a><a class="link" href="checkpoints.html" title="Checkpoints for accurate failure location">Checkpoints
+        for accurate failure location</a>
+</h4></div></div></div>
+<p>
+          In most cases, the <span class="emphasis"><em>Unit Test Framework</em></span> can't provide
+          an exact location where system error occurs or uncaught C++ exception is
+          thrown from. To be able to pinpoint it as close as possible the <span class="emphasis"><em>Unit
+          Test Framework</em></span> keeps track of <span class="bold"><strong>checkpoints</strong></span>
+          - the location a test module passed through.
+        </p>
+<p>
+          The <span class="emphasis"><em>Unit Test Framework</em></span> keeps track of checkpoints
+          at test case entrance, exit, fixture initialization, and at test tool invocation
+          point.
+        </p>
+<p>
+          Any other checkpoints should be entered by you manually if you need more
+          granularity in case a fatal error occurs during the test. The <span class="emphasis"><em>Unit
+          Test Framework</em></span> provides two macros for this purpose:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <a class="link" href="checkpoints.html#ref_named_checkpoint"><code class="computeroutput"><span class="identifier">BOOST_TEST_CHECKPOINT</span></code></a>
+              to specify a <span class="emphasis"><em>named</em></span> checkpoint and
+            </li>
+<li class="listitem">
+              <a class="link" href="checkpoints.html#ref_unnamed_checkpoint"><code class="computeroutput"><span class="identifier">BOOST_TEST_PASSPOINT</span></code></a>
+              to specify an <span class="emphasis"><em>unnamed</em></span> checkpoint.
+            </li>
+</ul></div>
+<p>
+          The checkpoints are also convenient for checks in loops as they might provide
+          more information about the occurrence of a failure (although superseded
+          by [links boost_test.test_output.test_tools_support_for_logging.contexts
+          contexts]).
+        </p>
+<a name="ref_named_checkpoint"></a><h4>
+<a name="boost_test.test_output.test_tools_support_for_logging.checkpoints.h0"></a>
+          <span class="phrase"><a name="boost_test.test_output.test_tools_support_for_logging.checkpoints.named_checkpoints"></a></span><a class="link" href="checkpoints.html#boost_test.test_output.test_tools_support_for_logging.checkpoints.named_checkpoints">Named
+          checkpoints</a>
+        </h4>
+<p>
+          The macro <a class="link" href="../../utf_reference/testout_reference/test_output_macro_checkpoint.html" title="BOOST_TEST_CHECKPOINT"><code class="computeroutput"><span class="identifier">BOOST_TEST_CHECKPOINT</span></code></a> is intended
+          to be used to inject <span class="bold"><strong>named</strong></span> checkpoint
+          position. The macro signature is as follows:
+        </p>
+<pre class="programlisting"><a class="link" href="../../utf_reference/testout_reference/test_output_macro_checkpoint.html" title="BOOST_TEST_CHECKPOINT"><code class="computeroutput"><span class="identifier">BOOST_TEST_CHECKPOINT</span></code></a><span class="special">(</span><span class="identifier">checkpoint_message</span><span class="special">);</span>
+</pre>
+<p>
+          The message formatted at the checkpoint position is saved and reported
+          by the exception logging functions (if any occurs). Similarly to the <a class="link" href="../../utf_reference/testout_reference/test_output_macro_message.html" title="BOOST_TEST_MESSAGE"><code class="computeroutput"><span class="identifier">BOOST_TEST_MESSAGE</span></code></a> the message
+          can be formatted from any standard output stream compliant components.
+        </p>
+<h6>
+<a name="boost_test.test_output.test_tools_support_for_logging.checkpoints.h1"></a>
+          <span class="phrase"><a name="boost_test.test_output.test_tools_support_for_logging.checkpoints.example_descr"></a></span><a class="link" href="checkpoints.html#boost_test.test_output.test_tools_support_for_logging.checkpoints.example_descr">Example:
+          <code class="computeroutput"><span class="identifier">BOOST_TEST_CHECKPOINT</span></code> usage</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">example</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">extern</span> <span class="keyword">void</span> <span class="identifier">foo</span><span class="special">(</span> <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">);</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span> <span class="identifier">test_external_interface</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">for</span><span class="special">(</span> <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">3</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&gt;=</span><span class="number">0</span><span class="special">;</span> <span class="identifier">i</span><span class="special">--</span> <span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TEST_CHECKPOINT</span><span class="special">(</span> <span class="string">"Calling foo with i="</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span> <span class="special">);</span>
+    <span class="identifier">foo</span><span class="special">(</span> <span class="identifier">i</span> <span class="special">);</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+
+<span class="keyword">void</span> <span class="identifier">goo</span><span class="special">(</span> <span class="keyword">int</span> <span class="special">)</span>
+<span class="special">{</span>
+<span class="special">}</span>
+
+<span class="keyword">void</span> <span class="identifier">foo</span><span class="special">(</span> <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">goo</span><span class="special">(</span> <span class="number">2</span><span class="special">/(</span><span class="identifier">i</span><span class="special">-</span><span class="number">1</span><span class="special">)</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">example</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">unknown</span> <span class="identifier">location</span><span class="special">(</span><span class="number">0</span><span class="special">):</span> <span class="identifier">fatal</span> <span class="identifier">error</span> <span class="identifier">in</span> <span class="string">"test_external_interface"</span><span class="special">:</span> <span class="identifier">signal</span><span class="special">:</span> <span class="identifier">integer</span> <span class="identifier">divide</span> <span class="identifier">by</span> <span class="identifier">zero</span><span class="special">;</span> <span class="identifier">address</span> <span class="identifier">of</span> <span class="identifier">failing</span> <span class="identifier">instruction</span><span class="special">:</span> <span class="number">0x00048090</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">9</span><span class="special">):</span> <span class="identifier">last</span> <span class="identifier">checkpoint</span><span class="special">:</span> <span class="identifier">Calling</span> <span class="identifier">foo</span> <span class="identifier">with</span> <span class="identifier">i</span><span class="special">=</span><span class="number">1</span>
+
+<span class="special">***</span> <span class="number">1</span> <span class="identifier">failures</span> <span class="identifier">is</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">test</span> <span class="identifier">suite</span> <span class="string">"example"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<a name="ref_unnamed_checkpoint"></a><h4>
+<a name="boost_test.test_output.test_tools_support_for_logging.checkpoints.h2"></a>
+          <span class="phrase"><a name="boost_test.test_output.test_tools_support_for_logging.checkpoints.unnamed_checkpoints"></a></span><a class="link" href="checkpoints.html#boost_test.test_output.test_tools_support_for_logging.checkpoints.unnamed_checkpoints">Unnamed
+          checkpoints</a>
+        </h4>
+<p>
+          The macro <a class="link" href="../../utf_reference/testout_reference/test_output_macro_passpoint.html" title="BOOST_TEST_PASSPOINT"><code class="computeroutput"><span class="identifier">BOOST_TEST_PASSPOINT</span></code></a> is intended
+          to be used to inject an <span class="bold"><strong>unnamed</strong></span> checkpoint
+          position. The macro signature is as follows:
+        </p>
+<pre class="programlisting"><a class="link" href="../../utf_reference/testout_reference/test_output_macro_passpoint.html" title="BOOST_TEST_PASSPOINT"><code class="computeroutput"><span class="identifier">BOOST_TEST_PASSPOINT</span></code></a><span class="special">();</span>
+</pre>
+<p>
+          Unlike the macro <a class="link" href="../../utf_reference/testout_reference/test_output_macro_checkpoint.html" title="BOOST_TEST_CHECKPOINT"><code class="computeroutput"><span class="identifier">BOOST_TEST_CHECKPOINT</span></code></a> this macro
+          doesn't require any message to be supplied with it. It's just a simple
+          "been there" marker that records file name and line number code
+          passes through.
+        </p>
+<h6>
+<a name="boost_test.test_output.test_tools_support_for_logging.checkpoints.h3"></a>
+          <span class="phrase"><a name="boost_test.test_output.test_tools_support_for_logging.checkpoints.example_descr0"></a></span><a class="link" href="checkpoints.html#boost_test.test_output.test_tools_support_for_logging.checkpoints.example_descr0">Example:
+          <code class="computeroutput"><span class="identifier">BOOST_TEST_PASSPOINT</span></code> usage</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">example</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">void</span> <span class="identifier">foo</span><span class="special">(</span> <span class="keyword">int</span> <span class="special">)</span> <span class="special">{}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span> <span class="identifier">test_case</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">int</span><span class="special">*</span> <span class="identifier">p</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+  <span class="identifier">BOOST_TEST_PASSPOINT</span><span class="special">();</span>
+  <span class="special">++</span><span class="identifier">p</span><span class="special">;</span>
+
+  <span class="identifier">BOOST_TEST_PASSPOINT</span><span class="special">();</span>
+  <span class="special">++</span><span class="identifier">p</span><span class="special">;</span>
+
+  <span class="identifier">BOOST_TEST_PASSPOINT</span><span class="special">();</span>
+  <span class="identifier">foo</span><span class="special">(</span> <span class="special">*</span><span class="identifier">p</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">example</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">unknown</span> <span class="identifier">location</span><span class="special">(</span><span class="number">0</span><span class="special">):</span> <span class="identifier">fatal</span> <span class="identifier">error</span> <span class="identifier">in</span> <span class="string">"test_case"</span><span class="special">:</span> <span class="identifier">memory</span> <span class="identifier">access</span> <span class="identifier">violation</span> <span class="identifier">at</span> <span class="identifier">address</span><span class="special">:</span> <span class="number">0x00000008</span><span class="special">:</span> <span class="identifier">no</span> <span class="identifier">mapping</span> <span class="identifier">at</span> <span class="identifier">fault</span> <span class="identifier">address</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">16</span><span class="special">):</span> <span class="identifier">last</span> <span class="identifier">checkpoint</span>
+
+<span class="special">***</span> <span class="number">1</span> <span class="identifier">failures</span> <span class="identifier">is</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">test</span> <span class="identifier">suite</span> <span class="string">"example"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2017 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="test_output_macro_message.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_tools_support_for_logging.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="contexts.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Daytime.7 - A combined TCP/UDP asynchronous server</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../tutorial.html" title="Tutorial">
+<link rel="prev" href="tutdaytime6/src.html" title="Source listing for Daytime.6">
+<link rel="next" href="tutdaytime7/src.html" title="Source listing for Daytime.7">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutdaytime6/src.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorial.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tutdaytime7/src.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_asio.tutorial.tutdaytime7"></a><a class="link" href="tutdaytime7.html" title="Daytime.7 - A combined TCP/UDP asynchronous server">Daytime.7 - A combined
+      TCP/UDP asynchronous server</a>
+</h3></div></div></div>
+<p>
+        This tutorial program shows how to combine the two asynchronous servers that
+        we have just written, into a single server application.
+      </p>
+<h5>
+<a name="boost_asio.tutorial.tutdaytime7.h0"></a>
+        <span class="phrase"><a name="boost_asio.tutorial.tutdaytime7.the_main___function"></a></span><a class="link" href="tutdaytime7.html#boost_asio.tutorial.tutdaytime7.the_main___function">The
+        main() function</a>
+      </h5>
+<p>
+        We will begin by creating a server object to accept a TCP client connection.
+      </p>
+<p>
+        We also need a server object to accept a UDP client request.
+      </p>
+<p>
+        We have created two lots of work for the boost::asio::io_service object to
+        do.
+      </p>
+<h5>
+<a name="boost_asio.tutorial.tutdaytime7.h1"></a>
+        <span class="phrase"><a name="boost_asio.tutorial.tutdaytime7.the_tcp_connection_and_tcp_server_classes"></a></span><a class="link" href="tutdaytime7.html#boost_asio.tutorial.tutdaytime7.the_tcp_connection_and_tcp_server_classes">The
+        tcp_connection and tcp_server classes</a>
+      </h5>
+<p>
+        The following two classes are taken from <a class="link" href="tutdaytime3.html" title="Daytime.3 - An asynchronous TCP daytime server">Daytime.3</a>
+        .
+      </p>
+<pre class="programlisting">class tcp_connection
+  : public boost::enable_shared_from_this&lt;tcp_connection&gt;
+{
+public:
+  typedef boost::shared_ptr&lt;tcp_connection&gt; pointer;
+
+  static pointer create(boost::asio::io_context&amp; io_context)
+  {
+    return pointer(new tcp_connection(io_context));
+  }
+
+  tcp::socket&amp; socket()
+  {
+    return socket_;
+  }
+
+  void start()
+  {
+    message_ = make_daytime_string();
+
+    boost::asio::async_write(socket_, boost::asio::buffer(message_),
+        boost::bind(&amp;tcp_connection::handle_write, shared_from_this()));
+  }
+
+private:
+  tcp_connection(boost::asio::io_context&amp; io_context)
+    : socket_(io_context)
+  {
+  }
+
+  void handle_write()
+  {
+  }
+
+  tcp::socket socket_;
+  std::string message_;
+};
+
+class tcp_server
+{
+public:
+  tcp_server(boost::asio::io_context&amp; io_context)
+    : acceptor_(io_context, tcp::endpoint(tcp::v4(), 13))
+  {
+    start_accept();
+  }
+
+private:
+  void start_accept()
+  {
+    tcp_connection::pointer new_connection =
+      tcp_connection::create(acceptor_.get_executor().context());
+
+    acceptor_.async_accept(new_connection-&gt;socket(),
+        boost::bind(&amp;tcp_server::handle_accept, this, new_connection,
+          boost::asio::placeholders::error));
+  }
+
+  void handle_accept(tcp_connection::pointer new_connection,
+      const boost::system::error_code&amp; error)
+  {
+    if (!error)
+    {
+      new_connection-&gt;start();
+    }
+
+    start_accept();
+  }
+
+  tcp::acceptor acceptor_;
+};
+</pre>
+<h5>
+<a name="boost_asio.tutorial.tutdaytime7.h2"></a>
+        <span class="phrase"><a name="boost_asio.tutorial.tutdaytime7.the_udp_server_class"></a></span><a class="link" href="tutdaytime7.html#boost_asio.tutorial.tutdaytime7.the_udp_server_class">The udp_server
+        class</a>
+      </h5>
+<p>
+        Similarly, this next class is taken from the <a class="link" href="tutdaytime6.html" title="Daytime.6 - An asynchronous UDP daytime server">previous
+        tutorial step</a> .
+      </p>
+<pre class="programlisting">class udp_server
+{
+public:
+  udp_server(boost::asio::io_context&amp; io_context)
+    : socket_(io_context, udp::endpoint(udp::v4(), 13))
+  {
+    start_receive();
+  }
+
+private:
+  void start_receive()
+  {
+    socket_.async_receive_from(
+        boost::asio::buffer(recv_buffer_), remote_endpoint_,
+        boost::bind(&amp;udp_server::handle_receive, this,
+          boost::asio::placeholders::error));
+  }
+
+  void handle_receive(const boost::system::error_code&amp; error)
+  {
+    if (!error || error == boost::asio::error::message_size)
+    {
+      boost::shared_ptr&lt;std::string&gt; message(
+          new std::string(make_daytime_string()));
+
+      socket_.async_send_to(boost::asio::buffer(*message), remote_endpoint_,
+          boost::bind(&amp;udp_server::handle_send, this, message));
+
+      start_receive();
+    }
+  }
+
+  void handle_send(boost::shared_ptr&lt;std::string&gt; /*message*/)
+  {
+  }
+
+  udp::socket socket_;
+  udp::endpoint remote_endpoint_;
+  boost::array&lt;char, 1&gt; recv_buffer_;
+};
+</pre>
+<p>
+        See the <a class="link" href="tutdaytime7/src.html" title="Source listing for Daytime.7">full source listing</a>
+      </p>
+<p>
+        Return to the <a class="link" href="../tutorial.html" title="Tutorial">tutorial index</a>
+      </p>
+<p>
+        Previous: <a class="link" href="tutdaytime6.html" title="Daytime.6 - An asynchronous UDP daytime server">Daytime.6 - An
+        asynchronous UDP daytime server</a>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutdaytime6/src.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorial.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tutdaytime7/src.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

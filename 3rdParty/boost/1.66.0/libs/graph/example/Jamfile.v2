@@ -1,0 +1,218 @@
+# Copyright (C) 2007-2009 Andrew Sutton
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+
+exe accum-compile-times : accum-compile-times.cpp ;
+exe actor_clustering : actor_clustering.cpp ;
+exe adjacency_list : adjacency_list.cpp ;
+exe adjacency_list_io : adjacency_list_io.cpp ;
+exe adjacency_matrix : adjacency_matrix.cpp ;
+exe adj_list_ra_edgelist : adj_list_ra_edgelist.cpp ;
+exe astar-cities : astar-cities.cpp ;
+exe astar_maze : astar_maze.cpp ;
+exe bellman-example : bellman-example.cpp ;
+exe bellman-ford-internet : bellman-ford-internet.cpp ;
+exe bfs : bfs.cpp ;
+exe bfs-example2 : bfs-example2.cpp ;
+exe bfs-example : bfs-example.cpp ;
+exe bfs-name-printer : bfs-name-printer.cpp ;
+exe bfs_neighbor : bfs_neighbor.cpp ;
+exe bipartite_example : bipartite_example.cpp ;
+exe biconnected_components : biconnected_components.cpp ;
+exe boost_web_graph : boost_web_graph.cpp ;
+exe boykov_kolmogorov-eg : boykov_kolmogorov-eg.cpp ;
+exe bron_kerbosch_clique_number : bron_kerbosch_clique_number.cpp ;
+exe bron_kerbosch_print_cliques : bron_kerbosch_print_cliques.cpp ;
+#exe bucket_sorter : bucket_sorter.cpp ;
+exe canonical_ordering : canonical_ordering.cpp ;
+# exe cc-internet : cc-internet.cpp ../build//boost_graph ;
+exe city_visitor : city_visitor.cpp ;
+exe closeness_centrality : closeness_centrality.cpp ;
+exe clustering_coefficient : clustering_coefficient.cpp ;
+exe components_on_edgelist : components_on_edgelist.cpp ;
+
+# TODO: Duplicate?
+exe connected_components : connected_components.cpp ;
+exe connected-components : connected-components.cpp ;
+
+exe container_gen : container_gen.cpp ;
+exe copy-example : copy-example.cpp ;
+# exe csr-example : csr-example.cpp ;
+exe cuthill_mckee_ordering : cuthill_mckee_ordering.cpp ;
+exe cycle_canceling_example : cycle_canceling_example.cpp ;
+exe cycle-file-dep2 : cycle-file-dep2.cpp ;
+exe cycle-file-dep : cycle-file-dep.cpp ;
+exe cycle_ratio_example : cycle_ratio_example.cpp ;
+exe dag_shortest_paths : dag_shortest_paths.cpp ;
+exe dave : dave.cpp ;
+exe default-constructor2 : default-constructor2.cpp ;
+exe default-constructor : default-constructor.cpp ;
+exe degree_centrality : degree_centrality.cpp ;
+exe dfs : dfs.cpp ;
+exe dfs-example : dfs-example.cpp ;
+
+# TODO: Duplicate?
+exe dfs_parenthesis : dfs_parenthesis.cpp ;
+# exe dfs-parenthesis : dfs-parenthesis.cpp ;
+
+exe dijkstra-example : dijkstra-example.cpp ;
+exe dijkstra-example-listS : dijkstra-example-listS.cpp ;
+exe dijkstra-no-color-map-example : dijkstra-no-color-map-example.cpp ;
+exe directed_graph : directed_graph.cpp ;
+exe eccentricity : eccentricity.cpp ;
+exe edge_basics : edge_basics.cpp ;
+exe edge_coloring : edge_coloring.cpp ;
+
+# TODO: Duplicate?
+exe edge_connectivity : edge_connectivity.cpp ;
+# exe edge-connectivity : edge-connectivity.cpp ;
+
+exe edge-function : edge-function.cpp ;
+
+# TODO: Duplicate?
+exe edge_iterator_constructor : edge_iterator_constructor.cpp ;
+exe edge-iter-constructor : edge-iter-constructor.cpp ;
+
+exe edge_property : edge_property.cpp ;
+exe edmonds-karp-eg : edmonds-karp-eg.cpp ;
+exe exterior_properties : exterior_properties.cpp ;
+exe exterior_property_map : exterior_property_map.cpp ;
+exe family-tree-eg : family-tree-eg.cpp ;
+exe fibonacci_heap : fibonacci_heap.cpp ;
+exe file_dependencies : file_dependencies.cpp ;
+exe filtered-copy-example : filtered-copy-example.cpp ;
+exe filtered_graph : filtered_graph.cpp ;
+exe filtered_graph_edge_range : filtered_graph_edge_range.cpp ;
+exe filtered_vec_as_graph : filtered_vec_as_graph.cpp ;
+exe fr_layout : fr_layout.cpp ;
+exe gerdemann : gerdemann.cpp ;
+
+# This needs SGB headers, via BGL's stanford_graph.h:
+# exe girth : girth.cpp ;
+
+exe graph-assoc-types : graph-assoc-types.cpp ;
+
+#TODO:
+#exe graph_as_tree : graph_as_tree.cpp ;
+
+exe graph : graph.cpp ;
+exe graph_property : graph_property.cpp ;
+exe graph-property-iter-eg : graph-property-iter-eg.cpp ;
+exe graph-thingie : graph-thingie.cpp /boost/graph//boost_graph ;
+exe graphviz : graphviz.cpp /boost/graph//boost_graph ;
+exe grid_graph_example : grid_graph_example.cpp ;
+exe grid_graph_properties : grid_graph_properties.cpp ;
+exe hawick_circuits : hawick_circuits.cpp ;
+exe implicit_graph : implicit_graph.cpp ;
+exe inclusive_mean_geodesic : inclusive_mean_geodesic.cpp ;
+exe incremental_components : incremental_components.cpp ;
+exe incremental-components-eg : incremental-components-eg.cpp ;
+exe in_edges : in_edges.cpp ;
+exe influence_prestige : influence_prestige.cpp ;
+exe interior_pmap_bundled : interior_pmap_bundled.cpp ;
+exe interior_property_map : interior_property_map.cpp ;
+exe isomorphism : isomorphism.cpp ;
+exe iteration_macros : iteration_macros.cpp ;
+exe iterator-property-map-eg : iterator-property-map-eg.cpp ;
+exe johnson-eg : johnson-eg.cpp ;
+exe kevin-bacon2 : kevin-bacon2.cpp /boost//serialization ;
+exe kevin-bacon : kevin-bacon.cpp ;
+exe king_ordering : king_ordering.cpp ;
+exe knights-tour : knights-tour.cpp ;
+exe kruskal-example : kruskal-example.cpp ;
+# exe kruskal-telephone : kruskal-telephone.cpp ;
+exe kuratowski_subgraph : kuratowski_subgraph.cpp ;
+# exe labeled_graph : last-mod-time.cpp ;
+exe last-mod-time : last-mod-time.cpp ;
+
+# These need LEDA:
+# exe leda-concept-check : leda-concept-check.cpp ;
+# exe leda-graph-eg : leda-graph-eg.cpp ;
+
+# exe loops_dfs : loops_dfs.cpp ;
+exe make_biconnected_planar : make_biconnected_planar.cpp ;
+exe make_maximal_planar : make_maximal_planar.cpp ;
+exe matching_example : matching_example.cpp ;
+exe max_flow : max_flow.cpp ;
+exe mcgregor_subgraphs_example : mcgregor_subgraphs_example.cpp ;
+exe mean_geodesic : mean_geodesic.cpp ;
+
+# This needs SGB headers, via BGL's stanford_graph.h:
+# exe miles_span : miles_span.cpp ;
+
+exe minimum_degree_ordering : minimum_degree_ordering.cpp iohb.c ;
+
+# This has an error pragma explaining that it is incorrect.
+# exe min_max_paths : min_max_paths.cpp ;
+
+exe modify_graph : modify_graph.cpp ;
+exe neighbor_bfs : neighbor_bfs.cpp ;
+exe ordered_out_edges : ordered_out_edges.cpp ;
+exe ospf-example : ospf-example.cpp ../build//boost_graph ;
+exe parallel-compile-time : parallel-compile-time.cpp ;
+exe planar_face_traversal : planar_face_traversal.cpp ;
+exe prim-example : prim-example.cpp ;
+# exe prim-telephone : prim-telephone.cpp ;
+exe print-adjacent-vertices : print-adjacent-vertices.cpp ;
+exe print-edges : print-edges.cpp ;
+exe print-in-edges : print-in-edges.cpp ;
+exe print-out-edges : print-out-edges.cpp ;
+exe property_iterator : property_iterator.cpp ;
+exe property-map-traits-eg : property-map-traits-eg.cpp ;
+exe push-relabel-eg : push-relabel-eg.cpp ;
+exe put-get-helper-eg : put-get-helper-eg.cpp ;
+exe quick_tour : quick_tour.cpp ;
+exe r_c_shortest_paths_example : r_c_shortest_paths_example.cpp ;
+exe read_graphviz : read_graphviz.cpp ../build//boost_graph ;
+exe read_write_dimacs-eg : read_write_dimacs-eg.cpp ;
+# exe reachable-loop-head : reachable-loop-head.cpp ;
+# exe reachable-loop-tail : reachable-loop-tail.cpp ;
+exe remove_edge_if_bidir : remove_edge_if_bidir.cpp ;
+exe remove_edge_if_dir : remove_edge_if_dir.cpp ;
+exe remove_edge_if_undir : remove_edge_if_undir.cpp ;
+exe reverse-graph-eg : reverse-graph-eg.cpp ;
+
+# This needs SGB headers, via BGL's stanford_graph.h:
+# exe roget_components : roget_components.cpp ;
+
+# exe quick_tour_new : quick_tour_new.cpp ;
+exe scaled_closeness_centrality : scaled_closeness_centrality.cpp ;
+# exe scc : scc.cpp ;
+exe simple_planarity_test : simple_planarity_test.cpp ;
+exe sloan_ordering : sloan_ordering.cpp ;
+exe stoer_wagner : stoer_wagner.cpp ;
+exe strong-components : strong-components.cpp ;
+exe strong_components : strong_components.cpp ../build//boost_graph ;
+exe subgraph_properties : subgraph_properties.cpp ;
+exe subgraph : subgraph.cpp ;
+exe successive_shortest_path_nonnegative_weights_example : successive_shortest_path_nonnegative_weights_example.cpp ;
+exe tiernan_girth_circumference : tiernan_girth_circumference.cpp ;
+exe tiernan_print_cycles : tiernan_print_cycles.cpp ;
+exe topo-sort1 : topo-sort1.cpp ;
+exe topo-sort2 : topo-sort2.cpp ;
+exe topo_sort : topo_sort.cpp ;
+exe topo-sort-file-dep2 : topo-sort-file-dep2.cpp ;
+exe topo-sort-file-dep : topo-sort-file-dep.cpp ;
+
+# This needs LEDA:
+# exe topo-sort-with-leda : topo-sort-with-leda.cpp ;
+
+# This needs SGB headers, via BGL's stanford_graph.h:
+# exe topo-sort-with-sgb : topo-sort-with-sgb.cpp ;
+
+exe transitive_closure : transitive_closure.cpp ;
+exe transpose-example : transpose-example.cpp ;
+exe two_graphs_common_spanning_trees : two_graphs_common_spanning_trees.cpp ;
+exe undirected_adjacency_list : undirected_adjacency_list.cpp ;
+exe undirected_dfs : undirected_dfs.cpp ;
+exe undirected_graph : undirected_graph.cpp ;
+exe vector-as-graph : vector-as-graph.cpp ;
+exe vertex_basics : vertex_basics.cpp ;
+exe vertex-name-property : vertex-name-property.cpp ;
+exe vf2_sub_graph_iso_example : vf2_sub_graph_iso_example.cpp ;
+exe vf2_sub_graph_iso_multi_example : vf2_sub_graph_iso_multi_example.cpp ;
+exe visitor : visitor.cpp ;
+exe write_graphviz : write_graphviz.cpp ;
+

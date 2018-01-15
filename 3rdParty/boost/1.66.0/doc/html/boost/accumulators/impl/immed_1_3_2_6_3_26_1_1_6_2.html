@@ -1,0 +1,131 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Struct template immediate_rolling_variance_impl</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../../accumulators/reference.html#header.boost.accumulators.statistics.rolling_variance_hpp" title="Header &lt;boost/accumulators/statistics/rolling_variance.hpp&gt;">
+<link rel="prev" href="lazy_rolling_variance_impl.html" title="Struct template lazy_rolling_variance_impl">
+<link rel="next" href="../tag/lazy_rolling_variance.html" title="Struct lazy_rolling_variance">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="lazy_rolling_variance_impl.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../accumulators/reference.html#header.boost.accumulators.statistics.rolling_variance_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../tag/lazy_rolling_variance.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.accumulators.impl.immed_1_3_2_6_3_26_1_1_6_2"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Struct template immediate_rolling_variance_impl</span></h2>
+<p>boost::accumulators::impl::immediate_rolling_variance_impl &#8212; Iterative calculation of the rolling variance. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../accumulators/reference.html#header.boost.accumulators.statistics.rolling_variance_hpp" title="Header &lt;boost/accumulators/statistics/rolling_variance.hpp&gt;">boost/accumulators/statistics/rolling_variance.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Sample<span class="special">&gt;</span> 
+<span class="keyword">struct</span> <a class="link" href="immed_1_3_2_6_3_26_1_1_6_2.html" title="Struct template immediate_rolling_variance_impl">immediate_rolling_variance_impl</a> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">accumulator_base</span> <span class="special">{</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="identifier">numeric</span><span class="special">::</span><span class="identifier">functional</span><span class="special">::</span><span class="identifier">fdiv</span><span class="special">&lt;</span> <span class="identifier">Sample</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">result_type</span> <a name="boost.accumulators.impl.immed_1_3_2_6_3_26_1_1_6_2.result_type"></a><span class="identifier">result_type</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="immed_1_3_2_6_3_26_1_1_6_2.html#boost.accumulators.impl.immed_1_3_2_6_3_26_1_1_6_2construct-copy-destruct">construct/copy/destruct</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Args<span class="special">&gt;</span> <a class="link" href="immed_1_3_2_6_3_26_1_1_6_2.html#id-1_3_2_6_3_26_1_1_6_2_7-bb"><span class="identifier">immediate_rolling_variance_impl</span></a><span class="special">(</span><span class="identifier">Args</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="immed_1_3_2_6_3_26_1_1_6_2.html#id-1_3_2_6_3_26_1_1_6_2_6-bb">public member functions</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Args<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="immed_1_3_2_6_3_26_1_1_6_2.html#id-1_3_2_6_3_26_1_1_6_2_6_1-bb"><span class="keyword">operator</span><span class="special">(</span><span class="special">)</span></a><span class="special">(</span><span class="identifier">Args</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Args<span class="special">&gt;</span> <span class="identifier">result_type</span> <a class="link" href="immed_1_3_2_6_3_26_1_1_6_2.html#id-1_3_2_6_3_26_1_1_6_2_6_2-bb"><span class="identifier">result</span></a><span class="special">(</span><span class="identifier">Args</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="immed_1_3_2_6_3_26_1_1_6_2.html#id-1_3_2_6_3_26_1_1_6_2_8-bb">private member functions</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="immed_1_3_2_6_3_26_1_1_6_2.html#id-1_3_2_6_3_26_1_1_6_2_8_1-bb"><span class="identifier">prevent_underflow</span></a><span class="special">(</span><span class="identifier">T</span> <span class="special">&amp;</span><span class="special">,</span> 
+                           <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">is_arithmetic</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span><span class="special">,</span> <span class="identifier">T</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="immed_1_3_2_6_3_26_1_1_6_2.html#id-1_3_2_6_3_26_1_1_6_2_8_2-bb"><span class="identifier">prevent_underflow</span></a><span class="special">(</span><span class="identifier">T</span> <span class="special">&amp;</span><span class="special">,</span> 
+                           <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">disable_if</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">is_arithmetic</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span><span class="special">,</span> <span class="identifier">T</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.2.6.3.25.7.4"></a><h2>Description</h2>
+<p>Iterative calculation of sample variance <span class="inlinemediaobject"><img src="../../../images/accumulators//form_55.png"></span> is done as follows, see also <a href="http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance" target="_top">http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance</a>. For a rolling window of size <span class="inlinemediaobject"><img src="../../../images/accumulators//form_72.png"></span>, for the first <span class="inlinemediaobject"><img src="../../../images/accumulators//form_72.png"></span> samples, the variance is computed according to the formula </p>
+<div class="equation">
+<a name="id-1.3.2.6.3.25.7.4.2.5"></a><p class="title"><b>Equation&#160;1.9.&#160;</b></p>
+<div class="equation-contents"><div class="mediaobject" align="center"><img src="../../../images/accumulators//form_77.png" align="middle"></div></div>
+</div>
+<p><br class="equation-break"> where the sum of squares <span class="inlinemediaobject"><img src="../../../images/accumulators//form_78.png"></span> can be recursively computed as: </p>
+<div class="equation">
+<a name="id-1.3.2.6.3.25.7.4.2.7"></a><p class="title"><b>Equation&#160;1.10.&#160;</b></p>
+<div class="equation-contents"><div class="mediaobject" align="center"><img src="../../../images/accumulators//form_79.png" align="middle"></div></div>
+</div>
+<p><br class="equation-break"> and the estimate of the sample mean as: </p>
+<div class="equation">
+<a name="id-1.3.2.6.3.25.7.4.2.8"></a><p class="title"><b>Equation&#160;1.11.&#160;</b></p>
+<div class="equation-contents"><div class="mediaobject" align="center"><img src="../../../images/accumulators//form_80.png" align="middle"></div></div>
+</div>
+<p><br class="equation-break"> For further samples, when the rolling window is fully filled with data, one has to take into account that the oldest sample <span class="inlinemediaobject"><img src="../../../images/accumulators//form_81.png"></span> is dropped from the window. The sample variance over the window now becomes: </p>
+<div class="equation">
+<a name="id-1.3.2.6.3.25.7.4.2.10"></a><p class="title"><b>Equation&#160;1.12.&#160;</b></p>
+<div class="equation-contents"><div class="mediaobject" align="center"><img src="../../../images/accumulators//form_82.png" align="middle"></div></div>
+</div>
+<p><br class="equation-break"> where the sum of squares <span class="inlinemediaobject"><img src="../../../images/accumulators//form_78.png"></span> now equals: </p>
+<div class="equation">
+<a name="id-1.3.2.6.3.25.7.4.2.12"></a><p class="title"><b>Equation&#160;1.13.&#160;</b></p>
+<div class="equation-contents"><div class="mediaobject" align="center"><img src="../../../images/accumulators//form_83.png" align="middle"></div></div>
+</div>
+<p><br class="equation-break"> and the estimated mean is: </p>
+<div class="equation">
+<a name="id-1.3.2.6.3.25.7.4.2.13"></a><p class="title"><b>Equation&#160;1.14.&#160;</b></p>
+<div class="equation-contents"><div class="mediaobject" align="center"><img src="../../../images/accumulators//form_84.png" align="middle"></div></div>
+</div>
+<p><br class="equation-break"></p>
+<p>Note that the sample variance is not defined for <span class="inlinemediaobject"><img src="../../../images/accumulators//form_8.png"></span>. </p>
+<div class="refsect2">
+<a name="id-1.3.2.6.3.25.7.4.4"></a><h3>
+<a name="boost.accumulators.impl.immed_1_3_2_6_3_26_1_1_6_2construct-copy-destruct"></a><code class="computeroutput">immediate_rolling_variance_impl</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Args<span class="special">&gt;</span> <a name="id-1_3_2_6_3_26_1_1_6_2_7-bb"></a><span class="identifier">immediate_rolling_variance_impl</span><span class="special">(</span><span class="identifier">Args</span> <span class="keyword">const</span> <span class="special">&amp;</span> args<span class="special">)</span><span class="special">;</span></pre></li></ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.2.6.3.25.7.4.5"></a><h3>
+<a name="id-1_3_2_6_3_26_1_1_6_2_6-bb"></a><code class="computeroutput">immediate_rolling_variance_impl</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Args<span class="special">&gt;</span> <span class="keyword">void</span> <a name="id-1_3_2_6_3_26_1_1_6_2_6_1-bb"></a><span class="keyword">operator</span><span class="special">(</span><span class="special">)</span><span class="special">(</span><span class="identifier">Args</span> <span class="keyword">const</span> <span class="special">&amp;</span> args<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Args<span class="special">&gt;</span> <span class="identifier">result_type</span> <a name="id-1_3_2_6_3_26_1_1_6_2_6_2-bb"></a><span class="identifier">result</span><span class="special">(</span><span class="identifier">Args</span> <span class="keyword">const</span> <span class="special">&amp;</span> args<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.2.6.3.25.7.4.6"></a><h3>
+<a name="id-1_3_2_6_3_26_1_1_6_2_8-bb"></a><code class="computeroutput">immediate_rolling_variance_impl</code> private member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="id-1_3_2_6_3_26_1_1_6_2_8_1-bb"></a><span class="identifier">prevent_underflow</span><span class="special">(</span><span class="identifier">T</span> <span class="special">&amp;</span> non_negative_number<span class="special">,</span> 
+                         <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">is_arithmetic</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span><span class="special">,</span> <span class="identifier">T</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="id-1_3_2_6_3_26_1_1_6_2_8_2-bb"></a><span class="identifier">prevent_underflow</span><span class="special">(</span><span class="identifier">T</span> <span class="special">&amp;</span> non_arithmetic_quantity<span class="special">,</span> 
+                         <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">disable_if</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">is_arithmetic</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span><span class="special">,</span> <span class="identifier">T</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2005, 2006 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="lazy_rolling_variance_impl.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../accumulators/reference.html#header.boost.accumulators.statistics.rolling_variance_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../tag/lazy_rolling_variance.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

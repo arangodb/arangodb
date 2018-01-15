@@ -1,0 +1,132 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>How to use dtypes - Boost.Python NumPy extension 1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '../',
+          VERSION:     '1.0',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="Boost.Python NumPy extension 1.0 documentation" href="../index.html" />
+    <link rel="up" title="Boost.Python NumPy extension Tutorial" href="index.html" />
+    <link rel="next" title="Creating ndarrays" href="ndarray.html" />
+    <link rel="prev" title="A simple tutorial on Arrays" href="simple.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="../index.html"><img 
+          alt="C++ Boost" src="../_static/bpl.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="../index.html">(NumPy)</a></h1>
+<!--          <h2 align="center">CallPolicies Concept</h2>-->
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="../search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="A simple tutorial on Arrays" href="simple.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Boost.Python NumPy extension Tutorial" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Creating ndarrays" href="ndarray.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="how-to-use-dtypes">
+<h1>How to use dtypes</h1>
+<p>Here is a brief tutorial to show how to create ndarrays with built-in python data types, and extract the types and values of member variables</p>
+<p>Like before, first get the necessary headers, setup the namespaces and initialize the Python runtime and numpy module:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;boost/python/numpy.hpp&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+
+<span class="k">namespace</span> <span class="n">p</span> <span class="o">=</span> <span class="n">boost</span><span class="o">::</span><span class="n">python</span><span class="p">;</span>
+<span class="k">namespace</span> <span class="n">np</span> <span class="o">=</span> <span class="n">boost</span><span class="o">::</span><span class="n">python</span><span class="o">::</span><span class="n">numpy</span><span class="p">;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">Py_Initialize</span><span class="p">();</span>
+  <span class="n">np</span><span class="o">::</span><span class="n">initialize</span><span class="p">();</span>
+</pre></div>
+</div>
+<p>Next, we create the shape and dtype. We use the get_builtin method to get the numpy dtype corresponding to the builtin C++ dtype
+Here, we will create a 3x3 array passing a tuple with (3,3) for the size, and double as the data type</p>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="n">p</span><span class="o">::</span><span class="n">tuple</span> <span class="n">shape</span> <span class="o">=</span> <span class="n">p</span><span class="o">::</span><span class="n">make_tuple</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">);</span>
+<span class="n">np</span><span class="o">::</span><span class="n">dtype</span> <span class="n">dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">::</span><span class="n">dtype</span><span class="o">::</span><span class="n">get_builtin</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="n">np</span><span class="o">::</span><span class="n">ndarray</span> <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">::</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Finally, we can print the array using the extract method in the python namespace.
+Here, we first convert the variable into a string, and then extract it as a C++ character array from the python string using the &lt;char const * &gt; template</p>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Original array:</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">p</span><span class="o">::</span><span class="n">extract</span><span class="o">&lt;</span><span class="kt">char</span> <span class="k">const</span> <span class="o">*&gt;</span><span class="p">(</span><span class="n">p</span><span class="o">::</span><span class="n">str</span><span class="p">(</span><span class="n">a</span><span class="p">))</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>We can also print the dtypes of the data members of the ndarray by using the get_dtype method for the ndarray</p>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Datatype is:</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">p</span><span class="o">::</span><span class="n">extract</span><span class="o">&lt;</span><span class="kt">char</span> <span class="k">const</span> <span class="o">*&gt;</span><span class="p">(</span><span class="n">p</span><span class="o">::</span><span class="n">str</span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">get_dtype</span><span class="p">()))</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span> <span class="p">;</span>
+</pre></div>
+</div>
+<p>We can also create custom dtypes and build ndarrays with the custom dtypes</p>
+<p>We use the dtype constructor to create a custom dtype. This constructor takes a list as an argument.</p>
+<p>The list should contain one or more tuples of the format (variable name, variable type)</p>
+<p>So first create a tuple with a variable name and its dtype, double, to create a custom dtype</p>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="n">p</span><span class="o">::</span><span class="n">tuple</span> <span class="n">for_custom_dtype</span> <span class="o">=</span> <span class="n">p</span><span class="o">::</span><span class="n">make_tuple</span><span class="p">(</span><span class="s">&quot;ha&quot;</span><span class="p">,</span><span class="n">dtype</span><span class="p">)</span> <span class="p">;</span>
+</pre></div>
+</div>
+<p>Next, create a list, and add this tuple to the list. Then use the list to create the custom dtype</p>
+<div class="highlight-c++"><div class="highlight"><pre><span></span><span class="n">p</span><span class="o">::</span><span class="n">list</span> <span class="n">list_for_dtype</span> <span class="p">;</span>
+<span class="n">list_for_dtype</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">for_custom_dtype</span><span class="p">)</span> <span class="p">;</span>
+<span class="n">np</span><span class="o">::</span><span class="n">dtype</span> <span class="n">custom_dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">::</span><span class="n">dtype</span><span class="p">(</span><span class="n">list_for_dtype</span><span class="p">)</span> <span class="p">;</span>
+</pre></div>
+</div>
+<p>We are now ready to create an ndarray with dimensions specified by *shape* and of custom dtpye</p>
+<div class="highlight-c++"><div class="highlight"><pre><span></span>  <span class="n">np</span><span class="o">::</span><span class="n">ndarray</span> <span class="n">new_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">::</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span><span class="n">custom_dtype</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="A simple tutorial on Arrays" href="simple.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Boost.Python NumPy extension Tutorial" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Creating ndarrays" href="ndarray.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+  </body>
+</html>

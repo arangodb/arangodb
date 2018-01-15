@@ -1,0 +1,100 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Macro BOOST_TYPE_INDEX_IMPLEMENT_RUNTIME_CAST</title>
+<link rel="stylesheet" href="../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="boost_typeindex_header_reference.html#header.boost.type_index.runtime_cast.register_runtime_class_hpp" title="Header &lt;boost/type_index/runtime_cast/register_runtime_class.hpp&gt;">
+<link rel="prev" href="BOOST_TYPE_IN_1_3_42_8_8_3.html" title="Macro BOOST_TYPE_INDEX_REGISTER_RUNTIME_CLASS">
+<link rel="next" href="BOOST_TYPE_IN_1_3_42_8_8_5.html" title="Macro BOOST_TYPE_INDEX_NO_BASE_CLASS">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../boost.png"></td>
+<td align="center"><a href="../../index.html">Home</a></td>
+<td align="center"><a href="../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BOOST_TYPE_IN_1_3_42_8_8_3.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="boost_typeindex_header_reference.html#header.boost.type_index.runtime_cast.register_runtime_class_hpp"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_TYPE_IN_1_3_42_8_8_5.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="BOOST_TYPE_IN_1_3_42_8_8_4"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Macro BOOST_TYPE_INDEX_IMPLEMENT_RUNTIME_CAST</span></h2>
+<p>BOOST_TYPE_INDEX_IMPLEMENT_RUNTIME_CAST &#8212; Macro used to make a class compatible with boost::typeindex::runtime_cast without including support for boost::typeindex::type_id_runtime. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="boost_typeindex_header_reference.html#header.boost.type_index.runtime_cast.register_runtime_class_hpp" title="Header &lt;boost/type_index/runtime_cast/register_runtime_class.hpp&gt;">boost/type_index/runtime_cast/register_runtime_class.hpp</a>&gt;
+
+</span>BOOST_TYPE_INDEX_IMPLEMENT_RUNTIME_CAST(base_class_seq)</pre></div>
+<div class="refsect1">
+<a name="id-1.3.42.8.8.5.4"></a><h2>Description</h2>
+<p>BOOST_TYPE_INDEX_IMPLEMENT_RUNTIME_CAST is provided as an alternative to BOOST_TYPE_INDEX_REGISTER_RUNTIME_CLASS in the event that support for boost::typeindex::type_id_runtime is undesirable.</p>
+<p><span class="bold"><strong>Example:</strong></span> </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">base1</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TYPE_INDEX_IMPLEMENT_RUNTIME_CAST</span><span class="special">(</span><span class="identifier">BOOST_TYPE_INDEX_NO_BASE_CLASS</span><span class="special">)</span>
+    <span class="keyword">virtual</span> <span class="special">~</span><span class="identifier">base1</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">base2</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TYPE_INDEX_IMPLEMENT_RUNTIME_CAST</span><span class="special">(</span><span class="identifier">BOOST_TYPE_INDEX_NO_BASE_CLASS</span><span class="special">)</span>
+    <span class="keyword">virtual</span> <span class="special">~</span><span class="identifier">base2</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">derived1</span> <span class="special">:</span> <span class="identifier">base1</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TYPE_INDEX_IMPLEMENT_RUNTIME_CAST</span><span class="special">(</span><span class="special">(</span><span class="identifier">base1</span><span class="special">)</span><span class="special">)</span>
+<span class="special">}</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">derived2</span> <span class="special">:</span> <span class="identifier">base1</span><span class="special">,</span> <span class="identifier">base2</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TYPE_INDEX_IMPLEMENT_RUNTIME_CAST</span><span class="special">(</span><span class="special">(</span><span class="identifier">base1</span><span class="special">)</span><span class="special">(</span><span class="identifier">base2</span><span class="special">)</span><span class="special">)</span>
+<span class="special">}</span><span class="special">;</span>
+
+<span class="special">...</span>
+
+<span class="identifier">base1</span><span class="special">*</span> <span class="identifier">pb1</span> <span class="special">=</span> <span class="identifier">get_object</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+<span class="keyword">if</span><span class="special">(</span><span class="identifier">derived2</span><span class="special">*</span> <span class="identifier">pb2</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">runtime_cast</span><span class="special">&lt;</span><span class="identifier">derived2</span><span class="special">*</span><span class="special">&gt;</span><span class="special">(</span><span class="identifier">pb1</span><span class="special">)</span><span class="special">)</span>
+<span class="special">{</span> <span class="comment">/* can't call boost::typeindex::type_id_runtime(*pb1) here */</span> <span class="special">}</span>
+</pre>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">base_class_seq</code></span></p></td>
+<td><p>A Boost.Preprocessor sequence of the current class' direct bases, or BOOST_TYPE_INDEX_NO_BASE_CLASS if this class has no direct base classes. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2012-2016 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BOOST_TYPE_IN_1_3_42_8_8_3.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="boost_typeindex_header_reference.html#header.boost.type_index.runtime_cast.register_runtime_class_hpp"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_TYPE_IN_1_3_42_8_8_5.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Polymorphic casts</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../conversion.html" title="Chapter&#160;10.&#160;The Conversion Library 1.6">
+<link rel="prev" href="../conversion.html" title="Chapter&#160;10.&#160;The Conversion Library 1.6">
+<link rel="next" href="_polymorphic_cast____polymorphic_downcast____polymorphic_pointer_cast__and__polymorphic_pointer_downcast__synopsis.html" title="polymorphic_cast, polymorphic_downcast, polymorphic_pointer_cast and polymorphic_pointer_downcast synopsis">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../conversion.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../conversion.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="_polymorphic_cast____polymorphic_downcast____polymorphic_pointer_cast__and__polymorphic_pointer_downcast__synopsis.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="conversion.polymorphic_casts"></a><a class="link" href="polymorphic_casts.html" title="Polymorphic casts">Polymorphic casts</a>
+</h2></div></div></div>
+<p>
+      Pointers to polymorphic objects (objects of classes which define at least one
+      virtual function) are sometimes downcast or crosscast. Downcasting means casting
+      from a base class to a derived class. Crosscasting means casting across an
+      inheritance hierarchy diagram, such as from one base to the other in a <code class="literal">Y</code>
+      diagram hierarchy.
+    </p>
+<p>
+      Such casts can be done with old-style casts, but this approach is never to
+      be recommended. Old-style casts are sorely lacking in type safety, suffer poor
+      readability, and are difficult to locate with search tools.
+    </p>
+<p>
+      <a name="polymorphic_downcast"></a>The C++ built-in <code class="computeroutput">static_cast</code>
+      can be used for efficiently downcasting pointers to polymorphic objects, but
+      provides no error detection for the case where the pointer being cast actually
+      points to the wrong derived class. The <code class="computeroutput">polymorphic_downcast</code> template
+      retains the efficiency of <code class="computeroutput">static_cast</code> for non-debug compilations,
+      but for debug compilations adds safety via an <code class="computeroutput">assert()</code> that a
+      <code class="computeroutput">dynamic_cast</code> succeeds.
+    </p>
+<p>
+      A <code class="computeroutput">polymorphic_downcast</code> should be used for downcasts that you are
+      certain should succeed. Error checking is only performed in translation units
+      where <code class="computeroutput">NDEBUG</code> is not defined, via
+    </p>
+<pre class="programlisting">assert( dynamic_cast&lt;Derived&gt;(x) == x )
+</pre>
+<p>
+      where <code class="computeroutput">x</code> is the source pointer. This approach ensures that not
+      only is a non-zero pointer returned, but also that it is correct in the presence
+      of multiple inheritance. Attempts to crosscast using <code class="computeroutput">polymorphic_downcast</code>
+      will fail to compile.
+    </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Because <code class="computeroutput">polymorphic_downcast</code> uses <code class="computeroutput">assert()</code>, it
+        violates the One Definition Rule (ODR) if NDEBUG is inconsistently defined
+        across translation units. See ISO Std 3.2
+      </p></td></tr>
+</table></div>
+<p>
+      <a name="polymorphic_cast"></a>The C++ built-in <code class="computeroutput">dynamic_cast</code> can
+      be used for downcasts and crosscasts of pointers to polymorphic objects, but
+      error notification in the form of a returned value of 0 is inconvenient to
+      test, or worse yet, easy to forget to test. The throwing form of <code class="computeroutput">dynamic_cast</code>,
+      which works on references, can be used on pointers through the ugly expression
+      <code class="computeroutput">&amp;dynamic_cast&lt;T&amp;&gt;(*p), which causes undefined behavior
+      if </code>p<code class="computeroutput"> is </code>0<code class="computeroutput">. The </code>polymorphic_cast<code class="computeroutput"> template
+      performs a </code>dynamic_cast<code class="computeroutput"> on a pointer, and throws an exception
+      if the </code>dynamic_cast` returns 0.
+    </p>
+<p>
+      For crosscasts, or when the success of a cast can only be known at runtime,
+      or when efficiency is not important, <code class="computeroutput">polymorphic_cast</code> is preferred.
+    </p>
+<p>
+      The C++ built-in dynamic_cast must be used to cast references rather than pointers.
+      It is also the only cast that can be used to check whether a given interface
+      is supported; in that case a return of 0 isn't an error condition.
+    </p>
+<p>
+      <a name="polymorphic_pointer_cast"></a>While polymorphic_downcast and polymorphic_cast
+      work with built-in pointer types only, polymorphic_pointer_downcast and polymorphic_pointer_cast
+      are more generic versions with support for any pointer type for which the following
+      expressions would be valid:
+    </p>
+<p>
+      For <code class="computeroutput">polymorphic_pointer_downcast</code>:
+    </p>
+<pre class="programlisting">static_pointer_cast&lt;Derived&gt;(p);
+dynamic_pointer_cast&lt;Derived&gt;(p);
+</pre>
+<p>
+      For <code class="computeroutput">polymorphic_pointer_cast</code>:
+    </p>
+<pre class="programlisting">dynamic_pointer_cast&lt;Derived&gt;(p);
+!p; // conversion to bool with negation
+</pre>
+<p>
+      This includes C++ built-in pointers, <code class="computeroutput">std::shared_ptr</code>, <code class="computeroutput">boost::shared_ptr</code>,
+      <code class="computeroutput">boost::intrusive_ptr</code>, etc.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001 Beman Dawes<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../conversion.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../conversion.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="_polymorphic_cast____polymorphic_downcast____polymorphic_pointer_cast__and__polymorphic_pointer_downcast__synopsis.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

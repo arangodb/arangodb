@@ -1,0 +1,161 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Function Output Iterator</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Iterator">
+<link rel="up" href="../specialized.html" title="Specialized Adaptors">
+<link rel="prev" href="filter.html" title="Filter Iterator">
+<link rel="next" href="indirect.html" title="Indirect Iterator">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="filter.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../specialized.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="indirect.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="iterator.specialized.function_output"></a><a class="link" href="function_output.html" title="Function Output Iterator">Function Output
+      Iterator</a>
+</h3></div></div></div>
+<p>
+        The function output iterator adaptor makes it easier to create custom output
+        iterators. The adaptor takes a unary function and creates a model of Output
+        Iterator. Each item assigned to the output iterator is passed as an argument
+        to the unary function. The motivation for this iterator is that creating
+        a conforming output iterator is non-trivial, particularly because the proper
+        implementation usually requires a proxy object.
+      </p>
+<h3>
+<a name="iterator.specialized.function_output.h0"></a>
+        <span class="phrase"><a name="iterator.specialized.function_output.example"></a></span><a class="link" href="function_output.html#iterator.specialized.function_output.example">Example</a>
+      </h3>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">string_appender</span>
+<span class="special">{</span>
+    <span class="identifier">string_appender</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&amp;</span> <span class="identifier">s</span><span class="special">)</span>
+        <span class="special">:</span> <span class="identifier">m_str</span><span class="special">(&amp;</span><span class="identifier">s</span><span class="special">)</span>
+    <span class="special">{}</span>
+
+    <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="special">*</span><span class="identifier">m_str</span> <span class="special">+=</span> <span class="identifier">x</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">*</span> <span class="identifier">m_str</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">char</span><span class="special">*[])</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="identifier">x</span><span class="special">;</span>
+  <span class="identifier">x</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="string">"hello"</span><span class="special">);</span>
+  <span class="identifier">x</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="string">" "</span><span class="special">);</span>
+  <span class="identifier">x</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="string">"world"</span><span class="special">);</span>
+  <span class="identifier">x</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="string">"!"</span><span class="special">);</span>
+
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">s</span> <span class="special">=</span> <span class="string">""</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">copy</span><span class="special">(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span>
+      <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_function_output_iterator</span><span class="special">(</span><span class="identifier">string_appender</span><span class="special">(</span><span class="identifier">s</span><span class="special">)));</span>
+
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">s</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<h3>
+<a name="iterator.specialized.function_output.h1"></a>
+        <span class="phrase"><a name="iterator.specialized.function_output.reference"></a></span><a class="link" href="function_output.html#iterator.specialized.function_output.reference">Reference</a>
+      </h3>
+<h4>
+<a name="iterator.specialized.function_output.h2"></a>
+        <span class="phrase"><a name="iterator.specialized.function_output.synopsis"></a></span><a class="link" href="function_output.html#iterator.specialized.function_output.synopsis">Synopsis</a>
+      </h4>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">UnaryFunction</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">function_output_iterator</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">output_iterator_tag</span> <span class="identifier">iterator_category</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="keyword">void</span>                     <span class="identifier">value_type</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="keyword">void</span>                     <span class="identifier">difference_type</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="keyword">void</span>                     <span class="identifier">pointer</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="keyword">void</span>                     <span class="identifier">reference</span><span class="special">;</span>
+
+  <span class="keyword">explicit</span> <span class="identifier">function_output_iterator</span><span class="special">();</span>
+
+  <span class="keyword">explicit</span> <span class="identifier">function_output_iterator</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">UnaryFunction</span><span class="special">&amp;</span> <span class="identifier">f</span><span class="special">);</span>
+
+  <span class="comment">/* see below */</span> <span class="keyword">operator</span><span class="special">*();</span>
+  <span class="identifier">function_output_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">++();</span>
+  <span class="identifier">function_output_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">++(</span><span class="keyword">int</span><span class="special">);</span>
+<span class="keyword">private</span><span class="special">:</span>
+  <span class="identifier">UnaryFunction</span> <span class="identifier">m_f</span><span class="special">;</span>     <span class="comment">// exposition only</span>
+<span class="special">};</span>
+</pre>
+<h4>
+<a name="iterator.specialized.function_output.h3"></a>
+        <span class="phrase"><a name="iterator.specialized.function_output.requirements"></a></span><a class="link" href="function_output.html#iterator.specialized.function_output.requirements">Requirements</a>
+      </h4>
+<p>
+        <code class="computeroutput"><span class="identifier">UnaryFunction</span></code> must be Assignable
+        and Copy Constructible.
+      </p>
+<h4>
+<a name="iterator.specialized.function_output.h4"></a>
+        <span class="phrase"><a name="iterator.specialized.function_output.concepts"></a></span><a class="link" href="function_output.html#iterator.specialized.function_output.concepts">Concepts</a>
+      </h4>
+<p>
+        <code class="computeroutput"><span class="identifier">function_output_iterator</span></code>
+        is a model of the Writable and Incrementable Iterator concepts.
+      </p>
+<h4>
+<a name="iterator.specialized.function_output.h5"></a>
+        <span class="phrase"><a name="iterator.specialized.function_output.operations"></a></span><a class="link" href="function_output.html#iterator.specialized.function_output.operations">Operations</a>
+      </h4>
+<pre class="programlisting"><span class="keyword">explicit</span> <span class="identifier">function_output_iterator</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">UnaryFunction</span><span class="special">&amp;</span> <span class="identifier">f</span> <span class="special">=</span> <span class="identifier">UnaryFunction</span><span class="special">());</span>
+</pre>
+<p>
+        <span class="bold"><strong>Effects: </strong></span> Constructs an instance of <code class="computeroutput"><span class="identifier">function_output_iterator</span></code> with <code class="computeroutput"><span class="identifier">m_f</span></code> constructed from <code class="computeroutput"><span class="identifier">f</span></code>.
+      </p>
+<pre class="programlisting"><span class="identifier">unspecified_type</span> <span class="keyword">operator</span><span class="special">*();</span>
+</pre>
+<p>
+        <span class="bold"><strong>Returns: </strong></span> An object <code class="computeroutput"><span class="identifier">r</span></code>
+        of unspecified type such that <code class="computeroutput"><span class="identifier">r</span>
+        <span class="special">=</span> <span class="identifier">t</span></code>
+        is equivalent to <code class="computeroutput"><span class="identifier">m_f</span><span class="special">(</span><span class="identifier">t</span><span class="special">)</span></code> for
+        all <code class="computeroutput"><span class="identifier">t</span></code>.
+      </p>
+<pre class="programlisting"><span class="identifier">function_output_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">++();</span>
+</pre>
+<p>
+        <span class="bold"><strong>Returns: </strong></span> <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>.
+      </p>
+<pre class="programlisting"><span class="identifier">function_output_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">++(</span><span class="keyword">int</span><span class="special">);</span>
+</pre>
+<p>
+        <span class="bold"><strong>Returns: </strong></span> <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003, 2005 David Abrahams Jeremy Siek Thomas
+      Witt<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at &lt;ulink url="http://www.boost.org/LICENSE_1_0.txt"&gt;
+        http://www.boost.org/LICENSE_1_0.txt &lt;/ulink&gt;)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="filter.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../specialized.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="indirect.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

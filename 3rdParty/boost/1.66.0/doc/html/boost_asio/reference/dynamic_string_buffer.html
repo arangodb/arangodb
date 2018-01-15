@@ -1,0 +1,238 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>dynamic_string_buffer</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../reference.html" title="Reference">
+<link rel="prev" href="dynamic_buffer/overload4.html" title="dynamic_buffer (4 of 4 overloads)">
+<link rel="next" href="dynamic_string_buffer/capacity.html" title="dynamic_string_buffer::capacity">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="dynamic_buffer/overload4.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="dynamic_string_buffer/capacity.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_asio.reference.dynamic_string_buffer"></a><a class="link" href="dynamic_string_buffer.html" title="dynamic_string_buffer">dynamic_string_buffer</a>
+</h3></div></div></div>
+<p>
+        Adapt a basic_string to the DynamicBuffer requirements.
+      </p>
+<pre class="programlisting">template&lt;
+    typename Elem,
+    typename Traits,
+    typename Allocator&gt;
+class dynamic_string_buffer
+</pre>
+<h5>
+<a name="boost_asio.reference.dynamic_string_buffer.h0"></a>
+        <span class="phrase"><a name="boost_asio.reference.dynamic_string_buffer.types"></a></span><a class="link" href="dynamic_string_buffer.html#boost_asio.reference.dynamic_string_buffer.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="dynamic_string_buffer/const_buffers_type.html" title="dynamic_string_buffer::const_buffers_type"><span class="bold"><strong>const_buffers_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type used to represent the input sequence as a list of buffers.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="dynamic_string_buffer/mutable_buffers_type.html" title="dynamic_string_buffer::mutable_buffers_type"><span class="bold"><strong>mutable_buffers_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type used to represent the output sequence as a list of buffers.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.dynamic_string_buffer.h1"></a>
+        <span class="phrase"><a name="boost_asio.reference.dynamic_string_buffer.member_functions"></a></span><a class="link" href="dynamic_string_buffer.html#boost_asio.reference.dynamic_string_buffer.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="dynamic_string_buffer/capacity.html" title="dynamic_string_buffer::capacity"><span class="bold"><strong>capacity</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the current capacity of the dynamic buffer.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="dynamic_string_buffer/commit.html" title="dynamic_string_buffer::commit"><span class="bold"><strong>commit</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move bytes from the output sequence to the input sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="dynamic_string_buffer/consume.html" title="dynamic_string_buffer::consume"><span class="bold"><strong>consume</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Remove characters from the input sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="dynamic_string_buffer/data.html" title="dynamic_string_buffer::data"><span class="bold"><strong>data</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get a list of buffers that represents the input sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="dynamic_string_buffer/dynamic_string_buffer.html" title="dynamic_string_buffer::dynamic_string_buffer"><span class="bold"><strong>dynamic_string_buffer</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Construct a dynamic buffer from a string.
+                </p>
+                <p>
+                  Move construct a dynamic buffer.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="dynamic_string_buffer/max_size.html" title="dynamic_string_buffer::max_size"><span class="bold"><strong>max_size</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the maximum size of the dynamic buffer.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="dynamic_string_buffer/prepare.html" title="dynamic_string_buffer::prepare"><span class="bold"><strong>prepare</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get a list of buffers that represents the output sequence, with
+                  the given size.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="dynamic_string_buffer/size.html" title="dynamic_string_buffer::size"><span class="bold"><strong>size</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the size of the input sequence.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        Requires that <code class="computeroutput">sizeof(Elem) == 1</code>.
+      </p>
+<h5>
+<a name="boost_asio.reference.dynamic_string_buffer.h2"></a>
+        <span class="phrase"><a name="boost_asio.reference.dynamic_string_buffer.requirements"></a></span><a class="link" href="dynamic_string_buffer.html#boost_asio.reference.dynamic_string_buffer.requirements">Requirements</a>
+      </h5>
+<p>
+        <span class="emphasis"><em>Header: </em></span><code class="literal">boost/asio/buffer.hpp</code>
+      </p>
+<p>
+        <span class="emphasis"><em>Convenience header: </em></span><code class="literal">boost/asio.hpp</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="dynamic_buffer/overload4.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="dynamic_string_buffer/capacity.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

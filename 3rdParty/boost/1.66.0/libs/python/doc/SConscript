@@ -1,0 +1,52 @@
+# -*- python -*-
+#
+# Copyright (c) 2016 Stefan Seefeld
+# All rights reserved.
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+Import('env')
+
+env.QuickBook('python.bbk', 'python.qbk',
+              ['building.qbk',
+               'configuration.qbk',
+               'support.qbk',
+               'faq.qbk',
+               'glossary.qbk'])
+
+env.QuickBook('tutorial.bbk', 'tutorial.qbk')
+env.QuickBook('reference.bbk', 'reference.qbk',
+              Glob('reference/*.qbk'))
+
+
+env.BoostBook('python.dbk', 'python.bbk')
+env.BoostBook('tutorial.dbk', 'tutorial.bbk')
+env.BoostBook('reference.dbk', 'reference.bbk')
+
+images = Glob('images/*.*') + Glob('images/callouts/*.*')
+
+env.BoostHTML('html/', 'python.dbk',
+              resources=['boostbook.css'] + images,
+              args=['--stringparam', 'generate.toc', '"library nop; chapter toc; section toc;"',
+                    '--stringparam', 'html.stylesheet', 'boostbook.css',
+                    '--stringparam', 'boost.image.src', 'images/bpl.png',
+                    '--stringparam', 'boost.graphics.root', 'images/',
+                    '--stringparam', 'boost.defaults', 'none',
+                    '--param', 'toc.max.depth', '3',
+                    '--param', 'toc.section.depth' ,'2',
+                    '--param', 'chunk.section.depth', '1'])
+env.BoostHTML('html/tutorial/', 'tutorial.dbk',
+              args=['--stringparam', 'html.stylesheet', '../boostbook.css',
+                    '--stringparam', 'boost.image.src', '../images/bpl.png',
+                    '--stringparam', 'boost.graphics.root', '../images/'])
+env.BoostHTML('html/reference/', 'reference.dbk',
+              args=['--stringparam', 'html.stylesheet', '../boostbook.css',
+                    '--stringparam', 'boost.image.src', '../images/bpl.png',
+                    '--stringparam', 'boost.graphics.root', '../images/'])
+
+env.BoostRST('html/article.html', 'article.rst', resources=['rst.css'])
+
+if env['NUMPY']:
+    env.BoostSphinx('html/numpy', 'numpy/')

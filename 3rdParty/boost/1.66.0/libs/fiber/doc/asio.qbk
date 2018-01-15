@@ -1,0 +1,110 @@
+[/
+          Copyright Oliver Kowalke 2013.
+ Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+          http://www.boost.org/LICENSE_1_0.txt
+]
+
+[section:asio Example: asynchronous network I/O (boost.asio)]
+
+In the past, code using asio's ['asynchronous operations] was scattered by
+callbacks.
+__boost_asio__ provides with its new ['asynchronous result] feature a new way to
+simplify the code and make it easier to read.
+__yield_context__ internally uses __boost_coroutine__:
+
+        void echo(boost::asio::ip::tcp::socket& socket,boost::asio::yield_context yield){
+            char data[128];
+            // read asynchronous data from socket
+            // execution context will be suspended until
+            // some bytes are read from socket
+            std::size_t n=socket.async_read_some(boost::asio::buffer(data),yield);
+            // write some bytes asynchronously
+            boost::asio::async_write(socket,boost::asio::buffer(data,n),yield);
+        }
+
+Unfortunately __boost_coroutine__ (__yield_context__) does not provide
+primitives to synchronize different coroutines (execution contexts).
+
+__boost_fiber__ provides an example how __fibers__ could be integrated into
+__boost_asio__ so that ['asynchronous operations] from __boost_asio__ can be
+used together with fibers, synchronized by primitives provided by
+__boost_fiber__.
+
+The example section contains a complete publish-subscribe application
+demonstrating the use of fibers with asio's ['asynchronous operations].
+__yield_fiber__ abstracts the fiber in asio's context.
+
+        void subscriber::run( boost::fibers::asio::yield_fiber yield)
+        {
+            boost::system::error_code ec;
+
+            // read first message == queue name
+            std::string queue;
+            boost::asio::async_read(
+                    socket_,
+                    boost::asio::buffer( queue),
+                    yield[ec]);
+            if ( ec) throw std::runtime_error("no queue from subscriber");
+
+            // register new queue
+            reg_.subscribe( queue, shared_from_this() );
+
+            for (;;)
+            {
+                boost::fibers::mutex::scoped_lock lk( mtx_);
+                // wait for published messages
+                // fiber gets suspended and will be woken up if a
+                // new message has to be published to subscriber
+                cond_.wait( lk);
+
+                // '<fini>' terminates subscriber
+                // data_ is a private member of subscriber and
+                // gets filled by the publisher
+                // notification of available data via condition_var cond_
+                if ( "<fini>" == std::string( data_) ) break;
+
+                // write message asynchronously to subscriber
+                // fiber gets suspended until message was written
+                boost::asio::async_write(
+                        socket_,
+                        boost::asio::buffer( data_, max_length),
+                        yield[ec]);
+                if ( ec) throw std::runtime_error("publishing message failed");
+            }
+        }
+
+[heading C10K problem]
+
+The C10K-website [footnote [@http://www.kegel.com/c10k.html 'The C10K problem',
+Dan Kegel]]
+from Dan Kegel describes the problem of handling ten thousand clients
+simultaneously and which strategies are possible.
+
+__boost_fiber__ and __boost_asio__ support the strategy 'serve many clients with
+each server thread, and use asynchronous I/O' without scattering the logic
+across many callbacks (as was asio's previous strategy) and overloading the
+operating system with too many threads. (Beyond a certain number of threads, the
+overhead of the kernel scheduler starts to swamp the available cores.)
+
+Because __boost_fiber__ contains synchronization primitives, it is easy to
+synchronize different fibers and use asynchronous network I/O at the same
+time.
+
+__boost_fiber__ provides the same classes and interfaces as __boost_thread__.
+Therefore developers are able to use patterns familiar from multi-threaded
+programming. For instance the strategy 'serve one client with one thread'
+could be transformed into 'serve one client with one fiber'.
+
+[heading Integration]
+
+The code for integrating boost.fiber int boost.asio can be found in the example
+directory. The author believes, that a better, more tight integration is
+possible but requires input of boost.asio's author and maybe some changes in the
+boost.asio framework.
+
+The current integration pattern requires to runn __io_service__ in
+__run_service__ (separate fiber).
+
+
+[endsect]

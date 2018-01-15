@@ -1,0 +1,639 @@
+﻿<html>
+
+<head>
+<meta http-equiv="Content-Language" content="en-us">
+<meta name="GENERATOR" content="Microsoft FrontPage 5.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Endian Arithmetic Types</title>
+<link href="styles.css" rel="stylesheet">
+</style>
+</head>
+
+<body>
+
+
+<table border="0" cellpadding="5" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" width="100%">
+  <tr>
+    <td>
+<a href="../../../index.html">
+<img src="../../../boost.png" alt="Boost logo" align="middle" border="0" width="277" height="86"></a></td>
+    <td align="middle">
+    <b>
+    <font size="6">Endian Arithmetic Types</font> </b>
+    </td>
+  </tr>
+</table>
+
+<table border="0" cellpadding="5" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" bgcolor="#D7EEFF" width="100%">
+  <tr>
+    <td><b>
+    <a href="index.html">Endian Home</a>&nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="conversion.html">Conversion Functions</a>&nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="arithmetic.html">Arithmetic Types</a>&nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="buffers.html">Buffer Types</a>&nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="choosing_approach.html">Choosing Approach</a></b></td>
+  </tr>
+</table>
+
+<p></p>
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" align="right">
+  <tr>
+    <td width="100%" bgcolor="#D7EEFF" align="center">
+      <i><b>Contents</b></i></td>
+  </tr>
+  <tr>
+    <td width="100%" bgcolor="#E8F5FF">
+      <a href="#Introduction">Introduction</a><br>
+      <a href="#Example">Example</a><br>
+      <a href="#Limitations">Limitations</a><br>
+      <a href="#Feature-set">Feature set</a><br>
+      <a href="#Types">Enums and typedefs</a><br>
+      <a href="#Class_template_endian">Class template <code>endian</code></a><br>
+      &nbsp;&nbsp;&nbsp;
+      <a href="#Synopsis">Synopsis</a><br>
+      &nbsp;&nbsp;&nbsp; <a href="#Members">Members</a><br>
+&nbsp;&nbsp;&nbsp; <a href="#Stream-inserter">Stream inserter</a><br>
+&nbsp;&nbsp;&nbsp; <a href="#Stream-extractor">Stream extractor</a><br>
+      <a href="#FAQ">FAQ</a><br>
+      <a href="#Design">Design</a><br>
+      <a href="#Experience">Experience</a><br>
+      <a href="#Motivating-use-cases">Motivating use cases</a><br>
+      <a href="#C++0x">C++11</a><br>
+      <a href="#Compilation">Compilation</a><br>
+      <a href="#Acknowledgements">Acknowledgements</a>
+    </td>
+  </tr>
+  </table>
+<h2><a name="Introduction">Introduction</a></h2>
+<p>Header <a href="arithmetic.html">boost/endian/arithmetic.hpp</a> 
+provides integer binary types with control over 
+byte order, value type, size, and alignment. Typedefs provide easy-to-use names 
+for common configurations.</p>
+<p>These types provide portable byte-holders for integer data, independent of 
+particular computer architectures. Use cases almost always involve I/O, either via files or 
+network connections. Although data portability is the primary motivation, these 
+integer byte-holders may 
+also be used to reduce memory use, file size, or network activity since they 
+provide binary integer sizes not otherwise available.</p>
+<p>Such integer byte-holder types are traditionally called <b><i>
+endian</i></b> types. See the
+<a href="http://en.wikipedia.org/wiki/Endian" name="endianness">Wikipedia</a> for 
+a full 
+exploration of <b><i>endianness</i></b>, including definitions of <i><b>big 
+endian</b></i> and <i><b>little endian</b></i>.</p>
+<p>Boost endian integers provide the same full set of C++ assignment, 
+arithmetic, and relational operators&nbsp;as C++ standard integral types, with 
+the standard semantics.</p>
+<p>Unary arithmetic operators are <b> <code><font face="Courier New">+</font></code></b>,
+<b> <code>-</code></b>, <b> <code>~</code></b>, <b>
+<code>!</code></b>, plus both prefix and postfix <b> <code>--</code></b> and <b> <code>++</code></b>. Binary 
+arithmetic operators are <b> <code>+</code></b>, <b> <code>+=</code></b>, <b> <code>-</code></b>,
+<b> <code>
+-=</code></b>, <b> <code>*</code></b>, <b> <code>*=</code></b>, <b> <code>/</code></b>,
+<b> <code>/=</code></b>, <b> <code>&amp;</code></b>, <b> <code>&amp;=</code></b>,
+<b> <code>|</code></b>, <b> <code>|=</code></b>, <b>
+<code>^</code></b>, <b> <code>^=</code></b>, <b> <code>&lt;&lt;</code></b>, <b> <code>&lt;&lt;=</code></b>, <code>
+<b>&gt;&gt;</b></code>, and <b>
+<code>&gt;&gt;=</code></b>. Binary relational operators are <b> <code>==</code></b>,
+<b> <code>!=</code></b>, <b>
+<code>&lt;</code></b>, <b> <code>&lt;=</code></b>, <b> <code>&gt;</code></b>, 
+and <b> <code>&gt;=</code></b>.</p>
+<p>Implicit conversion to the underlying value type is provided. An implicit 
+constructor converting from the underlying value type is provided. </p>
+<h2><a name="Example">Example</a></h2>
+<p>The <a href="../example/endian_example.cpp">endian_example.cpp</a> program writes a 
+binary file containing four-byte, big-endian and little-endian integers:</p>
+<blockquote>
+  <pre>#include &lt;iostream&gt;
+#include &lt;cstdio&gt;
+#include &lt;boost/endian/arithmetic.hpp&gt;
+#include &lt;boost/static_assert.hpp&gt;
+
+using namespace boost::endian;
+
+namespace 
+{
+  //  This is an extract from a very widely used GIS file format.
+  //  Why the designer decided to mix big and little endians in
+  //  the same file is not known. But this is a real-world format
+  //  and users wishing to write low level code manipulating these
+  //  files have to deal with the mixed endianness.
+
+  struct header
+  {
+    big_int32_t     file_code;
+    big_int32_t     file_length;
+    little_int32_t  version;
+    little_int32_t  shape_type;
+  };
+
+  const char* filename = &quot;test.dat&quot;;
+}
+
+int main(int, char* [])
+{
+  header h;
+
+  BOOST_STATIC_ASSERT(sizeof(h) == 16U);  // reality check
+  
+  h.file_code   = 0x01020304;
+  h.file_length = sizeof(header);
+  h.version     = 1;
+  h.shape_type  = 0x01020304;
+
+  //  Low-level I/O such as POSIX read/write or &lt;cstdio&gt;
+  //  fread/fwrite is sometimes used for binary file operations
+  //  when ultimate efficiency is important. Such I/O is often
+  //  performed in some C++ wrapper class, but to drive home the
+  //  point that endian integers are often used in fairly
+  //  low-level code that does bulk I/O operations, &lt;cstdio&gt;
+  //  fopen/fwrite is used for I/O in this example.
+
+  std::FILE* fi = std::fopen(filename, &quot;wb&quot;);  // MUST BE BINARY
+  
+  if (!fi)
+  {
+    std::cout &lt;&lt; &quot;could not open &quot; &lt;&lt; filename &lt;&lt; '\n';
+    return 1;
+  }
+
+  if (std::fwrite(&amp;h, sizeof(header), 1, fi)!= 1)
+  {
+    std::cout &lt;&lt; &quot;write failure for &quot; &lt;&lt; filename &lt;&lt; '\n';
+    return 1;
+  }
+
+  std::fclose(fi);
+
+  std::cout &lt;&lt; &quot;created file &quot; &lt;&lt; filename &lt;&lt; '\n';
+
+  return 0;
+}
+</pre>
+</blockquote>
+<p>After compiling and executing <a href="../example/endian_example.cpp">endian_example.cpp</a>, 
+a hex dump of <code>test.dat</code> shows:</p>
+<blockquote>
+  <pre>01020304 00000010 01000000 04030201</pre>
+</blockquote>
+<p>Notice that the first two 32-bit integers are big endian while the second two 
+are little endian, even though the machine this was compiled and run on was 
+little endian.</p>
+<h2><a name="Limitations">Limitations</a></h2>
+<p>Requires <code>&lt;climits&gt;</code> <code>CHAR_BIT == 8</code>. If <code>CHAR_BIT</code> 
+is some other value, compilation will result in an <code>#error</code>. This 
+restriction is in place because the design, implementation, testing, and 
+documentation has only considered issues related to 8-bit bytes, and there have 
+been no real-world use cases presented for other sizes.</p>
+<p>In C++03, <code>endian_arithmetic</code> does not meet the requirements for POD types 
+because it has constructors, private data members, and a base class. This means 
+that common use cases are relying on unspecified behavior in that the C++ 
+Standard does not guarantee memory layout for non-POD types. This has not been a 
+problem in practice since all known C++ compilers  lay out memory as if <code>
+endian</code> were a POD type. In C++11, it is possible to specify the 
+default constructor as trivial, and private data members and base classes  no longer disqualify a type from being a POD 
+type. Thus under C++11, <code>endian_arithmetic</code> 
+will no longer be relying on unspecified behavior.</p>
+<h2><a name="Feature-set">Feature set</a></h2>
+<ul>
+  <li>Big endian| little endian | native endian byte ordering.</li>
+  <li>Signed | unsigned</li>
+  <li>Unaligned | aligned</li>
+  <li>1-8 byte (unaligned) | 1, 2, 4, 8 byte (aligned)</li>
+  <li>Choice of  value type</li>
+</ul>
+<h2>Enums and t<a name="Types">ypedefs</a></h2>
+<p>Two scoped enums are provided:</p>
+<blockquote>
+  <pre>enum class order {big, little, native};
+
+enum class align {no, yes}; </pre>
+</blockquote>
+<p>One class template is provided:</p>
+<blockquote>
+  <pre>template &lt;order Order, typename T, std::size_t n_bits,
+  align Align = align::no&gt;
+class endian_arithmetic;
+</pre>
+</blockquote>
+<p>Typedefs, such as <code>big_int32_t</code>, provide convenient naming 
+conventions for common use cases:</p>
+<blockquote>
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" width="49%">
+  <tr>
+    <td width="18%" align="center"><b><i>Name</i></b></td>
+    <td width="49%" align="center"><b><i>Alignment</i></b></td>
+    <td width="10%" align="center"><b><i>Endianness</i></b></td>
+    <td width="10%" align="center"><b><i>Sign</i></b></td>
+    <td width="15%" align="center"><b><i>Sizes in bits (n)</i></b></td>
+  </tr>
+  <tr>
+    <td width="18%"><code>big_int</code><b><i>n</i></b><code>_t</code></td>
+    <td width="49%" align="center"><code>no</code></td>
+    <td width="10%" align="center"><code>big</code></td>
+    <td width="10%" align="center">signed</td>
+    <td width="15%">8,16,24,32,40,48,56,64</td>
+    </tr>
+  <tr>
+    <td width="18%"><code>big_uint</code><i><b>n</b></i><code>_t</code></td>
+    <td width="49%" align="center"><code>no</code></td>
+    <td width="10%" align="center"><code>big</code></td>
+    <td width="10%" align="center">unsigned</td>
+    <td width="15%">8,16,24,32,40,48,56,64</td>
+    </tr>
+  <tr>
+    <td width="18%"><code>little_int</code><i><b>n</b></i><code>_t</code></td>
+    <td width="49%" align="center"><code>no</code></td>
+    <td width="10%" align="center"><code>little</code></td>
+    <td width="10%" align="center">signed</td>
+    <td width="15%">8,16,24,32,40,48,56,64</td>
+  </tr>
+  <tr>
+    <td width="18%"><code>little_uint</code><i><b>n</b></i><code>_t</code></td>
+    <td width="49%" align="center"><code>no</code></td>
+    <td width="10%" align="center"><code>little</code></td>
+    <td width="10%" align="center">unsigned</td>
+    <td width="15%">8,16,24,32,40,48,56,64</td>
+  </tr>
+  <tr>
+    <td width="18%"><code>native_int</code><i><b>n</b></i><code>_t</code></td>
+    <td width="49%" align="center"><code>no</code></td>
+    <td width="10%" align="center"><code>native</code></td>
+    <td width="10%" align="center">signed</td>
+    <td width="15%">8,16,24,32,40,48,56,64</td>
+  </tr>
+  <tr>
+    <td width="18%"><code>native_uint</code><i><b>n</b></i><code>_t</code></td>
+    <td width="49%" align="center"><code>no</code></td>
+    <td width="10%" align="center"><code>native</code></td>
+    <td width="10%" align="center">unsigned</td>
+    <td width="15%">8,16,24,32,40,48,56,64</td>
+  </tr>
+  <tr>
+    <td width="18%"><code>big_int</code><i><b>n</b></i><code>_at</code></td>
+    <td width="49%" align="center"><code>yes</code></td>
+    <td width="10%" align="center"><code>big</code></td>
+    <td width="10%" align="center">signed</td>
+    <td width="15%">8,16,32,64</td>
+  </tr>
+  <tr>
+    <td width="18%"><code>big_uint</code><i><b>n</b></i><code>_at</code></td>
+    <td width="49%" align="center"><code>yes</code></td>
+    <td width="10%" align="center"><code>big</code></td>
+    <td width="10%" align="center">unsigned</td>
+    <td width="15%">8,16,32,64</td>
+  </tr>
+  <tr>
+    <td width="18%" dir="ltr"><code>little_int</code><i><b>n</b></i><code>_at</code></td>
+    <td width="49%" align="center" dir="ltr"><code>yes</code></td>
+    <td width="10%" align="center" dir="ltr"><code>little</code></td>
+    <td width="10%" align="center" dir="ltr">signed</td>
+    <td width="15%" dir="ltr">8,16,32,64</td>
+  </tr>
+  <tr>
+    <td width="18%" dir="ltr"><code>little_uint</code><i><b>n</b></i><code>_at</code></td>
+    <td width="49%" align="center" dir="ltr"><code>yes</code></td>
+    <td width="10%" align="center" dir="ltr"><code>little</code></td>
+    <td width="10%" align="center" dir="ltr">unsigned</td>
+    <td width="15%" dir="ltr">8,16,32,64</td>
+  </tr>
+   </table>
+</blockquote>
+<p>The unaligned types do not cause compilers to insert padding bytes in classes 
+and structs. This is an important characteristic that can be exploited to minimize wasted space in 
+memory, files, and network transmissions. </p>
+<p><font color="#FF0000"><b><i><span style="background-color: #FFFFFF">Warning:</span></i></b></font><span style="background-color: #FFFFFF"> 
+Code that uses a</span>ligned types is possibly non-portable because alignment 
+requirements vary between hardware architectures and because alignment may be 
+affected by compiler switches or pragmas. For example, alignment of an 64-bit 
+integer may be to a 32-bit boundary on a 32-bit machine. Furthermore, aligned types 
+are only available on architectures with 8, 16, 32, and 64-bit integer types.</p>
+<p><i><b>Recommendation:</b></i> Prefer unaligned arithmetic types.</p>
+<p><i><b>Recommendation:</b></i> Protect yourself against alignment ills. For 
+example:</p>
+<blockquote>
+  <pre>static_assert(sizeof(containing_struct) == 12, &quot;sizeof(containing_struct) is wrong&quot;); </pre>
+</blockquote>
+<p><b><i>Note:</i></b> <b><i>Note:</i></b> One-byte arithmetic types 
+have identical layout on all platforms, so they never actually reverse endianness. They are provided to enable generic code, and 
+to improve code readability and searchability.</p>
+<h2><a name="Class_template_endian">Class template <code>endian</code></a><code>_arithmetic</code></h2>
+<p>An <code>endian_integer</code> is an integer byte-holder with user-specified <a href="#endianness">
+endianness</a>, value type, size, and <a href="#alignment">alignment</a>. The 
+usual operations on arithmetic types are supplied.</p>
+<h3><a name="Synopsis">Synopsis</a></h3>
+<pre>#include &lt;boost/endian/conversion.hpp&gt;
+#include &lt;boost/endian/buffers.hpp&gt;
+
+namespace boost
+{
+  namespace endian
+  {
+    //  C++11 features emulated if not available
+   
+    enum class <a name="alignment">align</a> {no, yes};            
+
+    template &lt;order Order, class T, std::size_t n_bits,
+      align Align = align::no&gt;
+    class endian_arithmetic
+      : public endian_buffer&lt;Order, T, n_bits, Align&gt;
+    {
+    public:
+      typedef T value_type;
+
+      // if BOOST_ENDIAN_FORCE_PODNESS is defined &amp;&amp; C++11 PODs are not
+      // available then these two constructors will not be present
+      <a href="#endian">endian_arithmetic</a>() noexcept = default;
+      <a href="#explicit-endian">endian_arithmetic</a>(T v) noexcept;
+
+      endian_arithmetic&amp; <a href="#operator-eq">operator=</a>(T v) noexcept;
+      <a href="#operator-T">operator value_type</a>() const noexcept;
+      value_type value() const noexcept; // for exposition; see endian_buffer
+      const char* <a href="#data">data</a>() const noexcept; // for exposition; see endian_buffer
+
+      // arithmetic operations
+      //   note that additional operations are provided by the value_type 
+      value_type operator+(const endian&amp; x) noexcept;
+      endian&amp; operator+=(endian&amp; x, value_type y) noexcept;
+      endian&amp; operator-=(endian&amp; x, value_type y) noexcept;
+      endian&amp; operator*=(endian&amp; x, value_type y) noexcept;
+      endian&amp; operator/=(endian&amp; x, value_type y) noexcept;
+      endian&amp; operator%=(endian&amp; x, value_type y) noexcept;
+      endian&amp; operator&amp;=(endian&amp; x, value_type y) noexcept;
+      endian&amp; operator|=(endian&amp; x, value_type y) noexcept;
+      endian&amp; operator^=(endian&amp; x, value_type y) noexcept;
+      endian&amp; operator&lt;&lt;=(endian&amp; x, value_type y) noexcept;
+      endian&amp; operator&gt;&gt;=(endian&amp; x, value_type y noexcept;
+      value_type operator&lt;&lt;(const endian&amp; x, value_type y) noexcept;
+      value_type operator&gt;&gt;(const endian&amp; x, value_type y) noexcept;
+      endian&amp; operator++(endian&amp; x) noexcept;
+      endian&amp; operator--(endian&amp; x) noexcept;
+      endian operator++(endian&amp; x, int) noexcept;
+      endian operator--(endian&amp; x, int) noexcept;
+
+      // Stream inserter
+      template &lt;class charT, class traits&gt;
+      friend std::basic_ostream&lt;charT, traits&gt;&amp;
+        operator&lt;&lt;(std::basic_ostream&lt;charT, traits&gt;&amp; os, const T&amp; x);
+
+      // Stream extractor 
+      template &lt;class charT, class traits&gt;
+      friend std::basic_istream&lt;charT, traits&gt;&amp;
+        operator&gt;&gt;(std::basic_istream&lt;charT, traits&gt;&amp; is, T&amp; x);
+    };
+
+    // typedefs  
+
+    // unaligned big endian signed integer types
+    typedef endian&lt;order::big, int_least8_t, 8&gt;        big_int8_t;
+    typedef endian&lt;order::big, int_least16_t, 16&gt;      big_int16_t;
+    typedef endian&lt;order::big, int_least32_t, 24&gt;      big_int24_t;
+    typedef endian&lt;order::big, int_least32_t, 32&gt;      big_int32_t;
+    typedef endian&lt;order::big, int_least64_t, 40&gt;      big_int40_t;
+    typedef endian&lt;order::big, int_least64_t, 48&gt;      big_int48_t;
+    typedef endian&lt;order::big, int_least64_t, 56&gt;      big_int56_t;
+    typedef endian&lt;order::big, int_least64_t, 64&gt;      big_int64_t;
+  
+    // unaligned big endian unsigned integer types
+    typedef endian&lt;order::big, uint_least8_t, 8&gt;       big_uint8_t;
+    typedef endian&lt;order::big, uint_least16_t, 16&gt;     big_uint16_t;
+    typedef endian&lt;order::big, uint_least32_t, 24&gt;     big_uint24_t;
+    typedef endian&lt;order::big, uint_least32_t, 32&gt;     big_uint32_t;
+    typedef endian&lt;order::big, uint_least64_t, 40&gt;     big_uint40_t;
+    typedef endian&lt;order::big, uint_least64_t, 48&gt;     big_uint48_t;
+    typedef endian&lt;order::big, uint_least64_t, 56&gt;     big_uint56_t;
+    typedef endian&lt;order::big, uint_least64_t, 64&gt;     big_uint64_t;
+
+    // unaligned little endian signed integer types
+    typedef endian&lt;order::little, int_least8_t, 8&gt;     little_int8_t;
+    typedef endian&lt;order::little, int_least16_t, 16&gt;   little_int16_t;
+    typedef endian&lt;order::little, int_least32_t, 24&gt;   little_int24_t;
+    typedef endian&lt;order::little, int_least32_t, 32&gt;   little_int32_t;
+    typedef endian&lt;order::little, int_least64_t, 40&gt;   little_int40_t;
+    typedef endian&lt;order::little, int_least64_t, 48&gt;   little_int48_t;
+    typedef endian&lt;order::little, int_least64_t, 56&gt;   little_int56_t;
+    typedef endian&lt;order::little, int_least64_t, 64&gt;   little_int64_t;
+  
+    // unaligned little endian unsigned integer types
+    typedef endian&lt;order::little, uint_least8_t, 8&gt;    little_uint8_t;
+    typedef endian&lt;order::little, uint_least16_t, 16&gt;  little_uint16_t;
+    typedef endian&lt;order::little, uint_least32_t, 24&gt;  little_uint24_t;
+    typedef endian&lt;order::little, uint_least32_t, 32&gt;  little_uint32_t;
+    typedef endian&lt;order::little, uint_least64_t, 40&gt;  little_uint40_t;
+    typedef endian&lt;order::little, uint_least64_t, 48&gt;  little_uint48_t;
+    typedef endian&lt;order::little, uint_least64_t, 56&gt;  little_uint56_t;
+    typedef endian&lt;order::little, uint_least64_t, 64&gt;  little_uint64_t;
+
+    // unaligned native endian signed integer types
+    typedef <b><i>implementation-defined</i></b>_int8_t   native_int8_t;
+    typedef <b><i>implementation-defined</i></b>_int16_t  native_int16_t;
+    typedef <b><i>implementation-defined</i></b>_int24_t  native_int24_t;
+    typedef <b><i>implementation-defined</i></b>_int32_t  native_int32_t;
+    typedef <b><i>implementation-defined</i></b>_int40_t  native_int40_t;
+    typedef <b><i>implementation-defined</i></b>_int48_t  native_int48_t;
+    typedef <b><i>implementation-defined</i></b>_int56_t  native_int56_t;
+    typedef <b><i>implementation-defined</i></b>_int64_t  native_int64_t;
+
+    // unaligned native endian unsigned integer types
+    typedef <b><i>implementation-defined</i></b>_uint8_t   native_uint8_t;
+    typedef <b><i>implementation-defined</i></b>_uint16_t  native_uint16_t;
+    typedef <b><i>implementation-defined</i></b>_uint24_t  native_uint24_t;
+    typedef <b><i>implementation-defined</i></b>_uint32_t  native_uint32_t;
+    typedef <b><i>implementation-defined</i></b>_uint40_t  native_uint40_t;
+    typedef <b><i>implementation-defined</i></b>_uint48_t  native_uint48_t;
+    typedef <b><i>implementation-defined</i></b>_uint56_t  native_uint56_t;
+    typedef <b><i>implementation-defined</i></b>_uint64_t  native_uint64_t;
+    
+    // aligned big endian signed integer types
+    typedef endian&lt;order::big, int8_t, 8, align::yes&gt;       big_int8_at;
+    typedef endian&lt;order::big, int16_t, 16, align::yes&gt;     big_int16_at;
+    typedef endian&lt;order::big, int32_t, 32, align::yes&gt;     big_int32_at;
+    typedef endian&lt;order::big, int64_t, 64, align::yes&gt;     big_int64_at;
+
+    // aligned big endian unsigned integer types
+    typedef endian&lt;order::big, uint8_t, 8, align::yes&gt;      big_uint8_at;
+    typedef endian&lt;order::big, uint16_t, 16, align::yes&gt;    big_uint16_at;
+    typedef endian&lt;order::big, uint32_t, 32, align::yes&gt;    big_uint32_at;
+    typedef endian&lt;order::big, uint64_t, 64, align::yes&gt;    big_uint64_at;
+
+    // aligned little endian signed integer types
+    typedef endian&lt;order::little, int8_t, 8, align::yes&gt;    little_int8_at;
+    typedef endian&lt;order::little, int16_t, 16, align::yes&gt;  little_int16_at;
+    typedef endian&lt;order::little, int32_t, 32, align::yes&gt;  little_int32_at;
+    typedef endian&lt;order::little, int64_t, 64, align::yes&gt;  little_int64_at;
+
+    // aligned little endian unsigned integer types
+    typedef endian&lt;order::little, uint8_t, 8, align::yes&gt;   little_uint8_at;
+    typedef endian&lt;order::little, uint16_t, 16, align::yes&gt; little_uint16_at;
+    typedef endian&lt;order::little, uint32_t, 32, align::yes&gt; little_uint32_at;
+    typedef endian&lt;order::little, uint64_t, 64, align::yes&gt; little_uint64_at;
+
+    // aligned native endian typedefs are not provided because
+    // &lt;cstdint&gt; types are superior for that use case
+  
+  } // namespace endian
+} // namespace boost</pre>
+<p>The <i><b><code>implementation-defined</code></b></i> text above is either
+<code>big</code> or <code>little</code> according to the endianness of the 
+platform.</p>
+<h3><a name="Members">Members</a></h3>
+<div dir="ltr">
+  <pre><code><a name="endian">endian</a>() = default;  // C++03: endian(){}</code></pre>
+</div>
+<blockquote>
+<p><i>Effects:</i> Constructs an uninitialized object of type <code>endian_arithmetic&lt;E, T, n_bits, A&gt;</code>.</p>
+</blockquote>
+<pre><code><a name="explicit-endian">endian</a>(T v);</code></pre>
+<blockquote>
+<p><i>Effects:</i> Constructs an object of type <code>endian_arithmetic&lt;E, T, n_bits, A&gt;</code>.</p>
+<p><i>Postcondition:</i> <code>x == v,</code> where <code>x</code> is the 
+constructed object.</p>
+</blockquote>
+<pre><code>endian&amp; <a name="operator-eq">operator=</a>(T v);</code></pre>
+<blockquote>
+  <p><i>Postcondition:</i> <code>x == v,</code> where <code>x</code> is the 
+  constructed object.</p>
+  <p><i>Returns:</i> <code>*this</code>.</p>
+</blockquote>
+<pre><code><a name="operator-T">operator T</a>() const;</code></pre>
+<blockquote>
+<p><i>Returns:</i> The current value stored in <code>*this</code>, converted to
+<code>value_type</code>.</p>
+</blockquote>
+<pre><code>const char* <a name="data">data</a>() const;</code></pre>
+<blockquote>
+<p><i>Returns:</i> A pointer to the first byte of the endian binary value stored 
+in <code>*this</code>.</p>
+</blockquote>
+<h3>Other operators</h3>
+<p>Other operators on endian objects are forwarded to the equivalent 
+operator on <code>value_type</code>.</p>
+<h3><a name="Stream-inserter">Stream inserter</a></h3>
+<pre>template &lt;class charT, class traits&gt;
+friend std::basic_ostream&lt;charT, traits&gt;&amp;
+  operator&lt;&lt;(std::basic_ostream&lt;charT, traits&gt;&amp; os, const T&amp; x);
+</pre>
+<blockquote>
+<p><i>Returns:</i> <code>os &lt;&lt; +x</code>.</p>
+</blockquote>
+<h3><a name="Stream-extractor">Stream extractor</a></h3>
+<pre>template &lt;class charT, class traits&gt;
+friend std::basic_istream&lt;charT, traits&gt;&amp;
+  operator&gt;&gt;(std::basic_istream&lt;charT, traits&gt;&amp; is, T&amp; x);
+</pre>
+<blockquote>
+<p><i>Effects: </i>As if:</p>
+  <blockquote>
+    <pre>T i;
+if (is &gt;&gt; i)
+  x = i;
+</pre>
+  </blockquote>
+  <p><i>Returns: </i><code>is</code><i>.</i></p>
+</blockquote>
+<h2><a name="FAQ">FAQ</a></h2>
+
+<p>See the <a href="index.html#FAQ">Endian home page</a> FAQ for a library-wide 
+FAQ.</p>
+
+<p><b>Why not just use Boost.Serialization?</b> Serialization involves a 
+conversion for every object involved in I/O. Endian integers require no 
+conversion or copying. They are already in the desired format for binary I/O. 
+Thus they can be read or written in bulk.</p>
+<p><b>Are endian types PODs?</b> Yes for C++11. No for C++03, although several
+<a href="#Compilation">macros</a> are available to force PODness in all cases.</p>
+<p><b>What are the implications of endian integer types not being PODs with C++03 
+compilers?</b> They 
+can't be used in unions. Also, compilers aren't required to align or lay 
+out storage in portable ways, although this potential problem hasn't prevented 
+use of Boost.Endian with 
+real compilers.</p>
+<p><b>What good is <i>native </i>endianness?</b> It  provides alignment and 
+size guarantees not available from the built-in types. It eases generic 
+programming.</p>
+<p><b>Why bother with the aligned endian types?</b> Aligned integer operations 
+may be faster (as much as 10 to 20 times faster) if the endianness and alignment of 
+the type matches the endianness and alignment requirements of the machine. The code, 
+however, will be somewhat less portable than with the unaligned types.</p>
+<p><b>Why provide the arithmetic operations?</b> Providing a full set of operations reduces program 
+clutter and makes code both easier to write and to read. Consider 
+incrementing a variable in a record. It is very convenient to write:</p>
+<pre wrap>    ++record.foo;</pre>
+<p wrap>Rather than:</p>
+<pre wrap>    int temp(record.foo);
+    ++temp;
+    record.foo = temp;</pre>
+<h2><a name="Design">Design</a> considerations for Boost.Endian types</h2>
+<ul>
+  <li>Must be suitable for I/O - in other words, must be memcpyable.</li>
+  <li>Must provide exactly the size and internal byte ordering specified.</li>
+  <li>Must work correctly when the internal integer representation has more bits 
+  that the sum of the bits in the external byte representation. Sign extension 
+  must work correctly when the internal integer representation type has more 
+  bits than the sum of the bits in the external bytes. For example, using 
+  a 64-bit integer internally to represent 40-bit (5 byte) numbers must work for 
+  both positive and negative values.</li>
+  <li>Must work correctly (including using the same defined external 
+  representation) regardless of whether a compiler treats char as signed or 
+  unsigned.</li>
+  <li>Unaligned types must not cause compilers to insert padding bytes.</li>
+  <li>The implementation should supply optimizations with great care. Experience has shown that optimizations of endian 
+  integers often become pessimizations when changing 
+  machines or compilers. Pessimizations can also happen when changing compiler switches, 
+  compiler versions, or CPU models of the same architecture.</li>
+</ul>
+<h2><a name="Experience">Experience</a></h2>
+<p>Classes with similar functionality have been independently developed by 
+several Boost programmers and used very successful in high-value, high-use 
+applications for many years. These independently developed endian libraries 
+often evolved from C libraries that were also widely used. Endian types have proven widely useful across a wide 
+range of computer architectures and applications.</p>
+<h2><a name="Motivating-use-cases">Motivating use cases</a></h2>
+<p>Neil Mayhew writes: &quot;I can also provide a meaningful use-case for this 
+library: reading TrueType font files from disk and processing the contents. The 
+data format has fixed endianness (big) and has unaligned values in various 
+places. Using Boost.Endian simplifies and cleans the code wonderfully.&quot;</p>
+<h2><a name="C++0x">C++11</a></h2>
+<p>The availability of the C++11
+<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2007/n2346.htm">
+Defaulted Functions</a> feature is detected automatically, and will be used if 
+present to ensure that objects of <code>class endian_arithmetic</code> are trivial, and 
+thus PODs.</p>
+<h2><a name="Compilation">Compilation</a></h2>
+<p>Boost.Endian is implemented entirely within headers, with no need to link to 
+any Boost object libraries.</p>
+<p>Several macros allow user control over features:</p>
+<ul>
+  <li>BOOST_ENDIAN_NO_CTORS causes <code>class endian_arithmetic</code> to have no 
+  constructors. The intended use is for compiling user code that must be 
+  portable between compilers regardless of C++11
+  <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2007/n2346.htm">
+  Defaulted Functions</a> support. Use of constructors will always fail, <br>
+&nbsp;</li>
+  <li>BOOST_ENDIAN_FORCE_PODNESS causes BOOST_ENDIAN_NO_CTORS to be defined if 
+  the compiler does not support C++11
+  <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2007/n2346.htm">
+  Defaulted Functions</a>. This is ensures that objects of <code>class endian_arithmetic</code> 
+  are PODs, and so can be used in C++03 unions. 
+  In C++11, <code>class endian_arithmetic</code> objects are PODs, even though they have 
+  constructors, so can always be used in unions.</li>
+</ul>
+<h2><a name="Acknowledgements">Acknowledgements</a></h2>
+<p>Original design developed by Darin Adler based on classes developed by Mark 
+Borgerding. Four original class templates combined into a single <code>endian_arithmetic</code> 
+class template by Beman Dawes, who put the library together, provided 
+documentation,  added the typedefs, and also added the <code>unrolled_byte_loops</code> 
+sign partial specialization to correctly extend the sign when cover integer size 
+differs from endian representation size.</p>
+<hr>
+<p>Last revised:
+<!--webbot bot="Timestamp" s-type="EDITED" s-format="%d %B, %Y" startspan -->14 October, 2015<!--webbot bot="Timestamp" endspan i-checksum="38874" --></p>
+<p>© Copyright Beman Dawes, 2006-2009, 2013</p>
+<p>Distributed under the Boost Software License, Version 1.0. See
+<a href="http://www.boost.org/LICENSE_1_0.txt">www.boost.org/ LICENSE_1_0.txt</a></p>
+
+</body>
+
+</html>

@@ -1,0 +1,80 @@
+@import url('../../../../doc/src/boostbook.css');
+
+/*=============================================================================
+Copyright (c) 2004 Joel de Guzman
+Copyright (c) 2014 John Maddock
+http://spirit.sourceforge.net/
+
+Copyright 2013 Niall Douglas additions for colors and alignment.
+Copyright 2013 Paul A. Bristow additions for more colors and alignments.
+
+Distributed under the Boost Software License, Version 1.0. (See accompany-
+ing file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+=============================================================================*/
+
+/*=============================================================================
+Program listings
+=============================================================================*/
+
+    /* Code on paragraphs */
+    p tt.computeroutput
+    {
+        font-size: 10pt;
+    }
+
+    pre.synopsis
+    {
+        font-size: 10pt;
+        margin: 1pc 4% 0pc 4%;
+        padding: 0.5pc 0.5pc 0.5pc 0.5pc;
+    }
+
+    .programlisting,
+    .screen
+    {
+        font-size: 10pt;
+        display: block;
+        margin: 1pc 4% 0pc 4%;
+        padding: 0.5pc 0.5pc 0.5pc 0.5pc;
+
+    }
+		@media screen
+    {
+       /* Syntax Highlighting */
+				.comment { color: green; }
+				/* .comment { color: #008000; }	*/
+		}						
+    /* Program listings in tables don't get borders */
+    td .programlisting,
+    td .screen
+    {
+        margin: 0pc 0pc 0pc 0pc;
+        padding: 0pc 0pc 0pc 0pc;
+    }
+
+/*=============================================================================
+Table of contents
+=============================================================================*/
+
+    div.toc
+    {
+       margin: 1pc 4% 0pc 4%;
+       padding: 0.1pc 1pc 0.1pc 1pc;
+       font-size: 100%;
+       line-height: 1.15;
+    }
+
+    .boost-toc
+    {
+       float: right;
+       padding: 0.5pc;
+    }
+
+    /* Code on toc */
+    .toc .computeroutput { font-size: 120% }
+
+    /* No margin on nested menus */
+
+    .toc dl dl { margin: 0; }
+
+

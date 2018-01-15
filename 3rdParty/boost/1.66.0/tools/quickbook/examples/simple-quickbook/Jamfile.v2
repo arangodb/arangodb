@@ -1,0 +1,8 @@
+using boostbook ;
+using quickbook ;
+
+xml simple-boostbook : simple.qbk ;
+
+boostbook simple : simple-boostbook :
+    <xsl:param>boost.root=../../../../..
+    ;

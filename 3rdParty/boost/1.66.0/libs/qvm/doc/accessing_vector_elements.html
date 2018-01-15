@@ -1,0 +1,66 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>accessing vector elements</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>Accessing Vector Elements</h3>
+</div>
+<div class="RenoIncludeDIV"><div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_vec_access_hpp.html">boost/qvm/vec_access.hpp</a></span>&gt;</p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        <span class="RenoIncludeSPAN">//Only <span class="RenoLink"><a href="SFINAE_enable_if.html">enabled if</a></span>:
+        //  <span class="RenoLink"><a href="is_vec.html">is_vec</a></span>&lt;V&gt;::value
+        
+        template &lt;int I,class V&gt; -unspecified-return-type- <span class="RenoLink">A</span>( V &amp; v );
+        template &lt;class V&gt; -unspecified-return-type- A0( V &amp; v );
+        template &lt;class V&gt; -unspecified-return-type- A1( V &amp; v );
+        ...
+        template &lt;class V&gt; -unspecified-return-type- A9( V &amp; v );
+        
+        template &lt;class V&gt; -unspecified-return-type- X( V &amp; v );
+        template &lt;class V&gt; -unspecified-return-type- Y( V &amp; v );
+        template &lt;class V&gt; -unspecified-return-type- Z( V &amp; v );
+        template &lt;class V&gt; -unspecified-return-type- W( V &amp; v );</span></span>
+    }
+}</pre>
+</div></div><p>An expression of the form of <i><span class="RenoLink">A</span>&lt;I&gt;(v)</i> can be used to access the <i>I</i>-th element a vector object <i>v</i>. For example, the expression:</p>
+<pre><span class="RenoLink">A</span>&lt;1&gt;(v) *= 42;</pre>
+<p>can be used to multiply the element at index 1 (indexing in Boost QVM is always zero-based) of a vector <i>v</i> by 42.</p>
+<p>For convenience, there are also non-template overloads for <i>I</i> from 0 to 9; an alternative way to write the above expression is:</p>
+<pre>A1(v) *= 42;</pre>
+<p><i>X</i>, <i>Y</i>, <i>Z</i> and <i>W</i> act the same as <i>A0</i>/<i>A1</i>/<i>A2</i>/<i>A3</i>; yet another alternative way to write the above expression is:</p>
+<pre>Y(v) *= 42;</pre>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="index.html">Boost QVM</a>&nbsp;| <a href="boost_qvm_vec_access_hpp.html">boost/qvm/vec_access.hpp</a>&nbsp;| <a href="known_quirks_and_issues.html">Known Quirks and Issues</a>&nbsp;| <a href="Synopsis.html">Synopsis</a></span>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2016 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

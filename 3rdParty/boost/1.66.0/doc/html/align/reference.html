@@ -1,0 +1,1029 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Reference</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../align.html" title="Chapter&#160;3.&#160;Boost.Align">
+<link rel="prev" href="examples.html" title="Examples">
+<link rel="next" href="vocabulary.html" title="Vocabulary">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="examples.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../align.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vocabulary.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="align.reference"></a><a class="link" href="reference.html" title="Reference">Reference</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="reference.html#align.reference.functions">Functions</a></span></dt>
+<dt><span class="section"><a href="reference.html#align.reference.classes">Classes</a></span></dt>
+<dt><span class="section"><a href="reference.html#align.reference.traits">Traits</a></span></dt>
+<dt><span class="section"><a href="reference.html#align.reference.macros">Macros</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="align.reference.functions"></a><a class="link" href="reference.html#align.reference.functions" title="Functions">Functions</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="reference.html#align.reference.functions.align">align</a></span></dt>
+<dt><span class="section"><a href="reference.html#align.reference.functions.align_up">align_up</a></span></dt>
+<dt><span class="section"><a href="reference.html#align.reference.functions.align_down">align_down</a></span></dt>
+<dt><span class="section"><a href="reference.html#align.reference.functions.aligned_alloc">aligned_alloc</a></span></dt>
+<dt><span class="section"><a href="reference.html#align.reference.functions.aligned_free">aligned_free</a></span></dt>
+<dt><span class="section"><a href="reference.html#align.reference.functions.is_aligned">is_aligned</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="align.reference.functions.align"></a><a class="link" href="reference.html#align.reference.functions.align" title="align">align</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="keyword">void</span><span class="special">*</span>
+          <span class="identifier">align</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">alignment</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">,</span> <span class="keyword">void</span><span class="special">*&amp;</span> <span class="identifier">ptr</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&amp;</span>
+          <span class="identifier">space</span><span class="special">);</span></code>
+        </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Header</span></dt>
+<dd>
+                <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">align</span><span class="special">/</span><span class="identifier">align</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+              </dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                If it is possible to fit <code class="computeroutput"><span class="identifier">size</span></code>
+                bytes of storage aligned by <code class="computeroutput"><span class="identifier">alignment</span></code>
+                into the buffer pointed to by <code class="computeroutput"><span class="identifier">ptr</span></code>
+                with length <code class="computeroutput"><span class="identifier">space</span></code>,
+                the function updates <code class="computeroutput"><span class="identifier">ptr</span></code>
+                to point to the first possible address of such storage and decreases
+                <code class="computeroutput"><span class="identifier">space</span></code> by the number
+                of bytes used for alignment. Otherwise, the function does nothing.
+              </p></dd>
+<dt><span class="term">Requires</span></dt>
+<dd><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                    <code class="computeroutput"><span class="identifier">alignment</span></code> shall
+                    be a power of two
+                  </li>
+<li class="listitem">
+                    <code class="computeroutput"><span class="identifier">ptr</span></code> shall point
+                    to contiguous storage of at least <code class="computeroutput"><span class="identifier">space</span></code>
+                    bytes
+                  </li>
+</ul></div></dd>
+<dt><span class="term">Returns</span></dt>
+<dd>
+                A null pointer if the requested aligned buffer would not fit into
+                the available space, otherwise the adjusted value of <code class="computeroutput"><span class="identifier">ptr</span></code>.
+              </dd>
+<dt><span class="term">Note</span></dt>
+<dd><p>
+                The function updates its <code class="computeroutput"><span class="identifier">ptr</span></code>
+                and <code class="computeroutput"><span class="identifier">space</span></code> arguments
+                so that it can be called repeatedly with possibly different <code class="computeroutput"><span class="identifier">alignment</span></code> and <code class="computeroutput"><span class="identifier">size</span></code>
+                arguments for the same buffer.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="align.reference.functions.align_up"></a><a class="link" href="reference.html#align.reference.functions.align_up" title="align_up">align_up</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">align_up</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">value</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">alignment</span><span class="special">)</span>
+          <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Header</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">align</span><span class="special">/</span><span class="identifier">align_up</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+              </p></dd>
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">alignment</span></code> shall be
+                a power of two
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                A value at or after <code class="computeroutput"><span class="identifier">value</span></code>
+                that is a multiple of <code class="computeroutput"><span class="identifier">alignment</span></code>.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="align.reference.functions.align_down"></a><a class="link" href="reference.html#align.reference.functions.align_down" title="align_down">align_down</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">align_down</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">value</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">alignment</span><span class="special">)</span>
+          <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Header</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">align</span><span class="special">/</span><span class="identifier">align_down</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+              </p></dd>
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">alignment</span></code> shall be
+                a power of two
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                A value at or before <code class="computeroutput"><span class="identifier">value</span></code>
+                that is a multiple of <code class="computeroutput"><span class="identifier">alignment</span></code>.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="align.reference.functions.aligned_alloc"></a><a class="link" href="reference.html#align.reference.functions.aligned_alloc" title="aligned_alloc">aligned_alloc</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="keyword">void</span><span class="special">*</span>
+          <span class="identifier">aligned_alloc</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">alignment</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">);</span></code>
+        </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Header</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">align</span><span class="special">/</span><span class="identifier">aligned_alloc</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+              </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Allocates space for an object whose alignment is specified by <code class="computeroutput"><span class="identifier">alignment</span></code>, whose size is specified
+                by <code class="computeroutput"><span class="identifier">size</span></code>, and whose
+                value is indeterminate.
+              </p></dd>
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">alignment</span></code> shall be
+                a power of two.
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                A null pointer or a pointer to the allocated space.
+              </p></dd>
+<dt><span class="term">Note</span></dt>
+<dd><p>
+                On certain platforms, the space allocated may be slightly larger
+                than <code class="computeroutput"><span class="identifier">size</span></code> bytes,
+                to allow for alignment.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="align.reference.functions.aligned_free"></a><a class="link" href="reference.html#align.reference.functions.aligned_free" title="aligned_free">aligned_free</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="keyword">void</span> <span class="identifier">aligned_free</span><span class="special">(</span><span class="keyword">void</span><span class="special">*</span>
+          <span class="identifier">ptr</span><span class="special">);</span></code>
+        </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Header</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">align</span><span class="special">/</span><span class="identifier">aligned_alloc</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+              </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Causes the space pointed to by <code class="computeroutput"><span class="identifier">ptr</span></code>
+                to be deallocated, that is, made available for further allocation.
+                If <code class="computeroutput"><span class="identifier">ptr</span></code> is a null
+                pointer, no action occurs. Otherwise, if the argument does not match
+                a pointer earlier returned by the <code class="computeroutput"><span class="identifier">aligned_alloc</span><span class="special">()</span></code> function, or if the space has been
+                deallocated by a call to <code class="computeroutput"><span class="identifier">aligned_free</span><span class="special">()</span></code>, the behavior is undefined.
+              </p></dd>
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">ptr</span></code> is a null pointer
+                or a pointer earlier returned by the <code class="computeroutput"><span class="identifier">aligned_alloc</span><span class="special">()</span></code> function that has not been deallocated
+                by a call to <code class="computeroutput"><span class="identifier">aligned_free</span><span class="special">()</span></code>.
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                The <code class="computeroutput"><span class="identifier">aligned_free</span><span class="special">()</span></code> function returns no value.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="align.reference.functions.is_aligned"></a><a class="link" href="reference.html#align.reference.functions.is_aligned" title="is_aligned">is_aligned</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="keyword">bool</span> <span class="identifier">is_aligned</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">void</span><span class="special">*</span> <span class="identifier">ptr</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">alignment</span><span class="special">)</span>
+          <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<p>
+          <code class="computeroutput"><span class="keyword">constexpr</span> <span class="keyword">bool</span>
+          <span class="identifier">is_aligned</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">value</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">alignment</span><span class="special">)</span>
+          <span class="keyword">noexcept</span><span class="special">;</span></code>
+        </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Header</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">align</span><span class="special">/</span><span class="identifier">is_aligned</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+              </p></dd>
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">alignment</span></code> shall be
+                a power of two.
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">true</span></code> if the value of
+                the first argument is aligned on the boundary specified by <code class="computeroutput"><span class="identifier">alignment</span></code>, otherwise <code class="computeroutput"><span class="keyword">false</span></code>.
+              </p></dd>
+</dl>
+</div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="align.reference.classes"></a><a class="link" href="reference.html#align.reference.classes" title="Classes">Classes</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="reference.html#align.reference.classes.aligned_allocator">aligned_allocator</a></span></dt>
+<dt><span class="section"><a href="reference.html#align.reference.classes.aligned_allocator_adaptor">aligned_allocator_adaptor</a></span></dt>
+<dt><span class="section"><a href="reference.html#align.reference.classes.aligned_delete">aligned_delete</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="align.reference.classes.aligned_allocator"></a><a class="link" href="reference.html#align.reference.classes.aligned_allocator" title="aligned_allocator">aligned_allocator</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">Alignment</span> <span class="special">=</span>
+          <span class="number">1</span><span class="special">&gt;</span> <span class="keyword">class</span> <span class="identifier">aligned_allocator</span><span class="special">;</span></code>
+        </p>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">Alignment</span><span class="special">&gt;</span> <span class="keyword">class</span> <span class="identifier">aligned_allocator</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">,</span> <span class="identifier">Alignment</span><span class="special">&gt;;</span></code>
+        </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Header</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">align</span><span class="special">/</span><span class="identifier">aligned_allocator</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+              </p></dd>
+<dt><span class="term">Note</span></dt>
+<dd><p>
+                Using the aligned allocator with a minimum Alignment value is generally
+                only useful with containers that are not node-based such as <code class="computeroutput"><span class="identifier">vector</span></code>. With node-based containers,
+                such as <code class="computeroutput"><span class="identifier">list</span></code>, the
+                node object would have the minimum alignment instead of the value
+                type object.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="align.reference.classes.aligned_allocator.h0"></a>
+          <span class="phrase"><a name="align.reference.classes.aligned_allocator.member_types"></a></span><a class="link" href="reference.html#align.reference.classes.aligned_allocator.member_types">Member
+          types</a>
+        </h6>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="identifier">T</span>
+              <span class="identifier">value_type</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">pointer</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="keyword">const</span>
+              <span class="identifier">T</span><span class="special">*</span>
+              <span class="identifier">const_pointer</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="keyword">void</span><span class="special">*</span> <span class="identifier">void_pointer</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="keyword">const</span>
+              <span class="keyword">void</span><span class="special">*</span>
+              <span class="identifier">const_void_pointer</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+              <span class="identifier">size_type</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ptrdiff_t</span>
+              <span class="identifier">difference_type</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">reference</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="keyword">const</span>
+              <span class="identifier">T</span><span class="special">&amp;</span>
+              <span class="identifier">const_reference</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">U</span><span class="special">&gt;</span> <span class="keyword">struct</span>
+              <span class="identifier">rebind</span> <span class="special">{</span>
+              <span class="keyword">typedef</span> <span class="identifier">aligned_allocator</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">,</span> <span class="identifier">Alignment</span><span class="special">&gt;</span> <span class="identifier">other</span><span class="special">;</span> <span class="special">};</span></code>
+            </li>
+</ol></div>
+<h6>
+<a name="align.reference.classes.aligned_allocator.h1"></a>
+          <span class="phrase"><a name="align.reference.classes.aligned_allocator.constructors"></a></span><a class="link" href="reference.html#align.reference.classes.aligned_allocator.constructors">Constructors</a>
+        </h6>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="identifier">aligned_allocator</span><span class="special">()</span>
+              <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                    Constructs the allocator.
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">U</span><span class="special">&gt;</span> <span class="identifier">aligned_allocator</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">aligned_allocator</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">,</span> <span class="identifier">Alignment</span><span class="special">&gt;&amp;)</span>
+              <span class="keyword">noexcept</span><span class="special">;</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                    Constructs the allocator.
+                  </p></dd>
+</dl>
+</div>
+</li>
+</ol></div>
+<h6>
+<a name="align.reference.classes.aligned_allocator.h2"></a>
+          <span class="phrase"><a name="align.reference.classes.aligned_allocator.member_functions"></a></span><a class="link" href="reference.html#align.reference.classes.aligned_allocator.member_functions">Member
+          functions</a>
+        </h6>
+<p>
+          Except for the destructor, member functions of the aligned allocator shall
+          not introduce data races as a result of concurrent calls to those member
+          functions from different threads. Calls to these functions that allocate
+          or deallocate a particular unit of storage shall occur in a single total
+          order, and each such deallocation call shall happen before the next allocation
+          (if any) in this order.
+        </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="identifier">pointer</span> <span class="identifier">address</span><span class="special">(</span><span class="identifier">reference</span>
+              <span class="identifier">value</span><span class="special">)</span>
+              <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                    The actual address of the object referenced by <code class="computeroutput"><span class="identifier">value</span></code>, even in the presence
+                    of an overloaded <code class="computeroutput"><span class="keyword">operator</span><span class="special">&amp;</span></code>.
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="identifier">const_pointer</span> <span class="identifier">address</span><span class="special">(</span><span class="identifier">const_reference</span>
+              <span class="identifier">value</span><span class="special">)</span>
+              <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                    The actual address of the object referenced by <code class="computeroutput"><span class="identifier">value</span></code>, even in the presence
+                    of an overloaded <code class="computeroutput"><span class="keyword">operator</span><span class="special">&amp;</span></code>.
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="identifier">pointer</span> <span class="identifier">allocate</span><span class="special">(</span><span class="identifier">size_type</span>
+              <span class="identifier">size</span><span class="special">,</span>
+              <span class="identifier">const_void_pointer</span> <span class="special">=</span>
+              <span class="number">0</span><span class="special">);</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                    A pointer to the initial element of an array of storage of size
+                    <code class="computeroutput"><span class="identifier">n</span> <span class="special">*</span>
+                    <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">T</span><span class="special">)</span></code>,
+                    aligned on the maximum of the minimum alignment specified and
+                    the alignment of objects of type <code class="computeroutput"><span class="identifier">T</span></code>.
+                  </p></dd>
+<dt><span class="term">Remark</span></dt>
+<dd><p>
+                    The storage is obtained by calling <code class="computeroutput"><span class="identifier">aligned_alloc</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span></code>.
+                  </p></dd>
+<dt><span class="term">Throws</span></dt>
+<dd><p>
+                    <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">bad_alloc</span></code> if the storage cannot
+                    be obtained.
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="keyword">void</span> <span class="identifier">deallocate</span><span class="special">(</span><span class="identifier">pointer</span>
+              <span class="identifier">ptr</span><span class="special">,</span>
+              <span class="identifier">size_type</span><span class="special">);</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                    <code class="computeroutput"><span class="identifier">ptr</span></code> shall be
+                    a pointer value obtained from <code class="computeroutput"><span class="identifier">allocate</span><span class="special">()</span></code>.
+                  </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                    Deallocates the storage referenced by <code class="computeroutput"><span class="identifier">ptr</span></code>.
+                  </p></dd>
+<dt><span class="term">Remark</span></dt>
+<dd><p>
+                    Uses <code class="computeroutput"><span class="identifier">aligned_free</span><span class="special">(</span><span class="keyword">void</span><span class="special">*)</span></code>.
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="identifier">size_type</span> <span class="identifier">max_size</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                    The largest value <code class="computeroutput"><span class="identifier">N</span></code>
+                    for which the call <code class="computeroutput"><span class="identifier">allocate</span><span class="special">(</span><span class="identifier">N</span><span class="special">)</span></code> might succeed.
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">U</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">void</span>
+              <span class="identifier">construct</span><span class="special">(</span><span class="identifier">U</span><span class="special">*</span> <span class="identifier">ptr</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">&amp;&amp;...</span>
+              <span class="identifier">args</span><span class="special">);</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                    <code class="computeroutput"><span class="special">::</span><span class="keyword">new</span><span class="special">((</span><span class="keyword">void</span><span class="special">*)</span><span class="identifier">ptr</span><span class="special">)</span> <span class="identifier">U</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">forward</span><span class="special">&lt;</span><span class="identifier">Args</span><span class="special">&gt;(</span><span class="identifier">args</span><span class="special">)...)</span></code>.
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">U</span><span class="special">&gt;</span> <span class="keyword">void</span>
+              <span class="identifier">destroy</span><span class="special">(</span><span class="identifier">U</span><span class="special">*</span> <span class="identifier">ptr</span><span class="special">);</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                    <code class="computeroutput"><span class="identifier">ptr</span><span class="special">-&gt;~</span><span class="identifier">U</span><span class="special">()</span></code>.
+                  </p></dd>
+</dl>
+</div>
+</li>
+</ol></div>
+<h6>
+<a name="align.reference.classes.aligned_allocator.h3"></a>
+          <span class="phrase"><a name="align.reference.classes.aligned_allocator.global_operators"></a></span><a class="link" href="reference.html#align.reference.classes.aligned_allocator.global_operators">Global
+          operators</a>
+        </h6>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">Alignment</span><span class="special">&gt;</span> <span class="keyword">bool</span>
+              <span class="keyword">operator</span><span class="special">==(</span><span class="keyword">const</span> <span class="identifier">aligned_allocator</span><span class="special">&lt;</span><span class="identifier">T1</span><span class="special">,</span> <span class="identifier">Alignment</span><span class="special">&gt;&amp;,</span> <span class="keyword">const</span>
+              <span class="identifier">aligned_allocator</span><span class="special">&lt;</span><span class="identifier">T2</span><span class="special">,</span> <span class="identifier">Alignment</span><span class="special">&gt;&amp;)</span>
+              <span class="keyword">noexcept</span><span class="special">;</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                    <code class="computeroutput"><span class="keyword">true</span></code>
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">Alignment</span><span class="special">&gt;</span> <span class="keyword">bool</span>
+              <span class="keyword">operator</span><span class="special">!=(</span><span class="keyword">const</span> <span class="identifier">aligned_allocator</span><span class="special">&lt;</span><span class="identifier">T1</span><span class="special">,</span> <span class="identifier">Alignment</span><span class="special">&gt;&amp;,</span> <span class="keyword">const</span>
+              <span class="identifier">aligned_allocator</span><span class="special">&lt;</span><span class="identifier">T2</span><span class="special">,</span> <span class="identifier">Alignment</span><span class="special">&gt;&amp;)</span>
+              <span class="keyword">noexcept</span><span class="special">;</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                    <code class="computeroutput"><span class="keyword">false</span></code>
+                  </p></dd>
+</dl>
+</div>
+</li>
+</ol></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="align.reference.classes.aligned_allocator_adaptor"></a><a class="link" href="reference.html#align.reference.classes.aligned_allocator_adaptor" title="aligned_allocator_adaptor">aligned_allocator_adaptor</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Allocator</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">Alignment</span> <span class="special">=</span>
+          <span class="number">1</span><span class="special">&gt;</span> <span class="keyword">class</span> <span class="identifier">aligned_allocator_adaptor</span><span class="special">;</span></code>
+        </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Header</span></dt>
+<dd>
+                <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">align</span><span class="special">/</span><span class="identifier">aligned_allocator_adaptor</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+              </dd>
+<dt><span class="term">Note</span></dt>
+<dd><p>
+                This adaptor can be used with a C++11 Allocator whose pointer type
+                is a smart pointer but the adaptor can choose to expose only raw
+                pointer types.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="align.reference.classes.aligned_allocator_adaptor.h0"></a>
+          <span class="phrase"><a name="align.reference.classes.aligned_allocator_adaptor.member_types"></a></span><a class="link" href="reference.html#align.reference.classes.aligned_allocator_adaptor.member_types">Member
+          types</a>
+        </h6>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="keyword">typename</span>
+              <span class="identifier">Allocator</span><span class="special">::</span><span class="identifier">value_type</span> <span class="identifier">value_type</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="identifier">value_type</span><span class="special">*</span> <span class="identifier">pointer</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="keyword">const</span>
+              <span class="identifier">value_type</span><span class="special">*</span>
+              <span class="identifier">const_pointer</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="keyword">void</span><span class="special">*</span> <span class="identifier">void_pointer</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="keyword">const</span>
+              <span class="keyword">void</span><span class="special">*</span>
+              <span class="identifier">const_void_pointer</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+              <span class="identifier">size_type</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ptrdiff_t</span>
+              <span class="identifier">difference_type</span><span class="special">;</span></code>
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">U</span><span class="special">&gt;</span> <span class="keyword">struct</span>
+              <span class="identifier">rebind</span> <span class="special">{</span>
+              <span class="keyword">typedef</span> <span class="identifier">aligned_allocator_adaptor</span><span class="special">&lt;</span><span class="keyword">typename</span>
+              <span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_traits</span><span class="special">&lt;</span><span class="identifier">Allocator</span><span class="special">&gt;::</span><span class="keyword">template</span> <span class="identifier">rebind_alloc</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">&gt;,</span> <span class="identifier">Alignment</span><span class="special">&gt;</span> <span class="identifier">other</span><span class="special">;</span> <span class="special">};</span></code>
+            </li>
+</ol></div>
+<h6>
+<a name="align.reference.classes.aligned_allocator_adaptor.h1"></a>
+          <span class="phrase"><a name="align.reference.classes.aligned_allocator_adaptor.constructors"></a></span><a class="link" href="reference.html#align.reference.classes.aligned_allocator_adaptor.constructors">Constructors</a>
+        </h6>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="identifier">aligned_allocator_adaptor</span><span class="special">()</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                    Value-initializes the <code class="computeroutput"><span class="identifier">Allocator</span></code>
+                    base class.
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="identifier">aligned_allocator_adaptor</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;&amp;</span> <span class="identifier">alloc</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                    <code class="computeroutput"><span class="identifier">Allocator</span></code> shall
+                    be constructible from <code class="computeroutput"><span class="identifier">A</span></code>.
+                  </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                    Initializes the <code class="computeroutput"><span class="identifier">Allocator</span></code>
+                    base class with <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">forward</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;(</span><span class="identifier">alloc</span><span class="special">)</span></code>.
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">U</span><span class="special">&gt;</span> <span class="identifier">aligned_allocator_adaptor</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">aligned_allocator_adaptor</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">,</span> <span class="identifier">Alignment</span><span class="special">&gt;&amp;</span>
+              <span class="identifier">other</span><span class="special">)</span>
+              <span class="keyword">noexcept</span><span class="special">;</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                    <code class="computeroutput"><span class="identifier">Allocator</span></code> shall
+                    be constructible from <code class="computeroutput"><span class="identifier">A</span></code>.
+                  </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                    Initializes the <code class="computeroutput"><span class="identifier">Allocator</span></code>
+                    base class with <code class="computeroutput"><span class="identifier">other</span><span class="special">.</span><span class="identifier">base</span><span class="special">()</span></code>.
+                  </p></dd>
+</dl>
+</div>
+</li>
+</ol></div>
+<h6>
+<a name="align.reference.classes.aligned_allocator_adaptor.h2"></a>
+          <span class="phrase"><a name="align.reference.classes.aligned_allocator_adaptor.member_functions"></a></span><a class="link" href="reference.html#align.reference.classes.aligned_allocator_adaptor.member_functions">Member
+          functions</a>
+        </h6>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="identifier">Allocator</span><span class="special">&amp;</span>
+              <span class="identifier">base</span><span class="special">()</span>
+              <span class="keyword">noexcept</span><span class="special">;</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                    <code class="computeroutput"><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Allocator</span><span class="special">&amp;&gt;(*</span><span class="keyword">this</span><span class="special">)</span></code>
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="keyword">const</span> <span class="identifier">Allocator</span><span class="special">&amp;</span> <span class="identifier">base</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                    <code class="computeroutput"><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">Allocator</span><span class="special">&amp;&gt;(*</span><span class="keyword">this</span><span class="special">)</span></code>
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="identifier">pointer</span> <span class="identifier">allocate</span><span class="special">(</span><span class="identifier">size_type</span>
+              <span class="identifier">size</span><span class="special">);</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                    A pointer to the initial element of an array of storage of size
+                    <code class="computeroutput"><span class="identifier">n</span> <span class="special">*</span>
+                    <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">value_type</span><span class="special">)</span></code>,
+                    aligned on the maximum of the minimum alignment specified and
+                    the alignment of objects of type <code class="computeroutput"><span class="identifier">value_type</span></code>.
+                  </p></dd>
+<dt><span class="term">Remark</span></dt>
+<dd><p>
+                    The storage is obtained by calling <code class="computeroutput"><span class="identifier">A2</span><span class="special">::</span><span class="identifier">allocate</span><span class="special">()</span></code> on an object <code class="computeroutput"><span class="identifier">a2</span></code>, where <code class="computeroutput"><span class="identifier">a2</span></code>
+                    of type <code class="computeroutput"><span class="identifier">A2</span></code> is
+                    a rebind copy of <code class="computeroutput"><span class="identifier">base</span><span class="special">()</span></code> where its <code class="computeroutput"><span class="identifier">value_type</span></code>
+                    is implementation defined.
+                  </p></dd>
+<dt><span class="term">Throws</span></dt>
+<dd><p>
+                    Throws an exception thrown from <code class="computeroutput"><span class="identifier">A2</span><span class="special">::</span><span class="identifier">allocate</span><span class="special">()</span></code> if the storage cannot be obtained.
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="identifier">pointer</span> <span class="identifier">allocate</span><span class="special">(</span><span class="identifier">size_type</span>
+              <span class="identifier">size</span><span class="special">,</span>
+              <span class="identifier">const_void_pointer</span> <span class="identifier">hint</span><span class="special">);</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                    <code class="computeroutput"><span class="identifier">hint</span></code> is a value
+                    obtained by calling <code class="computeroutput"><span class="identifier">allocate</span><span class="special">()</span></code> on any equivalent allocator
+                    object, or else a null pointer.
+                  </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                    A pointer to the initial element of an array of storage of size
+                    <code class="computeroutput"><span class="identifier">n</span> <span class="special">*</span>
+                    <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">value_type</span><span class="special">)</span></code>,
+                    aligned on the maximum of the minimum alignment specified and
+                    the alignment of objects of type <code class="computeroutput"><span class="identifier">value_type</span></code>.
+                  </p></dd>
+<dt><span class="term">Remark</span></dt>
+<dd><p>
+                    The storage is obtained by calling <code class="computeroutput"><span class="identifier">A2</span><span class="special">::</span><span class="identifier">allocate</span><span class="special">()</span></code> on an object <code class="computeroutput"><span class="identifier">a2</span></code>, where <code class="computeroutput"><span class="identifier">a2</span></code>
+                    of type <code class="computeroutput"><span class="identifier">A2</span></code> is
+                    a rebind copy of <code class="computeroutput"><span class="identifier">base</span><span class="special">()</span></code> where its <code class="computeroutput"><span class="identifier">value_type</span></code>
+                    is an implementation defined.
+                  </p></dd>
+<dt><span class="term">Throws</span></dt>
+<dd><p>
+                    Throws an exception thrown from <code class="computeroutput"><span class="identifier">A2</span><span class="special">::</span><span class="identifier">allocate</span><span class="special">()</span></code> if the storage cannot be obtained.
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="keyword">void</span> <span class="identifier">deallocate</span><span class="special">(</span><span class="identifier">pointer</span>
+              <span class="identifier">ptr</span><span class="special">,</span>
+              <span class="identifier">size_type</span> <span class="identifier">size</span><span class="special">);</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                        <code class="computeroutput"><span class="identifier">ptr</span></code> shall
+                        be a pointer value obtained from <code class="computeroutput"><span class="identifier">allocate</span><span class="special">()</span></code>
+                      </li>
+<li class="listitem">
+                        <code class="computeroutput"><span class="identifier">size</span></code> shall
+                        equal the value passed as the first argument to the invocation
+                        of <code class="computeroutput"><span class="identifier">allocate</span><span class="special">()</span></code> which returned <code class="computeroutput"><span class="identifier">ptr</span></code>.
+                      </li>
+</ul></div></dd>
+<dt><span class="term">Effects</span></dt>
+<dd>
+                    Deallocates the storage referenced by <code class="computeroutput"><span class="identifier">ptr</span></code>.
+                  </dd>
+<dt><span class="term">Note</span></dt>
+<dd><p>
+                    Uses <code class="computeroutput"><span class="identifier">A2</span><span class="special">::</span><span class="identifier">deallocate</span><span class="special">()</span></code>
+                    on an object <code class="computeroutput"><span class="identifier">a2</span></code>,
+                    where <code class="computeroutput"><span class="identifier">a2</span></code> of type
+                    <code class="computeroutput"><span class="identifier">A2</span></code> is a rebound
+                    copy of <code class="computeroutput"><span class="identifier">base</span><span class="special">()</span></code> where its <code class="computeroutput"><span class="identifier">value_type</span></code>
+                    is implementation defined.
+                  </p></dd>
+</dl>
+</div>
+</li>
+</ol></div>
+<h6>
+<a name="align.reference.classes.aligned_allocator_adaptor.h3"></a>
+          <span class="phrase"><a name="align.reference.classes.aligned_allocator_adaptor.global_operators"></a></span><a class="link" href="reference.html#align.reference.classes.aligned_allocator_adaptor.global_operators">Global
+          operators</a>
+        </h6>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A2</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">Alignment</span><span class="special">&gt;</span> <span class="keyword">bool</span>
+              <span class="keyword">operator</span><span class="special">==(</span><span class="keyword">const</span> <span class="identifier">aligned_allocator_adaptor</span><span class="special">&lt;</span><span class="identifier">A1</span><span class="special">,</span> <span class="identifier">Alignment</span><span class="special">&gt;&amp;</span> <span class="identifier">a1</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">aligned_allocator_adaptor</span><span class="special">&lt;</span><span class="identifier">A2</span><span class="special">,</span> <span class="identifier">Alignment</span><span class="special">&gt;&amp;</span>
+              <span class="identifier">a2</span><span class="special">)</span>
+              <span class="keyword">noexcept</span><span class="special">;</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                    <code class="computeroutput"><span class="identifier">a1</span><span class="special">.</span><span class="identifier">base</span><span class="special">()</span>
+                    <span class="special">==</span> <span class="identifier">a2</span><span class="special">.</span><span class="identifier">base</span><span class="special">()</span></code>
+                  </p></dd>
+</dl>
+</div>
+</li>
+<li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A2</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">Alignment</span><span class="special">&gt;</span> <span class="keyword">bool</span>
+              <span class="keyword">operator</span><span class="special">!=(</span><span class="keyword">const</span> <span class="identifier">aligned_allocator_adaptor</span><span class="special">&lt;</span><span class="identifier">A1</span><span class="special">,</span> <span class="identifier">Alignment</span><span class="special">&gt;&amp;</span> <span class="identifier">a1</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">aligned_allocator_adaptor</span><span class="special">&lt;</span><span class="identifier">A2</span><span class="special">,</span> <span class="identifier">Alignment</span><span class="special">&gt;&amp;</span>
+              <span class="identifier">a2</span><span class="special">)</span>
+              <span class="keyword">noexcept</span><span class="special">;</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                    <code class="computeroutput"><span class="special">!(</span><span class="identifier">a1</span>
+                    <span class="special">==</span> <span class="identifier">a2</span><span class="special">)</span></code>
+                  </p></dd>
+</dl>
+</div>
+</li>
+</ol></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="align.reference.classes.aligned_delete"></a><a class="link" href="reference.html#align.reference.classes.aligned_delete" title="aligned_delete">aligned_delete</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="keyword">class</span> <span class="identifier">aligned_delete</span><span class="special">;</span></code>
+        </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Header</span></dt>
+<dd>
+                <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">align</span><span class="special">/</span><span class="identifier">aligned_delete</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+              </dd>
+</dl>
+</div>
+<h6>
+<a name="align.reference.classes.aligned_delete.h0"></a>
+          <span class="phrase"><a name="align.reference.classes.aligned_delete.member_operators"></a></span><a class="link" href="reference.html#align.reference.classes.aligned_delete.member_operators">Member
+          operators</a>
+        </h6>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<p class="simpara">
+              <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">void</span>
+              <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">T</span><span class="special">*</span> <span class="identifier">ptr</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">(</span><span class="keyword">noexcept</span><span class="special">(</span><span class="identifier">ptr</span><span class="special">-&gt;~</span><span class="identifier">T</span><span class="special">()));</span></code>
+            </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                    Calls <code class="computeroutput"><span class="special">~</span><span class="identifier">T</span><span class="special">()</span></code> on <code class="computeroutput"><span class="identifier">ptr</span></code>
+                    to destroy the object and then calls <code class="computeroutput"><span class="identifier">aligned_free</span><span class="special">()</span></code> on <code class="computeroutput"><span class="identifier">ptr</span></code>
+                    to free the allocated memory.
+                  </p></dd>
+<dt><span class="term">Note</span></dt>
+<dd><p>
+                    If <code class="computeroutput"><span class="identifier">T</span></code> is an incomplete
+                    type, the program is ill-formed.
+                  </p></dd>
+</dl>
+</div>
+</li></ol></div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="align.reference.traits"></a><a class="link" href="reference.html#align.reference.traits" title="Traits">Traits</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc"><dt><span class="section"><a href="reference.html#align.reference.traits.alignment_of">alignment_of</a></span></dt></dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="align.reference.traits.alignment_of"></a><a class="link" href="reference.html#align.reference.traits.alignment_of" title="alignment_of">alignment_of</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">alignment_of</span><span class="special">;</span></code>
+        </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Header</span></dt>
+<dd>
+                <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">align</span><span class="special">/</span><span class="identifier">alignment_of</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+              </dd>
+<dt><span class="term">Value</span></dt>
+<dd><p>
+                The alignment requirement of the type <code class="computeroutput"><span class="identifier">T</span></code>
+                as an integral constant of type <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span></code>.
+                When <code class="computeroutput"><span class="identifier">T</span></code> is a reference
+                array type, the value shall be the alignment of the referenced type.
+                When <code class="computeroutput"><span class="identifier">T</span></code> is an array
+                type, the value shall be the alignment of the element type.
+              </p></dd>
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">T</span></code> shall be a complete
+                object type, or an array thereof, or a reference to one of those
+                types.
+              </p></dd>
+</dl>
+</div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="align.reference.macros"></a><a class="link" href="reference.html#align.reference.macros" title="Macros">Macros</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc"><dt><span class="section"><a href="reference.html#align.reference.macros.boost_align_assume_aligned">BOOST_ALIGN_ASSUME_ALIGNED</a></span></dt></dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="align.reference.macros.boost_align_assume_aligned"></a><a class="link" href="reference.html#align.reference.macros.boost_align_assume_aligned" title="BOOST_ALIGN_ASSUME_ALIGNED">BOOST_ALIGN_ASSUME_ALIGNED</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="identifier">BOOST_ALIGN_ASSUME_ALIGNED</span><span class="special">(</span><span class="identifier">ptr</span><span class="special">,</span> <span class="identifier">alignment</span><span class="special">)</span></code>
+        </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Header</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">align</span><span class="special">/</span><span class="identifier">assume_aligned</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+              </p></dd>
+<dt><span class="term">Requires</span></dt>
+<dd><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                    <code class="computeroutput"><span class="identifier">alignment</span></code> shall
+                    be a power of two
+                  </li>
+<li class="listitem">
+                    <code class="computeroutput"><span class="identifier">ptr</span></code> shall be
+                    mutable
+                  </li>
+</ul></div></dd>
+<dt><span class="term">Effects</span></dt>
+<dd>
+                <code class="computeroutput"><span class="identifier">ptr</span></code> may be modified
+                in an implementation specific way to inform the compiler of its alignment.
+              </dd>
+</dl>
+</div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014-2017 Glen
+      Joseph Fernandes<p>
+        Distributed under the Boost Software License, Version 1.0.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="examples.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../align.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vocabulary.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

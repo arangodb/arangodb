@@ -1,0 +1,110 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>generic programming utilities</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>Generic Programming Utilities</h3>
+</div>
+<div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_deduce_quat_hpp.html">boost/qvm/deduce_quat.hpp</a></span>&gt;<span class="RenoBR">&nbsp;</span><br/><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_deduce_vec_hpp.html">boost/qvm/deduce_vec.hpp</a></span>&gt;<span class="RenoBR">&nbsp;</span><br/><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_deduce_mat_hpp.html">boost/qvm/deduce_mat.hpp</a></span>&gt;<span class="RenoBR">&nbsp;</span><br/><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_deduce_scalar_hpp.html">boost/qvm/deduce_scalar.hpp</a></span>&gt;<span class="RenoBR">&nbsp;</span><br/></p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        //*** Generic programming utilities ***
+        
+        <span class="RenoIncludeSPAN"><span class="RenoIncludeSPAN">template &lt;class Q&gt;
+        struct <span class="RenoLink"><a href="deduce_quat.html">deduce_quat</a></span>
+        {
+            typedef Q type;
+        };</span>        
+        
+        <span class="RenoIncludeSPAN">template &lt;class A,class B&gt;
+        struct <span class="RenoLink"><a href="deduce_quat2.html">deduce_quat2</a></span>
+        {
+            typedef /*unspecified*/ type;
+        };</span></span>        
+        
+        <span class="RenoIncludeSPAN"><span class="RenoIncludeSPAN">template &lt;
+            class V,
+            int Dim=<span class="RenoLink"><a href="vec_traits_Vector_dim.html">vec_traits&lt;Vector&gt;::dim</a></span>&gt;
+        struct <span class="RenoLink"><a href="deduce_vec.html">deduce_vec</a></span>
+        {
+            typedef /*unspecified*/ type;
+        };</span>        
+        
+        <span class="RenoIncludeSPAN">template &lt;class A,class B,int Dim&gt;
+        struct <span class="RenoLink"><a href="deduce_vec2.html">deduce_vec2</a></span>
+        {
+            typedef /*unspecified*/ type;
+        };</span></span>        
+        
+        <span class="RenoIncludeSPAN"><span class="RenoIncludeSPAN">template &lt;
+            class M,
+            int Rows=<span class="RenoLink"><a href="mat_traits_Matrix_rows.html">mat_traits&lt;Matrix&gt;::rows</a></span>,
+            int Cols=<span class="RenoLink"><a href="mat_traits_Matrix_cols.html">mat_traits&lt;Matrix&gt;::cols</a></span>&gt;
+        struct <span class="RenoLink"><a href="deduce_mat.html">deduce_mat</a></span>
+        {
+            typedef /*unspecified*/ type;
+        };</span>        
+        
+        <span class="RenoIncludeSPAN">template &lt;class A,class B,int Rows,int Cols&gt;
+        struct <span class="RenoLink"><a href="deduce_mat2.html">deduce_mat2</a></span>
+        {
+            typedef /*unspecified*/ type;
+        };</span></span>        
+        
+        <span class="RenoIncludeSPAN"><span class="RenoIncludeSPAN">template &lt;class A,class B&gt;
+        struct <span class="RenoLink"><a href="deduce_scalar.html">deduce_scalar</a></span>
+        {
+            typedef typename impl&lt;A,B&gt;::type type;
+        };</span></span>        
+        
+        <span class="RenoIncludeSPAN"><span class="RenoIncludeSPAN">template &lt;class Scalar&gt;
+        struct <span class="RenoLink"><a href="scalar_traits.html">scalar_traits</a></span>
+        {
+            <span class="RenoLink"><a href="BOOST_QVM_INLINE_CRITICAL.html">BOOST_QVM_INLINE_CRITICAL</a></span>
+            static Scalar value( int v )
+            {
+                return Scalar(v);
+            }
+        };</span>        
+        
+        <span class="RenoIncludeSPAN">template &lt;class T&gt;
+        struct <span class="RenoLink"><a href="scalar.html">scalar</a></span>
+        {
+            typedef /*exact definition unspecified*/ type;
+        };</span></span></span>
+    }
+}</pre>
+</div></div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="index.html">Boost QVM</a>&nbsp;| <a href="Synopsis.html">Synopsis</a></span>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2016 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

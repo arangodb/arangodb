@@ -1,0 +1,72 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>Interoperability</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><h3>Interoperability</h3>
+<p>An important design goal of Boost QVM is that it works seamlessly with 3rd-party quaternion, vector and matrix types and libraries. Even when such libraries overload the same C++ operators as Boost QVM, it is safe to bring the entire <i>boost::<span class="RenoLink"><a href="qvm.html">qvm</a></span></i> namespace in scope by specifying:</p>
+<pre>using namespace boost::<span class="RenoLink"><a href="qvm.html">qvm</a></span>;</pre>
+<p>The above using directive does not introduce ambiguities with function and operator overloads a 3rd-party library may define because:</p>
+<div><ul><li>Most <i>boost::<span class="RenoLink"><a href="qvm.html">qvm</a></span></i> function overloads and all operator overloads use <span class="RenoLink"><a href="SFINAE_enable_if.html">SFINAE/enable_if</a></span>, which makes them disappear unless an expression uses types that have the appropriate Boost QVM-specific <span class="RenoLink"><a href="type_traits_reference.html">type traits</a></span> defined;</li>
+<li>Whenever such overloads are compatible with a given expression, their signature is extremely generic, which means that any other (user-defined) compatible overload will be a better match in any overload resolution.</li>
+</ul></div>
+<p>Bringing the <i>boost::<span class="RenoLink"><a href="qvm.html">qvm</a></span></i> namespace in scope lets you mix vector and matrix types that come from different APIs into a common, type-safe framework. In this case however, it should be considered what types should be returned by binary operations that return an object by value. For example, if you multiply a 3x3 matrix <i>m1</i> of type <i>user_matrix1</i> by a 3x3 matrix <i>m2</i> of type <i>user_matrix2</i>, what type should that operation return?</p>
+<p>The answer is that by default, Boost QVM returns some kind of compatible matrix type, so it is always safe to write:</p>
+<pre>auto &amp; m = m1 <span class="RenoLink"><a href="operator_times_mat_mat_.html">*</a></span> m2;</pre>
+<p>However, the type deduced by default converts implicitly to any compatible matrix type, so the following is also valid, at the cost of a temporary:</p>
+<pre>user_matrix1 m = m1 <span class="RenoLink"><a href="operator_times_mat_mat_.html">*</a></span> m2;</pre>
+<p>While the temporary object can be optimized away by many compilers, it can be avoided altogether by specializing the <i><span class="RenoLink"><a href="deduce_mat2.html">deduce_mat2</a></span></i> template. For example, to specify that multiplying a <i>user_matrix1</i> by a <i>user_matrix2</i> should always produce a <i>user_matrix1</i> object, you could specify:</p>
+<pre>namespace
+boost
+    {
+    namespace
+    <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+        {
+        template &lt;&gt;
+        struct <span class="RenoLink"><a href="deduce_mat2.html">deduce_mat2</a></span>&lt;user_matrix1,user_matrix2,3,3&gt;
+            { typedef user_matrix1 type; };
+
+        template &lt;&gt;
+        struct <span class="RenoLink"><a href="deduce_mat2.html">deduce_mat2</a></span>&lt;user_matrix2,user_matrix1,3,3&gt;
+            { typedef user_matrix1 type; };
+        }
+    }</pre>
+<p>Finally, any time you need to create a matrix of a particular C++ type from any other compatible matrix type, you can use the <i><span class="RenoLink"><a href="convert_to_mat_.html">convert_to</a></span></i> function:</p>
+<pre>user_matrix2 m=<span class="RenoLink"><a href="convert_to_mat_.html">convert_to</a></span>&lt;user_matrix2&gt;(m1 <span class="RenoLink"><a href="operator_times_mat_mat_.html">*</a></span> m2);</pre>
+<p>Perhaps surprisingly, unary operations that return an object by value have a similar, though simpler issue. That's because the argument they're called with may not be copyable, as in:</p>
+<pre>float m[3][3];
+auto &amp; inv = <span class="RenoLink"><a href="inverse_mat_.html">inverse</a></span>(m);</pre>
+<p>Again, Boost QVM "just works", returning an object of suitable matrix type that is copyable. This deduction process can also be controlled, by specializing the <i><span class="RenoLink"><a href="deduce_mat.html">deduce_mat</a></span></i> template.</p>
+<blockquote><p>Note: Bringing the entire <i>boost::<span class="RenoLink"><a href="qvm.html">qvm</a></span></i> namespace in scope may introduce ambiguities when accessing <i>types</i> (as opposed to functions) defined in 3rd-party libraries. In that case, you can safely bring namespace <i>boost::<span class="RenoLink"><a href="qvm.html">qvm</a></span>::<span class="RenoLink"><a href="sfinae.html">sfinae</a></span></i> in scope instead, which contains only function and operator overloads that use <span class="RenoLink"><a href="SFINAE_enable_if.html">SFINAE/enable_if</a></span>.</p></blockquote>
+<blockquote><p><b>Warning</b>: Be mindful of potential ODR violation when using <i><span class="RenoLink"><a href="deduce_quat2.html">deduce_quat2</a></span></i>, <i><span class="RenoLink"><a href="deduce_vec2.html">deduce_vec2</a></span></i> and <i><span class="RenoLink"><a href="deduce_mat2.html">deduce_mat2</a></span></i> in 3rd party libraries. For example this could happen if <i>lib1</i> defines <i><span class="RenoLink"><a href="deduce_vec2.html">deduce_vec2</a></span>&lt;lib1::vec,lib2::vec&gt;::type</i> as <i>lib1::vec</i> and in the same program <i>lib2</i> defines <i><span class="RenoLink"><a href="deduce_vec2.html">deduce_vec2</a></span>&lt;lib1::vec,lib2::vec&gt;::type</i> as <i>lib2::vec</i>. It is best to keep such specializations out of <i>lib1</i> and <i>lib2</i>. Of course, it is always safe for <i>lib1</i> and <i>lib2</i> to use <i><span class="RenoLink"><a href="convert_to_vec_.html">convert_to</a></span></i> to convert between the <i>lib1::vec</i> and <i>lib2::vec</i> types as needed.</p></blockquote>
+</div><div class="RenoIncludeDIV"><div class="RenoHR"><hr/></div>
+<p><b>Tutorial navigation:</b> <span class="RenoLink"><a href="quaternions_vectors_matrices.html">Quaternions, Vectors, Matrices</a></span> | <span class="RenoLink"><a href="c_arrays.html">C Arrays</a></span> | <span class="RenoLink"><a href="Views.html">Views</a></span> | <span class="RenoLink"><a href="Swizzling.html">Swizzling</a></span> | <span class="RenoLink">Interoperability</span><span class="RenoBR">&nbsp;</span><br/><span class="RenoBR">&nbsp;</span><br/>See also: <span class="RenoLink"><a href="index.html">Boost QVM</a></span></p>
+</div><!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2016 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

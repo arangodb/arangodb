@@ -1,0 +1,70 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Background</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python">
+<link rel="up" href="../building.html" title="Chapter&#160;1.&#160;Building and Testing">
+<link rel="prev" href="../building.html" title="Chapter&#160;1.&#160;Building and Testing">
+<link rel="next" href="no_install_quickstart.html" title="No-Install Quickstart">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../building.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../building.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="no_install_quickstart.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="building.background"></a><a class="link" href="background.html" title="Background">Background</a>
+</h3></div></div></div>
+<p>
+        There are two basic models for combining C++ and Python:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a href="http://www.python.org/doc/current/ext/intro.html" target="_top">extending</a>,
+            in which the end-user launches the Python interpreter executable and
+            imports Python &#8220;extension modules&#8221; written in C++. Think of taking
+            a library written in C++ and giving it a Python interface so Python programmers
+            can use it. From Python, these modules look just like regular Python
+            modules.
+          </li>
+<li class="listitem">
+            <a href="http://www.python.org/doc/current/ext/embedding.html" target="_top">embedding</a>,
+            in which the end-user launches a program written in C++ that in turn
+            invokes the Python interpreter as a library subroutine. Think of adding
+            scriptability to an existing application.
+          </li>
+</ul></div>
+<p>
+        The key distinction between extending and embedding is the location of the
+        C++ <code class="computeroutput"><span class="identifier">main</span><span class="special">()</span></code>
+        function: in the Python interpreter executable, or in some other program,
+        respectively. Note that even when embedding Python in another program, <a href="http://www.python.org/doc/current/ext/extending-with-embedding.html" target="_top">extension
+        modules are often the best way to make C/C++ functionality accessible to
+        Python code</a>, so the use of extension modules is really at the heart
+        of both models.
+      </p>
+<p>
+        Except in rare cases, extension modules are built as dynamically-loaded libraries
+        with a single entry point, which means you can change them without rebuilding
+        either the other extension modules or the executable containing <code class="computeroutput"><span class="identifier">main</span><span class="special">()</span></code>.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2015 David
+      Abrahams, Stefan Seefeld<br>Copyright &#169; 2002-2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../building.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../building.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="no_install_quickstart.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

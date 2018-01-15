@@ -1,0 +1,193 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class monotonic_buffer_resource</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../../boost_container_header_reference.html#header.boost.container.pmr.monotonic_buffer_resource_hpp" title="Header &lt;boost/container/pmr/monotonic_buffer_resource.hpp&gt;">
+<link rel="prev" href="memory_resource.html" title="Class memory_resource">
+<link rel="next" href="polymorphic_allocator.html" title="Class template polymorphic_allocator">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="memory_resource.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_container_header_reference.html#header.boost.container.pmr.monotonic_buffer_resource_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="polymorphic_allocator.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.container.pmr.monotonic_buffer_resource"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class monotonic_buffer_resource</span></h2>
+<p>boost::container::pmr::monotonic_buffer_resource</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../boost_container_header_reference.html#header.boost.container.pmr.monotonic_buffer_resource_hpp" title="Header &lt;boost/container/pmr/monotonic_buffer_resource.hpp&gt;">boost/container/pmr/monotonic_buffer_resource.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="monotonic_buffer_resource.html" title="Class monotonic_buffer_resource">monotonic_buffer_resource</a> <span class="special">:</span>
+  <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">container</span><span class="special">::</span><span class="identifier">pmr</span><span class="special">::</span><span class="identifier">memory_resource</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="monotonic_buffer_resource.html#boost.container.pmr.monotonic_buffer_resourceconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <span class="keyword">explicit</span> <a class="link" href="monotonic_buffer_resource.html#idp63307552-bb"><span class="identifier">monotonic_buffer_resource</span></a><span class="special">(</span><a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="monotonic_buffer_resource.html#idp63314576-bb"><span class="identifier">monotonic_buffer_resource</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="monotonic_buffer_resource.html#idp63323344-bb"><span class="identifier">monotonic_buffer_resource</span></a><span class="special">(</span><span class="keyword">void</span> <span class="special">*</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="monotonic_buffer_resource.html#idp63333104-bb"><span class="identifier">monotonic_buffer_resource</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="monotonic_buffer_resource.html" title="Class monotonic_buffer_resource">monotonic_buffer_resource</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+  <a class="link" href="monotonic_buffer_resource.html" title="Class monotonic_buffer_resource">monotonic_buffer_resource</a> 
+  <a class="link" href="monotonic_buffer_resource.html#idp63334816-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="monotonic_buffer_resource.html" title="Class monotonic_buffer_resource">monotonic_buffer_resource</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+  <a class="link" href="monotonic_buffer_resource.html#idp63336960-bb"><span class="special">~</span><span class="identifier">monotonic_buffer_resource</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="monotonic_buffer_resource.html#idp63286800-bb">public member functions</a></span>
+  <span class="keyword">void</span> <a class="link" href="monotonic_buffer_resource.html#idp63287360-bb"><span class="identifier">release</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span> <a class="link" href="monotonic_buffer_resource.html#idp63290512-bb"><span class="identifier">upstream_resource</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="monotonic_buffer_resource.html#idp63292912-bb"><span class="identifier">remaining_storage</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="monotonic_buffer_resource.html#idp63297360-bb"><span class="identifier">remaining_storage</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="special">=</span> <span class="number">1u</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="keyword">void</span> <span class="special">*</span> <a class="link" href="monotonic_buffer_resource.html#idp63301344-bb"><span class="identifier">current_buffer</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="monotonic_buffer_resource.html#idp63304352-bb"><span class="identifier">next_buffer_size</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="monotonic_buffer_resource.html#idp63338672-bb">protected member functions</a></span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="special">*</span> <a class="link" href="monotonic_buffer_resource.html#idp63339248-bb"><span class="identifier">do_allocate</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="monotonic_buffer_resource.html#idp63350672-bb"><span class="identifier">do_deallocate</span></a><span class="special">(</span><span class="keyword">void</span> <span class="special">*</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">bool</span> <a class="link" href="monotonic_buffer_resource.html#idp63356864-bb"><span class="identifier">do_is_equal</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="monotonic_buffer_resource.html#boost.container.pmr.monotonic_buffer_resourcepublic-data-members">public data members</a></span>
+  <span class="keyword">static</span> <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="monotonic_buffer_resource.html#boost.container.pmr.monotonic_buffer_resource.initial_next_buffer_size"><span class="identifier">initial_next_buffer_size</span></a><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.10.12.22.3.4"></a><h2>Description</h2>
+<p>A <a class="link" href="monotonic_buffer_resource.html" title="Class monotonic_buffer_resource">monotonic_buffer_resource</a> is a special-purpose memory resource intended for very fast memory allocations in situations where memory is used to build up a few objects and then is released all at once when the memory resource object is destroyed. It has the following qualities:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>A call to deallocate has no effect, thus the amount of memory consumed increases monotonically until the resource is destroyed.</p></li>
+<li class="listitem"><p>The program can supply an initial buffer, which the allocator uses to satisfy memory requests.</p></li>
+<li class="listitem"><p>When the initial buffer (if any) is exhausted, it obtains additional buffers from an upstream memory resource supplied at construction. Each additional buffer is larger than the previous one, following a geometric progression.</p></li>
+<li class="listitem"><p>It is intended for access from one thread of control at a time. Specifically, calls to allocate and deallocate do not synchronize with one another.</p></li>
+<li class="listitem"><p>It owns the allocated memory and frees it on destruction, even if deallocate has not been called for some of the allocated blocks. </p></li>
+</ul></div>
+<p>
+</p>
+<div class="refsect2">
+<a name="id-1.3.10.12.22.3.4.4"></a><h3>
+<a name="boost.container.pmr.monotonic_buffer_resourceconstruct-copy-destruct"></a><code class="computeroutput">monotonic_buffer_resource</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp63307552-bb"></a><span class="identifier">monotonic_buffer_resource</span><span class="special">(</span><a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span> upstream <span class="special">=</span> <span class="number">0</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: <code class="computeroutput">upstream</code> shall be the address of a valid memory resource or <code class="computeroutput">nullptr</code></p>
+<p><span class="bold"><strong>Effects</strong></span>: If <code class="computeroutput">upstream</code> is not nullptr, sets the internal resource to <code class="computeroutput">upstream</code>, to get_default_resource() otherwise. Sets the internal <code class="computeroutput">current_buffer</code> to <code class="computeroutput">nullptr</code> and the internal <code class="computeroutput">next_buffer_size</code> to an implementation-defined size. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp63314576-bb"></a><span class="identifier">monotonic_buffer_resource</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> initial_size<span class="special">,</span> 
+                                   <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span> upstream <span class="special">=</span> <span class="number">0</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: <code class="computeroutput">upstream</code> shall be the address of a valid memory resource or <code class="computeroutput">nullptr</code> and <code class="computeroutput">initial_size</code> shall be greater than zero.</p>
+<p><span class="bold"><strong>Effects</strong></span>: If <code class="computeroutput">upstream</code> is not nullptr, sets the internal resource to <code class="computeroutput">upstream</code>, to get_default_resource() otherwise. Sets the internal <code class="computeroutput">current_buffer</code> to <code class="computeroutput">nullptr</code> and <code class="computeroutput">next_buffer_size</code> to at least <code class="computeroutput">initial_size</code>. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp63323344-bb"></a><span class="identifier">monotonic_buffer_resource</span><span class="special">(</span><span class="keyword">void</span> <span class="special">*</span> buffer<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> buffer_size<span class="special">,</span> 
+                          <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span> upstream <span class="special">=</span> <span class="number">0</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: <code class="computeroutput">upstream</code> shall be the address of a valid memory resource or <code class="computeroutput">nullptr</code>, <code class="computeroutput">buffer_size</code> shall be no larger than the number of bytes in buffer.</p>
+<p><span class="bold"><strong>Effects</strong></span>: If <code class="computeroutput">upstream</code> is not nullptr, sets the internal resource to <code class="computeroutput">upstream</code>, to get_default_resource() otherwise. Sets the internal <code class="computeroutput">current_buffer</code> to <code class="computeroutput">buffer</code>, and <code class="computeroutput">next_buffer_size</code> to <code class="computeroutput">buffer_size</code> (but not less than an implementation-defined size), then increases <code class="computeroutput">next_buffer_size</code> by an implementation-defined growth factor (which need not be integral). </p>
+</li>
+<li class="listitem"><pre class="literallayout"><a name="idp63333104-bb"></a><span class="identifier">monotonic_buffer_resource</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="monotonic_buffer_resource.html" title="Class monotonic_buffer_resource">monotonic_buffer_resource</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="monotonic_buffer_resource.html" title="Class monotonic_buffer_resource">monotonic_buffer_resource</a> 
+<a name="idp63334816-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="monotonic_buffer_resource.html" title="Class monotonic_buffer_resource">monotonic_buffer_resource</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp63336960-bb"></a><span class="special">~</span><span class="identifier">monotonic_buffer_resource</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Calls <code class="computeroutput">this-&gt;release()</code>. </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.10.12.22.3.4.5"></a><h3>
+<a name="idp63286800-bb"></a><code class="computeroutput">monotonic_buffer_resource</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp63287360-bb"></a><span class="identifier">release</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: <code class="computeroutput">upstream_resource()-&gt;deallocate()</code> as necessary to release all allocated memory. [Note: memory is released back to <code class="computeroutput">upstream_resource()</code> even if some blocks that were allocated from this have not been deallocated from this. - end note] </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">*</span> <a name="idp63290512-bb"></a><span class="identifier">upstream_resource</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: The value of the internal resource. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="idp63292912-bb"></a><span class="identifier">remaining_storage</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> alignment<span class="special">,</span> 
+                              <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="special">&amp;</span> wasted_due_to_alignment<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: The number of bytes of storage available for the specified alignment and the number of bytes wasted due to the requested alignment.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="idp63297360-bb"></a><span class="identifier">remaining_storage</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> alignment <span class="special">=</span> <span class="number">1u</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: The number of bytes of storage available for the specified alignment.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="keyword">void</span> <span class="special">*</span> <a name="idp63301344-bb"></a><span class="identifier">current_buffer</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: The number of bytes of storage available for the specified alignment.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="idp63304352-bb"></a><span class="identifier">next_buffer_size</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: The number of bytes that will be requested for the next buffer once the current one is exhausted.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.10.12.22.3.4.6"></a><h3>
+<a name="idp63338672-bb"></a><code class="computeroutput">monotonic_buffer_resource</code> protected member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="special">*</span> <a name="idp63339248-bb"></a><span class="identifier">do_allocate</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> bytes<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> alignment<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: A pointer to allocated storage with a size of at least <code class="computeroutput">bytes</code>. The size and alignment of the allocated memory shall meet the requirements for a class derived from <code class="computeroutput"><code class="computeroutput"><a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a></code></code>.</p>
+<p><span class="bold"><strong>Effects</strong></span>: If the unused space in the internal <code class="computeroutput">current_buffer</code> can fit a block with the specified bytes and alignment, then allocate the return block from the internal <code class="computeroutput">current_buffer</code>; otherwise sets the internal <code class="computeroutput">current_buffer</code> to <code class="computeroutput">upstream_resource()-&gt;allocate(n, m)</code>, where <code class="computeroutput">n</code> is not less than <code class="computeroutput">max(bytes, next_buffer_size)</code> and <code class="computeroutput">m</code> is not less than alignment, and increase <code class="computeroutput">next_buffer_size</code> by an implementation-defined growth factor (which need not be integral), then allocate the return block from the newly-allocated internal <code class="computeroutput">current_buffer</code>.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing unless <code class="computeroutput">upstream_resource()-&gt;allocate()</code> throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> 
+<a name="idp63350672-bb"></a><span class="identifier">do_deallocate</span><span class="special">(</span><span class="keyword">void</span> <span class="special">*</span> p<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> bytes<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> alignment<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: None</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing</p>
+<p><span class="bold"><strong>Remarks</strong></span>: Memory used by this resource increases monotonically until its destruction. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">bool</span> <a name="idp63356864-bb"></a><span class="identifier">do_is_equal</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">&amp;</span> other<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: <code class="computeroutput">this == dynamic_cast&lt;const monotonic_buffer_resource*&gt;(&amp;other)</code>. </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.10.12.22.3.4.7"></a><h3>
+<a name="boost.container.pmr.monotonic_buffer_resourcepublic-data-members"></a><code class="computeroutput">monotonic_buffer_resource</code> 
+        public
+       public data members</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><span class="keyword">static</span> <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="boost.container.pmr.monotonic_buffer_resource.initial_next_buffer_size"></a><span class="identifier">initial_next_buffer_size</span><span class="special">;</span></pre>
+<p>The number of bytes that will be requested by the default in the first call to the upstream allocator</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+</li></ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009-2015 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="memory_resource.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_container_header_reference.html#header.boost.container.pmr.monotonic_buffer_resource_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="polymorphic_allocator.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

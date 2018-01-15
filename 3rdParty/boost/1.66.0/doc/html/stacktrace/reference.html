@@ -1,0 +1,149 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Reference</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../stacktrace.html" title="Chapter&#160;37.&#160;Boost.Stacktrace 1.0">
+<link rel="prev" href="acknowledgements.html" title="Acknowledgements">
+<link rel="next" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="acknowledgements.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../stacktrace.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost/stacktrace/basic_stacktrace.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="stacktrace.reference"></a>Reference</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="reference.html#header.boost.stacktrace.stacktrace_hpp">Header &lt;boost/stacktrace/stacktrace.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.stacktrace.detail.frame_decl_hpp">Header &lt;boost/stacktrace/detail/frame_decl.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.stacktrace.frame_hpp">Header &lt;boost/stacktrace/frame.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.stacktrace.safe_dump_to_hpp">Header &lt;boost/stacktrace/safe_dump_to.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.stacktrace.stacktrace_fwd_hpp">Header &lt;boost/stacktrace/stacktrace_fwd.hpp&gt;</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.stacktrace.stacktrace_hpp"></a>Header &lt;<a href="../../../boost/stacktrace/stacktrace.hpp" target="_top">boost/stacktrace/stacktrace.hpp</a>&gt;</h3></div></div></div>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">stacktrace</span> <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Allocator<span class="special">&gt;</span> <span class="keyword">class</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">;</span>
+
+    <span class="keyword">typedef</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> <a name="boost.stacktrace.stacktrace"></a><span class="identifier">stacktrace</span><span class="special">;</span>  <span class="comment">// This is the typedef to use unless you'd like to provide a specific allocator to <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">boost::stacktrace::basic_stacktrace</a>. </span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Allocator1<span class="special">,</span> <span class="keyword">typename</span> Allocator2<span class="special">&gt;</span> 
+      <span class="keyword">bool</span> <a class="link" href="../boost/stacktrace/operator_1_3_38_7_3_1_1_3.html" title="Function template operator&lt;"><span class="keyword">operator</span><span class="special">&lt;</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">&lt;</span> <span class="identifier">Allocator1</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> 
+                     <span class="keyword">const</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">&lt;</span> <span class="identifier">Allocator2</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Allocator1<span class="special">,</span> <span class="keyword">typename</span> Allocator2<span class="special">&gt;</span> 
+      <span class="keyword">bool</span> <a class="link" href="../boost/stacktrace/operator__1_3_38_7_3_1_1_4.html" title="Function template operator=="><span class="keyword">operator</span><span class="special">==</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">&lt;</span> <span class="identifier">Allocator1</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> 
+                      <span class="keyword">const</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">&lt;</span> <span class="identifier">Allocator2</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+
+    <span class="comment">// Comparison operators that provide platform dependant ordering and have amortized O(1) complexity; O(size()) worst case complexity; are Async-Handler-Safe. </span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Allocator1<span class="special">,</span> <span class="keyword">typename</span> Allocator2<span class="special">&gt;</span> 
+      <span class="keyword">bool</span> <a name="boost.stacktrace.operator_1_3_38_7_3_1_1_5"></a><span class="keyword">operator</span><span class="special">&gt;</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">&lt;</span> <span class="identifier">Allocator1</span> <span class="special">&gt;</span> <span class="special">&amp;</span> lhs<span class="special">,</span> 
+                     <span class="keyword">const</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">&lt;</span> <span class="identifier">Allocator2</span> <span class="special">&gt;</span> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Allocator1<span class="special">,</span> <span class="keyword">typename</span> Allocator2<span class="special">&gt;</span> 
+      <span class="keyword">bool</span> <a name="boost.stacktrace.operator__1_3_38_7_3_1_1_6"></a><span class="keyword">operator</span><span class="special">&lt;=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">&lt;</span> <span class="identifier">Allocator1</span> <span class="special">&gt;</span> <span class="special">&amp;</span> lhs<span class="special">,</span> 
+                      <span class="keyword">const</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">&lt;</span> <span class="identifier">Allocator2</span> <span class="special">&gt;</span> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Allocator1<span class="special">,</span> <span class="keyword">typename</span> Allocator2<span class="special">&gt;</span> 
+      <span class="keyword">bool</span> <a name="boost.stacktrace.operator__1_3_38_7_3_1_1_7"></a><span class="keyword">operator</span><span class="special">&gt;=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">&lt;</span> <span class="identifier">Allocator1</span> <span class="special">&gt;</span> <span class="special">&amp;</span> lhs<span class="special">,</span> 
+                      <span class="keyword">const</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">&lt;</span> <span class="identifier">Allocator2</span> <span class="special">&gt;</span> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Allocator1<span class="special">,</span> <span class="keyword">typename</span> Allocator2<span class="special">&gt;</span> 
+      <span class="keyword">bool</span> <a name="boost.stacktrace.operator!_1_3_38_7_3_1_1_8"></a><span class="keyword">operator</span><span class="special">!=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">&lt;</span> <span class="identifier">Allocator1</span> <span class="special">&gt;</span> <span class="special">&amp;</span> lhs<span class="special">,</span> 
+                      <span class="keyword">const</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">&lt;</span> <span class="identifier">Allocator2</span> <span class="special">&gt;</span> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span>
+
+    <span class="comment">// Fast hashing support, O(st.size()) complexity; Async-Handler-Safe. </span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Allocator<span class="special">&gt;</span> 
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="boost.stacktrace.hash_valu_1_3_38_7_3_1_1_9"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> st<span class="special">)</span><span class="special">;</span>
+
+    <span class="comment">// Outputs stacktrace in a human readable format to output stream; unsafe to use in async handlers. </span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> TraitsT<span class="special">,</span> <span class="keyword">typename</span> Allocator<span class="special">&gt;</span> 
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">TraitsT</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+      <a name="boost.stacktrace.operator_1_3_38_7_3_1_1_10"></a><span class="keyword">operator</span><span class="special">&lt;&lt;</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">TraitsT</span> <span class="special">&gt;</span> <span class="special">&amp;</span> os<span class="special">,</span> 
+                 <span class="keyword">const</span> <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> bt<span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.stacktrace.detail.frame_decl_hpp"></a>Header &lt;<a href="../../../boost/stacktrace/detail/frame_decl.hpp" target="_top">boost/stacktrace/detail/frame_decl.hpp</a>&gt;</h3></div></div></div>
+<p>Use &lt;boost/stacktrace/frame.hpp&gt; header instead of this one! </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">stacktrace</span> <span class="special">{</span>
+    <span class="keyword">class</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.stacktrace.frame_hpp"></a>Header &lt;<a href="../../../boost/stacktrace/frame.hpp" target="_top">boost/stacktrace/frame.hpp</a>&gt;</h3></div></div></div>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">stacktrace</span> <span class="special">{</span>
+
+    <span class="comment">// Comparison operators that provide platform dependant ordering and have O(1) complexity; are Async-Handler-Safe. </span>
+    <span class="keyword">constexpr</span> <span class="keyword">bool</span> <a name="boost.stacktrace.operator_1_3_38_7_5_1_1_1"></a><span class="keyword">operator</span><span class="special">&lt;</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> lhs<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="keyword">bool</span> <a name="boost.stacktrace.operator_1_3_38_7_5_1_1_2"></a><span class="keyword">operator</span><span class="special">&gt;</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> lhs<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="keyword">bool</span> <a name="boost.stacktrace.operator__1_3_38_7_5_1_1_3"></a><span class="keyword">operator</span><span class="special">&lt;=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> lhs<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="keyword">bool</span> <a name="boost.stacktrace.operator__1_3_38_7_5_1_1_4"></a><span class="keyword">operator</span><span class="special">&gt;=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> lhs<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="keyword">bool</span> <a name="boost.stacktrace.operator=_1_3_38_7_5_1_1_5"></a><span class="keyword">operator</span><span class="special">==</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> lhs<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="keyword">bool</span> <a name="boost.stacktrace.operator!_1_3_38_7_5_1_1_6"></a><span class="keyword">operator</span><span class="special">!=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> lhs<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span>
+
+    <span class="comment">// Fast hashing support, O(1) complexity; Async-Handler-Safe. </span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="boost.stacktrace.hash_valu_1_3_38_7_5_1_1_7"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> f<span class="special">)</span><span class="special">;</span>
+
+    <span class="comment">// Outputs <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">stacktrace::frame</a> in a human readable format to string; unsafe to use in async handlers. </span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a name="boost.stacktrace.to_string"></a><span class="identifier">to_string</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> f<span class="special">)</span><span class="special">;</span>
+
+    <span class="comment">// Outputs <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">stacktrace::frame</a> in a human readable format to output stream; unsafe to use in async handlers. </span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> TraitsT<span class="special">&gt;</span> 
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">TraitsT</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+      <a name="boost.stacktrace.operator_1_3_38_7_5_1_1_9"></a><span class="keyword">operator</span><span class="special">&lt;&lt;</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">TraitsT</span> <span class="special">&gt;</span> <span class="special">&amp;</span> os<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> f<span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.stacktrace.safe_dump_to_hpp"></a>Header &lt;<a href="../../../boost/stacktrace/safe_dump_to.hpp" target="_top">boost/stacktrace/safe_dump_to.hpp</a>&gt;</h3></div></div></div>
+<p>This header contains low-level async-signal-safe functions for dumping call stacks. Dumps are binary serialized arrays of <code class="computeroutput">void*</code>, so you could read them by using 'od -tx8 -An stacktrace_dump_failename' Linux command or using boost::stacktrace::stacktrace::from_dump functions. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">stacktrace</span> <span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="../boost/stacktrace/safe_dump_1_3_38_7_6_2_1_1.html" title="Function safe_dump_to"><span class="identifier">safe_dump_to</span></a><span class="special">(</span><span class="keyword">void</span> <span class="special">*</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="../boost/stacktrace/safe_dump_1_3_38_7_6_2_1_2.html" title="Function safe_dump_to"><span class="identifier">safe_dump_to</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="keyword">void</span> <span class="special">*</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="../boost/stacktrace/safe_dump_1_3_38_7_6_2_1_3.html" title="Function safe_dump_to"><span class="identifier">safe_dump_to</span></a><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="../boost/stacktrace/safe_dump_1_3_38_7_6_2_1_4.html" title="Function safe_dump_to"><span class="identifier">safe_dump_to</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="../boost/stacktrace/safe_dump_1_3_38_7_6_2_1_5.html" title="Function safe_dump_to"><span class="identifier">safe_dump_to</span></a><span class="special">(</span><span class="identifier">platform_specific_descriptor</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="../boost/stacktrace/safe_dump_1_3_38_7_6_2_1_6.html" title="Function safe_dump_to"><span class="identifier">safe_dump_to</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> 
+                             <span class="identifier">platform_specific_descriptor</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.stacktrace.stacktrace_fwd_hpp"></a>Header &lt;<a href="../../../boost/stacktrace/stacktrace_fwd.hpp" target="_top">boost/stacktrace/stacktrace_fwd.hpp</a>&gt;</h3></div></div></div>
+<p>This header contains only forward declarations of <a class="link" href="../boost/stacktrace/frame.html" title="Class frame">boost::stacktrace::frame</a>, <a class="link" href="../boost/stacktrace/basic_stacktrace.html" title="Class template basic_stacktrace">boost::stacktrace::basic_stacktrace</a>, boost::stacktrace::stacktrace and does not include any other Boost headers. </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="acknowledgements.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../stacktrace.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost/stacktrace/basic_stacktrace.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

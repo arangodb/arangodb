@@ -1,0 +1,16 @@
+using boostbook ;
+using quickbook ;
+
+xml simple-boostbook : simple.qbk ;
+
+boostbook simple : simple-boostbook :
+    <dependency>css
+    <dependency>images
+    ;
+
+install css : [ glob $(BOOST_ROOT)/doc/src/*.css ]
+    : <location>html ;
+install images : [ glob $(BOOST_ROOT)/doc/src/images/*.png ]
+    : <location>html/images ;
+explicit css ;
+explicit images ;

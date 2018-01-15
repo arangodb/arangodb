@@ -1,0 +1,338 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Examples</title>
+<link rel="stylesheet" href="../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="bbv2.html" title="Chapter&#160;49.&#160;Boost.Build User Manual">
+<link rel="prev" href="bbv2/faq.html" title="Frequently Asked Questions">
+<link rel="next" href="jam.html" title="Chapter&#160;50.&#160;Boost.Jam : 3.1.19">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../boost.png"></td>
+<td align="center"><a href="../../index.html">Home</a></td>
+<td align="center"><a href="../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="bbv2/faq.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="bbv2.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="jam.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="examples"></a>Examples</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="examples.html#bbv2.examples.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="examples.html#bbv2.examples.hello">Hello</a></span></dt>
+<dt><span class="section"><a href="examples.html#bbv2.examples.time_action">Time Action</a></span></dt>
+<dt><span class="section"><a href="examples.html#bbv2.examples.build_variants">Build Variants</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="bbv2.examples.introduction"></a><a class="link" href="examples.html#bbv2.examples.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+      Here we include a collection of simple to complex fully working examples of
+      using Boost Build v2 for various tasks. They show the gamut from simple to
+      advanced features. If you find yourself looking at the examples and not finding
+      something you want to see working please post to our support list and we'll
+      try and come up with a solution and add it here for others to learn from.
+    </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="bbv2.examples.hello"></a><a class="link" href="examples.html#bbv2.examples.hello" title="Hello">Hello</a>
+</h3></div></div></div>
+<p>
+      This example shows a very basic Boost Build project set up so it compiles a
+      single executable from a single source file.
+    </p>
+<p>
+      Files:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <a href="../../example/hello/hello.cpp" target="_top">hello.cpp</a>
+        </li>
+<li class="listitem">
+          <a href="../../example/hello/jamroot.jam" target="_top">jamroot.jam</a>
+        </li>
+</ul></div>
+<p>
+      Our <code class="computeroutput"><span class="identifier">jamroot</span><span class="special">.</span><span class="identifier">jam</span></code> is minimal and only specifies one <code class="computeroutput"><span class="identifier">exe</span></code> target for the program:
+    </p>
+<pre class="programlisting"><span class="identifier">exe</span> <span class="identifier">hello</span> <span class="special">:</span> <span class="identifier">hello</span><span class="special">.</span><span class="identifier">cpp</span> <span class="special">;</span>
+</pre>
+<p>
+      Building the example yields:
+    </p>
+<pre class="programlisting">&gt; cd /example/hello
+&gt; b2
+...found 8 targets...
+...updating 4 targets...
+common.mkdir bin/clang-darwin-4.2.1
+common.mkdir bin/clang-darwin-4.2.1/debug
+clang-darwin.compile.c++ bin/clang-darwin-4.2.1/debug/hello.o
+clang-darwin.link bin/clang-darwin-4.2.1/debug/hello
+...updated 4 targets...
+&gt; bin/clang-darwin-4.2.1/debug/hello
+Hello!
+</pre>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        The actual paths in the <code class="computeroutput">bin</code> sub-directory will depend on your
+        toolset.
+      </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="bbv2.examples.time_action"></a><a class="link" href="examples.html#bbv2.examples.time_action" title="Time Action">Time Action</a>
+</h3></div></div></div>
+<p>
+      This example shows how to use the <code class="computeroutput"><span class="identifier">testing</span><span class="special">.</span><span class="identifier">time</span></code> utility
+      to show time information for building a target.
+    </p>
+<p>
+      Files:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <a href="../../example/time/jamroot.jam" target="_top">jamroot.jam</a>
+        </li>
+<li class="listitem">
+          <a href="../../example/time/hello.cpp" target="_top">hello.cpp</a>
+        </li>
+</ul></div>
+<p>
+      Our <code class="computeroutput"><span class="identifier">jamroot</span><span class="special">.</span><span class="identifier">jam</span></code> specifies the target we build and the
+      <code class="computeroutput"><span class="identifier">time</span></code> declaration to time the
+      target we build:
+    </p>
+<pre class="programlisting"><a class="co" name="bbv2.examples.time_action.c0" href="examples.html#bbv2.examples.time_action.c1"><img src="../../doc/src/images/callouts/1.png" alt="1" border="0"></a><span class="keyword">import</span> <span class="identifier">testing</span> <span class="special">;</span>
+
+<a class="co" name="bbv2.examples.time_action.c2" href="examples.html#bbv2.examples.time_action.c3"><img src="../../doc/src/images/callouts/2.png" alt="2" border="0"></a><span class="identifier">exe</span> <span class="identifier">hello</span> <span class="special">:</span> <span class="identifier">hello</span><span class="special">.</span><span class="identifier">cpp</span> <span class="special">;</span>
+
+<a class="co" name="bbv2.examples.time_action.c4" href="examples.html#bbv2.examples.time_action.c5"><img src="../../doc/src/images/callouts/3.png" alt="3" border="0"></a><span class="identifier">time</span> <span class="identifier">hello</span><span class="special">.</span><span class="identifier">time</span> <span class="special">:</span> <span class="identifier">hello</span> <span class="special">;</span>
+</pre>
+<div class="calloutlist"><table border="0" summary="Callout list">
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="bbv2.examples.time_action.c1"></a><a href="#bbv2.examples.time_action.c0"><img src="../../doc/src/images/callouts/1.png" alt="1" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          Import the time rule from the testing module.
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="bbv2.examples.time_action.c3"></a><a href="#bbv2.examples.time_action.c2"><img src="../../doc/src/images/callouts/2.png" alt="2" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          The target we are timing just builds a hello program.
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="bbv2.examples.time_action.c5"></a><a href="#bbv2.examples.time_action.c4"><img src="../../doc/src/images/callouts/3.png" alt="3" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          This target records the time to build the <code class="computeroutput"><span class="identifier">hello</span></code>
+          target.
+        </p></td>
+</tr>
+</table></div>
+<p>
+      Building the example yields:
+    </p>
+<pre class="programlisting">&gt; cd /example/time
+&gt; b2
+...found 9 targets...
+...updating 6 targets...
+common.mkdir bin
+common.mkdir bin/clang-darwin-4.2.1
+common.mkdir bin/clang-darwin-4.2.1/debug
+clang-darwin.compile.c++ bin/clang-darwin-4.2.1/debug/hello.o
+clang-darwin.link bin/clang-darwin-4.2.1/debug/hello
+testing.time bin/clang-darwin-4.2.1/debug/hello.time
+user: [hello] 0.013509
+system: [hello] 0.045641
+clock: [hello] 0.000000
+...updated 6 targets...
+</pre>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        The actual paths in the <code class="computeroutput">bin</code> sub-directory will depend on your
+        toolset.
+      </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="bbv2.examples.build_variants"></a><a class="link" href="examples.html#bbv2.examples.build_variants" title="Build Variants">Build Variants</a>
+</h3></div></div></div>
+<p>
+      This example shows how user can create his own build variants. Two variants
+      are defined: "crazy", which is just a random combination of properties,
+      and "super-release", which is inherited from "release",
+      and differs by a single define.
+    </p>
+<p>
+      Files:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <a href="../../example/variant/a.cpp" target="_top">a.cpp</a>
+        </li>
+<li class="listitem">
+          <a href="../../example/variant/jamroot.jam" target="_top">jamroot.jam</a>
+        </li>
+<li class="listitem">
+          <a href="../../example/variant/jamfile.jam" target="_top">jamfile.jam</a>
+        </li>
+<li class="listitem">
+          <a href="../../example/variant/libs/jamfile.jam" target="_top">libs/jamfile.jam</a>
+        </li>
+<li class="listitem">
+          <a href="../../example/variant/libs/l.cpp" target="_top">libs/l.cpp</a>
+        </li>
+</ul></div>
+<p>
+      In this project the <code class="computeroutput"><span class="identifier">jamroot</span><span class="special">.</span><span class="identifier">jam</span></code> specifies
+      the custom build variants and the targets are specified in the two <code class="computeroutput"><span class="identifier">jamfile</span><span class="special">.</span><span class="identifier">jam</span></code> files.
+    </p>
+<pre class="programlisting"><a class="co" name="bbv2.examples.build_variants.c0" href="examples.html#bbv2.examples.build_variants.c1"><img src="../../doc/src/images/callouts/1.png" alt="1" border="0"></a><span class="identifier">variant</span> <span class="identifier">crazy</span> <span class="special">:</span> <span class="special">&lt;</span><span class="identifier">optimization</span><span class="special">&gt;</span><span class="identifier">speed</span> <span class="special">&lt;</span><span class="identifier">inlining</span><span class="special">&gt;</span><span class="identifier">off</span>
+                <span class="special">&lt;</span><span class="identifier">debug</span><span class="special">-</span><span class="identifier">symbols</span><span class="special">&gt;</span><span class="identifier">on</span> <span class="special">&lt;</span><span class="identifier">profiling</span><span class="special">&gt;</span><span class="identifier">on</span> <span class="special">;</span>
+
+<a class="co" name="bbv2.examples.build_variants.c2" href="examples.html#bbv2.examples.build_variants.c3"><img src="../../doc/src/images/callouts/2.png" alt="2" border="0"></a><span class="identifier">variant</span> <span class="identifier">super_release</span> <span class="special">:</span> <span class="identifier">release</span> <span class="special">:</span> <span class="special">&lt;</span><span class="identifier">define</span><span class="special">&gt;</span><span class="identifier">USE_ASM</span> <span class="special">;</span>
+</pre>
+<div class="calloutlist"><table border="0" summary="Callout list">
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="bbv2.examples.build_variants.c1"></a><a href="#bbv2.examples.build_variants.c0"><img src="../../doc/src/images/callouts/1.png" alt="1" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          Define a build variant which is just combination of four properties.
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="bbv2.examples.build_variants.c3"></a><a href="#bbv2.examples.build_variants.c2"><img src="../../doc/src/images/callouts/2.png" alt="2" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          Define a built variant inherited from 'release'. It defines one new property
+          and gets all properties from the parent <code class="computeroutput"><span class="identifier">release</span></code>
+          variant.
+        </p></td>
+</tr>
+</table></div>
+<p>
+      The top-level <code class="computeroutput"><span class="identifier">jamfile</span><span class="special">.</span><span class="identifier">jam</span></code>:
+    </p>
+<pre class="programlisting"><a class="co" name="bbv2.examples.build_variants.c4" href="examples.html#bbv2.examples.build_variants.c5"><img src="../../doc/src/images/callouts/1.png" alt="1" border="0"></a><span class="identifier">project</span> <span class="special">:</span> <span class="identifier">default</span><span class="special">-</span><span class="identifier">build</span> <span class="identifier">crazy</span> <span class="identifier">super_release</span> <span class="special">;</span>
+
+<a class="co" name="bbv2.examples.build_variants.c6" href="examples.html#bbv2.examples.build_variants.c7"><img src="../../doc/src/images/callouts/2.png" alt="2" border="0"></a><span class="identifier">exe</span> <span class="identifier">a</span> <span class="special">:</span> <span class="identifier">a</span><span class="special">.</span><span class="identifier">cpp</span> <span class="identifier">libs</span><span class="special">//</span><span class="identifier">l</span> <span class="special">;</span>
+</pre>
+<div class="calloutlist"><table border="0" summary="Callout list">
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="bbv2.examples.build_variants.c5"></a><a href="#bbv2.examples.build_variants.c4"><img src="../../doc/src/images/callouts/1.png" alt="1" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          By default, build the project with the two variants we have defined in
+          jamroot.jam.
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="bbv2.examples.build_variants.c7"></a><a href="#bbv2.examples.build_variants.c6"><img src="../../doc/src/images/callouts/2.png" alt="2" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          We build an <code class="computeroutput"><span class="identifier">a</span></code> exe target
+          that links a built library. The library builds with the propagated properties
+          of the exe.
+        </p></td>
+</tr>
+</table></div>
+<p>
+      And the library <code class="computeroutput"><span class="identifier">jamfile</span><span class="special">.</span><span class="identifier">jam</span></code> that the top-level <code class="computeroutput"><span class="identifier">jamfile</span><span class="special">.</span><span class="identifier">jam</span></code> refers
+      to:
+    </p>
+<pre class="programlisting"><a class="co" name="bbv2.examples.build_variants.c8" href="examples.html#bbv2.examples.build_variants.c9"><img src="../../doc/src/images/callouts/1.png" alt="1" border="0"></a><span class="identifier">lib</span> <span class="identifier">l</span> <span class="special">:</span> <span class="identifier">l</span><span class="special">.</span><span class="identifier">cpp</span> <span class="special">;</span>
+</pre>
+<div class="calloutlist"><table border="0" summary="Callout list"><tr>
+<td width="5%" valign="top" align="left"><p><a name="bbv2.examples.build_variants.c9"></a><a href="#bbv2.examples.build_variants.c8"><img src="../../doc/src/images/callouts/1.png" alt="1" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          The library <code class="computeroutput"><span class="identifier">l</span></code> just needs
+          the sources. By default it will be a shared library.
+        </p></td>
+</tr></table></div>
+<p>
+      Building the example yields:
+    </p>
+<pre class="programlisting">&gt; cd /example/variant
+&gt; b2
+...found 20 targets...
+...updating 16 targets...
+common.mkdir bin
+common.mkdir bin/clang-darwin-4.2.1
+common.mkdir bin/clang-darwin-4.2.1/crazy
+clang-darwin.compile.c++ bin/clang-darwin-4.2.1/crazy/a.o
+common.mkdir libs/bin
+common.mkdir libs/bin/clang-darwin-4.2.1
+common.mkdir libs/bin/clang-darwin-4.2.1/crazy
+clang-darwin.compile.c++ libs/bin/clang-darwin-4.2.1/crazy/l.o
+clang-darwin.link.dll libs/bin/clang-darwin-4.2.1/crazy/libl.dylib
+clang-darwin.link bin/clang-darwin-4.2.1/crazy/a
+common.mkdir bin/clang-darwin-4.2.1/super_release
+clang-darwin.compile.c++ bin/clang-darwin-4.2.1/super_release/a.o
+common.mkdir libs/bin/clang-darwin-4.2.1/super_release
+clang-darwin.compile.c++ libs/bin/clang-darwin-4.2.1/super_release/l.o
+clang-darwin.link.dll libs/bin/clang-darwin-4.2.1/super_release/libl.dylib
+clang-darwin.link bin/clang-darwin-4.2.1/super_release/a
+...updated 16 targets...
+</pre>
+<p>
+      As specified in the top-level <code class="computeroutput">jamfile.jam</code> both custom variants
+      where built by default. Once can override that by specifying the variant one
+      wants to build directly on the command line with a <code class="computeroutput">variant=super_release</code>.
+      Or just with a <code class="computeroutput">super_release</code> as variants can be referred to by
+      their name only. For example using that argument yields:
+    </p>
+<pre class="programlisting">&gt; cd /example/variant
+&gt; b2 super_release
+...found 14 targets...
+...updating 10 targets...
+common.mkdir bin
+common.mkdir bin/clang-darwin-4.2.1
+common.mkdir bin/clang-darwin-4.2.1/super_release
+clang-darwin.compile.c++ bin/clang-darwin-4.2.1/super_release/a.o
+common.mkdir libs/bin
+common.mkdir libs/bin/clang-darwin-4.2.1
+common.mkdir libs/bin/clang-darwin-4.2.1/super_release
+clang-darwin.compile.c++ libs/bin/clang-darwin-4.2.1/super_release/l.o
+clang-darwin.link.dll libs/bin/clang-darwin-4.2.1/super_release/libl.dylib
+clang-darwin.link bin/clang-darwin-4.2.1/super_release/a
+...updated 10 targets...
+</pre>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        The actual paths in the <code class="computeroutput">bin</code> sub-directory will depend on your
+        toolset.
+      </p></td></tr>
+</table></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="bbv2/faq.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="bbv2.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="jam.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

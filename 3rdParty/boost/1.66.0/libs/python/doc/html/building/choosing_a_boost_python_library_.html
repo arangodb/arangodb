@@ -1,0 +1,128 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Choosing a Boost.Python Library Binary</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python">
+<link rel="up" href="../building.html" title="Chapter&#160;1.&#160;Building and Testing">
+<link rel="prev" href="configuring_boost_build.html" title="Configuring Boost.Build">
+<link rel="next" href="include_issues.html" title="#include Issues">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="configuring_boost_build.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../building.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="include_issues.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="building.choosing_a_boost_python_library_"></a><a class="link" href="choosing_a_boost_python_library_.html" title="Choosing a Boost.Python Library Binary">Choosing a
+      Boost.Python Library Binary</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="choosing_a_boost_python_library_.html#building.choosing_a_boost_python_library_.the_dynamic_binary">The
+        Dynamic Binary</a></span></dt>
+<dt><span class="section"><a href="choosing_a_boost_python_library_.html#building.choosing_a_boost_python_library_.the_static_binary">The
+        Static Binary</a></span></dt>
+</dl></div>
+<p>
+        If&#8212;instead of letting Boost.Build construct and link with the right libraries
+        automatically&#8212;you choose to use a pre-built Boost.Python library, you'll
+        need to think about which one to link with. The Boost.Python binary comes
+        in both static and dynamic flavors. Take care to choose the right flavor
+        for your application. <a href="#ftn.building.choosing_a_boost_python_library_.f0" class="footnote" name="building.choosing_a_boost_python_library_.f0"><sup class="footnote">[3]</sup></a>
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="building.choosing_a_boost_python_library_.the_dynamic_binary"></a><a class="link" href="choosing_a_boost_python_library_.html#building.choosing_a_boost_python_library_.the_dynamic_binary" title="The Dynamic Binary">The
+        Dynamic Binary</a>
+</h4></div></div></div>
+<p>
+          The dynamic library is the safest and most-versatile choice:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              A single copy of the library code is used by all extension modules
+              built with a given toolset. <a href="#ftn.building.choosing_a_boost_python_library_.the_dynamic_binary.f0" class="footnote" name="building.choosing_a_boost_python_library_.the_dynamic_binary.f0"><sup class="footnote">[4]</sup></a>
+            </li>
+<li class="listitem">
+              The library contains a type conversion registry. Because one registry
+              is shared among all extension modules, instances of a class exposed
+              to Python in one dynamically-loaded extension module can be passed
+              to functions exposed in another such module.
+            </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="building.choosing_a_boost_python_library_.the_static_binary"></a><a class="link" href="choosing_a_boost_python_library_.html#building.choosing_a_boost_python_library_.the_static_binary" title="The Static Binary">The
+        Static Binary</a>
+</h4></div></div></div>
+<p>
+          It might be appropriate to use the static Boost.Python library in any of
+          the following cases:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              You are <a href="https://docs.python.org/2/extending/extending.html" target="_top">extending</a>
+              python and the types exposed in your dynamically-loaded extension module
+              don't need to be used by any other Boost.Python extension modules,
+              and you don't care if the core library code is duplicated among them.
+            </li>
+<li class="listitem">
+              You are <a href="https://docs.python.org/2/extending/embedding.html" target="_top">embedding</a>
+              python in your application and either:
+              <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
+<li class="listitem">
+                    You are targeting a Unix variant OS other than MacOS or AIX,
+                    where the dynamically-loaded extension modules can &#8220;see&#8221;
+                    the Boost.Python library symbols that are part of the executable.
+                  </li>
+<li class="listitem">
+                    Or, you have statically linked some Boost.Python extension modules
+                    into your application and you don't care if any dynamically-loaded
+                    Boost.Python extension modules are able to use the types exposed
+                    by your statically-linked extension modules (and vice-versa).
+                  </li>
+</ul></div>
+            </li>
+</ul></div>
+</div>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.building.choosing_a_boost_python_library_.f0" class="footnote"><p><a href="#building.choosing_a_boost_python_library_.f0" class="para"><sup class="para">[3] </sup></a>
+          Information about how to identify the static and dynamic builds of Boost.Python
+          on <a href="http://boost.org/more/getting_started/windows.html#library-naming" target="_top">Windows</a>
+          / <a href="http://boost.org/more/getting_started/unix-variants.html#library-naming" target="_top">Unix
+          variants</a>
+        </p></div>
+<div id="ftn.building.choosing_a_boost_python_library_.the_dynamic_binary.f0" class="footnote"><p><a href="#building.choosing_a_boost_python_library_.the_dynamic_binary.f0" class="para"><sup class="para">[4] </sup></a>
+                Because of the way most *nix platforms share symbols among dynamically-loaded
+                objects, I'm not certain that extension modules built with different
+                compiler toolsets will always use different copies of the Boost.Python
+                library when loaded into the same Python instance. Not using different
+                libraries could be a good thing if the compilers have compatible
+                ABIs, because extension modules built with the two libraries would
+                be interoperable. Otherwise, it could spell disaster, since an extension
+                module and the Boost.Python library would have different ideas of
+                such things as class layout. I would appreciate someone doing the
+                experiment to find out what happens.
+              </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2015 David
+      Abrahams, Stefan Seefeld<br>Copyright &#169; 2002-2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="configuring_boost_build.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../building.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="include_issues.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

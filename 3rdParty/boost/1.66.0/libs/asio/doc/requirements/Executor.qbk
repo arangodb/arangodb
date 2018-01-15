@@ -1,0 +1,141 @@
+[/
+ / Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:Executor1 Executor requirements]
+
+The library describes a standard set of requirements for ['executors]. A type
+meeting the `Executor` requirements embodies a set of rules for determining how
+submitted function objects are to be executed.
+
+A type `X` meets the `Executor` requirements if it satisfies the requirements of
+`CopyConstructible` (C++Std [copyconstructible]) and `Destructible` (C++Std
+[destructible]), as well as the additional requirements listed below.
+
+No constructor, comparison operator, copy operation, move operation, swap
+operation, or member functions `context`, `on_work_started`, and
+`on_work_finished` on these types shall exit via an exception.
+
+The executor copy constructor, comparison operators, and other member functions
+defined in these requirements shall not introduce data races as a result of
+concurrent calls to those functions from different threads.
+
+Let `ctx` be the execution context returned by the executor's `context()`
+member function. An executor becomes ['invalid] when the first call to
+`ctx.shutdown()` returns. The effect of calling `on_work_started`,
+`on_work_finished`, `dispatch`, `post`, or `defer` on an invalid executor is
+undefined. [inline_note The copy constructor, comparison operators, and
+`context()` member function continue to remain valid until `ctx` is destroyed.]
+
+In the table below, `x1` and `x2` denote (possibly const) values of type `X`,
+`mx1` denotes an xvalue of type `X`, `f` denotes a `MoveConstructible` (C++Std
+[moveconstructible]) function object callable with zero arguments, `a` denotes
+a (possibly const) value of type `A` meeting the `Allocator` requirements
+(C++Std [allocator.requirements]), and `u` denotes an identifier.
+
+[table Executor requirements
+  [[expression] [type] [assertion/note\npre/post-conditions]]
+  [
+    [`X u(x1);`]
+    []
+    [Shall not exit via an exception.\n
+     \n
+     post: `u == x1` and
+     `std::addressof(u.context()) == std::addressof(x1.context()).`]
+  ]
+  [
+    [`X u(mx1);`]
+    []
+    [Shall not exit via an exception.\n
+     \n
+     post: `u` equals the prior value of `mx1` and
+     `std::addressof(u.context())` equals the prior value of
+     `std::addressof(mx1.context())`.]
+  ]
+  [
+    [`x1 == x2`]
+    [`bool`]
+    [ Returns `true` only if `x1` and `x2` can be interchanged with identical
+     effects in any of the expressions defined in these type requirements.
+     [inline_note Returning `false` does not necessarily imply that the effects
+     are not identical.]\n
+     \n
+     `operator==` shall be reflexive, symmetric, and transitive, and shall not
+     exit via an exception.]
+  ]
+  [
+    [`x1 != x2`]
+    [`bool`]
+    [Same as `!(x1 == x2)`.]
+  ]
+  [
+    [`x1.context()`]
+    [`execution_context&`, or `E&` where `E` is a type that satifisfies the
+     [link boost_asio.reference.ExecutionContext `ExecutionContext`] requirements.]
+    [Shall not exit via an exception.\n
+     \n
+     The comparison operators and member functions defined in these
+     requirements shall not alter the reference returned by this function.]
+  ]
+  [
+    [`x1.on_work_started()`]
+    []
+    [Shall not exit via an exception.]
+  ]
+  [
+    [`x1.on_work_finished()`]
+    []
+    [Shall not exit via an exception.\n
+     \n
+     Precondition: A preceding call `x2.on_work_started()` where `x1 == x2`.]
+  ]
+  [
+    [`x1.dispatch(std::move(f),a)`]
+    []
+    [Effects: Creates an object `f1` initialized with
+     [^['DECAY_COPY]]`(forward<Func>(f))` (C++Std \[thread.decaycopy\]) in the
+     current thread of execution . Calls `f1()` at most once. The executor may
+     block forward progress of the caller until `f1()` finishes execution.\n
+     \n
+     Executor implementations should use the supplied allocator to allocate any
+     memory required to store the function object. Prior to invoking the
+     function object, the executor shall deallocate any memory allocated.
+     [inline_note Executors defined in this Technical Specification always use
+     the supplied allocator unless otherwise specified.]\n
+     \n
+     Synchronization: The invocation of `dispatch` synchronizes with (C++Std
+     \[intro.multithread\]) the invocation of `f1`.]
+  ]
+  [
+    [`x1.post(std::move(f),a)`\n
+     `x1.defer(std::move(f),a)`]
+    []
+    [Effects: Creates an object `f1` initialized with
+     [^['DECAY_COPY]]`(forward<Func>(f))` in the current thread of execution.
+     Calls `f1()` at most once. The executor shall not block forward progress
+     of the caller pending completion of `f1()`.\n
+     \n
+     Executor implementations should use the supplied allocator to allocate any
+     memory required to store the function object. Prior to invoking the
+     function object, the executor shall deallocate any memory allocated.
+     [inline_note Executors defined in this Technical Specification always use
+     the supplied allocator unless otherwise specified.]\n
+     \n
+     Synchronization: The invocation of `post` or `defer` synchronizes with
+     (C++Std \[intro.multithread\]) the invocation of `f1`.\n
+     \n
+     [inline_note Although the requirements placed on `defer` are identical to
+     `post`, the use of `post` conveys a preference that the caller ['does not]
+     block the first step of [^f1]'s progress, whereas `defer` conveys a
+     preference that the caller ['does] block the first step of [^f1]. One use
+     of `defer` is to convey the intention of the caller that [^f1] is a
+     continuation of the current call context. The executor may use this
+     information to optimize or otherwise adjust the way in which `f1` is
+     invoked.]]
+  ]
+]
+
+[endsect]

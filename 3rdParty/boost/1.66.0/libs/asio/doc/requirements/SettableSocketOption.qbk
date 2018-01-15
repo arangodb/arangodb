@@ -1,0 +1,54 @@
+[/
+ / Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:SettableSocketOption Settable socket option requirements]
+
+A type `X` meets the `SettableSocketOption` requirements if it satisfies the
+requirements listed below.
+
+In the table below, `a` denotes a (possibly const) value of type `X`, `p`
+denotes a (possibly const) value that meets the [link boost_asio.reference.Protocol
+`Protocol`] requirements, and `u` denotes an identifier.
+
+[table SettableSocketOption requirements for extensible implementations
+  [[expression] [type] [assertion/note\npre/post-conditions]]
+  [
+    [`a.level(p)`]
+    [`int`]
+    [
+      Returns a value suitable for passing as the /level/ argument to __POSIX__
+      __setsockopt__ (or equivalent).
+    ]
+  ]
+  [
+    [`a.name(p)`]
+    [`int`]
+    [
+      Returns a value suitable for passing as the /option_name/ argument to
+      __POSIX__ __setsockopt__ (or equivalent).
+    ]
+  ]
+  [
+    [`a.data(p)`]
+    [`const void*`]
+    [
+      Returns a pointer suitable for passing as the /option_value/ argument to
+      __POSIX__ __setsockopt__ (or equivalent).
+    ]
+  ]
+  [
+    [`a.size(p)`]
+    [`size_t`]
+    [
+      Returns a value suitable for passing as the /option_len/ argument to
+      __POSIX__ __setsockopt__ (or equivalent), after appropriate integer
+      conversion has been performed.
+    ]
+  ]
+]
+
+[endsect]

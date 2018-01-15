@@ -1,0 +1,122 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>The semantics</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Optional">
+<link rel="up" href="../design_overview.html" title="Design Overview">
+<link rel="prev" href="../design_overview.html" title="Design Overview">
+<link rel="next" href="the_interface.html" title="The Interface">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../design_overview.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../design_overview.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="the_interface.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_optional.tutorial.design_overview.the_semantics"></a><a class="link" href="the_semantics.html" title="The semantics">The
+        semantics</a>
+</h4></div></div></div>
+<p>
+          Objects of type <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> are intended to be used in places where
+          objects of type <code class="computeroutput"><span class="identifier">T</span></code> would
+          but which might be uninitialized. Hence, <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>'s purpose is to formalize the additional
+          possibly uninitialized state. From the perspective of this role, <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+          can have the same operational semantics of <code class="computeroutput"><span class="identifier">T</span></code>
+          plus the additional semantics corresponding to this special state. As such,
+          <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+          could be thought of as a <span class="emphasis"><em>supertype</em></span> of <code class="computeroutput"><span class="identifier">T</span></code>. Of course, we can't do that in C++,
+          so we need to compose the desired semantics using a different mechanism.
+          Doing it the other way around, that is, making <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> a <span class="emphasis"><em>subtype</em></span> of
+          <code class="computeroutput"><span class="identifier">T</span></code> is not only conceptually
+          wrong but also impractical: it is not allowed to derive from a non-class
+          type, such as a built-in type.
+        </p>
+<p>
+          We can draw from the purpose of <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> the required basic semantics:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Default Construction:</strong></span> To introduce
+              a formally uninitialized wrapped object.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Direct Value Construction via copy:</strong></span>
+              To introduce a formally initialized wrapped object whose value is obtained
+              as a copy of some object.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Deep Copy Construction:</strong></span> To obtain
+              a new yet equivalent wrapped object.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Direct Value Assignment (upon initialized):</strong></span>
+              To assign a value to the wrapped object.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Direct Value Assignment (upon uninitialized):</strong></span>
+              To initialize the wrapped object with a value obtained as a copy of
+              some object.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Assignment (upon initialized):</strong></span> To
+              assign to the wrapped object the value of another wrapped object.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Assignment (upon uninitialized):</strong></span> To
+              initialize the wrapped object with value of another wrapped object.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Deep Relational Operations (when supported by
+              the type T):</strong></span> To compare wrapped object values taking into
+              account the presence of uninitialized states.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Value access:</strong></span> To unwrap the wrapped
+              object.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Initialization state query:</strong></span> To determine
+              if the object is formally initialized or not.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Swap:</strong></span> To exchange wrapped objects.
+              (with whatever exception safety guarantees are provided by <code class="computeroutput"><span class="identifier">T</span></code>'s swap).
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>De-initialization:</strong></span> To release the
+              wrapped object (if any) and leave the wrapper in the uninitialized
+              state.
+            </li>
+</ul></div>
+<p>
+          Additional operations are useful, such as converting constructors and converting
+          assignments, in-place construction and assignment, and safe value access
+          via a pointer to the wrapped object or null.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2007 Fernando Luis Cacciola Carballal<br>Copyright &#169; 2014-2017 Andrzej
+      Krzemie&#324;ski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../design_overview.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../design_overview.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="the_interface.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

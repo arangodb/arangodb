@@ -1,0 +1,195 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>zlib::deflate_stream::write</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../boost__beast__zlib__deflate_stream.html" title="zlib::deflate_stream">
+<link rel="prev" href="upper_bound.html" title="zlib::deflate_stream::upper_bound">
+<link rel="next" href="../boost__beast__zlib__deflate_upper_bound.html" title="zlib::deflate_upper_bound">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="upper_bound.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__beast__zlib__deflate_stream.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost__beast__zlib__deflate_upper_bound.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="beast.ref.boost__beast__zlib__deflate_stream.write"></a><a class="link" href="write.html" title="zlib::deflate_stream::write">zlib::deflate_stream::write</a>
+</h5></div></div></div>
+<p>
+          <a class="indexterm" name="idp127937744"></a>
+Compress input and write output.
+        </p>
+<h6>
+<a name="beast.ref.boost__beast__zlib__deflate_stream.write.h0"></a>
+          <span class="phrase"><a name="beast.ref.boost__beast__zlib__deflate_stream.write.synopsis"></a></span><a class="link" href="write.html#beast.ref.boost__beast__zlib__deflate_stream.write.synopsis">Synopsis</a>
+        </h6>
+<pre class="programlisting"><span class="keyword">void</span>
+<span class="identifier">write</span><span class="special">(</span>
+    <span class="identifier">z_params</span><span class="special">&amp;</span> <span class="identifier">zs</span><span class="special">,</span>
+    <span class="identifier">Flush</span> <span class="identifier">flush</span><span class="special">,</span>
+    <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+</pre>
+<h6>
+<a name="beast.ref.boost__beast__zlib__deflate_stream.write.h1"></a>
+          <span class="phrase"><a name="beast.ref.boost__beast__zlib__deflate_stream.write.description"></a></span><a class="link" href="write.html#beast.ref.boost__beast__zlib__deflate_stream.write.description">Description</a>
+        </h6>
+<p>
+          This function compresses as much data as possible, and stops when the input
+          buffer becomes empty or the output buffer becomes full. It may introduce
+          some output latency (reading input without producing any output) except
+          when forced to flush.
+        </p>
+<p>
+          In each call, one or both of these actions are performed:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              Compress more input starting at <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">next_in</span></code>
+              and update <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">next_in</span></code> and <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_in</span></code>
+              accordingly. If not all input can be processed (because there is not
+              enough room in the output buffer), <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">next_in</span></code>
+              and <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_in</span></code> are updated and processing
+              will resume at this point for the next call.
+            </li>
+<li class="listitem">
+              Provide more output starting at <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">next_out</span></code>
+              and update <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">next_out</span></code> and <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_out</span></code>
+              accordingly. This action is forced if the parameter flush is not <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">none</span></code>. Forcing flush frequently degrades
+              the compression ratio, so this parameter should be set only when necessary
+              (in interactive applications). Some output may be provided even if
+              flush is not set.
+            </li>
+</ul></div>
+<p>
+          Before the call, the application must ensure that at least one of the actions
+          is possible, by providing more input and/or consuming more output, and
+          updating <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_in</span></code> or <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_out</span></code>
+          accordingly; <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_out</span></code> should never be zero before
+          the call. The application can consume the compressed output when it wants,
+          for example when the output buffer is full (<code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_out</span>
+          <span class="special">==</span> <span class="number">0</span></code>),
+          or after each call of <code class="computeroutput"><span class="identifier">write</span></code>.
+          If <code class="computeroutput"><span class="identifier">write</span></code> returns no error
+          with zero <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_out</span></code>, it must be called again after
+          making room in the output buffer because there might be more output pending.
+        </p>
+<p>
+          Normally the parameter flush is set to <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">none</span></code>,
+          which allows deflate to decide how much data to accumulate before producing
+          output, in order to maximize compression.
+        </p>
+<p>
+          If the parameter flush is set to <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">sync</span></code>,
+          all pending output is flushed to the output buffer and the output is aligned
+          on a byte boundary, so that the decompressor can get all input data available
+          so far. In particular <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_in</span></code>
+          is zero after the call if enough output space has been provided before
+          the call. Flushing may degrade compression for some compression algorithms
+          and so it should be used only when necessary. This completes the current
+          deflate block and follows it with an empty stored block that is three bits
+          plus filler bits to the next byte, followed by the four bytes <code class="computeroutput"><span class="special">{</span> <span class="number">0x00</span><span class="special">,</span>
+          <span class="number">0x00</span> <span class="number">0xff</span>
+          <span class="number">0xff</span> <span class="special">}</span></code>.
+        </p>
+<p>
+          If flush is set to <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">partial</span></code>,
+          all pending output is flushed to the output buffer, but the output is not
+          aligned to a byte boundary. All of the input data so far will be available
+          to the decompressor, as for Z_SYNC_FLUSH. This completes the current deflate
+          block and follows it with an empty fixed codes block that is 10 bits long.
+          This assures that enough bytes are output in order for the decompressor
+          to finish the block before the empty fixed code block.
+        </p>
+<p>
+          If flush is set to <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">block</span></code>,
+          a deflate block is completed and emitted, as for <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">sync</span></code>,
+          but the output is not aligned on a byte boundary, and up to seven bits
+          of the current block are held to be written as the next byte after the
+          next deflate block is completed. In this case, the decompressor may not
+          be provided enough bits at this point in order to complete decompression
+          of the data provided so far to the compressor. It may need to wait for
+          the next block to be emitted. This is for advanced applications that need
+          to control the emission of deflate blocks.
+        </p>
+<p>
+          If flush is set to <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">full</span></code>,
+          all output is flushed as with <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">sync</span></code>,
+          and the compression state is reset so that decompression can restart from
+          this point if previous compressed data has been damaged or if random access
+          is desired. Using <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">full</span></code>
+          too often can seriously degrade compression.
+        </p>
+<p>
+          If <code class="computeroutput"><span class="identifier">write</span></code> returns with
+          <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_out</span> <span class="special">==</span>
+          <span class="number">0</span></code>, this function must be called again
+          with the same value of the flush parameter and more output space (updated
+          <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_out</span></code>), until the flush is complete
+          (<code class="computeroutput"><span class="identifier">write</span></code> returns with non-zero
+          <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_out</span></code>). In the case of a <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">full</span></code>or <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">sync</span></code>,
+          make sure that <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_out</span></code> is greater than six to avoid
+          repeated flush markers due to <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_out</span>
+          <span class="special">==</span> <span class="number">0</span></code>
+          on return.
+        </p>
+<p>
+          If the parameter flush is set to <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">finish</span></code>,
+          pending input is processed, pending output is flushed and deflate returns
+          the error <code class="computeroutput"><span class="identifier">error</span><span class="special">::</span><span class="identifier">end_of_stream</span></code> if there was enough output
+          space; if deflate returns with no error, this function must be called again
+          with <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">finish</span></code> and more output space (updated
+          <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_out</span></code>) but no more input data, until
+          it returns the error <code class="computeroutput"><span class="identifier">error</span><span class="special">::</span><span class="identifier">end_of_stream</span></code>
+          or another error. After <code class="computeroutput"><span class="identifier">write</span></code>
+          has returned the <code class="computeroutput"><span class="identifier">error</span><span class="special">::</span><span class="identifier">end_of_stream</span></code>
+          error, the only possible operations on the stream are to reset or destroy.
+        </p>
+<p>
+          <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">finish</span></code> can be used immediately after
+          initialization if all the compression is to be done in a single step. In
+          this case, <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_out</span></code> must be at least value returned
+          by <code class="computeroutput"><span class="identifier">upper_bound</span></code> (see below).
+          Then <code class="computeroutput"><span class="identifier">write</span></code> is guaranteed
+          to return the <code class="computeroutput"><span class="identifier">error</span><span class="special">::</span><span class="identifier">end_of_stream</span></code> error. If not enough output
+          space is provided, deflate will not return <code class="computeroutput"><span class="identifier">error</span><span class="special">::</span><span class="identifier">end_of_stream</span></code>,
+          and it must be called again as described above.
+        </p>
+<p>
+          <code class="computeroutput"><span class="identifier">write</span></code> returns no error
+          if some progress has been made (more input processed or more output produced),
+          <code class="computeroutput"><span class="identifier">error</span><span class="special">::</span><span class="identifier">end_of_stream</span></code> if all input has been consumed
+          and all output has been produced (only when flush is set to <code class="computeroutput"><span class="identifier">Flush</span><span class="special">::</span><span class="identifier">finish</span></code>), <code class="computeroutput"><span class="identifier">error</span><span class="special">::</span><span class="identifier">stream_error</span></code>
+          if the stream state was inconsistent (for example if <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">next_in</span></code>
+          or <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">next_out</span></code> was <code class="computeroutput"><span class="keyword">nullptr</span></code>),
+          <code class="computeroutput"><span class="identifier">error</span><span class="special">::</span><span class="identifier">need_buffers</span></code> if no progress is possible
+          (for example <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_in</span></code> or <code class="computeroutput"><span class="identifier">zs</span><span class="special">.</span><span class="identifier">avail_out</span></code>
+          was zero). Note that <code class="computeroutput"><span class="identifier">error</span><span class="special">::</span><span class="identifier">need_buffers</span></code>
+          is not fatal, and <code class="computeroutput"><span class="identifier">write</span></code>
+          can be called again with more input and more output space to continue compressing.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="upper_bound.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__beast__zlib__deflate_stream.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost__beast__zlib__deflate_upper_bound.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

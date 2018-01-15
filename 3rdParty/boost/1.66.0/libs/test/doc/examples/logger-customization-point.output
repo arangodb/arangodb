@@ -1,0 +1,12 @@
+//[example_output
+> logger-customization-point --log_level=all
+Running 1 test case...
+Entering test module "logger-customization-point"
+test.cpp(36): Entering test case "test1"
+test.cpp(39): error: in "test1": check t == 11 has failed [** value of user_defined_type is 10 ** != 11]
+test.cpp(43): info: check t2 == 11 has passed
+test.cpp(36): Leaving test case "test1"; testing time: 125us
+Leaving test module "logger-example-customization-point"; testing time: 157us
+
+*** 1 failure is detected in the test module "logger-customization-point"
+//]

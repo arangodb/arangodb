@@ -1,0 +1,800 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template flat_multiset</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../boost_container_header_reference.html#header.boost.container.flat_set_hpp" title="Header &lt;boost/container/flat_set.hpp&gt;">
+<link rel="prev" href="flat_set.html" title="Class template flat_set">
+<link rel="next" href="pmr/flat_set_of.html" title="Struct template flat_set_of">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="flat_set.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_container_header_reference.html#header.boost.container.flat_set_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="pmr/flat_set_of.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.container.flat_multiset"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template flat_multiset</span></h2>
+<p>boost::container::flat_multiset</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../boost_container_header_reference.html#header.boost.container.flat_set_hpp" title="Header &lt;boost/container/flat_set.hpp&gt;">boost/container/flat_set.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Key<span class="special">,</span> <span class="keyword">typename</span> Compare <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">less</span><span class="special">&lt;</span><span class="identifier">Key</span><span class="special">&gt;</span><span class="special">,</span> 
+         <span class="keyword">typename</span> AllocatorOrContainer <span class="special">=</span> <a class="link" href="new_allocator.html" title="Class template new_allocator">new_allocator</a><span class="special">&lt;</span><span class="identifier">Key</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="identifier">Key</span>                                                    <a name="boost.container.flat_multiset.key_type"></a><span class="identifier">key_type</span><span class="special">;</span>              
+  <span class="keyword">typedef</span> <span class="identifier">Compare</span>                                                <a name="boost.container.flat_multiset.key_compare"></a><span class="identifier">key_compare</span><span class="special">;</span>           
+  <span class="keyword">typedef</span> <span class="identifier">Key</span>                                                    <a name="boost.container.flat_multiset.value_type"></a><span class="identifier">value_type</span><span class="special">;</span>            
+  <span class="keyword">typedef</span> <span class="identifier">implementation_defined</span>                                 <a name="boost.container.flat_multiset.sequence_type"></a><span class="identifier">sequence_type</span><span class="special">;</span>         
+  <span class="keyword">typedef</span> <span class="identifier">sequence_type</span><span class="special">::</span><span class="identifier">allocator_type</span>                          <a name="boost.container.flat_multiset.allocator_type"></a><span class="identifier">allocator_type</span><span class="special">;</span>        
+  <span class="keyword">typedef</span> <span class="special">::</span><a class="link" href="allocator_traits.html" title="Struct template allocator_traits">boost::container::allocator_traits</a><span class="special">&lt;</span> <span class="identifier">allocator_type</span> <span class="special">&gt;</span> <a name="boost.container.flat_multiset.allocator_traits_type"></a><span class="identifier">allocator_traits_type</span><span class="special">;</span> 
+  <span class="keyword">typedef</span> <span class="identifier">sequence_type</span><span class="special">::</span><span class="identifier">pointer</span>                                 <a name="boost.container.flat_multiset.pointer"></a><span class="identifier">pointer</span><span class="special">;</span>               
+  <span class="keyword">typedef</span> <span class="identifier">sequence_type</span><span class="special">::</span><span class="identifier">const_pointer</span>                           <a name="boost.container.flat_multiset.const_pointer"></a><span class="identifier">const_pointer</span><span class="special">;</span>         
+  <span class="keyword">typedef</span> <span class="identifier">sequence_type</span><span class="special">::</span><span class="identifier">reference</span>                               <a name="boost.container.flat_multiset.reference"></a><span class="identifier">reference</span><span class="special">;</span>             
+  <span class="keyword">typedef</span> <span class="identifier">sequence_type</span><span class="special">::</span><span class="identifier">const_reference</span>                         <a name="boost.container.flat_multiset.const_reference"></a><span class="identifier">const_reference</span><span class="special">;</span>       
+  <span class="keyword">typedef</span> <span class="identifier">sequence_type</span><span class="special">::</span><span class="identifier">size_type</span>                               <a name="boost.container.flat_multiset.size_type"></a><span class="identifier">size_type</span><span class="special">;</span>             
+  <span class="keyword">typedef</span> <span class="identifier">sequence_type</span><span class="special">::</span><span class="identifier">difference_type</span>                         <a name="boost.container.flat_multiset.difference_type"></a><span class="identifier">difference_type</span><span class="special">;</span>       
+  <span class="keyword">typedef</span> <span class="identifier">implementation_defined</span>                                 <a name="boost.container.flat_multiset.stored_allocator_type"></a><span class="identifier">stored_allocator_type</span><span class="special">;</span> 
+  <span class="keyword">typedef</span> <span class="identifier">implementation_defined</span>                                 <a name="boost.container.flat_multiset.value_compare"></a><span class="identifier">value_compare</span><span class="special">;</span>         
+  <span class="keyword">typedef</span> <span class="identifier">sequence_type</span><span class="special">::</span><span class="identifier">iterator</span>                                <a name="boost.container.flat_multiset.iterator"></a><span class="identifier">iterator</span><span class="special">;</span>              
+  <span class="keyword">typedef</span> <span class="identifier">sequence_type</span><span class="special">::</span><span class="identifier">const_iterator</span>                          <a name="boost.container.flat_multiset.const_iterator"></a><span class="identifier">const_iterator</span><span class="special">;</span>        
+  <span class="keyword">typedef</span> <span class="identifier">sequence_type</span><span class="special">::</span><span class="identifier">reverse_iterator</span>                        <a name="boost.container.flat_multiset.reverse_iterator"></a><span class="identifier">reverse_iterator</span><span class="special">;</span>      
+  <span class="keyword">typedef</span> <span class="identifier">sequence_type</span><span class="special">::</span><span class="identifier">const_reverse_iterator</span>                  <a name="boost.container.flat_multiset.const_reverse_iterator"></a><span class="identifier">const_reverse_iterator</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="flat_multiset.html#boost.container.flat_multisetconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="flat_multiset.html#idp61324784-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">(</span><span class="identifier">container_detail</span><span class="special">::</span><span class="identifier">is_nothrow_default_constructible</span><span class="special">&lt;</span> <span class="identifier">AllocatorOrContainer</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&amp;&amp;</span><span class="identifier">container_detail</span><span class="special">::</span><span class="identifier">is_nothrow_default_constructible</span><span class="special">&lt;</span> <span class="identifier">Compare</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="flat_multiset.html#idp61327344-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="flat_multiset.html#idp61330464-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html#idp61333584-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> <a class="link" href="flat_multiset.html#idp61337136-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><span class="identifier">InputIterator</span><span class="special">,</span> <span class="identifier">InputIterator</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+    <a class="link" href="flat_multiset.html#idp61341632-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><span class="identifier">InputIterator</span><span class="special">,</span> <span class="identifier">InputIterator</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+    <a class="link" href="flat_multiset.html#idp61346848-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><span class="identifier">InputIterator</span><span class="special">,</span> <span class="identifier">InputIterator</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+    <a class="link" href="flat_multiset.html#idp61352080-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><span class="identifier">InputIterator</span><span class="special">,</span> <span class="identifier">InputIterator</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span><span class="special">,</span> 
+                  <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+    <a class="link" href="flat_multiset.html#idp61358016-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">InputIterator</span><span class="special">,</span> <span class="identifier">InputIterator</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+    <a class="link" href="flat_multiset.html#idp61365792-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">InputIterator</span><span class="special">,</span> <span class="identifier">InputIterator</span><span class="special">,</span> 
+                  <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+    <a class="link" href="flat_multiset.html#idp61374288-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">InputIterator</span><span class="special">,</span> <span class="identifier">InputIterator</span><span class="special">,</span> 
+                  <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html#idp61383488-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html#idp61386336-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html#idp61390064-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html#idp61393792-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span><span class="special">,</span> 
+                <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html#idp61398224-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html#idp61403792-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span><span class="special">,</span> 
+                <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html#idp61410080-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span><span class="special">,</span> 
+                <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html#idp61417072-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html#idp61420336-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">container</span><span class="special">::</span><span class="identifier">container_detail</span><span class="special">::</span><span class="identifier">is_nothrow_move_constructible</span><span class="special">&lt;</span> <span class="identifier">Compare</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html#idp61424672-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html#idp61428656-bb"><span class="identifier">flat_multiset</span></a><span class="special">(</span><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> <a class="link" href="flat_multiset.html#idp61432544-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> 
+  <a class="link" href="flat_multiset.html#idp61436384-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">(</span><span class="special">(</span><span class="identifier">allocator_traits_type</span><span class="special">::</span><span class="identifier">propagate_on_container_move_assignment</span><span class="special">::</span><span class="identifier">value</span><span class="special">||</span><span class="identifier">allocator_traits_type</span><span class="special">::</span><span class="identifier">is_always_equal</span><span class="special">::</span><span class="identifier">value</span><span class="special">)</span><span class="special">&amp;&amp;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">container</span><span class="special">::</span><span class="identifier">container_detail</span><span class="special">::</span><span class="identifier">is_nothrow_move_assignable</span><span class="special">&lt;</span> <span class="identifier">Compare</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> <a class="link" href="flat_multiset.html#idp61440768-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="flat_multiset.html#idp61049840-bb">public member functions</a></span>
+  <span class="identifier">allocator_type</span> <a class="link" href="flat_multiset.html#idp61050400-bb"><span class="identifier">get_allocator</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">stored_allocator_type</span> <span class="special">&amp;</span> <a class="link" href="flat_multiset.html#idp61053408-bb"><span class="identifier">get_stored_allocator</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">stored_allocator_type</span> <span class="special">&amp;</span> <a class="link" href="flat_multiset.html#idp61058096-bb"><span class="identifier">get_stored_allocator</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="flat_multiset.html#idp61062800-bb"><span class="identifier">begin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="flat_multiset.html#idp61066640-bb"><span class="identifier">begin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="flat_multiset.html#idp61070496-bb"><span class="identifier">cbegin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="flat_multiset.html#idp61074352-bb"><span class="identifier">end</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="flat_multiset.html#idp61078176-bb"><span class="identifier">end</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="flat_multiset.html#idp61082000-bb"><span class="identifier">cend</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">reverse_iterator</span> <a class="link" href="flat_multiset.html#idp61085824-bb"><span class="identifier">rbegin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_reverse_iterator</span> <a class="link" href="flat_multiset.html#idp61089680-bb"><span class="identifier">rbegin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_reverse_iterator</span> <a class="link" href="flat_multiset.html#idp61093536-bb"><span class="identifier">crbegin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">reverse_iterator</span> <a class="link" href="flat_multiset.html#idp61097392-bb"><span class="identifier">rend</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_reverse_iterator</span> <a class="link" href="flat_multiset.html#idp61101248-bb"><span class="identifier">rend</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_reverse_iterator</span> <a class="link" href="flat_multiset.html#idp61105104-bb"><span class="identifier">crend</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="flat_multiset.html#idp61108960-bb"><span class="identifier">empty</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="flat_multiset.html#idp61112784-bb"><span class="identifier">size</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="flat_multiset.html#idp61116624-bb"><span class="identifier">max_size</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="flat_multiset.html#idp61120448-bb"><span class="identifier">capacity</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61124336-bb"><span class="identifier">reserve</span></a><span class="special">(</span><span class="identifier">size_type</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61129424-bb"><span class="identifier">shrink_to_fit</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span><span class="special">...</span> Args<span class="special">&gt;</span> <span class="identifier">iterator</span> <a class="link" href="flat_multiset.html#idp61133024-bb"><span class="identifier">emplace</span></a><span class="special">(</span><span class="identifier">Args</span> <span class="special">&amp;&amp;</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span><span class="special">...</span> Args<span class="special">&gt;</span> <span class="identifier">iterator</span> <a class="link" href="flat_multiset.html#idp61138624-bb"><span class="identifier">emplace_hint</span></a><span class="special">(</span><span class="identifier">const_iterator</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="flat_multiset.html#idp61145872-bb"><span class="identifier">insert</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="flat_multiset.html#idp61150272-bb"><span class="identifier">insert</span></a><span class="special">(</span><span class="identifier">value_type</span> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="flat_multiset.html#idp61154704-bb"><span class="identifier">insert</span></a><span class="special">(</span><span class="identifier">const_iterator</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="flat_multiset.html#idp61160768-bb"><span class="identifier">insert</span></a><span class="special">(</span><span class="identifier">const_iterator</span><span class="special">,</span> <span class="identifier">value_type</span> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61166848-bb"><span class="identifier">insert</span></a><span class="special">(</span><span class="identifier">InputIterator</span><span class="special">,</span> <span class="identifier">InputIterator</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61173648-bb"><span class="identifier">insert</span></a><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">InputIterator</span><span class="special">,</span> <span class="identifier">InputIterator</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61181408-bb"><span class="identifier">insert</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61185824-bb"><span class="identifier">insert</span></a><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> C2<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61192064-bb"><span class="identifier">merge</span></a><span class="special">(</span><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a><span class="special">&lt;</span> <span class="identifier">Key</span><span class="special">,</span> <span class="identifier">C2</span><span class="special">,</span> <span class="identifier">AllocatorOrContainer</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> C2<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61199552-bb"><span class="identifier">merge</span></a><span class="special">(</span><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a><span class="special">&lt;</span> <span class="identifier">Key</span><span class="special">,</span> <span class="identifier">C2</span><span class="special">,</span> <span class="identifier">AllocatorOrContainer</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> C2<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61207040-bb"><span class="identifier">merge</span></a><span class="special">(</span><a class="link" href="flat_set.html" title="Class template flat_set">flat_set</a><span class="special">&lt;</span> <span class="identifier">Key</span><span class="special">,</span> <span class="identifier">C2</span><span class="special">,</span> <span class="identifier">AllocatorOrContainer</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> C2<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61214528-bb"><span class="identifier">merge</span></a><span class="special">(</span><a class="link" href="flat_set.html" title="Class template flat_set">flat_set</a><span class="special">&lt;</span> <span class="identifier">Key</span><span class="special">,</span> <span class="identifier">C2</span><span class="special">,</span> <span class="identifier">AllocatorOrContainer</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="flat_multiset.html#idp61222016-bb"><span class="identifier">erase</span></a><span class="special">(</span><span class="identifier">const_iterator</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="flat_multiset.html#idp61227296-bb"><span class="identifier">erase</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="flat_multiset.html#idp61231648-bb"><span class="identifier">erase</span></a><span class="special">(</span><span class="identifier">const_iterator</span><span class="special">,</span> <span class="identifier">const_iterator</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61237520-bb"><span class="identifier">swap</span></a><span class="special">(</span><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">(</span><span class="identifier">allocator_traits_type</span><span class="special">::</span><span class="identifier">is_always_equal</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&amp;&amp;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">container</span><span class="special">::</span><span class="identifier">container_detail</span><span class="special">::</span><span class="identifier">is_nothrow_swappable</span><span class="special">&lt;</span> <span class="identifier">Compare</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61242416-bb"><span class="identifier">clear</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">key_compare</span> <a class="link" href="flat_multiset.html#idp61246224-bb"><span class="identifier">key_comp</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">value_compare</span> <a class="link" href="flat_multiset.html#idp61249216-bb"><span class="identifier">value_comp</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="flat_multiset.html#idp61252224-bb"><span class="identifier">find</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="flat_multiset.html#idp61255680-bb"><span class="identifier">find</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="flat_multiset.html#idp61259408-bb"><span class="identifier">nth</span></a><span class="special">(</span><span class="identifier">size_type</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="flat_multiset.html#idp61265696-bb"><span class="identifier">nth</span></a><span class="special">(</span><span class="identifier">size_type</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="flat_multiset.html#idp61271984-bb"><span class="identifier">index_of</span></a><span class="special">(</span><span class="identifier">iterator</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="flat_multiset.html#idp61278256-bb"><span class="identifier">index_of</span></a><span class="special">(</span><span class="identifier">const_iterator</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="flat_multiset.html#idp61284528-bb"><span class="identifier">count</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="flat_multiset.html#idp61288192-bb"><span class="identifier">lower_bound</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="flat_multiset.html#idp61291648-bb"><span class="identifier">lower_bound</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="flat_multiset.html#idp61295376-bb"><span class="identifier">upper_bound</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="flat_multiset.html#idp61298832-bb"><span class="identifier">upper_bound</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span> <span class="identifier">const_iterator</span><span class="special">,</span> <span class="identifier">const_iterator</span> <span class="special">&gt;</span> 
+  <a class="link" href="flat_multiset.html#idp61302560-bb"><span class="identifier">equal_range</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span> <span class="identifier">iterator</span><span class="special">,</span> <span class="identifier">iterator</span> <span class="special">&gt;</span> <a class="link" href="flat_multiset.html#idp61306288-bb"><span class="identifier">equal_range</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">sequence_type</span> <a class="link" href="flat_multiset.html#idp61309728-bb"><span class="identifier">extract_sequence</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61314208-bb"><span class="identifier">adopt_sequence</span></a><span class="special">(</span><span class="identifier">sequence_type</span> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61318592-bb"><span class="identifier">adopt_sequence</span></a><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">sequence_type</span> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="flat_multiset.html#idp61444176-bb">friend functions</a></span>
+  <span class="keyword">friend</span> <span class="keyword">bool</span> <a class="link" href="flat_multiset.html#idp61444736-bb"><span class="keyword">operator</span><span class="special">==</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">friend</span> <span class="keyword">bool</span> <a class="link" href="flat_multiset.html#idp61449728-bb"><span class="keyword">operator</span><span class="special">!=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">friend</span> <span class="keyword">bool</span> <a class="link" href="flat_multiset.html#idp61454720-bb"><span class="keyword">operator</span><span class="special">&lt;</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">friend</span> <span class="keyword">bool</span> <a class="link" href="flat_multiset.html#idp61459712-bb"><span class="keyword">operator</span><span class="special">&gt;</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">friend</span> <span class="keyword">bool</span> <a class="link" href="flat_multiset.html#idp61464704-bb"><span class="keyword">operator</span><span class="special">&lt;=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">friend</span> <span class="keyword">bool</span> <a class="link" href="flat_multiset.html#idp61469712-bb"><span class="keyword">operator</span><span class="special">&gt;=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">friend</span> <span class="keyword">void</span> <a class="link" href="flat_multiset.html#idp61474720-bb"><span class="identifier">swap</span></a><span class="special">(</span><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.10.12.10.4.4"></a><h2>Description</h2>
+<p><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> is a Sorted Associative Container that stores objects of type Key and can store multiple copies of the same key value.</p>
+<p><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> is similar to std::multiset but it's implemented by as an ordered sequence container. The underlying sequence container is by default <span class="emphasis"><em>vector</em></span> but it can also work user-provided vector-like SequenceContainers (like <span class="emphasis"><em><a class="link" href="static_vector.html" title="Class template static_vector">static_vector</a></em></span> or <span class="emphasis"><em><a class="link" href="small_vector.html" title="Class template small_vector">small_vector</a></em></span>).</p>
+<p>Using vector-like sequence containers means that inserting a new element into a <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> might invalidate previous iterators and references (unless that sequence container is <span class="emphasis"><em><a class="link" href="stable_vector.html" title="Class template stable_vector">stable_vector</a></em></span> or a similar container that offers stable pointers and references). Similarly, erasing an element might invalidate iterators and references pointing to elements that come after (their keys are bigger) the erased element.</p>
+<p>This container provides random-access iterators.</p>
+<p>
+</p>
+<div class="refsect2">
+<a name="id-1.3.10.12.10.4.4.7"></a><h3>Template Parameters</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Key</pre>
+<p>is the type to be inserted in the multiset, which is also the key_type </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Compare <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">less</span><span class="special">&lt;</span><span class="identifier">Key</span><span class="special">&gt;</span></pre>
+<p>is the comparison functor used to order keys </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> AllocatorOrContainer <span class="special">=</span> <a class="link" href="new_allocator.html" title="Class template new_allocator">new_allocator</a><span class="special">&lt;</span><span class="identifier">Key</span><span class="special">&gt;</span></pre>
+<p>is either:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>The allocator to allocate <code class="computeroutput">value_type</code>s (e.g. <span class="emphasis"><em>allocator&lt; std::pair&lt;Key, T&gt; &gt; </em></span>). (in this case <span class="emphasis"><em>sequence_type</em></span> will be vector&lt;value_type, AllocatorOrContainer&gt;)</p></li>
+<li class="listitem"><p>The SequenceContainer to be used as the underlying <span class="emphasis"><em>sequence_type</em></span>. It must be a vector-like sequence container with random-access iterators. </p></li>
+</ul></div>
+<p>
+</p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.10.12.10.4.4.8"></a><h3>
+<a name="boost.container.flat_multisetconstruct-copy-destruct"></a><code class="computeroutput">flat_multiset</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="idp61324784-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">(</span><span class="identifier">container_detail</span><span class="special">::</span><span class="identifier">is_nothrow_default_constructible</span><span class="special">&lt;</span> <span class="identifier">AllocatorOrContainer</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&amp;&amp;</span><span class="identifier">container_detail</span><span class="special">::</span><span class="identifier">is_nothrow_default_constructible</span><span class="special">&lt;</span> <span class="identifier">Compare</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Default constructs an empty container.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp61327344-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span> comp<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty container using the specified comparison object.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp61330464-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> a<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty container using the specified allocator.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp61333584-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span> comp<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> a<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty container using the specified comparison object and allocator.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+  <a name="idp61337136-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><span class="identifier">InputIterator</span> first<span class="special">,</span> <span class="identifier">InputIterator</span> last<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty container and inserts elements from the range [first ,last ).</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in N if the range [first ,last ) is already sorted using comp and otherwise N logN, where N is last - first. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+  <a name="idp61341632-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><span class="identifier">InputIterator</span> first<span class="special">,</span> <span class="identifier">InputIterator</span> last<span class="special">,</span> 
+                <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> a<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty container using the specified allocator, and inserts elements from the range [first ,last ).</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in N if the range [first ,last ) is already sorted using comp and otherwise N logN, where N is last - first. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+  <a name="idp61346848-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><span class="identifier">InputIterator</span> first<span class="special">,</span> <span class="identifier">InputIterator</span> last<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span> comp<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty container using the specified comparison object and inserts elements from the range [first ,last ).</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in N if the range [first ,last ) is already sorted using comp and otherwise N logN, where N is last - first. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+  <a name="idp61352080-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><span class="identifier">InputIterator</span> first<span class="special">,</span> <span class="identifier">InputIterator</span> last<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span> comp<span class="special">,</span> 
+                <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> a<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty container using the specified comparison object and allocator, and inserts elements from the range [first ,last ).</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in N if the range [first ,last ) is already sorted using comp and otherwise N logN, where N is last - first. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+  <a name="idp61358016-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">InputIterator</span> first<span class="special">,</span> <span class="identifier">InputIterator</span> last<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty <code class="computeroutput"><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a></code> and inserts elements from the ordered range [first ,last ). This function is more efficient than the normal range creation for ordered ranges.</p>
+<p><span class="bold"><strong>Requires</strong></span>: [first ,last) must be ordered according to the predicate.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in N.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+  <a name="idp61365792-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">InputIterator</span> first<span class="special">,</span> <span class="identifier">InputIterator</span> last<span class="special">,</span> 
+                <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span> comp<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty <code class="computeroutput"><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a></code> using the specified comparison object and inserts elements from the ordered range [first ,last ). This function is more efficient than the normal range creation for ordered ranges.</p>
+<p><span class="bold"><strong>Requires</strong></span>: [first ,last) must be ordered according to the predicate.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in N.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+  <a name="idp61374288-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">InputIterator</span> first<span class="special">,</span> <span class="identifier">InputIterator</span> last<span class="special">,</span> 
+                <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span> comp<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> a<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty <code class="computeroutput"><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a></code> using the specified comparison object and allocator, and inserts elements from the ordered range [first, last ). This function is more efficient than the normal range creation for ordered ranges.</p>
+<p><span class="bold"><strong>Requires</strong></span>: [first ,last) must be ordered according to the predicate.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in N.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp61383488-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span> il<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Default constructs an empty container.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp61386336-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span> il<span class="special">,</span> 
+              <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> a<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty container using the specified allocator, and inserts elements from the range [il.begin(), il.end()).</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in N if the range [il.begin(), il.end()) is already sorted using comp and otherwise N logN, where N is il.begin() - il.end(). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp61390064-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span> il<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span> comp<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty container using the specified comparison object and inserts elements from the range [il.begin(), il.end()).</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in N if the range [il.begin(), il.end()) is already sorted using comp and otherwise N logN, where N is il.begin() - il.end(). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp61393792-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span> il<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span> comp<span class="special">,</span> 
+              <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> a<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty container using the specified comparison object and allocator, and inserts elements from the range [il.begin(), il.end()).</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in N if the range [il.begin(), il.end()) is already sorted using comp and otherwise N logN, where N is il.begin() - il.end(). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp61398224-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span> il<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty containerand inserts elements from the ordered unique range [il.begin(), il.end()). This function is more efficient than the normal range creation for ordered ranges.</p>
+<p><span class="bold"><strong>Requires</strong></span>: [il.begin(), il.end()) must be ordered according to the predicate.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in N.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp61403792-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span> il<span class="special">,</span> 
+              <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span> comp<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty container using the specified comparison object and inserts elements from the ordered unique range [il.begin(), il.end()). This function is more efficient than the normal range creation for ordered ranges.</p>
+<p><span class="bold"><strong>Requires</strong></span>: [il.begin(), il.end()) must be ordered according to the predicate.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in N.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp61410080-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span> il<span class="special">,</span> 
+              <span class="keyword">const</span> <span class="identifier">Compare</span> <span class="special">&amp;</span> comp<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> a<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs an empty container using the specified comparison object and allocator, and inserts elements from the ordered unique range [il.begin(), il.end()). This function is more efficient than the normal range creation for ordered ranges.</p>
+<p><span class="bold"><strong>Requires</strong></span>: [il.begin(), il.end()) must be ordered according to the predicate.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in N.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp61417072-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> x<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Copy constructs the container.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in x.size(). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp61420336-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;&amp;</span> x<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">container</span><span class="special">::</span><span class="identifier">container_detail</span><span class="special">::</span><span class="identifier">is_nothrow_move_constructible</span><span class="special">&lt;</span> <span class="identifier">Compare</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Move constructs thecontainer. Constructs *this using x's resources.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant.</p>
+<p><span class="bold"><strong>Postcondition</strong></span>: x is emptied. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp61424672-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> x<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> a<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Copy constructs a container using the specified allocator.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in x.size(). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp61428656-bb"></a><span class="identifier">flat_multiset</span><span class="special">(</span><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;&amp;</span> x<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> a<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Move constructs a container using the specified allocator. Constructs *this using x's resources.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant if a == x.get_allocator(), linear otherwise </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> <a name="idp61432544-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> x<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Makes *this a copy of x.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in x.size(). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> 
+<a name="idp61436384-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;&amp;</span> x<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">(</span><span class="special">(</span><span class="identifier">allocator_traits_type</span><span class="special">::</span><span class="identifier">propagate_on_container_move_assignment</span><span class="special">::</span><span class="identifier">value</span><span class="special">||</span><span class="identifier">allocator_traits_type</span><span class="special">::</span><span class="identifier">is_always_equal</span><span class="special">::</span><span class="identifier">value</span><span class="special">)</span><span class="special">&amp;&amp;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">container</span><span class="special">::</span><span class="identifier">container_detail</span><span class="special">::</span><span class="identifier">is_nothrow_move_assignable</span><span class="special">&lt;</span> <span class="identifier">Compare</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Throws</strong></span>: If allocator_traits_type::propagate_on_container_move_assignment is false and (allocation throws or value_type's move constructor throws)</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant if allocator_traits_type:: propagate_on_container_move_assignment is true or this-&gt;get&gt;allocator() == x.get_allocator(). Linear otherwise. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> <a name="idp61440768-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span> il<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Copy all elements from il to *this.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear in il.size(). </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.10.12.10.4.4.9"></a><h3>
+<a name="idp61049840-bb"></a><code class="computeroutput">flat_multiset</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">allocator_type</span> <a name="idp61050400-bb"></a><span class="identifier">get_allocator</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a copy of the allocator that was passed to the object's constructor.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">stored_allocator_type</span> <span class="special">&amp;</span> <a name="idp61053408-bb"></a><span class="identifier">get_stored_allocator</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a reference to the internal allocator.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="identifier">stored_allocator_type</span> <span class="special">&amp;</span> <a name="idp61058096-bb"></a><span class="identifier">get_stored_allocator</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a reference to the internal allocator.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp61062800-bb"></a><span class="identifier">begin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns an iterator to the first element contained in the container.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="idp61066640-bb"></a><span class="identifier">begin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a const_iterator to the first element contained in the container.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="idp61070496-bb"></a><span class="identifier">cbegin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a const_iterator to the first element contained in the container.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp61074352-bb"></a><span class="identifier">end</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns an iterator to the end of the container.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="idp61078176-bb"></a><span class="identifier">end</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a const_iterator to the end of the container.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="idp61082000-bb"></a><span class="identifier">cend</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a const_iterator to the end of the container.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">reverse_iterator</span> <a name="idp61085824-bb"></a><span class="identifier">rbegin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a reverse_iterator pointing to the beginning of the reversed container.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_reverse_iterator</span> <a name="idp61089680-bb"></a><span class="identifier">rbegin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a const_reverse_iterator pointing to the beginning of the reversed container.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_reverse_iterator</span> <a name="idp61093536-bb"></a><span class="identifier">crbegin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a const_reverse_iterator pointing to the beginning of the reversed container.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">reverse_iterator</span> <a name="idp61097392-bb"></a><span class="identifier">rend</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a reverse_iterator pointing to the end of the reversed container.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_reverse_iterator</span> <a name="idp61101248-bb"></a><span class="identifier">rend</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a const_reverse_iterator pointing to the end of the reversed container.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_reverse_iterator</span> <a name="idp61105104-bb"></a><span class="identifier">crend</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a const_reverse_iterator pointing to the end of the reversed container.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp61108960-bb"></a><span class="identifier">empty</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns true if the container contains no elements.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="idp61112784-bb"></a><span class="identifier">size</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns the number of the elements contained in the container.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="idp61116624-bb"></a><span class="identifier">max_size</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns the largest possible size of the container.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="idp61120448-bb"></a><span class="identifier">capacity</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Number of elements for which memory has been allocated. capacity() is always greater than or equal to size().</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp61124336-bb"></a><span class="identifier">reserve</span><span class="special">(</span><span class="identifier">size_type</span> cnt<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: If n is less than or equal to capacity(), or the underlying container has no <code class="computeroutput">reserve</code> member, this call has no effect. Otherwise, it is a request for allocation of additional memory. If the request is successful, then capacity() is greater than or equal to n; otherwise, capacity() is unchanged. In either case, size() is unchanged.</p>
+<p><span class="bold"><strong>Throws</strong></span>: If memory allocation allocation throws or T's copy constructor throws.</p>
+<p><span class="bold"><strong>Note</strong></span>: If capacity() is less than "cnt", iterators and references to to values might be invalidated. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp61129424-bb"></a><span class="identifier">shrink_to_fit</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<span class="bold"><strong>Effects</strong></span>: Tries to deallocate the excess of memory created <p><span class="bold"><strong>Throws</strong></span>: If memory allocation throws, or Key's copy constructor throws.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear to size(). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span><span class="special">...</span> Args<span class="special">&gt;</span> <span class="identifier">iterator</span> <a name="idp61133024-bb"></a><span class="identifier">emplace</span><span class="special">(</span><span class="identifier">Args</span> <span class="special">&amp;&amp;</span><span class="special">...</span> args<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Inserts an object of type Key constructed with std::forward&lt;Args&gt;(args)... and returns the iterator pointing to the newly inserted element.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic search time plus linear insertion to the elements with bigger keys than x.</p>
+<p><span class="bold"><strong>Note</strong></span>: If an element is inserted it might invalidate elements. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+  <span class="identifier">iterator</span> <a name="idp61138624-bb"></a><span class="identifier">emplace_hint</span><span class="special">(</span><span class="identifier">const_iterator</span> p<span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span><span class="special">...</span> args<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Inserts an object of type Key constructed with std::forward&lt;Args&gt;(args)... in the container. p is a hint pointing to where the insert should start to search.</p>
+<p><span class="bold"><strong>Returns</strong></span>: An iterator pointing to the element with key equivalent to the key of x.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic search time (constant if x is inserted right before p) plus insertion linear to the elements with bigger keys than x.</p>
+<p><span class="bold"><strong>Note</strong></span>: If an element is inserted it might invalidate elements. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp61145872-bb"></a><span class="identifier">insert</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span> x<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Inserts x and returns the iterator pointing to the newly inserted element.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic search time plus linear insertion to the elements with bigger keys than x.</p>
+<p><span class="bold"><strong>Note</strong></span>: If an element is inserted it might invalidate elements. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp61150272-bb"></a><span class="identifier">insert</span><span class="special">(</span><span class="identifier">value_type</span> <span class="special">&amp;&amp;</span> x<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Inserts a new value_type move constructed from x and returns the iterator pointing to the newly inserted element.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic search time plus linear insertion to the elements with bigger keys than x.</p>
+<p><span class="bold"><strong>Note</strong></span>: If an element is inserted it might invalidate elements. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp61154704-bb"></a><span class="identifier">insert</span><span class="special">(</span><span class="identifier">const_iterator</span> p<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span> x<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Inserts a copy of x in the container. p is a hint pointing to where the insert should start to search.</p>
+<p><span class="bold"><strong>Returns</strong></span>: An iterator pointing to the element with key equivalent to the key of x.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic search time (constant if x is inserted right before p) plus insertion linear to the elements with bigger keys than x.</p>
+<p><span class="bold"><strong>Note</strong></span>: If an element is inserted it might invalidate elements. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp61160768-bb"></a><span class="identifier">insert</span><span class="special">(</span><span class="identifier">const_iterator</span> p<span class="special">,</span> <span class="identifier">value_type</span> <span class="special">&amp;&amp;</span> x<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Inserts a new value move constructed from x in the container. p is a hint pointing to where the insert should start to search.</p>
+<p><span class="bold"><strong>Returns</strong></span>: An iterator pointing to the element with key equivalent to the key of x.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic search time (constant if x is inserted right before p) plus insertion linear to the elements with bigger keys than x.</p>
+<p><span class="bold"><strong>Note</strong></span>: If an element is inserted it might invalidate elements. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp61166848-bb"></a><span class="identifier">insert</span><span class="special">(</span><span class="identifier">InputIterator</span> first<span class="special">,</span> <span class="identifier">InputIterator</span> last<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: first, last are not iterators into *this.</p>
+<p><span class="bold"><strong>Effects</strong></span>: inserts each element from the range [first,last) .</p>
+<p><span class="bold"><strong>Complexity</strong></span>: At most N log(size()+N) (N is the distance from first to last) search time plus N*size() insertion time.</p>
+<p><span class="bold"><strong>Note</strong></span>: If an element is inserted it might invalidate elements. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> InputIterator<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp61173648-bb"></a><span class="identifier">insert</span><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">InputIterator</span> first<span class="special">,</span> <span class="identifier">InputIterator</span> last<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: first, last are not iterators into *this and must be ordered according to the predicate.</p>
+<p><span class="bold"><strong>Effects</strong></span>: inserts each element from the range [first,last) .This function is more efficient than the normal range creation for ordered ranges.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: At most N log(size()+N) (N is the distance from first to last) search time plus N*size() insertion time.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. If an element is inserted it might invalidate elements. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp61181408-bb"></a><span class="identifier">insert</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span> il<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: inserts each element from the range [il.begin(), il.end()).</p>
+<p><span class="bold"><strong>Complexity</strong></span>: At most N log(size()+N) (N is the distance from first to last) search time plus N*size() insertion time.</p>
+<p><span class="bold"><strong>Note</strong></span>: If an element is inserted it might invalidate elements. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp61185824-bb"></a><span class="identifier">insert</span><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span> il<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: Range [il.begin(), il.end()) must be ordered according to the predicate.</p>
+<p><span class="bold"><strong>Effects</strong></span>: inserts each element from the range [il.begin(), il.end()). This function is more efficient than the normal range creation for ordered ranges.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: At most N log(size()+N) (N is the distance from il.begin() to il.end()) search time plus N*size() insertion time.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension. If an element is inserted it might invalidate elements. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> C2<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp61192064-bb"></a><span class="identifier">merge</span><span class="special">(</span><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a><span class="special">&lt;</span> <span class="identifier">Key</span><span class="special">,</span> <span class="identifier">C2</span><span class="special">,</span> <span class="identifier">AllocatorOrContainer</span> <span class="special">&gt;</span> <span class="special">&amp;</span> source<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: this-&gt;get_allocator() == source.get_allocator().</p>
+<p><span class="bold"><strong>Effects</strong></span>: Extracts each element in source and insert it into a using the comparison object of *this.</p>
+<p><span class="bold"><strong>Postcondition</strong></span>: Pointers and references to the transferred elements of source refer to those same elements but as members of *this. Iterators referring to the transferred elements will continue to refer to their elements, but they now behave as iterators into *this, not into source.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing unless the comparison object throws.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: N log(a.size() + N) (N has the value source.size()) </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> C2<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp61199552-bb"></a><span class="identifier">merge</span><span class="special">(</span><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a><span class="special">&lt;</span> <span class="identifier">Key</span><span class="special">,</span> <span class="identifier">C2</span><span class="special">,</span> <span class="identifier">AllocatorOrContainer</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span> source<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: this-&gt;get_allocator() == source.get_allocator().</p>
+<p><span class="bold"><strong>Effects</strong></span>: Extracts each element in source and insert it into a using the comparison object of *this.</p>
+<p><span class="bold"><strong>Postcondition</strong></span>: Pointers and references to the transferred elements of source refer to those same elements but as members of *this. Iterators referring to the transferred elements will continue to refer to their elements, but they now behave as iterators into *this, not into source.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing unless the comparison object throws.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: N log(a.size() + N) (N has the value source.size()) </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> C2<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp61207040-bb"></a><span class="identifier">merge</span><span class="special">(</span><a class="link" href="flat_set.html" title="Class template flat_set">flat_set</a><span class="special">&lt;</span> <span class="identifier">Key</span><span class="special">,</span> <span class="identifier">C2</span><span class="special">,</span> <span class="identifier">AllocatorOrContainer</span> <span class="special">&gt;</span> <span class="special">&amp;</span> source<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: this-&gt;get_allocator() == source.get_allocator().</p>
+<p><span class="bold"><strong>Effects</strong></span>: Extracts each element in source and insert it into a using the comparison object of *this.</p>
+<p><span class="bold"><strong>Postcondition</strong></span>: Pointers and references to the transferred elements of source refer to those same elements but as members of *this. Iterators referring to the transferred elements will continue to refer to their elements, but they now behave as iterators into *this, not into source.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing unless the comparison object throws.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: N log(a.size() + N) (N has the value source.size()) </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> C2<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp61214528-bb"></a><span class="identifier">merge</span><span class="special">(</span><a class="link" href="flat_set.html" title="Class template flat_set">flat_set</a><span class="special">&lt;</span> <span class="identifier">Key</span><span class="special">,</span> <span class="identifier">C2</span><span class="special">,</span> <span class="identifier">AllocatorOrContainer</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span> source<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: this-&gt;get_allocator() == source.get_allocator().</p>
+<p><span class="bold"><strong>Effects</strong></span>: Extracts each element in source and insert it into a using the comparison object of *this.</p>
+<p><span class="bold"><strong>Postcondition</strong></span>: Pointers and references to the transferred elements of source refer to those same elements but as members of *this. Iterators referring to the transferred elements will continue to refer to their elements, but they now behave as iterators into *this, not into source.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing unless the comparison object throws.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: N log(a.size() + N) (N has the value source.size()) </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp61222016-bb"></a><span class="identifier">erase</span><span class="special">(</span><span class="identifier">const_iterator</span> p<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Erases the element pointed to by p.</p>
+<p><span class="bold"><strong>Returns</strong></span>: Returns an iterator pointing to the element immediately following q prior to the element being erased. If no such element exists, returns end().</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear to the elements with keys bigger than p</p>
+<p><span class="bold"><strong>Note</strong></span>: Invalidates elements with keys not less than the erased element. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="idp61227296-bb"></a><span class="identifier">erase</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> x<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Erases all elements in the container with key equivalent to x.</p>
+<p><span class="bold"><strong>Returns</strong></span>: Returns the number of erased elements.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic search time plus erasure time linear to the elements with bigger keys. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp61231648-bb"></a><span class="identifier">erase</span><span class="special">(</span><span class="identifier">const_iterator</span> first<span class="special">,</span> <span class="identifier">const_iterator</span> last<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Erases all the elements in the range [first, last).</p>
+<p><span class="bold"><strong>Returns</strong></span>: Returns last.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: size()*N where N is the distance from first to last.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic search time plus erasure time linear to the elements with bigger keys. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp61237520-bb"></a><span class="identifier">swap</span><span class="special">(</span><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> x<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">(</span><span class="identifier">allocator_traits_type</span><span class="special">::</span><span class="identifier">is_always_equal</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&amp;&amp;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">container</span><span class="special">::</span><span class="identifier">container_detail</span><span class="special">::</span><span class="identifier">is_nothrow_swappable</span><span class="special">&lt;</span> <span class="identifier">Compare</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Swaps the contents of *this and x.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp61242416-bb"></a><span class="identifier">clear</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: erase(a.begin(),a.end()).</p>
+<p><span class="bold"><strong>Postcondition</strong></span>: size() == 0.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: linear in size(). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">key_compare</span> <a name="idp61246224-bb"></a><span class="identifier">key_comp</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns the comparison object out of which a was constructed.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">value_compare</span> <a name="idp61249216-bb"></a><span class="identifier">value_comp</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns an object of value_compare constructed out of the comparison object.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp61252224-bb"></a><span class="identifier">find</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> x<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: An iterator pointing to an element with the key equivalent to x, or end() if such an element is not found.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="idp61255680-bb"></a><span class="identifier">find</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> x<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: A const_iterator pointing to an element with the key equivalent to x, or end() if such an element is not found.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp61259408-bb"></a><span class="identifier">nth</span><span class="special">(</span><span class="identifier">size_type</span> n<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: size() &gt;= n.</p>
+<p><span class="bold"><strong>Effects</strong></span>: Returns an iterator to the nth element from the beginning of the container. Returns end() if n == size().</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="idp61265696-bb"></a><span class="identifier">nth</span><span class="special">(</span><span class="identifier">size_type</span> n<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: size() &gt;= n.</p>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a const_iterator to the nth element from the beginning of the container. Returns end() if n == size().</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="idp61271984-bb"></a><span class="identifier">index_of</span><span class="special">(</span><span class="identifier">iterator</span> p<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: begin() &lt;= p &lt;= end().</p>
+<p><span class="bold"><strong>Effects</strong></span>: Returns the index of the element pointed by p and size() if p == end().</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="idp61278256-bb"></a><span class="identifier">index_of</span><span class="special">(</span><span class="identifier">const_iterator</span> p<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: begin() &lt;= p &lt;= end().</p>
+<p><span class="bold"><strong>Effects</strong></span>: Returns the index of the element pointed by p and size() if p == end().</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extension </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="idp61284528-bb"></a><span class="identifier">count</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> x<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: The number of elements with key equivalent to x.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: log(size())+count(k) </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp61288192-bb"></a><span class="identifier">lower_bound</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> x<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: An iterator pointing to the first element with key not less than k, or a.end() if such an element is not found.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="idp61291648-bb"></a><span class="identifier">lower_bound</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> x<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: A const iterator pointing to the first element with key not less than k, or a.end() if such an element is not found.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp61295376-bb"></a><span class="identifier">upper_bound</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> x<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: An iterator pointing to the first element with key not less than x, or end() if such an element is not found.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="idp61298832-bb"></a><span class="identifier">upper_bound</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> x<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: A const iterator pointing to the first element with key not less than x, or end() if such an element is not found.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span> <span class="identifier">const_iterator</span><span class="special">,</span> <span class="identifier">const_iterator</span> <span class="special">&gt;</span> 
+<a name="idp61302560-bb"></a><span class="identifier">equal_range</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> x<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Equivalent to std::make_pair(this-&gt;lower_bound(k), this-&gt;upper_bound(k)).</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span> <span class="identifier">iterator</span><span class="special">,</span> <span class="identifier">iterator</span> <span class="special">&gt;</span> <a name="idp61306288-bb"></a><span class="identifier">equal_range</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> x<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Equivalent to std::make_pair(this-&gt;lower_bound(k), this-&gt;upper_bound(k)).</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Logarithmic </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">sequence_type</span> <a name="idp61309728-bb"></a><span class="identifier">extract_sequence</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Extracts the internal sequence container.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Same as the move constructor of sequence_type, usually constant.</p>
+<p><span class="bold"><strong>Postcondition</strong></span>: this-&gt;empty()</p>
+<p><span class="bold"><strong>Throws</strong></span>: If secuence_type's move constructor throws </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp61314208-bb"></a><span class="identifier">adopt_sequence</span><span class="special">(</span><span class="identifier">sequence_type</span> <span class="special">&amp;&amp;</span> seq<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Discards the internally hold sequence container and adopts the one passed externally using the move assignment.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Assuming O(1) move assignment, O(NlogN) with N = seq.size()</p>
+<p><span class="bold"><strong>Throws</strong></span>: If the comparison or the move constructor throws </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp61318592-bb"></a><span class="identifier">adopt_sequence</span><span class="special">(</span><a class="link" href="ordered_range_t.html" title="Struct ordered_range_t">ordered_range_t</a><span class="special">,</span> <span class="identifier">sequence_type</span> <span class="special">&amp;&amp;</span> seq<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: seq shall be ordered according to this-&gt;compare()</p>
+<p><span class="bold"><strong>Effects</strong></span>: Discards the internally hold sequence container and adopts the one passed externally using the move assignment.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Assuming O(1) move assignment, O(1)</p>
+<p><span class="bold"><strong>Throws</strong></span>: If the move assignment throws </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.10.12.10.4.4.10"></a><h3>
+<a name="idp61444176-bb"></a><code class="computeroutput">flat_multiset</code> friend functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">bool</span> <a name="idp61444736-bb"></a><span class="keyword">operator</span><span class="special">==</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> x<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> y<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns true if x and y are equal</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear to the number of elements in the container. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">bool</span> <a name="idp61449728-bb"></a><span class="keyword">operator</span><span class="special">!=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> x<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> y<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns true if x and y are unequal</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear to the number of elements in the container. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">bool</span> <a name="idp61454720-bb"></a><span class="keyword">operator</span><span class="special">&lt;</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> x<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> y<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns true if x is less than y</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear to the number of elements in the container. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">bool</span> <a name="idp61459712-bb"></a><span class="keyword">operator</span><span class="special">&gt;</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> x<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> y<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns true if x is greater than y</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear to the number of elements in the container. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">bool</span> <a name="idp61464704-bb"></a><span class="keyword">operator</span><span class="special">&lt;=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> x<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> y<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns true if x is equal or less than y</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear to the number of elements in the container. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">bool</span> <a name="idp61469712-bb"></a><span class="keyword">operator</span><span class="special">&gt;=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> x<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> y<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns true if x is equal or greater than y</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Linear to the number of elements in the container. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">void</span> <a name="idp61474720-bb"></a><span class="identifier">swap</span><span class="special">(</span><a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> x<span class="special">,</span> <a class="link" href="flat_multiset.html" title="Class template flat_multiset">flat_multiset</a> <span class="special">&amp;</span> y<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: x.swap(y)</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Constant. </p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009-2015 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="flat_set.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_container_header_reference.html#header.boost.container.flat_set_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="pmr/flat_set_of.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

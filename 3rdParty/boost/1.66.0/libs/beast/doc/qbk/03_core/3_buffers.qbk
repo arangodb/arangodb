@@ -1,0 +1,153 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Buffer Types]
+
+To facilitate working with instances of the __ConstBufferSequence__ and
+__MutableBufferSequence__ concepts introduced in __Asio__, Beast treats
+those sequences as a special type of range. The following algorithms and
+wrappers are provided which transform these ranges efficiently using lazy
+evaluation. No memory allocations are used in the transformations; instead,
+they create lightweight iterators over the existing, unmodified memory
+buffers. Control of buffers is retained by the caller; ownership is not
+transferred.
+
+[table Buffer Algorithms and Types
+[[Name][Description]]
+[[
+    [link beast.ref.boost__beast__buffers_cat `buffers_cat`]
+][
+    This functions returns a new buffer sequence which, when iterated,
+    traverses the sequence which would be formed if all of the input buffer
+    sequences were concatenated. With this routine, multiple calls to a
+    stream's `write_some` function may be combined into one, eliminating
+    expensive system calls.
+]]
+[[
+    [link beast.ref.boost__beast__buffers_cat_view `buffers_cat_view`]
+][
+    This class represents the buffer sequence formed by concatenating
+    two or more buffer sequences. This is type of object returned by
+    [link beast.ref.boost__beast__buffers_cat `buffers_cat`].
+]]
+[[
+    [link beast.ref.boost__beast__buffers_front `buffers_front`]
+][
+    This function returns the first buffer in a buffer sequence,
+    or a buffer of size zero if the buffer sequence has no elements.
+]]
+[[
+    [link beast.ref.boost__beast__buffers_prefix `buffers_prefix`]
+][
+    This function returns a new buffer or buffer sequence which represents
+    a prefix of the original buffers.
+]]
+[[
+    [link beast.ref.boost__beast__buffers_prefix_view `buffers_prefix_view`]
+][
+    This class represents the buffer sequence formed from a prefix of
+    an existing buffer sequence. This is the type of buffer returned by
+    [link beast.ref.boost__beast__buffers_prefix.overload3 `buffers_prefix`].
+]]
+[[
+    [link beast.ref.boost__beast__buffers_suffix `buffers_suffix`]
+][
+    This class wraps the underlying memory of an existing buffer sequence
+    and presents a suffix of the original sequence. The length of the suffix
+    may be progressively shortened. This lets callers work with sequential
+    increments of a buffer sequence.
+]]
+[[
+    [link beast.ref.boost__beast__buffers_to_string `buffers_to_string`]
+][
+    This function converts a buffer sequence to a `std::string`. It can
+    be used for diagnostic purposes and tests.
+]]
+]
+
+The __DynamicBuffer__ concept introduced in __Asio__ models a buffer
+sequence which supports an owning, resizable range. Beast provides this
+set of additional implementations of the dynamic buffer concept:
+
+[table Dynamic Buffer Implementations
+[[Name][Description]]
+[[
+    [link beast.ref.boost__beast__buffers_adapter `buffers_adapter`]
+][
+    This wrapper adapts any __MutableBufferSequence__ into a
+    __DynamicBuffer__ with an upper limit on the total size of the input and
+    output areas equal to the size of the underlying mutable buffer sequence.
+    The implementation does not perform heap allocations.
+]]
+[[
+    [link beast.ref.boost__beast__flat_buffer `flat_buffer`]
+    [link beast.ref.boost__beast__basic_flat_buffer `basic_flat_buffer`]
+][
+    Guarantees that input and output areas are buffer sequences with
+    length one.
+    Upon construction an optional upper limit to the total size of the
+    input and output areas may be set.
+    The basic container is an
+    [@http://en.cppreference.com/w/cpp/concept/AllocatorAwareContainer [*AllocatorAwareContainer]].
+]]
+[[
+    [link beast.ref.boost__beast__multi_buffer `multi_buffer`]
+    [link beast.ref.boost__beast__basic_multi_buffer `basic_multi_buffer`]
+][
+    Uses a sequence of one or more character arrays of varying sizes.
+    Additional character array objects are appended to the sequence to
+    accommodate changes in the size of the character sequence.
+    The basic container is an
+    [@http://en.cppreference.com/w/cpp/concept/AllocatorAwareContainer [*AllocatorAwareContainer]].
+]]
+[[
+    [link beast.ref.boost__beast__flat_static_buffer `flat_static_buffer`]
+    [link beast.ref.boost__beast__flat_static_buffer_base `flat_static_buffer_base`]
+][
+    Guarantees that input and output areas are buffer sequences with
+    length one.
+    Provides the facilities of a dynamic buffer, subject to an upper
+    limit placed on the total size of the input and output areas defined
+    by a constexpr template parameter. The storage for the sequences are
+    kept in the class; the implementation does not perform heap allocations.
+]]
+[[
+    [link beast.ref.boost__beast__static_buffer `static_buffer`]
+    [link beast.ref.boost__beast__static_buffer_base `static_buffer_base`]
+][
+    Provides the facilities of a circular dynamic buffer. subject to an
+    upper limit placed on the total size of the input and output areas
+    defined by a constexpr template parameter.
+    The implementation never moves memory during buffer operations.
+    The storage for the sequences are kept in the class; the implementation
+    does not perform heap allocations.
+]]
+]
+
+These two functions facilitate buffer interoperability with standard
+output streams.
+
+[table Buffer Output Streams
+[[Name][Description]]
+[[
+    [link beast.ref.boost__beast__buffers `buffers`]
+][
+    This function wraps a __ConstBufferSequence__ so it may be
+    used with `operator<<` and `std::ostream`.
+]]
+[[
+    [link beast.ref.boost__beast__ostream `ostream`]
+][
+    This function returns a `std::ostream` which wraps a dynamic buffer.
+    Characters sent to the stream using `operator<<` are stored in the
+    dynamic buffer.
+]]
+]
+
+[endsect]

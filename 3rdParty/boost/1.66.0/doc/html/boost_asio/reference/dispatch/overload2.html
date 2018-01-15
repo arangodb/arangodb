@@ -1,0 +1,95 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>dispatch (2 of 3 overloads)</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../dispatch.html" title="dispatch">
+<link rel="prev" href="overload1.html" title="dispatch (1 of 3 overloads)">
+<link rel="next" href="overload3.html" title="dispatch (3 of 3 overloads)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overload1.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../dispatch.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload3.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_asio.reference.dispatch.overload2"></a><a class="link" href="overload2.html" title="dispatch (2 of 3 overloads)">dispatch (2
+        of 3 overloads)</a>
+</h4></div></div></div>
+<p>
+          Submits a completion token or function object for execution.
+        </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../Executor1.html" title="Executor requirements">Executor</a>,
+    typename CompletionToken&gt;
+<a class="link" href="../asynchronous_operations/automatic_deduction_of_initiating_function_return_type.html" title="Automatic deduction of initiating function return type"><span class="emphasis"><em>DEDUCED</em></span></a> dispatch(
+    const Executor &amp; ex,
+    CompletionToken &amp;&amp; token,
+    typename enable_if&lt; is_executor&lt; Executor &gt;::value &gt;::type *  = 0);
+</pre>
+<p>
+          This function submits an object for execution using the specified executor.
+          The function object is queued for execution, and is never called from the
+          current thread prior to returning from <code class="computeroutput">dispatch()</code>.
+        </p>
+<p>
+          This function has the following effects:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              Constructs a function object handler of type <code class="computeroutput">Handler</code>,
+              initialized with <code class="computeroutput">handler(forward&lt;CompletionToken&gt;(token))</code>.
+            </li>
+<li class="listitem">
+              Constructs an object <code class="computeroutput">result</code> of type <code class="computeroutput">async_result&lt;Handler&gt;</code>,
+              initializing the object as <code class="computeroutput">result(handler)</code>.
+            </li>
+<li class="listitem">
+              Obtains the handler's associated executor object <code class="computeroutput">ex1</code> by
+              performing <code class="computeroutput">get_associated_executor(handler)</code>.
+            </li>
+<li class="listitem">
+              Creates a work object <code class="computeroutput">w</code> by performing <code class="computeroutput">make_work(ex1)</code>.
+            </li>
+<li class="listitem">
+              Obtains the handler's associated allocator object <code class="computeroutput">alloc</code>
+              by performing <code class="computeroutput">get_associated_allocator(handler)</code>.
+            </li>
+<li class="listitem">
+              Constructs a function object <code class="computeroutput">f</code> with a function call operator
+              that performs <code class="computeroutput">ex1.dispatch(std::move(handler), alloc)</code>
+              followed by <code class="computeroutput">w.reset()</code>.
+            </li>
+<li class="listitem">
+              Performs <code class="computeroutput">Executor(ex).dispatch(std::move(f), alloc)</code>.
+            </li>
+<li class="listitem">
+              Returns <code class="computeroutput">result.get()</code>.
+            </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overload1.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../dispatch.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload3.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

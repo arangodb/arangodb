@@ -1,0 +1,205 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template basic_environment</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../process/reference.html#header.boost.process.environment_hpp" title="Header &lt;boost/process/environment.hpp&gt;">
+<link rel="prev" href="env.html" title="Global env">
+<link rel="next" href="basic_environment/const_entry_type.html" title="Struct template const_entry_type">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="env.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../process/reference.html#header.boost.process.environment_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="basic_environment/const_entry_type.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.process.basic_environment"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template basic_environment</span></h2>
+<p>boost::process::basic_environment &#8212; Type definition to hold a seperate environment. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../process/reference.html#header.boost.process.environment_hpp" title="Header &lt;boost/process/environment.hpp&gt;">boost/process/environment.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Char<span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="basic_environment.html" title="Class template basic_environment">basic_environment</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_string</span><span class="special">&lt;</span> <span class="identifier">Char</span> <span class="special">&gt;</span>                               <a name="boost.process.basic_environment.string_type"></a><span class="identifier">string_type</span><span class="special">;</span>   
+  <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">transform_iterator</span><span class="special">&lt;</span> <span class="identifier">entry_maker</span><span class="special">,</span> <span class="identifier">Char</span> <span class="special">*</span><span class="special">*</span> <span class="special">&gt;</span>       <a name="boost.process.basic_environment.iterator"></a><span class="identifier">iterator</span><span class="special">;</span>      
+  <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">transform_iterator</span><span class="special">&lt;</span> <span class="identifier">const_entry_maker</span><span class="special">,</span> <span class="identifier">Char</span> <span class="special">*</span><span class="special">*</span> <span class="special">&gt;</span> <a name="boost.process.basic_environment.const_iterator"></a><span class="identifier">const_iterator</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>                                             <a name="boost.process.basic_environment.size_type"></a><span class="identifier">size_type</span><span class="special">;</span>     
+  <span class="keyword">typedef</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span>                                             <a name="boost.process.basic_environment.native_handle"></a><span class="identifier">native_handle</span><span class="special">;</span> 
+  <span class="keyword">typedef</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span>                                             <a name="boost.process.basic_environment.base_type"></a><span class="identifier">base_type</span><span class="special">;</span>     
+
+  <span class="comment">// member classes/structs/unions</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Char<span class="special">,</span> <span class="keyword">typename</span> Environment<span class="special">&gt;</span> 
+  <span class="keyword">struct</span> <a class="link" href="basic_environment/const_entry_type.html" title="Struct template const_entry_type">const_entry_type</a> <span class="special">{</span>
+    <span class="comment">// types</span>
+    <span class="keyword">typedef</span> <span class="identifier">Char</span>                             <a class="link" href="basic_environment/const_entry_type.html#boost.process.basic_environment.const_entry_type.value_type"><span class="identifier">value_type</span></a><span class="special">;</span>   
+    <span class="keyword">typedef</span> <span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">*</span>               <a class="link" href="basic_environment/const_entry_type.html#boost.process.basic_environment.const_entry_type.pointer"><span class="identifier">pointer</span></a><span class="special">;</span>      
+    <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_string</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span>  <a class="link" href="basic_environment/const_entry_type.html#boost.process.basic_environment.const_entry_type.string_type"><span class="identifier">string_type</span></a><span class="special">;</span>  
+    <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_range</span><span class="special">&lt;</span> <span class="identifier">pointer</span> <span class="special">&gt;</span> <a class="link" href="basic_environment/const_entry_type.html#boost.process.basic_environment.const_entry_type.range"><span class="identifier">range</span></a><span class="special">;</span>        
+    <span class="keyword">typedef</span> <span class="identifier">Environment</span>                      <a class="link" href="basic_environment/const_entry_type.html#boost.process.basic_environment.const_entry_type.environment_t"><span class="identifier">environment_t</span></a><span class="special">;</span>
+
+    <span class="comment">// <a class="link" href="basic_environment/const_entry_type.html#boost.process.basic_environment.const_entry_typeconstruct-copy-destruct">construct/copy/destruct</a></span>
+    <span class="identifier">const_entry</span> <span class="special">&amp;</span> <a class="link" href="basic_environment/const_entry_type.html#idp51455008-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">const_entry</span> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+
+    <span class="comment">// <a class="link" href="basic_environment/const_entry_type.html#idp51449680-bb">public member functions</a></span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">string_type</span> <span class="special">&gt;</span> <a class="link" href="basic_environment/const_entry_type.html#idp51450176-bb"><span class="identifier">to_vector</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+     <a class="link" href="basic_environment/const_entry_type.html#idp51451888-bb"><span class="identifier">const_entry</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">const_entry</span> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+    <span class="keyword">bool</span> <a class="link" href="basic_environment/const_entry_type.html#idp51453632-bb"><span class="identifier">empty</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="special">}</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Char<span class="special">,</span> <span class="keyword">typename</span> Environment<span class="special">&gt;</span> 
+  <span class="keyword">struct</span> <a class="link" href="basic_environment/entry_type.html" title="Struct template entry_type">entry_type</a> <span class="special">{</span>
+    <span class="comment">// types</span>
+    <span class="keyword">typedef</span> <span class="identifier">Char</span>                             <a class="link" href="basic_environment/entry_type.html#boost.process.basic_environment.entry_type.value_type"><span class="identifier">value_type</span></a><span class="special">;</span>   
+    <span class="keyword">typedef</span> <span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">*</span>               <a class="link" href="basic_environment/entry_type.html#boost.process.basic_environment.entry_type.pointer"><span class="identifier">pointer</span></a><span class="special">;</span>      
+    <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_string</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span>  <a class="link" href="basic_environment/entry_type.html#boost.process.basic_environment.entry_type.string_type"><span class="identifier">string_type</span></a><span class="special">;</span>  
+    <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_range</span><span class="special">&lt;</span> <span class="identifier">pointer</span> <span class="special">&gt;</span> <a class="link" href="basic_environment/entry_type.html#boost.process.basic_environment.entry_type.range"><span class="identifier">range</span></a><span class="special">;</span>        
+    <span class="keyword">typedef</span> <span class="identifier">Environment</span>                      <a class="link" href="basic_environment/entry_type.html#boost.process.basic_environment.entry_type.environment_t"><span class="identifier">environment_t</span></a><span class="special">;</span>
+
+    <span class="comment">// <a class="link" href="basic_environment/entry_type.html#boost.process.basic_environment.entry_typeconstruct-copy-destruct">construct/copy/destruct</a></span>
+    <span class="identifier">entry</span> <span class="special">&amp;</span> <a class="link" href="basic_environment/entry_type.html#idp51476224-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">entry</span> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+    <span class="identifier">entry</span> <span class="special">&amp;</span> <a class="link" href="basic_environment/entry_type.html#idp51477856-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">entry</span> <span class="special">&amp;</span> <a class="link" href="basic_environment/entry_type.html#idp51479248-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">string_type</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+
+    <span class="comment">// <a class="link" href="basic_environment/entry_type.html#idp51463072-bb">public member functions</a></span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">string_type</span> <span class="special">&gt;</span> <a class="link" href="basic_environment/entry_type.html#idp51463568-bb"><span class="identifier">to_vector</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+     <a class="link" href="basic_environment/entry_type.html#idp51465280-bb"><span class="identifier">entry</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">entry</span> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+    <span class="keyword">bool</span> <a class="link" href="basic_environment/entry_type.html#idp51467024-bb"><span class="identifier">empty</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="keyword">void</span> <a class="link" href="basic_environment/entry_type.html#idp51468272-bb"><span class="identifier">assign</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">void</span> <a class="link" href="basic_environment/entry_type.html#idp51469904-bb"><span class="identifier">assign</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">string_type</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">void</span> <a class="link" href="basic_environment/entry_type.html#idp51471632-bb"><span class="identifier">append</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">void</span> <a class="link" href="basic_environment/entry_type.html#idp51473360-bb"><span class="identifier">clear</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">entry</span> <span class="special">&amp;</span> <a class="link" href="basic_environment/entry_type.html#idp51474368-bb"><span class="keyword">operator</span><span class="special">+=</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="basic_environment.html#boost.process.basic_environmentconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="basic_environment.html#idp51512336-bb"><span class="identifier">basic_environment</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_environment.html#idp51512848-bb"><span class="identifier">basic_environment</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_environment.html" title="Class template basic_environment">basic_environment</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_environment.html#idp51514368-bb"><span class="identifier">basic_environment</span></a><span class="special">(</span><a class="link" href="basic_environment.html" title="Class template basic_environment">basic_environment</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_environment.html" title="Class template basic_environment">basic_environment</a> <span class="special">&amp;</span> <a class="link" href="basic_environment.html#idp51515760-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_environment.html" title="Class template basic_environment">basic_environment</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_environment.html" title="Class template basic_environment">basic_environment</a> <span class="special">&amp;</span> <a class="link" href="basic_environment.html#idp51517792-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="basic_environment.html" title="Class template basic_environment">basic_environment</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="basic_environment.html#idp51485504-bb">public member functions</a></span>
+  <span class="identifier">iterator</span> <a class="link" href="basic_environment.html#idp51486000-bb"><span class="identifier">begin</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="basic_environment.html#idp51487008-bb"><span class="identifier">begin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="basic_environment.html#idp51488256-bb"><span class="identifier">cbegin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="basic_environment.html#idp51489504-bb"><span class="identifier">end</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="basic_environment.html#idp51490512-bb"><span class="identifier">end</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="basic_environment.html#idp51491760-bb"><span class="identifier">cend</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="basic_environment.html#idp51493008-bb"><span class="identifier">find</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="basic_environment.html#idp51494640-bb"><span class="identifier">find</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="basic_environment.html#idp51496512-bb"><span class="identifier">count</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="basic_environment.html#idp51498384-bb"><span class="identifier">erase</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span> <span class="identifier">iterator</span><span class="special">,</span> <span class="keyword">bool</span> <span class="special">&gt;</span> 
+  <a class="link" href="basic_environment.html#idp51500144-bb"><span class="identifier">emplace</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="basic_environment.html#idp51502400-bb"><span class="identifier">empty</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="basic_environment.html#idp51503408-bb"><span class="identifier">size</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="basic_environment.html#idp51504656-bb"><span class="identifier">clear</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_environment/entry_type.html" title="Struct template entry_type">entry_type</a> <a class="link" href="basic_environment.html#idp51506432-bb"><span class="identifier">at</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_environment/const_entry_type.html" title="Struct template const_entry_type">const_entry_type</a> <a class="link" href="basic_environment.html#idp51508272-bb"><span class="identifier">at</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <a class="link" href="basic_environment/entry_type.html" title="Struct template entry_type">entry_type</a> <a class="link" href="basic_environment.html#idp51510352-bb"><span class="keyword">operator</span><span class="special">[</span><span class="special">]</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.30.9.9.3.4"></a><h2>Description</h2>
+<p>Template representation of environments. It takes a character type (<code class="computeroutput">char</code> or <code class="computeroutput">wchar_t</code>) as template parameter to implement the environment </p>
+<div class="refsect2">
+<a name="id-1.3.30.9.9.3.4.3"></a><h3>
+<a name="boost.process.basic_environmentconstruct-copy-destruct"></a><code class="computeroutput">basic_environment</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="idp51512336-bb"></a><span class="identifier">basic_environment</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Default constructor. </li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp51512848-bb"></a><span class="identifier">basic_environment</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_environment.html" title="Class template basic_environment">basic_environment</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Copy constructor. </li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp51514368-bb"></a><span class="identifier">basic_environment</span><span class="special">(</span><a class="link" href="basic_environment.html" title="Class template basic_environment">basic_environment</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span></pre>Move constructor. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="basic_environment.html" title="Class template basic_environment">basic_environment</a> <span class="special">&amp;</span> <a name="idp51515760-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_environment.html" title="Class template basic_environment">basic_environment</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Copy assignment. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="basic_environment.html" title="Class template basic_environment">basic_environment</a> <span class="special">&amp;</span> <a name="idp51517792-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="basic_environment.html" title="Class template basic_environment">basic_environment</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span></pre>Move assignment. </li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.30.9.9.3.4.4"></a><h3>
+<a name="idp51485504-bb"></a><code class="computeroutput">basic_environment</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp51486000-bb"></a><span class="identifier">begin</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Returns an iterator to the beginning. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="idp51487008-bb"></a><span class="identifier">begin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns an iterator to the beginning. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="idp51488256-bb"></a><span class="identifier">cbegin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns an iterator to the beginning. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp51489504-bb"></a><span class="identifier">end</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Returns an iterator to the end. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="idp51490512-bb"></a><span class="identifier">end</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns an iterator to the end. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="idp51491760-bb"></a><span class="identifier">cend</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns an iterator to the end. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="idp51493008-bb"></a><span class="identifier">find</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span> key<span class="special">)</span><span class="special">;</span></pre>Find a variable by its name. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="idp51494640-bb"></a><span class="identifier">find</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span> key<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Find a variable by its name. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="idp51496512-bb"></a><span class="identifier">count</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span> st<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Number of variables. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51498384-bb"></a><span class="identifier">erase</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span> id<span class="special">)</span><span class="special">;</span></pre>
+<p>Erase variable by id. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span> <span class="identifier">iterator</span><span class="special">,</span> <span class="keyword">bool</span> <span class="special">&gt;</span> 
+<a name="idp51500144-bb"></a><span class="identifier">emplace</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span> id<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span> value<span class="special">)</span><span class="special">;</span></pre>Emplace an environment variable. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp51502400-bb"></a><span class="identifier">empty</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Check if environment has entries. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="idp51503408-bb"></a><span class="identifier">size</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Get the number of variables. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51504656-bb"></a><span class="identifier">clear</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Clear the environment. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Use with care, passed environment cannot be empty. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="basic_environment/entry_type.html" title="Struct template entry_type">entry_type</a> <a name="idp51506432-bb"></a><span class="identifier">at</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span> key<span class="special">)</span><span class="special">;</span></pre>Get the entry with the key. Throws if it does not exist. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="basic_environment/const_entry_type.html" title="Struct template const_entry_type">const_entry_type</a> <a name="idp51508272-bb"></a><span class="identifier">at</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span> key<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Get the entry with the key. Throws if it does not exist. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="basic_environment/entry_type.html" title="Struct template entry_type">entry_type</a> <a name="idp51510352-bb"></a><span class="keyword">operator</span><span class="special">[</span><span class="special">]</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">string_type</span> <span class="special">&amp;</span> key<span class="special">)</span><span class="special">;</span></pre>Get the entry with the given key. It creates the entry if it doesn't exist. </li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2006-2012 Julio M. Merino Vidal, Ilya Sokolov,
+      Felipe Tanus, Jeff Flinn, Boris Schaeling<br>Copyright &#169; 2016 Klemens D. Morgenstern<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="env.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../process/reference.html#header.boost.process.environment_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="basic_environment/const_entry_type.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Test cases</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../tests_organization.html" title="Declaring and organizing tests">
+<link rel="prev" href="../tests_organization.html" title="Declaring and organizing tests">
+<link rel="next" href="test_cases/test_organization_nullary.html" title="Test cases without parameters">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../tests_organization.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tests_organization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="test_cases/test_organization_nullary.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.tests_organization.test_cases"></a><a class="link" href="test_cases.html" title="Test cases">Test cases</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="test_cases/test_organization_nullary.html">Test
+        cases without parameters</a></span></dt>
+<dt><span class="section"><a href="test_cases/test_case_generation.html">Data-driven
+        test cases</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="test_cases/test_case_generation/datasets.html">Datasets</a></span></dt>
+<dt><span class="section"><a href="test_cases/test_case_generation/datasets_auto_registration.html">Declaring
+          and registering test cases with datasets</a></span></dt>
+<dt><span class="section"><a href="test_cases/test_case_generation/operations.html">Operations
+          on dataset</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="test_cases/test_case_generation/operations.html#boost_test.tests_organization.test_cases.test_case_generation.operations.joins">Joins</a></span></dt>
+<dt><span class="section"><a href="test_cases/test_case_generation/operations.html#boost_test.tests_organization.test_cases.test_case_generation.operations.zips">Zips</a></span></dt>
+<dt><span class="section"><a href="test_cases/test_case_generation/operations.html#boost_test.tests_organization.test_cases.test_case_generation.operations.grid_cartesian_products">Grid
+            (Cartesian products)</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="test_cases/test_case_generation/generators.html">Datasets
+          generators</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="test_cases/test_organization_templates.html">Template
+        test cases</a></span></dt>
+<dt><span class="section"><a href="test_cases/param_test.html">Parametrized
+        test cases</a></span></dt>
+</dl></div>
+<p>
+        A test case is a unit of execution that is run by the <a class="link" href="../section_glossary.html#test_runner">test
+        runner</a>. It contains instructions and <a class="link" href="../testing_tools/boost_test_universal_macro.html" title="BOOST_TEST: universal and general purpose assertions">assertions</a>,
+        and its execution is monitored by the <span class="emphasis"><em>Unit Test Framework</em></span>.
+        Information about the execution is recorded, and a log/report is produced.
+      </p>
+<p>
+        The test runner should be informed of the test case in order to run it: the
+        test case should be <span class="bold"><strong>registered</strong></span> for its inclusion
+        into the <span class="emphasis"><em>test tree</em></span>.
+      </p>
+<p>
+        The <span class="emphasis"><em>Unit Test Framework</em></span> covers the following test case
+        scenarios:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="bold"><strong>test cases without parameters</strong></span>: those
+            are similar to the run of a function in the controlled environment of
+            the test runner.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>test cases with parameters</strong></span>: this usage
+            is intended to run the same function with potentially many different
+            parameters, each call with a different parameter being handled by the
+            test runner.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>test cases on template</strong></span>: the scenario
+            is to test the same template implementation against several type.
+          </li>
+</ul></div>
+<p>
+        The test case have a different <span class="bold"><strong>declaration</strong></span>
+        APIs for each of the above scenarios. Preferred APIs will declare the test
+        case and register it automatically in a test tree without a necessity to
+        perform manual registration.
+      </p>
+<h5>
+<a name="boost_test.tests_organization.test_cases.h0"></a>
+        <span class="phrase"><a name="boost_test.tests_organization.test_cases.manual_registration"></a></span><a class="link" href="test_cases.html#boost_test.tests_organization.test_cases.manual_registration">Manual
+        registration</a>
+      </h5>
+<p>
+        While automatic registration is preferred test case declaration API, it is
+        also possible to declare tests manually. For this APIs, <span class="emphasis"><em>Unit Test
+        Framework</em></span> opted for a least intrusive design based on <span class="emphasis"><em>generic
+        callback</em></span> approach, which signatures depends on the king of test
+        case being declared.
+      </p>
+<p>
+        The single test module may mix both automated and manual test case registration.
+        In other words, within the same test module you can have both test cases
+        implemented remotely and registered manually in the test module initialization
+        function and test cases that are registered automatically at implementation
+        point.
+      </p>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          The design of manual test case declaration API in <span class="emphasis"><em>Unit Test Framework</em></span>
+          assumes the test case implementation (test function body) and test case
+          creation/registration points are remote. As a result you may forget to
+          register the test case and it's never going to be executed, even though
+          it's present in test file.
+        </p></td></tr>
+</table></div>
+<p>
+        You need to be sure you exhausted all possible ways to employ automatic registration
+        APIs first before you opt to use manual registration. Specifically:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            If you need optionally include/exclude some of the test cases, consider
+            using enable/disable/enable_if decorators instead
+          </li>
+<li class="listitem">
+            If you need to register some parametrized test cases based on some data,
+            consider data-driven test cases instead
+          </li>
+<li class="listitem">
+            If you need to specify complicated test unit dependencies, you can use
+            depends_on decorator instead
+          </li>
+<li class="listitem">
+            if you need to share the logic between the test units consider using
+            fixtures instead
+          </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2017 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../tests_organization.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tests_organization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="test_cases/test_organization_nullary.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

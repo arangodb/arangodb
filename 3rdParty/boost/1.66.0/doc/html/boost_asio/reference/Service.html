@@ -1,0 +1,80 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Service requirements</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../reference.html" title="Reference">
+<link rel="prev" href="ResolveHandler.html" title="Resolve handler requirements">
+<link rel="next" href="SettableSerialPortOption.html" title="Settable serial port option requirements">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="ResolveHandler.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="SettableSerialPortOption.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_asio.reference.Service"></a><a class="link" href="Service.html" title="Service requirements">Service requirements</a>
+</h3></div></div></div>
+<p>
+        A class is a <span class="emphasis"><em>service</em></span> if it is publicly and unambiguously
+        derived from <code class="computeroutput">execution_context::service</code>, or if it is publicly
+        and unambiguously derived from another service. For a service <code class="computeroutput">S</code>,
+        <code class="computeroutput">S::key_type</code> shall be valid and denote a type (C++Std [temp.deduct]),
+        <code class="computeroutput">is_base_of_v&lt;typename S::key_type, S&gt;</code> shall be <code class="computeroutput">true</code>,
+        and <code class="computeroutput">S</code> shall satisfy the <code class="computeroutput">Destructible</code> requirements
+        (C++Std [destructible]).
+      </p>
+<p>
+        The first parameter of all service constructors shall be an lvalue reference
+        to <code class="computeroutput">execution_context</code>. This parameter denotes the <code class="computeroutput">execution_context</code>
+        object that represents a set of services, of which the service object will
+        be a member. [<span class="emphasis"><em>Note:</em></span> These constructors may be called
+        by the <code class="computeroutput">make_service</code> function. &#8212;<span class="emphasis"><em>end note</em></span>]
+      </p>
+<p>
+        A service shall provide an explicit constructor with a single parameter of
+        lvalue reference to <code class="computeroutput">execution_context</code>. [<span class="emphasis"><em>Note:</em></span>
+        This constructor may be called by the <code class="computeroutput">use_service</code> function.
+        &#8212;<span class="emphasis"><em>end note</em></span>]
+      </p>
+<pre class="programlisting">class my_service : public execution_context::service
+{
+public:
+  typedef my_service key_type;
+  explicit my_service(execution_context&amp; ctx);
+  my_service(execution_context&amp; ctx, int some_value);
+private:
+  virtual void shutdown() noexcept override;
+  ...
+};
+</pre>
+<p>
+        A service's <code class="computeroutput">shutdown</code> member function shall destroy all copies
+        of user-defined function objects that are held by the service.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="ResolveHandler.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="SettableSerialPortOption.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

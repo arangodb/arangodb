@@ -1,0 +1,138 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Customizing the module's entry point</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../single_header_customizations.html" title="Single-header variant customizations">
+<link rel="prev" href="../single_header_customizations.html" title="Single-header variant customizations">
+<link rel="next" href="init_func.html" title="Customizing the module's initialization function">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../single_header_customizations.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../single_header_customizations.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="init_func.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.adv_scenarios.single_header_customizations.entry_point"></a><a class="link" href="entry_point.html" title="Customizing the module's entry point">Customizing
+        the module's entry point</a>
+</h4></div></div></div>
+<p>
+          In this usage variant, in your single translation unit, you need to define
+          macros <a class="link" href="../../utf_reference/link_references/link_boost_test_no_main.html" title="BOOST_TEST_NO_MAIN"><code class="computeroutput"><span class="identifier">BOOST_TEST_NO_MAIN</span></code></a> and <a class="link" href="../../utf_reference/link_references/link_boost_test_alternative_init_macro.html" title="BOOST_TEST_ALTERNATIVE_INIT_API"><code class="computeroutput"><span class="identifier">BOOST_TEST_ALTERNATIVE_INIT_API</span></code></a>
+          (their values are irrelevant) prior to including any of the framework's
+          headers. Next, you have to define your custom entry point, and invoke the
+          default <a class="link" href="../test_module_runner_overview.html" title="Test module runner">test
+          runner</a> <code class="computeroutput"><span class="identifier">unit_test_main</span></code>
+          manually with the default <a class="link" href="../test_module_init_overview.html" title="Test module's initialization">initialization
+          function</a> <code class="computeroutput"><span class="identifier">init_unit_test</span></code>
+          as argument.
+        </p>
+<h6>
+<a name="boost_test.adv_scenarios.single_header_customizations.entry_point.h0"></a>
+          <span class="phrase"><a name="boost_test.adv_scenarios.single_header_customizations.entry_point.example_descr"></a></span><a class="link" href="entry_point.html#boost_test.adv_scenarios.single_header_customizations.entry_point.example_descr">Example:
+          using custom entry point</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">custom_main</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_NO_MAIN</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_ALTERNATIVE_INIT_API</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">utf</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test1</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">false</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="keyword">void</span> <span class="identifier">make_use_of</span><span class="special">(</span><span class="keyword">char</span><span class="special">**)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Using custom entry point..."</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">argc</span><span class="special">,</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">argv</span><span class="special">[],</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">envp</span><span class="special">[])</span>
+<span class="special">{</span>
+  <span class="identifier">make_use_of</span><span class="special">(</span><span class="identifier">envp</span><span class="special">);</span>
+  <span class="keyword">return</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">unit_test_main</span><span class="special">(</span><span class="identifier">init_unit_test</span><span class="special">,</span> <span class="identifier">argc</span><span class="special">,</span> <span class="identifier">argv</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">custom_main</span>
+<span class="identifier">Using</span> <span class="identifier">custom</span> <span class="identifier">entry</span> <span class="identifier">point</span><span class="special">...</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">10</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+
+<span class="special">***</span> <span class="number">1</span> <span class="identifier">failure</span> <span class="identifier">is</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"custom_main"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<p>
+          In the above example, a custom entry point was selected because the test
+          module, in addition to command line arguments needs to obtain also the
+          information about environment variables.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            The above example also illustrates that it makes sense to define both
+            <a class="link" href="../../utf_reference/link_references/link_boost_test_module_macro.html" title="BOOST_TEST_MODULE"><code class="computeroutput"><span class="identifier">BOOST_TEST_MODULE</span></code></a> and <a class="link" href="../../utf_reference/link_references/link_boost_test_no_main.html" title="BOOST_TEST_NO_MAIN"><code class="computeroutput"><span class="identifier">BOOST_TEST_NO_MAIN</span></code></a>. This way,
+            no <code class="computeroutput"><span class="identifier">main</span></code> is generated
+            by the framework, but the specified name is assigned to the <a class="link" href="../../tests_organization/test_suite/master_test_suite.html" title="Master Test Suite">Master
+            Test Suite</a>.
+          </p></td></tr>
+</table></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            The reason for defining <a class="link" href="../../utf_reference/link_references/link_boost_test_alternative_init_macro.html" title="BOOST_TEST_ALTERNATIVE_INIT_API"><code class="computeroutput"><span class="identifier">BOOST_TEST_ALTERNATIVE_INIT_API</span></code></a>
+            is described <a class="link" href="../obsolete_init_func.html" title="The obsolete initialization function">here</a>.
+          </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2017 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../single_header_customizations.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../single_header_customizations.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="init_func.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,690 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template hyperexponential_distribution</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../boost_random/reference.html#header.boost.random.hyperexponential_distribution_hpp" title="Header &lt;boost/random/hyperexponential_distribution.hpp&gt;">
+<link rel="prev" href="geometric_distribution/param_type.html" title="Class param_type">
+<link rel="next" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="geometric_distribution/param_type.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_random/reference.html#header.boost.random.hyperexponential_distribution_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.random.hypere_1_3_34_5_6_17_1_1_1"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template hyperexponential_distribution</span></h2>
+<p>boost::random::hyperexponential_distribution</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../boost_random/reference.html#header.boost.random.hyperexponential_distribution_hpp" title="Header &lt;boost/random/hyperexponential_distribution.hpp&gt;">boost/random/hyperexponential_distribution.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RealT <span class="special">=</span> <span class="keyword">double</span><span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="identifier">RealT</span> <a name="boost.random.hypere_1_3_34_5_6_17_1_1_1.result_type"></a><span class="identifier">result_type</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="identifier">RealT</span> <a name="boost.random.hypere_1_3_34_5_6_17_1_1_1.input_type"></a><span class="identifier">input_type</span><span class="special">;</span> 
+
+  <span class="comment">// member classes/structs/unions</span>
+
+  <span class="keyword">class</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <span class="special">{</span>
+  <span class="keyword">public</span><span class="special">:</span>
+    <span class="comment">// types</span>
+    <span class="keyword">typedef</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#boost.random.hypere_1_3_34_5_6_17_1_1_1.param_type.distribution_type"><span class="identifier">distribution_type</span></a><span class="special">;</span>
+
+    <span class="comment">// <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#boost.random.hypere_1_3_34_5_6_17_1_1_1.param_typeconstruct-copy-destruct">construct/copy/destruct</a></span>
+    <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_4-bb"><span class="identifier">param_type</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ProbIterT<span class="special">,</span> <span class="keyword">typename</span> RateIterT<span class="special">&gt;</span> 
+      <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_5-bb"><span class="identifier">param_type</span></a><span class="special">(</span><span class="identifier">ProbIterT</span><span class="special">,</span> <span class="identifier">ProbIterT</span><span class="special">,</span> <span class="identifier">RateIterT</span><span class="special">,</span> <span class="identifier">RateIterT</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ProbRangeT<span class="special">,</span> <span class="keyword">typename</span> RateRangeT<span class="special">&gt;</span> 
+      <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_6-bb"><span class="identifier">param_type</span></a><span class="special">(</span><span class="identifier">ProbRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">RateRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> 
+                 <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">disable_if_c</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">ProbRangeT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">||</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">RateRangeT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RateIterT<span class="special">&gt;</span> 
+      <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_7-bb"><span class="identifier">param_type</span></a><span class="special">(</span><span class="identifier">RateIterT</span><span class="special">,</span> <span class="identifier">RateIterT</span><span class="special">,</span> 
+                 <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if_c</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">RateIterT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RateRangeT<span class="special">&gt;</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_8-bb"><span class="identifier">param_type</span></a><span class="special">(</span><span class="identifier">RateRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_9-bb"><span class="identifier">param_type</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span><span class="special">)</span><span class="special">;</span>
+    <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_10-bb"><span class="identifier">param_type</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span><span class="special">)</span><span class="special">;</span>
+
+    <span class="comment">// <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_3-bb">public member functions</a></span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_3_1-bb"><span class="identifier">probabilities</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_3_2-bb"><span class="identifier">rates</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="comment">// <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_11-bb">friend functions</a></span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits<span class="special">&gt;</span> 
+      <span class="keyword">friend</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+      <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_11_1-bb"><span class="keyword">operator</span><span class="special">&lt;&lt;</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits<span class="special">&gt;</span> 
+      <span class="keyword">friend</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_istream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+      <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_11_2-bb"><span class="keyword">operator</span><span class="special">&gt;&gt;</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_istream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">friend</span> <span class="keyword">bool</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_11_3-bb"><span class="keyword">operator</span><span class="special">==</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">friend</span> <span class="keyword">bool</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html#id-1_3_34_5_6_17_1_1_1_3_11_4-bb"><span class="keyword">operator</span><span class="special">!=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#boost.random.hypere_1_3_34_5_6_17_1_1_1construct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_7-bb"><span class="identifier">hyperexponential_distribution</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ProbIterT<span class="special">,</span> <span class="keyword">typename</span> RateIterT<span class="special">&gt;</span> 
+    <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_8-bb"><span class="identifier">hyperexponential_distribution</span></a><span class="special">(</span><span class="identifier">ProbIterT</span><span class="special">,</span> <span class="identifier">ProbIterT</span><span class="special">,</span> <span class="identifier">RateIterT</span><span class="special">,</span> <span class="identifier">RateIterT</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ProbRangeT<span class="special">,</span> <span class="keyword">typename</span> RateRangeT<span class="special">&gt;</span> 
+    <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_9-bb"><span class="identifier">hyperexponential_distribution</span></a><span class="special">(</span><span class="identifier">ProbRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">RateRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> 
+                                  <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">disable_if_c</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">ProbRangeT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">||</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">RateRangeT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RateIterT<span class="special">&gt;</span> 
+    <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_10-bb"><span class="identifier">hyperexponential_distribution</span></a><span class="special">(</span><span class="identifier">RateIterT</span><span class="special">,</span> <span class="identifier">RateIterT</span><span class="special">,</span> 
+                                  <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if_c</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">RateIterT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RateRangeT<span class="special">&gt;</span> 
+    <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_11-bb"><span class="identifier">hyperexponential_distribution</span></a><span class="special">(</span><span class="identifier">RateRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_12-bb"><span class="identifier">hyperexponential_distribution</span></a><span class="special">(</span><a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_13-bb"><span class="identifier">hyperexponential_distribution</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> 
+                                <span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_14-bb"><span class="identifier">hyperexponential_distribution</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_6-bb">public member functions</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> URNG<span class="special">&gt;</span> <span class="identifier">RealT</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_6_1-bb"><span class="keyword">operator</span><span class="special">(</span><span class="special">)</span></a><span class="special">(</span><span class="identifier">URNG</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> URNG<span class="special">&gt;</span> <span class="identifier">RealT</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_6_2-bb"><span class="keyword">operator</span><span class="special">(</span><span class="special">)</span></a><span class="special">(</span><span class="identifier">URNG</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_6_3-bb"><span class="identifier">num_phases</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_6_4-bb"><span class="identifier">probabilities</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_6_5-bb"><span class="identifier">rates</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">RealT</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_6_6-bb"><span class="identifier">min</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">RealT</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_6_7-bb"><span class="identifier">max</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_6_8-bb"><span class="identifier">param</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_6_9-bb"><span class="identifier">param</span></a><span class="special">(</span><a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_6_10-bb"><span class="identifier">reset</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_15-bb">friend functions</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits<span class="special">&gt;</span> 
+    <span class="keyword">friend</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+    <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_15_1-bb"><span class="keyword">operator</span><span class="special">&lt;&lt;</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> 
+               <span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits<span class="special">&gt;</span> 
+    <span class="keyword">friend</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_istream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+    <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_15_2-bb"><span class="keyword">operator</span><span class="special">&gt;&gt;</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_istream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> 
+               <span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">friend</span> <span class="keyword">bool</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_15_3-bb"><span class="keyword">operator</span><span class="special">==</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <span class="special">&amp;</span><span class="special">,</span> 
+                         <span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">friend</span> <span class="keyword">bool</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html#id-1_3_34_5_6_17_1_1_1_15_4-bb"><span class="keyword">operator</span><span class="special">!=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <span class="special">&amp;</span><span class="special">,</span> 
+                         <span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.34.5.6.16.3.4"></a><h2>Description</h2>
+<p>The hyperexponential distribution is a real-valued continuous distribution with two parameters, the <span class="emphasis"><em>phase probability vector</em></span> <code class="computeroutput">probs</code> and the <span class="emphasis"><em>rate vector</em></span> <code class="computeroutput">rates</code>.</p>
+<p>A <span class="inlinemediaobject"><img src="../../images/random//form_15.png"></span>-phase hyperexponential distribution is a mixture of <span class="inlinemediaobject"><img src="../../images/random//form_15.png"></span> exponential distributions. For this reason, it is also referred to as <span class="emphasis"><em>mixed exponential distribution</em></span> or <span class="emphasis"><em>parallel <span class="inlinemediaobject"><img src="../../images/random//form_15.png"></span>-phase exponential distribution</em></span>.</p>
+<p>A <span class="inlinemediaobject"><img src="../../images/random//form_15.png"></span>-phase hyperexponential distribution is characterized by two parameters, namely a <span class="emphasis"><em>phase probability vector</em></span> <span class="inlinemediaobject"><img src="../../images/random//form_16.png"></span> and a <span class="emphasis"><em>rate vector</em></span> <span class="inlinemediaobject"><img src="../../images/random//form_17.png"></span>.</p>
+<p>A <span class="inlinemediaobject"><img src="../../images/random//form_15.png"></span>-phase hyperexponential distribution is frequently used in <span class="emphasis"><em>queueing theory</em></span> to model the distribution of the superposition of <span class="inlinemediaobject"><img src="../../images/random//form_15.png"></span> independent events, like, for instance, the service time distribution of a queueing station with <span class="inlinemediaobject"><img src="../../images/random//form_15.png"></span> servers in parallel where the <span class="inlinemediaobject"><img src="../../images/random//form_18.png"></span>-th server is chosen with probability <span class="inlinemediaobject"><img src="../../images/random//form_19.png"></span> and its service time distribution is an exponential distribution with rate <span class="inlinemediaobject"><img src="../../images/random//form_20.png"></span> (Allen,1990; Papadopolous et al.,1993; Trivedi,2002).</p>
+<p>For instance, CPUs service-time distribution in a computing system has often been observed to possess such a distribution (Rosin,1965). Also, the arrival of different types of customer to a single queueing station is often modeled as a hyperexponential distribution (Papadopolous et al.,1993). Similarly, if a product manufactured in several parallel assemply lines and the outputs are merged, the failure density of the overall product is likely to be hyperexponential (Trivedi,2002).</p>
+<p>Finally, since the hyperexponential distribution exhibits a high Coefficient of Variation (CoV), that is a CoV &gt; 1, it is especially suited to fit empirical data with large CoV (Feitelson,2014; Wolski et al.,2013) and to approximate <span class="emphasis"><em>long-tail probability distributions</em></span> (Feldmann et al.,1998).</p>
+<p>See (Boost,2014) for more information and examples.</p>
+<p>A <span class="inlinemediaobject"><img src="../../images/random//form_15.png"></span>-phase hyperexponential distribution has a probability density function </p>
+<div class="equation">
+<a name="id-1.3.34.5.6.16.3.4.9.2"></a><p class="title"><b>Equation&#160;33.1.&#160;</b></p>
+<div class="equation-contents"><div class="mediaobject" align="center"><img src="../../images/random//form_21.png" align="middle"></div></div>
+</div>
+<p><br class="equation-break"> where:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p><span class="inlinemediaobject"><img src="../../images/random//form_15.png"></span> is the <span class="emphasis"><em>number of phases</em></span> and also the size of the input vector parameters,</p></li>
+<li class="listitem"><p><span class="inlinemediaobject"><img src="../../images/random//form_16.png"></span> is the <span class="emphasis"><em>phase probability vector</em></span> parameter, and</p></li>
+<li class="listitem"><p><span class="inlinemediaobject"><img src="../../images/random//form_17.png"></span> is the <span class="emphasis"><em>rate vector</em></span> parameter.</p></li>
+</ul></div>
+<p>
+Given a <span class="inlinemediaobject"><img src="../../images/random//form_15.png"></span>-phase hyperexponential distribution with phase probability vector <span class="inlinemediaobject"><img src="../../images/random//form_22.png"></span> and rate vector <span class="inlinemediaobject"><img src="../../images/random//form_23.png"></span>, the random variate generation algorithm consists of the following steps (Tyszer,1999):</p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><p>Generate a random variable <span class="inlinemediaobject"><img src="../../images/random//form_24.png"></span> uniformly distribution on the interval <span class="inlinemediaobject"><img src="../../images/random//form_25.png"></span>.</p></li>
+<li class="listitem"><p>Use <span class="inlinemediaobject"><img src="../../images/random//form_24.png"></span> to select the appropriate <span class="inlinemediaobject"><img src="../../images/random//form_20.png"></span> (e.g., the <span class="emphasis"><em>alias method</em></span> can possibly be used for this step).</p></li>
+<li class="listitem"><p>Generate an exponentially distributed random variable <span class="inlinemediaobject"><img src="../../images/random//form_26.png"></span> with rate parameter <span class="inlinemediaobject"><img src="../../images/random//form_20.png"></span>.</p></li>
+<li class="listitem"><p>Return <span class="inlinemediaobject"><img src="../../images/random//form_26.png"></span>.</p></li>
+</ol></div>
+<p>
+References:</p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><p>A.O. Allen, <span class="emphasis"><em>Probability, Statistics, and Queuing Theory with Computer Science Applications, Second Edition</em></span>, Academic Press, 1990.</p></li>
+<li class="listitem"><p>Boost C++ Libraries, <span class="emphasis"><em>Boost.Math / Statistical Distributions: Hyperexponential Distribution</em></span>, Online: <a href="http://www.boost.org/doc/libs/release/libs/math/doc/html/dist.html" target="_top">http://www.boost.org/doc/libs/release/libs/math/doc/html/dist.html</a> , 2014.</p></li>
+<li class="listitem"><p>D.G. Feitelson, <span class="emphasis"><em>Workload Modeling for Computer Systems Performance Evaluation</em></span>, Cambridge University Press, 2014</p></li>
+<li class="listitem"><p>A. Feldmann and W. Whitt, <span class="emphasis"><em>Fitting mixtures of exponentials to long-tail distributions to analyze network performance models</em></span>, Performance Evaluation 31(3-4):245, doi:10.1016/S0166-5316(97)00003-5, 1998.</p></li>
+<li class="listitem"><p>H.T. Papadopolous, C. Heavey and J. Browne, <span class="emphasis"><em>Queueing Theory in Manufacturing Systems Analysis and Design</em></span>, Chapman &amp; Hall/CRC, 1993, p. 35.</p></li>
+<li class="listitem"><p>R.F. Rosin, <span class="emphasis"><em>Determining a computing center environment</em></span>, Communications of the ACM 8(7):463-468, 1965.</p></li>
+<li class="listitem"><p>K.S. Trivedi, <span class="emphasis"><em>Probability and Statistics with Reliability, Queueing, and Computer Science Applications</em></span>, John Wiley &amp; Sons, Inc., 2002.</p></li>
+<li class="listitem"><p>J. Tyszer, <span class="emphasis"><em>Object-Oriented Computer Simulation of Discrete-Event Systems</em></span>, Springer, 1999.</p></li>
+<li class="listitem"><p>Wikipedia, <span class="emphasis"><em>Hyperexponential Distribution</em></span>, Online: <a href="http://en.wikipedia.org/wiki/Hyperexponential_distribution" target="_top">http://en.wikipedia.org/wiki/Hyperexponential_distribution</a> , 2014.</p></li>
+<li class="listitem"><p>Wolfram Mathematica, <span class="emphasis"><em>Hyperexponential Distribution</em></span>, Online: <a href="http://reference.wolfram.com/language/ref/HyperexponentialDistribution.html" target="_top">http://reference.wolfram.com/language/ref/HyperexponentialDistribution.html</a> , 2014.</p></li>
+</ol></div>
+<p>
+</p>
+<p>Marco Guazzone (<a href="mailto:marco.guazzone@gmail.com" target="_top">marco.guazzone@gmail.com</a>) </p>
+<p>
+</p>
+<div class="refsect2">
+<a name="id-1.3.34.5.6.16.3.4.10"></a><h3>
+<a name="boost.random.hypere_1_3_34_5_6_17_1_1_1construct-copy-destruct"></a><code class="computeroutput">hyperexponential_distribution</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_34_5_6_17_1_1_1_7-bb"></a><span class="identifier">hyperexponential_distribution</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a 1-phase <code class="computeroutput"><code class="computeroutput"><a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a></code></code> (i.e., an exponential distribution) with rate 1. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ProbIterT<span class="special">,</span> <span class="keyword">typename</span> RateIterT<span class="special">&gt;</span> 
+  <a name="id-1_3_34_5_6_17_1_1_1_8-bb"></a><span class="identifier">hyperexponential_distribution</span><span class="special">(</span><span class="identifier">ProbIterT</span> prob_first<span class="special">,</span> <span class="identifier">ProbIterT</span> prob_last<span class="special">,</span> 
+                                <span class="identifier">RateIterT</span> rate_first<span class="special">,</span> <span class="identifier">RateIterT</span> rate_last<span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a></code></code> from the <span class="emphasis"><em>phase probability vector</em></span> and <span class="emphasis"><em>rate vector</em></span> parameters of the distribution.</p>
+<p>The <span class="emphasis"><em>phase probability vector</em></span> parameter is given by the range defined by [<span class="emphasis"><em>prob_first</em></span>, <span class="emphasis"><em>prob_last</em></span>) iterator pair, and the <span class="emphasis"><em>rate vector</em></span> parameter is given by the range defined by [<span class="emphasis"><em>rate_first</em></span>, <span class="emphasis"><em>rate_last</em></span>) iterator pair.</p>
+<p>
+
+References:</p>
+<div class="orderedlist"><ol class="orderedlist" type="a"><li class="listitem"><p>ISO, <span class="emphasis"><em>ISO/IEC 14882-2014: Information technology - Programming languages - C++</em></span>, 2014</p></li></ol></div>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">prob_first</code></span></p></td>
+<td><p>The iterator to the beginning of the range of non-negative real elements representing the phase probabilities; if elements don't sum to 1, they are normalized. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">prob_last</code></span></p></td>
+<td><p>The iterator to the ending of the range of non-negative real elements representing the phase probabilities; if elements don't sum to 1, they are normalized. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">rate_first</code></span></p></td>
+<td><p>The iterator to the beginning of the range of non-negative real elements representing the rates. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">rate_last</code></span></p></td>
+<td><p>The iterator to the ending of the range of non-negative real elements representing the rates.</p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">ProbIterT</code></span></p></td>
+<td><p>Must meet the requirements of <code class="computeroutput">InputIterator</code> concept (ISO,2014,sec. 24.2.3 [input.iterators]). </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">RateIterT</code></span></p></td>
+<td><p>Must meet the requirements of <code class="computeroutput">InputIterator</code> concept (ISO,2014,sec. 24.2.3 [input.iterators]).</p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ProbRangeT<span class="special">,</span> <span class="keyword">typename</span> RateRangeT<span class="special">&gt;</span> 
+  <a name="id-1_3_34_5_6_17_1_1_1_9-bb"></a><span class="identifier">hyperexponential_distribution</span><span class="special">(</span><span class="identifier">ProbRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span> prob_range<span class="special">,</span> 
+                                <span class="identifier">RateRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span> rate_range<span class="special">,</span> 
+                                <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">disable_if_c</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">ProbRangeT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">||</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">RateRangeT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a></code></code> from the <span class="emphasis"><em>phase probability vector</em></span> and <span class="emphasis"><em>rate vector</em></span> parameters of the distribution.</p>
+<p>The <span class="emphasis"><em>phase probability vector</em></span> parameter is given by the range defined by <span class="emphasis"><em>prob_range</em></span>, and the <span class="emphasis"><em>rate vector</em></span> parameter is given by the range defined by <span class="emphasis"><em>rate_range</em></span>.</p>
+<p>
+
+</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>The final <code class="computeroutput">disable_if</code> parameter is an implementation detail that differentiates between this two argument constructor and the iterator-based two argument constructor described below. </p></td></tr>
+</table></div>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">prob_range</code></span></p></td>
+<td><p>The range of non-negative real elements representing the phase probabilities; if elements don't sum to 1, they are normalized. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">rate_range</code></span></p></td>
+<td><p>The range of positive real elements representing the rates.</p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">ProbRangeT</code></span></p></td>
+<td><p>Must meet the requirements of <a href="../../../../libs/range/doc/html/range/concepts.html" target="_top">Range</a> concept. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">RateRangeT</code></span></p></td>
+<td><p>Must meet the requirements of <a href="../../../../libs/range/doc/html/range/concepts.html" target="_top">Range</a> concept.</p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RateIterT<span class="special">&gt;</span> 
+  <a name="id-1_3_34_5_6_17_1_1_1_10-bb"></a><span class="identifier">hyperexponential_distribution</span><span class="special">(</span><span class="identifier">RateIterT</span> rate_first<span class="special">,</span> <span class="identifier">RateIterT</span> rate_last<span class="special">,</span> 
+                                <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if_c</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">RateIterT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a></code></code> from the <span class="emphasis"><em>rate vector</em></span> parameter of the distribution and with equal phase probabilities.</p>
+<p>The <span class="emphasis"><em>rate vector</em></span> parameter is given by the range defined by [<span class="emphasis"><em>rate_first</em></span>, <span class="emphasis"><em>rate_last</em></span>) iterator pair, and the <span class="emphasis"><em>phase probability vector</em></span> parameter is set to the equal phase probabilities (i.e., to a vector of the same length <span class="inlinemediaobject"><img src="../../images/random//form_15.png"></span> of the <span class="emphasis"><em>rate vector</em></span> and with each element set to <span class="inlinemediaobject"><img src="../../images/random//form_27.png"></span>).</p>
+<p>
+
+</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>The final <code class="computeroutput">disable_if</code> parameter is an implementation detail that differentiates between this two argument constructor and the range-based two argument constructor described above.</p></td></tr>
+</table></div>
+<p>
+References:</p>
+<div class="orderedlist"><ol class="orderedlist" type="a"><li class="listitem"><p>ISO, <span class="emphasis"><em>ISO/IEC 14882-2014: Information technology - Programming languages - C++</em></span>, 2014</p></li></ol></div>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">rate_first</code></span></p></td>
+<td><p>The iterator to the beginning of the range of non-negative real elements representing the rates. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">rate_last</code></span></p></td>
+<td><p>The iterator to the ending of the range of non-negative real elements representing the rates.</p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">RateIterT</code></span></p></td>
+<td><p>Must meet the requirements of <code class="computeroutput">InputIterator</code> concept (ISO,2014,sec. 24.2.3 [input.iterators]). </p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RateRangeT<span class="special">&gt;</span> 
+  <a name="id-1_3_34_5_6_17_1_1_1_11-bb"></a><span class="identifier">hyperexponential_distribution</span><span class="special">(</span><span class="identifier">RateRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span> rate_range<span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a></code></code> from the "rates" parameters of the distribution and with equal phase probabilities.</p>
+<p>The <span class="emphasis"><em>rate vector</em></span> parameter is given by the range defined by <span class="emphasis"><em>rate_range</em></span>, and the <span class="emphasis"><em>phase probability vector</em></span> parameter is set to the equal phase probabilities (i.e., to a vector of the same length <span class="inlinemediaobject"><img src="../../images/random//form_15.png"></span> of the <span class="emphasis"><em>rate vector</em></span> and with each element set to <span class="inlinemediaobject"><img src="../../images/random//form_27.png"></span>).</p>
+<p>
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">rate_range</code></span></p></td>
+<td><p>The range of positive real elements representing the rates. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">RateRangeT</code></span></p></td>
+<td><p>Must meet the requirements of <a href="../../../../libs/range/doc/html/range/concepts.html" target="_top">Range</a> concept.</p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="id-1_3_34_5_6_17_1_1_1_12-bb"></a><span class="identifier">hyperexponential_distribution</span><span class="special">(</span><a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <span class="keyword">const</span> <span class="special">&amp;</span> param<span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a></code></code> from its parameters.</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">param</code></span></p></td>
+<td><p>The parameters of the distribution. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_34_5_6_17_1_1_1_13-bb"></a><span class="identifier">hyperexponential_distribution</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> l1<span class="special">,</span> 
+                              <span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> l2<span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a></code></code> from the <span class="emphasis"><em>phase probability vector</em></span> and <span class="emphasis"><em>rate vector</em></span> parameters of the distribution.</p>
+<p>The <span class="emphasis"><em>phase probability vector</em></span> parameter is given by the <span class="emphasis"><em>brace-init-list</em></span> (ISO,2014,sec. 8.5.4 [dcl.init.list]) defined by <span class="emphasis"><em>l1</em></span>, and the <span class="emphasis"><em>rate vector</em></span> parameter is given by the <span class="emphasis"><em>brace-init-list</em></span> (ISO,2014,sec. 8.5.4 [dcl.init.list]) defined by <span class="emphasis"><em>l2</em></span>.</p>
+<p>
+References:</p>
+<div class="orderedlist"><ol class="orderedlist" type="a"><li class="listitem"><p>ISO, <span class="emphasis"><em>ISO/IEC 14882-2014: Information technology - Programming languages - C++</em></span>, 2014</p></li></ol></div>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">l1</code></span></p></td>
+<td><p>The initializer list for inizializing the phase probability vector. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">l2</code></span></p></td>
+<td><p>The initializer list for inizializing the rate vector.</p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_34_5_6_17_1_1_1_14-bb"></a><span class="identifier">hyperexponential_distribution</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> l1<span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a></code></code> from the <span class="emphasis"><em>rate vector</em></span> parameter of the distribution and with equal phase probabilities.</p>
+<p>The <span class="emphasis"><em>rate vector</em></span> parameter is given by the <span class="emphasis"><em>brace-init-list</em></span> (ISO,2014,sec. 8.5.4 [dcl.init.list]) defined by <span class="emphasis"><em>l1</em></span>, and the <span class="emphasis"><em>phase probability vector</em></span> parameter is set to the equal phase probabilities (i.e., to a vector of the same length <span class="inlinemediaobject"><img src="../../images/random//form_15.png"></span> of the <span class="emphasis"><em>rate vector</em></span> and with each element set to <span class="inlinemediaobject"><img src="../../images/random//form_27.png"></span>).</p>
+<p>
+References:</p>
+<div class="orderedlist"><ol class="orderedlist" type="a"><li class="listitem"><p>ISO, <span class="emphasis"><em>ISO/IEC 14882-2014: Information technology - Programming languages - C++</em></span>, 2014</p></li></ol></div>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">l1</code></span></p></td>
+<td><p>The initializer list for inizializing the rate vector.</p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.34.5.6.16.3.4.11"></a><h3>
+<a name="id-1_3_34_5_6_17_1_1_1_6-bb"></a><code class="computeroutput">hyperexponential_distribution</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> URNG<span class="special">&gt;</span> <span class="identifier">RealT</span> <a name="id-1_3_34_5_6_17_1_1_1_6_1-bb"></a><span class="keyword">operator</span><span class="special">(</span><span class="special">)</span><span class="special">(</span><span class="identifier">URNG</span> <span class="special">&amp;</span> urng<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Gets a random variate distributed according to the hyperexponential distribution.</p>
+<p>
+
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">urng</code></span></p></td>
+<td><p>A uniform random number generator object.</p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">URNG</code></span></p></td>
+<td><p>Must meet the requirements of <a class="link" href="../../boost_random/reference.html#boost_random.reference.concepts.uniform_random_number_generator" title="Uniform Random Number Generator">uniform random number generator</a> .</p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>A random variate distributed according to the hyperexponential distribution. </p></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> URNG<span class="special">&gt;</span> 
+  <span class="identifier">RealT</span> <a name="id-1_3_34_5_6_17_1_1_1_6_2-bb"></a><span class="keyword">operator</span><span class="special">(</span><span class="special">)</span><span class="special">(</span><span class="identifier">URNG</span> <span class="special">&amp;</span> urng<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span> param<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Gets a random variate distributed according to the hyperexponential distribution with parameters specified by <code class="computeroutput">param</code>.</p>
+<p>
+
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">param</code></span></p></td>
+<td><p>A distribution parameter object.</p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">urng</code></span></p></td>
+<td><p>A uniform random number generator object. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">URNG</code></span></p></td>
+<td><p>Must meet the requirements of <a class="link" href="../../boost_random/reference.html#boost_random.reference.concepts.uniform_random_number_generator" title="Uniform Random Number Generator">uniform random number generator</a> .</p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>A random variate distributed according to the hyperexponential distribution. distribution with parameters specified by <code class="computeroutput">param</code>. </p></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_34_5_6_17_1_1_1_6_3-bb"></a><span class="identifier">num_phases</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Returns the number of phases of the distribution. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <a name="id-1_3_34_5_6_17_1_1_1_6_4-bb"></a><span class="identifier">probabilities</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Returns the <span class="emphasis"><em>phase probability vector</em></span> parameter of the distribution. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <a name="id-1_3_34_5_6_17_1_1_1_6_5-bb"></a><span class="identifier">rates</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Returns the <span class="emphasis"><em>rate vector</em></span> parameter of the distribution. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">RealT</span> <a name="id-1_3_34_5_6_17_1_1_1_6_6-bb"></a><span class="identifier">min</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Returns the smallest value that the distribution can produce. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">RealT</span> <a name="id-1_3_34_5_6_17_1_1_1_6_7-bb"></a><span class="identifier">max</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Returns the largest value that the distribution can produce. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <a name="id-1_3_34_5_6_17_1_1_1_6_8-bb"></a><span class="identifier">param</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Returns the parameters of the distribution. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="id-1_3_34_5_6_17_1_1_1_6_9-bb"></a><span class="identifier">param</span><span class="special">(</span><a class="link" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html" title="Class param_type">param_type</a> <span class="keyword">const</span> <span class="special">&amp;</span> param<span class="special">)</span><span class="special">;</span></pre>
+<p>Sets the parameters of the distribution. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="id-1_3_34_5_6_17_1_1_1_6_10-bb"></a><span class="identifier">reset</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Effects: Subsequent uses of the distribution do not depend on values produced by any engine prior to invoking reset. </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.34.5.6.16.3.4.12"></a><h3>
+<a name="id-1_3_34_5_6_17_1_1_1_15-bb"></a><code class="computeroutput">hyperexponential_distribution</code> friend functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits<span class="special">&gt;</span> 
+  <span class="keyword">friend</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+  <a name="id-1_3_34_5_6_17_1_1_1_15_1-bb"></a><span class="keyword">operator</span><span class="special">&lt;&lt;</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> os<span class="special">,</span> 
+             <span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <span class="special">&amp;</span> hd<span class="special">)</span><span class="special">;</span></pre>
+<p>Writes an <code class="computeroutput"><code class="computeroutput"><a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a></code></code> to a <code class="computeroutput">std::ostream</code>. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits<span class="special">&gt;</span> 
+  <span class="keyword">friend</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_istream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+  <a name="id-1_3_34_5_6_17_1_1_1_15_2-bb"></a><span class="keyword">operator</span><span class="special">&gt;&gt;</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_istream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> is<span class="special">,</span> 
+             <span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <span class="special">&amp;</span> hd<span class="special">)</span><span class="special">;</span></pre>
+<p>Reads an <code class="computeroutput"><code class="computeroutput"><a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a></code></code> from a <code class="computeroutput">std::istream</code>. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">bool</span> <a name="id-1_3_34_5_6_17_1_1_1_15_3-bb"></a><span class="keyword">operator</span><span class="special">==</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <span class="special">&amp;</span> lhs<span class="special">,</span> 
+                       <span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span></pre>
+<p>Returns true if the two instances of <code class="computeroutput"><code class="computeroutput"><a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a></code></code> will return identical sequences of values given equal generators. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">bool</span> <a name="id-1_3_34_5_6_17_1_1_1_15_4-bb"></a><span class="keyword">operator</span><span class="special">!=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <span class="special">&amp;</span> lhs<span class="special">,</span> 
+                       <span class="keyword">const</span> <a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span></pre>
+<p>Returns true if the two instances of <code class="computeroutput"><code class="computeroutput"><a class="link" href="hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a></code></code> will return different sequences of values given equal generators. </p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2000-2005 Jens Maurer<br>Copyright &#169; 2009, 2010 Steven Watanabe<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="geometric_distribution/param_type.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_random/reference.html#header.boost.random.hyperexponential_distribution_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="hypere_1_3_34_5_6_17_1_1_1/param_type.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

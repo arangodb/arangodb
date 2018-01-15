@@ -1,0 +1,134 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Type type</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../../boost_dll/reference.html#header.boost.dll.shared_library_load_mode_hpp" title="Header &lt;boost/dll/shared_library_load_mode.hpp&gt;">
+<link rel="prev" href="../shared_library.html" title="Class shared_library">
+<link rel="next" href="../experimental/smart_library.html" title="Class smart_library">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../shared_library.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_dll/reference.html#header.boost.dll.shared_library_load_mode_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../experimental/smart_library.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.dll.load_mode.type"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Type type</span></h2>
+<p>boost::dll::load_mode::type</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../boost_dll/reference.html#header.boost.dll.shared_library_load_mode_hpp" title="Header &lt;boost/dll/shared_library_load_mode.hpp&gt;">boost/dll/shared_library_load_mode.hpp</a>&gt;
+
+</span>
+<span class="keyword">enum</span> <span class="identifier">type</span> <span class="special">{</span> <a class="link" href="type.html#boost.dll.load_mode.type.default_mode">default_mode</a>, <a class="link" href="type.html#boost.dll.load_mode.type.dont_resolve_dll_references">dont_resolve_dll_references</a>, 
+            <a class="link" href="type.html#boost.dll.load_mode.type.load_ignore_code_authz_level">load_ignore_code_authz_level</a>, <a class="link" href="type.html#boost.dll.load_mode.type.load_with_altered_search_path">load_with_altered_search_path</a>, 
+            <a class="link" href="type.html#boost.dll.load_mode.type.rtld_lazy">rtld_lazy</a>, <a class="link" href="type.html#boost.dll.load_mode.type.rtld_now">rtld_now</a>, <a class="link" href="type.html#boost.dll.load_mode.type.rtld_global">rtld_global</a>, <a class="link" href="type.html#boost.dll.load_mode.type.rtld_local">rtld_local</a>, <a class="link" href="type.html#boost.dll.load_mode.type.rtld_deepbind">rtld_deepbind</a>, 
+            <a class="link" href="type.html#boost.dll.load_mode.type.append_decorations">append_decorations</a>, <a class="link" href="type.html#boost.dll.load_mode.type.search_system_folders">search_system_folders</a> <span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.13.8.2.6.4.4"></a><h2>Description</h2>
+<p>Library load modes.</p>
+<p>Each of system family provides own modes. Flags not supported by a particular platform will be silently ignored.</p>
+<p>For a detailed description of platform specific options see: <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms684179(v=vs.85).aspx" target="_top">Windows specific options</a>, <a href="http://pubs.opengroup.org/onlinepubs/000095399/functions/dlopen.html" target="_top">POSIX specific options</a>. </p>
+<div class="variablelist"><dl class="variablelist compact">
+<dt><span class="term"><code class="computeroutput">default_mode</code><a name="boost.dll.load_mode.type.default_mode"></a></span></dt>
+<dd><p>Default open mode. See the <span class="bold"><strong>Default:</strong></span> comments below to find out the flags that are enabled by default. </p></dd>
+<dt><span class="term"><code class="computeroutput">dont_resolve_dll_references</code><a name="boost.dll.load_mode.type.dont_resolve_dll_references"></a></span></dt>
+<dd>
+<p><span class="bold"><strong>Platforms:</strong></span> Windows</p>
+<p><span class="bold"><strong>Default:</strong></span> disabled</p>
+<p>If this value is used, and the executable module is a DLL, the system does not call DllMain for process and thread initialization and termination. Also, the system does not load additional executable modules that are referenced by the specified module.</p>
+<p>Note Do not use this value; it is provided only for backward compatibility. If you are planning to access only data or resources in the DLL, use LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE or LOAD_LIBRARY_AS_IMAGE_RESOURCE or both. </p>
+</dd>
+<dt><span class="term"><code class="computeroutput">load_ignore_code_authz_level</code><a name="boost.dll.load_mode.type.load_ignore_code_authz_level"></a></span></dt>
+<dd>
+<p><span class="bold"><strong>Platforms:</strong></span> Windows</p>
+<p><span class="bold"><strong>Default:</strong></span> disabled</p>
+<p>If this value is used, the system does not check AppLocker rules or apply Software Restriction Policies for the DLL. </p>
+</dd>
+<dt><span class="term"><code class="computeroutput">load_with_altered_search_path</code><a name="boost.dll.load_mode.type.load_with_altered_search_path"></a></span></dt>
+<dd>
+<p><span class="bold"><strong>Platforms:</strong></span> Windows</p>
+<p><span class="bold"><strong>Default:</strong></span> disabled</p>
+<p>If this value is used and lpFileName specifies an absolute path, the system uses the alternate file search strategy.</p>
+<p>This value cannot be combined with any LOAD_LIBRARY_SEARCH flag. </p>
+</dd>
+<dt><span class="term"><code class="computeroutput">rtld_lazy</code><a name="boost.dll.load_mode.type.rtld_lazy"></a></span></dt>
+<dd>
+<p><span class="bold"><strong>Platforms:</strong></span> POSIX</p>
+<p><span class="bold"><strong>Default:</strong></span> enabled</p>
+<p>Relocations shall be performed at an implementation-defined time, ranging from the time of the dlopen() call until the first reference to a given symbol occurs.</p>
+<p>Specifying RTLD_LAZY should improve performance on implementations supporting dynamic symbol binding as a process may not reference all of the functions in any given object. And, for systems supporting dynamic symbol resolution for normal process execution, this behavior mimics the normal handling of process execution. </p>
+</dd>
+<dt><span class="term"><code class="computeroutput">rtld_now</code><a name="boost.dll.load_mode.type.rtld_now"></a></span></dt>
+<dd>
+<p><span class="bold"><strong>Platforms:</strong></span> POSIX</p>
+<p><span class="bold"><strong>Default:</strong></span> disabled</p>
+<p>All necessary relocations shall be performed when the object is first loaded. This may waste some processing if relocations are performed for functions that are never referenced. This behavior may be useful for plugins that need to know as soon as an object is loaded that all symbols referenced during execution are available. </p>
+</dd>
+<dt><span class="term"><code class="computeroutput">rtld_global</code><a name="boost.dll.load_mode.type.rtld_global"></a></span></dt>
+<dd>
+<p><span class="bold"><strong>Platforms:</strong></span> POSIX</p>
+<p><span class="bold"><strong>Default:</strong></span> disabled</p>
+<p>The object's symbols shall be made available for the relocation processing of any other object. In addition, symbol lookup using dlopen(0, mode) and an associated dlsym() allows objects loaded with this mode to be searched. </p>
+</dd>
+<dt><span class="term"><code class="computeroutput">rtld_local</code><a name="boost.dll.load_mode.type.rtld_local"></a></span></dt>
+<dd>
+<p><span class="bold"><strong>Platforms:</strong></span> POSIX</p>
+<p><span class="bold"><strong>Default:</strong></span> enabled</p>
+<p>The object's symbols shall not be made available for the relocation processing of any other object.</p>
+<p>This is a default Windows behavior that can not be changed. </p>
+</dd>
+<dt><span class="term"><code class="computeroutput">rtld_deepbind</code><a name="boost.dll.load_mode.type.rtld_deepbind"></a></span></dt>
+<dd>
+<p><span class="bold"><strong>Platforms:</strong></span> POSIX (requires glibc &gt;= 2.3.4)</p>
+<p><span class="bold"><strong>Default:</strong></span> disabled</p>
+<p>The object will use its own symbols in preference to global symbols with the same name contained in libraries that have already been loaded. This flag is not specified in POSIX.1-2001. </p>
+</dd>
+<dt><span class="term"><code class="computeroutput">append_decorations</code><a name="boost.dll.load_mode.type.append_decorations"></a></span></dt>
+<dd>
+<p><span class="bold"><strong>Platforms:</strong></span> Windows, POSIX</p>
+<p><span class="bold"><strong>Default:</strong></span> disabled</p>
+<p>Append a platform specific extension and prefix to shared library filename before trying to load it. If load attempt fails, try to load with exactly specified name.</p>
+<p><span class="bold"><strong>Example:</strong></span> </p>
+<pre class="programlisting"><span class="comment">// Opens `./my_plugins/plugin1.dll` on Windows, `./my_plugins/libplugin1.so` on Linux, `./my_plugins/libplugin1.dylib` on MacOS.</span>
+<span class="comment">// If that fails, loads `./my_plugins/plugin1`</span>
+<a class="link" href="../shared_library.html" title="Class shared_library">boost::dll::shared_library</a> <span class="identifier">lib</span><span class="special">(</span><span class="string">"./my_plugins/plugin1"</span><span class="special">,</span> <span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">append_decorations</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p> </p>
+</dd>
+<dt><span class="term"><code class="computeroutput">search_system_folders</code><a name="boost.dll.load_mode.type.search_system_folders"></a></span></dt>
+<dd>
+<p><span class="bold"><strong>Platforms:</strong></span> Windows, POSIX</p>
+<p><span class="bold"><strong>Default:</strong></span> disabled</p>
+<p>Allow loading from system folders if path to library contains no parent path. </p>
+</dd>
+</dl></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014 Renato Tegon Forti, Antony Polukhin<br>Copyright &#169; 2015 Antony Polukhin<br>Copyright &#169; 2016 Antony Polukhin, Klemens Morgenstern<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../shared_library.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_dll/reference.html#header.boost.dll.shared_library_load_mode_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../experimental/smart_library.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

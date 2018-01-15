@@ -1,0 +1,333 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>signal_set</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../reference.html" title="Reference">
+<link rel="prev" href="service_already_exists/service_already_exists.html" title="service_already_exists::service_already_exists">
+<link rel="next" href="signal_set/add.html" title="signal_set::add">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="service_already_exists/service_already_exists.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="signal_set/add.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_asio.reference.signal_set"></a><a class="link" href="signal_set.html" title="signal_set">signal_set</a>
+</h3></div></div></div>
+<p>
+        Provides signal functionality.
+      </p>
+<pre class="programlisting">class signal_set
+</pre>
+<h5>
+<a name="boost_asio.reference.signal_set.h0"></a>
+        <span class="phrase"><a name="boost_asio.reference.signal_set.types"></a></span><a class="link" href="signal_set.html#boost_asio.reference.signal_set.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <a class="link" href="signal_set/executor_type.html" title="signal_set::executor_type"><span class="bold"><strong>executor_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of the executor associated with the object.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.signal_set.h1"></a>
+        <span class="phrase"><a name="boost_asio.reference.signal_set.member_functions"></a></span><a class="link" href="signal_set.html#boost_asio.reference.signal_set.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="signal_set/add.html" title="signal_set::add"><span class="bold"><strong>add</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Add a signal to a signal_set.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="signal_set/async_wait.html" title="signal_set::async_wait"><span class="bold"><strong>async_wait</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Start an asynchronous operation to wait for a signal to be delivered.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="signal_set/cancel.html" title="signal_set::cancel"><span class="bold"><strong>cancel</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Cancel all operations associated with the signal set.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="signal_set/clear.html" title="signal_set::clear"><span class="bold"><strong>clear</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Remove all signals from a signal_set.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="signal_set/get_executor.html" title="signal_set::get_executor"><span class="bold"><strong>get_executor</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the executor associated with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="signal_set/get_io_context.html" title="signal_set::get_io_context"><span class="bold"><strong>get_io_context</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use get_executor().) Get the io_context associated
+                  with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="signal_set/get_io_service.html" title="signal_set::get_io_service"><span class="bold"><strong>get_io_service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use get_executor().) Get the io_context associated
+                  with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="signal_set/remove.html" title="signal_set::remove"><span class="bold"><strong>remove</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Remove a signal from a signal_set.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="signal_set/signal_set.html" title="signal_set::signal_set"><span class="bold"><strong>signal_set</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Construct a signal set without adding any signals.
+                </p>
+                <p>
+                  Construct a signal set and add one signal.
+                </p>
+                <p>
+                  Construct a signal set and add two signals.
+                </p>
+                <p>
+                  Construct a signal set and add three signals.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="signal_set/_signal_set.html" title="signal_set::~signal_set"><span class="bold"><strong>~signal_set</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destroys the signal set.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        The <a class="link" href="signal_set.html" title="signal_set"><code class="computeroutput">signal_set</code></a>
+        class provides the ability to perform an asynchronous wait for one or more
+        signals to occur.
+      </p>
+<h5>
+<a name="boost_asio.reference.signal_set.h2"></a>
+        <span class="phrase"><a name="boost_asio.reference.signal_set.thread_safety"></a></span><a class="link" href="signal_set.html#boost_asio.reference.signal_set.thread_safety">Thread
+        Safety</a>
+      </h5>
+<p>
+        <span class="emphasis"><em>Distinct</em></span> <span class="emphasis"><em>objects:</em></span> Safe.
+      </p>
+<p>
+        <span class="emphasis"><em>Shared</em></span> <span class="emphasis"><em>objects:</em></span> Unsafe.
+      </p>
+<h5>
+<a name="boost_asio.reference.signal_set.h3"></a>
+        <span class="phrase"><a name="boost_asio.reference.signal_set.example"></a></span><a class="link" href="signal_set.html#boost_asio.reference.signal_set.example">Example</a>
+      </h5>
+<p>
+        Performing an asynchronous wait:
+      </p>
+<pre class="programlisting">void handler(
+    const boost::system::error_code&amp; error,
+    int signal_number)
+{
+  if (!error)
+  {
+    // A signal occurred.
+  }
+}
+
+...
+
+// Construct a signal set registered for process termination.
+boost::asio::signal_set signals(io_context, SIGINT, SIGTERM);
+
+// Start an asynchronous wait for one of the signals to occur.
+signals.async_wait(handler);
+</pre>
+<h5>
+<a name="boost_asio.reference.signal_set.h4"></a>
+        <span class="phrase"><a name="boost_asio.reference.signal_set.queueing_of_signal_notifications"></a></span><a class="link" href="signal_set.html#boost_asio.reference.signal_set.queueing_of_signal_notifications">Queueing
+        of signal notifications</a>
+      </h5>
+<p>
+        If a signal is registered with a <a class="link" href="signal_set.html" title="signal_set"><code class="computeroutput">signal_set</code></a>,
+        and the signal occurs when there are no waiting handlers, then the signal
+        notification is queued. The next async_wait operation on that <a class="link" href="signal_set.html" title="signal_set"><code class="computeroutput">signal_set</code></a>
+        will dequeue the notification. If multiple notifications are queued, subsequent
+        async_wait operations dequeue them one at a time. Signal notifications are
+        dequeued in order of ascending signal number.
+      </p>
+<p>
+        If a signal number is removed from a <a class="link" href="signal_set.html" title="signal_set"><code class="computeroutput">signal_set</code></a>
+        (using the <code class="computeroutput">remove</code> or <code class="computeroutput">erase</code> member functions) then
+        any queued notifications for that signal are discarded.
+      </p>
+<h5>
+<a name="boost_asio.reference.signal_set.h5"></a>
+        <span class="phrase"><a name="boost_asio.reference.signal_set.multiple_registration_of_signals"></a></span><a class="link" href="signal_set.html#boost_asio.reference.signal_set.multiple_registration_of_signals">Multiple
+        registration of signals</a>
+      </h5>
+<p>
+        The same signal number may be registered with different <a class="link" href="signal_set.html" title="signal_set"><code class="computeroutput">signal_set</code></a>
+        objects. When the signal occurs, one handler is called for each <a class="link" href="signal_set.html" title="signal_set"><code class="computeroutput">signal_set</code></a>
+        object.
+      </p>
+<p>
+        Note that multiple registration only works for signals that are registered
+        using Asio. The application must not also register a signal handler using
+        functions such as <code class="computeroutput">signal()</code> or <code class="computeroutput">sigaction()</code>.
+      </p>
+<h5>
+<a name="boost_asio.reference.signal_set.h6"></a>
+        <span class="phrase"><a name="boost_asio.reference.signal_set.signal_masking_on_posix_platforms"></a></span><a class="link" href="signal_set.html#boost_asio.reference.signal_set.signal_masking_on_posix_platforms">Signal
+        masking on POSIX platforms</a>
+      </h5>
+<p>
+        POSIX allows signals to be blocked using functions such as <code class="computeroutput">sigprocmask()</code>
+        and <code class="computeroutput">pthread_sigmask()</code>. For signals to be delivered, programs
+        must ensure that any signals registered using <a class="link" href="signal_set.html" title="signal_set"><code class="computeroutput">signal_set</code></a>
+        objects are unblocked in at least one thread.
+      </p>
+<h5>
+<a name="boost_asio.reference.signal_set.h7"></a>
+        <span class="phrase"><a name="boost_asio.reference.signal_set.requirements"></a></span><a class="link" href="signal_set.html#boost_asio.reference.signal_set.requirements">Requirements</a>
+      </h5>
+<p>
+        <span class="emphasis"><em>Header: </em></span><code class="literal">boost/asio/signal_set.hpp</code>
+      </p>
+<p>
+        <span class="emphasis"><em>Convenience header: </em></span><code class="literal">boost/asio.hpp</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="service_already_exists/service_already_exists.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="signal_set/add.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

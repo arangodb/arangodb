@@ -1,0 +1,97 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;1.&#160;Boost.WinAPI</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter&#160;1.&#160;Boost.WinAPI">
+<link rel="next" href="winapi/config.html" title="Configuration">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="winapi/config.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="winapi"></a>Chapter&#160;1.&#160;Boost.WinAPI</h2></div>
+<div><p class="copyright">Copyright &#169; 2016 Andrey Semashev</p></div>
+<div><div class="legalnotice">
+<a name="winapi.legal"></a><p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="index.html#winapi.intro">Introduction</a></span></dt>
+<dt><span class="section"><a href="winapi/config.html">Configuration</a></span></dt>
+<dt><span class="section"><a href="winapi/usage.html">Using Boost.WinAPI</a></span></dt>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="winapi.intro"></a><a class="link" href="index.html#winapi.intro" title="Introduction">Introduction</a>
+</h2></div></div></div>
+<p>
+      The Boost.WinAPI library is an abstraction layer for Windows API intended to
+      be used internally by other Boost libraries. Boost.WinAPI is not a public library
+      for users of Boost.
+    </p>
+<p>
+      The main advantages of using Boost.WinAPI instead of Windows API directly are:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Avoid including <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">windows</span><span class="special">.</span><span class="identifier">h</span><span class="special">&gt;</span></code>
+          or other Windows SDK headers in public headers of your library. Windows
+          SDK headers are known to be dependent on a large number of configuration
+          macros that have to be defined by the user. If your library depends on
+          a particular API, you may not be able to rely on it being enabled by the
+          user. On the other hand, your library cannot enforce particular Windows
+          SDK configuration because (a) Windows SDK headers may be included before
+          your library headers with a different set of config macros and (b) because
+          your desired configuration may be incompatible with that of the user's
+          code.
+        </li>
+<li class="listitem">
+          Avoid dealing with lots of macros defined by Windows SDK headers.
+        </li>
+<li class="listitem">
+          More fine grained control of the API you include in your headers.
+        </li>
+<li class="listitem">
+          Allow to select the target Windows version for Boost. This version can
+          be different from the version user's code targets.
+        </li>
+<li class="listitem">
+          Better compatibility with different implementations of Windows SDK, like
+          MinGW and MinGW-w64.
+        </li>
+</ul></div>
+<p>
+      The implementation of Boost.WinAPI consists of a number of declarations of
+      functions, types and constants mimicking the real declarations in Windows SDK.
+      In some cases simple inline function wrappers are provided. As a result the
+      runtime performance impact of Boost.WinAPI should be zero. Boost.WinAPI only
+      depends on Boost.Config and Boost.Predef and is compatible with C++03 compilers.
+    </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: December 14, 2017 at 00:08:25 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="winapi/config.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>Swizzling</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>Swizzling</h3>
+</div>
+<p>Boost QVM allows <span class="RenoLink"><a href="accessing_vector_elements_and_swizzling_reference.html">accessing vector elements by swizzling</a></span>, exposing vector views of different dimensions, and/or views with reordered elements. The example below rotates <i>v</i> around the X axis, and stores the resulting vector back in <i>v</i> but with the X and Y elements swapped:</p>
+<pre>float3 v = {0,0,7};
+<span class="RenoLink"><a href="accessing_vector_elements_and_swizzling_reference.html">YXZ</a></span>(v) = <span class="RenoLink"><a href="rotx_mat_scalar_.html">rotx_mat</a></span>&lt;3&gt;(3.14159f) <span class="RenoLink"><a href="operator_times_mat_vec_.html">*</a></span> v;</pre>
+<p>A special case of swizzling provides next-dimension-view of a vector object, adding either 0 or 1 as its last component. Assuming <i>float3</i> is a 3D vector type, and <i>float4</i> is a 4D vector type, the following statements are valid:</p>
+<pre>float3 v = {0,0,7};
+float4 point = <span class="RenoLink"><a href="accessing_vector_elements_and_swizzling_reference.html">XYZ1</a></span>(v); //{0,0,7,1}
+float4 vector = <span class="RenoLink"><a href="accessing_vector_elements_and_swizzling_reference.html">XYZ0</a></span>(v); //{0,0,7,0}</pre>
+<p>It is also valid for swizzling to address vector elements more than once:</p>
+<pre>float3 v = {0,0,7};
+float4 v1 = <span class="RenoLink"><a href="accessing_vector_elements_and_swizzling_reference.html">ZZZZ</a></span>(v); //{7,7,7,7}</pre>
+<p>Boost QVM defines all permutations of <i>X</i>, <i>Y</i>, <i>Z</i>, <i>W</i> for 1D, 2D, 3D and 4D swizzling, plus each dimension defines variants with <i>0</i> or <i>1</i> used at any position (if 0 or 1 appear at the first position, the swizzling function name begins with underscore, e.g. <i>_1XY</i>).</p>
+</div><div class="RenoIncludeDIV"><div class="RenoHR"><hr/></div>
+<p><b>Tutorial navigation:</b> <span class="RenoLink"><a href="quaternions_vectors_matrices.html">Quaternions, Vectors, Matrices</a></span> | <span class="RenoLink"><a href="c_arrays.html">C Arrays</a></span> | <span class="RenoLink"><a href="Views.html">Views</a></span> | <span class="RenoLink">Swizzling</span> | <span class="RenoLink"><a href="Interoperability.html">Interoperability</a></span><span class="RenoBR">&nbsp;</span><br/><span class="RenoBR">&nbsp;</span><br/>See also: <span class="RenoLink"><a href="index.html">Boost QVM</a></span></p>
+</div><!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2016 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

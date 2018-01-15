@@ -1,0 +1,19 @@
+# Copyright Louis Dionne 2013-2016
+# Modified Work Copyright Barrett Adair 2016-2017
+# Copyright 2017 Peter Dimov
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE.md or copy at http://boost.org/LICENSE_1_0.txt)
+
+import testing ;
+
+project :
+    requirements
+        <toolset>clang:<cxxflags>"-pedantic -Wall -Wextra"
+        <toolset>darwin:<cxxflags>"-pedantic -Wall -Wextra"
+;
+
+for local source in [ glob *.cpp ]
+{
+    run $(source) ;
+}

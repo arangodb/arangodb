@@ -1,0 +1,138 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Change Body Type</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../more_examples.html" title="More Examples">
+<link rel="prev" href="../more_examples.html" title="More Examples">
+<link rel="next" href="expect_100_continue_client.html" title="Expect 100-continue (Client)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../more_examples.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../more_examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="expect_100_continue_client.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.more_examples.change_body_type"></a><a class="link" href="change_body_type.html" title="Change Body Type">Change Body Type</a>
+</h3></div></div></div>
+<p>
+        Sophisticated servers may wish to defer the choice of the Body template type
+        until after the header is available. Then, a body type may be chosen depending
+        on the header contents. For example, depending on the verb, target path,
+        or target query parameters. To accomplish this, a parser is declared to read
+        in the header only, using a trivial body type such as <a class="link" href="../ref/boost__beast__http__empty_body.html" title="http::empty_body"><code class="computeroutput"><span class="identifier">empty_body</span></code></a>. Then, a new parser is
+        constructed from this existing parser where the body type is conditionally
+        determined by information from the header or elsewhere.
+      </p>
+<p>
+        This example illustrates how a server may make the commitment of a body type
+        depending on the method verb:
+      </p>
+<pre class="programlisting"><span class="comment">/** Handle a form POST request, choosing a body type depending on the Content-Type.
+
+    This reads a request from the input stream. If the method is POST, and
+    the Content-Type is "application/x-www-form-urlencoded  " or
+    "multipart/form-data", a `string_body` is used to receive and store
+    the message body. Otherwise, a `dynamic_body` is used to store the message
+    body. After the request is received, the handler will be invoked with the
+    request.
+
+    @param stream The stream to read from.
+
+    @param buffer The buffer to use for reading.
+
+    @param handler The handler to invoke when the request is complete.
+    The handler must be invokable with this signature:
+    @code
+    template&lt;class Body&gt;
+    void handler(request&lt;Body&gt;&amp;&amp; req);
+    @endcode
+
+    @throws system_error Thrown on failure.
+*/</span>
+<span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">SyncReadStream</span><span class="special">,</span>
+    <span class="keyword">class</span> <span class="identifier">DynamicBuffer</span><span class="special">,</span>
+    <span class="keyword">class</span> <span class="identifier">Handler</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">do_form_request</span><span class="special">(</span>
+    <span class="identifier">SyncReadStream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span>
+    <span class="identifier">DynamicBuffer</span><span class="special">&amp;</span> <span class="identifier">buffer</span><span class="special">,</span>
+    <span class="identifier">Handler</span><span class="special">&amp;&amp;</span> <span class="identifier">handler</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Start with an empty_body parser</span>
+    <span class="identifier">request_parser</span><span class="special">&lt;</span><span class="identifier">empty_body</span><span class="special">&gt;</span> <span class="identifier">req0</span><span class="special">;</span>
+
+    <span class="comment">// Read just the header. Otherwise, the empty_body</span>
+    <span class="comment">// would generate an error if body octets were received.</span>
+    <span class="identifier">read_header</span><span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">req0</span><span class="special">);</span>
+
+    <span class="comment">// Choose a body depending on the method verb</span>
+    <span class="keyword">switch</span><span class="special">(</span><span class="identifier">req0</span><span class="special">.</span><span class="identifier">get</span><span class="special">().</span><span class="identifier">method</span><span class="special">())</span>
+    <span class="special">{</span>
+    <span class="keyword">case</span> <span class="identifier">verb</span><span class="special">::</span><span class="identifier">post</span><span class="special">:</span>
+    <span class="special">{</span>
+        <span class="comment">// If this is not a form upload then use a string_body</span>
+        <span class="keyword">if</span><span class="special">(</span> <span class="identifier">req0</span><span class="special">.</span><span class="identifier">get</span><span class="special">()[</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">content_type</span><span class="special">]</span> <span class="special">!=</span> <span class="string">"application/x-www-form-urlencoded"</span> <span class="special">&amp;&amp;</span>
+            <span class="identifier">req0</span><span class="special">.</span><span class="identifier">get</span><span class="special">()[</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">content_type</span><span class="special">]</span> <span class="special">!=</span> <span class="string">"multipart/form-data"</span><span class="special">)</span>
+            <span class="keyword">goto</span> <span class="identifier">do_dynamic_body</span><span class="special">;</span>
+
+        <span class="comment">// Commit to string_body as the body type.</span>
+        <span class="comment">// As long as there are no body octets in the parser</span>
+        <span class="comment">// we are constructing from, no exception is thrown.</span>
+        <span class="identifier">request_parser</span><span class="special">&lt;</span><span class="identifier">string_body</span><span class="special">&gt;</span> <span class="identifier">req</span><span class="special">{</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span><span class="identifier">req0</span><span class="special">)};</span>
+
+        <span class="comment">// Finish reading the message</span>
+        <span class="identifier">read</span><span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">req</span><span class="special">);</span>
+
+        <span class="comment">// Call the handler. It can take ownership</span>
+        <span class="comment">// if desired, since we are calling release()</span>
+        <span class="identifier">handler</span><span class="special">(</span><span class="identifier">req</span><span class="special">.</span><span class="identifier">release</span><span class="special">());</span>
+        <span class="keyword">break</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="identifier">do_dynamic_body</span><span class="special">:</span>
+    <span class="keyword">default</span><span class="special">:</span>
+    <span class="special">{</span>
+        <span class="comment">// Commit to dynamic_body as the body type.</span>
+        <span class="comment">// As long as there are no body octets in the parser</span>
+        <span class="comment">// we are constructing from, no exception is thrown.</span>
+        <span class="identifier">request_parser</span><span class="special">&lt;</span><span class="identifier">dynamic_body</span><span class="special">&gt;</span> <span class="identifier">req</span><span class="special">{</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span><span class="identifier">req0</span><span class="special">)};</span>
+
+        <span class="comment">// Finish reading the message</span>
+        <span class="identifier">read</span><span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">req</span><span class="special">);</span>
+
+        <span class="comment">// Call the handler. It can take ownership</span>
+        <span class="comment">// if desired, since we are calling release()</span>
+        <span class="identifier">handler</span><span class="special">(</span><span class="identifier">req</span><span class="special">.</span><span class="identifier">release</span><span class="special">());</span>
+        <span class="keyword">break</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../more_examples.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../more_examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="expect_100_continue_client.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

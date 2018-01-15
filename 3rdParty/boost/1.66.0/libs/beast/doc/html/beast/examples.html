@@ -1,0 +1,689 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Examples</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="prev" href="quick_start.html" title="Quick Start">
+<link rel="next" href="using_io.html" title="Using I/O">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="quick_start.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="using_io.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="beast.examples"></a><a class="link" href="examples.html" title="Examples">Examples</a>
+</h2></div></div></div>
+<p>
+      Source code and build scripts for these programs are located in the <a href="../../../example" target="_top">example</a> directory.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.examples.clients"></a><a class="link" href="examples.html#beast.examples.clients" title="Clients">Clients</a>
+</h3></div></div></div>
+<p>
+        These HTTP clients submit a GET request to a server specified on the command
+        line, and prints the resulting response. The crawl client asynchronously
+        fetches the document root of the 10,000 top ranked domains, this may be used
+        to evaluate robustness.
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+<th>
+                <p>
+                  Source File
+                </p>
+              </th>
+<th>
+                <p>
+                  Source File (using SSL)
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  HTTP, synchronous
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/client/sync/http_client_sync.cpp" target="_top">http_client_sync.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/client/sync-ssl/http_client_sync_ssl.cpp" target="_top">http_client_sync_ssl.cpp</a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  HTTP, asynchronous
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/client/async/http_client_async.cpp" target="_top">http_client_async.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/client/async-ssl/http_client_async_ssl.cpp" target="_top">http_client_async_ssl.cpp</a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  HTTP, coroutine
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/client/coro/http_client_coro.cpp" target="_top">http_client_coro.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/client/coro-ssl/http_client_coro_ssl.cpp" target="_top">http_client_coro_ssl.cpp</a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  HTTP crawl (asynchronous)
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/client/crawl/http_crawl.cpp" target="_top">http_crawl.cpp</a>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        These WebSocket clients connect to a server and send a message, then receive
+        a message and print the response before disconnecting.
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+<th>
+                <p>
+                  Source File
+                </p>
+              </th>
+<th>
+                <p>
+                  Source File (using SSL)
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  WebSocket, synchronous
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/client/sync/websocket_client_sync.cpp" target="_top">websocket_client_sync.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/client/sync-ssl/websocket_client_sync_ssl.cpp" target="_top">websocket_client_sync_ssl.cpp</a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  WebSocket, asynchronous
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/client/async/websocket_client_async.cpp" target="_top">websocket_client_async.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/client/async-ssl/websocket_client_async_ssl.cpp" target="_top">websocket_client_async_ssl.cpp</a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  WebSocket, coroutine
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/client/coro/websocket_client_coro.cpp" target="_top">websocket_client_coro.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/client/coro-ssl/websocket_client_coro_ssl.cpp" target="_top">websocket_client_coro_ssl.cpp</a>
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.examples.servers"></a><a class="link" href="examples.html#beast.examples.servers" title="Servers">Servers</a>
+</h3></div></div></div>
+<p>
+        These HTTP servers deliver files from a root directory specified on the command
+        line.
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+<th>
+                <p>
+                  Source File
+                </p>
+              </th>
+<th>
+                <p>
+                  Source File (using SSL)
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  HTTP, synchronous
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/server/sync/http_server_sync.cpp" target="_top">http_server_sync.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/server/sync-ssl/http_server_sync_ssl.cpp" target="_top">http_server_sync_ssl.cpp</a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  HTTP, asynchronous
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/server/async/http_server_async.cpp" target="_top">http_server_async.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/server/async-ssl/http_server_async_ssl.cpp" target="_top">http_server_async_ssl.cpp</a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  HTTP, coroutine
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/server/coro/http_server_coro.cpp" target="_top">http_server_coro.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/server/coro-ssl/http_server_coro_ssl.cpp" target="_top">http_server_coro_ssl.cpp</a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  HTTP, stackless coroutine
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/server/stackless/http_server_stackless.cpp" target="_top">http_server_stackless.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/server/stackless-ssl/http_server_stackless_ssl.cpp" target="_top">http_server_stackless_ssl.cpp</a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  HTTP, fast (optimized for speed)
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/server/fast/http_server_fast.cpp" target="_top">http_server_fast.cpp</a>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  HTTP, small (optimized for space)
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/server/small/http_server_small.cpp" target="_top">http_server_small.cpp</a>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  HTTP, flex (plain + SSL)
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/http/server/flex/http_server_flex.cpp" target="_top">http_server_flex.cpp</a>
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        These WebSocket servers echo back any message received, keeping the session
+        open until the client disconnects.
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+<th>
+                <p>
+                  Source File
+                </p>
+              </th>
+<th>
+                <p>
+                  Source File (using SSL)
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  WebSocket, synchronous
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/server/sync/websocket_server_sync.cpp" target="_top">websocket_server_sync.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/server/sync-ssl/websocket_server_sync_ssl.cpp" target="_top">websocket_server_sync_ssl.cpp</a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  WebSocket, asynchronous
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/server/async/websocket_server_async.cpp" target="_top">websocket_server_async.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/server/async-ssl/websocket_server_async_ssl.cpp" target="_top">websocket_server_async_ssl.cpp</a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  WebSocket, coroutine
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/server/coro/websocket_server_coro.cpp" target="_top">websocket_server_coro.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/server/coro-ssl/websocket_server_coro_ssl.cpp" target="_top">websocket_server_coro_ssl.cpp</a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  WebSocket, stackless coroutine
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/server/stackless/websocket_server_stackless.cpp" target="_top">websocket_server_stackless.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/server/stackless-ssl/websocket_server_stackless_ssl.cpp" target="_top">websocket_server_stackless_ssl.cpp</a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  WebSocket, fast (suited for benchmarks)
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/websocket/server/fast/websocket_server_fast.cpp" target="_top">websocket_server_fast.cpp</a>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.examples.servers_advanced"></a><a class="link" href="examples.html#beast.examples.servers_advanced" title="Servers (Advanced)">Servers (Advanced)</a>
+</h3></div></div></div>
+<p>
+        These servers offer both HTTP and WebSocket services on the same port, and
+        illustrate the implementation of advanced features.
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+<th>
+                <p>
+                  Features
+                </p>
+              </th>
+<th>
+                <p>
+                  Source File
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  Advanced
+                </p>
+              </td>
+<td>
+                <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                      HTTP pipelining
+                    </li>
+<li class="listitem">
+                      Asynchronous timeouts
+                    </li>
+<li class="listitem">
+                      Dual protocols: HTTP and WebSocket
+                    </li>
+</ul></div>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/advanced/server/advanced_server.cpp" target="_top">advanced_server.cpp</a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  Advanced, flex (plain + SSL)
+                </p>
+              </td>
+<td>
+                <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                      HTTP pipelining
+                    </li>
+<li class="listitem">
+                      Asynchronous timeouts
+                    </li>
+<li class="listitem">
+                      Dual protocols: HTTP and WebSocket
+                    </li>
+<li class="listitem">
+                      Flexible ports; plain and SSL on the same port
+                    </li>
+</ul></div>
+              </td>
+<td>
+                <p>
+                  <a href="../../../example/advanced/server-flex/advanced_server_flex.cpp" target="_top">advanced_server_flex.cpp</a>
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.examples.common_files"></a><a class="link" href="examples.html#beast.examples.common_files" title="Common Files">Common Files</a>
+</h3></div></div></div>
+<p>
+        Some of the examples use one or more shared header files, they are listed
+        here along with a description of their use:
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Source File
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a href="../../../example/common/detect_ssl.hpp" target="_top">example/common/detect_ssl.hpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This contains the detect SSL algorithm including the synchronous
+                  and asynchronous initiating functions, described in the documentation.
+                  It is used by the "flex" servers which support both plain
+                  and SSL sessions on the same port.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a href="../../../example/common/root_certificates.hpp" target="_top">example/common/root_certificates.hpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This contains the root SSL certificates used in the SSL client
+                  examples. These certificates are used to verify the signatures
+                  of SSL certificates presented by remote servers. They represent
+                  a subset of the public keys usually installed as part of the operating
+                  system or browser, so they may not identify every possible server.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a href="../../../example/common/server_certificate.hpp" target="_top">example/common/server_certificate.hpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This file contains a self-signed SSL certificate used by the SSL
+                  server examples. It has not been validated by a Certificate Authority
+                  ("CA") so connecting to an example HTTP server using
+                  a browser may generate security warnings.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a href="../../../example/common/ssl_stream.hpp" target="_top">example/common/ssl_stream.hpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The <code class="computeroutput"><span class="identifier">ssl_stream</span></code>
+                  is a replacement for <a href="../../../../../doc/html/boost_asio/reference/ssl__stream.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span></code></a> which supports
+                  construction from a moved-froms ocket and is also itself move constructible.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.examples.documentation_samples"></a><a class="link" href="examples.html#beast.examples.documentation_samples" title="Documentation Samples">Documentation Samples</a>
+</h3></div></div></div>
+<p>
+        Here are all of the example functions and classes presented throughout the
+        documentation, they can be included and used in your program without modification
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            <a href="../../../example/doc/http_examples.hpp" target="_top">example/doc/http_examples.hpp</a>
+          </li></ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.examples.composed_operations"></a><a class="link" href="examples.html#beast.examples.composed_operations" title="Composed Operations">Composed Operations</a>
+</h3></div></div></div>
+<p>
+        This program shows how to use Beast's network foundations to build a composable
+        asynchronous initiation function with associated composed operation implementation.
+        This is a complete, runnable version of the example described in <a class="link" href="using_io/writing_composed_operations.html#beast.using_io.writing_composed_operations.echo" title="Echo">Writing
+        Composed Operations: Echo</a>.
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            <a href="../../../example/echo-op/echo_op.cpp" target="_top">example/echo-op/echo_op.cpp</a>
+          </li></ul></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="quick_start.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="using_io.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

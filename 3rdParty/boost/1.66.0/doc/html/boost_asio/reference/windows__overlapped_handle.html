@@ -1,0 +1,338 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>windows::overlapped_handle</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../reference.html" title="Reference">
+<link rel="prev" href="windows__object_handle/wait/overload2.html" title="windows::object_handle::wait (2 of 2 overloads)">
+<link rel="next" href="windows__overlapped_handle/assign.html" title="windows::overlapped_handle::assign">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="windows__object_handle/wait/overload2.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="windows__overlapped_handle/assign.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_asio.reference.windows__overlapped_handle"></a><a class="link" href="windows__overlapped_handle.html" title="windows::overlapped_handle">windows::overlapped_handle</a>
+</h3></div></div></div>
+<p>
+        Provides Windows handle functionality for objects that support overlapped
+        I/O.
+      </p>
+<pre class="programlisting">class overlapped_handle
+</pre>
+<h5>
+<a name="boost_asio.reference.windows__overlapped_handle.h0"></a>
+        <span class="phrase"><a name="boost_asio.reference.windows__overlapped_handle.types"></a></span><a class="link" href="windows__overlapped_handle.html#boost_asio.reference.windows__overlapped_handle.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/executor_type.html" title="windows::overlapped_handle::executor_type"><span class="bold"><strong>executor_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of the executor associated with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/lowest_layer_type.html" title="windows::overlapped_handle::lowest_layer_type"><span class="bold"><strong>lowest_layer_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  An overlapped_handle is always the lowest layer.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/native_handle_type.html" title="windows::overlapped_handle::native_handle_type"><span class="bold"><strong>native_handle_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The native representation of a handle.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.windows__overlapped_handle.h1"></a>
+        <span class="phrase"><a name="boost_asio.reference.windows__overlapped_handle.member_functions"></a></span><a class="link" href="windows__overlapped_handle.html#boost_asio.reference.windows__overlapped_handle.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/assign.html" title="windows::overlapped_handle::assign"><span class="bold"><strong>assign</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Assign an existing native handle to the handle.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/cancel.html" title="windows::overlapped_handle::cancel"><span class="bold"><strong>cancel</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Cancel all asynchronous operations associated with the handle.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/close.html" title="windows::overlapped_handle::close"><span class="bold"><strong>close</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Close the handle.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/get_executor.html" title="windows::overlapped_handle::get_executor"><span class="bold"><strong>get_executor</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the executor associated with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/get_io_context.html" title="windows::overlapped_handle::get_io_context"><span class="bold"><strong>get_io_context</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use get_executor().) Get the io_context associated
+                  with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/get_io_service.html" title="windows::overlapped_handle::get_io_service"><span class="bold"><strong>get_io_service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use get_executor().) Get the io_context associated
+                  with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/is_open.html" title="windows::overlapped_handle::is_open"><span class="bold"><strong>is_open</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Determine whether the handle is open.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/lowest_layer.html" title="windows::overlapped_handle::lowest_layer"><span class="bold"><strong>lowest_layer</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get a reference to the lowest layer.
+                </p>
+                <p>
+                  Get a const reference to the lowest layer.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/native_handle.html" title="windows::overlapped_handle::native_handle"><span class="bold"><strong>native_handle</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the native handle representation.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/operator_eq_.html" title="windows::overlapped_handle::operator="><span class="bold"><strong>operator=</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move-assign an overlapped_handle from another.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/overlapped_handle.html" title="windows::overlapped_handle::overlapped_handle"><span class="bold"><strong>overlapped_handle</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Construct an overlapped_handle without opening it.
+                </p>
+                <p>
+                  Construct an overlapped_handle on an existing native handle.
+                </p>
+                <p>
+                  Move-construct an overlapped_handle from another.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.windows__overlapped_handle.h2"></a>
+        <span class="phrase"><a name="boost_asio.reference.windows__overlapped_handle.protected_member_functions"></a></span><a class="link" href="windows__overlapped_handle.html#boost_asio.reference.windows__overlapped_handle.protected_member_functions">Protected
+        Member Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <a class="link" href="windows__overlapped_handle/_overlapped_handle.html" title="windows::overlapped_handle::~overlapped_handle"><span class="bold"><strong>~overlapped_handle</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Protected destructor to prevent deletion through this type.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<p>
+        The <a class="link" href="windows__overlapped_handle.html" title="windows::overlapped_handle"><code class="computeroutput">windows::overlapped_handle</code></a>
+        class provides the ability to wrap a Windows handle. The underlying object
+        referred to by the handle must support overlapped I/O.
+      </p>
+<h5>
+<a name="boost_asio.reference.windows__overlapped_handle.h3"></a>
+        <span class="phrase"><a name="boost_asio.reference.windows__overlapped_handle.thread_safety"></a></span><a class="link" href="windows__overlapped_handle.html#boost_asio.reference.windows__overlapped_handle.thread_safety">Thread
+        Safety</a>
+      </h5>
+<p>
+        <span class="emphasis"><em>Distinct</em></span> <span class="emphasis"><em>objects:</em></span> Safe.
+      </p>
+<p>
+        <span class="emphasis"><em>Shared</em></span> <span class="emphasis"><em>objects:</em></span> Unsafe.
+      </p>
+<h5>
+<a name="boost_asio.reference.windows__overlapped_handle.h4"></a>
+        <span class="phrase"><a name="boost_asio.reference.windows__overlapped_handle.requirements"></a></span><a class="link" href="windows__overlapped_handle.html#boost_asio.reference.windows__overlapped_handle.requirements">Requirements</a>
+      </h5>
+<p>
+        <span class="emphasis"><em>Header: </em></span><code class="literal">boost/asio/windows/overlapped_handle.hpp</code>
+      </p>
+<p>
+        <span class="emphasis"><em>Convenience header: </em></span><code class="literal">boost/asio.hpp</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="windows__object_handle/wait/overload2.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="windows__overlapped_handle/assign.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

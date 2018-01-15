@@ -1,0 +1,25 @@
+[/
+ / Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:AcceptableProtocol Acceptable protocol requirements]
+
+A type `X` meets the `AcceptableProtocol` requirements if it satisfies the
+requirements of [link boost_asio.reference.Protocol `Protocol`] as well as the
+additional requirements listed below.
+
+[table AcceptableProtocol requirements
+  [[expression] [return type] [assertion/note\npre/post-conditions]]
+  [
+    [`X::socket`]
+    [A type that satisfies the requirements of `Destructible` (C++Std
+     \[destructible\]) and `MoveConstructible` (C++Std \[moveconstructible\]),
+     and that is publicly and unambiguously derived from `basic_socket<X>`.]
+    []
+  ]
+]
+
+[endsect]

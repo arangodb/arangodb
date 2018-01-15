@@ -1,0 +1,150 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Testing leftmost-longest searches (platform = linux, compiler = GNU C++ version 6.3.0)</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Regex 5.1.3">
+<link rel="up" href="../performance.html" title="Performance">
+<link rel="prev" href="section_id4128344975.html" title="Testing simple Perl matches (platform = Windows x64, compiler = Microsoft Visual C++ version 14.1)">
+<link rel="next" href="../standards.html" title="Standards Conformance">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="section_id4128344975.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../performance.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../standards.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_regex.background.performance.section_id4148872883"></a><a class="link" href="section_id4148872883.html" title="Testing leftmost-longest searches (platform = linux, compiler = GNU C++ version 6.3.0)">Testing
+        leftmost-longest searches (platform = linux, compiler = GNU C++ version 6.3.0)</a>
+</h4></div></div></div>
+<div class="table">
+<a name="boost_regex.background.performance.section_id4148872883.table_Testing_leftmost_longest_searches_platform_linux_compiler_GNU_C_version_6_3_0_"></a><p class="title"><b>Table&#160;15.&#160;Testing leftmost-longest searches (platform = linux, compiler =
+          GNU C++ version 6.3.0)</b></p>
+<div class="table-contents"><table class="table" summary="Testing leftmost-longest searches (platform = linux, compiler =
+          GNU C++ version 6.3.0)">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Expression<br> Text
+                  </p>
+                </th>
+<th>
+                  <p>
+                    boost 1.65
+                  </p>
+                </th>
+<th>
+                  <p>
+                    std::regex
+                  </p>
+                </th>
+<th>
+                  <p>
+                    POSIX
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">&lt;a[^&gt;]+href=("[^"]*"|[^[:space:]]+)[^&gt;]*&gt;</code><br>
+                    In file: ..<span class="emphasis"><em>..</em></span>../libs/libraries.htm
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (107026ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.44<br> (154551ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.64<br> (175184ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">&lt;img[^&gt;]+src=("[^"]*"|[^[:space:]]+)[^&gt;]*&gt;</code><br>
+                    In file: ..<span class="emphasis"><em>..</em></span>../libs/libraries.htm
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (15420ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="red">6.89<br> (106275ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.59<br> (24567ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">Beman|John|Dave</code><br> In file: ..<span class="emphasis"><em>..</em></span>../libs/libraries.htm
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.03<br> (5399ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="red">36.27<br> (190577ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (5254ns)</span>
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 1998-2013 John Maddock<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="section_id4128344975.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../performance.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../standards.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

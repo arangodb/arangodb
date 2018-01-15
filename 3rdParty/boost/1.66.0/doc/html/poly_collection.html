@@ -1,0 +1,204 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;27.&#160;Boost.PolyCollection</title>
+<link rel="stylesheet" href="../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="libraries.html" title="Part&#160;I.&#160;The Boost C++ Libraries (BoostBook Subset)">
+<link rel="prev" href="auxiliary.html" title="Auxiliary Components">
+<link rel="next" href="poly_collection/an_efficient_polymorphic_data_st.html" title="An efficient polymorphic data structure">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../boost.png"></td>
+<td align="center"><a href="../../index.html">Home</a></td>
+<td align="center"><a href="../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="auxiliary.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="libraries.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="poly_collection/an_efficient_polymorphic_data_st.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="poly_collection"></a>Chapter&#160;27.&#160;Boost.PolyCollection</h2></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Joaqu&#237;n M</span> <span class="surname">L&#243;pez Mu&#241;oz</span>
+</h3></div></div>
+<div><p class="copyright">Copyright &#169; 2016, 2017 Joaqu&#237;n M L&#243;pez Mu&#241;oz</p></div>
+<div><div class="legalnotice">
+<a name="poly_collection.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="poly_collection.html#poly_collection.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="poly_collection/an_efficient_polymorphic_data_st.html">An efficient
+    polymorphic data structure</a></span></dt>
+<dt><span class="section"><a href="poly_collection/tutorial.html">Tutorial</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="poly_collection/tutorial.html#poly_collection.tutorial.basics">Basics</a></span></dt>
+<dt><span class="section"><a href="poly_collection/tutorial.html#poly_collection.tutorial.deeper_into_the_segmented_nature">Deeper
+      into the segmented nature of Boost.PolyCollection</a></span></dt>
+<dt><span class="section"><a href="poly_collection/tutorial.html#poly_collection.tutorial.insertion_and_emplacement">Insertion
+      and emplacement</a></span></dt>
+<dt><span class="section"><a href="poly_collection/tutorial.html#poly_collection.tutorial.exceptions">Exceptions</a></span></dt>
+<dt><span class="section"><a href="poly_collection/tutorial.html#poly_collection.tutorial.algorithms">Algorithms</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="poly_collection/performance.html">Performance</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="poly_collection/performance.html#poly_collection.performance.container_definitions">Container
+      definitions</a></span></dt>
+<dt><span class="section"><a href="poly_collection/performance.html#poly_collection.performance.insertion_tests">Insertion
+      tests</a></span></dt>
+<dt><span class="section"><a href="poly_collection/performance.html#poly_collection.performance.processing_tests">Processing
+      tests</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="poly_collection/reference.html">Reference</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="poly_collection/reference.html#poly_collection.reference.polymorphism_models">Polymorphism
+      models</a></span></dt>
+<dt><span class="section"><a href="poly_collection/reference.html#poly_collection.reference.polymorphic_containers">Polymorphic
+      containers</a></span></dt>
+<dt><span class="section"><a href="poly_collection/reference.html#poly_collection.reference.header_boost_poly_collection_exc">Header
+      <code class="computeroutput"><span class="string">"boost/poly_collection/exception.hpp"</span></code>
+      synopsis</a></span></dt>
+<dt><span class="section"><a href="poly_collection/reference.html#poly_collection.reference.header_boost_poly_collection_bas">Header
+      <code class="computeroutput"><span class="string">"boost/poly_collection/base_collection_fwd.hpp"</span></code>
+      synopsis</a></span></dt>
+<dt><span class="section"><a href="poly_collection/reference.html#poly_collection.reference.header_boost_poly_collection_ba0">Header
+      <code class="computeroutput"><span class="string">"boost/poly_collection/base_collection.hpp"</span></code>
+      synopsis</a></span></dt>
+<dt><span class="section"><a href="poly_collection/reference.html#poly_collection.reference.header_boost_poly_collection_fun">Header
+      <code class="computeroutput"><span class="string">"boost/poly_collection/function_collection_fwd.hpp"</span></code>
+      synopsis</a></span></dt>
+<dt><span class="section"><a href="poly_collection/reference.html#poly_collection.reference.header_boost_poly_collection_fu0">Header
+      <code class="computeroutput"><span class="string">"boost/poly_collection/function_collection.hpp"</span></code>
+      synopsis</a></span></dt>
+<dt><span class="section"><a href="poly_collection/reference.html#poly_collection.reference.header_boost_poly_collection_any">Header
+      <code class="computeroutput"><span class="string">"boost/poly_collection/any_collection_fwd.hpp"</span></code>
+      synopsis</a></span></dt>
+<dt><span class="section"><a href="poly_collection/reference.html#poly_collection.reference.header_boost_poly_collection_an0">Header
+      <code class="computeroutput"><span class="string">"boost/poly_collection/any_collection.hpp"</span></code>
+      synopsis</a></span></dt>
+<dt><span class="section"><a href="poly_collection/reference.html#poly_collection.reference.header_boost_poly_collection_alg">Header
+      <code class="computeroutput"><span class="string">"boost/poly_collection/algorithm.hpp"</span></code>
+      synopsis</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="poly_collection/future_work.html">Future work</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="poly_collection/future_work.html#poly_collection.future_work.alternative_rtti_systems">Alternative
+      RTTI systems</a></span></dt>
+<dt><span class="section"><a href="poly_collection/future_work.html#poly_collection.future_work.copy_traits">Copy traits</a></span></dt>
+<dt><span class="section"><a href="poly_collection/future_work.html#poly_collection.future_work.parallel_algorithms">Parallel
+      algorithms</a></span></dt>
+<dt><span class="section"><a href="poly_collection/future_work.html#poly_collection.future_work.variant_collection"><code class="computeroutput"><span class="identifier">variant_collection</span></code></a></span></dt>
+<dt><span class="section"><a href="poly_collection/future_work.html#poly_collection.future_work.ordered_polymorphic_collections">Ordered
+      polymorphic collections</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="poly_collection/release_notes.html">Release notes</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="poly_collection/release_notes.html#poly_collection.release_notes.boost_1_66">Boost 1.66</a></span></dt>
+<dt><span class="section"><a href="poly_collection/release_notes.html#poly_collection.release_notes.boost_1_65">Boost 1.65</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="poly_collection/acknowledgments.html">Acknowledgments</a></span></dt>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="poly_collection.introduction"></a><a class="link" href="poly_collection.html#poly_collection.introduction" title="Introduction">Introduction</a>
+</h2></div></div></div>
+<p>
+      Dynamic polymorphism in C++ requires that objects (such as instances of classes
+      derived from an abstract base) be accessed through an indirection pointer because
+      their actual <span class="emphasis"><em>type</em></span> and <span class="emphasis"><em>size</em></span> are not
+      known at the point of usage. As a consequence, regular containers cannot store
+      polymorphic objects directly: the usual workaround is to have containers of
+      pointers to heap-allocated elements. In modern computer architectures this
+      pattern incurs in two types of inefficiency:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          The lack of memory contiguity produced by heap allocation degrades CPU
+          cache performance.
+        </li>
+<li class="listitem">
+          Executing virtual operations on a sequence of polymorphic objects whose
+          actual types differ from one to the next results in failures in <a href="https://en.wikipedia.org/wiki/Branch_predictor" target="_top">branch prediction</a>
+          and a lower execution speed.
+        </li>
+</ul></div>
+<p>
+      When the particular traversal order is not relevant to the user application,
+      Boost.PolyCollection proposes an alternative data structure that restores memory
+      contiguity and packs elements according to their concrete type. Three container
+      class templates are provided:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_collection</span></code>
+        </li>
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">function_collection</span></code>
+        </li>
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">any_collection</span></code>
+        </li>
+</ul></div>
+<p>
+      respectively dealing with three different types of dynamic polymorphism available
+      in C++:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Classic base/derived or OOP polymorphism.
+        </li>
+<li class="listitem">
+          Function wrapping in the spirit of <a href="http://en.cppreference.com/w/cpp/utility/functional/function" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">function</span></code></a>.
+        </li>
+<li class="listitem">
+          So-called <a href="https://en.wikipedia.org/wiki/Duck_typing" target="_top"><span class="emphasis"><em>duck
+          typing</em></span></a> as implemented by <a href="../../libs/type_erasure" target="_top">Boost.TypeErasure</a>.
+        </li>
+</ul></div>
+<p>
+      The interface of these containers closely follows that of standard containers.
+      Additionally, the library provides versions of many of the standard library
+      algorithms (including <a href="http://en.cppreference.com/w/cpp/algorithm/for_each" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span></code></a>)
+      with improved performance and a special feature called <span class="emphasis"><em>type restitution</em></span>
+      that allows user code to provide clues on the concrete types of the elements
+      stored for further opportunities of increased efficiency related to inlining
+      and <a href="http://hubicka.blogspot.com.es/2014/01/devirtualization-in-c-part-1.html" target="_top"><span class="emphasis"><em>devirtualization</em></span></a>.
+    </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Boost.PolyCollection is a header-only library. C++11 support is required.
+        The library has been verified to work with Visual Studio 2015, GCC 4.8 and
+        Clang 3.3.
+      </p></td></tr>
+</table></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: December 14, 2017 at 00:06:06 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="auxiliary.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="libraries.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="poly_collection/an_efficient_polymorphic_data_st.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

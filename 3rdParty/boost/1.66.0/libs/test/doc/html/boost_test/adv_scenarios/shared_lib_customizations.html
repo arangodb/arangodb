@@ -1,0 +1,76 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Shared-library variant customizations</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../adv_scenarios.html" title="Advanced Usage Scenarios">
+<link rel="prev" href="static_lib_customizations/init_func.html" title="Customizing the module's initialization function">
+<link rel="next" href="shared_lib_customizations/entry_point.html" title="Customizing the module's entry point">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="static_lib_customizations/init_func.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../adv_scenarios.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="shared_lib_customizations/entry_point.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.adv_scenarios.shared_lib_customizations"></a><a class="link" href="shared_lib_customizations.html" title="Shared-library variant customizations">Shared-library
+      variant customizations</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="shared_lib_customizations/entry_point.html">Customizing
+        the module's entry point</a></span></dt>
+<dt><span class="section"><a href="shared_lib_customizations/init_func.html">Customizing
+        the module's initialization function</a></span></dt>
+</dl></div>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Macro <a class="link" href="../utf_reference/link_references/link_boost_test_dyn_link.html" title="BOOST_TEST_DYN_LINK"><code class="computeroutput"><span class="identifier">BOOST_TEST_DYN_LINK</span></code></a> (which instructs
+          the compiler/linker to dynamically link against a shared library variant)
+          may be implicitly defined when macro <code class="computeroutput"><span class="identifier">BOOST_ALL_DYN_LINK</span></code>
+          is defined.
+        </p></td></tr>
+</table></div>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          In order to be able to run a test built with the dynamic variant, the operating
+          system should be able to find the dynamic library of the <span class="emphasis"><em>Unit
+          Test Framework</em></span>. This means, for example on Linux and MacOSX
+          respectively, setting the environment variable <code class="computeroutput"><span class="identifier">LD_LIBRARY_PATH</span></code>
+          or <code class="computeroutput"><span class="identifier">DYLD_LIBRARY_PATH</span></code> properly
+          prior to the execution of the test module.
+        </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2017 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="static_lib_customizations/init_func.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../adv_scenarios.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="shared_lib_customizations/entry_point.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

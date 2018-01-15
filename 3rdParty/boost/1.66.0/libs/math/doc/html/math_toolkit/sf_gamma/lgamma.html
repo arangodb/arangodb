@@ -1,0 +1,488 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Log Gamma</title>
+<link rel="stylesheet" href="../../math.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Math Toolkit 2.6.0">
+<link rel="up" href="../sf_gamma.html" title="Gamma Functions">
+<link rel="prev" href="tgamma.html" title="Gamma">
+<link rel="next" href="digamma.html" title="Digamma">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tgamma.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../sf_gamma.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="digamma.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="math_toolkit.sf_gamma.lgamma"></a><a class="link" href="lgamma.html" title="Log Gamma">Log Gamma</a>
+</h3></div></div></div>
+<h5>
+<a name="math_toolkit.sf_gamma.lgamma.h0"></a>
+        <span class="phrase"><a name="math_toolkit.sf_gamma.lgamma.synopsis"></a></span><a class="link" href="lgamma.html#math_toolkit.sf_gamma.lgamma.synopsis">Synopsis</a>
+      </h5>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">math</span><span class="special">/</span><span class="identifier">special_functions</span><span class="special">/</span><span class="identifier">gamma</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">math</span><span class="special">{</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<a class="link" href="../result_type.html" title="Calculation of the Type of the Result"><span class="emphasis"><em>calculated-result-type</em></span></a> <span class="identifier">lgamma</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">z</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <a class="link" href="../../policy.html" title="Chapter&#160;18.&#160;Policies: Controlling Precision, Error Handling etc">Policy</a><span class="special">&gt;</span>
+<a class="link" href="../result_type.html" title="Calculation of the Type of the Result"><span class="emphasis"><em>calculated-result-type</em></span></a> <span class="identifier">lgamma</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">z</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="../../policy.html" title="Chapter&#160;18.&#160;Policies: Controlling Precision, Error Handling etc">Policy</a><span class="special">&amp;);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<a class="link" href="../result_type.html" title="Calculation of the Type of the Result"><span class="emphasis"><em>calculated-result-type</em></span></a> <span class="identifier">lgamma</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">z</span><span class="special">,</span> <span class="keyword">int</span><span class="special">*</span> <span class="identifier">sign</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <a class="link" href="../../policy.html" title="Chapter&#160;18.&#160;Policies: Controlling Precision, Error Handling etc">Policy</a><span class="special">&gt;</span>
+<a class="link" href="../result_type.html" title="Calculation of the Type of the Result"><span class="emphasis"><em>calculated-result-type</em></span></a> <span class="identifier">lgamma</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">z</span><span class="special">,</span> <span class="keyword">int</span><span class="special">*</span> <span class="identifier">sign</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="../../policy.html" title="Chapter&#160;18.&#160;Policies: Controlling Precision, Error Handling etc">Policy</a><span class="special">&amp;);</span>
+
+<span class="special">}}</span> <span class="comment">// namespaces</span>
+</pre>
+<h5>
+<a name="math_toolkit.sf_gamma.lgamma.h1"></a>
+        <span class="phrase"><a name="math_toolkit.sf_gamma.lgamma.description"></a></span><a class="link" href="lgamma.html#math_toolkit.sf_gamma.lgamma.description">Description</a>
+      </h5>
+<p>
+        The <a href="http://en.wikipedia.org/wiki/Gamma_function" target="_top">lgamma function</a>
+        is defined by:
+      </p>
+<p>
+        <span class="inlinemediaobject"><img src="../../../equations/lgamm1.svg"></span>
+      </p>
+<p>
+        The second form of the function takes a pointer to an integer, which if non-null
+        is set on output to the sign of tgamma(z).
+      </p>
+<p>
+        The final <a class="link" href="../../policy.html" title="Chapter&#160;18.&#160;Policies: Controlling Precision, Error Handling etc">Policy</a> argument is optional and can
+        be used to control the behaviour of the function: how it handles errors,
+        what level of precision to use etc. Refer to the <a class="link" href="../../policy.html" title="Chapter&#160;18.&#160;Policies: Controlling Precision, Error Handling etc">policy
+        documentation for more details</a>.
+      </p>
+<p>
+        <span class="inlinemediaobject"><img src="../../../graphs/lgamma.svg" align="middle"></span>
+      </p>
+<p>
+        There are effectively two versions of this function internally: a fully generic
+        version that is slow, but reasonably accurate, and a much more efficient
+        approximation that is used where the number of digits in the significand
+        of T correspond to a certain <a class="link" href="../lanczos.html" title="The Lanczos Approximation">Lanczos
+        approximation</a>. In practice, any built-in floating-point type you will
+        encounter has an appropriate <a class="link" href="../lanczos.html" title="The Lanczos Approximation">Lanczos
+        approximation</a> defined for it. It is also possible, given enough machine
+        time, to generate further <a class="link" href="../lanczos.html" title="The Lanczos Approximation">Lanczos approximation</a>'s
+        using the program libs/math/tools/lanczos_generator.cpp.
+      </p>
+<p>
+        The return type of these functions is computed using the <a class="link" href="../result_type.html" title="Calculation of the Type of the Result"><span class="emphasis"><em>result
+        type calculation rules</em></span></a>: the result is of type <code class="computeroutput"><span class="keyword">double</span></code> if T is an integer type, or type T
+        otherwise.
+      </p>
+<h5>
+<a name="math_toolkit.sf_gamma.lgamma.h2"></a>
+        <span class="phrase"><a name="math_toolkit.sf_gamma.lgamma.accuracy"></a></span><a class="link" href="lgamma.html#math_toolkit.sf_gamma.lgamma.accuracy">Accuracy</a>
+      </h5>
+<p>
+        The following table shows the peak errors (in units of epsilon) found on
+        various platforms with various floating point types, along with comparisons
+        to various other libraries. Unless otherwise specified any floating point
+        type that is narrower than the one shown will have <a class="link" href="../relative_error.html#math_toolkit.relative_error.zero_error">effectively
+        zero error</a>.
+      </p>
+<p>
+        Note that while the relative errors near the positive roots of lgamma are
+        very low, the lgamma function has an infinite number of irrational roots
+        for negative arguments: very close to these negative roots only a low absolute
+        error can be guaranteed.
+      </p>
+<div class="table">
+<a name="math_toolkit.sf_gamma.lgamma.table_lgamma"></a><p class="title"><b>Table&#160;6.3.&#160;Error rates for lgamma</b></p>
+<div class="table-contents"><table class="table" summary="Error rates for lgamma">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              </th>
+<th>
+                <p>
+                  Microsoft Visual C++ version 12.0<br> Win32<br> double
+                </p>
+              </th>
+<th>
+                <p>
+                  GNU C++ version 5.1.0<br> linux<br> double
+                </p>
+              </th>
+<th>
+                <p>
+                  GNU C++ version 5.1.0<br> linux<br> long double
+                </p>
+              </th>
+<th>
+                <p>
+                  Sun compiler version 0x5130<br> Sun Solaris<br> long double
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  factorials
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0.914&#949; (Mean = 0.167&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 0.958&#949; (Mean = 0.38&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0&#949; (Mean = 0&#949;)</span><br> <br> (<span class="emphasis"><em>GSL
+                  1.16:</em></span> Max = 33.6&#949; (Mean = 2.78&#949;))<br> (<span class="emphasis"><em>Rmath
+                  3.0.2:</em></span> Max = 1.55&#949; (Mean = 0.592&#949;))<br> (<span class="emphasis"><em>Cephes:</em></span>
+                  Max = 1.55&#949; (Mean = 0.512&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0.991&#949; (Mean = 0.311&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;tr1/cmath&gt;:</em></span> Max = 1.67&#949; (Mean = 0.487&#949;))<br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 1.67&#949; (Mean = 0.487&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0.991&#949; (Mean = 0.383&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 1.36&#949; (Mean = 0.476&#949;))
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  near 0
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0.964&#949; (Mean = 0.462&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 0.962&#949; (Mean = 0.372&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0&#949; (Mean = 0&#949;)</span><br> <br> (<span class="emphasis"><em>GSL
+                  1.16:</em></span> Max = 5.21&#949; (Mean = 1.57&#949;))<br> (<span class="emphasis"><em>Rmath
+                  3.0.2:</em></span> Max = 0&#949; (Mean = 0&#949;))<br> (<span class="emphasis"><em>Cephes:</em></span>
+                  Max = 1.16&#949; (Mean = 0.341&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 1.42&#949; (Mean = 0.566&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;tr1/cmath&gt;:</em></span> Max = 0.964&#949; (Mean = 0.543&#949;))<br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 0.964&#949; (Mean = 0.543&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 1.42&#949; (Mean = 0.566&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 0.964&#949; (Mean = 0.543&#949;))
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  near 1
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0.867&#949; (Mean = 0.468&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 0.906&#949; (Mean = 0.565&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0&#949; (Mean = 0&#949;)</span><br> <br> (<span class="emphasis"><em>GSL
+                  1.16:</em></span> Max = 442&#949; (Mean = 88.8&#949;))<br> (<span class="emphasis"><em>Rmath
+                  3.0.2:</em></span> Max = 7.99e+04&#949; (Mean = 1.68e+04&#949;))<br> (<span class="emphasis"><em>Cephes:</em></span>
+                  Max = 1.14e+05&#949; (Mean = 2.64e+04&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0.948&#949; (Mean = 0.36&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;tr1/cmath&gt;:</em></span> Max = 0.615&#949; (Mean = 0.096&#949;))<br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 0.615&#949; (Mean = 0.096&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0.866&#949; (Mean = 0.355&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 1.71&#949; (Mean = 0.581&#949;))
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  near 2
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0.591&#949; (Mean = 0.159&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 0.741&#949; (Mean = 0.473&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0&#949; (Mean = 0&#949;)</span><br> <br> (<span class="emphasis"><em>GSL
+                  1.16:</em></span> Max = 1.17e+03&#949; (Mean = 274&#949;))<br> (<span class="emphasis"><em>Rmath
+                  3.0.2:</em></span> Max = 2.63e+05&#949; (Mean = 5.84e+04&#949;))<br> (<span class="emphasis"><em>Cephes:</em></span>
+                  Max = 5.08e+05&#949; (Mean = 9.04e+04&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0.878&#949; (Mean = 0.242&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;tr1/cmath&gt;:</em></span> Max = 0.741&#949; (Mean = 0.263&#949;))<br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 0.741&#949; (Mean = 0.263&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0.878&#949; (Mean = 0.241&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 0.598&#949; (Mean = 0.235&#949;))
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  near -10
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 4.22&#949; (Mean = 1.33&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 0.997&#949; (Mean = 0.444&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0&#949; (Mean = 0&#949;)</span><br> <br> (<span class="emphasis"><em>GSL
+                  1.16:</em></span> Max = 24.9&#949; (Mean = 4.6&#949;))<br> (<span class="emphasis"><em>Rmath
+                  3.0.2:</em></span> Max = 2.41e+05&#949; (Mean = 4.29e+04&#949;))<br> (<span class="emphasis"><em>Cephes:</em></span>
+                  Max = 0.997&#949; (Mean = 0.429&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 3.81&#949; (Mean = 1.01&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;tr1/cmath&gt;:</em></span> Max = 3.01&#949; (Mean = 0.86&#949;))<br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 3.01&#949; (Mean = 0.86&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 3.81&#949; (Mean = 1.01&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 3.04&#949; (Mean = 1.01&#949;))
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  near -55
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0.821&#949; (Mean = 0.419&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 249&#949; (Mean = 43.1&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0&#949; (Mean = 0&#949;)</span><br> <br> (<span class="emphasis"><em>GSL
+                  1.16:</em></span> Max = 7.02&#949; (Mean = 1.47&#949;))<br> (<span class="emphasis"><em>Rmath
+                  3.0.2:</em></span> Max = 4.08e+04&#949; (Mean = 7.26e+03&#949;))<br> (<span class="emphasis"><em>Cephes:</em></span>
+                  Max = 1.64&#949; (Mean = 0.693&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 0.821&#949; (Mean = 0.513&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;tr1/cmath&gt;:</em></span> Max = 1.58&#949; (Mean = 0.672&#949;))<br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 1.58&#949; (Mean = 0.672&#949;))
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="blue">Max = 1.59&#949; (Mean = 0.587&#949;)</span><br> <br>
+                  (<span class="emphasis"><em>&lt;math.h&gt;:</em></span> Max = 0.821&#949; (Mean = 0.674&#949;))
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="math_toolkit.sf_gamma.lgamma.h3"></a>
+        <span class="phrase"><a name="math_toolkit.sf_gamma.lgamma.testing"></a></span><a class="link" href="lgamma.html#math_toolkit.sf_gamma.lgamma.testing">Testing</a>
+      </h5>
+<p>
+        The main tests for this function involve comparisons against the logs of
+        the factorials which can be independently calculated to very high accuracy.
+      </p>
+<p>
+        Random tests in key problem areas are also used.
+      </p>
+<h5>
+<a name="math_toolkit.sf_gamma.lgamma.h4"></a>
+        <span class="phrase"><a name="math_toolkit.sf_gamma.lgamma.implementation"></a></span><a class="link" href="lgamma.html#math_toolkit.sf_gamma.lgamma.implementation">Implementation</a>
+      </h5>
+<p>
+        The generic version of this function is implemented using Sterling's approximation
+        for large arguments:
+      </p>
+<p>
+        <span class="inlinemediaobject"><img src="../../../equations/gamma6.svg"></span>
+      </p>
+<p>
+        For small arguments, the logarithm of tgamma is used.
+      </p>
+<p>
+        For negative <span class="emphasis"><em>z</em></span> the logarithm version of the reflection
+        formula is used:
+      </p>
+<p>
+        <span class="inlinemediaobject"><img src="../../../equations/lgamm3.svg"></span>
+      </p>
+<p>
+        For types of known precision, the <a class="link" href="../lanczos.html" title="The Lanczos Approximation">Lanczos
+        approximation</a> is used, a traits class <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">lanczos</span><span class="special">::</span><span class="identifier">lanczos_traits</span></code>
+        maps type T to an appropriate approximation. The logarithmic version of the
+        <a class="link" href="../lanczos.html" title="The Lanczos Approximation">Lanczos approximation</a> is:
+      </p>
+<p>
+        <span class="inlinemediaobject"><img src="../../../equations/lgamm4.svg"></span>
+      </p>
+<p>
+        Where L<sub>e,g</sub> &#160; is the Lanczos sum, scaled by e<sup>g</sup>.
+      </p>
+<p>
+        As before the reflection formula is used for <span class="emphasis"><em>z &lt; 0</em></span>.
+      </p>
+<p>
+        When z is very near 1 or 2, then the logarithmic version of the <a class="link" href="../lanczos.html" title="The Lanczos Approximation">Lanczos
+        approximation</a> suffers very badly from cancellation error: indeed for
+        values sufficiently close to 1 or 2, arbitrarily large relative errors can
+        be obtained (even though the absolute error is tiny).
+      </p>
+<p>
+        For types with up to 113 bits of precision (up to and including 128-bit long
+        doubles), root-preserving rational approximations <a class="link" href="../sf_implementation.html#math_toolkit.sf_implementation.rational_approximations_used">devised
+        by JM</a> are used over the intervals [1,2] and [2,3]. Over the interval
+        [2,3] the approximation form used is:
+      </p>
+<pre class="programlisting"><span class="identifier">lgamma</span><span class="special">(</span><span class="identifier">z</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">z</span><span class="special">-</span><span class="number">2</span><span class="special">)(</span><span class="identifier">z</span><span class="special">+</span><span class="number">1</span><span class="special">)(</span><span class="identifier">Y</span> <span class="special">+</span> <span class="identifier">R</span><span class="special">(</span><span class="identifier">z</span><span class="special">-</span><span class="number">2</span><span class="special">));</span>
+</pre>
+<p>
+        Where Y is a constant, and R(z-2) is the rational approximation: optimised
+        so that it's absolute error is tiny compared to Y. In addition small values
+        of z greater than 3 can handled by argument reduction using the recurrence
+        relation:
+      </p>
+<pre class="programlisting"><span class="identifier">lgamma</span><span class="special">(</span><span class="identifier">z</span><span class="special">+</span><span class="number">1</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">log</span><span class="special">(</span><span class="identifier">z</span><span class="special">)</span> <span class="special">+</span> <span class="identifier">lgamma</span><span class="special">(</span><span class="identifier">z</span><span class="special">);</span>
+</pre>
+<p>
+        Over the interval [1,2] two approximations have to be used, one for small
+        z uses:
+      </p>
+<pre class="programlisting"><span class="identifier">lgamma</span><span class="special">(</span><span class="identifier">z</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">z</span><span class="special">-</span><span class="number">1</span><span class="special">)(</span><span class="identifier">z</span><span class="special">-</span><span class="number">2</span><span class="special">)(</span><span class="identifier">Y</span> <span class="special">+</span> <span class="identifier">R</span><span class="special">(</span><span class="identifier">z</span><span class="special">-</span><span class="number">1</span><span class="special">));</span>
+</pre>
+<p>
+        Once again Y is a constant, and R(z-1) is optimised for low absolute error
+        compared to Y. For z &gt; 1.5 the above form wouldn't converge to a minimax
+        solution but this similar form does:
+      </p>
+<pre class="programlisting"><span class="identifier">lgamma</span><span class="special">(</span><span class="identifier">z</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="number">2</span><span class="special">-</span><span class="identifier">z</span><span class="special">)(</span><span class="number">1</span><span class="special">-</span><span class="identifier">z</span><span class="special">)(</span><span class="identifier">Y</span> <span class="special">+</span> <span class="identifier">R</span><span class="special">(</span><span class="number">2</span><span class="special">-</span><span class="identifier">z</span><span class="special">));</span>
+</pre>
+<p>
+        Finally for z &lt; 1 the recurrence relation can be used to move to z &gt;
+        1:
+      </p>
+<pre class="programlisting"><span class="identifier">lgamma</span><span class="special">(</span><span class="identifier">z</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">lgamma</span><span class="special">(</span><span class="identifier">z</span><span class="special">+</span><span class="number">1</span><span class="special">)</span> <span class="special">-</span> <span class="identifier">log</span><span class="special">(</span><span class="identifier">z</span><span class="special">);</span>
+</pre>
+<p>
+        Note that while this involves a subtraction, it appears not to suffer from
+        cancellation error: as z decreases from 1 the <code class="computeroutput"><span class="special">-</span><span class="identifier">log</span><span class="special">(</span><span class="identifier">z</span><span class="special">)</span></code> term grows positive much more rapidly than
+        the <code class="computeroutput"><span class="identifier">lgamma</span><span class="special">(</span><span class="identifier">z</span><span class="special">+</span><span class="number">1</span><span class="special">)</span></code> term becomes negative. So in this specific
+        case, significant digits are preserved, rather than cancelled.
+      </p>
+<p>
+        For other types which do have a <a class="link" href="../lanczos.html" title="The Lanczos Approximation">Lanczos
+        approximation</a> defined for them the current solution is as follows:
+        imagine we balance the two terms in the <a class="link" href="../lanczos.html" title="The Lanczos Approximation">Lanczos
+        approximation</a> by dividing the power term by its value at <span class="emphasis"><em>z
+        = 1</em></span>, and then multiplying the Lanczos coefficients by the same
+        value. Now each term will take the value 1 at <span class="emphasis"><em>z = 1</em></span>
+        and we can rearrange the power terms in terms of log1p. Likewise if we subtract
+        1 from the Lanczos sum part (algebraically, by subtracting the value of each
+        term at <span class="emphasis"><em>z = 1</em></span>), we obtain a new summation that can be
+        also be fed into log1p. Crucially, all of the terms tend to zero, as <span class="emphasis"><em>z
+        -&gt; 1</em></span>:
+      </p>
+<p>
+        <span class="inlinemediaobject"><img src="../../../equations/lgamm5.svg"></span>
+      </p>
+<p>
+        The C<sub>k</sub> &#160; terms in the above are the same as in the <a class="link" href="../lanczos.html" title="The Lanczos Approximation">Lanczos
+        approximation</a>.
+      </p>
+<p>
+        A similar rearrangement can be performed at <span class="emphasis"><em>z = 2</em></span>:
+      </p>
+<p>
+        <span class="inlinemediaobject"><img src="../../../equations/lgamm6.svg"></span>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2006-2010, 2012-2014, 2017 Nikhar
+      Agrawal, Anton Bikineev, Paul A. Bristow, Marco Guazzone, Christopher Kormanyos,
+      Hubert Holin, Bruno Lalande, John Maddock, Jeremy Murphy, Johan R&#229;de, Gautam
+      Sewani, Benjamin Sobotta, Nicholas Thompson, Thijs van den Berg, Daryle Walker
+      and Xiaogang Zhang<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tgamma.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../sf_gamma.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="digamma.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

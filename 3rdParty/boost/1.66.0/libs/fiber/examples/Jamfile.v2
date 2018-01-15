@@ -1,0 +1,53 @@
+# Boost.Fiber Library Examples Jamfile
+
+#          Copyright Oliver Kowalke 2013.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+
+# For more information, see http://www.boost.org/
+
+import common ;
+import feature ;
+import indirect ;
+import modules ;
+import os ;
+import toolset ;
+
+project boost/fiber/example
+    : requirements
+      <library>../build//boost_fiber
+      <library>/boost/context//boost_context
+      <library>/boost/filesystem//boost_filesystem
+      <library>/boost/thread//boost_thread
+      <target-os>solaris:<linkflags>"-llgrp"
+      <target-os>solaris:<linkflags>"-lsocket"
+      <target-os>windows:<define>_WIN32_WINNT=0x0601
+      <toolset>gcc,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>gcc,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <link>shared
+      <threading>multi
+    ;
+
+exe adapt_callbacks : adapt_callbacks.cpp ;
+exe adapt_method_calls : adapt_method_calls.cpp ;
+exe adapt_nonblocking : adapt_nonblocking.cpp ;
+exe barrier : barrier.cpp ;
+exe future : future.cpp ;
+exe join : join.cpp ;
+exe ping_pong : ping_pong.cpp ;
+exe range_for : range_for.cpp ;
+exe priority : priority.cpp ;
+exe segmented_stack : segmented_stack.cpp ;
+exe simple : simple.cpp ;
+exe wait_stuff : wait_stuff.cpp ;
+exe work_sharing : work_sharing.cpp ;
+exe work_stealing : work_stealing.cpp ;
+
+exe asio/autoecho : asio/autoecho.cpp ;
+exe asio/exchange : asio/exchange.cpp ;
+exe asio/ps/publisher : asio/ps/publisher.cpp ;
+exe asio/ps/server : asio/ps/server.cpp ;
+exe asio/ps/subscriber : asio/ps/subscriber.cpp ;

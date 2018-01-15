@@ -1,0 +1,117 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>basic_datagram_socket::async_send_to (1 of 2 overloads)</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../async_send_to.html" title="basic_datagram_socket::async_send_to">
+<link rel="prev" href="../async_send_to.html" title="basic_datagram_socket::async_send_to">
+<link rel="next" href="overload2.html" title="basic_datagram_socket::async_send_to (2 of 2 overloads)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../async_send_to.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../async_send_to.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../boost_asio.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload2.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_asio.reference.basic_datagram_socket.async_send_to.overload1"></a><a class="link" href="overload1.html" title="basic_datagram_socket::async_send_to (1 of 2 overloads)">basic_datagram_socket::async_send_to
+          (1 of 2 overloads)</a>
+</h5></div></div></div>
+<p>
+            Start an asynchronous send.
+          </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../../ConstBufferSequence.html" title="Constant buffer sequence requirements">ConstBufferSequence</a>,
+    typename <a class="link" href="../../WriteHandler.html" title="Write handler requirements">WriteHandler</a>&gt;
+<a class="link" href="../../asynchronous_operations/automatic_deduction_of_initiating_function_return_type.html" title="Automatic deduction of initiating function return type"><span class="emphasis"><em>DEDUCED</em></span></a> async_send_to(
+    const ConstBufferSequence &amp; buffers,
+    const endpoint_type &amp; destination,
+    WriteHandler &amp;&amp; handler);
+</pre>
+<p>
+            This function is used to asynchronously send a datagram to the specified
+            remote endpoint. The function call always returns immediately.
+          </p>
+<h6>
+<a name="boost_asio.reference.basic_datagram_socket.async_send_to.overload1.h0"></a>
+            <span class="phrase"><a name="boost_asio.reference.basic_datagram_socket.async_send_to.overload1.parameters"></a></span><a class="link" href="overload1.html#boost_asio.reference.basic_datagram_socket.async_send_to.overload1.parameters">Parameters</a>
+          </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">buffers</span></dt>
+<dd><p>
+                  One or more data buffers to be sent to the remote endpoint. Although
+                  the buffers object may be copied as necessary, ownership of the
+                  underlying memory blocks is retained by the caller, which must
+                  guarantee that they remain valid until the handler is called.
+                </p></dd>
+<dt><span class="term">destination</span></dt>
+<dd><p>
+                  The remote endpoint to which the data will be sent. Copies will
+                  be made of the endpoint as required.
+                </p></dd>
+<dt><span class="term">handler</span></dt>
+<dd>
+<p>
+                  The handler to be called when the send operation completes. Copies
+                  will be made of the handler as required. The function signature
+                  of the handler must be:
+</p>
+<pre class="programlisting">void handler(
+  const boost::system::error_code&amp; error, // Result of operation.
+  std::size_t bytes_transferred           // Number of bytes sent.
+);
+</pre>
+<p>
+                  Regardless of whether the asynchronous operation completes immediately
+                  or not, the handler will not be invoked from within this function.
+                  Invocation of the handler will be performed in a manner equivalent
+                  to using <code class="computeroutput">boost::asio::io_context::post()</code>.
+                </p>
+</dd>
+</dl>
+</div>
+<h6>
+<a name="boost_asio.reference.basic_datagram_socket.async_send_to.overload1.h1"></a>
+            <span class="phrase"><a name="boost_asio.reference.basic_datagram_socket.async_send_to.overload1.example"></a></span><a class="link" href="overload1.html#boost_asio.reference.basic_datagram_socket.async_send_to.overload1.example">Example</a>
+          </h6>
+<p>
+            To send a single data buffer use the <a class="link" href="../../buffer.html" title="buffer"><code class="computeroutput">buffer</code></a>
+            function as follows:
+          </p>
+<pre class="programlisting">boost::asio::ip::udp::endpoint destination(
+    boost::asio::ip::address::from_string("1.2.3.4"), 12345);
+socket.async_send_to(
+    boost::asio::buffer(data, size), destination, handler);
+</pre>
+<p>
+            See the <a class="link" href="../../buffer.html" title="buffer"><code class="computeroutput">buffer</code></a>
+            documentation for information on sending multiple buffers in one go,
+            and how to use it with arrays, boost::array or std::vector.
+          </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../async_send_to.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../async_send_to.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../boost_asio.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload2.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

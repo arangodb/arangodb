@@ -1,0 +1,508 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Buffered Channel</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="up" href="../channels.html" title="Channels">
+<link rel="prev" href="../channels.html" title="Channels">
+<link rel="next" href="unbuffered_channel.html" title="Unbuffered Channel">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../channels.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../channels.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="unbuffered_channel.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="fiber.synchronization.channels.buffered_channel"></a><a class="link" href="buffered_channel.html" title="Buffered Channel">Buffered
+        Channel</a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong>Boost.Fiber</strong></span> provides a bounded, buffered
+          channel (MPMC queue) suitable to synchonize fibers (running on same or
+          different threads) via asynchronouss message passing.
+        </p>
+<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">buffered_channel</span><span class="special">&lt;</span> <span class="keyword">int</span> <span class="special">&gt;</span> <span class="identifier">channel_t</span><span class="special">;</span>
+
+<span class="keyword">void</span> <span class="identifier">send</span><span class="special">(</span> <span class="identifier">channel_t</span> <span class="special">&amp;</span> <span class="identifier">chan</span><span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">for</span> <span class="special">(</span> <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">5</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+        <span class="identifier">chan</span><span class="special">.</span><span class="identifier">push</span><span class="special">(</span> <span class="identifier">i</span><span class="special">);</span>
+    <span class="special">}</span>
+    <span class="identifier">chan</span><span class="special">.</span><span class="identifier">close</span><span class="special">();</span>
+<span class="special">}</span>
+
+<span class="keyword">void</span> <span class="identifier">recv</span><span class="special">(</span> <span class="identifier">channel_t</span> <span class="special">&amp;</span> <span class="identifier">chan</span><span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">int</span> <span class="identifier">i</span><span class="special">;</span>
+    <span class="keyword">while</span> <span class="special">(</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">channel_op_status</span><span class="special">::</span><span class="identifier">success</span> <span class="special">==</span> <span class="identifier">chan</span><span class="special">.</span><span class="identifier">pop</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span> <span class="special">)</span> <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"received "</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+
+<span class="identifier">channel_t</span> <span class="identifier">chan</span><span class="special">{</span> <span class="number">2</span> <span class="special">};</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">fiber</span> <span class="identifier">f1</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span> <span class="identifier">send</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ref</span><span class="special">(</span> <span class="identifier">chan</span><span class="special">)</span> <span class="special">)</span> <span class="special">);</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">fiber</span> <span class="identifier">f2</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span> <span class="identifier">recv</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ref</span><span class="special">(</span> <span class="identifier">chan</span><span class="special">)</span> <span class="special">)</span> <span class="special">);</span>
+
+<span class="identifier">f1</span><span class="special">.</span><span class="identifier">join</span><span class="special">();</span>
+<span class="identifier">f2</span><span class="special">.</span><span class="identifier">join</span><span class="special">();</span>
+</pre>
+<p>
+          Class <code class="computeroutput"><span class="identifier">buffered_channel</span></code>
+          supports range-for syntax:
+        </p>
+<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">buffered_channel</span><span class="special">&lt;</span> <span class="keyword">int</span> <span class="special">&gt;</span> <span class="identifier">channel_t</span><span class="special">;</span>
+
+<span class="keyword">void</span> <span class="identifier">foo</span><span class="special">(</span> <span class="identifier">channel_t</span> <span class="special">&amp;</span> <span class="identifier">chan</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">chan</span><span class="special">.</span><span class="identifier">push</span><span class="special">(</span> <span class="number">1</span><span class="special">);</span>
+    <span class="identifier">chan</span><span class="special">.</span><span class="identifier">push</span><span class="special">(</span> <span class="number">1</span><span class="special">);</span>
+    <span class="identifier">chan</span><span class="special">.</span><span class="identifier">push</span><span class="special">(</span> <span class="number">2</span><span class="special">);</span>
+    <span class="identifier">chan</span><span class="special">.</span><span class="identifier">push</span><span class="special">(</span> <span class="number">3</span><span class="special">);</span>
+    <span class="identifier">chan</span><span class="special">.</span><span class="identifier">push</span><span class="special">(</span> <span class="number">5</span><span class="special">);</span>
+    <span class="identifier">chan</span><span class="special">.</span><span class="identifier">push</span><span class="special">(</span> <span class="number">8</span><span class="special">);</span>
+    <span class="identifier">chan</span><span class="special">.</span><span class="identifier">push</span><span class="special">(</span> <span class="number">12</span><span class="special">);</span>
+    <span class="identifier">chan</span><span class="special">.</span><span class="identifier">close</span><span class="special">();</span>
+<span class="special">}</span>
+
+<span class="keyword">void</span> <span class="identifier">bar</span><span class="special">(</span> <span class="identifier">channel_t</span> <span class="special">&amp;</span> <span class="identifier">chan</span><span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">for</span> <span class="special">(</span> <span class="keyword">unsigned</span> <span class="keyword">int</span> <span class="identifier">value</span> <span class="special">:</span> <span class="identifier">chan</span><span class="special">)</span> <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">value</span> <span class="special">&lt;&lt;</span> <span class="string">" "</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          </p>
+<h5>
+<a name="class_buffered_channel_bridgehead"></a>
+  <span class="phrase"><a name="class_buffered_channel"></a></span>
+  <a class="link" href="buffered_channel.html#class_buffered_channel">Template
+          <code class="computeroutput">buffered_channel&lt;&gt;</code></a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">buffered_channel</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">buffered_channel</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">typedef</span> <span class="identifier">T</span>   <span class="identifier">value_type</span><span class="special">;</span>
+
+    <span class="keyword">class</span> <span class="identifier">iterator</span><span class="special">;</span>
+
+    <span class="keyword">explicit</span> <span class="identifier">buffered_channel</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">capacity</span><span class="special">);</span>
+
+    <span class="identifier">buffered_channel</span><span class="special">(</span> <span class="identifier">buffered_channel</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+    <span class="identifier">buffered_channel</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">buffered_channel</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+
+    <span class="keyword">void</span> <span class="identifier">close</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">channel_op_status</span> <span class="identifier">push</span><span class="special">(</span> <span class="identifier">value_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">va</span><span class="special">);</span>
+    <span class="identifier">channel_op_status</span> <span class="identifier">push</span><span class="special">(</span> <span class="identifier">value_type</span> <span class="special">&amp;&amp;</span> <span class="identifier">va</span><span class="special">);</span>
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Period</span> <span class="special">&gt;</span>
+    <span class="identifier">channel_op_status</span> <span class="identifier">push_wait_for</span><span class="special">(</span>
+        <span class="identifier">value_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">va</span><span class="special">,</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_duration</span><span class="special">);</span>
+    <span class="identifier">channel_op_status</span> <span class="identifier">push_wait_for</span><span class="special">(</span> <span class="identifier">value_type</span> <span class="special">&amp;&amp;</span> <span class="identifier">va</span><span class="special">,</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_duration</span><span class="special">);</span>
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span> <span class="special">&gt;</span>
+    <span class="identifier">channel_op_status</span> <span class="identifier">push_wait_until</span><span class="special">(</span>
+        <span class="identifier">value_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">va</span><span class="special">,</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_time</span><span class="special">);</span>
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span> <span class="special">&gt;</span>
+    <span class="identifier">channel_op_status</span> <span class="identifier">push_wait_until</span><span class="special">(</span>
+        <span class="identifier">value_type</span> <span class="special">&amp;&amp;</span> <span class="identifier">va</span><span class="special">,</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_time</span><span class="special">);</span>
+    <span class="identifier">channel_op_status</span> <span class="identifier">try_push</span><span class="special">(</span> <span class="identifier">value_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">va</span><span class="special">);</span>
+    <span class="identifier">channel_op_status</span> <span class="identifier">try_push</span><span class="special">(</span> <span class="identifier">value_type</span> <span class="special">&amp;&amp;</span> <span class="identifier">va</span><span class="special">);</span>
+
+    <span class="identifier">channel_op_status</span> <span class="identifier">pop</span><span class="special">(</span> <span class="identifier">value_type</span> <span class="special">&amp;</span> <span class="identifier">va</span><span class="special">);</span>
+    <span class="identifier">value_type</span> <span class="identifier">value_pop</span><span class="special">();</span>
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Period</span> <span class="special">&gt;</span>
+    <span class="identifier">channel_op_status</span> <span class="identifier">pop_wait_for</span><span class="special">(</span>
+        <span class="identifier">value_type</span> <span class="special">&amp;</span> <span class="identifier">va</span><span class="special">,</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_duration</span><span class="special">);</span>
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span> <span class="special">&gt;</span>
+    <span class="identifier">channel_op_status</span> <span class="identifier">pop_wait_until</span><span class="special">(</span>
+        <span class="identifier">value_type</span> <span class="special">&amp;</span> <span class="identifier">va</span><span class="special">,</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_time</span><span class="special">);</span>
+    <span class="identifier">channel_op_status</span> <span class="identifier">try_pop</span><span class="special">(</span> <span class="identifier">value_type</span> <span class="special">&amp;</span> <span class="identifier">va</span><span class="special">);</span>
+<span class="special">};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="identifier">buffered_channel</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;::</span><span class="identifier">iterator</span> <span class="identifier">begin</span><span class="special">(</span> <span class="identifier">buffered_channel</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">chan</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="identifier">buffered_channel</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;::</span><span class="identifier">iterator</span> <span class="identifier">end</span><span class="special">(</span> <span class="identifier">buffered_channel</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">chan</span><span class="special">);</span>
+
+<span class="special">}}</span>
+</pre>
+<h6>
+<a name="fiber.synchronization.channels.buffered_channel.h0"></a>
+          <span class="phrase"><a name="fiber.synchronization.channels.buffered_channel.constructor"></a></span><a class="link" href="buffered_channel.html#fiber.synchronization.channels.buffered_channel.constructor">Constructor</a>
+        </h6>
+<pre class="programlisting"><span class="keyword">explicit</span> <span class="identifier">buffered_channel</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">capacity</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Preconditions:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="number">2</span><span class="special">&lt;=</span><span class="identifier">capacity</span> <span class="special">&amp;&amp;</span>
+                <span class="number">0</span><span class="special">==(</span><span class="identifier">capacity</span> <span class="special">&amp;</span>
+                <span class="special">(</span><span class="identifier">capacity</span><span class="special">-</span><span class="number">1</span><span class="special">))</span></code>
+              </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                The constructor constructs an object of class <code class="computeroutput"><span class="identifier">buffered_channel</span></code>
+                with an internal buffer of size <code class="computeroutput"><span class="identifier">capacity</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">fiber_error</span></code>
+              </p></dd>
+<dt><span class="term">Error Conditions:</span></dt>
+<dd><p>
+                <span class="bold"><strong>invalid_argument</strong></span>: if <code class="computeroutput"><span class="number">0</span><span class="special">==</span><span class="identifier">capacity</span> <span class="special">||</span>
+                <span class="number">0</span><span class="special">!=(</span><span class="identifier">capacity</span> <span class="special">&amp;</span>
+                <span class="special">(</span><span class="identifier">capacity</span><span class="special">-</span><span class="number">1</span><span class="special">))</span></code>.
+              </p></dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                A <code class="computeroutput"><span class="identifier">push</span><span class="special">()</span></code>,
+                <code class="computeroutput"><span class="identifier">push_wait_for</span><span class="special">()</span></code>
+                or <code class="computeroutput"><span class="identifier">push_wait_until</span><span class="special">()</span></code> will not block until the number
+                of values in the channel becomes equal to <code class="computeroutput"><span class="identifier">capacity</span></code>.
+                The channel can hold only <code class="computeroutput"><span class="identifier">capacity</span>
+                <span class="special">-</span> <span class="number">1</span></code>
+                elements, otherwise it is considered to be full.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="buffered_channel_close_bridgehead"></a>
+  <span class="phrase"><a name="buffered_channel_close"></a></span>
+  <a class="link" href="buffered_channel.html#buffered_channel_close">Member
+          function <code class="computeroutput">close</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">close</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Deactivates the channel. No values can be put after calling <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">close</span><span class="special">()</span></code>.
+                Fibers blocked in <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">pop</span><span class="special">()</span></code>, <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">pop_wait_for</span><span class="special">()</span></code> or <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">pop_wait_until</span><span class="special">()</span></code> will return <code class="computeroutput"><span class="identifier">closed</span></code>.
+                Fibers blocked in <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">value_pop</span><span class="special">()</span></code> will receive an exception.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">close</span><span class="special">()</span></code>
+                is like closing a pipe. It informs waiting consumers that no more
+                values will arrive.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="buffered_channel_push_bridgehead"></a>
+  <span class="phrase"><a name="buffered_channel_push"></a></span>
+  <a class="link" href="buffered_channel.html#buffered_channel_push">Member
+          function <code class="computeroutput">push</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="identifier">channel_op_status</span> <span class="identifier">push</span><span class="special">(</span> <span class="identifier">value_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">va</span><span class="special">);</span>
+<span class="identifier">channel_op_status</span> <span class="identifier">push</span><span class="special">(</span> <span class="identifier">value_type</span> <span class="special">&amp;&amp;</span> <span class="identifier">va</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                If channel is closed, returns <code class="computeroutput"><span class="identifier">closed</span></code>.
+                Otherwise enqueues the value in the channel, wakes up a fiber blocked
+                on <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">pop</span><span class="special">()</span></code>,
+                <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">value_pop</span><span class="special">()</span></code>,
+                <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">pop_wait_for</span><span class="special">()</span></code>
+                or <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">pop_wait_until</span><span class="special">()</span></code>
+                and returns <code class="computeroutput"><span class="identifier">success</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Exceptions thrown by copy- or move-operations.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="buffered_channel_try_push_bridgehead"></a>
+  <span class="phrase"><a name="buffered_channel_try_push"></a></span>
+  <a class="link" href="buffered_channel.html#buffered_channel_try_push">Member
+          function <code class="computeroutput">try_push</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="identifier">channel_op_status</span> <span class="identifier">try_push</span><span class="special">(</span> <span class="identifier">value_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">va</span><span class="special">);</span>
+<span class="identifier">channel_op_status</span> <span class="identifier">try_push</span><span class="special">(</span> <span class="identifier">value_type</span> <span class="special">&amp;&amp;</span> <span class="identifier">va</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                If channel is closed, returns <code class="computeroutput"><span class="identifier">closed</span></code>.
+                Otherwise enqueues the value in the channel, wakes up a fiber blocked
+                on <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">pop</span><span class="special">()</span></code>,
+                <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">value_pop</span><span class="special">()</span></code>,
+                <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">pop_wait_for</span><span class="special">()</span></code>
+                or <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">pop_wait_until</span><span class="special">()</span></code>
+                and returns <code class="computeroutput"><span class="identifier">success</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Exceptions thrown by copy- or move-operations.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="buffered_channel_pop_bridgehead"></a>
+  <span class="phrase"><a name="buffered_channel_pop"></a></span>
+  <a class="link" href="buffered_channel.html#buffered_channel_pop">Member
+          function <code class="computeroutput">pop</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="identifier">channel_op_status</span> <span class="identifier">pop</span><span class="special">(</span> <span class="identifier">value_type</span> <span class="special">&amp;</span> <span class="identifier">va</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Dequeues a value from the channel. If the channel is empty, the fiber
+                gets suspended until at least one new item is <code class="computeroutput"><span class="identifier">push</span><span class="special">()</span></code>ed (return value <code class="computeroutput"><span class="identifier">success</span></code>
+                and <code class="computeroutput"><span class="identifier">va</span></code> contains dequeued
+                value) or the channel gets <code class="computeroutput"><span class="identifier">close</span><span class="special">()</span></code>d (return value <code class="computeroutput"><span class="identifier">closed</span></code>).
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Exceptions thrown by copy- or move-operations.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="buffered_channel_value_pop_bridgehead"></a>
+  <span class="phrase"><a name="buffered_channel_value_pop"></a></span>
+  <a class="link" href="buffered_channel.html#buffered_channel_value_pop">Member
+          function <code class="computeroutput">value_pop</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="identifier">value_type</span> <span class="identifier">value_pop</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Dequeues a value from the channel. If the channel is empty, the fiber
+                gets suspended until at least one new item is <code class="computeroutput"><span class="identifier">push</span><span class="special">()</span></code>ed or the channel gets <code class="computeroutput"><span class="identifier">close</span><span class="special">()</span></code>d
+                (which throws an exception).
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">fiber_error</span></code> if <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                is closed or by copy- or move-operations.
+              </p></dd>
+<dt><span class="term">Error conditions:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">errc</span><span class="special">::</span><span class="identifier">operation_not_permitted</span></code>
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="buffered_channel_try_pop_bridgehead"></a>
+  <span class="phrase"><a name="buffered_channel_try_pop"></a></span>
+  <a class="link" href="buffered_channel.html#buffered_channel_try_pop">Member
+          function <code class="computeroutput">try_pop</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="identifier">channel_op_status</span> <span class="identifier">try_pop</span><span class="special">(</span> <span class="identifier">value_type</span> <span class="special">&amp;</span> <span class="identifier">va</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                If channel is empty, returns <code class="computeroutput"><span class="identifier">empty</span></code>.
+                If channel is closed, returns <code class="computeroutput"><span class="identifier">closed</span></code>.
+                Otherwise it returns <code class="computeroutput"><span class="identifier">success</span></code>
+                and <code class="computeroutput"><span class="identifier">va</span></code> contains the
+                dequeued value.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Exceptions thrown by copy- or move-operations.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="buffered_channel_pop_wait_for_bridgehead"></a>
+  <span class="phrase"><a name="buffered_channel_pop_wait_for"></a></span>
+  <a class="link" href="buffered_channel.html#buffered_channel_pop_wait_for">Member
+          function <code class="computeroutput">pop_wait_for</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Period</span> <span class="special">&gt;</span>
+<span class="identifier">channel_op_status</span> <span class="identifier">pop_wait_for</span><span class="special">(</span>
+    <span class="identifier">value_type</span> <span class="special">&amp;</span> <span class="identifier">va</span><span class="special">,</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_duration</span><span class="special">)</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Accepts <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span></code> and internally computes
+                a timeout time as (system time + <code class="computeroutput"><span class="identifier">timeout_duration</span></code>).
+                If channel is not empty, immediately dequeues a value from the channel.
+                Otherwise the fiber gets suspended until at least one new item is
+                <code class="computeroutput"><span class="identifier">push</span><span class="special">()</span></code>ed
+                (return value <code class="computeroutput"><span class="identifier">success</span></code>
+                and <code class="computeroutput"><span class="identifier">va</span></code> contains dequeued
+                value), or the channel gets <code class="computeroutput"><span class="identifier">close</span><span class="special">()</span></code>d (return value <code class="computeroutput"><span class="identifier">closed</span></code>),
+                or the system time reaches the computed timeout time (return value
+                <code class="computeroutput"><span class="identifier">timeout</span></code>).
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                timeout-related exceptions or by copy- or move-operations.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="buffered_channel_pop_wait_until_bridgehead"></a>
+  <span class="phrase"><a name="buffered_channel_pop_wait_until"></a></span>
+  <a class="link" href="buffered_channel.html#buffered_channel_pop_wait_until">Member
+          function <code class="computeroutput">pop_wait_until</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span> <span class="special">&gt;</span>
+<span class="identifier">channel_op_status</span> <span class="identifier">pop_wait_until</span><span class="special">(</span>
+    <span class="identifier">value_type</span> <span class="special">&amp;</span> <span class="identifier">va</span><span class="special">,</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_time</span><span class="special">)</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Accepts a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span>
+                <span class="identifier">Clock</span><span class="special">,</span>
+                <span class="identifier">Duration</span> <span class="special">&gt;</span></code>.
+                If channel is not empty, immediately dequeues a value from the channel.
+                Otherwise the fiber gets suspended until at least one new item is
+                <code class="computeroutput"><span class="identifier">push</span><span class="special">()</span></code>ed
+                (return value <code class="computeroutput"><span class="identifier">success</span></code>
+                and <code class="computeroutput"><span class="identifier">va</span></code> contains dequeued
+                value), or the channel gets <code class="computeroutput"><span class="identifier">close</span><span class="special">()</span></code>d (return value <code class="computeroutput"><span class="identifier">closed</span></code>),
+                or the system time reaches the passed <code class="computeroutput"><span class="identifier">time_point</span></code>
+                (return value <code class="computeroutput"><span class="identifier">timeout</span></code>).
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                timeout-related exceptions or by copy- or move-operations.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="fiber.synchronization.channels.buffered_channel.h1"></a>
+          <span class="phrase"><a name="fiber.synchronization.channels.buffered_channel.non_member_function__code__phrase_role__identifier__begin__phrase__phrase_role__special_____phrase___phrase_role__identifier__buffered_channel__phrase__phrase_role__special___lt___phrase___phrase_role__identifier__t__phrase___phrase_role__special___gt___phrase___phrase_role__special___amp____phrase___code_"></a></span><a class="link" href="buffered_channel.html#fiber.synchronization.channels.buffered_channel.non_member_function__code__phrase_role__identifier__begin__phrase__phrase_role__special_____phrase___phrase_role__identifier__buffered_channel__phrase__phrase_role__special___lt___phrase___phrase_role__identifier__t__phrase___phrase_role__special___gt___phrase___phrase_role__special___amp____phrase___code_">Non-member
+          function <code class="computeroutput"><span class="identifier">begin</span><span class="special">(</span>
+          <span class="identifier">buffered_channel</span><span class="special">&lt;</span>
+          <span class="identifier">T</span> <span class="special">&gt;</span>
+          <span class="special">&amp;)</span></code></a>
+        </h6>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="identifier">buffered_channel</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;::</span><span class="identifier">iterator</span> <span class="identifier">begin</span><span class="special">(</span> <span class="identifier">buffered_channel</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="special">&amp;);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                Returns a range-iterator (input-iterator).
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="fiber.synchronization.channels.buffered_channel.h2"></a>
+          <span class="phrase"><a name="fiber.synchronization.channels.buffered_channel.non_member_function__code__phrase_role__identifier__end__phrase__phrase_role__special_____phrase___phrase_role__identifier__buffered_channel__phrase__phrase_role__special___lt___phrase___phrase_role__identifier__t__phrase___phrase_role__special___gt___phrase___phrase_role__special___amp____phrase___code_"></a></span><a class="link" href="buffered_channel.html#fiber.synchronization.channels.buffered_channel.non_member_function__code__phrase_role__identifier__end__phrase__phrase_role__special_____phrase___phrase_role__identifier__buffered_channel__phrase__phrase_role__special___lt___phrase___phrase_role__identifier__t__phrase___phrase_role__special___gt___phrase___phrase_role__special___amp____phrase___code_">Non-member
+          function <code class="computeroutput"><span class="identifier">end</span><span class="special">(</span>
+          <span class="identifier">buffered_channel</span><span class="special">&lt;</span>
+          <span class="identifier">T</span> <span class="special">&gt;</span>
+          <span class="special">&amp;)</span></code></a>
+        </h6>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="identifier">buffered_channel</span><span class="special">&lt;</span> <span class="identifier">R</span> <span class="special">&gt;::</span><span class="identifier">iterator</span> <span class="identifier">end</span><span class="special">(</span> <span class="identifier">buffered_channel</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="special">&amp;);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                Returns an end range-iterator (input-iterator).
+              </p></dd>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../channels.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../channels.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="unbuffered_channel.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>executor_binder::second_argument_type</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../executor_binder.html" title="executor_binder">
+<link rel="prev" href="result_type.html" title="executor_binder::result_type">
+<link rel="next" href="target_type.html" title="executor_binder::target_type">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="result_type.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../executor_binder.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="target_type.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_asio.reference.executor_binder.second_argument_type"></a><a class="link" href="second_argument_type.html" title="executor_binder::second_argument_type">executor_binder::second_argument_type</a>
+</h4></div></div></div>
+<p>
+          <a class="indexterm" name="boost_asio.indexterm.executor_binder.second_argument_type"></a> 
+The
+          type of the function's second argument.
+        </p>
+<pre class="programlisting">typedef see_below second_argument_type;
+</pre>
+<p>
+          The type of <code class="computeroutput">second_argument_type</code> is based on the type <code class="computeroutput">T</code>
+          of the wrapper's target object:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              if <code class="computeroutput">T</code> is a pointer to a function type accepting two arguments,
+              <code class="computeroutput">second_argument_type</code> is a synonym for the return type
+              of <code class="computeroutput">T</code>;
+            </li>
+<li class="listitem">
+              if <code class="computeroutput">T</code> is a class type with a member type <code class="computeroutput">first_argument_type</code>,
+              then <code class="computeroutput">second_argument_type</code> is a synonym for <code class="computeroutput">T::second_argument_type</code>;
+            </li>
+<li class="listitem">
+              otherwise <code class="computeroutput">second_argument_type</code> is not defined.
+            </li>
+</ul></div>
+<h6>
+<a name="boost_asio.reference.executor_binder.second_argument_type.h0"></a>
+          <span class="phrase"><a name="boost_asio.reference.executor_binder.second_argument_type.requirements"></a></span><a class="link" href="second_argument_type.html#boost_asio.reference.executor_binder.second_argument_type.requirements">Requirements</a>
+        </h6>
+<p>
+          <span class="emphasis"><em>Header: </em></span><code class="literal">boost/asio/bind_executor.hpp</code>
+        </p>
+<p>
+          <span class="emphasis"><em>Convenience header: </em></span><code class="literal">boost/asio.hpp</code>
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="result_type.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../executor_binder.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="target_type.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,1228 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Networking TS compatibility</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../boost_asio.html" title="Boost.Asio">
+<link rel="prev" href="reference/is_error_code_enum_lt__boost__asio__ssl__error__stream_errors__gt_/value.html" title="boost::system::is_error_code_enum&lt; boost::asio::ssl::error::stream_errors &gt;::value">
+<link rel="next" href="history.html" title="Revision History">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="reference/is_error_code_enum_lt__boost__asio__ssl__error__stream_errors__gt_/value.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost_asio.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../boost_asio.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="history.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_asio.net_ts"></a><a class="link" href="net_ts.html" title="Networking TS compatibility">Networking TS compatibility</a>
+</h2></div></div></div>
+<p>
+      Boost.Asio now provides the interfaces and functionality specified by the "C++
+      Extensions for Networking" Technical Specification. In addition to access
+      via the usual Boost.Asio header files, this functionality may be accessed through
+      special headers that correspond to the header files defined in the TS. These
+      are listed in the table below:
+    </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                Networking TS header
+              </p>
+            </th>
+<th>
+              <p>
+                Boost.Asio header
+              </p>
+            </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;buffer&gt;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;boost/asio/ts/buffer.hpp&gt;</code>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;executor&gt;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;boost/asio/ts/executor.hpp&gt;</code>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;internet&gt;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;boost/asio/ts/internet.hpp&gt;</code>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;io_context&gt;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;boost/asio/ts/io_context.hpp&gt;</code>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;net&gt;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;boost/asio/ts/net.hpp&gt;</code>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;netfwd&gt;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;boost/asio/ts/netfwd.hpp&gt;</code>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;socket&gt;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;boost/asio/ts/socket.hpp&gt;</code>
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;timer&gt;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                <code class="computeroutput">#include &lt;boost/asio/ts/timer.hpp&gt;</code>
+              </p>
+            </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+      In some cases the new Networking TS compatible interfaces supersede older Boost.Asio
+      facilities. In these cases the older interfaces have been deprecated. The table
+      below shows the new Networking TS interfaces and the facilities they replace:
+    </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                New interface
+              </p>
+            </th>
+<th>
+              <p>
+                Old interface
+              </p>
+            </th>
+<th>
+              <p>
+                Notes
+              </p>
+            </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/io_service.html" title="io_service"><code class="computeroutput">io_service</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                The name <code class="computeroutput">io_service</code> is retained as a typedef.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/dispatch.html" title="dispatch"><code class="computeroutput">dispatch</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/dispatch.html" title="io_context::dispatch"><code class="computeroutput">io_service::dispatch</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">dispatch</code> free function can be used to submit functions
+                to any <a class="link" href="reference/Executor1.html" title="Executor requirements">Executor</a>
+                or <a class="link" href="reference/ExecutionContext.html" title="Execution context requirements">ExecutionContext</a>.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/dispatch.html" title="dispatch"><code class="computeroutput">post</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/post.html" title="io_context::post"><code class="computeroutput">io_service::post</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">dispatch</code> free function can be used to submit functions
+                to any <a class="link" href="reference/Executor1.html" title="Executor requirements">Executor</a>
+                or <a class="link" href="reference/ExecutionContext.html" title="Execution context requirements">ExecutionContext</a>.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/dispatch.html" title="dispatch"><code class="computeroutput">defer</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/post.html" title="io_context::post"><code class="computeroutput">io_service::post</code></a>
+                when the <a class="link" href="reference/asio_handler_is_continuation.html" title="asio_handler_is_continuation"><code class="computeroutput">asio_handler_is_continuation</code></a>
+                hook returns true
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">defer</code> free function can be used to submit functions
+                to any <a class="link" href="reference/Executor1.html" title="Executor requirements">Executor</a>
+                or <a class="link" href="reference/ExecutionContext.html" title="Execution context requirements">ExecutionContext</a>.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/poll.html" title="io_context::poll"><code class="computeroutput">io_context::poll</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/poll.html" title="io_context::poll"><code class="computeroutput">io_service::poll</code></a>
+                overload that takes <code class="computeroutput">error_code&amp;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">error_code</code> overload is not required.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/poll_one.html" title="io_context::poll_one"><code class="computeroutput">io_context::poll_one</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/poll_one.html" title="io_context::poll_one"><code class="computeroutput">io_service::poll_one</code></a>
+                overload that takes <code class="computeroutput">error_code&amp;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">error_code</code> overload is not required.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/run.html" title="io_context::run"><code class="computeroutput">io_context::run</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/run.html" title="io_context::run"><code class="computeroutput">io_service::run</code></a>
+                overload that takes <code class="computeroutput">error_code&amp;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">error_code</code> overload is not required.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/run_one.html" title="io_context::run_one"><code class="computeroutput">io_context::run_one</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/run_one.html" title="io_context::run_one"><code class="computeroutput">io_service::run_one</code></a>
+                overload that takes <code class="computeroutput">error_code&amp;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">error_code</code> overload is not required.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/run_for.html" title="io_context::run_for"><code class="computeroutput">io_context::run_for</code></a>,
+                <a class="link" href="reference/io_context/run_until.html" title="io_context::run_until"><code class="computeroutput">io_context::run_until</code></a>,
+                <a class="link" href="reference/io_context/run_one_for.html" title="io_context::run_one_for"><code class="computeroutput">io_context::run_one_for</code></a>,
+                and <a class="link" href="reference/io_context/run_one_until.html" title="io_context::run_one_until"><code class="computeroutput">io_context::run_one_until</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+<td>
+              <p>
+                These functions add the ability to run an <code class="computeroutput">io_context</code>
+                for a limited time.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/restart.html" title="io_context::restart"><code class="computeroutput">io_context::restart</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/reset.html" title="io_context::reset"><code class="computeroutput">io_service::reset</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>,
+                <a class="link" href="reference/execution_context__service.html" title="execution_context::service"><code class="computeroutput">execution_context::service</code></a>,
+                and <a class="link" href="reference/execution_context__id.html" title="execution_context::id"><code class="computeroutput">execution_context::id</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/io_context.html" title="io_context"><code class="computeroutput">io_service</code></a>,
+                <a class="link" href="reference/io_context__service.html" title="io_context::service"><code class="computeroutput">io_service::service</code></a>,
+                and <a class="link" href="reference/execution_context__id.html" title="execution_context::id"><code class="computeroutput">io_service::id</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                The service-related functionality has been moved to the <code class="computeroutput">execution_context</code>
+                base class. This may also be used as a base for creating custom execution
+                contexts.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/execution_context/make_service.html" title="execution_context::make_service"><code class="computeroutput">make_service</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/execution_context/add_service.html" title="execution_context::add_service"><code class="computeroutput">add_service</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/strand.html" title="strand"><code class="computeroutput">strand</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/io_context__strand.html" title="io_context::strand"><code class="computeroutput">io_service::strand</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                This template works with any valid executor, and is itself a valid
+                executor.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/executor_work_guard.html" title="executor_work_guard"><code class="computeroutput">executor_work_guard</code></a>
+                and <a class="link" href="reference/make_work_guard.html" title="make_work_guard"><code class="computeroutput">make_work_guard</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/io_context__work.html" title="io_context::work"><code class="computeroutput">io_service::work</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                Work tracking is now covered by the <a class="link" href="reference/Executor1.html" title="Executor requirements">Executor</a>
+                requirements. These templates work with any valid executor.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/executor_binder.html" title="executor_binder"><code class="computeroutput">executor_binder</code></a>
+                and <a class="link" href="reference/bind_executor.html" title="bind_executor"><code class="computeroutput">bind_executor</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/io_context/wrap.html" title="io_context::wrap"><code class="computeroutput">io_service::wrap</code></a>
+                and <a class="link" href="reference/io_context__strand/wrap.html" title="io_context::strand::wrap"><code class="computeroutput">io_service::strand::wrap</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                These templates work with any valid executor.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/async_result.html" title="async_result"><code class="computeroutput">async_result</code></a>
+                with <code class="computeroutput">CompletionToken</code> and <code class="computeroutput">Signature</code> template
+                parameters
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/handler_type.html" title="handler_type"><code class="computeroutput">handler_type</code></a>
+                and single parameter <a class="link" href="reference/async_result_lt__Handler__gt_.html" title="async_result&lt; Handler &gt;"><code class="computeroutput">async_result</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">async_result</code> trait is now the single point of customisation
+                for asynchronous operation completion handlers and return type.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/associated_executor.html" title="associated_executor"><code class="computeroutput">associated_executor</code></a>
+                and <a class="link" href="reference/get_associated_executor.html" title="get_associated_executor"><code class="computeroutput">get_associated_executor</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/asio_handler_invoke.html" title="asio_handler_invoke"><code class="computeroutput">asio_handler_invoke</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                The handler invocation hook has been replaced by the new <a class="link" href="reference/Executor1.html" title="Executor requirements">Executor</a>
+                requirements and the associated executor traits.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/associated_allocator.html" title="associated_allocator"><code class="computeroutput">associated_allocator</code></a>
+                and <a class="link" href="reference/get_associated_allocator.html" title="get_associated_allocator"><code class="computeroutput">get_associated_allocator</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/asio_handler_allocate.html" title="asio_handler_allocate"><code class="computeroutput">asio_handler_allocate</code></a>
+                and <a class="link" href="reference/asio_handler_deallocate.html" title="asio_handler_deallocate"><code class="computeroutput">asio_handler_deallocate</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                The handler allocation hooks have been replaced by the standard Allocator
+                requirements and the associated allocator traits.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/const_buffer/data.html" title="const_buffer::data"><code class="computeroutput">const_buffer::data</code></a>
+                and <a class="link" href="reference/mutable_buffer/data.html" title="mutable_buffer::data"><code class="computeroutput">mutable_buffer::data</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/buffer_cast.html" title="buffer_cast"><code class="computeroutput">buffer_cast</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/const_buffer/size.html" title="const_buffer::size"><code class="computeroutput">const_buffer::size</code></a>
+                and <a class="link" href="reference/mutable_buffer/size.html" title="mutable_buffer::size"><code class="computeroutput">mutable_buffer::size</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/buffer_size.html" title="buffer_size"><code class="computeroutput">buffer_size</code></a>
+                for single buffers
+              </p>
+            </td>
+<td>
+              <p>
+                <code class="computeroutput">buffer_size</code> is not deprecated for single buffers as
+                <code class="computeroutput">const_buffer</code> and <code class="computeroutput">mutable_buffer</code> now satisfy
+                the buffer sequence requirements
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/const_buffer.html" title="const_buffer"><code class="computeroutput">const_buffer</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/const_buffers_1.html" title="const_buffers_1"><code class="computeroutput">const_buffers_1</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                The <a class="link" href="reference/ConstBufferSequence.html" title="Constant buffer sequence requirements">ConstBufferSequence</a>
+                requirements have been modified such that <code class="computeroutput">const_buffer</code>
+                now satisfies them.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/mutable_buffer.html" title="mutable_buffer"><code class="computeroutput">mutable_buffer</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/mutable_buffers_1.html" title="mutable_buffers_1"><code class="computeroutput">mutable_buffers_1</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                The <a class="link" href="reference/MutableBufferSequence.html" title="Mutable buffer sequence requirements">MutableBufferSequence</a>
+                requirements have been modified such that <code class="computeroutput">mutable_buffer</code>
+                now satisfies them.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket/get_executor.html" title="basic_socket::get_executor"><code class="computeroutput">basic_socket::get_executor</code></a>
+                (and corresponding member for I/O objects such as timers, serial
+                ports, etc.)
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_io_object/get_io_service.html" title="basic_io_object::get_io_service"><code class="computeroutput">basic_io_object::get_io_service</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                Use <code class="computeroutput">get_executor().context()</code> to obtain the associated
+                <code class="computeroutput">io_context</code>.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/socket_base/max_listen_connections.html" title="socket_base::max_listen_connections"><code class="computeroutput">socket_base::max_listen_connections</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/socket_base/max_connections.html" title="socket_base::max_connections"><code class="computeroutput">socket_base::max_connections</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/socket_base/wait_type.html" title="socket_base::wait_type"><code class="computeroutput">socket_base::wait_type</code></a>,
+                <a class="link" href="reference/basic_socket/wait.html" title="basic_socket::wait"><code class="computeroutput">basic_socket::wait</code></a>,
+                <a class="link" href="reference/basic_socket/async_wait.html" title="basic_socket::async_wait"><code class="computeroutput">basic_socket::async_wait</code></a>,
+                <a class="link" href="reference/basic_socket_acceptor/wait.html" title="basic_socket_acceptor::wait"><code class="computeroutput">basic_socket_acceptor::wait</code></a>,
+                and <a class="link" href="reference/basic_socket_acceptor/async_wait.html" title="basic_socket_acceptor::async_wait"><code class="computeroutput">basic_socket_acceptor::async_wait</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/null_buffers.html" title="null_buffers"><code class="computeroutput">null_buffers</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                Operations for reactive I/O.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_acceptor/accept.html" title="basic_socket_acceptor::accept"><code class="computeroutput">basic_socket_acceptor::accept</code></a>
+                returns a socket
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_acceptor/accept.html" title="basic_socket_acceptor::accept"><code class="computeroutput">basic_socket_acceptor::accept</code></a>
+                takes a socket by reference
+              </p>
+            </td>
+<td>
+              <p>
+                Uses move support so requires C++11 or later. To accept a connection
+                into a socket object on a different <code class="computeroutput">io_context</code>, pass
+                the destination context to <code class="computeroutput">accept</code>.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_acceptor/async_accept.html" title="basic_socket_acceptor::async_accept"><code class="computeroutput">basic_socket_acceptor::async_accept</code></a>
+                passes socket to handler
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_acceptor/async_accept.html" title="basic_socket_acceptor::async_accept"><code class="computeroutput">basic_socket_acceptor::async_accept</code></a>
+                takes a socket by reference
+              </p>
+            </td>
+<td>
+              <p>
+                Uses move support so requires C++11 or later. To accept a connection
+                into a socket object on a different <code class="computeroutput">io_context</code>, pass
+                the destination context to <code class="computeroutput">async_accept</code>.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/connect.html" title="connect"><code class="computeroutput">connect</code></a>
+                overloads that take a range
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/connect.html" title="connect"><code class="computeroutput">connect</code></a>
+                overloads that take a single iterator
+              </p>
+            </td>
+<td>
+              <p>
+                The <a class="link" href="reference/ip__basic_resolver/resolve.html" title="ip::basic_resolver::resolve"><code class="computeroutput">ip::basic_resolver::resolve</code></a>
+                function now returns a range. When the <code class="computeroutput">resolve</code> function's
+                result is passed directly to <code class="computeroutput">connect</code>, the range overload
+                will be selected.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/async_connect.html" title="async_connect"><code class="computeroutput">async_connect</code></a>
+                overloads that take a range
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/async_connect.html" title="async_connect"><code class="computeroutput">async_connect</code></a>
+                overloads that take a single iterator
+              </p>
+            </td>
+<td>
+              <p>
+                The <a class="link" href="reference/ip__basic_resolver/resolve.html" title="ip::basic_resolver::resolve"><code class="computeroutput">ip::basic_resolver::resolve</code></a>
+                function now returns a range. When the <code class="computeroutput">resolve</code> function's
+                result is passed directly to <code class="computeroutput">async_connect</code>, the range
+                overload will be selected.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_streambuf/duration.html" title="basic_socket_streambuf::duration"><code class="computeroutput">basic_socket_streambuf::duration</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_streambuf/duration_type.html" title="basic_socket_streambuf::duration_type"><code class="computeroutput">basic_socket_streambuf::duration_type</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_streambuf/time_point.html" title="basic_socket_streambuf::time_point"><code class="computeroutput">basic_socket_streambuf::time_point</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_streambuf/time_type.html" title="basic_socket_streambuf::time_type"><code class="computeroutput">basic_socket_streambuf::time_type</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_streambuf/expiry.html" title="basic_socket_streambuf::expiry"><code class="computeroutput">basic_socket_streambuf::expiry</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_streambuf/expires_at.html" title="basic_socket_streambuf::expires_at"><code class="computeroutput">basic_socket_streambuf::expires_at</code></a>
+                and <a class="link" href="reference/basic_socket_streambuf/expires_from_now.html" title="basic_socket_streambuf::expires_from_now"><code class="computeroutput">basic_socket_streambuf::expires_from_now</code></a>
+                getters
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_streambuf/expires_after.html" title="basic_socket_streambuf::expires_after"><code class="computeroutput">basic_socket_streambuf::expires_after</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_streambuf/expires_from_now.html" title="basic_socket_streambuf::expires_from_now"><code class="computeroutput">basic_socket_streambuf::expires_from_now</code></a>
+                setter
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_streambuf/error.html" title="basic_socket_streambuf::error"><code class="computeroutput">basic_socket_streambuf::error</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_streambuf/puberror.html" title="basic_socket_streambuf::puberror"><code class="computeroutput">basic_socket_streambuf::puberror</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_iostream/duration.html" title="basic_socket_iostream::duration"><code class="computeroutput">basic_socket_iostream::duration</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_iostream/duration_type.html" title="basic_socket_iostream::duration_type"><code class="computeroutput">basic_socket_iostream::duration_type</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_iostream/time_point.html" title="basic_socket_iostream::time_point"><code class="computeroutput">basic_socket_iostream::time_point</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_iostream/time_type.html" title="basic_socket_iostream::time_type"><code class="computeroutput">basic_socket_iostream::time_type</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_iostream/expiry.html" title="basic_socket_iostream::expiry"><code class="computeroutput">basic_socket_iostream::expiry</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_iostream/expires_at.html" title="basic_socket_iostream::expires_at"><code class="computeroutput">basic_socket_iostream::expires_at</code></a>
+                and <a class="link" href="reference/basic_socket_iostream/expires_from_now.html" title="basic_socket_iostream::expires_from_now"><code class="computeroutput">basic_socket_iostream::expires_from_now</code></a>
+                getters
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_iostream/expires_after.html" title="basic_socket_iostream::expires_after"><code class="computeroutput">basic_socket_iostream::expires_after</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_socket_iostream/expires_from_now.html" title="basic_socket_iostream::expires_from_now"><code class="computeroutput">basic_socket_iostream::expires_from_now</code></a>
+                setter
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_waitable_timer/cancel.html" title="basic_waitable_timer::cancel"><code class="computeroutput">basic_waitable_timer::cancel</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_waitable_timer/cancel.html" title="basic_waitable_timer::cancel"><code class="computeroutput">basic_waitable_timer::cancel</code></a>
+                overload that takes <code class="computeroutput">error_code&amp;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">error_code</code> overload is not required.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_waitable_timer/cancel_one.html" title="basic_waitable_timer::cancel_one"><code class="computeroutput">basic_waitable_timer::cancel_one</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_waitable_timer/cancel_one.html" title="basic_waitable_timer::cancel_one"><code class="computeroutput">basic_waitable_timer::cancel_one</code></a>
+                overload that takes <code class="computeroutput">error_code&amp;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">error_code</code> overload is not required.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_waitable_timer/expires_at.html" title="basic_waitable_timer::expires_at"><code class="computeroutput">basic_waitable_timer::expires_at</code></a>
+                setter
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_waitable_timer/expires_at.html" title="basic_waitable_timer::expires_at"><code class="computeroutput">basic_waitable_timer::expires_at</code></a>
+                setter that takes <code class="computeroutput">error_code&amp;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">error_code</code> overload is not required.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_waitable_timer/expiry.html" title="basic_waitable_timer::expiry"><code class="computeroutput">basic_waitable_timer::expiry</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_waitable_timer/expires_at.html" title="basic_waitable_timer::expires_at"><code class="computeroutput">basic_waitable_timer::expires_at</code></a>
+                and <a class="link" href="reference/basic_waitable_timer/expires_from_now.html" title="basic_waitable_timer::expires_from_now"><code class="computeroutput">basic_waitable_timer::expires_from_now</code></a>
+                getters
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/basic_waitable_timer/expires_after.html" title="basic_waitable_timer::expires_after"><code class="computeroutput">basic_waitable_timer::expires_after</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/basic_waitable_timer/expires_from_now.html" title="basic_waitable_timer::expires_from_now"><code class="computeroutput">basic_waitable_timer::expires_from_now</code></a>
+                setter
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__address/make_address.html" title="ip::address::make_address"><code class="computeroutput">ip::make_address</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/ip__address/from_string.html" title="ip::address::from_string"><code class="computeroutput">ip::address::from_string</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__address_v4/make_address_v4.html" title="ip::address_v4::make_address_v4"><code class="computeroutput">ip::make_address_v4</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/ip__address_v4/from_string.html" title="ip::address_v4::from_string"><code class="computeroutput">ip::address_v4::from_string</code></a>
+                and <a class="link" href="reference/ip__address_v6/to_v4.html" title="ip::address_v6::to_v4"><code class="computeroutput">ip::address_v6::to_v4</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__address_v6/make_address_v6.html" title="ip::address_v6::make_address_v6"><code class="computeroutput">ip::make_address_v6</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/ip__address_v6/from_string.html" title="ip::address_v6::from_string"><code class="computeroutput">ip::address_v6::from_string</code></a>
+                and <a class="link" href="reference/ip__address_v6/v4_mapped.html" title="ip::address_v6::v4_mapped"><code class="computeroutput">ip::address_v6::v4_mapped</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__address/to_string.html" title="ip::address::to_string"><code class="computeroutput">ip::address::to_string</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/ip__address/to_string.html" title="ip::address::to_string"><code class="computeroutput">ip::address::to_string</code></a>
+                that takes <code class="computeroutput">error_code&amp;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">error_code</code> overload is not required.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__address_v4/to_string.html" title="ip::address_v4::to_string"><code class="computeroutput">ip::address_v4::to_string</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/ip__address_v4/to_string.html" title="ip::address_v4::to_string"><code class="computeroutput">ip::address_v4::to_string</code></a>
+                that takes <code class="computeroutput">error_code&amp;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">error_code</code> overload is not required.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__address_v6/to_string.html" title="ip::address_v6::to_string"><code class="computeroutput">ip::address_v6::to_string</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/ip__address_v6/to_string.html" title="ip::address_v6::to_string"><code class="computeroutput">ip::address_v6::to_string</code></a>
+                that takes <code class="computeroutput">error_code&amp;</code>
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">error_code</code> overload is not required.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                No replacement
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/ip__address_v6/is_v4_compatible.html" title="ip::address_v6::is_v4_compatible"><code class="computeroutput">ip::address_v6::is_v4_compatible</code></a>
+                and <a class="link" href="reference/ip__address_v6/v4_compatible.html" title="ip::address_v6::v4_compatible"><code class="computeroutput">ip::address_v6::v4_compatible</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__network_v4.html" title="ip::network_v4"><code class="computeroutput">ip::network_v4</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/ip__address_v4/broadcast.html" title="ip::address_v4::broadcast"><code class="computeroutput">ip::address_v4::broadcast</code></a>,
+                <a class="link" href="reference/ip__address_v4/is_class_a.html" title="ip::address_v4::is_class_a"><code class="computeroutput">ip::address_v4::is_class_a</code></a>,
+                <a class="link" href="reference/ip__address_v4/is_class_b.html" title="ip::address_v4::is_class_b"><code class="computeroutput">ip::address_v4::is_class_b</code></a>,
+                <a class="link" href="reference/ip__address_v4/is_class_c.html" title="ip::address_v4::is_class_c"><code class="computeroutput">ip::address_v4::is_class_c</code></a>,
+                and <a class="link" href="reference/ip__address_v4/netmask.html" title="ip::address_v4::netmask"><code class="computeroutput">ip::address_v4::netmask</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">network_v4</code> class adds the ability to manipulate
+                IPv4 network addresses using CIDR notation.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__network_v6.html" title="ip::network_v6"><code class="computeroutput">ip::network_v6</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">network_v6</code> class adds the ability to manipulate
+                IPv6 network addresses using CIDR notation.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__basic_address_iterator_lt__address_v4__gt_.html" title="ip::basic_address_iterator&lt; address_v4 &gt;"><code class="computeroutput">ip::address_v4_iterator</code></a>
+                and <a class="link" href="reference/ip__basic_address_range_lt__address_v4__gt_.html" title="ip::basic_address_range&lt; address_v4 &gt;"><code class="computeroutput">ip::address_v4_range</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">ip::address_v4_iterator</code> and <code class="computeroutput">address_v4_range</code>
+                classes add the ability to iterate over all, or a subset of, IPv4
+                addresses.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__basic_address_iterator_lt__address_v6__gt_.html" title="ip::basic_address_iterator&lt; address_v6 &gt;"><code class="computeroutput">ip::address_v6_iterator</code></a>
+                and <a class="link" href="reference/ip__basic_address_range_lt__address_v6__gt_.html" title="ip::basic_address_range&lt; address_v6 &gt;"><code class="computeroutput">ip::address_v6_range</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+<td>
+              <p>
+                The <code class="computeroutput">ip::address_v6_iterator</code> and <code class="computeroutput">address_v6_range</code>
+                classes add the ability to iterate over all, or a subset of, IPv6
+                addresses.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__basic_resolver/results_type.html" title="ip::basic_resolver::results_type"><code class="computeroutput">ip::basic_resolver::results_type</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/ip__basic_resolver/iterator.html" title="ip::basic_resolver::iterator"><code class="computeroutput">ip::basic_resolver::iterator</code></a>
+              </p>
+            </td>
+<td>
+              <p>
+                Resolvers now produce ranges rather than single iterators.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__basic_resolver/resolve.html" title="ip::basic_resolver::resolve"><code class="computeroutput">ip::basic_resolver::resolve</code></a>
+                overloads taking hostname and service as arguments
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/ip__basic_resolver/resolve.html" title="ip::basic_resolver::resolve"><code class="computeroutput">ip::basic_resolver::resolve</code></a>
+                overloads taking a <a class="link" href="reference/ip__basic_resolver/query.html" title="ip::basic_resolver::query"><code class="computeroutput">ip::basic_resolver::query</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__basic_resolver/resolve.html" title="ip::basic_resolver::resolve"><code class="computeroutput">ip::basic_resolver::resolve</code></a>
+                returns a range
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/ip__basic_resolver/resolve.html" title="ip::basic_resolver::resolve"><code class="computeroutput">ip::basic_resolver::resolve</code></a>
+                returns a single iterator
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__basic_resolver/async_resolve.html" title="ip::basic_resolver::async_resolve"><code class="computeroutput">ip::basic_resolver::async_resolve</code></a>
+                overloads taking hostname and service as arguments
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/ip__basic_resolver/async_resolve.html" title="ip::basic_resolver::async_resolve"><code class="computeroutput">ip::basic_resolver::async_resolve</code></a>
+                overloads taking a <a class="link" href="reference/ip__basic_resolver/query.html" title="ip::basic_resolver::query"><code class="computeroutput">ip::basic_resolver::query</code></a>
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a class="link" href="reference/ip__basic_resolver/async_resolve.html" title="ip::basic_resolver::async_resolve"><code class="computeroutput">ip::basic_resolver::async_resolve</code></a>
+                calls the handler with a range
+              </p>
+            </td>
+<td>
+              <p>
+                <a class="link" href="reference/ip__basic_resolver/async_resolve.html" title="ip::basic_resolver::async_resolve"><code class="computeroutput">ip::basic_resolver::async_resolve</code></a>
+                calls the handler with a single iterator
+              </p>
+            </td>
+<td>
+            </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="reference/is_error_code_enum_lt__boost__asio__ssl__error__stream_errors__gt_/value.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost_asio.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../boost_asio.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="history.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

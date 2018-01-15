@@ -1,0 +1,451 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Testing Perl searches (platform = linux, compiler = GNU C++ version 6.3.0)</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Regex 5.1.3">
+<link rel="up" href="../performance.html" title="Performance">
+<link rel="prev" href="section_id1378460593.html" title="Testing simple leftmost-longest matches (platform = linux, compiler = GNU C++ version 6.3.0)">
+<link rel="next" href="section_id3141719723.html" title="Testing simple leftmost-longest matches (platform = Windows x64, compiler = Microsoft Visual C++ version 14.1)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="section_id1378460593.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../performance.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="section_id3141719723.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_regex.background.performance.section_id1675827111"></a><a class="link" href="section_id1675827111.html" title="Testing Perl searches (platform = linux, compiler = GNU C++ version 6.3.0)">Testing
+        Perl searches (platform = linux, compiler = GNU C++ version 6.3.0)</a>
+</h4></div></div></div>
+<div class="table">
+<a name="boost_regex.background.performance.section_id1675827111.table_Testing_Perl_searches_platform_linux_compiler_GNU_C_version_6_3_0_"></a><p class="title"><b>Table&#160;9.&#160;Testing Perl searches (platform = linux, compiler = GNU C++ version
+          6.3.0)</b></p>
+<div class="table-contents"><table class="table" summary="Testing Perl searches (platform = linux, compiler = GNU C++ version
+          6.3.0)">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Expression<br> Text
+                  </p>
+                </th>
+<th>
+                  <p>
+                    boost 1.65
+                  </p>
+                </th>
+<th>
+                  <p>
+                    std::regex
+                  </p>
+                </th>
+<th>
+                  <p>
+                    boost::xpressive::cregex
+                  </p>
+                </th>
+<th>
+                  <p>
+                    PCRE-10.21
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">(?i)&lt;a[^&gt;]+href=("[^"]*"|[^[:space:]]+)[^&gt;]*&gt;</code><br>
+                    In file: ..<span class="emphasis"><em>..</em></span>../libs/libraries.htm
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.63<br> (28838ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="grey">-</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.67<br> (29436ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (17678ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">(?i)&lt;font[^&gt;]+face=("[^"]*"|[^[:space:]]+)[^&gt;]*&gt;.*?&lt;/font&gt;</code><br>
+                    In file: ..<span class="emphasis"><em>..</em></span>../libs/libraries.htm
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">2.78<br> (19366ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="grey">-</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.50<br> (10471ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (6963ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">(?i)&lt;h[12345678][^&gt;]*&gt;.*?&lt;/h[12345678]&gt;</code><br>
+                    In file: ..<span class="emphasis"><em>..</em></span>../libs/libraries.htm
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.95<br> (17081ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="grey">-</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">2.18<br> (19086ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (8745ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">(?i)&lt;img[^&gt;]+src=("[^"]*"|[^[:space:]]+)[^&gt;]*&gt;</code><br>
+                    In file: ..<span class="emphasis"><em>..</em></span>../libs/libraries.htm
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">2.61<br> (18132ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="grey">-</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.61<br> (11211ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (6952ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">(?i)&lt;p&gt;.*?&lt;/p&gt;</code><br> In file:
+                    ..<span class="emphasis"><em>..</em></span>../libs/libraries.htm
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.69<br> (17517ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="grey">-</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.51<br> (15645ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (10345ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">(\w+)\s*(\([^()]++(?:(?2)[^()]++)*+[^)]*\))\s*(\{[^{}]++((?3)[^{}]++)*+[^}]*+\})</code><br>
+                    In file: boost/multiprecision/number.hpp
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (1500580ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="grey">-</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="grey">-</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">2.84<br> (4260530ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">(^[ \t]*#(?:(?&gt;[^\\\n]+)|\\(?&gt;\s*\n|.))*)|</code><br>
+                    In file: boost/multiprecision/number.hpp
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.64<br> (14163004ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="grey">-</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (8632111ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.03<br> (8907897ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">(template[[:space:]]*&lt;[^;:{]+&gt;[[:space:]]*)?(class|struct)[[:space:]]*(\w+([
+                    ]*\([^)]*\))?[\u0 ...</code><br> In file: boost/multiprecision/number.hpp
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.72<br> (13046296ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">3.61<br> (27370747ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (7585304ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.98<br> (14992880ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">Beman|John|Dave</code><br> In file: ..<span class="emphasis"><em>..</em></span>../libs/libraries.htm
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (5021ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="red">36.75<br> (184532ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.40<br> (7046ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.19<br> (5966ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">\w+\s*(\([^()]++(?:(?1)[^()]++)*+[^)]*\))</code><br>
+                    In file: boost/multiprecision/number.hpp
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (1551419ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="grey">-</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="grey">-</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.58<br> (2444759ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">\{[^{}]++((?0)[^{}]++)*+[^}]*+\}</code><br> In
+                    file: boost/multiprecision/number.hpp
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.31<br> (200846ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="grey">-</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="grey">-</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (153117ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">^[ ]*#[ ]*include[ ]+("[^"]+"|&lt;[^&gt;]+&gt;)</code><br>
+                    In file: boost/multiprecision/number.hpp
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.46<br> (234901ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="red">11.35<br> (1821532ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (160446ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.35<br> (215802ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">^[ ]*#[ ]*include[ ]+("boost/[^"]+"|&lt;boost/[^&gt;]+&gt;)</code><br>
+                    In file: boost/multiprecision/number.hpp
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.41<br> (234377ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="red">11.47<br> (1903901ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (165921ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.31<br> (217806ns)</span>
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 1998-2013 John Maddock<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="section_id1378460593.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../performance.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="section_id3141719723.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

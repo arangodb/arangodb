@@ -1,0 +1,272 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class child</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../process/reference.html#header.boost.process.child_hpp" title="Header &lt;boost/process/child.hpp&gt;">
+<link rel="prev" href="async_system.html" title="Function template async_system">
+<link rel="next" href="cmd.html" title="Global cmd">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="async_system.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../process/reference.html#header.boost.process.child_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="cmd.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.process.child"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class child</span></h2>
+<p>boost::process::child</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../process/reference.html#header.boost.process.child_hpp" title="Header &lt;boost/process/child.hpp&gt;">boost/process/child.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="child.html" title="Class child">child</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="child.html#boost.process.childconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <span class="keyword">explicit</span> <a class="link" href="child.html#idp51358848-bb"><span class="identifier">child</span></a><span class="special">(</span><span class="identifier">pid_t</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="child.html#idp51361120-bb"><span class="identifier">child</span></a><span class="special">(</span><a class="link" href="child.html" title="Class child">child</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> <span class="keyword">explicit</span> <a class="link" href="child.html#idp51362640-bb"><span class="identifier">child</span></a><span class="special">(</span><span class="identifier">Args</span> <span class="special">&amp;&amp;</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="child.html#idp51365296-bb"><span class="identifier">child</span></a><span class="special">(</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+  <a class="link" href="child.html" title="Class child">child</a> <span class="special">&amp;</span> <a class="link" href="child.html#idp51366176-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="child.html" title="Class child">child</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="child.html#idp51368208-bb"><span class="special">~</span><span class="identifier">child</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="child.html#idp51318928-bb">private member functions</a></span>
+  <span class="keyword">void</span> <a class="link" href="child.html#idp51319424-bb"><span class="identifier">detach</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="child.html#idp51320640-bb"><span class="identifier">join</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="child.html#idp51321888-bb"><span class="identifier">joinable</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">native_handle_t</span> <a class="link" href="child.html#idp51323024-bb"><span class="identifier">native_handle</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">int</span> <a class="link" href="child.html#idp51324400-bb"><span class="identifier">exit_code</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">pid_t</span> <a class="link" href="child.html#idp51325904-bb"><span class="identifier">id</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="child.html#idp51327280-bb"><span class="identifier">running</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="child.html#idp51328416-bb"><span class="identifier">running</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="child.html#idp51330576-bb"><span class="identifier">wait</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="child.html#idp51331712-bb"><span class="identifier">wait</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Rep<span class="special">,</span> <span class="keyword">typename</span> Period<span class="special">&gt;</span> 
+    <span class="keyword">bool</span> <a class="link" href="child.html#idp51333872-bb"><span class="identifier">wait_for</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="child.html#idp51337344-bb"><span class="identifier">wait_for</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> 
+                <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Clock<span class="special">,</span> <span class="keyword">typename</span> Duration<span class="special">&gt;</span> 
+    <span class="keyword">bool</span> <a class="link" href="child.html#idp51340128-bb"><span class="identifier">wait_until</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="child.html#idp51343600-bb"><span class="identifier">wait_until</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> 
+                  <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="child.html#idp51346384-bb"><span class="identifier">valid</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="child.html#idp51348400-bb"><span class="keyword">operator</span> <span class="keyword">bool</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="child.html#idp51350016-bb"><span class="identifier">in_group</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="child.html#idp51351472-bb"><span class="identifier">in_group</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="child.html#idp51353632-bb"><span class="identifier">terminate</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="child.html#idp51356560-bb"><span class="identifier">terminate</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.30.9.6.4.4"></a><h2>Description</h2>
+<p>The main class to hold a child process. It is simliar to <a href="http://en.cppreference.com/w/cpp/thread/thread" target="_top">std::thread</a>, in that it has a join and detach function.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>The destructor will call terminate on the process if not joined or detached without any warning. </p></td></tr>
+</table></div>
+<p>
+</p>
+<div class="refsect2">
+<a name="id-1.3.30.9.6.4.4.4"></a><h3>
+<a name="boost.process.childconstruct-copy-destruct"></a><code class="computeroutput">child</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp51358848-bb"></a><span class="identifier">child</span><span class="special">(</span><span class="identifier">pid_t</span> <span class="special">&amp;</span> pid<span class="special">)</span><span class="special">;</span></pre>
+<p>Construct the child from a pid.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>There is no guarantee that this will work. The process need the right access rights, which are very platform specific. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp51361120-bb"></a><span class="identifier">child</span><span class="special">(</span><a class="link" href="child.html" title="Class child">child</a> <span class="special">&amp;&amp;</span> lhs<span class="special">)</span><span class="special">;</span></pre>
+<p>Move-Constructor. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> <span class="keyword">explicit</span> <a name="idp51362640-bb"></a><span class="identifier">child</span><span class="special">(</span><span class="identifier">Args</span> <span class="special">&amp;&amp;</span><span class="special">...</span> args<span class="special">)</span><span class="special">;</span></pre>
+<p>Construct a child from a property list and launch it The standard version is to create a subprocess, which will spawn the process. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp51365296-bb"></a><span class="identifier">child</span><span class="special">(</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span></pre>
+<p>Construct an empty child. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="child.html" title="Class child">child</a> <span class="special">&amp;</span> <a name="idp51366176-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="child.html" title="Class child">child</a> <span class="special">&amp;&amp;</span> lhs<span class="special">)</span><span class="special">;</span></pre>
+<p>Move assign. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp51368208-bb"></a><span class="special">~</span><span class="identifier">child</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Destructor. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Will call terminate (without warning) when the child was neither joined nor detached. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.30.9.6.4.4.5"></a><h3>
+<a name="idp51318928-bb"></a><code class="computeroutput">child</code> private member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51319424-bb"></a><span class="identifier">detach</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Detach the child, i.e. let it run after this handle dies. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51320640-bb"></a><span class="identifier">join</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Join the child. This just calls wait, but that way the naming is similar to std::thread </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp51321888-bb"></a><span class="identifier">joinable</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Check if the child is joinable. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">native_handle_t</span> <a name="idp51323024-bb"></a><span class="identifier">native_handle</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Get the native handle for the child process. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">int</span> <a name="idp51324400-bb"></a><span class="identifier">exit_code</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Get the exit_code. The return value is without any meaning if the child wasn't waited for or if it was terminated. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">pid_t</span> <a name="idp51325904-bb"></a><span class="identifier">id</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Get the Process Identifier. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp51327280-bb"></a><span class="identifier">running</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Check if the child process is running. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp51328416-bb"></a><span class="identifier">running</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51330576-bb"></a><span class="identifier">wait</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Wait for the child process to exit. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51331712-bb"></a><span class="identifier">wait</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Rep<span class="special">,</span> <span class="keyword">typename</span> Period<span class="special">&gt;</span> 
+  <span class="keyword">bool</span> <a name="idp51333872-bb"></a><span class="identifier">wait_for</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="special">&amp;</span> rel_time<span class="special">)</span><span class="special">;</span></pre>
+<p>Wait for the child process to exit for a period of time. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>True if child exited while waiting. </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp51337344-bb"></a><span class="identifier">wait_for</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="special">&amp;</span> rel_time<span class="special">,</span> 
+              <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Clock<span class="special">,</span> <span class="keyword">typename</span> Duration<span class="special">&gt;</span> 
+  <span class="keyword">bool</span> <a name="idp51340128-bb"></a><span class="identifier">wait_until</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="special">&amp;</span> timeout_time<span class="special">)</span><span class="special">;</span></pre>
+<p>Wait for the child process to exit until a point in time. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>True if child exited while waiting. </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp51343600-bb"></a><span class="identifier">wait_until</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="special">&amp;</span> timeout_time<span class="special">,</span> 
+                <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp51346384-bb"></a><span class="identifier">valid</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Check if this handle holds a child process. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>That does not mean, that the process is still running. It only means, that the handle does or did exist. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp51348400-bb"></a><span class="keyword">operator</span> <span class="keyword">bool</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Same as valid, for convenience. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp51350016-bb"></a><span class="identifier">in_group</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Check if the the chlid process is in any process group. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp51351472-bb"></a><span class="identifier">in_group</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51353632-bb"></a><span class="identifier">terminate</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Terminate the child process.</p>
+<p>This function will cause the child process to unconditionally and immediately exit. It is implement with <a href="http://pubs.opengroup.org/onlinepubs/009695399/functions/kill.html" target="_top">SIGKILL</a> on posix and <a href="https://technet.microsoft.com/en-us/library/ms686714.aspx" target="_top">TerminateProcess</a> on windows. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51356560-bb"></a><span class="identifier">terminate</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2006-2012 Julio M. Merino Vidal, Ilya Sokolov,
+      Felipe Tanus, Jeff Flinn, Boris Schaeling<br>Copyright &#169; 2016 Klemens D. Morgenstern<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="async_system.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../process/reference.html#header.boost.process.child_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="cmd.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

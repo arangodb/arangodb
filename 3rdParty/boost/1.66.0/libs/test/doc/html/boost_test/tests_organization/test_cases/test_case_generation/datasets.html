@@ -1,0 +1,247 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Datasets</title>
+<link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../index.html" title="Boost.Test">
+<link rel="up" href="../test_case_generation.html" title="Data-driven test cases">
+<link rel="prev" href="../test_case_generation.html" title="Data-driven test cases">
+<link rel="next" href="datasets_auto_registration.html" title="Declaring and registering test cases with datasets">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../test_case_generation.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_case_generation.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="datasets_auto_registration.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_test.tests_organization.test_cases.test_case_generation.datasets"></a><a class="link" href="datasets.html" title="Datasets">Datasets</a>
+</h5></div></div></div>
+<p>
+            To define properly datasets, the notion of <span class="bold"><strong>sample</strong></span>
+            should be introduced first. A <span class="bold"><strong>sample</strong></span>
+            is defined as <span class="emphasis"><em>polymorphic tuple</em></span>. The size of the
+            tuple will be by definition the <span class="bold"><strong>arity</strong></span>
+            of the sample itself.
+          </p>
+<p>
+            A <span class="bold"><strong>dataset</strong></span> is a <span class="emphasis"><em>collection
+            of samples</em></span>, that
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                is forward iterable,
+              </li>
+<li class="listitem">
+                can be queried for its <code class="computeroutput"><span class="identifier">size</span></code>,
+                which in turn can be infinite,
+              </li>
+<li class="listitem">
+                has an arity, which is the arity of the samples it contains.
+              </li>
+</ul></div>
+<p>
+            Hence the dataset implements the notion of <span class="emphasis"><em>sequence</em></span>.
+          </p>
+<p>
+            The descriptive power of the datasets in <span class="emphasis"><em>Unit Test Framework</em></span>
+            comes from
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                the <a class="link" href="datasets.html#boost_test.tests_organization.test_cases.test_case_generation.datasets.dataset_interface">interface</a>
+                for creating a custom datasets, which is quite simple,
+              </li>
+<li class="listitem">
+                the <a class="link" href="operations.html" title="Operations on dataset">operations</a>
+                they provide for combining different datasets
+              </li>
+<li class="listitem">
+                their interface with other type of collections (<code class="computeroutput"><span class="identifier">stl</span></code>
+                containers, <code class="computeroutput"><span class="identifier">C</span></code> arrays)
+              </li>
+<li class="listitem">
+                the available built-in <a class="link" href="generators.html" title="Datasets generators"><span class="emphasis"><em>dataset
+                generators</em></span></a>
+              </li>
+</ul></div>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              Only "monomorphic" datasets are supported, which means that
+              all samples in a dataset have the same type and same arity <a href="#ftn.boost_test.tests_organization.test_cases.test_case_generation.datasets.f0" class="footnote" name="boost_test.tests_organization.test_cases.test_case_generation.datasets.f0"><sup class="footnote">[2]</sup></a> .
+            </p></td></tr>
+</table></div>
+<p>
+            As we will see in the next sections, datasets representing collections
+            of different types may be combined together (e.g.. <span class="emphasis"><em>zip</em></span>
+            or <span class="emphasis"><em>grid</em></span>). These operations result in new datasets,
+            in which the samples are of an augmented type.
+          </p>
+<h5>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.datasets.h0"></a>
+            <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.datasets.dataset_interface"></a></span><a class="link" href="datasets.html#boost_test.tests_organization.test_cases.test_case_generation.datasets.dataset_interface">Dataset
+            interface</a>
+          </h5>
+<p>
+            The interface of the <span class="emphasis"><em>dataset</em></span> should implement the
+            two following functions/fields:
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                <code class="computeroutput"><span class="identifier">iterator</span> <span class="identifier">begin</span><span class="special">()</span></code> where <span class="emphasis"><em>iterator</em></span>
+                is a forward iterator,
+              </li>
+<li class="listitem">
+                <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">()</span> <span class="keyword">const</span></code>
+                indicates the size of the dataset. The returned type is a dedicated
+                class <code class="computeroutput"><a class="link" href="../../../../boost/unit_test/data/size_t.html" title="Class size_t">size_t</a></code>
+                that can indicate an <span class="emphasis"><em>infinite</em></span> dataset size.
+              </li>
+<li class="listitem">
+                an enum called <code class="computeroutput"><span class="identifier">arity</span></code>
+                indicating the arity of the samples returned by the dataset
+              </li>
+</ul></div>
+<p>
+            Once a dataset class <code class="computeroutput"><span class="identifier">D</span></code>
+            is declared, it should be registered to the framework by specializing
+            the class
+          </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">::</span><span class="identifier">monomorphic</span><span class="special">::</span><span class="identifier">is_dataset</span></pre>
+<p>
+            with the condition that
+          </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">::</span><span class="identifier">monomorphic</span><span class="special">::</span><span class="identifier">is_dataset</span><span class="special">&lt;</span><span class="identifier">D</span><span class="special">&gt;::</span><span class="identifier">value</span></pre>
+<p>
+            evaluates to <code class="computeroutput"><span class="keyword">true</span></code>.
+          </p>
+<p>
+            The following example implements a custom dataset generating a Fibonacci
+            sequence.
+          </p>
+<h6>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.datasets.h1"></a>
+            <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.datasets.example_descr"></a></span><a class="link" href="datasets.html#boost_test.tests_organization.test_cases.test_case_generation.datasets.example_descr">Example:
+            Example of custom dataset</a>
+          </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                    <p>
+                      Code
+                    </p>
+                  </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">dataset_example68</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">test_case</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">monomorphic</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">sstream</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">bdata</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">;</span>
+
+<span class="comment">// Dataset generating a Fibonacci sequence</span>
+<span class="keyword">class</span> <span class="identifier">fibonacci_dataset</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="comment">// Samples type is int</span>
+    <span class="keyword">using</span> <span class="identifier">sample</span><span class="special">=</span><span class="keyword">int</span><span class="special">;</span>
+    <span class="keyword">enum</span> <span class="special">{</span> <span class="identifier">arity</span> <span class="special">=</span> <span class="number">1</span> <span class="special">};</span>
+
+    <span class="keyword">struct</span> <span class="identifier">iterator</span> <span class="special">{</span>
+
+        <span class="identifier">iterator</span><span class="special">()</span> <span class="special">:</span> <span class="identifier">a</span><span class="special">(</span><span class="number">1</span><span class="special">),</span> <span class="identifier">b</span><span class="special">(</span><span class="number">1</span><span class="special">)</span> <span class="special">{}</span>
+
+        <span class="keyword">int</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span>   <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">b</span><span class="special">;</span> <span class="special">}</span>
+        <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">++()</span>
+        <span class="special">{</span>
+            <span class="identifier">a</span> <span class="special">=</span> <span class="identifier">a</span> <span class="special">+</span> <span class="identifier">b</span><span class="special">;</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">swap</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="identifier">b</span><span class="special">);</span>
+        <span class="special">}</span>
+    <span class="keyword">private</span><span class="special">:</span>
+        <span class="keyword">int</span> <span class="identifier">a</span><span class="special">;</span>
+        <span class="keyword">int</span> <span class="identifier">b</span><span class="special">;</span> <span class="comment">// b is the output</span>
+    <span class="special">};</span>
+
+    <span class="identifier">fibonacci_dataset</span><span class="special">()</span>             <span class="special">{}</span>
+
+    <span class="comment">// size is infinite</span>
+    <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">size_t</span>   <span class="identifier">size</span><span class="special">()</span> <span class="keyword">const</span>    <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">BOOST_TEST_DS_INFINITE_SIZE</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="comment">// iterator</span>
+    <span class="identifier">iterator</span>        <span class="identifier">begin</span><span class="special">()</span> <span class="keyword">const</span>   <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">iterator</span><span class="special">();</span> <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">unit_test</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">data</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">monomorphic</span> <span class="special">{</span>
+  <span class="comment">// registering fibonacci_dataset as a proper dataset</span>
+  <span class="keyword">template</span> <span class="special">&lt;&gt;</span>
+  <span class="keyword">struct</span> <span class="identifier">is_dataset</span><span class="special">&lt;</span><span class="identifier">fibonacci_dataset</span><span class="special">&gt;</span> <span class="special">:</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mpl</span><span class="special">::</span><span class="identifier">true_</span> <span class="special">{};</span>
+<span class="special">}}}}</span>
+
+<span class="comment">// Creating a test-driven dataset </span>
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span>
+    <span class="identifier">test1</span><span class="special">,</span>
+    <span class="identifier">fibonacci_dataset</span><span class="special">()</span> <span class="special">^</span> <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">make</span><span class="special">(</span> <span class="special">{</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">3</span><span class="special">,</span> <span class="number">5</span><span class="special">,</span> <span class="number">8</span><span class="special">,</span> <span class="number">13</span><span class="special">,</span> <span class="number">21</span><span class="special">,</span> <span class="number">35</span><span class="special">,</span> <span class="number">56</span> <span class="special">}</span> <span class="special">),</span>
+    <span class="identifier">fib_sample</span><span class="special">,</span> <span class="identifier">exp</span><span class="special">)</span>
+<span class="special">{</span>
+      <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">fib_sample</span> <span class="special">==</span> <span class="identifier">exp</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+                  </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                    <p>
+                      Output
+                    </p>
+                  </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">example68</span>
+<span class="identifier">Running</span> <span class="number">9</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">60</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test1/_7"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">fib_sample</span> <span class="special">==</span> <span class="identifier">exp</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">34</span> <span class="special">!=</span> <span class="number">35</span><span class="special">]</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">fib_sample</span> <span class="special">=</span> <span class="number">34</span><span class="special">;</span> <span class="identifier">exp</span> <span class="special">=</span> <span class="number">35</span><span class="special">;</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">60</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test1/_8"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">fib_sample</span> <span class="special">==</span> <span class="identifier">exp</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">55</span> <span class="special">!=</span> <span class="number">56</span><span class="special">]</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">fib_sample</span> <span class="special">=</span> <span class="number">55</span><span class="special">;</span> <span class="identifier">exp</span> <span class="special">=</span> <span class="number">56</span><span class="special">;</span>
+
+<span class="special">***</span> <span class="number">2</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"dataset_example68"</span>
+</pre>
+                  </td></tr></tbody>
+</table></div>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.boost_test.tests_organization.test_cases.test_case_generation.datasets.f0" class="footnote"><p><a href="#boost_test.tests_organization.test_cases.test_case_generation.datasets.f0" class="para"><sup class="para">[2] </sup></a>
+                polymorphic datasets will be considered in the future. Their need
+                is mainly driven by the replacement of the <a class="link" href="../test_organization_templates.html" title="Template test cases">typed
+                parametrized test cases</a> by the dataset-like API.
+              </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2017 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../test_case_generation.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_case_generation.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="datasets_auto_registration.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

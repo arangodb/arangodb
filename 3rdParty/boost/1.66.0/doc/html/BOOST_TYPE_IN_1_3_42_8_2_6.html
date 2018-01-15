@@ -1,0 +1,84 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Macro BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING</title>
+<link rel="stylesheet" href="../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="boost_typeindex_header_reference.html#header.boost.type_index_hpp" title="Header &lt;boost/type_index.hpp&gt;">
+<link rel="prev" href="BOOST_TYPE_IN_1_3_42_8_2_5.html" title="Macro BOOST_TYPE_INDEX_FUNCTION_SIGNATURE">
+<link rel="next" href="BOOST_TYPE_IN_1_3_42_8_2_7.html" title="Macro BOOST_TYPE_INDEX_USER_TYPEINDEX">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../boost.png"></td>
+<td align="center"><a href="../../index.html">Home</a></td>
+<td align="center"><a href="../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BOOST_TYPE_IN_1_3_42_8_2_5.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="boost_typeindex_header_reference.html#header.boost.type_index_hpp"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_TYPE_IN_1_3_42_8_2_7.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="BOOST_TYPE_IN_1_3_42_8_2_6"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Macro BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING</span></h2>
+<p>BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="boost_typeindex_header_reference.html#header.boost.type_index_hpp" title="Header &lt;boost/type_index.hpp&gt;">boost/type_index.hpp</a>&gt;
+
+</span>BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING</pre></div>
+<div class="refsect1">
+<a name="id-1.3.42.8.2.13.4"></a><h2>Description</h2>
+<p>This is a helper macro for making correct pretty_names() with RTTI off.</p>
+<p>BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING macro may be defined to '(begin_skip, end_skip, runtime_skip, runtime_skip_until)' with parameters for adding a support for compilers, that by default are not recognized by TypeIndex library.</p>
+<p><span class="bold"><strong>Example:</strong></span> </p>
+<p>Imagine the situation when </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">ctti_type_index</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span><span class="special">(</span><span class="special">)</span><span class="special">.</span><span class="identifier">pretty_name</span><span class="special">(</span><span class="special">)</span> 
+</pre>
+<p> returns the following string: </p>
+<pre class="programlisting"><span class="string">"static const char *boost::detail::ctti&lt;int&gt;::n() [T = int]"</span> 
+</pre>
+<p> and</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">typeindex</span><span class="special">::</span><span class="identifier">ctti_type_index</span><span class="special">::</span><span class="identifier">type_id</span><span class="special">&lt;</span><span class="keyword">short</span><span class="special">&gt;</span><span class="special">(</span><span class="special">)</span><span class="special">.</span><span class="identifier">pretty_name</span><span class="special">(</span><span class="special">)</span> 
+</pre>
+<p> returns the following: </p>
+<pre class="programlisting"><span class="string">"static const char *boost::detail::ctti&lt;short&gt;::n() [T = short]"</span> 
+</pre>
+<p>As we may see first 39 characters are "static const char *boost::detail::ctti&lt;" and they do not depend on the type T. After first 39 characters we have a human readable type name which is duplicated at the end of a string. String always ends on ']', which consumes 1 character.</p>
+<p>Now if we define <code class="computeroutput">BOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING</code> to <code class="computeroutput">(39, 1, false, "")</code> we'll be getting</p>
+<pre class="programlisting"><span class="string">"int&gt;::n() [T = int"</span> 
+</pre>
+<p> for <code class="computeroutput">boost::typeindex::ctti_type_index::type_id&lt;int&gt;().pretty_name()</code> and</p>
+<pre class="programlisting"><span class="string">"short&gt;::n() [T = short"</span> 
+</pre>
+<p> for <code class="computeroutput">boost::typeindex::ctti_type_index::type_id&lt;short&gt;().pretty_name()</code>.</p>
+<p>Now we need to take additional care of the characters that go before the last mention of our type. We'll do that by telling the macro that we need to cut off everything that goes before the "T = " including the "T = " itself:</p>
+<pre class="programlisting"><span class="special">(</span><span class="number">39</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span> <span class="keyword">true</span><span class="special">,</span> <span class="string">"T = "</span><span class="special">)</span> 
+</pre>
+<p>In case of GCC or Clang command line we need to add the following line while compiling all the sources:</p>
+<pre class="programlisting"><span class="special">-</span><span class="identifier">DBOOST_TYPE_INDEX_CTTI_USER_DEFINED_PARSING</span><span class="special">=</span><span class="char">'(39, 1, true, "T = ")'</span>
+</pre>
+<p> 
+See <a href="boost_typeindex/rtti_emulation_limitations.html" target="_top">RTTI emulation limitations</a> for more info. </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2012-2016 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BOOST_TYPE_IN_1_3_42_8_2_5.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="boost_typeindex_header_reference.html#header.boost.type_index_hpp"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_TYPE_IN_1_3_42_8_2_7.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

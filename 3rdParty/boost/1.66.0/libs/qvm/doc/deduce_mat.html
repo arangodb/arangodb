@@ -1,0 +1,65 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>deduce_mat</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>deduce_mat</h3>
+</div>
+<div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_deduce_mat_hpp.html">boost/qvm/deduce_mat.hpp</a></span>&gt;</p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        template &lt;
+            class M,
+            int Rows=<span class="RenoLink"><a href="mat_traits_Matrix_rows.html">mat_traits&lt;Matrix&gt;::rows</a></span>,
+            int Cols=<span class="RenoLink"><a href="mat_traits_Matrix_cols.html">mat_traits&lt;Matrix&gt;::cols</a></span>&gt;
+        struct <span class="RenoLink">deduce_mat</span>
+        {
+            typedef /*unspecified*/ type;
+        };</span>
+    }
+}</pre>
+</div><h4>Assumption:</h4>
+<p><i><span class="RenoLink"><a href="is_mat.html">is_mat</a></span>&lt;M&gt;::value</i> is <i>true</i>.</p>
+<h4>Requirements:</h4>
+<div><ul><li><i><span class="RenoLink"><a href="is_mat.html">is_mat</a></span>&lt;<span class="RenoLink">deduce_mat</span>&lt;M&gt;::type&gt;::value</i> must be <i>true</i></li>
+<li><i><span class="RenoLink">deduce_mat</span>&lt;M&gt;::type</i> must be copyable</li>
+<li><i><span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span>&lt;<span class="RenoLink">deduce_mat</span>&lt;M&gt;::type&gt;::<span class="RenoLink"><a href="mat_traits_Matrix_rows.html">rows</a></span>==Rows</i></li>
+<li><i><span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span>&lt;<span class="RenoLink">deduce_mat</span>&lt;M&gt;::type&gt;::<span class="RenoLink"><a href="mat_traits_Matrix_cols.html">cols</a></span>==Cols</i></li>
+</ul></div>
+<p>This template is used by Boost QVM whenever it needs to deduce a copyable matrix type of certain dimensions from a single user-supplied function parameter of matrix type. The returned type must have accessible copy constructor. Note that <i>M</i> itself may be non-copyable.</p>
+<p>The main template definition returns an unspecified copyable matrix type of size <i>Rows</i> x <i>Cols</i>, except if <i><span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span>&lt;M&gt;::<span class="RenoLink"><a href="mat_traits_Matrix_rows.html">rows</a></span>==Rows &amp;&amp; <span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span>&lt;M&gt;::<span class="RenoLink"><a href="mat_traits_Matrix_cols.html">cols</a></span>==Cols</i>, in which case it returns <i>M</i>, which is suitable only if <i>M</i> is a copyable type. Boost QVM also defines (partial) specializations for the non-copyable matrix types it produces. Users can define other (partial) specializations for their own types.</p>
+<p>A typical use of the <i><span class="RenoLink">deduce_mat</span></i> template is for specifying the preferred matrix type to be returned by the generic function template overloads in Boost QVM depending on the type of their arguments.</p>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="boost_qvm_deduce_mat_hpp.html">boost/qvm/deduce_mat.hpp</a>&nbsp;| <a href="boost_qvm_mat_traits_array_hpp.html">boost/qvm/mat_traits_array.hpp</a>&nbsp;| <a href="inverse_mat_.html">inverse(mat)</a>&nbsp;| <a href="operator_times_mat_scalar_.html">operator*(mat,scalar)</a>&nbsp;| <a href="operator_times_scalar_mat_.html">operator*(scalar,mat)</a>&nbsp;| <a href="operator_minus_mat_.html">operator-(mat)</a>&nbsp;| <a href="operator_over_mat_scalar_.html">operator/(mat,scalar)</a></span>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2016 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

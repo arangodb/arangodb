@@ -1,0 +1,571 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference><header name="boost/program_options/cmdline.hpp">
+<namespace name="boost">
+<namespace name="program_options">
+<namespace name="command_line_style">
+<enum name="style_t"><enumvalue name="allow_long"><default>= 1</default><purpose>Allow "--long_name" style. </purpose></enumvalue><enumvalue name="allow_short"><default>= allow_long &lt;&lt; 1</default><purpose>Allow "-&lt;single character" style. </purpose></enumvalue><enumvalue name="allow_dash_for_short"><default>= allow_short &lt;&lt; 1</default><purpose>Allow "-" in short options. </purpose></enumvalue><enumvalue name="allow_slash_for_short"><default>= allow_dash_for_short &lt;&lt; 1</default><purpose>Allow "/" in short options. </purpose></enumvalue><enumvalue name="long_allow_adjacent"><default>= allow_slash_for_short &lt;&lt; 1</default><description><para>Allow option parameter in the same token for long option, like in         --foo=10 </para></description></enumvalue><enumvalue name="long_allow_next"><default>= long_allow_adjacent &lt;&lt; 1</default><description><para>Allow option parameter in the next token for long options. </para></description></enumvalue><enumvalue name="short_allow_adjacent"><default>= long_allow_next &lt;&lt; 1</default><description><para>Allow option parameter in the same token for short options. </para></description></enumvalue><enumvalue name="short_allow_next"><default>= short_allow_adjacent &lt;&lt; 1</default><description><para>Allow option parameter in the next token for short options. </para></description></enumvalue><enumvalue name="allow_sticky"><default>= short_allow_next &lt;&lt; 1</default><description><para>Allow to merge several short options together, so that "-s -k" become "-sk". All of the options but last should accept no parameter. For example, if "-s" accept a parameter, then "k" will be taken as parameter, not another short option. Dos-style short options cannot be sticky. </para></description></enumvalue><enumvalue name="allow_guessing"><default>= allow_sticky &lt;&lt; 1</default><description><para>Allow abbreviated spellings for long options, if they unambiguously identify long option. No long option name should be prefix of other long option name if guessing is in effect. </para></description></enumvalue><enumvalue name="long_case_insensitive"><default>= allow_guessing &lt;&lt; 1</default><description><para>Ignore the difference in case for long options. </para></description></enumvalue><enumvalue name="short_case_insensitive"><default>= long_case_insensitive &lt;&lt; 1</default><description><para>Ignore the difference in case for short options. </para></description></enumvalue><enumvalue name="case_insensitive"><default>= (long_case_insensitive | short_case_insensitive)</default><description><para>Ignore the difference in case for all options. </para></description></enumvalue><enumvalue name="allow_long_disguise"><default>= short_case_insensitive &lt;&lt; 1</default><description><para>Allow long options with single option starting character, e.g <computeroutput>-foo=10</computeroutput> </para></description></enumvalue><enumvalue name="unix_style"><default>= (allow_short | short_allow_adjacent | short_allow_next
+                      | allow_long | long_allow_adjacent | long_allow_next
+                      | allow_sticky | allow_guessing 
+                      | allow_dash_for_short)</default><description><para>The more-or-less traditional unix style. </para></description></enumvalue><enumvalue name="default_style"><default>= unix_style</default><description><para>The default style. </para></description></enumvalue><description><para>Various possible styles of options.</para><para>There are "long" options, which start with "--" and "short", which start with either "-" or "/". Both kinds can be allowed or disallowed, see allow_long and allow_short. The allowed character for short options is also configurable.</para><para>Option's value can be specified in the same token as name ("--foo=bar"), or in the next token.</para><para>It's possible to introduce long options by the same character as short options, see allow_long_disguise.</para><para>Finally, guessing (specifying only prefix of option) and case insensitive processing are supported. </para></description></enum>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/program_options/config.hpp">
+<macro name="BOOST_PROGRAM_OPTIONS_DECL"/>
+</header>
+<header name="boost/program_options/environment_iterator.hpp">
+<namespace name="boost">
+<class name="environment_iterator"><inherit access="public">boost::eof_iterator&lt; environment_iterator, std::pair&lt; std::string, std::string &gt; &gt;</inherit><method-group name="public member functions">
+<method name="get"><type>void</type></method>
+</method-group>
+<constructor><parameter name="environment"><paramtype>char **</paramtype></parameter></constructor>
+<constructor/>
+</class></namespace>
+</header>
+<header name="boost/program_options/eof_iterator.hpp">
+<namespace name="boost">
+<class name="eof_iterator"><template>
+      <template-type-parameter name="Derived"/>
+      <template-type-parameter name="ValueType"/>
+    </template><inherit access="public">iterator_facade&lt; Derived, const ValueType, forward_traversal_tag &gt;</inherit><description><para>The '<classname alt="boost::eof_iterator">eof_iterator</classname>' class is useful for constructing forward iterators in cases where iterator extract data from some source and it's easy to detect 'eof' -- i.e. the situation where there's no data. One apparent example is reading lines from a file.</para><para>Implementing such iterators using 'iterator_facade' directly would require to create class with three core operation, a couple of constructors. When using '<classname alt="boost::eof_iterator">eof_iterator</classname>', the derived class should define only one method to get new value, plus a couple of constructors.</para><para>The basic idea is that iterator has 'eof' bit. Two iterators are equal only if both have their 'eof' bits set. The 'get' method either obtains the new value or sets the 'eof' bit.</para><para>Specifically, derived class should define:</para><para><orderedlist>
+<listitem><para>A default constructor, which creates iterator with 'eof' bit set. The constructor body should call 'found_eof' method defined here.</para></listitem><listitem><para>Some other constructor. It should initialize some 'data pointer' used in iterator operation and then call 'get'.</para></listitem><listitem><para>The 'get' method. It should operate this way:<itemizedlist>
+<listitem><para>look at some 'data pointer' to see if new element is available; if not, it should call 'found_eof'.</para></listitem><listitem><para>extract new element and store it at location returned by the 'value' method.</para></listitem><listitem><para>advance the data pointer.</para></listitem></itemizedlist>
+</para></listitem></orderedlist>
+</para><para>Essentially, the 'get' method has the functionality of both 'increment' and 'dereference'. It's very good for the cases where data extraction implicitly moves data pointer, like for stream operation. </para></description><method-group name="public member functions">
+</method-group>
+<constructor/>
+<method-group name="protected member functions">
+<method name="value"><type>ValueType &amp;</type><description><para>Returns the reference which should be used by derived class to store the next value. </para></description></method>
+<method name="found_eof"><type>void</type><description><para>Should be called by derived class to indicate that it can't produce next element. </para></description></method>
+</method-group>
+<method-group name="private member functions">
+<method name="increment"><type>void</type></method>
+<method name="equal" cv="const"><type>bool</type><parameter name="other"><paramtype>const <classname>eof_iterator</classname> &amp;</paramtype></parameter></method>
+<method name="dereference" cv="const"><type>const ValueType &amp;</type></method>
+</method-group>
+</class></namespace>
+</header>
+<header name="boost/program_options/errors.hpp">
+<namespace name="boost">
+<namespace name="program_options">
+<class name="error"><inherit access="public">logic_error</inherit><description><para>Base class for all errors in the library. </para></description><method-group name="public member functions">
+</method-group>
+<constructor><parameter name="xwhat"><paramtype>const std::string &amp;</paramtype></parameter></constructor>
+</class><class name="too_many_positional_options_error"><inherit access="public">boost::program_options::error</inherit><description><para>Class thrown when there are too many positional options. This is a programming error. </para></description><method-group name="public member functions">
+</method-group>
+<constructor/>
+</class><class name="invalid_command_line_style"><inherit access="public">boost::program_options::error</inherit><description><para>Class thrown when there are programming error related to style </para></description><method-group name="public member functions">
+</method-group>
+<constructor><parameter name="msg"><paramtype>const std::string &amp;</paramtype></parameter></constructor>
+</class><class name="reading_file"><inherit access="public">boost::program_options::error</inherit><description><para>Class thrown if config file can not be read </para></description><method-group name="public member functions">
+</method-group>
+<constructor><parameter name="filename"><paramtype>const char *</paramtype></parameter></constructor>
+</class><class name="error_with_option_name"><inherit access="public">boost::program_options::error</inherit><description><para>Base class for most exceptions in the library.</para><para>Substitutes the values for the parameter name placeholders in the template to create the human readable error message</para><para>Placeholders are surrounded by % signs: example% Poor man's version of boost::format</para><para>If a parameter name is absent, perform default substitutions instead so ugly placeholders are never left in-place.</para><para>Options are displayed in "canonical" form This is the most unambiguous form of the <emphasis>parsed</emphasis> option name and would correspond to option_description::format_name() i.e. what is shown by print_usage()</para><para>The "canonical" form depends on whether the option is specified in short or long form, using dashes or slashes or without a prefix (from a configuration file) </para></description><data-member name="m_error_template"><type>std::string</type><description><para>template with placeholders </para></description></data-member>
+<method-group name="public member functions">
+<method name="set_substitute"><type>void</type><parameter name="parameter_name"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="value"><paramtype>const std::string &amp;</paramtype></parameter><description><para>Substitute parameter_name-&gt;value to create the error message from the error template </para></description></method>
+<method name="set_substitute_default"><type>void</type><parameter name="parameter_name"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="from"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="to"><paramtype>const std::string &amp;</paramtype></parameter><description><para>If the parameter is missing, then make the from-&gt;to substitution instead </para></description></method>
+<method name="add_context"><type>void</type><parameter name="option_name"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="original_token"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="option_style"><paramtype>int</paramtype></parameter><description><para>Add context to an exception </para></description></method>
+<method name="set_prefix"><type>void</type><parameter name="option_style"><paramtype>int</paramtype></parameter></method>
+<method name="set_option_name" specifiers="virtual"><type>void</type><parameter name="option_name"><paramtype>const std::string &amp;</paramtype></parameter><description><para>Overridden in <classname alt="boost::program_options::error_with_no_option_name">error_with_no_option_name</classname> </para></description></method>
+<method name="get_option_name" cv="const"><type>std::string</type></method>
+<method name="set_original_token"><type>void</type><parameter name="original_token"><paramtype>const std::string &amp;</paramtype></parameter></method>
+<method name="what" cv="const" specifiers="virtual"><type>const char *</type><description><para>Creates the error_message on the fly Currently a thin wrapper for substitute_placeholders() </para></description></method>
+</method-group>
+<constructor><parameter name="template_"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="option_name"><paramtype>const std::string &amp;</paramtype><default>""</default></parameter><parameter name="original_token"><paramtype>const std::string &amp;</paramtype><default>""</default></parameter><parameter name="option_style"><paramtype>int</paramtype><default>0</default></parameter></constructor>
+<destructor><description><para>gcc says that throw specification on dtor is loosened without this line </para></description></destructor>
+<method-group name="protected member functions">
+<method name="substitute_placeholders" cv="const" specifiers="virtual"><type>void</type><parameter name="error_template"><paramtype>const std::string &amp;</paramtype></parameter><description><para>Makes all substitutions using the template </para></description></method>
+<method name="replace_token" cv="const"><type>void</type><parameter name="from"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="to"><paramtype>const std::string &amp;</paramtype></parameter></method>
+<method name="get_canonical_option_name" cv="const"><type>std::string</type><description><para>Construct option name in accordance with the appropriate prefix style: i.e. long dash or short slash etc </para></description></method>
+<method name="get_canonical_option_prefix" cv="const"><type>std::string</type></method>
+</method-group>
+</class><class name="multiple_values"><inherit access="public">boost::program_options::error_with_option_name</inherit><description><para>Class thrown when there are several option values, but user called a method which cannot return them all. </para></description><method-group name="public member functions">
+</method-group>
+<constructor/>
+<destructor/>
+</class><class name="multiple_occurrences"><inherit access="public">boost::program_options::error_with_option_name</inherit><description><para>Class thrown when there are several occurrences of an option, but user called a method which cannot return them all. </para></description><method-group name="public member functions">
+</method-group>
+<constructor/>
+<destructor/>
+</class><class name="required_option"><inherit access="public">boost::program_options::error_with_option_name</inherit><description><para>Class thrown when a required/mandatory option is missing </para></description><method-group name="public member functions">
+</method-group>
+<constructor><parameter name="option_name"><paramtype>const std::string &amp;</paramtype></parameter></constructor>
+<destructor/>
+</class><class name="error_with_no_option_name"><inherit access="public">boost::program_options::error_with_option_name</inherit><description><para>Base class of unparsable options, when the desired option cannot be identified.</para><para>It makes no sense to have an option name, when we can't match an option to the parameter</para><para>Having this a part of the <classname alt="boost::program_options::error_with_option_name">error_with_option_name</classname> hierachy makes error handling a lot easier, even if the name indicates some sort of conceptual dissonance! </para></description><method-group name="public member functions">
+<method name="set_option_name" specifiers="virtual"><type>void</type><parameter name=""><paramtype>const std::string &amp;</paramtype></parameter><description><para>Does NOT set option name, because no option name makes sense </para></description></method>
+</method-group>
+<constructor><parameter name="template_"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="original_token"><paramtype>const std::string &amp;</paramtype><default>""</default></parameter></constructor>
+<destructor/>
+</class><class name="unknown_option"><inherit access="public">boost::program_options::error_with_no_option_name</inherit><description><para>Class thrown when option name is not recognized. </para></description><method-group name="public member functions">
+</method-group>
+<constructor><parameter name="original_token"><paramtype>const std::string &amp;</paramtype><default>""</default></parameter></constructor>
+<destructor/>
+</class><class name="ambiguous_option"><inherit access="public">boost::program_options::error_with_no_option_name</inherit><description><para>Class thrown when there's ambiguity amoung several possible options. </para></description><method-group name="public member functions">
+<method name="alternatives" cv="const"><type>const std::vector&lt; std::string &gt; &amp;</type></method>
+</method-group>
+<constructor><parameter name="xalternatives"><paramtype>const std::vector&lt; std::string &gt; &amp;</paramtype></parameter></constructor>
+<destructor/>
+<method-group name="protected member functions">
+<method name="substitute_placeholders" cv="const" specifiers="virtual"><type>void</type><parameter name="error_template"><paramtype>const std::string &amp;</paramtype></parameter><description><para>Makes all substitutions using the template </para></description></method>
+</method-group>
+</class><class name="invalid_syntax"><inherit access="public">boost::program_options::error_with_option_name</inherit><description><para>Class thrown when there's syntax error either for command line or config file options. See derived children for concrete classes. </para></description><enum name="kind_t"><enumvalue name="long_not_allowed"><default>= 30</default></enumvalue><enumvalue name="long_adjacent_not_allowed"/><enumvalue name="short_adjacent_not_allowed"/><enumvalue name="empty_adjacent_parameter"/><enumvalue name="missing_parameter"/><enumvalue name="extra_parameter"/><enumvalue name="unrecognized_line"/></enum>
+<method-group name="public member functions">
+<method name="kind" cv="const"><type>kind_t</type></method>
+<method name="tokens" cv="const" specifiers="virtual"><type>std::string</type><description><para>Convenience functions for backwards compatibility </para></description></method>
+</method-group>
+<constructor><parameter name="kind"><paramtype>kind_t</paramtype></parameter><parameter name="option_name"><paramtype>const std::string &amp;</paramtype><default>""</default></parameter><parameter name="original_token"><paramtype>const std::string &amp;</paramtype><default>""</default></parameter><parameter name="option_style"><paramtype>int</paramtype><default>0</default></parameter></constructor>
+<destructor/>
+<method-group name="protected member functions">
+<method name="get_template"><type>std::string</type><parameter name="kind"><paramtype>kind_t</paramtype></parameter><description><para>Used to convert kind_t to a related error text </para></description></method>
+</method-group>
+</class><class name="invalid_config_file_syntax"><inherit access="public">boost::program_options::invalid_syntax</inherit><method-group name="public member functions">
+<method name="tokens" cv="const" specifiers="virtual"><type>std::string</type><description><para>Convenience functions for backwards compatibility </para></description></method>
+</method-group>
+<constructor><parameter name="invalid_line"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="kind"><paramtype>kind_t</paramtype></parameter></constructor>
+<destructor/>
+</class><class name="invalid_command_line_syntax"><inherit access="public">boost::program_options::invalid_syntax</inherit><description><para>Class thrown when there are syntax errors in given command line </para></description><method-group name="public member functions">
+</method-group>
+<constructor><parameter name="kind"><paramtype>kind_t</paramtype></parameter><parameter name="option_name"><paramtype>const std::string &amp;</paramtype><default>""</default></parameter><parameter name="original_token"><paramtype>const std::string &amp;</paramtype><default>""</default></parameter><parameter name="option_style"><paramtype>int</paramtype><default>0</default></parameter></constructor>
+<destructor/>
+</class><class name="validation_error"><inherit access="public">boost::program_options::error_with_option_name</inherit><description><para>Class thrown when value of option is incorrect. </para></description><enum name="kind_t"><enumvalue name="multiple_values_not_allowed"><default>= 30</default></enumvalue><enumvalue name="at_least_one_value_required"/><enumvalue name="invalid_bool_value"/><enumvalue name="invalid_option_value"/><enumvalue name="invalid_option"/></enum>
+<method-group name="public member functions">
+</method-group>
+<constructor><parameter name="kind"><paramtype>kind_t</paramtype></parameter><parameter name="option_name"><paramtype>const std::string &amp;</paramtype><default>""</default></parameter><parameter name="original_token"><paramtype>const std::string &amp;</paramtype><default>""</default></parameter><parameter name="option_style"><paramtype>int</paramtype><default>0</default></parameter></constructor>
+<destructor/>
+<method-group name="protected member functions">
+<method name="get_template"><type>std::string</type><parameter name="kind"><paramtype>kind_t</paramtype></parameter><description><para>Used to convert kind_t to a related error text </para></description></method>
+</method-group>
+</class><class name="invalid_option_value"><inherit access="public">boost::program_options::validation_error</inherit><description><para>Class thrown if there is an invalid option value given </para></description><method-group name="public member functions">
+</method-group>
+<constructor><parameter name="value"><paramtype>const std::string &amp;</paramtype></parameter></constructor>
+<constructor><parameter name="value"><paramtype>const std::wstring &amp;</paramtype></parameter></constructor>
+</class><class name="invalid_bool_value"><inherit access="public">boost::program_options::validation_error</inherit><description><para>Class thrown if there is an invalid bool value given </para></description><method-group name="public member functions">
+</method-group>
+<constructor><parameter name="value"><paramtype>const std::string &amp;</paramtype></parameter></constructor>
+</class>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="strip_prefixes"><type>std::string</type><parameter name="text"><paramtype>const std::string &amp;</paramtype></parameter></function>
+</namespace>
+</namespace>
+</header>
+<header name="boost/program_options/option.hpp">
+<namespace name="boost">
+<namespace name="program_options">
+<class name="basic_option"><template>
+      <template-type-parameter name="charT"/>
+    </template><description><para>Option found in input source. Contains a key and a value. The key, in turn, can be a string (name of an option), or an integer (position in input source) -- in case no name is specified. The latter is only possible for command line. The template parameter specifies the type of char used for storing the option's value. </para></description><data-member name="string_key"><type>std::string</type><description><para>String key of this option. Intentionally independent of the template parameter. </para></description></data-member>
+<data-member name="position_key"><type>int</type><description><para>Position key of this option. All options without an explicit name are sequentially numbered starting from 0. If an option has explicit name, 'position_key' is equal to -1. It is possible that both position_key and string_key is specified, in case name is implicitly added. </para></description></data-member>
+<data-member name="value"><type>std::vector&lt; std::basic_string&lt; charT &gt; &gt;</type><description><para>Option's value </para></description></data-member>
+<data-member name="original_tokens"><type>std::vector&lt; std::basic_string&lt; charT &gt; &gt;</type><description><para>The original unchanged tokens this option was created from. </para></description></data-member>
+<data-member name="unregistered"><type>bool</type><description><para>True if option was not recognized. In that case, 'string_key' and 'value' are results of purely syntactic parsing of source. The original tokens can be recovered from the "original_tokens" member. </para></description></data-member>
+<data-member name="case_insensitive"><type>bool</type><description><para>True if string_key has to be handled case insensitive. </para></description></data-member>
+<method-group name="public member functions">
+</method-group>
+<constructor/>
+<constructor><parameter name="xstring_key"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="xvalue"><paramtype>const std::vector&lt; std::string &gt; &amp;</paramtype></parameter></constructor>
+</class><typedef name="option"><type><classname>basic_option</classname>&lt; char &gt;</type></typedef>
+<typedef name="woption"><type><classname>basic_option</classname>&lt; wchar_t &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/program_options/options_description.hpp">
+<namespace name="boost">
+<namespace name="program_options">
+<class name="option_description"><description><para>Describes one possible command line/config file option. There are two kinds of properties of an option. First describe it syntactically and are used only to validate input. Second affect interpretation of the option, for example default value for it or function that should be called when the value is finally known. Routines which perform parsing never use second kind of properties -- they are side effect free. <para><emphasis role="bold">See Also:</emphasis><para><classname alt="boost::program_options::options_description">options_description</classname> </para></para>
+</para></description><enum name="match_result"><enumvalue name="no_match"/><enumvalue name="full_match"/><enumvalue name="approximate_match"/></enum>
+<method-group name="public member functions">
+<method name="match" cv="const"><type>match_result</type><parameter name="option"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="approx"><paramtype>bool</paramtype></parameter><parameter name="long_ignore_case"><paramtype>bool</paramtype></parameter><parameter name="short_ignore_case"><paramtype>bool</paramtype></parameter><description><para>Given 'option', specified in the input source, returns 'true' if 'option' specifies *this. </para></description></method>
+<method name="key" cv="const"><type>const std::string &amp;</type><parameter name="option"><paramtype>const std::string &amp;</paramtype></parameter><description><para>Returns the key that should identify the option, in particular in the <classname alt="boost::program_options::variables_map">variables_map</classname> class. The 'option' parameter is the option spelling from the input source. If option name contains '*', returns 'option'. If long name was specified, it's the long name, otherwise it's a short name with prepended '-'. </para></description></method>
+<method name="canonical_display_name" cv="const"><type>std::string</type><parameter name="canonical_option_style"><paramtype>int</paramtype><default>0</default></parameter><description><para>Returns the canonical name for the option description to enable the user to recognised a matching option. 1) For short options ('-', '/'), returns the short name prefixed. 2) For long options ('–' / '-') returns the long name prefixed 3) All other cases, returns the long name (if present) or the short name, unprefixed. </para></description></method>
+<method name="long_name" cv="const"><type>const std::string &amp;</type></method>
+<method name="description" cv="const"><type>const std::string &amp;</type><purpose>Explanation of this option. </purpose></method>
+<method name="semantic" cv="const"><type>shared_ptr&lt; const <classname>value_semantic</classname> &gt;</type><purpose>Semantic of option's value. </purpose></method>
+<method name="format_name" cv="const"><type>std::string</type><purpose>Returns the option name, formatted suitably for usage message. </purpose></method>
+<method name="format_parameter" cv="const"><type>std::string</type><description><para>Returns the parameter name and properties, formatted suitably for usage message. </para></description></method>
+</method-group>
+<constructor/>
+<constructor><parameter name="name"><paramtype>const char *</paramtype></parameter><parameter name="s"><paramtype>const <classname>value_semantic</classname> *</paramtype></parameter><description><para>Initializes the object with the passed data.</para><para>Note: it would be nice to make the second parameter auto_ptr, to explicitly pass ownership. Unfortunately, it's often needed to create objects of types derived from '<classname alt="boost::program_options::value_semantic">value_semantic</classname>': <classname alt="boost::program_options::options_description">options_description</classname> d; d.add_options()("a", parameter&lt;int&gt;("n")-&gt;default_value(1)); Here, the static type returned by 'parameter' should be derived from <classname alt="boost::program_options::value_semantic">value_semantic</classname>.</para><para>Alas, derived-&gt;base conversion for auto_ptr does not really work, see <ulink url="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2000/n1232.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2000/n1232.pdf</ulink> <ulink url="http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#84">http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#84</ulink></para><para>So, we have to use plain old pointers. Besides, users are not expected to use the constructor directly.</para><para>The 'name' parameter is interpreted by the following rules:<itemizedlist>
+<listitem><para>if there's no "," character in 'name', it specifies long name</para></listitem><listitem><para>otherwise, the part before "," specifies long name and the part after -- short name. </para></listitem></itemizedlist>
+</para></description></constructor>
+<constructor><parameter name="name"><paramtype>const char *</paramtype></parameter><parameter name="s"><paramtype>const <classname>value_semantic</classname> *</paramtype></parameter><parameter name="description"><paramtype>const char *</paramtype></parameter><description><para>Initializes the class with the passed data. </para></description></constructor>
+<destructor/>
+<method-group name="private member functions">
+<method name="set_name"><type><classname>option_description</classname> &amp;</type><parameter name="name"><paramtype>const char *</paramtype></parameter></method>
+</method-group>
+</class><class name="options_description_easy_init"><description><para>Class which provides convenient creation syntax to <classname alt="boost::program_options::option_description">option_description</classname>. </para></description><method-group name="public member functions">
+<method name="operator()"><type><classname>options_description_easy_init</classname> &amp;</type><parameter name="name"><paramtype>const char *</paramtype></parameter><parameter name="description"><paramtype>const char *</paramtype></parameter></method>
+<method name="operator()"><type><classname>options_description_easy_init</classname> &amp;</type><parameter name="name"><paramtype>const char *</paramtype></parameter><parameter name="s"><paramtype>const <classname>value_semantic</classname> *</paramtype></parameter></method>
+<method name="operator()"><type><classname>options_description_easy_init</classname> &amp;</type><parameter name="name"><paramtype>const char *</paramtype></parameter><parameter name="s"><paramtype>const <classname>value_semantic</classname> *</paramtype></parameter><parameter name="description"><paramtype>const char *</paramtype></parameter></method>
+</method-group>
+<constructor><parameter name="owner"><paramtype><classname>options_description</classname> *</paramtype></parameter></constructor>
+</class><class name="options_description"><description><para>A set of option descriptions. This provides convenient interface for adding new option (the add_options) method, and facilities to search for options by name.</para><para>See here for option adding interface discussion. <para><emphasis role="bold">See Also:</emphasis><para><classname alt="boost::program_options::option_description">option_description</classname> </para></para>
+</para></description><data-member name="m_default_line_length" specifiers="static"><type>const unsigned</type></data-member>
+<method-group name="public member functions">
+<method name="add"><type>void</type><parameter name="desc"><paramtype>shared_ptr&lt; <classname>option_description</classname> &gt;</paramtype></parameter><description><para>Adds new variable description. Throws duplicate_variable_error if either short or long name matches that of already present one. </para></description></method>
+<method name="add"><type><classname>options_description</classname> &amp;</type><parameter name="desc"><paramtype>const <classname>options_description</classname> &amp;</paramtype></parameter><description><para>Adds a group of option description. This has the same effect as adding all option_descriptions in 'desc' individually, except that output operator will show a separate group. Returns *this. </para></description></method>
+<method name="get_option_column_width" cv="const"><type>unsigned</type><description><para>Find the maximum width of the option column, including options in groups. </para></description></method>
+<method name="add_options"><type><classname>options_description_easy_init</classname></type><description><para>Returns an object of implementation-defined type suitable for adding options to <classname alt="boost::program_options::options_description">options_description</classname>. The returned object will have overloaded operator() with parameter type matching '<classname alt="boost::program_options::option_description">option_description</classname>' constructors. Calling the operator will create new <classname alt="boost::program_options::option_description">option_description</classname> instance and add it. </para></description></method>
+<method name="find" cv="const"><type>const <classname>option_description</classname> &amp;</type><parameter name="name"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="approx"><paramtype>bool</paramtype></parameter><parameter name="long_ignore_case"><paramtype>bool</paramtype><default>false</default></parameter><parameter name="short_ignore_case"><paramtype>bool</paramtype><default>false</default></parameter></method>
+<method name="find_nothrow" cv="const"><type>const <classname>option_description</classname> *</type><parameter name="name"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="approx"><paramtype>bool</paramtype></parameter><parameter name="long_ignore_case"><paramtype>bool</paramtype><default>false</default></parameter><parameter name="short_ignore_case"><paramtype>bool</paramtype><default>false</default></parameter></method>
+<method name="options" cv="const"><type>const std::vector&lt; shared_ptr&lt; <classname>option_description</classname> &gt; &gt; &amp;</type></method>
+<method name="print" cv="const"><type>void</type><parameter name="os"><paramtype>std::ostream &amp;</paramtype></parameter><parameter name="width"><paramtype>unsigned</paramtype><default>0</default></parameter><description><para>Outputs 'desc' to the specified stream, calling 'f' to output each <classname alt="boost::program_options::option_description">option_description</classname> element. </para></description></method>
+</method-group>
+<constructor><parameter name="line_length"><paramtype>unsigned</paramtype><default>m_default_line_length</default></parameter><parameter name="min_description_length"><paramtype>unsigned</paramtype><default>m_default_line_length/2</default></parameter><description><para>Creates the instance. </para></description></constructor>
+<constructor><parameter name="caption"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="line_length"><paramtype>unsigned</paramtype><default>m_default_line_length</default></parameter><parameter name="min_description_length"><paramtype>unsigned</paramtype><default>m_default_line_length/2</default></parameter><description><para>Creates the instance. The 'caption' parameter gives the name of this '<classname alt="boost::program_options::options_description">options_description</classname>' instance. Primarily useful for output. The 'description_length' specifies the number of columns that should be reserved for the description text; if the option text encroaches into this, then the description will start on the next line. </para></description></constructor>
+<method-group name="friend functions">
+<method name="operator&lt;&lt;"><type>friend BOOST_PROGRAM_OPTIONS_DECL std::ostream &amp;</type><parameter name="os"><paramtype>std::ostream &amp;</paramtype></parameter><parameter name="desc"><paramtype>const <classname>options_description</classname> &amp;</paramtype></parameter><description><para>Produces a human readable output of 'desc', listing options, their descriptions and allowed parameters. Other <classname alt="boost::program_options::options_description">options_description</classname> instances previously passed to add will be output separately. </para></description></method>
+</method-group>
+</class><class name="duplicate_option_error"><inherit access="public">boost::program_options::error</inherit><description><para>Class thrown when duplicate option description is found. </para></description><method-group name="public member functions">
+</method-group>
+<constructor><parameter name="xwhat"><paramtype>const std::string &amp;</paramtype></parameter></constructor>
+</class>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/program_options/parsers.hpp">
+<namespace name="boost">
+<namespace name="program_options">
+<class-specialization name="basic_parsed_options"><template>
+    </template><specialization><template-arg>wchar_t</template-arg></specialization><description><para>Specialization of <classname alt="boost::program_options::basic_parsed_options">basic_parsed_options</classname> which:<itemizedlist>
+<listitem><para>provides convenient conversion from <classname alt="boost::program_options::basic_parsed_options">basic_parsed_options&lt;char&gt;</classname></para></listitem><listitem><para>stores the passed char-based options for later use. </para></listitem></itemizedlist>
+</para></description><data-member name="options"><type>std::vector&lt; <classname>basic_option</classname>&lt; wchar_t &gt; &gt;</type></data-member>
+<data-member name="description"><type>const <classname>options_description</classname> *</type></data-member>
+<data-member name="utf8_encoded_options"><type><classname>basic_parsed_options</classname>&lt; char &gt;</type><description><para>Stores UTF8 encoded options that were passed to constructor, to avoid reverse conversion in some cases. </para></description></data-member>
+<data-member name="m_options_prefix"><type>int</type><description><para>Mainly used for the diagnostic messages in exceptions. The canonical option prefix for the parser which generated these results, depending on the settings for basic_command_line_parser::style() or cmdline::style(). In order of precedence of command_line_style enums: allow_long allow_long_disguise allow_dash_for_short allow_slash_for_short </para></description></data-member>
+<method-group name="public member functions">
+</method-group>
+<constructor specifiers="explicit"><parameter name="po"><paramtype>const <classname>basic_parsed_options</classname>&lt; char &gt; &amp;</paramtype></parameter><description><para>Constructs wrapped options from options in UTF8 encoding. </para></description></constructor>
+</class-specialization><class name="basic_command_line_parser"><template>
+      <template-type-parameter name="charT"/>
+    </template><inherit access="private">cmdline</inherit><description><para>Command line parser.</para><para>The class allows one to specify all the information needed for parsing and to parse the command line. It is primarily needed to emulate named function parameters -- a regular function with 5 parameters will be hard to use and creating overloads with a smaller number of parameters will be confusing.</para><para>For the most common case, the function parse_command_line is a better alternative.</para><para>There are two typedefs -- command_line_parser and wcommand_line_parser, for charT == char and charT == wchar_t cases. </para></description><method-group name="public member functions">
+<method name="options"><type><classname>basic_command_line_parser</classname> &amp;</type><parameter name="desc"><paramtype>const <classname>options_description</classname> &amp;</paramtype></parameter><description><para>Sets options descriptions to use. </para></description></method>
+<method name="positional"><type><classname>basic_command_line_parser</classname> &amp;</type><parameter name="desc"><paramtype>const <classname>positional_options_description</classname> &amp;</paramtype></parameter><description><para>Sets positional options description to use. </para></description></method>
+<method name="style"><type><classname>basic_command_line_parser</classname> &amp;</type><parameter name=""><paramtype>int</paramtype></parameter><description><para>Sets the command line style. </para></description></method>
+<method name="extra_parser"><type><classname>basic_command_line_parser</classname> &amp;</type><parameter name=""><paramtype>ext_parser</paramtype></parameter><description><para>Sets the extra parsers. </para></description></method>
+<method name="run"><type><classname>basic_parsed_options</classname>&lt; charT &gt;</type><description><para>Parses the options and returns the result of parsing. Throws on error. </para></description></method>
+<method name="allow_unregistered"><type><classname>basic_command_line_parser</classname> &amp;</type><description><para>Specifies that unregistered options are allowed and should be passed though. For each command like token that looks like an option but does not contain a recognized name, an instance of basic_option&lt;charT&gt; will be added to result, with 'unrecognized' field set to 'true'. It's possible to collect all unrecognized options with the 'collect_unrecognized' funciton. </para></description></method>
+<method name="extra_style_parser"><type><classname>basic_command_line_parser</classname> &amp;</type><parameter name="s"><paramtype>style_parser</paramtype></parameter></method>
+</method-group>
+<constructor><parameter name="args"><paramtype>const std::vector&lt; std::basic_string&lt; charT &gt; &gt; &amp;</paramtype></parameter><description><para>Creates a command line parser for the specified arguments list. The 'args' parameter should not include program name. </para></description></constructor>
+<constructor><parameter name="argc"><paramtype>int</paramtype></parameter><parameter name="argv"><paramtype>const charT *const</paramtype></parameter><description><para>Creates a command line parser for the specified arguments list. The parameters should be the same as passed to 'main'. </para></description></constructor>
+</class><enum name="collect_unrecognized_mode"><enumvalue name="include_positional"/><enumvalue name="exclude_positional"/><description><para>Controls if the 'collect_unregistered' function should include positional options, or not. </para></description></enum>
+<typedef name="parsed_options"><type><classname>basic_parsed_options</classname>&lt; char &gt;</type></typedef>
+<typedef name="wparsed_options"><type><classname>basic_parsed_options</classname>&lt; wchar_t &gt;</type></typedef>
+<typedef name="ext_parser"><description><para>Augments <classname alt="boost::program_options::basic_parsed_options&lt; wchar_t &gt;">basic_parsed_options&lt;wchar_t&gt;</classname> with conversion from 'parsed_options' </para></description><type>function1&lt; std::pair&lt; std::string, std::string &gt;, const std::string &amp; &gt;</type></typedef>
+<typedef name="command_line_parser"><type><classname>basic_command_line_parser</classname>&lt; char &gt;</type></typedef>
+<typedef name="wcommand_line_parser"><type><classname>basic_command_line_parser</classname>&lt; wchar_t &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+<function name="parse_command_line"><type><classname>basic_parsed_options</classname>&lt; charT &gt;</type><template>
+          <template-type-parameter name="charT"/>
+        </template><parameter name="argc"><paramtype>int</paramtype></parameter><parameter name="argv"><paramtype>const charT *const</paramtype></parameter><parameter name=""><paramtype>const <classname>options_description</classname> &amp;</paramtype></parameter><parameter name="style"><paramtype>int</paramtype><default>0</default></parameter><parameter name="ext"><paramtype>function1&lt; std::pair&lt; std::string, std::string &gt;, const std::string &amp; &gt;</paramtype><default>ext_parser()</default></parameter><description><para>Creates instance of 'command_line_parser', passes parameters to it, and returns the result of calling the 'run' method. </para></description></function>
+<function name="parse_config_file"><type>BOOST_PROGRAM_OPTIONS_DECL <classname>basic_parsed_options</classname>&lt; charT &gt;</type><template>
+          <template-type-parameter name="charT"/>
+        </template><parameter name=""><paramtype>std::basic_istream&lt; charT &gt; &amp;</paramtype></parameter><parameter name=""><paramtype>const <classname>options_description</classname> &amp;</paramtype></parameter><parameter name="allow_unregistered"><paramtype>bool</paramtype><default>false</default></parameter><description><para>Parse a config file.</para><para>Read from given stream. </para></description></function>
+<function name="parse_config_file"><type>BOOST_PROGRAM_OPTIONS_DECL <classname>basic_parsed_options</classname>&lt; charT &gt;</type><template>
+          <template-type-parameter name="charT"/>
+        </template><parameter name="filename"><paramtype>const char *</paramtype></parameter><parameter name=""><paramtype>const <classname>options_description</classname> &amp;</paramtype></parameter><parameter name="allow_unregistered"><paramtype>bool</paramtype><default>false</default></parameter><description><para>Parse a config file.</para><para>Read from file with the given name. The character type is passed to the file stream. </para></description></function>
+<function name="collect_unrecognized"><type>std::vector&lt; std::basic_string&lt; charT &gt; &gt;</type><template>
+          <template-type-parameter name="charT"/>
+        </template><parameter name="options"><paramtype>const std::vector&lt; <classname>basic_option</classname>&lt; charT &gt; &gt; &amp;</paramtype></parameter><parameter name="mode"><paramtype>enum collect_unrecognized_mode</paramtype></parameter><description><para>Collects the original tokens for all named options with 'unregistered' flag set. If 'mode' is 'include_positional' also collects all positional options. Returns the vector of origianl tokens for all collected options. </para></description></function>
+<function name="parse_environment"><type>BOOST_PROGRAM_OPTIONS_DECL <classname>parsed_options</classname></type><parameter name=""><paramtype>const <classname>options_description</classname> &amp;</paramtype></parameter><parameter name="name_mapper"><paramtype>const function1&lt; std::string, std::string &gt; &amp;</paramtype></parameter><description><para>Parse environment.</para><para>For each environment variable, the 'name_mapper' function is called to obtain the option name. If it returns empty string, the variable is ignored.</para><para>This is done since naming of environment variables is typically different from the naming of command line options. </para></description></function>
+<function name="parse_environment"><type>BOOST_PROGRAM_OPTIONS_DECL <classname>parsed_options</classname></type><parameter name=""><paramtype>const <classname>options_description</classname> &amp;</paramtype></parameter><parameter name="prefix"><paramtype>const std::string &amp;</paramtype></parameter><description><para>Parse environment.</para><para>Takes all environment variables which start with 'prefix'. The option name is obtained from variable name by removing the prefix and converting the remaining string into lower case. </para></description></function>
+<function name="parse_environment"><type>BOOST_PROGRAM_OPTIONS_DECL <classname>parsed_options</classname></type><parameter name=""><paramtype>const <classname>options_description</classname> &amp;</paramtype></parameter><parameter name="prefix"><paramtype>const char *</paramtype></parameter><description><para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. This function exists to resolve ambiguity between the two above functions when second argument is of 'char*' type. There's implicit conversion to both function1 and string. </para></description></function>
+<overloaded-function name="split_unix"><signature><type>BOOST_PROGRAM_OPTIONS_DECL std::vector&lt; std::string &gt;</type><parameter name="cmdline"><paramtype>const std::string &amp;</paramtype></parameter><parameter name="seperator"><paramtype>const std::string &amp;</paramtype><default>" \t"</default></parameter><parameter name="quote"><paramtype>const std::string &amp;</paramtype><default>"'\""</default></parameter><parameter name="escape"><paramtype>const std::string &amp;</paramtype><default>"\\"</default></parameter></signature><signature><type>BOOST_PROGRAM_OPTIONS_DECL std::vector&lt; std::wstring &gt;</type><parameter name="cmdline"><paramtype>const std::wstring &amp;</paramtype></parameter><parameter name="seperator"><paramtype>const std::wstring &amp;</paramtype><default>L" \t"</default></parameter><parameter name="quote"><paramtype>const std::wstring &amp;</paramtype><default>L"'\""</default></parameter><parameter name="escape"><paramtype>const std::wstring &amp;</paramtype><default>L"\\"</default></parameter></signature><description><para>Splits a given string to a collection of single strings which can be passed to command_line_parser. The second parameter is used to specify a collection of possible seperator chars used for splitting. The seperator is defaulted to space " ". Splitting is done in a unix style way, with respect to quotes '"' and escape characters '\' </para></description></overloaded-function>
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/program_options/positional_options.hpp">
+<namespace name="boost">
+<namespace name="program_options">
+<class name="positional_options_description"><description><para>Describes positional options.</para><para>The class allows to guess option names for positional options, which are specified on the command line and are identified by the position. The class uses the information provided by the user to associate a name with every positional option, or tell that no name is known.</para><para>The primary assumption is that only the relative order of the positional options themselves matters, and that any interleaving ordinary options don't affect interpretation of positional options.</para><para>The user initializes the class by specifying that first N positional options should be given the name X1, following M options should be given the name X2 and so on. </para></description><method-group name="public member functions">
+<method name="add"><type><classname>positional_options_description</classname> &amp;</type><parameter name="name"><paramtype>const char *</paramtype></parameter><parameter name="max_count"><paramtype>int</paramtype></parameter><description><para>Species that up to 'max_count' next positional options should be given the 'name'. The value of '-1' means 'unlimited'. No calls to 'add' can be made after call with 'max_value' equal to '-1'. </para></description></method>
+<method name="max_total_count" cv="const"><type>unsigned</type><description><para>Returns the maximum number of positional options that can be present. Can return (numeric_limits&lt;unsigned&gt;::max)() to indicate unlimited number. </para></description></method>
+<method name="name_for_position" cv="const"><type>const std::string &amp;</type><parameter name="position"><paramtype>unsigned</paramtype></parameter><description><para>Returns the name that should be associated with positional options at 'position'. Precondition: position &lt; max_total_count() </para></description></method>
+</method-group>
+<constructor/>
+</class>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/program_options/value_semantic.hpp">
+<namespace name="boost">
+<namespace name="program_options">
+<class name="value_semantic"><description><para>Class which specifies how the option's value is to be parsed and converted into C++ types. </para></description><method-group name="public member functions">
+<method name="name" cv="const = 0" specifiers="virtual"><type>std::string</type><description><para>Returns the name of the option. The name is only meaningful for automatic help message. </para></description></method>
+<method name="min_tokens" cv="const = 0" specifiers="virtual"><type>unsigned</type><description><para>The minimum number of tokens for this option that should be present on the command line. </para></description></method>
+<method name="max_tokens" cv="const = 0" specifiers="virtual"><type>unsigned</type><description><para>The maximum number of tokens for this option that should be present on the command line. </para></description></method>
+<method name="is_composing" cv="const = 0" specifiers="virtual"><type>bool</type><description><para>Returns true if values from different sources should be composed. Otherwise, value from the first source is used and values from other sources are discarded. </para></description></method>
+<method name="is_required" cv="const = 0" specifiers="virtual"><type>bool</type><description><para>Returns true if value must be given. Non-optional value </para></description></method>
+<method name="parse" cv="const = 0" specifiers="virtual"><type>void</type><parameter name="value_store"><paramtype>boost::any &amp;</paramtype></parameter><parameter name="new_tokens"><paramtype>const std::vector&lt; std::string &gt; &amp;</paramtype></parameter><parameter name="utf8"><paramtype>bool</paramtype></parameter><description><para>Parses a group of tokens that specify a value of option. Stores the result in 'value_store', using whatever representation is desired. May be be called several times if value of the same option is specified more than once. </para></description></method>
+<method name="apply_default" cv="const = 0" specifiers="virtual"><type>bool</type><parameter name="value_store"><paramtype>boost::any &amp;</paramtype></parameter><description><para>Called to assign default value to 'value_store'. Returns true if default value is assigned, and false if no default value exists. </para></description></method>
+<method name="notify" cv="const = 0" specifiers="virtual"><type>void</type><parameter name="value_store"><paramtype>const boost::any &amp;</paramtype></parameter><description><para>Called when final value of an option is determined. </para></description></method>
+</method-group>
+<destructor/>
+</class><class name="value_semantic_codecvt_helper"><template>
+      <template-type-parameter name="charT"/>
+    </template><description><para>Helper class which perform necessary character conversions in the 'parse' method and forwards the data further. </para></description></class><class-specialization name="value_semantic_codecvt_helper"><template>
+    </template><specialization><template-arg>char</template-arg></specialization><inherit access="public">boost::program_options::value_semantic</inherit><description><para>Helper conversion class for values that accept ascii strings as input. Overrides the 'parse' method and defines new 'xparse' method taking std::string. Depending on whether input to parse is ascii or UTF8, will pass it to xparse unmodified, or with UTF8-&gt;ascii conversion. </para></description><method-group name="private member functions">
+<method name="parse" cv="const" specifiers="virtual"><type>void</type><parameter name="value_store"><paramtype>boost::any &amp;</paramtype></parameter><parameter name="new_tokens"><paramtype>const std::vector&lt; std::string &gt; &amp;</paramtype></parameter><parameter name="utf8"><paramtype>bool</paramtype></parameter><description><para>Parses a group of tokens that specify a value of option. Stores the result in 'value_store', using whatever representation is desired. May be be called several times if value of the same option is specified more than once. </para></description></method>
+</method-group>
+<method-group name="protected member functions">
+<method name="xparse" cv="const = 0" specifiers="virtual"><type>void</type><parameter name="value_store"><paramtype>boost::any &amp;</paramtype></parameter><parameter name="new_tokens"><paramtype>const std::vector&lt; std::string &gt; &amp;</paramtype></parameter></method>
+</method-group>
+</class-specialization><class-specialization name="value_semantic_codecvt_helper"><template>
+    </template><specialization><template-arg>wchar_t</template-arg></specialization><inherit access="public">boost::program_options::value_semantic</inherit><description><para>Helper conversion class for values that accept ascii strings as input. Overrides the 'parse' method and defines new 'xparse' method taking std::wstring. Depending on whether input to parse is ascii or UTF8, will recode input to Unicode, or pass it unmodified. </para></description><method-group name="private member functions">
+<method name="parse" cv="const" specifiers="virtual"><type>void</type><parameter name="value_store"><paramtype>boost::any &amp;</paramtype></parameter><parameter name="new_tokens"><paramtype>const std::vector&lt; std::string &gt; &amp;</paramtype></parameter><parameter name="utf8"><paramtype>bool</paramtype></parameter><description><para>Parses a group of tokens that specify a value of option. Stores the result in 'value_store', using whatever representation is desired. May be be called several times if value of the same option is specified more than once. </para></description></method>
+</method-group>
+<method-group name="protected member functions">
+<method name="xparse" cv="const = 0" specifiers="virtual"><type>void</type><parameter name="value_store"><paramtype>boost::any &amp;</paramtype></parameter><parameter name="new_tokens"><paramtype>const std::vector&lt; std::wstring &gt; &amp;</paramtype></parameter></method>
+</method-group>
+</class-specialization><class name="untyped_value"><inherit access="public">boost::program_options::value_semantic_codecvt_helper&lt; char &gt;</inherit><description><para>Class which specifies a simple handling of a value: the value will have string type and only one token is allowed. </para></description><method-group name="public member functions">
+<method name="name" cv="const" specifiers="virtual"><type>std::string</type><description><para>Returns the name of the option. The name is only meaningful for automatic help message. </para></description></method>
+<method name="min_tokens" cv="const" specifiers="virtual"><type>unsigned</type><description><para>The minimum number of tokens for this option that should be present on the command line. </para></description></method>
+<method name="max_tokens" cv="const" specifiers="virtual"><type>unsigned</type><description><para>The maximum number of tokens for this option that should be present on the command line. </para></description></method>
+<method name="is_composing" cv="const" specifiers="virtual"><type>bool</type><description><para>Returns true if values from different sources should be composed. Otherwise, value from the first source is used and values from other sources are discarded. </para></description></method>
+<method name="is_required" cv="const" specifiers="virtual"><type>bool</type><description><para>Returns true if value must be given. Non-optional value </para></description></method>
+<method name="xparse" cv="const" specifiers="virtual"><type>void</type><parameter name="value_store"><paramtype>boost::any &amp;</paramtype></parameter><parameter name="new_tokens"><paramtype>const std::vector&lt; std::string &gt; &amp;</paramtype></parameter><description><para>If 'value_store' is already initialized, or new_tokens has more than one elements, throws. Otherwise, assigns the first string from 'new_tokens' to 'value_store', without any modifications. </para></description></method>
+<method name="apply_default" cv="const" specifiers="virtual"><type>bool</type><parameter name=""><paramtype>boost::any &amp;</paramtype></parameter><description><para>Does nothing. </para></description></method>
+<method name="notify" cv="const" specifiers="virtual"><type>void</type><parameter name=""><paramtype>const boost::any &amp;</paramtype></parameter><description><para>Does nothing. </para></description></method>
+</method-group>
+<constructor><parameter name="zero_tokens"><paramtype>bool</paramtype><default>false</default></parameter></constructor>
+</class><class name="typed_value_base"><description><para>Base class for all option that have a fixed type, and are willing to announce this type to the outside world. Any 'value_semantics' for which you want to find out the type can be dynamic_cast-ed to <classname alt="boost::program_options::typed_value_base">typed_value_base</classname>. If conversion succeeds, the 'type' method can be called. </para></description><method-group name="public member functions">
+<method name="value_type" cv="const = 0" specifiers="virtual"><type>const std::type_info &amp;</type></method>
+</method-group>
+<destructor/>
+</class><class name="typed_value"><template>
+      <template-type-parameter name="T"/>
+      <template-type-parameter name="charT"><default>char</default></template-type-parameter>
+    </template><inherit access="public">boost::program_options::value_semantic_codecvt_helper&lt; charT &gt;</inherit><inherit access="public">boost::program_options::typed_value_base</inherit><description><para>Class which handles value of a specific type. </para></description><method-group name="public member functions">
+<method name="default_value"><type><classname>typed_value</classname> *</type><parameter name="v"><paramtype>const T &amp;</paramtype></parameter><description><para>Specifies default value, which will be used if none is explicitly specified. The type 'T' should provide operator&lt;&lt; for ostream. </para></description></method>
+<method name="default_value"><type><classname>typed_value</classname> *</type><parameter name="v"><paramtype>const T &amp;</paramtype></parameter><parameter name="textual"><paramtype>const std::string &amp;</paramtype></parameter><description><para>Specifies default value, which will be used if none is explicitly specified. Unlike the above overload, the type 'T' need not provide operator&lt;&lt; for ostream, but textual representation of default value must be provided by the user. </para></description></method>
+<method name="implicit_value"><type><classname>typed_value</classname> *</type><parameter name="v"><paramtype>const T &amp;</paramtype></parameter><description><para>Specifies an implicit value, which will be used if the option is given, but without an adjacent value. Using this implies that an explicit value is optional, </para></description></method>
+<method name="value_name"><type><classname>typed_value</classname> *</type><parameter name="name"><paramtype>const std::string &amp;</paramtype></parameter><description><para>Specifies the name used to to the value in help message. </para></description></method>
+<method name="implicit_value"><type><classname>typed_value</classname> *</type><parameter name="v"><paramtype>const T &amp;</paramtype></parameter><parameter name="textual"><paramtype>const std::string &amp;</paramtype></parameter><description><para>Specifies an implicit value, which will be used if the option is given, but without an adjacent value. Using this implies that an explicit value is optional, but if given, must be strictly adjacent to the option, i.e.: '-ovalue' or '–option=value'. Giving '-o' or '–option' will cause the implicit value to be applied. Unlike the above overload, the type 'T' need not provide operator&lt;&lt; for ostream, but textual representation of default value must be provided by the user. </para></description></method>
+<method name="notifier"><type><classname>typed_value</classname> *</type><parameter name="f"><paramtype>function1&lt; void, const T &amp; &gt;</paramtype></parameter><description><para>Specifies a function to be called when the final value is determined. </para></description></method>
+<method name="composing"><type><classname>typed_value</classname> *</type><description><para>Specifies that the value is composing. See the 'is_composing' method for explanation. </para></description></method>
+<method name="multitoken"><type><classname>typed_value</classname> *</type><description><para>Specifies that the value can span multiple tokens. </para></description></method>
+<method name="zero_tokens"><type><classname>typed_value</classname> *</type><description><para>Specifies that no tokens may be provided as the value of this option, which means that only presense of the option is significant. For such option to be useful, either the 'validate' function should be specialized, or the 'implicit_value' method should be also used. In most cases, you can use the 'bool_switch' function instead of using this method. </para></description></method>
+<method name="required"><type><classname>typed_value</classname> *</type><description><para>Specifies that the value must occur. </para></description></method>
+<method name="name" cv="const"><type>std::string</type></method>
+<method name="is_composing" cv="const"><type>bool</type></method>
+<method name="min_tokens" cv="const"><type>unsigned</type></method>
+<method name="max_tokens" cv="const"><type>unsigned</type></method>
+<method name="is_required" cv="const"><type>bool</type></method>
+<method name="xparse" cv="const"><type>void</type><parameter name="value_store"><paramtype>boost::any &amp;</paramtype></parameter><parameter name="new_tokens"><paramtype>const std::vector&lt; std::basic_string&lt; charT &gt; &gt; &amp;</paramtype></parameter><description><para>Creates an instance of the 'validator' class and calls its operator() to perform the actual conversion. </para></description></method>
+<method name="apply_default" cv="const" specifiers="virtual"><type>bool</type><parameter name="value_store"><paramtype>boost::any &amp;</paramtype></parameter><description><para>If default value was specified via previous call to 'default_value', stores that value into 'value_store'. Returns true if default value was stored. </para></description></method>
+<method name="notify" cv="const"><type>void</type><parameter name="value_store"><paramtype>const boost::any &amp;</paramtype></parameter><description><para>If an address of variable to store value was specified when creating *this, stores the value there. Otherwise, does nothing. </para></description></method>
+<method name="value_type" cv="const" specifiers="virtual"><type>const std::type_info &amp;</type></method>
+</method-group>
+<constructor><parameter name="store_to"><paramtype>T *</paramtype></parameter><description><para>Ctor. The 'store_to' parameter tells where to store the value when it's known. The parameter can be NULL. </para></description></constructor>
+</class>
+
+
+<overloaded-function name="value"><signature><type><classname>typed_value</classname>&lt; T &gt; *</type><template>
+          <template-type-parameter name="T"/>
+        </template></signature><signature><type><classname>typed_value</classname>&lt; T &gt; *</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="v"><paramtype>T *</paramtype></parameter></signature><description><para>Creates a typed_value&lt;T&gt; instance. This function is the primary method to create <classname alt="boost::program_options::value_semantic">value_semantic</classname> instance for a specific type, which can later be passed to '<classname alt="boost::program_options::option_description">option_description</classname>' constructor. The second overload is used when it's additionally desired to store the value of option into program variable. </para></description></overloaded-function>
+
+<overloaded-function name="wvalue"><signature><type><classname>typed_value</classname>&lt; T, wchar_t &gt; *</type><template>
+          <template-type-parameter name="T"/>
+        </template></signature><signature><type><classname>typed_value</classname>&lt; T, wchar_t &gt; *</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="v"><paramtype>T *</paramtype></parameter></signature><description><para>Creates a typed_value&lt;T&gt; instance. This function is the primary method to create <classname alt="boost::program_options::value_semantic">value_semantic</classname> instance for a specific type, which can later be passed to '<classname alt="boost::program_options::option_description">option_description</classname>' constructor. </para></description></overloaded-function>
+
+<overloaded-function name="bool_switch"><signature><type>BOOST_PROGRAM_OPTIONS_DECL <classname>typed_value</classname>&lt; bool &gt; *</type></signature><signature><type>BOOST_PROGRAM_OPTIONS_DECL <classname>typed_value</classname>&lt; bool &gt; *</type><parameter name="v"><paramtype>bool *</paramtype></parameter></signature><description><para>Works the same way as the 'value&lt;bool&gt;' function, but the created <classname alt="boost::program_options::value_semantic">value_semantic</classname> won't accept any explicit value. So, if the option is present on the command line, the value will be 'true'. </para></description></overloaded-function>
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/program_options/variables_map.hpp">
+<namespace name="boost">
+<namespace name="program_options">
+<class name="basic_parsed_options"><template>
+      <template-type-parameter name="charT"/>
+    </template><description><para>Results of parsing an input source. The primary use of this class is passing information from parsers component to value storage component. This class does not makes much sense itself. </para></description><method-group name="public member functions">
+</method-group>
+<constructor specifiers="explicit"><parameter name="xdescription"><paramtype>const <classname>options_description</classname> *</paramtype></parameter><parameter name="options_prefix"><paramtype>int</paramtype><default>0</default></parameter></constructor>
+</class><class name="variable_value"><description><para>Class holding value of option. Contains details about how the value is set and allows to conveniently obtain the value. </para></description><method-group name="friend functions">
+<method name="store"><type>friend BOOST_PROGRAM_OPTIONS_DECL void</type><parameter name="options"><paramtype>const <classname>basic_parsed_options</classname>&lt; char &gt; &amp;</paramtype></parameter><parameter name="m"><paramtype><classname>variables_map</classname> &amp;</paramtype></parameter><parameter name=""><paramtype>bool</paramtype></parameter><description><para>Stores in 'm' all options that are defined in 'options'. If 'm' already has a non-defaulted value of an option, that value is not changed, even if 'options' specify some value. </para></description></method>
+</method-group>
+<method-group name="public member functions">
+<method name="as" cv="const"><type>const T &amp;</type><template>
+          <template-type-parameter name="T"/>
+        </template><description><para>If stored value if of type T, returns that value. Otherwise, throws boost::bad_any_cast exception. </para></description></method>
+<method name="as"><type>T &amp;</type><template>
+          <template-type-parameter name="T"/>
+        </template><description><para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </para></description></method>
+<method name="empty" cv="const"><type>bool</type><purpose>Returns true if no value is stored. </purpose></method>
+<method name="defaulted" cv="const"><type>bool</type><description><para>Returns true if the value was not explicitly given, but has default value. </para></description></method>
+<method name="value" cv="const"><type>const boost::any &amp;</type><description><para>Returns the contained value. </para></description></method>
+<method name="value"><type>boost::any &amp;</type><description><para>Returns the contained value. </para></description></method>
+</method-group>
+<constructor/>
+<constructor><parameter name="xv"><paramtype>const boost::any &amp;</paramtype></parameter><parameter name="xdefaulted"><paramtype>bool</paramtype></parameter></constructor>
+</class><class name="abstract_variables_map"><description><para>Implements string-&gt;string mapping with convenient value casting facilities. </para></description><method-group name="public member functions">
+<method name="operator[]" cv="const"><type>const <classname>variable_value</classname> &amp;</type><parameter name="name"><paramtype>const std::string &amp;</paramtype></parameter><description><para>Obtains the value of variable 'name', from *this and possibly from the chain of variable maps.</para><para><itemizedlist>
+<listitem><para>if there's no value in *this.<itemizedlist>
+<listitem><para>if there's next variable map, returns value from it</para></listitem><listitem><para>otherwise, returns empty value</para></listitem></itemizedlist>
+</para></listitem><listitem><para>if there's defaulted value<itemizedlist>
+<listitem><para>if there's next variable map, which has a non-defaulted value, return that</para></listitem><listitem><para>otherwise, return value from *this</para></listitem></itemizedlist>
+</para></listitem><listitem><para>if there's a non-defaulted value, returns it. </para></listitem></itemizedlist>
+</para></description></method>
+<method name="next"><type>void</type><parameter name="next"><paramtype><classname>abstract_variables_map</classname> *</paramtype></parameter><description><para>Sets next variable map, which will be used to find variables not found in *this. </para></description></method>
+</method-group>
+<constructor/>
+<constructor><parameter name="next"><paramtype>const <classname>abstract_variables_map</classname> *</paramtype></parameter></constructor>
+<destructor/>
+<method-group name="private member functions">
+<method name="get" cv="const = 0" specifiers="virtual"><type>const <classname>variable_value</classname> &amp;</type><parameter name="name"><paramtype>const std::string &amp;</paramtype></parameter><description><para>Returns value of variable 'name' stored in *this, or empty value otherwise. </para></description></method>
+</method-group>
+</class><class name="variables_map"><inherit access="public">boost::program_options::abstract_variables_map</inherit><inherit access="public">std::map&lt; std::string, variable_value &gt;</inherit><description><para>Concrete variables map which store variables in real map.</para><para>This class is derived from std::map&lt;std::string, variable_value&gt;, so you can use all map operators to examine its content. </para></description><method-group name="public member functions">
+<method name="operator[]" cv="const"><type>const <classname>variable_value</classname> &amp;</type><parameter name="name"><paramtype>const std::string &amp;</paramtype></parameter></method>
+<method name="clear"><type>void</type></method>
+<method name="notify"><type>void</type></method>
+</method-group>
+<constructor/>
+<constructor><parameter name="next"><paramtype>const <classname>abstract_variables_map</classname> *</paramtype></parameter></constructor>
+<method-group name="private member functions">
+<method name="get" cv="const" specifiers="virtual"><type>const <classname>variable_value</classname> &amp;</type><parameter name="name"><paramtype>const std::string &amp;</paramtype></parameter><description><para>Implementation of abstract_variables_map::get which does 'find' in *this. </para></description></method>
+</method-group>
+<method-group name="friend functions">
+<method name="store"><type>friend BOOST_PROGRAM_OPTIONS_DECL void</type><parameter name="options"><paramtype>const <classname>basic_parsed_options</classname>&lt; char &gt; &amp;</paramtype></parameter><parameter name="xm"><paramtype><classname>variables_map</classname> &amp;</paramtype></parameter><parameter name="utf8"><paramtype>bool</paramtype></parameter><description><para>Stores in 'm' all options that are defined in 'options'. If 'm' already has a non-defaulted value of an option, that value is not changed, even if 'options' specify some value. </para></description></method>
+</method-group>
+</class><function name="store"><type>BOOST_PROGRAM_OPTIONS_DECL void</type><parameter name="options"><paramtype>const <classname>basic_parsed_options</classname>&lt; char &gt; &amp;</paramtype></parameter><parameter name="m"><paramtype><classname>variables_map</classname> &amp;</paramtype></parameter><parameter name="utf8"><paramtype>bool</paramtype><default>false</default></parameter><description><para>Stores in 'm' all options that are defined in 'options'. If 'm' already has a non-defaulted value of an option, that value is not changed, even if 'options' specify some value. </para></description></function>
+<function name="store"><type>BOOST_PROGRAM_OPTIONS_DECL void</type><parameter name="options"><paramtype>const <classname>basic_parsed_options</classname>&lt; wchar_t &gt; &amp;</paramtype></parameter><parameter name="m"><paramtype><classname>variables_map</classname> &amp;</paramtype></parameter><description><para>Stores in 'm' all options that are defined in 'options'. If 'm' already has a non-defaulted value of an option, that value is not changed, even if 'options' specify some value. This is wide character variant. </para></description></function>
+<function name="notify"><type>BOOST_PROGRAM_OPTIONS_DECL void</type><parameter name="m"><paramtype><classname>variables_map</classname> &amp;</paramtype></parameter><description><para>Runs all 'notify' function for options in 'm'. </para></description></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/program_options/version.hpp">
+<macro name="BOOST_PROGRAM_OPTIONS_VERSION"><description><para>The version of the source interface. The value will be incremented whenever a change is made which might cause compilation errors for existing code. </para></description></macro>
+<macro name="BOOST_PROGRAM_OPTIONS_IMPLICIT_VALUE_NEXT_TOKEN"/>
+</header>
+</library-reference>

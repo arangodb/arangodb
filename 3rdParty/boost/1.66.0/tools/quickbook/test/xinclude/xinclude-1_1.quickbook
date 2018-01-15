@@ -1,0 +1,6 @@
+[article Include]
+
+[xinclude ../stub.xml]
+[xinclude stub.xml]
+[xinclude sub/stub.xml]
+[xinclude ../xinclude]

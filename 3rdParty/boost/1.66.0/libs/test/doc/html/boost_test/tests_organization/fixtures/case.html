@@ -1,0 +1,340 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Test case fixture</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../fixtures.html" title="Fixtures">
+<link rel="prev" href="models.html" title="Fixture models">
+<link rel="next" href="per_test_suite_fixture.html" title="Test suite entry/exit fixture">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="models.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../fixtures.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="per_test_suite_fixture.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.tests_organization.fixtures.case"></a><a class="link" href="case.html" title="Test case fixture">Test case
+        fixture</a>
+</h4></div></div></div>
+<p>
+          A <span class="emphasis"><em>test case fixture</em></span> is a fixture consumed by a test
+          case: the fixture <code class="computeroutput"><span class="identifier">setup</span></code>
+          is called before the test case executes, and the fixture <code class="computeroutput"><span class="identifier">teardown</span></code> is called after the test case
+          finished its execution, independently from its execution state.
+        </p>
+<p>
+          The <span class="emphasis"><em>Unit Test Framework</em></span> provides several ways of defining
+          fixtures for test-cases, each of which having their properties:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              the declaration of a fixture for a single test case, letting the test
+              case access the members of the fixture,
+            </li>
+<li class="listitem">
+              the declaration of one or more fixture(s) for a single test case, without
+              accessing the members and with a flexible interface,
+            </li>
+<li class="listitem">
+              the declaration of a fixture for a group of test-cases defined by a
+              subtree, with access to the members of the fixture.
+            </li>
+</ul></div>
+<h4>
+<a name="boost_test.tests_organization.fixtures.case.h0"></a>
+          <span class="phrase"><a name="boost_test.tests_organization.fixtures.case.single_test_case_fixture"></a></span><a class="link" href="case.html#boost_test.tests_organization.fixtures.case.single_test_case_fixture">Single
+          test case fixture</a>
+        </h4>
+<p>
+          The following two methods are available for declaring a fixture attached
+          to one particular test case:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              the use of the macro <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_test_case_fixture.html" title="BOOST_FIXTURE_TEST_CASE"><code class="computeroutput"><span class="identifier">BOOST_FIXTURE_TEST_CASE</span></code></a> in
+              place of <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_auto_test_case.html" title="BOOST_AUTO_TEST_CASE"><code class="computeroutput"><span class="identifier">BOOST_AUTO_TEST_CASE</span></code></a>, which
+              let access to the members of the fixture
+            </li>
+<li class="listitem">
+              the use of the decorator <a class="link" href="../../utf_reference/test_org_reference/decorator_fixture.html" title="fixture (decorator)"><code class="computeroutput"><span class="identifier">fixture</span></code></a>, which does not let
+              access to the members but enables the definition of several fixtures
+              for one test case.
+            </li>
+</ul></div>
+<a name="test_case_fixture_macro"></a><h5>
+<a name="boost_test.tests_organization.fixtures.case.h1"></a>
+          <span class="phrase"><a name="boost_test.tests_organization.fixtures.case.fixture_with_boost_fixture_test_"></a></span><a class="link" href="case.html#boost_test.tests_organization.fixtures.case.fixture_with_boost_fixture_test_">Fixture
+          with <code class="computeroutput"><span class="identifier">BOOST_FIXTURE_TEST_CASE</span></code></a>
+        </h5>
+<p>
+          <code class="computeroutput"><span class="identifier">BOOST_FIXTURE_TEST_CASE</span></code>
+          serves as a test case declaration with a fixture, and is meant be used
+          in place of the test case declaration with <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_auto_test_case.html" title="BOOST_AUTO_TEST_CASE"><code class="computeroutput"><span class="identifier">BOOST_AUTO_TEST_CASE</span></code></a>:
+        </p>
+<pre class="programlisting"><span class="identifier">BOOST_FIXTURE_TEST_CASE</span><span class="special">(</span><span class="identifier">test_case_name</span><span class="special">,</span> <span class="identifier">fixture_name</span><span class="special">);</span>
+</pre>
+<p>
+          The only difference from the macro <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_auto_test_case.html" title="BOOST_AUTO_TEST_CASE"><code class="computeroutput"><span class="identifier">BOOST_AUTO_TEST_CASE</span></code></a> is the presence
+          of an extra argument <code class="computeroutput"><span class="identifier">fixture_name</span></code>.
+          The public and protected members of the fixture are directly accessible
+          from the test case body. Only one fixture can be attached to a test-case
+          <a href="#ftn.boost_test.tests_organization.fixtures.case.f0" class="footnote" name="boost_test.tests_organization.fixtures.case.f0"><sup class="footnote">[4]</sup></a>.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            You can't access private members of fixture, but then why would you make
+            anything private?
+          </p></td></tr>
+</table></div>
+<h6>
+<a name="boost_test.tests_organization.fixtures.case.h2"></a>
+          <span class="phrase"><a name="boost_test.tests_organization.fixtures.case.example_descr"></a></span><a class="link" href="case.html#boost_test.tests_organization.fixtures.case.example_descr">Example:
+          Per test case fixture</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">example</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">struct</span> <span class="identifier">F</span> <span class="special">{</span>
+  <span class="identifier">F</span><span class="special">()</span> <span class="special">:</span> <span class="identifier">i</span><span class="special">(</span> <span class="number">0</span> <span class="special">)</span> <span class="special">{</span> <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span> <span class="string">"setup fixture"</span> <span class="special">);</span> <span class="special">}</span>
+  <span class="special">~</span><span class="identifier">F</span><span class="special">()</span>         <span class="special">{</span> <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span> <span class="string">"teardown fixture"</span> <span class="special">);</span> <span class="special">}</span>
+
+  <span class="keyword">int</span> <span class="identifier">i</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="identifier">BOOST_FIXTURE_TEST_CASE</span><span class="special">(</span> <span class="identifier">test_case1</span><span class="special">,</span> <span class="identifier">F</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="identifier">i</span> <span class="special">==</span> <span class="number">1</span> <span class="special">);</span>
+  <span class="special">++</span><span class="identifier">i</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_FIXTURE_TEST_CASE</span><span class="special">(</span> <span class="identifier">test_case2</span><span class="special">,</span> <span class="identifier">F</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_CHECK_EQUAL</span><span class="special">(</span> <span class="identifier">i</span><span class="special">,</span> <span class="number">1</span> <span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span> <span class="identifier">test_case3</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="keyword">true</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">example</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">message</span>
+<span class="identifier">Running</span> <span class="number">3</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">setup</span> <span class="identifier">fixture</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">13</span><span class="special">):</span> <span class="identifier">error</span> <span class="identifier">in</span> <span class="string">"test_case1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">i</span> <span class="special">==</span> <span class="number">1</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">teardown</span> <span class="identifier">fixture</span>
+<span class="identifier">setup</span> <span class="identifier">fixture</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">19</span><span class="special">):</span> <span class="identifier">error</span> <span class="identifier">in</span> <span class="string">"test_case2"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">i</span> <span class="special">==</span> <span class="number">1</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">0</span> <span class="special">!=</span> <span class="number">1</span><span class="special">]</span>
+<span class="identifier">teardown</span> <span class="identifier">fixture</span>
+
+<span class="special">***</span> <span class="number">2</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">test</span> <span class="identifier">suite</span> <span class="string">"example"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<p>
+          In this example only <code class="computeroutput"><span class="identifier">test_case1</span></code>
+          and <code class="computeroutput"><span class="identifier">test_case2</span></code> have fixture
+          <code class="computeroutput"><span class="identifier">F</span></code> assigned. You still need
+          to refer to the fixture name in every test case. <a class="link" href="case.html#test_case_fixture_subtree">This</a>
+          section explains how a same fixture can be declared for a subtree under
+          a test suite.
+        </p>
+<a name="test_case_fixture_decorator"></a><h5>
+<a name="boost_test.tests_organization.fixtures.case.h3"></a>
+          <span class="phrase"><a name="boost_test.tests_organization.fixtures.case.fixture_with_fixture_decorator"></a></span><a class="link" href="case.html#boost_test.tests_organization.fixtures.case.fixture_with_fixture_decorator">Fixture
+          with <code class="computeroutput"><span class="identifier">fixture</span></code> decorator</a>
+        </h5>
+<p>
+          By using the decorator <a class="link" href="../../utf_reference/test_org_reference/decorator_fixture.html" title="fixture (decorator)"><code class="computeroutput"><span class="identifier">fixture</span></code></a>, it is possible to:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              attach several fixtures to a unique test case
+            </li>
+<li class="listitem">
+              use a flexible fixture interface (see <a class="link" href="models.html" title="Fixture models">here</a>)
+            </li>
+</ul></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            Using the decorator approach, it is not possible to access the members
+            of the fixture (in case the fixture is implemented as a class)
+          </p></td></tr>
+</table></div>
+<a name="test_case_fixture_subtree"></a><h4>
+<a name="boost_test.tests_organization.fixtures.case.h4"></a>
+          <span class="phrase"><a name="boost_test.tests_organization.fixtures.case.fixture_for_a_complete_subtree"></a></span><a class="link" href="case.html#boost_test.tests_organization.fixtures.case.fixture_for_a_complete_subtree">Fixture
+          for a complete subtree</a>
+        </h4>
+<p>
+          If all test cases in a test sub tree require the same fixture (you can
+          group test cases in a test suite based on a fixture required) you can make
+          another step toward an automation of a test fixture assignment. To assign
+          the same shared fixture for all test cases in a test suite, use the macro
+          <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_test_suite_fixture.html" title="BOOST_FIXTURE_TEST_SUITE"><code class="computeroutput"><span class="identifier">BOOST_FIXTURE_TEST_SUITE</span></code></a> in place
+          of the macro <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_auto_test_suite.html" title="BOOST_AUTO_TEST_SUITE"><code class="computeroutput"><span class="identifier">BOOST_AUTO_TEST_SUITE</span></code></a> for automated
+          test suite creation and registration.
+        </p>
+<pre class="programlisting"><span class="identifier">BOOST_FIXTURE_TEST_SUITE</span><span class="special">(</span><span class="identifier">suite_name</span><span class="special">,</span> <span class="identifier">fixture_name</span><span class="special">);</span>
+</pre>
+<p>
+          Once again the only difference from the macro <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_auto_test_suite.html" title="BOOST_AUTO_TEST_SUITE"><code class="computeroutput"><span class="identifier">BOOST_AUTO_TEST_SUITE</span></code></a> usage is
+          the presence of an extra argument - the fixture name. And now, you not
+          only have direct access to the public and protected members of the fixture,
+          but also do not need to refer to the fixture name in test case definition.
+          All test cases assigned the same fixture automatically.
+        </p>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            If necessary you can reset the fixture for a particular test case using
+            the macro <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_test_case_fixture.html" title="BOOST_FIXTURE_TEST_CASE"><code class="computeroutput"><span class="identifier">BOOST_FIXTURE_TEST_CASE</span></code></a>. Similarly
+            you can reset the fixture for a particular sub test suite using <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_test_suite_fixture.html" title="BOOST_FIXTURE_TEST_SUITE"><code class="computeroutput"><span class="identifier">BOOST_FIXTURE_TEST_SUITE</span></code></a>.
+          </p></td></tr>
+</table></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            The fixture assignment is <span class="emphasis"><em>deep</em></span>. In other words unless
+            reset by another <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_test_suite_fixture.html" title="BOOST_FIXTURE_TEST_SUITE"><code class="computeroutput"><span class="identifier">BOOST_FIXTURE_TEST_SUITE</span></code></a> or
+            <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_test_case_fixture.html" title="BOOST_FIXTURE_TEST_CASE"><code class="computeroutput"><span class="identifier">BOOST_FIXTURE_TEST_CASE</span></code></a> definition
+            the same fixture is assigned to all test cases of a test suite, including
+            ones that belong to the sub test suites.
+          </p></td></tr>
+</table></div>
+<h6>
+<a name="boost_test.tests_organization.fixtures.case.h5"></a>
+          <span class="phrase"><a name="boost_test.tests_organization.fixtures.case.example_descr0"></a></span><a class="link" href="case.html#boost_test.tests_organization.fixtures.case.example_descr0">Example:
+          Test suite level fixture</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">fixture_02</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">struct</span> <span class="identifier">F</span> <span class="special">{</span>
+  <span class="identifier">F</span><span class="special">()</span> <span class="special">:</span> <span class="identifier">i</span><span class="special">(</span> <span class="number">0</span> <span class="special">)</span> <span class="special">{</span> <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span> <span class="string">"setup fixture"</span> <span class="special">);</span> <span class="special">}</span>
+  <span class="special">~</span><span class="identifier">F</span><span class="special">()</span>         <span class="special">{</span> <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span> <span class="string">"teardown fixture"</span> <span class="special">);</span> <span class="special">}</span>
+
+  <span class="keyword">int</span> <span class="identifier">i</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="identifier">BOOST_FIXTURE_TEST_SUITE</span><span class="special">(</span><span class="identifier">s</span><span class="special">,</span> <span class="identifier">F</span><span class="special">)</span>
+
+  <span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test_case1</span><span class="special">)</span>
+  <span class="special">{</span>
+    <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span><span class="string">"running test_case1"</span><span class="special">);</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">i</span> <span class="special">==</span> <span class="number">0</span><span class="special">);</span>
+  <span class="special">}</span>
+
+  <span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test_case2</span><span class="special">)</span>
+  <span class="special">{</span>
+    <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span><span class="string">"running test_case2"</span><span class="special">);</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">i</span> <span class="special">==</span> <span class="number">0</span><span class="special">);</span>
+  <span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE_END</span><span class="special">()</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">fixture_02</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">message</span>
+<span class="identifier">Running</span> <span class="number">2</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">setup</span> <span class="identifier">fixture</span>
+<span class="identifier">running</span> <span class="identifier">test_case1</span>
+<span class="identifier">teardown</span> <span class="identifier">fixture</span>
+<span class="identifier">setup</span> <span class="identifier">fixture</span>
+<span class="identifier">running</span> <span class="identifier">test_case2</span>
+<span class="identifier">teardown</span> <span class="identifier">fixture</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            The fixture constructor/setup and teardown/destructor is called for each
+            test cases (the state of the fixture is not shared among the test cases).
+          </p></td></tr>
+</table></div>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.boost_test.tests_organization.fixtures.case.f0" class="footnote"><p><a href="#boost_test.tests_organization.fixtures.case.f0" class="para"><sup class="para">[4] </sup></a>
+            it is still possible to define a class inheriting from several fixtures,
+            that will act as a proxy fixture.
+          </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2017 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="models.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../fixtures.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="per_test_suite_fixture.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

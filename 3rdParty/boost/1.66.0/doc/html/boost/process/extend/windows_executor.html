@@ -1,0 +1,189 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Struct template windows_executor</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../../process/reference.html#header.boost.process.extend_hpp" title="Header &lt;boost/process/extend.hpp&gt;">
+<link rel="prev" href="posix_executor.html" title="Struct template posix_executor">
+<link rel="next" href="on_setup.html" title="Global on_setup">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="posix_executor.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../process/reference.html#header.boost.process.extend_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="on_setup.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.process.extend.windows_executor"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Struct template windows_executor</span></h2>
+<p>boost::process::extend::windows_executor &#8212; The windows executor type. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../process/reference.html#header.boost.process.extend_hpp" title="Header &lt;boost/process/extend.hpp&gt;">boost/process/extend.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Char<span class="special">,</span> <span class="keyword">typename</span> Sequence<span class="special">&gt;</span> 
+<span class="keyword">struct</span> <a class="link" href="windows_executor.html" title="Struct template windows_executor">windows_executor</a> <span class="special">{</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="boost.process.extend.windows_executor.startup_info_t"></a><span class="identifier">startup_info_t</span><span class="special">;</span>     <span class="comment">// The type of the <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms686331.aspx" target="_top">startup-info</a>, depending on the char-type. </span>
+  <span class="keyword">typedef</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="boost.process.extend.windows_executor.startup_info_ex_t"></a><span class="identifier">startup_info_ex_t</span><span class="special">;</span>  <span class="comment">// The type of the <a href="https://msdn.microsoft.com/de-de/library/windows/desktop/ms686329.aspx" target="_top">extended startup-info</a>, depending the char-type; only defined with winapi-version equal or higher than 6. </span>
+
+  <span class="comment">// <a class="link" href="windows_executor.html#idp51783616-bb">public member functions</a></span>
+  <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <a class="link" href="windows_executor.html#idp51784176-bb"><span class="identifier">error</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="windows_executor.html#idp51785648-bb"><span class="identifier">set_error</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="windows_executor.html#idp51789056-bb"><span class="identifier">set_error</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="windows_executor.html#idp51791824-bb"><span class="identifier">set_startup_info_ex</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// public data members</span>
+  <span class="identifier">Sequence</span> <span class="special">&amp;</span> <span class="identifier">seq</span><span class="special">;</span>  <span class="comment">// A reference to the actual initializer-sequence. </span>
+  <span class="keyword">const</span> <span class="identifier">Char</span> <span class="special">*</span> <span class="identifier">exe</span><span class="special">;</span>  <span class="comment">// A pointer to the name of the executable. It's null by default. </span>
+  <span class="keyword">char</span> <span class="identifier">Char</span> <span class="special">*</span> <span class="identifier">cmd_line</span><span class="special">;</span>  <span class="comment">// A pointer to the argument-vector. Must be set by some initializer. </span>
+  <span class="keyword">char</span> <span class="identifier">Char</span> <span class="special">*</span> <span class="identifier">env</span><span class="special">;</span>  <span class="comment">// A pointer to the environment variables. It's null by default. </span>
+  <span class="keyword">const</span> <span class="identifier">Char</span> <span class="special">*</span> <span class="identifier">work_dir</span><span class="special">;</span>  <span class="comment">// A pointer to the working directory. It's null by default. </span>
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <span class="identifier">proc_attrs</span><span class="special">;</span>  <span class="comment">// A pointer to the process-attributes of type <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/aa379560.aspx" target="_top">SECURITY_ATTRIBUTES</a>. It's null by default. </span>
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <span class="identifier">thread_attrs</span><span class="special">;</span>  <span class="comment">// A pointer to the thread-attributes of type <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/aa379560.aspx" target="_top">SECURITY_ATTRIBUTES</a>. It' null by default. </span>
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <span class="identifier">inherit_handles</span><span class="special">;</span>  <span class="comment">// A logical bool value setting whether handles shall be inherited or not. </span>
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <span class="identifier">proc_info</span><span class="special">;</span>  <span class="comment">// The element holding the process-information after process creation. The type is <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms684873.aspx" target="_top">PROCESS_INFORMATION</a></span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">atomic</span><span class="special">&lt;</span> <span class="keyword">int</span> <span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">exit_status</span><span class="special">;</span>  <span class="comment">// This shared-pointer holds the exit code. It's done this way, so it can be shared between an <code class="computeroutput">asio::io_context</code> and <a class="link" href="../child.html" title="Class child">child</a>. </span>
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <span class="identifier">creation_flags</span><span class="special">;</span>  <span class="comment">// The creation flags of the process. </span>
+  <span class="identifier">startup_info_t</span> <span class="identifier">startup_info</span><span class="special">;</span>  <span class="comment">// This element is an instance or a reference (if startup_info_ex exists) to the <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms686331.aspx" target="_top">startup-info</a> for the process. </span>
+  <span class="identifier">startup_info_ex_t</span> <span class="identifier">startup_info_ex</span><span class="special">;</span>  <span class="comment">// This element is the instance of the <a href="https://msdn.microsoft.com/de-de/library/windows/desktop/ms686329.aspx" target="_top">extended startup-info</a>. It is only available with a winapi-version equal or highter than 6. </span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.30.9.13.9.4"></a><h2>Description</h2>
+<p>This type represents the posix executor and can be used for overloading in a custom handler.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>It is an alias for the implementation on posix, and a forward-declaration on windows. </p></td></tr>
+</table></div>
+<p>
+
+ 
+As information for extension development, here is the structure of the process launching (in pseudo-code and uml)</p>
+<pre class="programlisting">
+<span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">s</span> <span class="special">:</span> <span class="identifier">seq</span><span class="special">)</span>
+    <span class="identifier">s</span><span class="special">.</span><a class="link" href="handler.html#idp51648592-bb">on_setup</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">)</span><span class="special">;</span>
+
+<span class="keyword">if</span> <span class="special">(</span><a class="link" href="windows_executor.html#idp51784176-bb">error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">s</span> <span class="special">:</span> <span class="identifier">seq</span><span class="special">)</span>
+       <span class="identifier">s</span><span class="special">.</span><a class="link" href="handler.html#idp51652416-bb">on_error</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">,</span> <a class="link" href="windows_executor.html#idp51784176-bb">error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">return</span> <a class="link" href="../child.html" title="Class child">child</a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span>
+<span class="keyword">int</span> <span class="identifier">err_code</span> <span class="special">=</span> <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms682425.aspx" target="_top"><span class="identifier">CreateProcess</span></a><span class="special">(</span>
+         <span class="identifier">exe</span><span class="special">,</span>
+         <span class="identifier">cmd_line</span><span class="special">,</span>
+         <span class="identifier">proc_attrs</span><span class="special">,</span>
+         <span class="identifier">thread_attrs</span><span class="special">,</span>
+         <span class="identifier">creation_flags</span><span class="special">,</span>
+         <span class="identifier">env</span><span class="special">,</span>
+         <span class="identifier">work_dir</span><span class="special">,</span>
+         <span class="identifier">startup_info</span><span class="special">,</span>
+         <span class="identifier">proc_info</span><span class="special">)</span><span class="special">;</span>
+
+<a class="link" href="../child.html" title="Class child">child</a> <span class="identifier">c</span><span class="special">(</span><span class="identifier">proc_info</span><span class="special">,</span> <span class="identifier">exit_code</span><span class="special">)</span><span class="special">;</span>
+
+<span class="keyword">if</span> <span class="special">(</span><a class="link" href="windows_executor.html#idp51784176-bb">error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">s</span> <span class="special">:</span> <span class="identifier">seq</span><span class="special">)</span>
+        <span class="identifier">s</span><span class="special">.</span><a class="link" href="handler.html#idp51652416-bb">on_error</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">,</span> <a class="link" href="windows_executor.html#idp51784176-bb">error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+<span class="keyword">else</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">s</span> <span class="special">:</span> <span class="identifier">seq</span><span class="special">)</span>
+        <span class="identifier">s</span><span class="special">.</span><a class="link" href="handler.html#idp51652416-bb">on_success</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">)</span><span class="special">;</span>
+
+<span class="comment">//now we check again, because a on_success handler might've errored.</span>
+<span class="keyword">if</span> <span class="special">(</span><a class="link" href="windows_executor.html#idp51784176-bb">error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">s</span> <span class="special">:</span> <span class="identifier">seq</span><span class="special">)</span>
+        <span class="identifier">s</span><span class="special">.</span><a class="link" href="handler.html#idp51652416-bb">on_error</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">,</span> <a class="link" href="windows_executor.html#idp51784176-bb">error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">return</span> <a class="link" href="../child.html" title="Class child">child</a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span>
+<span class="keyword">else</span>
+    <span class="keyword">return</span> <span class="identifier">c</span><span class="special">;</span>
+
+</pre>
+<p>
+</p>
+<div class="mediaobject">
+<img src="../../../boost_process/windows_exec.svg"><div class="caption"><p>The sequence for windows process creation.</p></div>
+</div>
+<p>
+ </p>
+<div class="refsect2">
+<a name="id-1.3.30.9.13.9.4.4"></a><h3>Template Parameters</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Char</pre>
+<p>The used char-type, either <code class="computeroutput">char</code> or <code class="computeroutput">wchar_t</code>.</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Sequence</pre>
+<p>The used initializer-sequence, it is fulfills the boost.fusion <a href="http://www.boost.org/doc/libs/master/libs/fusion/doc/html/fusion/sequence.html" target="_top">sequence</a> concept. </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.30.9.13.9.4.5"></a><h3>
+<a name="idp51783616-bb"></a><code class="computeroutput">windows_executor</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <a name="idp51784176-bb"></a><span class="identifier">error</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>This function returns a const reference to the error state of the executor. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51785648-bb"></a><span class="identifier">set_error</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> msg<span class="special">)</span><span class="special">;</span></pre>
+<p>This function can be used to report an error to the executor. This will be handled according to the configuration of the executor, i.e. it might throw an exception. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>This is the required way to handle errors in initializers. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51789056-bb"></a><span class="identifier">set_error</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">,</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span> msg<span class="special">)</span><span class="special">;</span></pre>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51791824-bb"></a><span class="identifier">set_startup_info_ex</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>This function switches the information, so that the extended structure is used. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>It's only defined with winapi-version equal or higher than 6. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2006-2012 Julio M. Merino Vidal, Ilya Sokolov,
+      Felipe Tanus, Jeff Flinn, Boris Schaeling<br>Copyright &#169; 2016 Klemens D. Morgenstern<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="posix_executor.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../process/reference.html#header.boost.process.extend_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="on_setup.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

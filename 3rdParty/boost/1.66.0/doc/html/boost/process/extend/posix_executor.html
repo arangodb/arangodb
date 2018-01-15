@@ -1,0 +1,203 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Struct template posix_executor</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../../process/reference.html#header.boost.process.extend_hpp" title="Header &lt;boost/process/extend.hpp&gt;">
+<link rel="prev" href="async_handler.html" title="Struct async_handler">
+<link rel="next" href="windows_executor.html" title="Struct template windows_executor">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="async_handler.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../process/reference.html#header.boost.process.extend_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="windows_executor.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.process.extend.posix_executor"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Struct template posix_executor</span></h2>
+<p>boost::process::extend::posix_executor &#8212; The posix executor type. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../process/reference.html#header.boost.process.extend_hpp" title="Header &lt;boost/process/extend.hpp&gt;">boost/process/extend.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Sequence<span class="special">&gt;</span> 
+<span class="keyword">struct</span> <a class="link" href="posix_executor.html" title="Struct template posix_executor">posix_executor</a> <span class="special">{</span>
+
+  <span class="comment">// <a class="link" href="posix_executor.html#idp51729264-bb">public member functions</a></span>
+  <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <a class="link" href="posix_executor.html#idp51729824-bb"><span class="identifier">error</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="posix_executor.html#idp51731296-bb"><span class="identifier">set_error</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="posix_executor.html#idp51734704-bb"><span class="identifier">set_error</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// public data members</span>
+  <span class="identifier">Sequence</span> <span class="special">&amp;</span> <span class="identifier">seq</span><span class="special">;</span>  <span class="comment">// A reference to the actual initializer-sequence. </span>
+  <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span> <span class="identifier">exe</span><span class="special">;</span>  <span class="comment">// A pointer to the name of the executable. </span>
+  <span class="keyword">char</span> <span class="special">*</span><span class="keyword">const</span> <span class="special">*</span> <span class="identifier">cmd_line</span><span class="special">;</span>  <span class="comment">// A pointer to the argument-vector. </span>
+  <span class="keyword">char</span> <span class="special">*</span><span class="special">*</span> <span class="identifier">env</span><span class="special">;</span>  <span class="comment">// A pointer to the environment variables, as default it is set to <a href="http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html" target="_top">environ</a></span>
+  <span class="identifier">pid_t</span> <span class="identifier">pid</span><span class="special">;</span>  <span class="comment">// The pid of the process - it will be -1 before invoking <a href="http://pubs.opengroup.org/onlinepubs/009695399/functions/fork.html" target="_top">fork</a>, and after forking either 0 for the new process or a positive value if in the current process. */. </span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">atomic</span><span class="special">&lt;</span> <span class="keyword">int</span> <span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">exit_status</span><span class="special">;</span>  <span class="comment">// This shared-pointer holds the exit code. It's done this way, so it can be shared between an <code class="computeroutput">asio::io_context</code> and <a class="link" href="../child.html" title="Class child">child</a>. </span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.30.9.13.8.4"></a><h2>Description</h2>
+<p>This type represents the posix executor and can be used for overloading in a custom handler. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>It is an alias for the implementation on posix, and a forward-declaration on windows.</p></td></tr>
+</table></div>
+<p>
+
+ 
+As information for extension development, here is the structure of the process launching (in pseudo-code and uml)
+</p>
+<pre class="programlisting">
+<span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">s</span> <span class="special">:</span> <span class="identifier">seq</span><span class="special">)</span>
+    <span class="identifier">s</span><span class="special">.</span><a class="link" href="handler.html#idp51648592-bb">on_setup</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">)</span><span class="special">;</span>
+
+<span class="keyword">if</span> <span class="special">(</span><a class="link" href="posix_executor.html#idp51729824-bb">error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">s</span> <span class="special">:</span> <span class="identifier">seq</span><span class="special">)</span>
+       <span class="identifier">s</span><span class="special">.</span><a class="link" href="handler.html#idp51652416-bb">on_error</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">,</span> <a class="link" href="posix_executor.html#idp51729824-bb">error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">return</span> <a class="link" href="../child.html" title="Class child">child</a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="identifier">pid</span> <span class="special">=</span> <a href="http://pubs.opengroup.org/onlinepubs/009695399/functions/fork.html" target="_top"><span class="identifier">fork</span><span class="special">(</span><span class="special">)</span></a>
+<a class="link" href="handler.html#idp51648592-bb">on_setup</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">)</span><span class="special">;</span>
+
+<span class="keyword">if</span> <span class="special">(</span><span class="identifier">pid</span> <span class="special">==</span> <span class="special">-</span><span class="number">1</span><span class="special">)</span> <span class="comment">//fork error </span>
+<span class="special">{</span>
+    <a class="link" href="posix_executor.html#idp51731296-bb">set_error</a><span class="special">(</span><a class="link" href="../../../process/reference.html#boost.process.extend.get_last_error">get_last_error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">s</span> <span class="special">:</span> <span class="identifier">seq</span><span class="special">)</span>
+        <span class="identifier">s</span><span class="special">.</span><a class="link" href="handler.html#idp51660544-bb">on_fork_error</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">,</span> <a class="link" href="posix_executor.html#idp51729824-bb">error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">s</span> <span class="special">:</span> <span class="identifier">seq</span><span class="special">)</span>
+        <span class="identifier">s</span><span class="special">.</span><a class="link" href="handler.html#idp51652416-bb">on_error</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">,</span> <a class="link" href="posix_executor.html#idp51729824-bb">error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">return</span> <a class="link" href="../child.html" title="Class child">child</a><span class="special">(</span><span class="special">)</span>
+<span class="special">}</span>
+<span class="keyword">else</span> <span class="keyword">if</span> <span class="special">(</span><span class="identifier">pid</span> <span class="special">==</span> <span class="number">0</span><span class="special">)</span> <span class="comment">//child process</span>
+<span class="special">{</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">s</span> <span class="special">:</span> <span class="identifier">seq</span><span class="special">)</span>
+        <span class="identifier">s</span><span class="special">.</span><a class="link" href="handler.html#idp51665408-bb">on_exec_setup</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">)</span><span class="special">;</span>
+    <a href="http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html" target="_top"><span class="identifier">execve</span></a><span class="special">(</span><span class="identifier">exe</span><span class="special">,</span> <span class="identifier">cmd_line</span><span class="special">,</span> <span class="identifier">env</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">auto</span> <span class="identifier">ec</span> <span class="special">=</span> <a class="link" href="../../../process/reference.html#boost.process.extend.get_last_error">get_last_error</a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">s</span> <span class="special">:</span> <span class="identifier">seq</span><span class="special">)</span>
+        <span class="identifier">s</span><span class="special">.</span><a class="link" href="handler.html#idp51670640-bb">on_exec_error</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">)</span><span class="special">;</span>
+
+    <span class="emphasis"><em><span class="identifier">unspecified</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></em></span><span class="comment">//here the error is send to the father process interally</span>
+
+    <a href="http://en.cppreference.com/w/cpp/utility/program/exit" target="_top"><span class="identifier">std</span><span class="special">::</span><span class="identifier">exit</span></a><span class="special">(</span><a href="http://en.cppreference.com/w/c/program/EXIT_status" target="_top"><span class="identifier">EXIT_FAILURE</span></a><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">return</span> <a class="link" href="../child.html" title="Class child">child</a><span class="special">(</span><span class="special">)</span><span class="special">;</span> <span class="comment">//for C++ compliance</span>
+<span class="special">}</span>
+
+<a class="link" href="../child.html" title="Class child">child</a> <span class="identifier">c</span><span class="special">(</span><span class="identifier">pid</span><span class="special">,</span> <span class="identifier">exit_code</span><span class="special">)</span><span class="special">;</span>
+
+<span class="emphasis"><em><span class="identifier">unspecified</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></em></span><span class="comment">//here, we read the the error from the child process</span>
+
+<span class="keyword">if</span> <span class="special">(</span><a class="link" href="posix_executor.html#idp51729824-bb">error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">s</span> <span class="special">:</span> <span class="identifier">seq</span><span class="special">)</span>
+        <span class="identifier">s</span><span class="special">.</span><a class="link" href="handler.html#idp51652416-bb">on_error</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">,</span> <a class="link" href="posix_executor.html#idp51729824-bb">error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+<span class="keyword">else</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">s</span> <span class="special">:</span> <span class="identifier">seq</span><span class="special">)</span>
+        <span class="identifier">s</span><span class="special">.</span><a class="link" href="handler.html#idp51652416-bb">on_success</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">)</span><span class="special">;</span>
+
+<span class="comment">//now we check again, because a on_success handler might've errored.</span>
+<span class="keyword">if</span> <span class="special">(</span><a class="link" href="posix_executor.html#idp51729824-bb">error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">s</span> <span class="special">:</span> <span class="identifier">seq</span><span class="special">)</span>
+        <span class="identifier">s</span><span class="special">.</span><a class="link" href="handler.html#idp51652416-bb">on_error</a><span class="special">(</span><span class="special">*</span><span class="keyword">this</span><span class="special">,</span> <a class="link" href="posix_executor.html#idp51729824-bb">error</a><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">return</span> <a class="link" href="../child.html" title="Class child">child</a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span>
+<span class="keyword">else</span>
+    <span class="keyword">return</span> <span class="identifier">c</span><span class="special">;</span>
+</pre>
+<p>
+
+</p>
+<div class="mediaobject">
+<img src="../../../boost_process/posix_success.svg"><div class="caption"><p>The sequence if when no error occurs.</p></div>
+</div>
+<p>
+
+</p>
+<div class="mediaobject">
+<img src="../../../boost_process/posix_exec_err.svg"><div class="caption"><p>The sequence if the execution fails.</p></div>
+</div>
+<p>
+
+</p>
+<div class="mediaobject">
+<img src="../../../boost_process/posix_fork_err.svg"><div class="caption"><p>The sequence if the fork fails.</p></div>
+</div>
+<p>
+
+</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Error handling if execve fails is done through a pipe, unless ignore_error is used. </p></td></tr>
+</table></div>
+<p>
+</p>
+<div class="refsect2">
+<a name="id-1.3.30.9.13.8.4.4"></a><h3>Template Parameters</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Sequence</pre>
+<p>The used initializer-sequence, it is fulfills the boost.fusion <a href="http://www.boost.org/doc/libs/master/libs/fusion/doc/html/fusion/sequence.html" target="_top">sequence</a> concept.</p>
+</li></ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.30.9.13.8.4.5"></a><h3>
+<a name="idp51729264-bb"></a><code class="computeroutput">posix_executor</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <a name="idp51729824-bb"></a><span class="identifier">error</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>This function returns a const reference to the error state of the executor. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51731296-bb"></a><span class="identifier">set_error</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> msg<span class="special">)</span><span class="special">;</span></pre>
+<p>This function can be used to report an error to the executor. This will be handled according to the configuration of the executor, i.e. it might throw an exception. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>This is the required way to handle errors in initializers. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51734704-bb"></a><span class="identifier">set_error</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">,</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span> msg<span class="special">)</span><span class="special">;</span></pre>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2006-2012 Julio M. Merino Vidal, Ilya Sokolov,
+      Felipe Tanus, Jeff Flinn, Boris Schaeling<br>Copyright &#169; 2016 Klemens D. Morgenstern<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="async_handler.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../process/reference.html#header.boost.process.extend_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="windows_executor.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

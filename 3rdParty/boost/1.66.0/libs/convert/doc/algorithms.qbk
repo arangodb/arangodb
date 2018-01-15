@@ -1,0 +1,30 @@
+[/
+  Copyright (c) Vladimir Batov 2009-2016
+  Distributed under the Boost Software License, Version 1.0.
+  See copy at http://www.boost.org/LICENSE_1_0.txt.
+]
+
+[section:algorithms Boost.Convert with Standard Algorithms]
+
+[algorithm_example1]
+[algorithm_example2]
+[algorithm_example3]
+[algorithm_example4]
+[algorithm_example5]
+
+[heading Forced ['TypeIn] vs. Deduced]
+
+So far it was sufficient to explicitly specify only one type to `boost::cnv::apply<TypeOut>` -- the target ['TypeOut] type. The source ['TypeIn] type has been provided implicitly through the algorithm and often it all just works (as the examples above demonstrate). However, at times more control is needed regarding the ['TypeIn] type and `boost::cnv::apply()` provides such control via explicit specification of ['TypeIn] -- `boost::cnv::apply<TypeOut, TypeIn>`.
+
+The following example demonstrates an interesting issue related to the ['`change`] class introduced in [link boost_convert.integration_of_user_types Integration of User-Defined Types]. The class is essentially a glorified ['`enum`], a user-friendly convenience wrapper around the actual ['`enum value_type { no, up, dn }`]. In the example an array of ['`change`] values (`chgs1`) is sensibly converted to readable "no", "up" and "dn" strings (`strs1`) when an array of ['`change::value_type`] values (`chgs2`) converts to obscure "0", "1" and "2" (`strs2`).
+
+[algorithm_example6]
+
+The `boost::cnv::apply<TypeOut, TypeIn>` with forced (rather than deduced) ['TypeIn] comes to the rescue and converts the array of ['`change::value_type`] values (`chgs2`) to sensible "no", "up" and "dn" (`strs3`):
+   
+[algorithm_example7]
+
+[note For demonstration purposes the example above is made as simple as possible and, consequently, the described "issue" could probably be addressed by other means. Still, do not let my inability to come up with a better (complex but short and succulent) example get in the way of appreciating the described functionality. I do not expect it to be used often but it is here when you need it.]
+
+[endsect] [/section:algorithms Boost.Convert with Standard Algorithms]
+

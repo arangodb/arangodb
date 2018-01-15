@@ -1,0 +1,252 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>FieldsWriter</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../concepts.html" title="Concepts">
+<link rel="prev" href="Fields.html" title="Fields">
+<link rel="next" href="File.html" title="File">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="Fields.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../concepts.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="File.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.concepts.FieldsWriter"></a><a class="link" href="FieldsWriter.html" title="FieldsWriter">FieldsWriter</a>
+</h3></div></div></div>
+<p>
+        A <span class="bold"><strong>FieldsWriter</strong></span> provides a algorithm to obtain
+        a sequence of buffers representing the complete serialized HTTP/1 header
+        for a set of fields. The implementation constructs an instance of this type
+        when needed, and calls into it once to retrieve the buffers.
+      </p>
+<h5>
+<a name="beast.concepts.FieldsWriter.h0"></a>
+        <span class="phrase"><a name="beast.concepts.FieldsWriter.associated_types"></a></span><a class="link" href="FieldsWriter.html#beast.concepts.FieldsWriter.associated_types">Associated
+        Types</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            <a class="link" href="FieldsWriter.html" title="FieldsWriter"><span class="bold"><strong>FieldsWriter</strong></span></a>
+          </li></ul></div>
+<h5>
+<a name="beast.concepts.FieldsWriter.h1"></a>
+        <span class="phrase"><a name="beast.concepts.FieldsWriter.requirements"></a></span><a class="link" href="FieldsWriter.html#beast.concepts.FieldsWriter.requirements">Requirements</a>
+      </h5>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          These requirements may undergo non-backward compatible changes in subsequent
+          versions.
+        </p></td></tr>
+</table></div>
+<p>
+        In this table:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">W</span></code> denotes a type that
+            meets the requirements of <span class="bold"><strong>FieldsWriter</strong></span>.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">F</span></code> denotes a <a class="link" href="Fields.html" title="Fields"><span class="bold"><strong>Fields</strong></span></a> where <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_same</span><span class="special">&lt;</span><span class="identifier">W</span><span class="special">,</span> <span class="identifier">F</span><span class="special">::</span><span class="identifier">reader</span><span class="special">&gt;::</span><span class="identifier">value</span>
+            <span class="special">==</span> <span class="keyword">true</span></code>.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">a</span></code> is a value of type
+            <code class="computeroutput"><span class="identifier">W</span></code>.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">f</span></code> is a value of type
+            <code class="computeroutput"><span class="identifier">F</span></code>.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">v</span></code> is an <code class="computeroutput"><span class="keyword">unsigned</span></code> value representing the HTTP version.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">c</span></code> is an <code class="computeroutput"><span class="keyword">unsigned</span></code> representing the HTTP status-code.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">m</span></code> is a value of type
+            <a class="link" href="../ref/boost__beast__http__verb.html" title="http::verb"><code class="computeroutput"><span class="identifier">verb</span></code></a>.
+          </li>
+</ul></div>
+<div class="table">
+<a name="beast.concepts.FieldsWriter.valid_expressions"></a><p class="title"><b>Table&#160;1.33.&#160;Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  expression
+                </p>
+              </th>
+<th>
+                <p>
+                  type
+                </p>
+              </th>
+<th>
+                <p>
+                  semantics, pre/post-conditions
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">W</span><span class="special">::</span><span class="identifier">const_buffers_type</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  A type which meets the requirements of <a href="../../../../../../doc/html/boost_asio/reference/ConstBufferSequence.html" target="_top"><span class="bold"><strong>ConstBufferSequence</strong></span></a>. This is the
+                  type of buffer returned by <code class="computeroutput"><span class="identifier">W</span><span class="special">::</span><span class="identifier">get</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">W</span><span class="special">{</span><span class="identifier">f</span><span class="special">,</span><span class="identifier">v</span><span class="special">,</span><span class="identifier">m</span><span class="special">}</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  The implementation calls this constructor to indicate that the
+                  fields being serialized form part of an HTTP request. The lifetime
+                  of <code class="computeroutput"><span class="identifier">f</span></code> is guaranteed
+                  to end no earlier than after the <code class="computeroutput"><span class="identifier">W</span></code>
+                  is destroyed.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">W</span><span class="special">{</span><span class="identifier">f</span><span class="special">,</span><span class="identifier">v</span><span class="special">,</span><span class="identifier">c</span><span class="special">}</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  The implementation calls this constructor to indicate that the
+                  fields being serialized form part of an HTTP response. The lifetime
+                  of <code class="computeroutput"><span class="identifier">f</span></code> is guaranteed
+                  to end no earlier than after the <code class="computeroutput"><span class="identifier">W</span></code>
+                  is destroyed.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">W</span><span class="special">{</span><span class="identifier">f</span><span class="special">}</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  The implementation calls this constructor to indicate that the
+                  fields being serialized form part of a chunked encoding final-chunk
+                  trailer. The lifetime of <code class="computeroutput"><span class="identifier">f</span></code>
+                  is guaranteed to end no earlier than after the <code class="computeroutput"><span class="identifier">W</span></code>
+                  is destroyed.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">get</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">W</span><span class="special">::</span><span class="identifier">const_buffers_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Called once after construction, this function returns a constant
+                  buffer sequence containing the serialized representation of the
+                  HTTP request or response including the final carriage return linefeed
+                  sequence (<code class="computeroutput"><span class="string">"\r\n"</span></code>).
+                </p>
+                <p>
+                  Copies may be made of the returned sequence, but the underlying
+                  memory is still owned by the writer. The implementation will destroy
+                  all copies of the buffer sequence before destroying <code class="computeroutput"><span class="identifier">a</span></code>.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="beast.concepts.FieldsWriter.h2"></a>
+        <span class="phrase"><a name="beast.concepts.FieldsWriter.exemplar"></a></span><a class="link" href="FieldsWriter.html#beast.concepts.FieldsWriter.exemplar">Exemplar</a>
+      </h5>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">FieldsWriter</span>
+<span class="special">{</span>
+    <span class="comment">// The type of buffers returned by `get`</span>
+    <span class="keyword">struct</span> <span class="identifier">const_buffers_type</span><span class="special">;</span>
+
+    <span class="comment">// Constructor for requests</span>
+    <span class="identifier">FieldsWriter</span><span class="special">(</span><span class="identifier">Fields</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">f</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="identifier">version</span><span class="special">,</span> <span class="identifier">verb</span> <span class="identifier">method</span><span class="special">);</span>
+
+    <span class="comment">// Constructor for responses</span>
+    <span class="identifier">FieldsWriter</span><span class="special">(</span><span class="identifier">Fields</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">f</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="identifier">version</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="identifier">status</span><span class="special">);</span>
+
+    <span class="comment">// Returns the serialized header buffers</span>
+    <span class="identifier">const_buffers_type</span>
+    <span class="identifier">get</span><span class="special">();</span>
+<span class="special">};</span>
+</pre>
+<h5>
+<a name="beast.concepts.FieldsWriter.h3"></a>
+        <span class="phrase"><a name="beast.concepts.FieldsWriter.models"></a></span><a class="link" href="FieldsWriter.html#beast.concepts.FieldsWriter.models">Models</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            <a class="link" href="../ref/boost__beast__http__basic_fields/writer.html" title="http::basic_fields::writer"><code class="computeroutput"><span class="identifier">basic_fields</span><span class="special">::</span><span class="identifier">writer</span></code></a>
+          </li></ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="Fields.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../concepts.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="File.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Struct template basic_pipebuf</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../process/reference.html#header.boost.process.pipe_hpp" title="Header &lt;boost/process/pipe.hpp&gt;">
+<link rel="prev" href="basic_pipe.html" title="Class template basic_pipe">
+<link rel="next" href="basic_ipstream.html" title="Class template basic_ipstream">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="basic_pipe.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../process/reference.html#header.boost.process.pipe_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="basic_ipstream.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.process.basic_pipebuf"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Struct template basic_pipebuf</span></h2>
+<p>boost::process::basic_pipebuf</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../process/reference.html#header.boost.process.pipe_hpp" title="Header &lt;boost/process/pipe.hpp&gt;">boost/process/pipe.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+<span class="keyword">struct</span> <a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_streambuf</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">{</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <a class="link" href="basic_pipe.html" title="Class template basic_pipe">basic_pipe</a><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <a name="boost.process.basic_pipebuf.pipe_type"></a><span class="identifier">pipe_type</span><span class="special">;</span>  
+  <span class="keyword">typedef</span> <span class="identifier">CharT</span>                       <a name="boost.process.basic_pipebuf.char_type"></a><span class="identifier">char_type</span><span class="special">;</span>  
+  <span class="keyword">typedef</span> <span class="identifier">Traits</span>                      <a name="boost.process.basic_pipebuf.traits_type"></a><span class="identifier">traits_type</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="identifier">Traits</span><span class="special">::</span><span class="identifier">int_type</span>            <a name="boost.process.basic_pipebuf.int_type"></a><span class="identifier">int_type</span><span class="special">;</span>   
+  <span class="keyword">typedef</span> <span class="identifier">Traits</span><span class="special">::</span><span class="identifier">pos_type</span>            <a name="boost.process.basic_pipebuf.pos_type"></a><span class="identifier">pos_type</span><span class="special">;</span>   
+  <span class="keyword">typedef</span> <span class="identifier">Traits</span><span class="special">::</span><span class="identifier">off_type</span>            <a name="boost.process.basic_pipebuf.off_type"></a><span class="identifier">off_type</span><span class="special">;</span>   
+
+  <span class="comment">// <a class="link" href="basic_pipebuf.html#boost.process.basic_pipebufconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="basic_pipebuf.html#idp52064976-bb"><span class="identifier">basic_pipebuf</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_pipebuf.html#idp52065584-bb"><span class="identifier">basic_pipebuf</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+  <a class="link" href="basic_pipebuf.html#idp52067568-bb"><span class="identifier">basic_pipebuf</span></a><span class="special">(</span><a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+  <a class="link" href="basic_pipebuf.html#idp52069392-bb"><span class="identifier">basic_pipebuf</span></a><span class="special">(</span><a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_pipebuf.html#idp52070960-bb"><span class="identifier">basic_pipebuf</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;</span> <a class="link" href="basic_pipebuf.html#idp52072672-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+  <a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;</span> <a class="link" href="basic_pipebuf.html#idp52075232-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+  <a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;</span> <a class="link" href="basic_pipebuf.html#idp52077632-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;</span> <a class="link" href="basic_pipebuf.html#idp52079760-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="basic_pipebuf.html#idp52050528-bb">public member functions</a></span>
+  <span class="identifier">int_type</span> <a class="link" href="basic_pipebuf.html#idp52051088-bb"><span class="identifier">overflow</span></a><span class="special">(</span><span class="identifier">int_type</span> <span class="special">=</span> <span class="identifier">traits_type</span><span class="special">::</span><span class="identifier">eof</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">int</span> <a class="link" href="basic_pipebuf.html#idp52053248-bb"><span class="identifier">sync</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">int_type</span> <a class="link" href="basic_pipebuf.html#idp52054432-bb"><span class="identifier">underflow</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="basic_pipebuf.html#idp52055616-bb"><span class="identifier">pipe</span></a><span class="special">(</span><a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="basic_pipebuf.html#idp52057744-bb"><span class="identifier">pipe</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;</span> <a class="link" href="basic_pipebuf.html#idp52060032-bb"><span class="identifier">pipe</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">const</span> <a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;</span> <a class="link" href="basic_pipebuf.html#idp52061472-bb"><span class="identifier">pipe</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;&amp;</span> <a class="link" href="basic_pipebuf.html#idp52063344-bb"><span class="identifier">pipe</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="basic_pipebuf.html#idp52082048-bb">private member functions</a></span>
+  <span class="keyword">bool</span> <a class="link" href="basic_pipebuf.html#idp52082624-bb"><span class="identifier">_write_impl</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// public data members</span>
+  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keyword">int</span> <span class="identifier">default_buffer_size</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.30.9.17.4.4"></a><h2>Description</h2>
+<p>Implementation of the stream buffer for a pipe. </p>
+<div class="refsect2">
+<a name="id-1.3.30.9.17.4.4.3"></a><h3>
+<a name="boost.process.basic_pipebufconstruct-copy-destruct"></a><code class="computeroutput">basic_pipebuf</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="idp52064976-bb"></a><span class="identifier">basic_pipebuf</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Default constructor, will also construct the pipe. </li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp52065584-bb"></a><span class="identifier">basic_pipebuf</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span></pre>Copy Constructor. </li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp52067568-bb"></a><span class="identifier">basic_pipebuf</span><span class="special">(</span><a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span></pre>Move Constructor. </li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp52069392-bb"></a><span class="identifier">basic_pipebuf</span><span class="special">(</span><a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;&amp;</span> p<span class="special">)</span><span class="special">;</span></pre>Move construct from a pipe. </li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp52070960-bb"></a><span class="identifier">basic_pipebuf</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;</span> p<span class="special">)</span><span class="special">;</span></pre>Construct from a pipe. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;</span> <a name="idp52072672-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span></pre>Copy assign. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;</span> <a name="idp52075232-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span></pre>Move assign. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;</span> <a name="idp52077632-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;&amp;</span> p<span class="special">)</span><span class="special">;</span></pre>Move assign a pipe. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a> <span class="special">&amp;</span> <a name="idp52079760-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;</span> p<span class="special">)</span><span class="special">;</span></pre>Copy assign a pipe. </li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.30.9.17.4.4.4"></a><h3>
+<a name="idp52050528-bb"></a><code class="computeroutput">basic_pipebuf</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">int_type</span> <a name="idp52051088-bb"></a><span class="identifier">overflow</span><span class="special">(</span><span class="identifier">int_type</span> ch <span class="special">=</span> <span class="identifier">traits_type</span><span class="special">::</span><span class="identifier">eof</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre>Writes characters to the associated output sequence from the put area. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">int</span> <a name="idp52053248-bb"></a><span class="identifier">sync</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Synchronizes the buffers with the associated character sequence. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">int_type</span> <a name="idp52054432-bb"></a><span class="identifier">underflow</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Reads characters from the associated input sequence to the get area. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp52055616-bb"></a><span class="identifier">pipe</span><span class="special">(</span><a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;&amp;</span> p<span class="special">)</span><span class="special">;</span></pre>Set the pipe of the streambuf. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp52057744-bb"></a><span class="identifier">pipe</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;</span> p<span class="special">)</span><span class="special">;</span></pre>Set the pipe of the streambuf. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;</span> <a name="idp52060032-bb"></a><span class="identifier">pipe</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Get a reference to the pipe. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;</span> <a name="idp52061472-bb"></a><span class="identifier">pipe</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Get a const reference to the pipe. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="basic_pipebuf.html#boost.process.basic_pipebuf.pipe_type">pipe_type</a> <span class="special">&amp;&amp;</span> <a name="idp52063344-bb"></a><span class="identifier">pipe</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Get a rvalue reference to the pipe. Qualified as rvalue. </li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.30.9.17.4.4.5"></a><h3>
+<a name="idp52082048-bb"></a><code class="computeroutput">basic_pipebuf</code> private member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><pre class="literallayout"><span class="keyword">bool</span> <a name="idp52082624-bb"></a><span class="identifier">_write_impl</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li></ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2006-2012 Julio M. Merino Vidal, Ilya Sokolov,
+      Felipe Tanus, Jeff Flinn, Boris Schaeling<br>Copyright &#169; 2016 Klemens D. Morgenstern<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="basic_pipe.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../process/reference.html#header.boost.process.pipe_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="basic_ipstream.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,31 @@
+#  Boost.Atomic Library test Jamfile
+#
+#  Copyright (c) 2011 Helge Bahmann
+#  Copyright (c) 2012 Tim Blechmann
+#
+#  Distributed under the Boost Software License, Version 1.0. (See
+#  accompanying file LICENSE_1_0.txt or copy at
+#  http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+
+project boost/atomic/test
+    : requirements
+      <threading>multi
+      <library>/boost/thread//boost_thread
+      <library>/boost/atomic//boost_atomic
+      <target-os>windows:<define>BOOST_USE_WINDOWS_H
+      <target-os>windows:<define>_WIN32_WINNT=0x0500
+      <toolset>gcc,<target-os>windows:<linkflags>"-lkernel32"
+    ;
+
+test-suite atomic
+    : [ run native_api.cpp ]
+      [ run fallback_api.cpp ]
+      [ run atomicity.cpp ]
+      [ run ordering.cpp ]
+      [ run lockfree.cpp ]
+      [ compile-fail cf_arith_void_ptr.cpp ]
+      [ compile-fail cf_arith_func_ptr.cpp ]
+      [ compile-fail cf_arith_mem_ptr.cpp ]
+    ;

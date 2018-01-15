@@ -1,0 +1,94 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>boost/python/import.hpp</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../embedding.html" title="Chapter&#160;6.&#160;Embedding">
+<link rel="prev" href="../embedding.html" title="Chapter&#160;6.&#160;Embedding">
+<link rel="next" href="../utility_and_infrastructure.html" title="Chapter&#160;7.&#160;Utility and Infrastructure">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../embedding.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../embedding.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../utility_and_infrastructure.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="embedding.boost_python_import_hpp"></a><a class="link" href="boost_python_import_hpp.html" title="boost/python/import.hpp">boost/python/import.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="boost_python_import_hpp.html#embedding.boost_python_import_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="boost_python_import_hpp.html#embedding.boost_python_import_hpp.function_import">Function
+        <code class="computeroutput"><span class="identifier">import</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_python_import_hpp.html#embedding.boost_python_import_hpp.examples">Examples</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="embedding.boost_python_import_hpp.introduction"></a><a class="link" href="boost_python_import_hpp.html#embedding.boost_python_import_hpp.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          Exposes a mechanism for importing python modules.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="embedding.boost_python_import_hpp.function_import"></a><a class="link" href="boost_python_import_hpp.html#embedding.boost_python_import_hpp.function_import" title="Function import">Function
+        <code class="computeroutput"><span class="identifier">import</span></code></a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="identifier">object</span> <span class="identifier">import</span><span class="special">(</span><span class="identifier">str</span> <span class="identifier">name</span><span class="special">);</span></pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Imports the module named by name.
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                An instance of object which holds a reference to the imported module.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="embedding.boost_python_import_hpp.examples"></a><a class="link" href="boost_python_import_hpp.html#embedding.boost_python_import_hpp.examples" title="Examples">Examples</a>
+</h3></div></div></div>
+<p>
+          The following example demonstrates the use of import to access a function
+          in python, and later call it from within C++.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">;</span>
+
+<span class="keyword">void</span> <span class="identifier">print_python_version</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="comment">// Load the sys module.</span>
+  <span class="identifier">object</span> <span class="identifier">sys</span> <span class="special">=</span> <span class="identifier">import</span><span class="special">(</span><span class="string">"sys"</span><span class="special">);</span>
+
+  <span class="comment">// Extract the python version.</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">version</span> <span class="special">=</span> <span class="identifier">extract</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;(</span><span class="identifier">sys</span><span class="special">.</span><span class="identifier">attr</span><span class="special">(</span><span class="string">"version"</span><span class="special">));</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">version</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../embedding.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../embedding.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../utility_and_infrastructure.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

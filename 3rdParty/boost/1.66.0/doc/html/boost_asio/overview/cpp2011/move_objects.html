@@ -1,0 +1,109 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Movable I/O Objects</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../cpp2011.html" title="C++ 2011 Support">
+<link rel="prev" href="../cpp2011.html" title="C++ 2011 Support">
+<link rel="next" href="move_handlers.html" title="Movable Handlers">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../cpp2011.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../cpp2011.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="move_handlers.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_asio.overview.cpp2011.move_objects"></a><a class="link" href="move_objects.html" title="Movable I/O Objects">Movable I/O
+        Objects</a>
+</h4></div></div></div>
+<p>
+          When move support is available (via rvalue references), Boost.Asio allows
+          move construction and assignment of sockets, serial ports, POSIX descriptors
+          and Windows handles.
+        </p>
+<p>
+          Move support allows you to write code like:
+        </p>
+<pre class="programlisting">tcp::socket make_socket(io_context&amp; i)
+{
+  tcp::socket s(i);
+  ...
+  std::move(s);
+}
+</pre>
+<p>
+          or:
+        </p>
+<pre class="programlisting">class connection : public enable_shared_from_this&lt;connection&gt;
+{
+private:
+  tcp::socket socket_;
+  ...
+public:
+  connection(tcp::socket&amp;&amp; s) : socket_(std::move(s)) {}
+  ...
+};
+
+...
+
+class server
+{
+private:
+  tcp::acceptor acceptor_;
+  ...
+  void handle_accept(error_code ec, tcp::socket socket)
+  {
+    if (!ec)
+      std::make_shared&lt;connection&gt;(std::move(socket))-&gt;go();
+    acceptor_.async_accept(...);
+  }
+  ...
+};
+</pre>
+<p>
+          as well as:
+        </p>
+<pre class="programlisting">std::vector&lt;tcp::socket&gt; sockets;
+sockets.push_back(tcp::socket(...));
+</pre>
+<p>
+          A word of warning: There is nothing stopping you from moving these objects
+          while there are pending asynchronous operations, but it is unlikely to
+          be a good idea to do so. In particular, composed operations like <a class="link" href="../../reference/async_read.html" title="async_read">async_read()</a> store a reference
+          to the stream object. Moving during the composed operation means that the
+          composed operation may attempt to access a moved-from object.
+        </p>
+<p>
+          Move support is automatically enabled for <code class="literal">g++</code> 4.5 and
+          later, when the <code class="literal">-std=c++0x</code> or <code class="literal">-std=gnu++0x</code>
+          compiler options are used. It may be disabled by defining <code class="computeroutput">BOOST_ASIO_DISABLE_MOVE</code>,
+          or explicitly enabled for other compilers by defining <code class="computeroutput">BOOST_ASIO_HAS_MOVE</code>.
+          Note that these macros also affect the availability of <a class="link" href="move_handlers.html" title="Movable Handlers">movable
+          handlers</a>.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../cpp2011.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../cpp2011.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="move_handlers.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

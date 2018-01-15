@@ -1,0 +1,1062 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Functionality for "empty" seqs and tuples</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;The Variadic Macro Data Library 1.9">
+<link rel="up" href="../vmd_useful.html" title="Useful variadic macros not in Boost PP">
+<link rel="prev" href="vmd_identity.html" title="Generating emptiness and identity">
+<link rel="next" href="../vmd_internal_macros.html" title="Controlling internal usage">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_identity.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../vmd_useful.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../vmd_internal_macros.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata"></a><a class="link" href="vmd_empty_ppdata.html" title='Functionality for "empty" seqs and tuples'>Functionality
+      for "empty" seqs and tuples</a>
+</h3></div></div></div>
+<p>
+        Boost PP arrays and lists can be empty but seqs and tuples cannot. The form
+        of an empty array is '(0,())' and the form of an empty list is 'BOOST_PP_NIL'.
+        But the form of '()' does not represent an empty seq or an empty tuple. Instead
+        for a seq it represents a one element seq whose data is empty, while for
+        a tuple it represents a tuple with a size of 1 whose single element is empty.
+      </p>
+<p>
+        Not having a way to represent an empty seq or tuple represents a small problem
+        for Boost PP users. For a tuple, especially, not being able to be "empty"
+        is the only reason, when variadic macros are supported, why an end-user might
+        prefer to use an array rather than a tuple as Boost PP preprocessor data.
+        Otherwise, when using variadic macros, using a tuple is easier to notate
+        and subsequently use than an array since no effort is needed to specify the
+        number of elements of a tuple.
+      </p>
+<p>
+        VMD as we have seen has functionality to tell when preprocessor data is "empty"
+        through its BOOST_VMD_IS_EMPTY macro. Because of this it is possible to treat
+        emptiness, when applied to a seq or tuple, as an empty seq or an empty tuple
+        respectively, thus allowing seqs and tuples to be empty, just as arrays and
+        lists are.
+      </p>
+<p>
+        However there is one large problem when treating emptiness as an empty seq
+        or empty tuple; Boost PP functionality for a seq or tuple knows nothing about
+        it. In other words if you passed emptiness to a Boost PP macro which expects
+        a seq or tuple, such as:
+      </p>
+<pre class="programlisting"><span class="identifier">BOOST_PP_SEQ_SIZE</span><span class="special">()</span>
+</pre>
+<p>
+        or
+      </p>
+<pre class="programlisting"><span class="identifier">BOOST_PP_TUPLE_PUSH_BACK</span><span class="special">(,</span><span class="number">1</span><span class="special">)</span>
+</pre>
+<p>
+        you would get UB, undefined behavior.
+      </p>
+<p>
+        In order to use seqs and tuples which can be empty VMD defines a number of
+        macros which mimic many of those in Boost PP, but begin with BOOST_VMD_ rather
+        than BOOST_PP_. The VMD macros work with what I will call a 'VMD seq' or
+        a 'VMD tuple', while the Boost PP equivalents work with the traditional seq
+        or tuple. A VMD seq is a seq which may be empty and a VMD tuple is a tuple
+        which may be empty. A VMD seq is therefore a superset of a normal seq and
+        a VMD tuple is therefore a superset of a normal tuple. The VMD functionality
+        therefore can accept a VMD seq or tuple or a normal seq or tuple whereas
+        the equivalent Boost PP functionality only accepts a normal seq or tuple.
+        To be more more precise the Boost PP functionality can accept a VMD seq or
+        a VMD tuple as long as it is not empty. In other words there is no difference
+        between a non-empty VMD seq or a Boost PP seq, or between a non-empty VMD
+        tuple and a Boost PP tuple.
+      </p>
+<p>
+        The particular macros which VMD supplies, supporting VMD seqs and VMD tuples,
+        are divided between array, list, seq, and tuple functionality. The actual
+        header files for these macros are in sub-directories of the VMD directory,
+        which start respectively with 'array','list','seq' and 'tuple'. The header
+        files are all also included in the general boost/vmd/vmd.hpp header file.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata.h0"></a>
+        <span class="phrase"><a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata.array_macros"></a></span><a class="link" href="vmd_empty_ppdata.html#variadic_macro_data.vmd_useful.vmd_empty_ppdata.array_macros">Array
+        macros</a>
+      </h5>
+<p>
+        The array macros provide conversions from an array to a VMD seq or a VMD
+        tuple. The array macros are:
+      </p>
+<div class="table">
+<a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata.vpp_array"></a><p class="title"><b>Table&#160;1.2.&#160;Array macros</b></p>
+<div class="table-contents"><table class="table" summary="Array macros">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Macro
+                </p>
+              </th>
+<th>
+                <p>
+                  Parameter
+                </p>
+              </th>
+<th>
+                <p>
+                  Return
+                </p>
+              </th>
+<th>
+                <p>
+                  Functionality
+                </p>
+              </th>
+<th>
+                <p>
+                  Header
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_ARRAY_TO_SEQ
+                </p>
+              </td>
+<td>
+                <p>
+                  array = a Boost PP array
+                </p>
+              </td>
+<td>
+                <p>
+                  A VMD seq
+                </p>
+              </td>
+<td>
+                <p>
+                  Converts an array to a VMD seq. If the array is empty the seq is
+                  empty, otherwise the conversion is the same as BOOST_PP_ARRAY_TO_SEQ
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/array/to_seq.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_ARRAY_TO_TUPLE
+                </p>
+              </td>
+<td>
+                <p>
+                  array = a Boost PP array
+                </p>
+              </td>
+<td>
+                <p>
+                  A VMD tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  Converts an array to a VMD tuple. If the array is empty the tuple
+                  is empty, otherwise the conversion is the same as BOOST_PP_ARRAY_TO_TUPLE
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/array/to_tuple.hpp
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        The difference between the array conversion macros and their equivalent ones
+        in Boost PP is that if the array is empty the VMD macros return emptiness
+        whereas the Boost PP macros have UB.
+      </p>
+<p>
+        You can include the array macros either using their individual header files,
+        the general 'boost/vmd/array.hpp' header file for all array macros, or the
+        general header file 'boost/vmd/vmd.hpp' for all macros.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata.h1"></a>
+        <span class="phrase"><a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata.list_macros"></a></span><a class="link" href="vmd_empty_ppdata.html#variadic_macro_data.vmd_useful.vmd_empty_ppdata.list_macros">List
+        macros</a>
+      </h5>
+<p>
+        The list macros provide conversions from a list to a VMD seq or a VMD tuple.
+        The list macros are:
+      </p>
+<div class="table">
+<a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata.vpp_list"></a><p class="title"><b>Table&#160;1.3.&#160;List macros</b></p>
+<div class="table-contents"><table class="table" summary="List macros">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Macro
+                </p>
+              </th>
+<th>
+                <p>
+                  Parameter
+                </p>
+              </th>
+<th>
+                <p>
+                  Return
+                </p>
+              </th>
+<th>
+                <p>
+                  Functionality
+                </p>
+              </th>
+<th>
+                <p>
+                  Header
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_LIST_TO_SEQ
+                </p>
+              </td>
+<td>
+                <p>
+                  list = a Boost PP list
+                </p>
+              </td>
+<td>
+                <p>
+                  A VMD seq
+                </p>
+              </td>
+<td>
+                <p>
+                  Converts a list to a VMD seq. If the list is empty the seq is empty,
+                  otherwise the conversion is the same as BOOST_PP_LIST_TO_SEQ
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/list/to_seq.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_LIST_TO_TUPLE
+                </p>
+              </td>
+<td>
+                <p>
+                  list = a Boost PP list
+                </p>
+              </td>
+<td>
+                <p>
+                  A VMD tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  Converts a list to a VMD tuple. If the list is empty the tuple
+                  is empty, otherwise the conversion is the same as BOOST_PP_LIST_TO_TUPLE
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/list/to_tuple.hpp
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        The difference between the list conversion macros and their equivalent ones
+        in Boost PP is that if the list is empty the VMD macros return emptiness
+        whereas the Boost PP macros have UB.
+      </p>
+<p>
+        You can include the list macros either using their individual header files,
+        the general 'boost/vmd/list.hpp' header file for all list macros, or the
+        general header file 'boost/vmd/vmd.hpp' for all macros.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata.h2"></a>
+        <span class="phrase"><a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata.seq_macros"></a></span><a class="link" href="vmd_empty_ppdata.html#variadic_macro_data.vmd_useful.vmd_empty_ppdata.seq_macros">Seq
+        macros</a>
+      </h5>
+<p>
+        The seq macros either work with a VMD seq or return A VMD seq. The seq macros
+        are:
+      </p>
+<div class="table">
+<a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata.vpp_seq"></a><p class="title"><b>Table&#160;1.4.&#160;Seq macros</b></p>
+<div class="table-contents"><table class="table" summary="Seq macros">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Macro
+                </p>
+              </th>
+<th>
+                <p>
+                  Parameter
+                </p>
+              </th>
+<th>
+                <p>
+                  Return
+                </p>
+              </th>
+<th>
+                <p>
+                  Functionality
+                </p>
+              </th>
+<th>
+                <p>
+                  Header
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_IS_VMD_SEQ
+                </p>
+              </td>
+<td>
+                <p>
+                  sequence = a VMD sequence
+                </p>
+              </td>
+<td>
+                <p>
+                  1 if the VMD sequence is a VMD seq, else 0
+                </p>
+              </td>
+<td>
+                <p>
+                  Tests a sequence as a VMD seq. If the sequence is empty returns
+                  1, otherwise returns the same as BOOST_VMD_IS_SEQ
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/seq/is_vmd_seq.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_SEQ_POP_BACK
+                </p>
+              </td>
+<td>
+                <p>
+                  seq = a Boost PP seq
+                </p>
+              </td>
+<td>
+                <p>
+                  A VMD seq
+                </p>
+              </td>
+<td>
+                <p>
+                  Pops an element from the end of a seq. If the seq has a single
+                  element returns an empty seq, otherwise works exactly the same
+                  as BOOST_PP_SEQ_POP_BACK
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/seq/pop_back.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_SEQ_POP_FRONT
+                </p>
+              </td>
+<td>
+                <p>
+                  seq = a Boost PP seq
+                </p>
+              </td>
+<td>
+                <p>
+                  A VMD seq
+                </p>
+              </td>
+<td>
+                <p>
+                  Pops an element from the beginning of a seq. If the seq has a single
+                  element returns an empty seq, otherwise works exactly the same
+                  as BOOST_PP_SEQ_POP_FRONT
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/seq/pop_front.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_SEQ_PUSH_BACK
+                </p>
+              </td>
+<td>
+                <p>
+                  seq = a VMD seq, elem = element to push onto the end of the VMD
+                  seq
+                </p>
+              </td>
+<td>
+                <p>
+                  A Boost PP seq
+                </p>
+              </td>
+<td>
+                <p>
+                  Pushes an element onto the end of a VMD seq. If the VMD seq is
+                  empty the returned seq consists of that element, otherwise works
+                  exactly the same as BOOST_PP_SEQ_PUSH_BACK
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/seq/push_back.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_SEQ_PUSH_FRONT
+                </p>
+              </td>
+<td>
+                <p>
+                  seq = a VMD seq, elem = element to push onto the beginning of the
+                  VMD seq
+                </p>
+              </td>
+<td>
+                <p>
+                  A Boost PP seq
+                </p>
+              </td>
+<td>
+                <p>
+                  Pushes an element onto the beginning of a VMD seq. If the VMD seq
+                  is empty the returned seq consists of that element, otherwise works
+                  exactly the same as BOOST_PP_SEQ_PUSH_FRONT
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/seq/push_front.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_SEQ_REMOVE
+                </p>
+              </td>
+<td>
+                <p>
+                  seq = a Boost PP seq, i = index of element to remove
+                </p>
+              </td>
+<td>
+                <p>
+                  A VMD seq
+                </p>
+              </td>
+<td>
+                <p>
+                  Removes an element from a Boost PP seq. If the seq has a single
+                  element and the index to be removed is 0 returns an empty seq,
+                  otherwise works exactly the same as BOOST_PP_SEQ_REMOVE
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/seq/remove.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_SEQ_SIZE
+                </p>
+              </td>
+<td>
+                <p>
+                  seq = a VMD seq
+                </p>
+              </td>
+<td>
+                <p>
+                  The number of elements in the VMD seq
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the number of elements in the VMD seq. If the seq is empty
+                  returns 0, otherwise works exactly the same as BOOST_PP_SEQ_SIZE
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/seq/size.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_SEQ_TO_ARRAY
+                </p>
+              </td>
+<td>
+                <p>
+                  seq = a VMD seq
+                </p>
+              </td>
+<td>
+                <p>
+                  A Boost PP array
+                </p>
+              </td>
+<td>
+                <p>
+                  Converts a VMD seq to a Boost PP array. If the seq is empty returns
+                  an empty array whose form is '(0,())', otherwise works exactly
+                  the same as BOOST_PP_SEQ_TO_ARRAY
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/seq/to_array.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_SEQ_TO_LIST
+                </p>
+              </td>
+<td>
+                <p>
+                  seq = a VMD seq
+                </p>
+              </td>
+<td>
+                <p>
+                  A Boost PP list
+                </p>
+              </td>
+<td>
+                <p>
+                  Converts a VMD seq to a Boost PP list. If the seq is empty returns
+                  an empty list whose form is 'BOOST_PP_NIL', otherwise works exactly
+                  the same as BOOST_PP_SEQ_TO_LIST
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/seq/to_list.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_SEQ_TO_TUPLE
+                </p>
+              </td>
+<td>
+                <p>
+                  seq = a VMD seq
+                </p>
+              </td>
+<td>
+                <p>
+                  A VMD tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  Converts a VMD seq to a VMD tuple. If the seq is empty returns
+                  an empty tuple, otherwise works exactly the same as BOOST_PP_SEQ_TO_TUPLE
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/seq/to_tuple.hpp
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        The difference between the seq macros and their equivalent ones in Boost
+        PP is that working with a VMD seq or returning a VMD seq is valid with the
+        seq macros but with the Boost PP equivalent macros working with an empty
+        seq causes UB and returning an empty seq can never occur.
+      </p>
+<p>
+        You can include the seq macros either using their individual header files,
+        the general 'boost/vmd/seq.hpp' header file for all seq macros, or the general
+        header file 'boost/vmd/vmd.hpp' for all macros.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata.h3"></a>
+        <span class="phrase"><a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata.tuple_macros"></a></span><a class="link" href="vmd_empty_ppdata.html#variadic_macro_data.vmd_useful.vmd_empty_ppdata.tuple_macros">Tuple
+        macros</a>
+      </h5>
+<p>
+        The tuple macros either work with a VMD tuple or return a VMD tuple. The
+        tuple macros are:
+      </p>
+<div class="table">
+<a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata.vpp_tuple"></a><p class="title"><b>Table&#160;1.5.&#160;Tuple macros</b></p>
+<div class="table-contents"><table class="table" summary="Tuple macros">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Macro
+                </p>
+              </th>
+<th>
+                <p>
+                  Parameter
+                </p>
+              </th>
+<th>
+                <p>
+                  Return
+                </p>
+              </th>
+<th>
+                <p>
+                  Functionality
+                </p>
+              </th>
+<th>
+                <p>
+                  Header
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_IS_VMD_TUPLE
+                </p>
+              </td>
+<td>
+                <p>
+                  sequence = a VMD sequence
+                </p>
+              </td>
+<td>
+                <p>
+                  1 if the VMD sequence is a VMD tuple, else 0
+                </p>
+              </td>
+<td>
+                <p>
+                  Tests a sequence as a VMD tuple. If the sequence is empty returns
+                  1, otherwise returns the same as BOOST_VMD_IS_TUPLE
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/tuple/is_vmd_tuple.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_TUPLE_POP_BACK
+                </p>
+              </td>
+<td>
+                <p>
+                  tuple = a Boost PP tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  A VMD tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  Pops an element from the end of a tuple. If the tuple's size is
+                  1 returns an empty tuple, otherwise works exactly the same as BOOST_PP_TUPLE_POP_BACK
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/tuple/pop_back.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_TUPLE_POP_FRONT
+                </p>
+              </td>
+<td>
+                <p>
+                  tuple = a Boost PP tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  A VMD tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  Pops an element from the beginning of a tuple. If the tuple's size
+                  is 1 returns an empty tuple, otherwise works exactly the same as
+                  BOOST_PP_TUPLE_POP_FRONT
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/tuple/pop_front.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_TUPLE_PUSH_BACK
+                </p>
+              </td>
+<td>
+                <p>
+                  tuple = a VMD tuple, elem = element to push onto the end of the
+                  VMD tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  A Boost PP tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  Pushes an element onto the end of a VMD tuple. If the VMD tuple
+                  is empty the returned tuple consists of that element, otherwise
+                  works exactly the same as BOOST_PP_TUPLE_PUSH_BACK
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/tuple/push_back.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_TUPLE_PUSH_FRONT
+                </p>
+              </td>
+<td>
+                <p>
+                  tuple = a VMD tuple, elem = element to push onto the beginning
+                  of the VMD tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  A Boost PP tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  Pushes an element onto the beginning of a VMD tuple. If the VMD
+                  tuple is empty the returned tuple consists of that element, otherwise
+                  works exactly the same as BOOST_PP_TUPLE_PUSH_FRONT
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/tuple/push_front.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_TUPLE_REMOVE
+                </p>
+              </td>
+<td>
+                <p>
+                  tuple = a Boost PP tuple, i = index of element to remove
+                </p>
+              </td>
+<td>
+                <p>
+                  A VMD tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  Removes an element from a Boost PP tuple. If the tuple has a single
+                  element and the index to be removed is 0 returns an empty tuple,
+                  otherwise works exactly the same as BOOST_PP_TUPLE_REMOVE
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/tuple/remove.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_TUPLE_SIZE
+                </p>
+              </td>
+<td>
+                <p>
+                  tuple = a VMD tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  The number of elements in the VMD tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the number of elements in the VMD tuple. If the tuple is
+                  empty returns 0, otherwise works exactly the same as BOOST_PP_TUPLE_SIZE
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/tuple/size.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_TUPLE_TO_ARRAY
+                </p>
+              </td>
+<td>
+                <p>
+                  tuple = a VMD tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  A Boost PP array
+                </p>
+              </td>
+<td>
+                <p>
+                  Converts a VMD tuple to a Boost PP array. If the tuple is empty
+                  returns an empty array whose form is '(0,())', otherwise works
+                  exactly the same as BOOST_PP_TUPLE_TO_ARRAY
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/tuple/to_array.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_TUPLE_TO_LIST
+                </p>
+              </td>
+<td>
+                <p>
+                  tuple = a VMD tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  A Boost PP list
+                </p>
+              </td>
+<td>
+                <p>
+                  Converts a VMD tuple to a Boost PP list. If the tuple is empty
+                  returns an empty list whose form is 'BOOST_PP_NIL', otherwise works
+                  exactly the same as BOOST_PP_TUPLE_TO_LIST
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/tuple/to_list.hpp
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_VMD_TUPLE_TO_SEQ
+                </p>
+              </td>
+<td>
+                <p>
+                  tuple = a VMD tuple
+                </p>
+              </td>
+<td>
+                <p>
+                  A VMD seq
+                </p>
+              </td>
+<td>
+                <p>
+                  Converts a VMD tuple to a VMD seq. If the tuple is empty returns
+                  an empty seq, otherwise works exactly the same as BOOST_PP_TUPLE_TO_SEQ
+                </p>
+              </td>
+<td>
+                <p>
+                  boost/vmd/tuple/to_seq.hpp
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        The difference between the tuple macros and their equivalent ones in Boost
+        PP is that working with a VMD tuple or returning a VMD tuple is valid with
+        the tuple macros but with the Boost PP equivalent macros working with an
+        empty tuple causes UB and returning an empty tuple can never occur.
+      </p>
+<p>
+        You can include the tuple macros either using their individual header files,
+        the general 'boost/vmd/tuple.hpp' header file for all tuple macros, or the
+        general header file 'boost/vmd/vmd.hpp' for all macros.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata.h4"></a>
+        <span class="phrase"><a name="variadic_macro_data.vmd_useful.vmd_empty_ppdata.seq_and_tuple_functionality"></a></span><a class="link" href="vmd_empty_ppdata.html#variadic_macro_data.vmd_useful.vmd_empty_ppdata.seq_and_tuple_functionality">Seq
+        and tuple functionality</a>
+      </h5>
+<p>
+        The set of macros for seq and tuple functionality which work with VMD seqs
+        and VMD tuples are largely only a subset of the seq and tuple functionality
+        in Boost PP. This reflects the fact that a number of macros in Boost PP for
+        working with a seq or tuple make no sense when extended to work with a possible
+        empty seq or empty tuple. For instance BOOST_PP_SEQ_FIRST_N could not mean
+        anything when passed an empty seq and BOOST_PP_TUPLE_REM_CTOR could not mean
+        anything when passed an empty tuple. Likewise for other Boost PP seq and
+        tuple macros which do not have a VMD equivalent.
+      </p>
+<p>
+        The set of functionality in VMD for working with a possibly empty seq or
+        empty tuple makes it possible to add or remove elements in a seq or tuple
+        which could start out or end up empty, take the seq or tuple size even when
+        the seq or tuple is empty, convert between arrays, lists, seqs, or tuples
+        which could start out or end up empty, and test for a VMD seq or a VMD tuple.
+        This functionality should allow macro programmers the ability to work with
+        empty seqs and tuples while still using other Boost PP seq and tuple functuionality
+        to work with non-empty seqs and tuples. The easiest way to do this is to
+        use the VMD seq and VMD tuple equivalent functions when choosing between
+        VMD and Boost PP, and use the Boost PP seq and tuple functionality otherwise.
+        Just remember that Boost PP seq and tuple functionality can never work with
+        empty seqs or empty tuples.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2010-2017 Tropic Software
+      East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_identity.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../vmd_useful.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../vmd_internal_macros.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

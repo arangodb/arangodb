@@ -1,0 +1,161 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>async_result&lt; std::packaged_task&lt; Result(Args...)&gt;, Signature &gt;</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../reference.html" title="Reference">
+<link rel="prev" href="async_result_lt__Handler__gt_/type.html" title="async_result&lt; Handler &gt;::type">
+<link rel="next" href="async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_/async_result.html" title="async_result&lt; std::packaged_task&lt; Result(Args...)&gt;, Signature &gt;::async_result">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="async_result_lt__Handler__gt_/type.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_/async_result.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_asio.reference.async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_"></a><a class="link" href="async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_.html" title="async_result&lt; std::packaged_task&lt; Result(Args...)&gt;, Signature &gt;">async_result&lt;
+      std::packaged_task&lt; Result(Args...)&gt;, Signature &gt;</a>
+</h3></div></div></div>
+<p>
+        Partial specialisation of <code class="computeroutput">async_result</code> for <code class="computeroutput">std::packaged_task</code>.
+      </p>
+<pre class="programlisting">template&lt;
+    typename Result,
+    typename... Args,
+    typename Signature&gt;
+class async_result&lt; std::packaged_task&lt; Result(Args...)&gt;, Signature &gt;
+</pre>
+<h5>
+<a name="boost_asio.reference.async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_.h0"></a>
+        <span class="phrase"><a name="boost_asio.reference.async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_.types"></a></span><a class="link" href="async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_.html#boost_asio.reference.async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_/completion_handler_type.html" title="async_result&lt; std::packaged_task&lt; Result(Args...)&gt;, Signature &gt;::completion_handler_type"><span class="bold"><strong>completion_handler_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The packaged task is the concrete completion handler type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_/return_type.html" title="async_result&lt; std::packaged_task&lt; Result(Args...)&gt;, Signature &gt;::return_type"><span class="bold"><strong>return_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The return type of the initiating function is the future obtained
+                  from the packaged task.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_.h1"></a>
+        <span class="phrase"><a name="boost_asio.reference.async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_.member_functions"></a></span><a class="link" href="async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_.html#boost_asio.reference.async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_/async_result.html" title="async_result&lt; std::packaged_task&lt; Result(Args...)&gt;, Signature &gt;::async_result"><span class="bold"><strong>async_result</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The constructor extracts the future from the packaged task.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_/get.html" title="async_result&lt; std::packaged_task&lt; Result(Args...)&gt;, Signature &gt;::get"><span class="bold"><strong>get</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the packaged task's future.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_.h2"></a>
+        <span class="phrase"><a name="boost_asio.reference.async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_.requirements"></a></span><a class="link" href="async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_.html#boost_asio.reference.async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_.requirements">Requirements</a>
+      </h5>
+<p>
+        <span class="emphasis"><em>Header: </em></span><code class="literal">boost/asio/packaged_task.hpp</code>
+      </p>
+<p>
+        <span class="emphasis"><em>Convenience header: </em></span><code class="literal">boost/asio.hpp</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="async_result_lt__Handler__gt_/type.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="async_result_lt__std__packaged_task_lt__Result_lp_Args_ellipsis__rp__gt__comma__Signature__gt_/async_result.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

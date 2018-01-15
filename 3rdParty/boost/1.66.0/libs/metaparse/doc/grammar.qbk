@@ -1,0 +1,135 @@
+[#grammar]
+[section grammar]
+
+[h1 Synopsis]
+
+  template <class StartSymbol = BOOST_METAPARSE_STRING("S")>
+  struct grammar
+  {
+    template <class S, class Pos>
+    struct apply;
+  
+    template <class Name, class P>
+    struct import;
+  
+    template <class S, class Action = /* unspecified */>
+    struct rule;
+  };
+
+[h1 Description]
+
+[note
+Note that using this adds a significant overhead to your builds. When someone
+uses your parser, the compiler will have to build your grammar parser, use it
+to parse your grammar and build your parser and then it can parse the input
+the user would like to parse with your parser. You might consider using the
+parser combinators the library provides.
+]
+
+Parser combinator for constructing parsers based on an embedded DSL similar to
+EBNF. It can be used the following way:
+
+  grammar<>
+    // definitions
+
+where a definition can be a rule or an import command.
+
+Rules look like on of the following:
+
+    ::rule<BOOST_METAPARSE_STRING("name ::= def")>
+    ::rule<BOOST_METAPARSE_STRING("name ::= def"), semantic_action>
+
+`name` consists of letters, digits and the `_` character. It is the name of
+the symbol being defined. `def` describes the rule. It can be
+
+* the name of a symbol
+* a terminal, which is a character between single quotes. `\` can be used for
+  escaping. The following are accepted: `\n`, `\r`, `\t`, `\\`, `\'`
+* a sequence of definitions
+* a definition followed by the `*` character, which means repetition accepting
+  0 match
+* a definition followed by the `+` character, which means repetition expecting
+  at least one match
+* a definition in brackets
+
+Rules take an optional `semantic_action` argument. It is a placeholder
+expression taking one argument. When this is given, this is used to transform
+the result of the rule.
+
+Imports can be used to turn an arbitrary parser into a symbol available for the
+rules. Import definitions look like the following:
+
+    ::import<BOOST_METAPARSE_STRING("name"), parser>
+
+`name` is the name of the symbol, `parser` is the parser to bind the name to.
+
+The start symbol of the grammar is specified by the template argument of the
+`grammar` template. This is optional, the default value is `S`.
+
+Note that the current implementation "inlines" the referenced symbols while
+parsing the grammar and recursion is not supported because of this.
+
+[h1 Header]
+
+  #include <boost/metaparse/grammar.hpp>
+
+[h1 Example]
+
+  #define BOOST_METAPARSE_LIMIT_STRING_SIZE 64
+  
+  #include <boost/metaparse/grammar.hpp>
+  #include <boost/metaparse/token.hpp>
+  #include <boost/metaparse/int_.hpp>
+  #include <boost/metaparse/entire_input.hpp>
+  #include <boost/metaparse/build_parser.hpp>
+  #include <boost/metaparse/string.hpp>
+  
+  #include <boost/mpl/front.hpp>
+  #include <boost/mpl/back.hpp>
+  #include <boost/mpl/plus.hpp>
+  #include <boost/mpl/fold.hpp>
+  #include <boost/mpl/lambda.hpp>
+  
+  using boost::metaparse::token;
+  using boost::metaparse::int_;
+  using boost::metaparse::build_parser;
+  using boost::metaparse::entire_input;
+  using boost::metaparse::grammar;
+  
+  using boost::mpl::front;
+  using boost::mpl::back;
+  using boost::mpl::plus;
+  using boost::mpl::fold;
+  using boost::mpl::lambda;
+  using boost::mpl::_1;
+  using boost::mpl::_2;
+  
+  template <class A, class B>
+  struct lazy_plus : boost::mpl::plus<typename A::type, typename B::type> {};
+  
+  template <class Sequence, class State, class ForwardOp>
+  struct lazy_fold :
+    fold<typename Sequence::type, typename State::type, typename ForwardOp::type>
+  {};
+  
+  using plus_action =
+    lazy_fold<back<_1>, front<_1>, lambda<lazy_plus<_1, back<_2>>>::type>;
+  
+  using plus_grammar =
+    grammar<BOOST_METAPARSE_STRING("plus_exp")>
+      ::import<BOOST_METAPARSE_STRING("int_token"), token<int_>>::type
+  
+      ::rule<BOOST_METAPARSE_STRING("ws ::= (' ' | '\n' | '\r' | '\t')*")>::type
+      ::rule<BOOST_METAPARSE_STRING("plus_token ::= '+' ws"), front<_1>>::type
+      ::rule<BOOST_METAPARSE_STRING("plus_exp ::= int_token (plus_token int_token)*"), plus_action>::type
+    ;
+  
+  using plus_parser = build_parser<entire_input<plus_grammar>>;
+  
+  static_assert(
+    plus_parser::apply<BOOST_METAPARSE_STRING("1 + 2 + 3 + 4")>::type::value == 10,
+    "Arithmetic expression should be evaluated"
+  );
+
+[endsect]
+

@@ -1,0 +1,211 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>read_until (15 of 16 overloads)</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../read_until.html" title="read_until">
+<link rel="prev" href="overload14.html" title="read_until (14 of 16 overloads)">
+<link rel="next" href="overload16.html" title="read_until (16 of 16 overloads)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overload14.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../read_until.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload16.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_asio.reference.read_until.overload15"></a><a class="link" href="overload15.html" title="read_until (15 of 16 overloads)">read_until
+        (15 of 16 overloads)</a>
+</h4></div></div></div>
+<p>
+          Read data into a streambuf until a function object indicates a match.
+        </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../SyncReadStream.html" title="Buffer-oriented synchronous read stream requirements">SyncReadStream</a>,
+    typename Allocator,
+    typename MatchCondition&gt;
+std::size_t read_until(
+    SyncReadStream &amp; s,
+    boost::asio::basic_streambuf&lt; Allocator &gt; &amp; b,
+    MatchCondition match_condition,
+    typename enable_if&lt; is_match_condition&lt; MatchCondition &gt;::value &gt;::type *  = 0);
+</pre>
+<p>
+          This function is used to read data into the specified streambuf until a
+          user-defined match condition function object, when applied to the data
+          contained in the streambuf, indicates a successful match. The call will
+          block until one of the following conditions is true:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              The match condition function object returns a std::pair where the second
+              element evaluates to true.
+            </li>
+<li class="listitem">
+              An error occurred.
+            </li>
+</ul></div>
+<p>
+          This operation is implemented in terms of zero or more calls to the stream's
+          read_some function. If the match condition function object already indicates
+          a match, the function returns immediately.
+        </p>
+<h6>
+<a name="boost_asio.reference.read_until.overload15.h0"></a>
+          <span class="phrase"><a name="boost_asio.reference.read_until.overload15.parameters"></a></span><a class="link" href="overload15.html#boost_asio.reference.read_until.overload15.parameters">Parameters</a>
+        </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">s</span></dt>
+<dd><p>
+                The stream from which the data is to be read. The type must support
+                the SyncReadStream concept.
+              </p></dd>
+<dt><span class="term">b</span></dt>
+<dd><p>
+                A streambuf object into which the data will be read.
+              </p></dd>
+<dt><span class="term">match_condition</span></dt>
+<dd>
+<p>
+                The function object to be called to determine whether a match exists.
+                The signature of the function object must be:
+</p>
+<pre class="programlisting">pair&lt;iterator, bool&gt; match_condition(iterator begin, iterator end);
+</pre>
+<p>
+                where <code class="computeroutput">iterator</code> represents the type:
+</p>
+<pre class="programlisting">buffers_iterator&lt;basic_streambuf&lt;Allocator&gt;::const_buffers_type&gt;
+</pre>
+<p>
+                The iterator parameters <code class="computeroutput">begin</code> and <code class="computeroutput">end</code> define
+                the range of bytes to be scanned to determine whether there is a
+                match. The <code class="computeroutput">first</code> member of the return value is an iterator
+                marking one-past-the-end of the bytes that have been consumed by
+                the match function. This iterator is used to calculate the <code class="computeroutput">begin</code>
+                parameter for any subsequent invocation of the match condition. The
+                <code class="computeroutput">second</code> member of the return value is true if a match
+                has been found, false otherwise.
+              </p>
+</dd>
+</dl>
+</div>
+<h6>
+<a name="boost_asio.reference.read_until.overload15.h1"></a>
+          <span class="phrase"><a name="boost_asio.reference.read_until.overload15.return_value"></a></span><a class="link" href="overload15.html#boost_asio.reference.read_until.overload15.return_value">Return
+          Value</a>
+        </h6>
+<p>
+          The number of bytes in the streambuf's get area that have been fully consumed
+          by the match function.
+        </p>
+<h6>
+<a name="boost_asio.reference.read_until.overload15.h2"></a>
+          <span class="phrase"><a name="boost_asio.reference.read_until.overload15.exceptions"></a></span><a class="link" href="overload15.html#boost_asio.reference.read_until.overload15.exceptions">Exceptions</a>
+        </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">boost::system::system_error</span></dt>
+<dd><p>
+                Thrown on failure.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="boost_asio.reference.read_until.overload15.h3"></a>
+          <span class="phrase"><a name="boost_asio.reference.read_until.overload15.remarks"></a></span><a class="link" href="overload15.html#boost_asio.reference.read_until.overload15.remarks">Remarks</a>
+        </h6>
+<p>
+          After a successful read_until operation, the streambuf may contain additional
+          data beyond that which matched the function object. An application will
+          typically leave that data in the streambuf for a subsequent read_until
+          operation to examine.
+        </p>
+<p>
+          The default implementation of the <code class="computeroutput">is_match_condition</code> type
+          trait evaluates to true for function pointers and function objects with
+          a <code class="computeroutput">result_type</code> typedef. It must be specialised for other user-defined
+          function objects.
+        </p>
+<h6>
+<a name="boost_asio.reference.read_until.overload15.h4"></a>
+          <span class="phrase"><a name="boost_asio.reference.read_until.overload15.examples"></a></span><a class="link" href="overload15.html#boost_asio.reference.read_until.overload15.examples">Examples</a>
+        </h6>
+<p>
+          To read data into a streambuf until whitespace is encountered:
+        </p>
+<pre class="programlisting">typedef boost::asio::buffers_iterator&lt;
+    boost::asio::streambuf::const_buffers_type&gt; iterator;
+
+std::pair&lt;iterator, bool&gt;
+match_whitespace(iterator begin, iterator end)
+{
+  iterator i = begin;
+  while (i != end)
+    if (std::isspace(*i++))
+      return std::make_pair(i, true);
+  return std::make_pair(i, false);
+}
+...
+boost::asio::streambuf b;
+boost::asio::read_until(s, b, match_whitespace);
+</pre>
+<p>
+          To read data into a streambuf until a matching character is found:
+        </p>
+<pre class="programlisting">class match_char
+{
+public:
+  explicit match_char(char c) : c_(c) {}
+
+  template &lt;typename Iterator&gt;
+  std::pair&lt;Iterator, bool&gt; operator()(
+      Iterator begin, Iterator end) const
+  {
+    Iterator i = begin;
+    while (i != end)
+      if (c_ == *i++)
+        return std::make_pair(i, true);
+    return std::make_pair(i, false);
+  }
+
+private:
+  char c_;
+};
+
+namespace asio {
+  template &lt;&gt; struct is_match_condition&lt;match_char&gt;
+    : public boost::true_type {};
+} // namespace asio
+...
+boost::asio::streambuf b;
+boost::asio::read_until(s, b, match_char('a'));
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overload14.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../read_until.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload16.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

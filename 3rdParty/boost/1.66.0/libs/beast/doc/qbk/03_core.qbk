@@ -1,0 +1,35 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section:using_io Using I/O]
+
+This library makes I/O primitives used by the implementation publicly
+available so users can take advantage of them in their own libraries.
+These primitives include traits, buffers, buffer algorithms, files,
+and helpers for implementing asynchronous operations compatible with
+__Asio__ and described in __N3747__. This section lists these facilities
+by group, with descriptions.
+
+[important
+    This documentation assumes familiarity with __Asio__. Sample
+    code and identifiers used throughout are written as if the
+    following declarations are in effect:
+
+    [snippet_core_1a]
+    [snippet_core_1b]
+]
+
+[include 03_core/1_asio.qbk]
+[include 03_core/2_streams.qbk]
+[include 03_core/3_buffers.qbk]
+[include 03_core/4_files.qbk]
+[include 03_core/5_composed.qbk]
+[include 03_core/6_detect_ssl.qbk]
+
+[endsect]

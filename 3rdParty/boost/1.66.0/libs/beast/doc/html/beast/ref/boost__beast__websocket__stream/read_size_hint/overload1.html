@@ -1,0 +1,96 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>websocket::stream::read_size_hint (1 of 2 overloads)</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../read_size_hint.html" title="websocket::stream::read_size_hint">
+<link rel="prev" href="../read_size_hint.html" title="websocket::stream::read_size_hint">
+<link rel="next" href="overload2.html" title="websocket::stream::read_size_hint (2 of 2 overloads)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../read_size_hint.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../read_size_hint.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload2.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h6 class="title">
+<a name="beast.ref.boost__beast__websocket__stream.read_size_hint.overload1"></a><a class="link" href="overload1.html" title="websocket::stream::read_size_hint (1 of 2 overloads)">websocket::stream::read_size_hint
+          (1 of 2 overloads)</a>
+</h6></div></div></div>
+<p>
+            Returns a suggested maximum buffer size for the next call to read.
+          </p>
+<h7><a name="beast.ref.boost__beast__websocket__stream.read_size_hint.overload1.h0"></a>
+            <span class="phrase"><a name="beast.ref.boost__beast__websocket__stream.read_size_hint.overload1.synopsis"></a></span><a class="link" href="overload1.html#beast.ref.boost__beast__websocket__stream.read_size_hint.overload1.synopsis">Synopsis</a>
+          </h7><pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+<span class="identifier">read_size_hint</span><span class="special">(</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">initial_size</span> <span class="special">=</span> <span class="special">+</span><span class="identifier">tcp_frame_size</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<h7><a name="beast.ref.boost__beast__websocket__stream.read_size_hint.overload1.h1"></a>
+            <span class="phrase"><a name="beast.ref.boost__beast__websocket__stream.read_size_hint.overload1.description"></a></span><a class="link" href="overload1.html#beast.ref.boost__beast__websocket__stream.read_size_hint.overload1.description">Description</a>
+          </h7><p>
+            This function returns a reasonable upper limit on the number of bytes
+            for the size of the buffer passed in the next call to read. The number
+            is determined by the state of the current frame and whether or not the
+            permessage-deflate extension is enabled.
+          </p>
+<h7><a name="beast.ref.boost__beast__websocket__stream.read_size_hint.overload1.h2"></a>
+            <span class="phrase"><a name="beast.ref.boost__beast__websocket__stream.read_size_hint.overload1.parameters"></a></span><a class="link" href="overload1.html#beast.ref.boost__beast__websocket__stream.read_size_hint.overload1.parameters">Parameters</a>
+          </h7><div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                    <p>
+                      Name
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Description
+                    </p>
+                  </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">initial_size</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      A non-zero size representing the caller's desired buffer size
+                      for when there is no information which may be used to calculate
+                      a more specific value. For example, when reading the first
+                      frame header of a message.
+                    </p>
+                  </td>
+</tr></tbody>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../read_size_hint.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../read_size_hint.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload2.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

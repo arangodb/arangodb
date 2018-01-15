@@ -1,0 +1,135 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Test module's initialization</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../adv_scenarios.html" title="Advanced Usage Scenarios">
+<link rel="prev" href="entry_point_overview.html" title="Test module's entry point">
+<link rel="next" href="test_module_runner_overview.html" title="Test module runner">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="entry_point_overview.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../adv_scenarios.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="test_module_runner_overview.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.adv_scenarios.test_module_init_overview"></a><a class="link" href="test_module_init_overview.html" title="Test module's initialization">Test
+      module's initialization</a>
+</h3></div></div></div>
+<p>
+        In order for a unit test module to successfully link and execute, it has
+        to have access to the <span class="emphasis"><em>test module's initialization function</em></span>.
+        the module's initialization function is called only once during the execution
+        of the program, just before the <a class="link" href="test_module_runner_overview.html" title="Test module runner"><span class="emphasis"><em>test
+        module runner</em></span></a> is run. By default, the <span class="emphasis"><em>Unit Test
+        Framework</em></span> provides a default definition of initialization function.
+        The only thing you have to do is to instruct the framework in which translation
+        unit (<code class="computeroutput"><span class="identifier">cpp</span></code> file) it needs
+        to provide the definition. You do it by defining macro <a class="link" href="../utf_reference/link_references/link_boost_test_module_macro.html" title="BOOST_TEST_MODULE"><code class="computeroutput"><span class="identifier">BOOST_TEST_MODULE</span></code></a> in the designated
+        file. The default implementation assigns the name to the <a class="link" href="../section_glossary.html#ref_test_module">test
+        module</a> as well as the <a class="link" href="../tests_organization/test_suite/master_test_suite.html" title="Master Test Suite">master
+        test suite</a>. The name to be assigned is specified by the value of the
+        macro <a class="link" href="../utf_reference/link_references/link_boost_test_module_macro.html" title="BOOST_TEST_MODULE"><code class="computeroutput"><span class="identifier">BOOST_TEST_MODULE</span></code></a>.
+      </p>
+<div class="important"><table border="0" summary="Important">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Important]" src="../../../../../../doc/src/images/important.png"></td>
+<th align="left">Important</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          For a test module consisting of multiple source files you have to define
+          <a class="link" href="../utf_reference/link_references/link_boost_test_module_macro.html" title="BOOST_TEST_MODULE"><code class="computeroutput"><span class="identifier">BOOST_TEST_MODULE</span></code></a> in a single
+          test file only. Otherwise you end up with multiple instances of the initialization
+          function.
+        </p></td></tr>
+</table></div>
+<p>
+        There is practically no need to ever alter the default behavior of the test
+        module's initialization function. The <span class="emphasis"><em>Unit Test Framework</em></span>
+        provides superior tools for performing customization tasks:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            for automatic registration of test cases and test suites in the test
+            tree, see section <a class="link" href="../tests_organization.html" title="Declaring and organizing tests">Tests
+            organization</a>;
+          </li>
+<li class="listitem">
+            in order to assign the custom name to the master test suite define macro
+            <a class="link" href="../utf_reference/link_references/link_boost_test_module_macro.html" title="BOOST_TEST_MODULE"><code class="computeroutput"><span class="identifier">BOOST_TEST_MODULE</span></code></a> to desired
+            value;
+          </li>
+<li class="listitem">
+            in order to access the command-line parameters (except the ones consumed
+            by the <span class="emphasis"><em>Unit Test Framework</em></span>), use the interface of
+            the <a class="link" href="../tests_organization/test_suite/master_test_suite.html" title="Master Test Suite">master
+            test suite</a>;
+          </li>
+<li class="listitem">
+            in order to perform a global initialization of the state required by
+            the test cases, <a class="link" href="../tests_organization/fixtures/global.html" title="Global fixture">global
+            fixtures</a> offer a superior alternative: you can specify global
+            set-up and tear-down in one place, allow access to the global data from
+            every test case, and guarantee that clean-up and tear-down is repeated
+            each time the tests are re-run during the execution of the program;
+          </li>
+<li class="listitem">
+            if the need for custom module initialization is only driven by legacy
+            code (written against old versions of the <span class="emphasis"><em>Unit Test Framework</em></span>),
+            it is recommended to update your program's code.
+          </li>
+</ul></div>
+<p>
+        The default initialization function provided by the framework is defined
+        with the following signature in the global namespace:
+      </p>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">init_unit_test</span><span class="special">();</span>
+</pre>
+<p>
+        Return value <code class="computeroutput"><span class="keyword">true</span></code> indicates
+        a successful initialization. Value <code class="computeroutput"><span class="keyword">false</span></code>
+        indicates initialization failure.
+      </p>
+<p>
+        For overriding the default definition:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="single_header_customizations/init_func.html" title="Customizing the module's initialization function">see
+            here</a>, for single header usage variant,
+          </li>
+<li class="listitem">
+            <a class="link" href="static_lib_customizations/init_func.html" title="Customizing the module's initialization function">see
+            here</a>, for static library usage variant,
+          </li>
+<li class="listitem">
+            <a class="link" href="shared_lib_customizations/init_func.html" title="Customizing the module's initialization function">see
+            here</a>, for shared library usage variant.
+          </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2017 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="entry_point_overview.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../adv_scenarios.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="test_module_runner_overview.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

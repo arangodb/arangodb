@@ -1,0 +1,59 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>deduce_scalar</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>deduce_scalar</h3>
+</div>
+<div class="RenoIncludeDIV"><div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_deduce_scalar_hpp.html">boost/qvm/deduce_scalar.hpp</a></span>&gt;</p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        <span class="RenoIncludeSPAN">template &lt;class A,class B&gt;
+        struct <span class="RenoLink">deduce_scalar</span>
+        {
+            typedef typename impl&lt;A,B&gt;::type type;
+        };</span></span>
+    }
+}</pre>
+</div></div><h4>Assumptions:</h4>
+<p><i>A</i> and <i>B</i> satisfy the <span class="RenoLink"><a href="scalar_requirements.html">scalar requirements</a></span>.</p>
+<h4>Returns:</h4>
+<p>If <i>A</i> and <i>B</i> are the same type, <i>impl&lt;A,B&gt;::type</i> returns that type. Otherwise, <i>impl&lt;A,B&gt;::type</i> is well defined for the following types only: <i>signed/unsigned char</i>, <i>signed/unsigned short</i>, <i>signed/unsigned int</i>, <i>signed/unsigned long</i>, <i>float</i> and <i>double</i>. The deduction logic is as follows:</p>
+<div><ul><li>if either of <i>A</i> and <i>B</i> is <i>double</i>, the result is <i>double</i>;</li>
+<li>else, if one of <i>A</i> and <i>B</i> is an integer type and the other is <i>float</i>, the result is <i>float</i>;</li>
+<li>else, if <i>A</i> or <i>B</i> is a signed integer and the other type is unsigned integer, the signed type is changed to unsigned, and then the lesser of the two integers is promoted to the other.</li>
+</ul></div>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="boost_qvm_deduce_scalar_hpp.html">boost/qvm/deduce_scalar.hpp</a>&nbsp;| <a href="deduce_mat2.html">deduce_mat2</a>&nbsp;| <a href="deduce_quat2.html">deduce_quat2</a>&nbsp;| <a href="deduce_vec2.html">deduce_vec2</a>&nbsp;| <a href="dot_quat_quat_.html">dot(quat,quat)</a>&nbsp;| <a href="dot_vec_vec_.html">dot(vec,vec)</a></span>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2016 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

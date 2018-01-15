@@ -1,0 +1,135 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Identifying data types</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;The Variadic Macro Data Library 1.9">
+<link rel="up" href="../vmd_specific.html" title="Specific macros for working with data types">
+<link rel="prev" href="vmd_pp_data_types.html" title="VMD and Boost PP data types">
+<link rel="next" href="../vmd_generic.html" title="Generic macros for working with data types">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_pp_data_types.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../vmd_specific.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../vmd_generic.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="variadic_macro_data.vmd_specific.vmd_identifying"></a><a class="link" href="vmd_identifying.html" title="Identifying data types">Identifying
+      data types</a>
+</h3></div></div></div>
+<h5>
+<a name="variadic_macro_data.vmd_specific.vmd_identifying.h0"></a>
+        <span class="phrase"><a name="variadic_macro_data.vmd_specific.vmd_identifying.identifying_macros_and_boost_vmd"></a></span><a class="link" href="vmd_identifying.html#variadic_macro_data.vmd_specific.vmd_identifying.identifying_macros_and_boost_vmd">Identifying
+        macros and BOOST_VMD_IS_EMPTY </a>
+      </h5>
+<p>
+        The various macros for identifying VMD data types complement the ability
+        to identify emptiness using BOOST_VMD_IS_EMPTY. The general name I will use
+        in this documentation for these specific macros is "identifying macros."
+        The identifying macros also share with BOOST_VMD_IS_EMPTY the inherent flaw
+        mentioned when discussing BOOST_VMD_IS_EMPTY, since they themselves use BOOST_VMD_IS_EMPTY
+        to determine that the input has ended.
+      </p>
+<p>
+        To recapitulate the flaw with BOOST_VMD_IS_EMPTY:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            using a standard C++ compiler if the input ends with the name of a function-like
+            macro, and that macro takes two or more parameters, a preprocessing error
+            will occur.
+          </li>
+<li class="listitem">
+            using the VC++ compiler if the input consists of the name of a function-like
+            macro, and that macro when invoked with no parameters returns a tuple,
+            the macro erroneously returns 1, meaning that the input is empty.
+          </li>
+<li class="listitem">
+            even if the function-like macro takes one parameter, passing emptiness
+            to that macro could cause a preprocessing error.
+          </li>
+</ul></div>
+<p>
+        The obvious way to avoid the BOOST_VMD_IS_EMPTY problem with the identifying
+        macros is to design input so that the name of a function-like macro is never
+        passed as a parameter. This can be done, if one uses VMD and has situations
+        where the input could contain a function-like macro name, by having that
+        function-like macro name placed within a Boost PP data type, such as a tuple,
+        without attempting to identify the type of the tuple element using VMD. In
+        other word if the input is:
+      </p>
+<pre class="programlisting"><span class="special">(</span> <span class="identifier">SOME_FUNCTION_MACRO_NAME</span> <span class="special">)</span>
+</pre>
+<p>
+        and we have the macro definition:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">SOME_FUNCTION_MACRO_NAME</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span><span class="identifier">y</span><span class="special">)</span> <span class="identifier">some_output</span>
+</pre>
+<p>
+        VMD can still parse the input as a tuple, if desired, using BOOST_VMD_IS_TUPLE
+        without encountering the BOOST_VMD_IS_EMPTY problem. However if the input
+        is:
+      </p>
+<pre class="programlisting"><span class="identifier">SOME_FUNCTION_MACRO_NAME</span>
+</pre>
+<p>
+        either directly or through accessing the above tuple's first element, and
+        the programmer attempts to use BOOST_VMD_IS_IDENTIFIER with this input, the
+        BOOST_VMD_IS_EMPTY problem will occur.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_specific.vmd_identifying.h1"></a>
+        <span class="phrase"><a name="variadic_macro_data.vmd_specific.vmd_identifying.identifying_macros_and_programmi"></a></span><a class="link" href="vmd_identifying.html#variadic_macro_data.vmd_specific.vmd_identifying.identifying_macros_and_programmi">Identifying
+        macros and programming flexibility </a>
+      </h5>
+<p>
+        The VMD identifying macros give the preprocessor metaprogrammer a great amount
+        of flexibility when designing macros. It is not merely the flexibility of
+        allowing direct parameters to a macro to be different data types, and having
+        the macro work differently depending on the type of data passed to it, but
+        it is also the flexibility of allowing individual elements of the higher
+        level Boost PP data types to be different data types and have the macro work
+        correctly depending on the type of data type passed as part of those elements.
+      </p>
+<p>
+        With this flexibility also comes a greater amount of responsibility. For
+        the macro designer this responsibility is twofold:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            To carefully document the possible combinations of acceptable data and
+            what they mean.
+          </li>
+<li class="listitem">
+            To balance flexibility with ease of use so that the macro does not become
+            so hard to understand that the programmer invoking the macro gives up
+            using it entirely.
+          </li>
+</ul></div>
+<p>
+        For the programmer invoking a macro the responsibility is to understand the
+        documentation and not attempt to pass to the macro data which may cause incorrect
+        results or preprocessing errors.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2010-2017 Tropic Software
+      East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_pp_data_types.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../vmd_specific.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../vmd_generic.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

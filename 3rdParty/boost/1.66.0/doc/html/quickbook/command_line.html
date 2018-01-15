@@ -1,0 +1,169 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Command Line Usage</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../quickbook.html" title="Chapter&#160;51.&#160;Quickbook 1.7">
+<link rel="prev" href="change_log.html" title="Change Log">
+<link rel="next" href="syntax.html" title="Syntax Summary">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="change_log.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../quickbook.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="syntax.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="quickbook.command_line"></a>Command Line Usage</h2></div></div></div>
+<div class="toc"><dl class="toc"><dt><span class="section"><a href="command_line.html#quickbook.command_line.options">Command Line Options</a></span></dt></dl></div>
+<p>
+      Quickbook is generally run by a build tool, but if you want to run it manually,
+      it's pretty simple to use. Basic usage is:
+    </p>
+<pre class="programlisting">quickbook filename.qbk
+</pre>
+<p>
+      Which, if successful, will print out something like:
+    </p>
+<pre class="programlisting">Generating Output File: filename.xml
+</pre>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="quickbook.command_line.options"></a><a class="link" href="command_line.html#quickbook.command_line.options" title="Command Line Options">Command Line Options</a>
+</h3></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">--help</span></dt>
+<dd><p>
+              Prints out a summary of the options supported by quickbook, and exits.
+            </p></dd>
+<dt><span class="term">--version</span></dt>
+<dd><p>
+              Prints out the version of the quickbook executable, and exists.
+            </p></dd>
+<dt><span class="term">--no-pretty-print</span></dt>
+<dd><p>
+              Disable XML pretty printing. Normally quickbook runs its output through
+              a post processor which generates consistent XML indentation, this flag
+              disables it.
+            </p></dd>
+<dt><span class="term">--strict</span></dt>
+<dd><p>
+              Strict mode. Adds extra errors for possible issues, including sections
+              that weren't closed, and square brackets that don't match any tags
+              or templates.
+            </p></dd>
+<dt><span class="term">--no-self-linked-headers</span></dt>
+<dd><p>
+              By default quickbook generates docbook headers that link to themselves,
+              so that in a web browser you can get a link to the header by right
+              clicking on the header and copying the link. This requires generating
+              slightly odd boostbook markup, so this head disables the feature and
+              generates plain headers.
+            </p></dd>
+<dt><span class="term">--indent</span></dt>
+<dd><p>
+              Indentation to use in the pretty printer.
+            </p></dd>
+<dt><span class="term">--linewidth</span></dt>
+<dd><p>
+              Line width to use in the pretty printer.
+            </p></dd>
+<dt><span class="term">--input-file path</span></dt>
+<dd>
+<p>
+              Used to explicitly specify that the argument is an input file. Normally
+              not used, as you can just write:
+            </p>
+<pre class="programlisting">quickbook filename.qbk</pre>
+<p>
+              . But if you wish to you can also write:
+            </p>
+<pre class="programlisting">quickbook --input-file filename.qbk</pre>
+<p>
+              . This could be useful if a file path could be confused with an option,
+              for example to use a file called <code class="computeroutput">--filename.qbk</code>:
+            </p>
+<pre class="programlisting">quickbook --input-file --filename.qbk</pre>
+<p>
+              Only one input file can be specified.
+            </p>
+</dd>
+<dt><span class="term">--output-file path</span></dt>
+<dd><p>
+              Explicitly specifiy the path of the file to be generated. By default,
+              it's just the input file name with the extension replaced by <code class="computeroutput">.xml</code>.
+            </p></dd>
+<dt><span class="term">--no-output</span></dt>
+<dd><p>
+              Don't write out a boostbook file. This is useful for checking that
+              a document doesn't have any sytax errors, or for running with <code class="computeroutput">--output-deps</code>.
+              If <code class="computeroutput">--output-file-path</code> is also defined, that overwrites
+              this.
+            </p></dd>
+<dt><span class="term">--output-deps path</span></dt>
+<dd><p>
+              Writes the full path of all the files read in by quickbook to the given
+              path. This is useful for build tools so that they can tell when to
+              rebuild the documentation.
+            </p></dd>
+<dt><span class="term">--ms-errors</span></dt>
+<dd><p>
+              Use Microsoft Visual Studio style error and warn message format, so
+              that Visual Studio IDE will understand them.
+            </p></dd>
+<dt><span class="term">--include-path path, -I path</span></dt>
+<dd><p>
+              Add the given path to the include path, can be specified multiple times.
+            </p></dd>
+<dt><span class="term">--define macro, -D macro</span></dt>
+<dd>
+<p>
+              Define a quickbook macro. This can have a value:
+            </p>
+<pre class="programlisting">quickbook -D __foo__=bar</pre>
+<p>
+              Or you can just define an empty macro:
+            </p>
+<pre class="programlisting">quickbook -D __foo__</pre>
+<p>
+              This can be useful for <a class="link" href="syntax/phrase.html#quickbook.ref.cond">conditional
+              generation</a>.
+            </p>
+</dd>
+<dt><span class="term">--image-location path</span></dt>
+<dd><p>
+              Path the image elements are relative to. This is only used for reading
+              in SVG details.
+            </p></dd>
+</dl>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002, 2004, 2006 Joel de Guzman,
+      Eric Niebler<br>Copyright &#169; 2010-2017 Daniel James<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="change_log.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../quickbook.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="syntax.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

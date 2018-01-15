@@ -1,0 +1,136 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:logging_api Logging API]
+
+While many test log configuration tasks can be performed at runtime using predefined framework parameters, the
+__UTF__ provides a compile time interface as well. The interface gives you full power over what, where and how to
+log. The interface of the logger is provided by singleton class [classref boost::unit_test::unit_test_log_t] and is
+accessible through local file scope reference to single instance of this class
+
+``
+boost::unit_test::unit_test_log
+``
+
+In order to install customization of the logger, the __UTF__ provides the __BOOST_TEST_GLOBAL_CONFIGURATION__ facility
+that acts in a similar fashion to a global fixture.
+
+
+[/ ------------------------------------------------------------------------------------------------ ]
+
+[section:log_ct_output_stream_redirection Log output stream redirection]
+
+If you want to redirect the test log output stream into something different from the logger default output stream
+(usually `std::cout`, `std::cerr` or a file), use the following interface:
+
+``
+  boost::unit_test::unit_test_log.set_stream( std::ostream& );
+``
+
+or for a particular log format:
+
+``
+  boost::unit_test::unit_test_log.set_stream( boost::unit_test::output_format, std::ostream& );
+``
+
+[tip See [memberref boost::unit_test::unit_test_log_t::set_stream] and [enumref boost::unit_test::output_format] for more details]
+
+You can reset the output stream at any time both during the test module initialization and from within test
+cases. There are no limitations on number of output stream resets neither.
+
+[warning
+  If you redirect test log output stream from global fixture setup, you are [*required] to reset it back to `std::cout`
+  during teardown to prevent dangling references access]
+
+[bt_example example50..Compile-time log output redirection..run-fail]
+
+[endsect] [/section:log_ct_output_stream_redirection]
+
+
+[/ ------------------------------------------------------------------------------------------------ ]
+[#ref_log_level_explanations][section:log_ct_log_level Log level configuration]
+If you need to enforce specific log level from within your test module use the following interface:
+
+``
+  boost::unit_test::unit_test_log.set_threshold_level( boost::unit_test::log_level );
+``
+
+or for a specific logger:
+
+``
+  boost::unit_test::unit_test_log.set_threshold_level( boost::unit_test::output_format, boost::unit_test::log_level );
+``
+
+
+[tip See [memberref boost::unit_test::unit_test_log_t::set_threshold_level] and [enumref boost::unit_test::output_format] for more details]
+
+In regular circumstances you shouldn't use this interface, since you not only override default log level, but also
+the one supplied at test execution time. Prefer to use runtime parameters
+[link boost_test.utf_reference.rt_param_reference.log_level `--log_level`] or [link boost_test.utf_reference.rt_param_reference.logger `--logger`]
+for log level selection.
+
+[bt_example example51..Compile-time log level configuration..run]
+
+[endsect] [/section:log_ct_log_level]
+
+[/ ------------------------------------------------------------------------------------------------ ]
+[section:log_ct_log_format Predefined log format selection]
+The select at compile time the log format from the list of the formats supplied by the __UTF__
+
+``
+   boost::unit_test::unit_test_log.set_format( boost::unit_test::output_format );
+``
+
+or for adding a format:
+
+``
+   boost::unit_test::unit_test_log.add_format( boost::unit_test::output_format );
+``
+
+[caution [memberref boost::unit_test::unit_test_log_t::set_format] above disables all formatters but the one provided as argument.]
+
+[tip See [memberref boost::unit_test::unit_test_log_t::set_format] and [enumref boost::unit_test::output_format] for more details]
+
+In regular circumstances you shouldn't use this interface. Prefer to use runtime parameters
+[link boost_test.utf_reference.rt_param_reference.log_format `--log_format`] or [link boost_test.utf_reference.rt_param_reference.logger `--logger`]
+for predefined log format selection.
+
+[bt_example example52..Compile-time log format selection..run-fail]
+
+[endsect] [/section:log_ct_log_format]
+
+[/ ------------------------------------------------------------------------------------------------ ]
+[#ref_log_formatter_api][section:custom_log_formatter Custom log format support]
+
+It is possible to implement your own formatter: it should derive from [classref boost::unit_test::unit_test_log_formatter].
+
+It is possible to add a your own instance of a formatter to the set of formats using one of the two functions:
+
+``
+boost::unit_test::unit_test_log.set_formatter( unit_test_log_formatter* );
+boost::unit_test::unit_test_log.add_formatter( unit_test_log_formatter* );
+``
+
+[tip See [memberref boost::unit_test::unit_test_log_t::set_formatter] and [memberref boost::unit_test::unit_test_log_t::add_formatter]
+ for more details]
+
+[warning The call to `boost::unit_test::unit_test_log.set_formatter` is equivalent to
+ [memberref boost::unit_test::unit_test_log_t::set_format] ([link boost_test.test_output.logging_api.log_ct_log_format see here])
+ as it disables all other formatters.]
+
+[tip More details about the class implementing the formatting of the logs can be found in the following reference sections:
+
+* [classref boost::unit_test::unit_test_log_formatter] defines the interface for all loggers. Built-in
+  [link boost_test.test_output.log_formats.log_human_readable_format HRF], [link boost_test.test_output.log_formats.log_xml_format XML]
+  and [link boost_test.test_output.log_formats.log_junit_format JUNIT] loggers derive from this class
+* [classref boost::unit_test::test_results] defines the information carried by the tests to provide reports and logs.
+]
+
+[endsect] [/section:custom_log_formatter]
+
+
+[endsect] [/section:logging_api]

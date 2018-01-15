@@ -1,0 +1,83 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Requirements on synchronous socket operations</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../reference.html" title="Reference">
+<link rel="prev" href="read_write_operations.html" title="Requirements on read and write operations">
+<link rel="next" href="asynchronous_socket_operations.html" title="Requirements on asynchronous socket operations">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="read_write_operations.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="asynchronous_socket_operations.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_asio.reference.synchronous_socket_operations"></a><a class="link" href="synchronous_socket_operations.html" title="Requirements on synchronous socket operations">Requirements
+      on synchronous socket operations</a>
+</h3></div></div></div>
+<p>
+        In this section, <span class="emphasis"><em>synchronous socket operations</em></span> are those
+        member functions specified as two overloads, with and without an argument
+        of type <code class="computeroutput">error_code&amp;</code>:
+      </p>
+<pre class="programlisting"><span class="bold"><strong><span class="emphasis"><em>R f</em></span></strong></span>(<span class="emphasis"><em><span class="bold"><strong>A1</strong></span></em></span> a1, <span class="emphasis"><em><span class="bold"><strong>A2</strong></span></em></span> a2, ..., <span class="emphasis"><em><span class="bold"><strong>AN</strong></span></em></span> aN);
+<span class="bold"><strong><span class="emphasis"><em>R f</em></span></strong></span>(<span class="emphasis"><em><span class="bold"><strong>A1</strong></span></em></span> a1, <span class="emphasis"><em><span class="bold"><strong>A2</strong></span></em></span> a2, ..., <span class="emphasis"><em><span class="bold"><strong>AN</strong></span></em></span> aN, error_code&amp; ec);
+</pre>
+<p>
+        For an object <code class="computeroutput">s</code>, the conditions under which its synchronous
+        socket operations may block the calling thread (C++Std [defns.block]) are
+        determined as follows.
+      </p>
+<p>
+        If:
+      </p>
+<p>
+        &#8212; <code class="computeroutput">s.non_blocking() == true</code>,
+      </p>
+<p>
+        &#8212; the synchronous socket operation is specified in terms of a <span class="emphasis"><em>POSIX</em></span>
+        function other than <code class="computeroutput"><a href="http://www.opengroup.org/onlinepubs/000095399/functions/poll.html" target="_top"><code class="computeroutput"><span class="identifier">poll</span><span class="special">()</span></code></a></code>,
+      </p>
+<p>
+        &#8212; that <span class="emphasis"><em>POSIX</em></span> function lists <code class="computeroutput">EWOULDBLOCK</code> or
+        <code class="computeroutput">EAGAIN</code> in its failure conditions, and
+      </p>
+<p>
+        &#8212; the effects of the operation cannot be established immediately
+      </p>
+<p>
+        then the synchronous socket operation shall not block the calling thread.
+        [<span class="emphasis"><em>Note:</em></span> And the effects of the operation are not established.
+        &#8212;<span class="emphasis"><em>end note</em></span>]
+      </p>
+<p>
+        Otherwise, the synchronous socket operation shall block the calling thread
+        until the effects are established.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="read_write_operations.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="asynchronous_socket_operations.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

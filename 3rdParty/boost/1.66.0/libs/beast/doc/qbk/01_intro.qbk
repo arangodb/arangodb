@@ -1,0 +1,155 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Introduction]
+
+Beast is a C++ header-only library serving as a foundation for writing
+interoperable networking libraries by providing [*low-level HTTP/1,
+WebSocket, and networking protocol] vocabulary types and algorithms
+using the consistent asynchronous model of __Asio__.
+
+This library is designed for:
+
+* [*Symmetry:] Algorithms are role-agnostic; build clients, servers, or both.
+
+* [*Ease of Use:] __Asio__ users will immediately understand Beast.
+
+* [*Flexibility:] Users make the important decisions such as buffer or
+  thread management.
+
+* [*Performance:] Build applications handling thousands of connections or more.
+
+* [*Basis for Further Abstraction.] Components are well-suited for building upon.
+
+This library is not a client or server, but it can be used to build those
+things. Many examples are provided, including clients and servers, which may
+be used as a starting point for writing your own program.
+
+[heading Motivation]
+
+Beast empowers users to create their own libraries, clients, and servers
+using HTTP/1 and WebSocket. Code will be easier and faster to implement,
+understand, and maintain, because Beast takes care of the low-level
+protocol details.
+The HTTP and WebSocket protocols drive most of the World Wide Web.
+Every web browser implements these protocols to load webpages and
+to enable client side programs (often written in JavaScript) to
+communicate interactively. C++ benefits greatly from having a
+standardized implementation of these protocols.
+
+[heading Requirements]
+
+[important
+    This library is for programmers familiar with __Asio__. Users who
+    wish to use asynchronous interfaces should already know how to
+    create concurrent network programs using callbacks or coroutines.
+]
+
+Beast requires:
+
+* [*C++11:] Robust support for most language features.
+* [*Boost:] Beast only works with Boost, not stand-alone Asio
+* [*OpenSSL:] Optional, for using TLS/Secure sockets.
+
+Supported compilers: msvc-14+, gcc 4.8+, clang 3.6+
+
+Sources are [*header-only].
+To link a program using Beast successfully, add the
+[@boost:/libs/system/index.html Boost.System]
+library to your build scripts. If you use coroutines you'll also need the
+[@boost:/libs/coroutine/index.html Boost.Coroutine]
+library. Please visit the
+[@boost:/more/getting_started.html Boost documentation]
+for instructions on how to do this for your particular build system.
+
+[heading Credits]
+
+Boost.Asio is the inspiration behind which all of the interfaces and
+implementation strategies are built. Some parts of the documentation are
+written to closely resemble the wording and presentation of Boost.Asio
+documentation. Credit goes to
+[@https://github.com/chriskohlhoff Christopher Kohlhoff]
+for his wonderful Asio library and the ideas in __N4588__ which power Beast.
+
+Beast would not be possible without the support of
+[@https://www.ripple.com Ripple]
+during the library's early development, or the ideas, time and patience
+contributed by
+[@https://github.com/JoelKatz David Schwartz],
+[@https://github.com/ximinez Edward Hennis],
+[@https://github.com/howardhinnant Howard Hinnant],
+[@https://github.com/miguelportilla Miguel Portilla],
+[@https://github.com/nbougalis Nik Bougalis],
+[@https://github.com/seelabs Scott Determan] and
+[@https://github.com/scottschurr Scott Schurr].
+Many thanks to
+[@https://github.com/K-ballo Agustín Bergé],
+[@http://www.boost.org/users/people/glen_fernandes.html Glen Fernandes],
+and
+[@https://github.com/pdimov Peter Dimov]
+for tirelessly answering questions on
+[@https://cpplang.slack.com/ Cpplang-Slack].
+
+[endsect]
+
+[section Reports]
+[block'''<?dbhtml stop-chunking?>''']
+
+[section Security Review (Bishop Fox)]
+
+Since 2005, [@https://www.bishopfox.com/ Bishop Fox] has provided
+security consulting services to the Fortune 1000, high-tech startups,
+and financial institutions worldwide.
+Beast engaged Bishop Fox to assess the security of the Boost C++ Beast HTTP/S
+networking library. The following report details the findings identified during
+the course of the engagement, which started on September 11, 2017.
+
+The assessment team conducted a hybrid application assessment of the Beast
+library. Bishop Fox’s hybrid application assessment methodology leverages
+the real-world attack techniques of application penetration testing in
+combination with targeted source code review to thoroughly identify
+application security vulnerabilities. These fullknowledge assessments
+begin with automated scans of the deployed application and source code.
+Next, analyses of the scan results are combined with manual review to
+thoroughly identify potential application security vulnerabilities. In
+addition, the team performs a review of the application architecture and
+business logic to locate any design-level issues. Finally, the team performs
+manual exploitation and review of these issues to validate the findings.
+
+[@https://vinniefalco.github.io/BeastAssets/Beast%20-%20Hybrid%20Application%20Assessment%202017%20-%20Assessment%20Report%20-%2020171114.pdf [*Beast - Hybrid Application Assessment 2017]]
+
+[endsect]
+
+[section WebSocket (Autobahn|Testsuite)]
+
+The
+[@https://github.com/crossbario/autobahn-testsuite Autobahn WebSockets Testsuite]
+provides a fully automated test suite to
+verify client and server implementations of The WebSocket Protocol
+for specification conformance and implementation robustness.
+The test suite will check an implementation by doing basic
+WebSocket conversations, extensive protocol compliance
+verification and performance and limits testing.
+Autobahn|Testsuite is used across the industry and
+contains over 500 test cases.
+
+[@https://vinniefalco.github.io/BeastAssets/reports/autobahn/index.html [*Autobahn|Testsuite WebSocket Results]]
+
+[warning
+    Version 0.7.6 of Autobahn|Testsuite contains a
+    [@https://github.com/crossbario/autobahn-testsuite/issues/77 known defect]
+    which causes false positive failures in Beast for the following test cases:
+    { 12.4.5, 12.4.6, 12.4.8, 12.4.9, 12.4.10, 12.4.11, 12.4.13,
+      12.4.14, 12.4.15, 12.4.16, 12.4.17, 12.4.18 }
+    When this issue is resolved in the test suite, the reports will be updated.
+]
+
+[endsect]
+
+[endsect]

@@ -1,0 +1,182 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>async_completion::completion_handler_type</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../async_completion.html" title="async_completion">
+<link rel="prev" href="completion_handler.html" title="async_completion::completion_handler">
+<link rel="next" href="result.html" title="async_completion::result">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="completion_handler.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../async_completion.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="result.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_asio.reference.async_completion.completion_handler_type"></a><a class="link" href="completion_handler_type.html" title="async_completion::completion_handler_type">async_completion::completion_handler_type</a>
+</h4></div></div></div>
+<p>
+          <a class="indexterm" name="boost_asio.indexterm.async_completion.completion_handler_type"></a> 
+The
+          real handler type to be used for the asynchronous operation.
+        </p>
+<pre class="programlisting">typedef boost::asio::async_result&lt; typename decay&lt; CompletionToken &gt;::type, Signature &gt;::completion_handler_type completion_handler_type;
+</pre>
+<h6>
+<a name="boost_asio.reference.async_completion.completion_handler_type.h0"></a>
+          <span class="phrase"><a name="boost_asio.reference.async_completion.completion_handler_type.types"></a></span><a class="link" href="completion_handler_type.html#boost_asio.reference.async_completion.completion_handler_type.types">Types</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../async_result/completion_handler_type.html" title="async_result::completion_handler_type"><span class="bold"><strong>completion_handler_type</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The concrete completion handler type for the specific signature.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../async_result/return_type.html" title="async_result::return_type"><span class="bold"><strong>return_type</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The return type of the initiating function.
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="boost_asio.reference.async_completion.completion_handler_type.h1"></a>
+          <span class="phrase"><a name="boost_asio.reference.async_completion.completion_handler_type.member_functions"></a></span><a class="link" href="completion_handler_type.html#boost_asio.reference.async_completion.completion_handler_type.member_functions">Member
+          Functions</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../async_result/async_result.html" title="async_result::async_result"><span class="bold"><strong>async_result</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Construct an async result from a given handler.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../async_result/get.html" title="async_result::get"><span class="bold"><strong>get</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Obtain the value to be returned from the initiating function.
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+          The <a class="link" href="../async_result.html" title="async_result"><code class="computeroutput">async_result</code></a>
+          traits class is used for determining:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              the concrete completion handler type to be called at the end of the
+              asynchronous operation;
+            </li>
+<li class="listitem">
+              the initiating function return type; and
+            </li>
+<li class="listitem">
+              how the return value of the initiating function is obtained.
+            </li>
+</ul></div>
+<p>
+          The trait allows the handler and return types to be determined at the point
+          where the specific completion handler signature is known.
+        </p>
+<p>
+          This template may be specialised for user-defined completion token types.
+          The primary template assumes that the CompletionToken is the completion
+          handler.
+        </p>
+<h6>
+<a name="boost_asio.reference.async_completion.completion_handler_type.h2"></a>
+          <span class="phrase"><a name="boost_asio.reference.async_completion.completion_handler_type.requirements"></a></span><a class="link" href="completion_handler_type.html#boost_asio.reference.async_completion.completion_handler_type.requirements">Requirements</a>
+        </h6>
+<p>
+          <span class="emphasis"><em>Header: </em></span><code class="literal">boost/asio/async_result.hpp</code>
+        </p>
+<p>
+          <span class="emphasis"><em>Convenience header: </em></span><code class="literal">boost/asio.hpp</code>
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="completion_handler.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../async_completion.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="result.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,144 @@
+# Boost.Context Library Tests Jamfile
+
+#          Copyright Oliver Kowalke 2009.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+
+import common ;
+import feature ;
+import indirect ;
+import modules ;
+import os ;
+import testing ;
+import toolset ;
+import ../../config/checks/config : requires ;
+
+project boost/context/test
+    : requirements
+      <library>../../test/build//boost_unit_test_framework
+      <library>/boost/context//boost_context
+      <toolset>gcc,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>gcc,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <link>static
+      <threading>multi
+      <optimization>speed
+      <variant>release
+    ;
+
+
+rule configure-impl ( properties * )
+{
+    local result  ;
+    if ( ! ( <target-os>windows in $(properties) ) )
+    {
+        result = <context-impl>ucontext ;
+    }
+    else
+    {
+        result = <context-impl>winfib ;
+    }
+    return $(result) ;
+}
+
+test-suite minimal :
+[ run test_invoke.cpp :
+    : :
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_thread
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ] ]
+
+[ run test_apply.cpp :
+    : :
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_thread
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ] ]
+
+[ run test_callcc.cpp :
+    : :
+    <context-impl>fcontext
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_thread
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ]
+    : test_callcc_asm ]
+
+[ run test_callcc.cpp :
+    : :
+    <conditional>@configure-impl
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_thread
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ]
+    : test_call_native ] ;
+
+
+
+test-suite full :
+    minimal ;
+
+test-suite fc :
+[ run test_fcontext.cpp :
+    : :
+    ] ;
+
+test-suite ec :
+[ run test_execution_context.cpp :
+    : :
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_thread
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ] ] ;
+
+explicit minimal ;
+explicit fc ;
+explicit ec ;

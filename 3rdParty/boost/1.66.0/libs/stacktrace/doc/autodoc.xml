@@ -1,0 +1,245 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference id="stacktrace.reference"><title>Reference</title><header name="boost/stacktrace.hpp">
+</header>
+<header name="boost/stacktrace/stacktrace.hpp">
+<namespace name="boost">
+<namespace name="stacktrace">
+<class name="basic_stacktrace"><template>
+      <template-type-parameter name="Allocator"><purpose><para>Allocator to use during stack capture. </para></purpose></template-type-parameter>
+    </template><description><para>Class that on construction copies minimal information about call stack into its internals and provides access to that information. 
+</para></description><typedef name="value_type"><type>std::vector&lt; <classname>boost::stacktrace::frame</classname>, Allocator &gt;::value_type</type></typedef>
+<typedef name="allocator_type"><type>std::vector&lt; <classname>boost::stacktrace::frame</classname>, Allocator &gt;::allocator_type</type></typedef>
+<typedef name="pointer"><type>std::vector&lt; <classname>boost::stacktrace::frame</classname>, Allocator &gt;::const_pointer</type></typedef>
+<typedef name="const_pointer"><type>std::vector&lt; <classname>boost::stacktrace::frame</classname>, Allocator &gt;::const_pointer</type></typedef>
+<typedef name="reference"><type>std::vector&lt; <classname>boost::stacktrace::frame</classname>, Allocator &gt;::const_reference</type></typedef>
+<typedef name="const_reference"><type>std::vector&lt; <classname>boost::stacktrace::frame</classname>, Allocator &gt;::const_reference</type></typedef>
+<typedef name="size_type"><type>std::vector&lt; <classname>boost::stacktrace::frame</classname>, Allocator &gt;::size_type</type></typedef>
+<typedef name="difference_type"><type>std::vector&lt; <classname>boost::stacktrace::frame</classname>, Allocator &gt;::difference_type</type></typedef>
+<typedef name="iterator"><type>std::vector&lt; <classname>boost::stacktrace::frame</classname>, Allocator &gt;::const_iterator</type></typedef>
+<typedef name="const_iterator"><type>std::vector&lt; <classname>boost::stacktrace::frame</classname>, Allocator &gt;::const_iterator</type></typedef>
+<typedef name="reverse_iterator"><type>std::vector&lt; <classname>boost::stacktrace::frame</classname>, Allocator &gt;::const_reverse_iterator</type></typedef>
+<typedef name="const_reverse_iterator"><type>std::vector&lt; <classname>boost::stacktrace::frame</classname>, Allocator &gt;::const_reverse_iterator</type></typedef>
+<method-group name="public member functions">
+<method name="size" cv="const noexcept"><type>size_type</type><description><para>
+<emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description><returns><para>Number of function names stored inside the class.</para></returns></method>
+<method name="operator[]" cv="const noexcept"><type>const_reference</type><parameter name="frame_no"><paramtype>std::size_t</paramtype><description><para>Zero based index of frame to return. 0 is the function index where stacktrace was constructed and index close to this-&gt;size() contains function <computeroutput>main()</computeroutput>. </para></description></parameter><description><para>
+
+<emphasis role="bold">Complexity:</emphasis> O(1).</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description><returns><para>frame that references the actual frame info, stored inside *this.</para></returns></method>
+<method name="begin" cv="const noexcept"><type>const_iterator</type><description><para><emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description></method>
+<method name="cbegin" cv="const noexcept"><type>const_iterator</type><description><para><emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description></method>
+<method name="end" cv="const noexcept"><type>const_iterator</type><description><para><emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description></method>
+<method name="cend" cv="const noexcept"><type>const_iterator</type><description><para><emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description></method>
+<method name="rbegin" cv="const noexcept"><type>const_reverse_iterator</type><description><para><emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description></method>
+<method name="crbegin" cv="const noexcept"><type>const_reverse_iterator</type><description><para><emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description></method>
+<method name="rend" cv="const noexcept"><type>const_reverse_iterator</type><description><para><emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description></method>
+<method name="crend" cv="const noexcept"><type>const_reverse_iterator</type><description><para><emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description></method>
+<method name="conversion-operator" cv="const noexcept" specifiers="explicit"><type>bool</type><purpose>Allows to check that stack trace capturing was successful. </purpose><description><para>
+<emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description><returns><para><computeroutput>true</computeroutput> if <computeroutput>this-&gt;size() != 0</computeroutput></para></returns></method>
+<method name="empty" cv="const noexcept"><type>bool</type><purpose>Allows to check that stack trace failed. </purpose><description><para>
+<emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description><returns><para><computeroutput>true</computeroutput> if <computeroutput>this-&gt;size() == 0</computeroutput></para></returns></method>
+<method name="as_vector" cv="const noexcept"><type>const std::vector&lt; <classname>boost::stacktrace::frame</classname>, Allocator &gt; &amp;</type></method>
+</method-group>
+<constructor cv="noexcept"><purpose>Stores the current function call sequence inside *this without any decoding or any other heavy platform specific operations. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe if Allocator construction, copying, Allocator::allocate and Allocator::deallocate are async signal safe. </para></description></constructor>
+<constructor specifiers="explicit" cv="noexcept"><parameter name="a"><paramtype>const allocator_type &amp;</paramtype><description><para>Allocator that would be passed to underlying storeage. </para></description></parameter><purpose>Stores the current function call sequence inside *this without any decoding or any other heavy platform specific operations. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe if Allocator construction, copying, Allocator::allocate and Allocator::deallocate are async signal safe.</para><para>
+</para></description></constructor>
+<constructor cv="noexcept"><parameter name="skip"><paramtype>std::size_t</paramtype><description><para>How many top calls to skip and do not store in *this.</para></description></parameter><parameter name="max_depth"><paramtype>std::size_t</paramtype><description><para>Max call sequence depth to collect.</para></description></parameter><parameter name="a"><paramtype>const allocator_type &amp;</paramtype><default>allocator_type()</default><description><para>Allocator that would be passed to underlying storeage.</para></description></parameter><purpose>Stores [skip, skip + max_depth) of the current function call sequence inside *this without any decoding or any other heavy platform specific operations. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe if Allocator construction, copying, Allocator::allocate and Allocator::deallocate are async signal safe.</para><para>
+
+</para></description><throws><simpara><classname>Nothing.</classname> Note that default construction of allocator may throw, however it is performed outside the constructor and exception in <computeroutput>allocator_type()</computeroutput> would not result in calling <computeroutput>std::terminate</computeroutput>. </simpara></throws></constructor>
+<constructor><parameter name="st"><paramtype>const <classname>basic_stacktrace</classname> &amp;</paramtype></parameter><description><para><emphasis role="bold">Complexity:</emphasis> O(st.size())</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe if Allocator construction, copying, Allocator::allocate and Allocator::deallocate are async signal safe. </para></description></constructor>
+<copy-assignment><type><classname>basic_stacktrace</classname> &amp;</type><parameter name="st"><paramtype>const <classname>basic_stacktrace</classname> &amp;</paramtype></parameter><description><para><emphasis role="bold">Complexity:</emphasis> O(st.size())</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe if Allocator construction, copying, Allocator::allocate and Allocator::deallocate are async signal safe. </para></description></copy-assignment>
+<destructor><description><para><emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe if Allocator::deallocate is async signal safe. </para></description></destructor>
+<constructor cv="noexcept"><parameter name="st"><paramtype><classname>basic_stacktrace</classname> &amp;&amp;</paramtype></parameter><description><para><emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe if Allocator construction and copying are async signal safe. </para></description></constructor>
+<copy-assignment><type><classname>basic_stacktrace</classname> &amp;</type><parameter name="st"><paramtype><classname>basic_stacktrace</classname> &amp;&amp;</paramtype></parameter><description><para><emphasis role="bold">Complexity:</emphasis> O(st.size())</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe if Allocator construction and copying are async signal safe. </para></description></copy-assignment>
+<method-group name="public static functions">
+<method name="from_dump" specifiers="static"><type><classname>basic_stacktrace</classname></type><template>
+          <template-type-parameter name="Char"/>
+          <template-type-parameter name="Trait"/>
+        </template><parameter name="in"><paramtype>std::basic_istream&lt; Char, Trait &gt; &amp;</paramtype></parameter><parameter name="a"><paramtype>const allocator_type &amp;</paramtype><default>allocator_type()</default></parameter><description><para>Constructs stacktrace from basic_istreamable that references the dumped stacktrace. Terminating zero frame is discarded.</para><para><emphasis role="bold">Complexity:</emphasis> O(N) </para></description></method>
+<method name="from_dump" specifiers="static"><type><classname>basic_stacktrace</classname></type><parameter name="begin"><paramtype>const void *</paramtype></parameter><parameter name="buffer_size_in_bytes"><paramtype>std::size_t</paramtype></parameter><parameter name="a"><paramtype>const allocator_type &amp;</paramtype><default>allocator_type()</default></parameter><description><para>Constructs stacktrace from raw memory dump. Terminating zero frame is discarded.</para><para><emphasis role="bold">Complexity:</emphasis> O(size) in worst case </para></description></method>
+</method-group>
+</class><typedef name="stacktrace"><purpose>This is the typedef to use unless you'd like to provide a specific allocator to <classname alt="boost::stacktrace::basic_stacktrace">boost::stacktrace::basic_stacktrace</classname>. </purpose><type><classname>basic_stacktrace</classname></type></typedef>
+<function name="operator&lt;"><type>bool</type><template>
+          <template-type-parameter name="Allocator1"/>
+          <template-type-parameter name="Allocator2"/>
+        </template><parameter name="lhs"><paramtype>const <classname>basic_stacktrace</classname>&lt; Allocator1 &gt; &amp;</paramtype></parameter><parameter name="rhs"><paramtype>const <classname>basic_stacktrace</classname>&lt; Allocator2 &gt; &amp;</paramtype></parameter><purpose>Compares stacktraces for less, order is platform dependent. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> Amortized O(1); worst case O(size())</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description></function>
+<function name="operator=="><type>bool</type><template>
+          <template-type-parameter name="Allocator1"/>
+          <template-type-parameter name="Allocator2"/>
+        </template><parameter name="lhs"><paramtype>const <classname>basic_stacktrace</classname>&lt; Allocator1 &gt; &amp;</paramtype></parameter><parameter name="rhs"><paramtype>const <classname>basic_stacktrace</classname>&lt; Allocator2 &gt; &amp;</paramtype></parameter><purpose>Compares stacktraces for equality. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> Amortized O(1); worst case O(size())</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description></function>
+<function name="operator&gt;"><type>bool</type><template>
+          <template-type-parameter name="Allocator1"/>
+          <template-type-parameter name="Allocator2"/>
+        </template><parameter name="lhs"><paramtype>const <classname>basic_stacktrace</classname>&lt; Allocator1 &gt; &amp;</paramtype></parameter><parameter name="rhs"><paramtype>const <classname>basic_stacktrace</classname>&lt; Allocator2 &gt; &amp;</paramtype></parameter><purpose>Comparison operators that provide platform dependant ordering and have amortized O(1) complexity; O(size()) worst case complexity; are Async-Handler-Safe. </purpose></function>
+<function name="operator&lt;="><type>bool</type><template>
+          <template-type-parameter name="Allocator1"/>
+          <template-type-parameter name="Allocator2"/>
+        </template><parameter name="lhs"><paramtype>const <classname>basic_stacktrace</classname>&lt; Allocator1 &gt; &amp;</paramtype></parameter><parameter name="rhs"><paramtype>const <classname>basic_stacktrace</classname>&lt; Allocator2 &gt; &amp;</paramtype></parameter></function>
+<function name="operator&gt;="><type>bool</type><template>
+          <template-type-parameter name="Allocator1"/>
+          <template-type-parameter name="Allocator2"/>
+        </template><parameter name="lhs"><paramtype>const <classname>basic_stacktrace</classname>&lt; Allocator1 &gt; &amp;</paramtype></parameter><parameter name="rhs"><paramtype>const <classname>basic_stacktrace</classname>&lt; Allocator2 &gt; &amp;</paramtype></parameter></function>
+<function name="operator!="><type>bool</type><template>
+          <template-type-parameter name="Allocator1"/>
+          <template-type-parameter name="Allocator2"/>
+        </template><parameter name="lhs"><paramtype>const <classname>basic_stacktrace</classname>&lt; Allocator1 &gt; &amp;</paramtype></parameter><parameter name="rhs"><paramtype>const <classname>basic_stacktrace</classname>&lt; Allocator2 &gt; &amp;</paramtype></parameter></function>
+<function name="hash_value"><type>std::size_t</type><template>
+          <template-type-parameter name="Allocator"/>
+        </template><parameter name="st"><paramtype>const <classname>basic_stacktrace</classname>&lt; Allocator &gt; &amp;</paramtype></parameter><purpose>Fast hashing support, O(st.size()) complexity; Async-Handler-Safe. </purpose></function>
+<function name="operator&lt;&lt;"><type>std::basic_ostream&lt; CharT, TraitsT &gt; &amp;</type><template>
+          <template-type-parameter name="CharT"/>
+          <template-type-parameter name="TraitsT"/>
+          <template-type-parameter name="Allocator"/>
+        </template><parameter name="os"><paramtype>std::basic_ostream&lt; CharT, TraitsT &gt; &amp;</paramtype></parameter><parameter name="bt"><paramtype>const <classname>basic_stacktrace</classname>&lt; Allocator &gt; &amp;</paramtype></parameter><purpose>Outputs stacktrace in a human readable format to output stream; unsafe to use in async handlers. </purpose></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/stacktrace/detail/frame_decl.hpp">
+<para>Use &lt;boost/stacktrace/frame.hpp&gt; header instead of this one! </para><namespace name="boost">
+<namespace name="stacktrace">
+<class name="frame"><purpose>Class that stores frame/function address and can get information about it at runtime. </purpose><typedef name="native_frame_ptr_t"><type><emphasis>unspecified</emphasis></type></typedef>
+<method-group name="public member functions">
+<method name="name" cv="const"><type>std::string</type><description><para>
+<emphasis role="bold">Complexity:</emphasis> unknown (lots of platform specific work).</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Unsafe. 
+</para></description><returns><para>Name of the frame (function name in a human readable form).</para></returns><throws><simpara><classname>std::bad_alloc</classname> if not enough memory to construct resulting string. </simpara></throws></method>
+<method name="address" cv="const noexcept"><type>constexpr native_frame_ptr_t</type><description><para>
+<emphasis role="bold">Complexity:</emphasis> O(1).</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. 
+</para></description><returns><para>Address of the frame function.</para></returns><throws><simpara><classname>Nothing.</classname> </simpara></throws></method>
+<method name="source_file" cv="const"><type>std::string</type><description><para>
+
+<emphasis role="bold">Complexity:</emphasis> unknown (lots of platform specific work).</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Unsafe. </para></description><returns><para>Path to the source file, were the function of the frame is defined. Returns empty string if this-&gt;source_line() == 0. </para></returns><throws><simpara><classname>std::bad_alloc</classname> if not enough memory to construct resulting string.</simpara></throws></method>
+<method name="source_line" cv="const"><type>std::size_t</type><description><para>
+
+<emphasis role="bold">Complexity:</emphasis> unknown (lots of platform specific work).</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Unsafe. </para></description><returns><para>Code line in the source file, were the function of the frame is defined. </para></returns><throws><simpara><classname>std::bad_alloc</classname> if not enough memory to construct string for internal needs.</simpara></throws></method>
+<method name="empty" cv="const noexcept"><type>constexpr bool</type><purpose>Checks that frame is not references NULL address. </purpose><description><para>
+<emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. Checks that frame references NULL address. 
+<emphasis role="bold">Complexity:</emphasis> O(1)</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. </para></description><returns><para><computeroutput>true</computeroutput> if <computeroutput>this-&gt;address() != 0</computeroutput></para></returns><returns><para><computeroutput>true</computeroutput> if <computeroutput>this-&gt;address() == 0</computeroutput></para></returns></method>
+</method-group>
+<constructor cv="noexcept"><purpose>Constructs frame that references NULL address. Calls to source_file() and source_line() will return empty string. Calls to source_line() will return 0. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> O(1).</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. 
+</para></description><throws><simpara><classname>Nothing.</classname> </simpara></throws></constructor>
+<constructor cv="= default"><parameter name=""><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter><purpose>Copy constructs frame. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> O(1).</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. 
+</para></description><throws><simpara><classname>Nothing.</classname> </simpara></throws></constructor>
+<copy-assignment cv="= default"><type>constexpr <classname>frame</classname> &amp;</type><parameter name=""><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter><purpose>Copy assigns frame. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> O(1).</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. 
+</para></description><throws><simpara><classname>Nothing.</classname> </simpara></throws></copy-assignment>
+<constructor specifiers="explicit" cv="noexcept"><parameter name="addr"><paramtype>native_frame_ptr_t</paramtype></parameter><purpose>Constructs frame that references addr and could later generate information about that address using platform specific features. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> O(1).</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. 
+</para></description><throws><simpara><classname>Nothing.</classname> </simpara></throws></constructor>
+<constructor specifiers="explicit" cv="noexcept"><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="function_addr"><paramtype>T *</paramtype></parameter><purpose>Constructs frame that references function_addr and could later generate information about that function using platform specific features. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> O(1).</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe. 
+</para></description><throws><simpara><classname>Nothing.</classname> </simpara></throws></constructor>
+</class>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/stacktrace/frame.hpp">
+<namespace name="boost">
+<namespace name="stacktrace">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="operator&lt;"><type>constexpr bool</type><parameter name="lhs"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter><parameter name="rhs"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter><purpose>Comparison operators that provide platform dependant ordering and have O(1) complexity; are Async-Handler-Safe. </purpose></function>
+<function name="operator&gt;"><type>constexpr bool</type><parameter name="lhs"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter><parameter name="rhs"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter></function>
+<function name="operator&lt;="><type>constexpr bool</type><parameter name="lhs"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter><parameter name="rhs"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter></function>
+<function name="operator&gt;="><type>constexpr bool</type><parameter name="lhs"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter><parameter name="rhs"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter></function>
+<function name="operator=="><type>constexpr bool</type><parameter name="lhs"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter><parameter name="rhs"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter></function>
+<function name="operator!="><type>constexpr bool</type><parameter name="lhs"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter><parameter name="rhs"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter></function>
+<function name="hash_value"><type>std::size_t</type><parameter name="f"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter><purpose>Fast hashing support, O(1) complexity; Async-Handler-Safe. </purpose></function>
+<function name="to_string"><type>std::string</type><parameter name="f"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter><purpose>Outputs <classname alt="boost::stacktrace::frame">stacktrace::frame</classname> in a human readable format to string; unsafe to use in async handlers. </purpose></function>
+<function name="operator&lt;&lt;"><type>std::basic_ostream&lt; CharT, TraitsT &gt; &amp;</type><template>
+          <template-type-parameter name="CharT"/>
+          <template-type-parameter name="TraitsT"/>
+        </template><parameter name="os"><paramtype>std::basic_ostream&lt; CharT, TraitsT &gt; &amp;</paramtype></parameter><parameter name="f"><paramtype>const <classname>frame</classname> &amp;</paramtype></parameter><purpose>Outputs <classname alt="boost::stacktrace::frame">stacktrace::frame</classname> in a human readable format to output stream; unsafe to use in async handlers. </purpose></function>
+</namespace>
+</namespace>
+</header>
+<header name="boost/stacktrace/safe_dump_to.hpp">
+<para>This header contains low-level async-signal-safe functions for dumping call stacks. Dumps are binary serialized arrays of <computeroutput>void*</computeroutput>, so you could read them by using 'od -tx8 -An stacktrace_dump_failename' Linux command or using boost::stacktrace::stacktrace::from_dump functions. </para><namespace name="boost">
+<namespace name="stacktrace">
+
+
+
+
+
+
+
+
+<function name="safe_dump_to"><type>std::size_t</type><parameter name="memory"><paramtype>void *</paramtype><description><para>Preallocated buffer to store current function call sequence into.</para></description></parameter><parameter name="size"><paramtype>std::size_t</paramtype><description><para>Size of the preallocated buffer. </para></description></parameter><purpose>Stores current function call sequence into the memory. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe.</para><para>
+
+</para></description><returns><para>Stored call sequence depth including terminating zero frame.</para></returns></function>
+<function name="safe_dump_to"><type>std::size_t</type><parameter name="skip"><paramtype>std::size_t</paramtype><description><para>How many top calls to skip and do not store.</para></description></parameter><parameter name="memory"><paramtype>void *</paramtype><description><para>Preallocated buffer to store current function call sequence into.</para></description></parameter><parameter name="size"><paramtype>std::size_t</paramtype><description><para>Size of the preallocated buffer. </para></description></parameter><purpose>Stores current function call sequence into the memory. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe.</para><para>
+
+</para></description><returns><para>Stored call sequence depth including terminating zero frame.</para></returns></function>
+<function name="safe_dump_to"><type>std::size_t</type><parameter name="file"><paramtype>const char *</paramtype><description><para>File to store current function call sequence. </para></description></parameter><purpose>Opens a file and rewrites its content with current function call sequence. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe.</para><para>
+
+</para></description><returns><para>Stored call sequence depth including terminating zero frame.</para></returns></function>
+<function name="safe_dump_to"><type>std::size_t</type><parameter name="skip"><paramtype>std::size_t</paramtype><description><para>How many top calls to skip and do not store.</para></description></parameter><parameter name="max_depth"><paramtype>std::size_t</paramtype><description><para>Max call sequence depth to collect.</para></description></parameter><parameter name="file"><paramtype>const char *</paramtype><description><para>File to store current function call sequence. </para></description></parameter><purpose>Opens a file and rewrites its content with current function call sequence. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe.</para><para>
+
+</para></description><returns><para>Stored call sequence depth including terminating zero frame.</para></returns></function>
+<function name="safe_dump_to"><type>std::size_t</type><parameter name="fd"><paramtype>platform_specific_descriptor</paramtype></parameter><purpose>Writes into the provided file descriptor the current function call sequence. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe.</para><para>
+
+</para></description><returns><para>Stored call sequence depth including terminating zero frame.</para></returns></function>
+<function name="safe_dump_to"><type>std::size_t</type><parameter name="skip"><paramtype>std::size_t</paramtype><description><para>How many top calls to skip and do not store.</para></description></parameter><parameter name="max_depth"><paramtype>std::size_t</paramtype><description><para>Max call sequence depth to collect.</para></description></parameter><parameter name="fd"><paramtype>platform_specific_descriptor</paramtype></parameter><purpose>Writes into the provided file descriptor the current function call sequence. </purpose><description><para><emphasis role="bold">Complexity:</emphasis> O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.</para><para><emphasis role="bold">Async-Handler-Safety</emphasis>: Safe.</para><para>
+
+</para></description><returns><para>Stored call sequence depth including terminating zero frame.</para></returns></function>
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/stacktrace/stacktrace_fwd.hpp">
+<para>This header contains only forward declarations of <classname alt="boost::stacktrace::frame">boost::stacktrace::frame</classname>, <classname alt="boost::stacktrace::basic_stacktrace">boost::stacktrace::basic_stacktrace</classname>, boost::stacktrace::stacktrace and does not include any other Boost headers. </para></header>
+</library-reference>

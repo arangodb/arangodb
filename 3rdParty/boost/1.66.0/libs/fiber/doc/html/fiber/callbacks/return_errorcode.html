@@ -1,0 +1,116 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Return Errorcode</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="up" href="../callbacks.html" title="Integrating Fibers with Asynchronous Callbacks">
+<link rel="prev" href="overview.html" title="Overview">
+<link rel="next" href="success_or_exception.html" title="Success or Exception">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overview.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../callbacks.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="success_or_exception.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="fiber.callbacks.return_errorcode"></a><a class="link" href="return_errorcode.html" title="Return Errorcode">Return Errorcode</a>
+</h3></div></div></div>
+<p>
+        The <code class="computeroutput"><span class="identifier">AsyncAPI</span><span class="special">::</span><span class="identifier">init_write</span><span class="special">()</span></code>
+        callback passes only an <code class="computeroutput"><span class="identifier">errorcode</span></code>.
+        If we simply want the blocking wrapper to return that <code class="computeroutput"><span class="identifier">errorcode</span></code>,
+        this is an extremely straightforward use of <a class="link" href="../synchronization/futures/promise.html#class_promise"><code class="computeroutput">promise&lt;&gt;</code></a> and
+        <a class="link" href="../synchronization/futures/future.html#class_future"><code class="computeroutput">future&lt;&gt;</code></a>:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">AsyncAPI</span><span class="special">::</span><span class="identifier">errorcode</span> <span class="identifier">write_ec</span><span class="special">(</span> <span class="identifier">AsyncAPI</span> <span class="special">&amp;</span> <span class="identifier">api</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">data</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">promise</span><span class="special">&lt;</span> <span class="identifier">AsyncAPI</span><span class="special">::</span><span class="identifier">errorcode</span> <span class="special">&gt;</span> <span class="identifier">promise</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">future</span><span class="special">&lt;</span> <span class="identifier">AsyncAPI</span><span class="special">::</span><span class="identifier">errorcode</span> <span class="special">&gt;</span> <span class="identifier">future</span><span class="special">(</span> <span class="identifier">promise</span><span class="special">.</span><span class="identifier">get_future</span><span class="special">()</span> <span class="special">);</span>
+    <span class="comment">// In general, even though we block waiting for future::get() and therefore</span>
+    <span class="comment">// won't destroy 'promise' until promise::set_value() has been called, we</span>
+    <span class="comment">// are advised that with threads it's possible for ~promise() to be</span>
+    <span class="comment">// entered before promise::set_value() has returned. While that shouldn't</span>
+    <span class="comment">// happen with fibers::promise, a robust way to deal with the lifespan</span>
+    <span class="comment">// issue is to bind 'promise' into our lambda. Since promise is move-only,</span>
+    <span class="comment">// use initialization capture.</span>
+<span class="preprocessor">#if</span> <span class="special">!</span> <span class="identifier">defined</span><span class="special">(</span><span class="identifier">BOOST_NO_CXX14_INITIALIZED_LAMBDA_CAPTURES</span><span class="special">)</span>
+    <span class="identifier">api</span><span class="special">.</span><span class="identifier">init_write</span><span class="special">(</span>
+        <span class="identifier">data</span><span class="special">,</span>
+        <span class="special">[</span><span class="identifier">promise</span><span class="special">=</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span> <span class="identifier">promise</span><span class="special">)](</span> <span class="identifier">AsyncAPI</span><span class="special">::</span><span class="identifier">errorcode</span> <span class="identifier">ec</span><span class="special">)</span> <span class="keyword">mutable</span> <span class="special">{</span>
+                            <span class="identifier">promise</span><span class="special">.</span><span class="identifier">set_value</span><span class="special">(</span> <span class="identifier">ec</span><span class="special">);</span>
+                  <span class="special">});</span>
+
+<span class="preprocessor">#else</span> <span class="comment">// defined(BOOST_NO_CXX14_INITIALIZED_LAMBDA_CAPTURES)</span>
+    <span class="identifier">api</span><span class="special">.</span><span class="identifier">init_write</span><span class="special">(</span>
+        <span class="identifier">data</span><span class="special">,</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">bind</span><span class="special">([](</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">promise</span><span class="special">&lt;</span> <span class="identifier">AsyncAPI</span><span class="special">::</span><span class="identifier">errorcode</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">promise</span><span class="special">,</span>
+                     <span class="identifier">AsyncAPI</span><span class="special">::</span><span class="identifier">errorcode</span> <span class="identifier">ec</span><span class="special">)</span> <span class="special">{</span>
+            <span class="identifier">promise</span><span class="special">.</span><span class="identifier">set_value</span><span class="special">(</span> <span class="identifier">ec</span><span class="special">);</span>
+        <span class="special">},</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span> <span class="identifier">promise</span><span class="special">),</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">_1</span><span class="special">)</span> <span class="special">);</span>
+<span class="preprocessor">#endif</span> <span class="comment">// BOOST_NO_CXX14_INITIALIZED_LAMBDA_CAPTURES</span>
+
+    <span class="keyword">return</span> <span class="identifier">future</span><span class="special">.</span><span class="identifier">get</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+<p>
+        All we have to do is:
+      </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+            Instantiate a <code class="computeroutput"><span class="identifier">promise</span><span class="special">&lt;&gt;</span></code> of correct type.
+          </li>
+<li class="listitem">
+            Obtain its <code class="computeroutput"><span class="identifier">future</span><span class="special">&lt;&gt;</span></code>.
+          </li>
+<li class="listitem">
+            Arrange for the callback to call <a class="link" href="../synchronization/futures/promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a>.
+          </li>
+<li class="listitem">
+            Block on <a class="link" href="../synchronization/futures/future.html#future_get"><code class="computeroutput">future::get()</code></a>.
+          </li>
+</ol></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          This tactic for resuming a pending fiber works even if the callback is
+          called on a different thread than the one on which the initiating fiber
+          is running. In fact, <a href="../../../../examples/adapt_callbacks.cpp" target="_top">the
+          example program&#8217;s</a> dummy <code class="computeroutput"><span class="identifier">AsyncAPI</span></code>
+          implementation illustrates that: it simulates async I/O by launching a
+          new thread that sleeps briefly and then calls the relevant callback.
+        </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overview.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../callbacks.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="success_or_exception.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

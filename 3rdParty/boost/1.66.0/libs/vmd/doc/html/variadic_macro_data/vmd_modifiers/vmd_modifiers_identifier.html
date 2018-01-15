@@ -1,0 +1,202 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Identifier modifiers</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;The Variadic Macro Data Library 1.9">
+<link rel="up" href="../vmd_modifiers.html" title="Macros with modifiers">
+<link rel="prev" href="vmd_modifiers_filter.html" title="Filtering modifiers">
+<link rel="next" href="vmd_modifiers_splitting.html" title="Splitting modifiers">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_modifiers_filter.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../vmd_modifiers.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_modifiers_splitting.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="variadic_macro_data.vmd_modifiers.vmd_modifiers_identifier"></a><a class="link" href="vmd_modifiers_identifier.html" title="Identifier modifiers">Identifier
+      modifiers</a>
+</h3></div></div></div>
+<p>
+        Identifier modifiers are optional parameters which specify a set of identifiers
+        to search in order to look for a particular identifier match rather than
+        just any identifier.
+      </p>
+<h5>
+<a name="variadic_macro_data.vmd_modifiers.vmd_modifiers_identifier.h0"></a>
+        <span class="phrase"><a name="variadic_macro_data.vmd_modifiers.vmd_modifiers_identifier.usage_with_boost_vmd_is_identifi"></a></span><a class="link" href="vmd_modifiers_identifier.html#variadic_macro_data.vmd_modifiers.vmd_modifiers_identifier.usage_with_boost_vmd_is_identifi">Usage
+        with BOOST_VMD_IS_IDENTIFIER</a>
+      </h5>
+<p>
+        Once we have both registered and pre-detected an identifier we can test whether
+        an identifier is a particular identifier using BOOST_VMD_IS_IDENTIFER and
+        identifier modifiers. We do this by passing optional parameter(s) to BOOST_VMD_IS_IDENTIFER.
+        The optional parameter(s) are either a single tuple of possible identifiers
+        we are trying to match, or the individual identifiers themselves as separate
+        parameters.
+      </p>
+<p>
+        Using the optional parameter(s) with BOOST_VMD_IS_IDENTIFER we are asking
+        not only if our input is any of the registered identifiers but also if it
+        is one of a number of pre-detected identifiers.
+      </p>
+<p>
+        As an example:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_identifier</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_yellow</span> <span class="special">(</span><span class="identifier">yellow</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_green</span> <span class="special">(</span><span class="identifier">green</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_blue</span> <span class="special">(</span><span class="identifier">blue</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_red</span> <span class="special">(</span><span class="identifier">red</span><span class="special">)</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_DETECT_yellow_yellow</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_DETECT_green_green</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_DETECT_blue_blue</span>
+
+<span class="identifier">BOOST_VMD_IS_IDENTIFIER</span><span class="special">(</span><span class="identifier">some_input</span><span class="special">,</span><span class="identifier">yellow</span><span class="special">)</span> <span class="comment">// returns 1 only if 'some_input is 'yellow', else returns 0</span>
+<span class="identifier">BOOST_VMD_IS_IDENTIFIER</span><span class="special">(</span><span class="identifier">some_input</span><span class="special">,</span><span class="identifier">yellow</span><span class="special">,</span><span class="identifier">blue</span><span class="special">)</span> <span class="comment">// returns 1 only if 'some_input is 'yellow' or 'blue', else returns 0</span>
+<span class="identifier">BOOST_VMD_IS_IDENTIFIER</span><span class="special">(</span><span class="identifier">some_input</span><span class="special">,(</span><span class="identifier">yellow</span><span class="special">,</span><span class="identifier">green</span><span class="special">))</span> <span class="comment">// returns 1 if 'some_input' is 'yellow' or 'green', else returns 0</span>
+
+<span class="identifier">BOOST_VMD_IS_IDENTIFIER</span><span class="special">(</span><span class="identifier">some_input</span><span class="special">,</span><span class="identifier">red</span><span class="special">)</span>
+   <span class="comment">// always returns 0, even if 'some_input' is 'red' since 'red' has not been pre-detected</span>
+</pre>
+<p>
+        whereas
+      </p>
+<pre class="programlisting"><span class="identifier">BOOST_VMD_IS_IDENTIFIER</span><span class="special">(</span><span class="identifier">some_input</span><span class="special">)</span> <span class="comment">// returns 1 if 'some_input' is 'red' since 'red' has been registered</span>
+</pre>
+<p>
+        If you invoke BOOST_VMD_IS_IDENTIFIER with the optional parameter(s), the
+        invocation will only return 1 if the input matches one the identifier(s)
+        of the optional parameters and the identifier it matches has been registered
+        and pre-detected.
+      </p>
+<p>
+        Both VMD numbers and v-types are identifier subtypes so you can also use
+        them as identifier modifiers. You do not have to register or pre-detect VMD
+        numbers or v-types since VMD has already done that for you.
+      </p>
+<p>
+        As an example of using VMD numbers or v-types as identifier modifiers with
+        BOOST_VMD_IS_IDENTIFIER:
+      </p>
+<pre class="programlisting"><span class="identifier">BOOST_VMD_IS_IDENTIFIER</span><span class="special">(</span><span class="identifier">some_input</span><span class="special">,</span><span class="number">1</span><span class="special">,</span><span class="number">3</span><span class="special">,</span><span class="number">5</span><span class="special">)</span> <span class="comment">// returns 1 only if 'some_input' is 1 or 3 or 5, else returns 0</span>
+<span class="identifier">BOOST_VMD_IS_IDENTIFIER</span><span class="special">(</span><span class="identifier">some_input</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_TUPLE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_LIST</span><span class="special">,</span><span class="number">59</span><span class="special">)</span>
+   <span class="comment">// returns 1 only if 'some_input is the v-type BOOST_VMD_TYPE_TUPLE or the v-type BOOST_VMD_TYPE_LIST or 59, else returns 0</span>
+</pre>
+<h5>
+<a name="variadic_macro_data.vmd_modifiers.vmd_modifiers_identifier.h1"></a>
+        <span class="phrase"><a name="variadic_macro_data.vmd_modifiers.vmd_modifiers_identifier.usage_with_boost_vmd_elem"></a></span><a class="link" href="vmd_modifiers_identifier.html#variadic_macro_data.vmd_modifiers.vmd_modifiers_identifier.usage_with_boost_vmd_elem">Usage
+        with BOOST_VMD_ELEM</a>
+      </h5>
+<p>
+        When we use the specific filter modifier BOOST_VMD_TYPE_IDENTIFIER as an
+        optional parameter of BOOST_VMD_ELEM we are asking for a particular element
+        of a sequence as long as it is a VMD identifier. With that specific filter
+        modifier BOOST_VMD_TYPE_IDENTIFIER we can use identifier modifiers to ask
+        for a particular element of a sequence as long as it matches one of our identifier
+        modifiers. If the specific filter modifier BOOST_VMD_TYPE_IDENTIFIER is not
+        being used then all identifier modifiers are ignored.
+      </p>
+<p>
+        The syntax for specifying identifier modifiers using BOOST_VMD_ELEM is exactly
+        the same as the equivalent feature of the BOOST_VMD_IS_IDENTIFIER macro explained
+        just previously. Optional parameters in the form of identifiers can be specified
+        either singly any number of times or once as part of a tuple. For an identifier
+        found as a sequence element to match against one of these possible identifiers,
+        the possible identifiers must be both registered and pre-detected.
+      </p>
+<p>
+        Since filter modifiers, which are v-types, are also identifiers, if you want
+        to use v-types as identifier modifiers you must use the form which places
+        all identifier modifiers as part of a tuple. Otherwise any v-types specified
+        singly as optional parameters are seen as filter modifiers and never as identifier
+        modifiers. VMD numbers are also identifiers and may be used as identifier
+        modifiers, but in this case VMD numbers as identifier modifiers do not need
+        to be part of a tuple to be detected.
+      </p>
+<p>
+        Let's see how this works:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">elem</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_ANAME</span> <span class="special">(</span><span class="identifier">ANAME</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_APLACE</span> <span class="special">(</span><span class="identifier">APLACE</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_ACOUNTRY</span> <span class="special">(</span><span class="identifier">ACOUNTRY</span><span class="special">)</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_DETECT_ANAME_ANAME</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_DETECT_APLACE_APLACE</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">A_SEQUENCE</span> <span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="number">2</span><span class="special">,</span><span class="number">3</span><span class="special">)</span> <span class="identifier">ANAME</span> <span class="number">46</span> <span class="identifier">BOOST_VMD_TYPE_SEQ</span> <span class="identifier">ACOUNTRY</span>
+
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="char">'ANAME'</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="char">'ANAME'</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">,</span><span class="identifier">APLACE</span><span class="special">,</span><span class="identifier">ACOUNTRY</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">emptiness</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">,</span><span class="identifier">ANAME</span><span class="special">,</span><span class="identifier">APLACE</span><span class="special">,</span><span class="identifier">ACOUNTRY</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="char">'ANAME'</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">,(</span><span class="identifier">APLACE</span><span class="special">,</span><span class="identifier">ACOUNTRY</span><span class="special">,</span><span class="identifier">ANAME</span><span class="special">))</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="char">'ANAME'</span>
+
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">4</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="char">'ACOUNTRY'</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">4</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="char">'ACOUNTRY'</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">4</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">,</span><span class="identifier">ACOUNTRY</span><span class="special">,</span><span class="identifier">ANAME</span><span class="special">)</span>
+   <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">emptiness</span> <span class="identifier">since</span> <span class="identifier">ACOUNTRY</span> <span class="identifier">is</span> <span class="keyword">not</span> <span class="identifier">pre</span><span class="special">-</span><span class="identifier">detected</span>
+</pre>
+<p>
+        Let us illustrate the case where VMD identifiers can be represented as either
+        filter modifiers or identifier modifiers.
+      </p>
+<p>
+        Using the sequence above:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">elem</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">3</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">the</span> <span class="identifier">BOOST_VMD_TYPE_SEQ</span> <span class="identifier">type</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">3</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">)</span>
+   <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">the</span> <span class="identifier">BOOST_VMD_TYPE_SEQ</span> <span class="identifier">type</span> <span class="identifier">since</span> <span class="identifier">a</span> <span class="identifier">type</span> <span class="identifier">is</span> <span class="identifier">an</span> <span class="identifier">identifier</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">3</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_SEQ</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_TUPLE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">emptiness</span>
+</pre>
+<p>
+        The last use of our macro returns emptiness because if there is more than
+        one type specified as an optional parameter the last type is chosen for filtering.
+        Since the last type for type filtering is BOOST_VMD_TYPE_TUPLE and our fourth
+        element is a v-type and not a tuple, emptiness is returned. The syntax does
+        not specifying filtering with identifiers as might be supposed since BOOST_VMD_TYPE_SEQ
+        and BOOST_VMD_TYPE_TUPLE are not treated as identifier modifiers but rather
+        as additional filter modifiers.
+      </p>
+<p>
+        In order to do filtering with an identifier and do it against various types
+        themselves, since v-types are identifiers, we must use the tuple form to
+        specify our identifier modifiers:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">elem</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">3</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">,(</span><span class="identifier">BOOST_VMD_TYPE_SEQ</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_TUPLE</span><span class="special">))</span>
+   <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">BOOST_VMD_TYPE_SEQ</span>
+</pre>
+<p>
+        Now BOOST_VMD_TYPE_SEQ and BOOST_VMD_TYPE_TUPLE are treated as identifiers
+        modifiers to match against.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2010-2017 Tropic Software
+      East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_modifiers_filter.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../vmd_modifiers.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_modifiers_splitting.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

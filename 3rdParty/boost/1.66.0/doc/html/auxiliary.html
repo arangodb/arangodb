@@ -1,0 +1,476 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Auxiliary Components</title>
+<link rel="stylesheet" href="../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="multi_array.html" title="Chapter&#160;26.&#160;Boost.MultiArray Reference Manual">
+<link rel="prev" href="array_types.html" title="Array Components">
+<link rel="next" href="poly_collection.html" title="Chapter&#160;27.&#160;Boost.PolyCollection">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../boost.png"></td>
+<td align="center"><a href="../../index.html">Home</a></td>
+<td align="center"><a href="../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="array_types.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="multi_array.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="poly_collection.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="sect1">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="auxiliary"></a>Auxiliary Components</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="sect2"><a href="auxiliary.html#multi_array_types"><code class="literal">multi_array_types</code></a></span></dt>
+<dt><span class="sect2"><a href="auxiliary.html#extent_range"><code class="computeroutput">extent_range</code></a></span></dt>
+<dt><span class="sect2"><a href="auxiliary.html#extent_gen"><code class="computeroutput">extent_gen</code></a></span></dt>
+<dt><span class="sect2"><a href="auxiliary.html#id-1.3.27.7.5">Global Objects</a></span></dt>
+<dt><span class="sect2"><a href="auxiliary.html#generators">View and SubArray Generators</a></span></dt>
+<dt><span class="sect2"><a href="auxiliary.html#memory_layout">Memory Layout Specifiers</a></span></dt>
+<dt><span class="sect2"><a href="auxiliary.html#range_checking">Range Checking</a></span></dt>
+</dl></div>
+<div class="sect2">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="multi_array_types"></a><code class="literal">multi_array_types</code>
+</h3></div></div></div>
+<pre class="programlisting">
+namespace multi_array_types {
+  typedef *unspecified* index;
+  typedef *unspecified* size_type;
+  typedef *unspecified* difference_type;
+  typedef *unspecified* index_range;
+  typedef *unspecified* extent_range;
+  typedef *unspecified* index_gen;
+  typedef *unspecified* extent_gen;
+}
+</pre>
+<p>Namespace <code class="literal">multi_array_types</code> defines types
+associated with <code class="literal">multi_array</code>,
+<code class="literal">multi_array_ref</code>, and
+<code class="literal">const_multi_array_ref</code> that are not
+dependent upon template parameters.  These types find common use with
+all Boost.Multiarray components.  They are defined
+in a namespace from which they can be accessed conveniently.
+With the exception of <code class="literal">extent_gen</code> and 
+<code class="literal">extent_range</code>, these types fulfill the roles of the
+same name required by MultiArray and are described in its
+concept definition.  <code class="literal">extent_gen</code> and
+<code class="literal">extent_range</code> are described below.
+</p>
+</div>
+<div class="sect2">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="extent_range"></a><code class="computeroutput">extent_range</code>
+</h3></div></div></div>
+<p><code class="computeroutput">extent_range</code> objects define half open
+intervals.  They provide shape and index base information to
+<code class="literal">multi_array</code>, <code class="literal">multi_array_ref</code>,
+ and <code class="literal">const_multi_array_ref</code> constructors.
+<code class="computeroutput">extent_range</code>s are passed in
+aggregate to an array constructor (see
+<code class="computeroutput">extent_gen</code> for more details).
+</p>
+<p><b>Synopsis.&#160;</b></p>
+<pre class="programlisting">
+class extent_range {
+public:
+  typedef multi_array_types::index      index;
+  typedef multi_array_types::size_type  size_type;
+
+  // Structors
+  extent_range(index start, index finish);
+  extent_range(index finish);
+  ~extent_range();
+
+  // Queries
+  index start();
+  index finish();
+  size_type size();
+};</pre>
+<p><b>Model Of.&#160;</b>DefaultConstructible,CopyConstructible</p>
+<p><b>Methods and Types.&#160;</b></p>
+<div class="variablelist"><dl class="variablelist">
+<dt><span class="term"><code class="function">extent_range(index start, index finish)</code></span></dt>
+<dd><p>  This constructor defines the half open interval
+<code class="literal">[start,finish)</code>. The expression
+<code class="literal">finish</code> must be greater than <code class="literal">start</code>.
+</p></dd>
+<dt><span class="term"><code class="function">extent_range(index finish)</code></span></dt>
+<dd><p>This constructor defines the half open interval
+<code class="literal">[0,finish)</code>. The value of <code class="literal">finish</code>
+must be positive.</p></dd>
+<dt><span class="term"><code class="function">index start()</code></span></dt>
+<dd><p>This function returns the first index represented by the range</p></dd>
+<dt><span class="term"><code class="function">index finish()</code></span></dt>
+<dd><p>This function returns the upper boundary value of the half-open
+interval.  Note that the range does not include this value.</p></dd>
+<dt><span class="term"><code class="function">size_type size()</code></span></dt>
+<dd><p>This function returns the size of the specified range. It is
+equivalent to <code class="literal">finish()-start()</code>.</p></dd>
+</dl></div>
+</div>
+<div class="sect2">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="extent_gen"></a><code class="computeroutput">extent_gen</code>
+</h3></div></div></div>
+<p>The <code class="computeroutput">extent_gen</code> class defines an
+interface for aggregating array shape and indexing information to be
+passed to a <code class="literal">multi_array</code>, 
+<code class="literal">multi_array_ref</code>, or <code class="literal">const_multi_array_ref</code>
+constructor. Its interface mimics 
+ the syntax used to declare built-in array types
+in C++. For example, while a 3-dimensional array of 
+<code class="computeroutput">int</code> values in C++ would be
+declared as:
+</p>
+<pre class="programlisting">int A[3][4][5],</pre>
+<p>
+a similar <code class="computeroutput">multi_array</code> would be declared:
+</p>
+<pre class="programlisting">multi_array&lt;int,3&gt; A(extents[3][4][5]).</pre>
+<p>
+</p>
+<p><b>Synopsis.&#160;</b></p>
+<pre class="programlisting">
+template &lt;std::size_t NumRanges&gt;
+class *implementation_defined* {
+public:
+  typedef multi_array_types::index index;
+  typedef multi_array_types::size_type size_type;
+
+  template &lt;std::size_t NumRanges&gt; class gen_type;
+
+  gen_type&lt;NumRanges+1&gt;::type  operator[](const range&amp; a_range) const;
+  gen_type&lt;NumRanges+1&gt;::type  operator[](index idx) const;
+};
+
+typedef *implementation_defined*&lt;0&gt; extent_gen;
+</pre>
+<p><b>Methods and Types.&#160;</b></p>
+<div class="variablelist"><dl class="variablelist">
+<dt><span class="term"><code class="function">template gen_type&lt;Ranges&gt;::type</code></span></dt>
+<dd><p>This type generator is used to specify the result of 
+<code class="literal">Ranges</code> chained calls to
+<code class="literal">extent_gen::operator[].</code> The types
+<code class="computeroutput">extent_gen</code> and
+<code class="computeroutput">gen_type&lt;0&gt;::type</code> are the same.</p></dd>
+<dt><span class="term"><code class="function">gen_type&lt;NumRanges+1&gt;::type  
+operator[](const extent_range&amp; a_range) const;</code></span></dt>
+<dd><p>This function returns a new object containing all previous
+<code class="computeroutput">extent_range</code> objects in addition to
+<code class="literal">a_range.</code> <code class="computeroutput">extent_range</code>
+objects are aggregated by chained calls to
+<code class="function">operator[]</code>.</p></dd>
+<dt><span class="term"><code class="function">gen_type&lt;NumRanges+1&gt;::type
+operator[](index idx) const;</code></span></dt>
+<dd><p>This function returns a new object containing all previous
+<code class="computeroutput">extent_range</code> objects in addition to
+<code class="literal">extent_range(0,idx).</code> This function gives the array
+constructors a similar syntax to traditional C multidimensional array
+declaration.</p></dd>
+</dl></div>
+</div>
+<div class="sect2">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="id-1.3.27.7.5"></a>Global Objects</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="sect3"><a href="auxiliary.html#extents"><code class="literal">extents</code></a></span></dt>
+<dt><span class="sect3"><a href="auxiliary.html#indices"><code class="literal">indices</code></a></span></dt>
+</dl></div>
+<p>For syntactic convenience, Boost.MultiArray defines two 
+global objects as part of its
+interface.  These objects play the role of object generators;
+expressions involving them create other objects of interest.
+</p>
+<p> Under some circumstances, the two global objects may be
+considered excessive overhead.  Their construction can be prevented by
+defining the preprocessor symbol
+<code class="literal">BOOST_MULTI_ARRAY_NO_GENERATORS</code> before including
+<code class="filename">boost/multi_array.hpp.</code></p>
+<div class="sect3">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="extents"></a><code class="literal">extents</code>
+</h4></div></div></div>
+<pre class="programlisting">
+namespace boost {
+  multi_array_base::extent_gen extents;
+}
+</pre>
+<p>Boost.MultiArray's array classes use the
+<code class="literal">extents</code> global object to specify 
+array shape during their construction. 
+For example,
+a 3 by 3 by 3 <code class="computeroutput">multi_array</code> is constructed as follows:
+</p>
+<pre class="programlisting">multi_array&lt;int,3&gt; A(extents[3][3][3]);</pre>
+<p>
+The same array could also be created by explicitly declaring an <code class="literal">extent_gen</code> 
+object locally,, but the global object makes this declaration unnecessary.  
+</p>
+</div>
+<div class="sect3">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="indices"></a><code class="literal">indices</code>
+</h4></div></div></div>
+<pre class="programlisting">
+namespace boost {
+  multi_array_base::index_gen  indices;
+}
+</pre>
+<p>The MultiArray concept specifies an
+<code class="literal">index_gen</code> associated type that is used to
+create views.
+<code class="literal">indices</code> is a global object that serves the role of
+<code class="literal">index_gen</code> for all array components provided by this
+library and their associated subarrays and views. 
+</p>
+<p>For example, using the <code class="literal">indices</code> object,
+a view of an array <code class="literal">A</code> is constructed as follows:
+</p>
+<pre class="programlisting">
+A[indices[index_range(0,5)][2][index_range(2,4)]];
+</pre>
+<p>
+</p>
+</div>
+</div>
+<div class="sect2">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="generators"></a>View and SubArray Generators</h3></div></div></div>
+<p>
+Boost.MultiArray provides traits classes, <code class="literal">subarray_gen</code>,
+<code class="literal">const_subarray_gen</code>,
+<code class="literal">array_view_gen</code>,
+and <code class="literal">const_array_view_gen</code>, for naming of
+array associated types within function templates.  
+In general this is no more convenient to use than the nested 
+type generators, but the library author found that some C++ compilers do not 
+properly handle templates nested within function template parameter types. 
+These generators constitute a workaround for this deficit.  
+The following code snippet illustrates
+the correspondence between the <code class="literal">array_view_gen</code>
+traits class and the <code class="literal">array_view</code> type associated to
+an array:
+
+</p>
+<pre class="programlisting">
+template &lt;typename Array&gt;
+void my_function() {
+  typedef typename Array::template array_view&lt;3&gt;::type view1_t;
+  typedef typename boost::array_view_gen&lt;Array,3&gt;::type view2_t;
+  // ...
+}
+</pre>
+<p>
+
+In the above example, <code class="literal">view1_t</code> and
+<code class="literal">view2_t</code> have the same type.
+</p>
+</div>
+<div class="sect2">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="memory_layout"></a>Memory Layout Specifiers</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="sect3"><a href="auxiliary.html#c_storage_order"><code class="literal">c_storage_order</code></a></span></dt>
+<dt><span class="sect3"><a href="auxiliary.html#fortran_storage_order"><code class="literal">fortran_storage_order</code></a></span></dt>
+<dt><span class="sect3"><a href="auxiliary.html#general_storage_order"><code class="literal">general_storage_order</code></a></span></dt>
+</dl></div>
+<p>
+While a multidimensional array represents a hierarchy of containers of
+elements, at some point the elements must be laid out in
+memory.  As a result, a single multidimensional array 
+can be represented in memory more than one way.
+</p>
+<p>For example, consider the two dimensional array shown below in
+matrix notation:
+
+</p>
+<div><img src="matrix.gif"></div>
+<p>
+
+Here is how the above array is expressed in C++:
+</p>
+<pre class="programlisting">
+int a[3][4] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+</pre>
+<p>
+This is an example of row-major storage, where elements of each row
+are stored contiguously.  
+
+While C++ transparently handles accessing elements of an array, you
+can also manage the array and its indexing manually.  One way that 
+this may be expressed in memory is as follows:
+</p>
+<pre class="programlisting">
+int a[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+int s[] = { 4, 1 };
+</pre>
+<p>
+
+With the latter declaration of <code class="literal">a</code> and 
+strides <code class="literal">s</code>, element <code class="literal">a(i,j)</code>
+of the array can be
+accessed using the expression 
+</p>
+<pre class="programlisting">*a+i*s[0]+j*s[1]</pre>
+<p>.
+</p>
+<p>The same two dimensional array could be laid out by column as follows:
+
+</p>
+<pre class="programlisting">
+int a[] = { 0, 4, 8, 1, 5, 9, 2, 6, 10, 3, 7, 11 };
+int s[] = { 3, 1 };
+</pre>
+<p>
+Notice that the strides here are different. As a result,
+The expression given above to access values will work with this pair
+of data and strides as well.
+</p>
+<p>In addition to dimension order, it is also possible to
+store any dimension in descending order. For example, returning to the 
+first example, the first dimension of the example array, the 
+rows,  could be stored in 
+reverse, resulting in the following:
+
+</p>
+<pre class="programlisting">
+int data[] = { 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3 };
+int *a = data + 8;
+int s[] = { -4, 1 };
+</pre>
+<p>
+
+Note that in this example <code class="literal">a</code> must be explicitly set
+to the origin. In the previous examples, the
+first element stored in memory was the origin; here this is no longer
+the case. 
+</p>
+<p>
+Alternatively, the second dimension, or the columns, could be reversed
+and the rows stored in ascending order:
+
+</p>
+<pre class="programlisting">
+int data[] = { 3, 2, 1, 0,  7, 6, 5, 4, 11, 10, 9, 8 };
+int *a = data + 3;
+int s[] = { 4, -1 };
+</pre>
+<p>
+</p>
+<p>
+Finally, both dimensions could be stored in descending order:
+
+</p>
+<pre class="programlisting">
+int data[] = {11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
+int *a = data + 11;
+int s[] = { -4, -1 };
+</pre>
+<p>
+<code class="literal">
+</code>
+</p>
+<p>
+All of the above arrays are equivalent. The expression
+given above for <code class="literal">a(i,j)</code> will yield the same value
+regardless of the memory layout.
+
+Boost.MultiArray arrays can be created with customized storage
+parameters as described above. Thus, existing data can be adapted
+(with <code class="literal">multi_array_ref</code> or
+<code class="literal">const_multi_array_ref</code>) as suited to the array
+abstraction.  A common usage of this feature would be to wrap arrays
+that must interoperate with Fortran routines so they can be
+manipulated naturally at both the C++ and Fortran levels. The
+following sections describe the Boost.MultiArray components used to
+specify memory layout.
+</p>
+<div class="sect3">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="c_storage_order"></a><code class="literal">c_storage_order</code>
+</h4></div></div></div>
+<pre class="programlisting">
+class c_storage_order {
+  c_storage_order();
+};
+</pre>
+<p><code class="literal">c_storage_order</code> is used to specify that an
+array should store its elements using the same layout as that used by
+primitive C++ multidimensional arrays, that is, from last dimension
+to first. This is the default storage order for the arrays provided by
+this library.</p>
+</div>
+<div class="sect3">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="fortran_storage_order"></a><code class="literal">fortran_storage_order</code>
+</h4></div></div></div>
+<pre class="programlisting">
+class fortran_storage_order {
+  fortran_storage_order();
+};
+</pre>
+<p><code class="literal">fortran_storage_order</code> is used to specify that
+an array should store its elements using the same memory layout as a
+Fortran multidimensional array would, that is, from first dimension to
+last.</p>
+</div>
+<div class="sect3">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="general_storage_order"></a><code class="literal">general_storage_order</code>
+</h4></div></div></div>
+<pre class="programlisting">
+template &lt;std::size_t NumDims&gt; 
+class general_storage_order {
+
+  template &lt;typename OrderingIter, typename AscendingIter&gt;
+  general_storage_order(OrderingIter ordering, AscendingIter ascending);
+};
+</pre>
+<p><code class="literal">general_storage_order</code> allows the user to
+specify an arbitrary memory layout for the contents of an array.  The
+constructed object is passed to the array constructor in order to
+specify storage order.</p>
+<p>
+<code class="literal">OrderingIter</code> and <code class="literal">AscendingIter</code>
+must model the <code class="literal">InputIterator</code> concept.  Both
+iterators must refer to a range of <code class="literal">NumDims</code>
+elements.  <code class="literal">AscendingIter</code> points to objects
+convertible to <code class="literal">bool</code>.  A value of
+<code class="literal">true</code> means that a dimension is stored in ascending
+order while <code class="literal">false</code> means that a dimension is stored
+in descending order.  <code class="literal">OrderingIter</code> specifies the
+order in which dimensions are stored.
+</p>
+</div>
+</div>
+<div class="sect2">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="range_checking"></a>Range Checking</h3></div></div></div>
+<p>
+By default, the array access methods <code class="literal">operator()</code> and
+<code class="literal">operator[]</code> perform range
+checking.  If a supplied index is out of the range defined for an
+array, an assertion will abort the program.  To disable range
+checking (for performance reasons in production releases), define
+the <code class="literal">BOOST_DISABLE_ASSERTS</code> preprocessor macro prior to
+including multi_array.hpp in an application.
+</p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002 The Trustees of Indiana University</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="array_types.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="multi_array.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="poly_collection.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,738 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>std::numeric_limits&lt;&gt; constants</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Multiprecision">
+<link rel="up" href="../limits.html" title="Numeric Limits">
+<link rel="prev" href="../limits.html" title="Numeric Limits">
+<link rel="next" href="functions.html" title="std::numeric_limits&lt;&gt; functions">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../limits.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../limits.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="functions.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_multiprecision.tut.limits.constants"></a><a class="link" href="constants.html" title="std::numeric_limits&lt;&gt; constants">std::numeric_limits&lt;&gt;
+        constants</a>
+</h4></div></div></div>
+<h5>
+<a name="boost_multiprecision.tut.limits.constants.h0"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.limits.constants.is_specialized"></a></span><a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.is_specialized">is_specialized</a>
+        </h5>
+<p>
+          <code class="computeroutput"><span class="keyword">true</span></code> for all arithmetic types
+          (integer, floating and fixed-point) for which <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">numeric_limits</span></code>
+          is specialized.
+        </p>
+<p>
+          A typical test is
+        </p>
+<pre class="programlisting"><span class="keyword">if</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">is_specialized</span> <span class="special">==</span> <span class="keyword">false</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"type "</span> <span class="special">&lt;&lt;</span> <span class="keyword">typeid</span><span class="special">(</span><span class="identifier">T</span><span class="special">).</span><span class="identifier">name</span><span class="special">()</span>  <span class="special">&lt;&lt;</span> <span class="string">" is not specialized for std::numeric_limits!"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="comment">// ...</span>
+<span class="special">}</span>
+</pre>
+<p>
+          Typically <code class="computeroutput"><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">is_specialized</span></code>
+          is <code class="computeroutput"><span class="keyword">true</span></code> for all <code class="computeroutput"><span class="identifier">T</span></code> where the compile-time constant members
+          of <code class="computeroutput"><span class="identifier">numeric_limits</span></code> are indeed
+          known at compile time, and don't vary at runtime. For example floating-point
+          types with runtime-variable precision such as <code class="computeroutput"><span class="identifier">mpfr_float</span></code>
+          have no <code class="computeroutput"><span class="identifier">numeric_limits</span></code>
+          specialization as it would be impossible to define all the members at compile
+          time. In contrast the precision of a type such as <code class="computeroutput"><span class="identifier">mpfr_float_50</span></code>
+          is known at compile time, and so it <span class="emphasis"><em>does</em></span> have a <code class="computeroutput"><span class="identifier">numeric_limits</span></code> specialization.
+        </p>
+<p>
+          Note that not all the <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span></code>
+          member constants and functions are meaningful for all user-defined types
+          (UDT), such as the decimal and binary multiprecision types provided here.
+          More information on this is given in the sections below.
+        </p>
+<h5>
+<a name="boost_multiprecision.tut.limits.constants.h1"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.limits.constants.infinity"></a></span><a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.infinity">infinity</a>
+        </h5>
+<p>
+          For floating-point types, &#8734; is defined wherever possible, but clearly infinity
+          is meaningless for __arbitrary_precision arithmetic backends, and there
+          is one floating-point type (GMP's <code class="computeroutput"><span class="identifier">mpf_t</span></code>,
+          see <a class="link" href="../floats/gmp_float.html" title="gmp_float">gmp_float</a>)
+          which has no notion of infinity or NaN at all.
+        </p>
+<p>
+          A typical test whether infinity is implemented is
+        </p>
+<pre class="programlisting"><span class="keyword">if</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">has_infinity</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">infinity</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          and using tests like this is strongly recommended to improve portability.
+        </p>
+<p>
+          If the backend is switched to a type that does not support infinity then,
+          without checks like this, there will be trouble.
+        </p>
+<h5>
+<a name="boost_multiprecision.tut.limits.constants.h2"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.limits.constants.is_signed"></a></span><a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.is_signed">is_signed</a>
+        </h5>
+<p>
+          <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">is_signed</span> <span class="special">==</span>
+          <span class="keyword">true</span></code> if the type <code class="computeroutput"><span class="identifier">T</span></code>
+          is signed.
+        </p>
+<p>
+          For built-in binary types, the sign is held in a single bit, but for other
+          types (cpp_dec_float and cpp_bin_float) it may be a separate storage element,
+          usually <code class="computeroutput"><span class="keyword">bool</span></code>.
+        </p>
+<h5>
+<a name="boost_multiprecision.tut.limits.constants.h3"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.limits.constants.is_exact"></a></span><a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.is_exact">is_exact</a>
+        </h5>
+<p>
+          <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">is_exact</span> <span class="special">==</span>
+          <span class="keyword">true</span></code> if type T uses exact representations.
+        </p>
+<p>
+          This is defined as <code class="computeroutput"><span class="keyword">true</span></code> for
+          all integer types and <code class="computeroutput"><span class="keyword">false</span></code>
+          for floating-point types.
+        </p>
+<p>
+          <a href="http://stackoverflow.com/questions/14203654/stdnumeric-limitsis-exact-what-is-a-usable-definition" target="_top">A
+          usable definition</a> has been discussed.
+        </p>
+<p>
+          ISO/IEC 10967-1, Language independent arithmetic, noted by the C++ Standard
+          defines
+        </p>
+<pre class="programlisting"><span class="identifier">A</span> <span class="identifier">floating</span><span class="special">-</span><span class="identifier">point</span> <span class="identifier">type</span> <span class="identifier">F</span> <span class="identifier">shall</span> <span class="identifier">be</span> <span class="identifier">a</span> <span class="identifier">finite</span> <span class="identifier">subset</span> <span class="identifier">of</span> <span class="special">[</span><span class="identifier">real</span><span class="special">].</span>
+</pre>
+<p>
+          The important practical distinction is that all integers (up to <code class="computeroutput"><span class="identifier">max</span><span class="special">()</span></code>)
+          can be stored exactly.
+        </p>
+<p>
+          <a href="http://en.wikipedia.org/wiki/Rational_number" target="_top">Rational</a>
+          types using two integer types are also exact.
+        </p>
+<p>
+          Floating-point types <span class="bold"><strong>cannot store all real values</strong></span>
+          (those in the set of &#8476;) <span class="bold"><strong>exactly</strong></span>. For example,
+          0.5 can be stored exactly in a binary floating-point, but 0.1 cannot. What
+          is stored is the nearest representable real value, that is, rounded to
+          nearest.
+        </p>
+<p>
+          Fixed-point types (usually decimal) are also defined as exact, in that
+          they only store a <span class="bold"><strong>fixed precision</strong></span>, so
+          half cents or pennies (or less) cannot be stored. The results of computations
+          are rounded up or down, just like the result of integer division stored
+          as an integer result.
+        </p>
+<p>
+          There are number of proposals to <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3407.html" target="_top">add
+          Decimal floating-point Support to C++</a>.
+        </p>
+<p>
+          <a href="http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2009/n2849.pdf" target="_top">Decimal
+          TR</a>.
+        </p>
+<p>
+          And also <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3352.html" target="_top">C++
+          Binary Fixed-Point Arithmetic</a>.
+        </p>
+<h5>
+<a name="boost_multiprecision.tut.limits.constants.h4"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.limits.constants.is_bounded"></a></span><a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.is_bounded">is_bounded</a>
+        </h5>
+<p>
+          <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">is_bounded</span> <span class="special">==</span>
+          <span class="keyword">true</span></code> if the set of values represented
+          by the type <code class="computeroutput"><span class="identifier">T</span></code> is finite.
+        </p>
+<p>
+          This is <code class="computeroutput"><span class="keyword">true</span></code> for all built-in
+          integer, fixed and floating-point types, and most multi-precision types.
+        </p>
+<p>
+          It is only <code class="computeroutput"><span class="keyword">false</span></code> for a few
+          __arbitrary_precision types like <code class="computeroutput"><span class="identifier">cpp_int</span></code>.
+        </p>
+<p>
+          Rational and fixed-exponent representations are exact but not integer.
+        </p>
+<h5>
+<a name="boost_multiprecision.tut.limits.constants.h5"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.limits.constants.is_modulo"></a></span><a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.is_modulo">is_modulo</a>
+        </h5>
+<p>
+          <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">is_modulo</span></code> is defined as <code class="computeroutput"><span class="keyword">true</span></code> if adding two positive values of type
+          T can yield a result less than either value.
+        </p>
+<p>
+          <code class="computeroutput"><span class="identifier">is_modulo</span> <span class="special">==</span>
+          <span class="keyword">true</span></code> means that the type does not
+          overflow, but, for example, 'wraps around' to zero, when adding one to
+          the <code class="computeroutput"><span class="identifier">max</span><span class="special">()</span></code>
+          value.
+        </p>
+<p>
+          For most built-in integer types, <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;&gt;::</span><span class="identifier">is_modulo</span></code>
+          is <code class="computeroutput"><span class="keyword">true</span></code>.
+        </p>
+<p>
+          <code class="computeroutput"><span class="keyword">bool</span></code> is the only exception.
+        </p>
+<p>
+          The modulo behaviour is sometimes useful, but also can be unexpected, and
+          sometimes undesired, behaviour.
+        </p>
+<p>
+          Overflow of signed integers can be especially unexpected, possibly causing
+          change of sign.
+        </p>
+<p>
+          Boost.Multiprecision integer type <code class="computeroutput"><span class="identifier">cpp_int</span></code>
+          is not modulo because as an __arbitrary_precision types, it expands to
+          hold any value that the machine resources permit.
+        </p>
+<p>
+          However fixed precision <a class="link" href="../ints/cpp_int.html" title="cpp_int">cpp_int</a>'s
+          may be modulo if they are unchecked (i.e. they behave just like built in
+          integers), but not if they are checked (overflow causes an exception to
+          be raised).
+        </p>
+<p>
+          Built-in and multi-precision floating-point types are normally not modulo.
+        </p>
+<p>
+          Where possible, overflow is to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;&gt;::</span><span class="identifier">infinity</span><span class="special">()</span></code>, provided <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;&gt;::</span><span class="identifier">has_infinity</span>
+          <span class="special">==</span> <span class="keyword">true</span></code>.
+        </p>
+<h5>
+<a name="boost_multiprecision.tut.limits.constants.h6"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.limits.constants.radix"></a></span><a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.radix">radix</a>
+        </h5>
+<p>
+          Constant <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">radix</span></code> returns either 2 (for built-in
+          and binary types) or 10 (for decimal types).
+        </p>
+<h5>
+<a name="boost_multiprecision.tut.limits.constants.h7"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.limits.constants.digits"></a></span><a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.digits">digits</a>
+        </h5>
+<p>
+          The number of <code class="computeroutput"><span class="identifier">radix</span></code> digits
+          that be represented without change:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              for integer types, the number of <span class="bold"><strong>non-sign bits</strong></span>
+              in the significand.
+            </li>
+<li class="listitem">
+              for floating types, the number of <span class="bold"><strong>radix digits</strong></span>
+              in the significand.
+            </li>
+</ul></div>
+<p>
+          The values include any implicit bit, so for example, for the ubiquious
+          <code class="computeroutput"><span class="keyword">double</span></code> using 64 bits (<a href="http://en.wikipedia.org/wiki/Double_precision_floating-point_format" target="_top">IEEE
+          binary64 </a>), <code class="computeroutput"><span class="identifier">digits</span></code>
+          == 53, even though there are only 52 actual bits of the significand stored
+          in the representation. The value of <code class="computeroutput"><span class="identifier">digits</span></code>
+          reflects the fact that there is one implicit bit which is always set to
+          1.
+        </p>
+<p>
+          The Boost.Multiprecision binary types do not use an implicit bit, so the
+          <code class="computeroutput"><span class="identifier">digits</span></code> member reflects
+          exactly how many bits of precision were requested:
+        </p>
+<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">cpp_bin_float</span><span class="special">&lt;</span><span class="number">53</span><span class="special">,</span> <span class="identifier">digit_base_2</span><span class="special">&gt;</span> <span class="special">&gt;</span>   <span class="identifier">float64</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">cpp_bin_float</span><span class="special">&lt;</span><span class="number">113</span><span class="special">,</span> <span class="identifier">digit_base_2</span><span class="special">&gt;</span> <span class="special">&gt;</span>  <span class="identifier">float128</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">float64</span><span class="special">&gt;::</span><span class="identifier">digits</span> <span class="special">==</span> <span class="number">53.</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">float128</span><span class="special">&gt;::</span><span class="identifier">digits</span> <span class="special">==</span> <span class="number">113.</span>
+</pre>
+<p>
+          For the most common case of <code class="computeroutput"><span class="identifier">radix</span>
+          <span class="special">==</span> <span class="number">2</span></code>,
+          <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">digits</span></code> is the number of bits in the representation,
+          not counting any sign bit.
+        </p>
+<p>
+          For a decimal integer type, when <code class="computeroutput"><span class="identifier">radix</span>
+          <span class="special">==</span> <span class="number">10</span></code>,
+          it is the number of decimal digits.
+        </p>
+<h5>
+<a name="boost_multiprecision.tut.limits.constants.h8"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.limits.constants.digits10"></a></span><a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.digits10">digits10</a>
+        </h5>
+<p>
+          Constant <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">digits10</span></code> returns the number of decimal
+          digits that can be represented without change or loss.
+        </p>
+<p>
+          For example, <code class="computeroutput"><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">unsigned</span> <span class="keyword">char</span><span class="special">&gt;::</span><span class="identifier">digits10</span></code> is 2.
+        </p>
+<p>
+          This somewhat inscrutable definition means that an <code class="computeroutput"><span class="keyword">unsigned</span>
+          <span class="keyword">char</span></code> can hold decimal values <code class="computeroutput"><span class="number">0.</span><span class="special">.</span><span class="number">99</span></code>
+          without loss of precision or accuracy, usually from truncation.
+        </p>
+<p>
+          Had the definition been 3 then that would imply it could hold 0..999, but
+          as we all know, an 8-bit <code class="computeroutput"><span class="keyword">unsigned</span>
+          <span class="keyword">char</span></code> can only hold 0..255, and an
+          attempt to store 256 or more will involve loss or change.
+        </p>
+<p>
+          For bounded integers, it is thus <span class="bold"><strong>one less</strong></span>
+          than number of decimal digits you need to display the biggest integer
+          <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">max</span><span class="special">()</span></code>.
+          This value can be used to predict the layout width required for
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span>
+  <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">setw</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">short</span><span class="special">&gt;::</span><span class="identifier">digits10</span> <span class="special">+</span><span class="number">1</span> <span class="special">+</span><span class="number">1</span><span class="special">)</span> <span class="comment">// digits10+1, and +1 for sign.</span>
+  <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">showpos</span> <span class="special">&lt;&lt;</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">short</span><span class="special">&gt;::</span><span class="identifier">max</span><span class="special">)()</span> <span class="comment">// +32767</span>
+  <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span>
+  <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">setw</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">short</span><span class="special">&gt;::</span><span class="identifier">digits10</span> <span class="special">+</span><span class="number">1</span> <span class="special">+</span><span class="number">1</span><span class="special">)</span>
+  <span class="special">&lt;&lt;</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">short</span><span class="special">&gt;::</span><span class="identifier">min</span><span class="special">)()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>   <span class="comment">// -32767</span>
+</pre>
+<p>
+          For example, <code class="computeroutput"><span class="keyword">unsigned</span> <span class="keyword">short</span></code>
+          is often stored in 16 bits, so the maximum value is 0xFFFF or 65535.
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span>
+  <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">setw</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">unsigned</span> <span class="keyword">short</span><span class="special">&gt;::</span><span class="identifier">digits10</span> <span class="special">+</span><span class="number">1</span> <span class="special">+</span><span class="number">1</span><span class="special">)</span> <span class="comment">// digits10+1, and +1 for sign.</span>
+  <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">showpos</span> <span class="special">&lt;&lt;</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">unsigned</span> <span class="keyword">short</span><span class="special">&gt;::</span><span class="identifier">max</span><span class="special">)()</span> <span class="comment">//  65535</span>
+  <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span>
+  <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">setw</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">unsigned</span> <span class="keyword">short</span><span class="special">&gt;::</span><span class="identifier">digits10</span> <span class="special">+</span><span class="number">1</span> <span class="special">+</span><span class="number">1</span><span class="special">)</span> <span class="comment">// digits10+1, and +1 for sign.</span>
+  <span class="special">&lt;&lt;</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">unsigned</span> <span class="keyword">short</span><span class="special">&gt;::</span><span class="identifier">min</span><span class="special">)()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>   <span class="comment">//      0</span>
+</pre>
+<p>
+          For bounded floating-point types, if we create a <code class="computeroutput"><span class="keyword">double</span></code>
+          with a value with <code class="computeroutput"><span class="identifier">digits10</span></code>
+          (usually 15) decimal digits, <code class="computeroutput"><span class="number">1e15</span></code>
+          or <code class="computeroutput"><span class="number">1000000000000000</span></code> :
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;::</span><span class="identifier">max_digits10</span><span class="special">);</span>
+<span class="keyword">double</span> <span class="identifier">d</span> <span class="special">=</span>  <span class="number">1e15</span><span class="special">;</span>
+<span class="keyword">double</span> <span class="identifier">dp1</span> <span class="special">=</span> <span class="identifier">d</span><span class="special">+</span><span class="number">1</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">d</span> <span class="special">&lt;&lt;</span> <span class="string">"\n"</span> <span class="special">&lt;&lt;</span> <span class="identifier">dp1</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="comment">// 1000000000000000</span>
+<span class="comment">// 1000000000000001</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span>  <span class="identifier">dp1</span> <span class="special">-</span> <span class="identifier">d</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// 1</span>
+</pre>
+<p>
+          and we can increment this value to <code class="computeroutput"><span class="number">1000000000000001</span></code>
+          as expected and show the difference too.
+        </p>
+<p>
+          But if we try to repeat this with more than <code class="computeroutput"><span class="identifier">digits10</span></code>
+          digits,
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;::</span><span class="identifier">max_digits10</span><span class="special">);</span>
+<span class="keyword">double</span> <span class="identifier">d</span> <span class="special">=</span>  <span class="number">1e16</span><span class="special">;</span>
+<span class="keyword">double</span> <span class="identifier">dp1</span> <span class="special">=</span> <span class="identifier">d</span><span class="special">+</span><span class="number">1</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">d</span> <span class="special">&lt;&lt;</span> <span class="string">"\n"</span> <span class="special">&lt;&lt;</span> <span class="identifier">dp1</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="comment">// 10000000000000000</span>
+<span class="comment">// 10000000000000000</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">dp1</span> <span class="special">-</span> <span class="identifier">d</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// 0 !!!</span>
+</pre>
+<p>
+          then we find that when we add one it has no effect, and display show that
+          there is loss of precision. See <a href="http://en.wikipedia.org/wiki/Loss_of_significance" target="_top">Loss
+          of significance or cancellation error</a>.
+        </p>
+<p>
+          So <code class="computeroutput"><span class="identifier">digits10</span></code> is the number
+          of decimal digits <span class="bold"><strong>guaranteed</strong></span> to be correct.
+        </p>
+<p>
+          For example, 'round-tripping' for <code class="computeroutput"><span class="keyword">double</span></code>:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              If a decimal string with at most <code class="computeroutput"><span class="identifier">digits10</span></code>(
+              == 15) significant decimal digits is converted to <code class="computeroutput"><span class="keyword">double</span></code>
+              and then converted back to the same number of significant decimal digits,
+              then the final string will match the original 15 decimal digit string.
+            </li>
+<li class="listitem">
+              If a <code class="computeroutput"><span class="keyword">double</span></code> floating-point
+              number is converted to a decimal string with at least 17 decimal digits
+              and then converted back to <code class="computeroutput"><span class="keyword">double</span></code>,
+              then the result will be binary identical to the original <code class="computeroutput"><span class="keyword">double</span></code> value.
+            </li>
+</ul></div>
+<p>
+          For most purposes, you will much more likely want <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;&gt;::</span><span class="identifier">max_digits10</span></code>,
+          the number of decimal digits that ensure that a change of one least significant
+          bit (ULP) produces a different decimal digits string.
+        </p>
+<p>
+          For the most common <code class="computeroutput"><span class="keyword">double</span></code>
+          floating-point type,<code class="computeroutput"><span class="identifier">max_digits10</span></code>
+          is <code class="computeroutput"><span class="identifier">digits10</span><span class="special">+</span><span class="number">2</span></code>, but you should use C++11 <code class="computeroutput"><span class="identifier">max_digits10</span></code> where possible (see <a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.max_digits10">below</a>).
+        </p>
+<h5>
+<a name="boost_multiprecision.tut.limits.constants.h9"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.limits.constants.max_digits10"></a></span><a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.max_digits10">max_digits10</a>
+        </h5>
+<p>
+          <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">max_digits10</span></code> was added for floating-point
+          because <code class="computeroutput"><span class="identifier">digits10</span></code> decimal
+          digits are insufficient to show a least significant bit (ULP) change giving
+          puzzling displays like
+        </p>
+<pre class="programlisting"><span class="number">0.666666666666667</span> <span class="special">!=</span> <span class="number">0.666666666666667</span>
+</pre>
+<p>
+          from failure to 'round-trip', for example:
+        </p>
+<pre class="programlisting"><span class="keyword">double</span> <span class="identifier">write</span> <span class="special">=</span> <span class="number">2.</span><span class="special">/</span><span class="number">3</span><span class="special">;</span> <span class="comment">// Any arbitrary value that cannot be represented exactly.</span>
+<span class="keyword">double</span> <span class="identifier">read</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">stringstream</span> <span class="identifier">s</span><span class="special">;</span>
+<span class="identifier">s</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;::</span><span class="identifier">digits10</span><span class="special">);</span> <span class="comment">// or `float64_t` for 64-bit IEE754 double.</span>
+<span class="identifier">s</span> <span class="special">&lt;&lt;</span> <span class="identifier">write</span><span class="special">;</span>
+<span class="identifier">s</span> <span class="special">&gt;&gt;</span> <span class="identifier">read</span><span class="special">;</span>
+<span class="keyword">if</span><span class="special">(</span><span class="identifier">read</span> <span class="special">!=</span> <span class="identifier">write</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span>  <span class="identifier">std</span><span class="special">::</span><span class="identifier">setprecision</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;::</span><span class="identifier">digits10</span><span class="special">)</span>
+    <span class="special">&lt;&lt;</span> <span class="identifier">read</span> <span class="special">&lt;&lt;</span> <span class="string">" != "</span> <span class="special">&lt;&lt;</span> <span class="identifier">write</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          If you wish to ensure that a change of one least significant bit (ULP)
+          produces a different decimal digits string, then <code class="computeroutput"><span class="identifier">max_digits10</span></code>
+          is the precision to use.
+        </p>
+<p>
+          For example:
+        </p>
+<pre class="programlisting"><span class="keyword">double</span> <span class="identifier">pi</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">double_constants</span><span class="special">::</span><span class="identifier">pi</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;::</span><span class="identifier">max_digits10</span><span class="special">);</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">pi</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// 3.1415926535897931</span>
+</pre>
+<p>
+          will display &#960; to the maximum possible precision using a <code class="computeroutput"><span class="keyword">double</span></code>.
+        </p>
+<p>
+          and similarly for a much higher precision type:
+        </p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">;</span>
+
+<span class="keyword">typedef</span> <span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">cpp_dec_float</span><span class="special">&lt;</span><span class="number">50</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">cpp_dec_float_50</span><span class="special">;</span> <span class="comment">// 50 decimal digits.</span>
+
+<span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">cpp_dec_float_50</span><span class="special">;</span>
+
+<span class="identifier">cpp_dec_float_50</span> <span class="identifier">pi</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">constants</span><span class="special">::</span><span class="identifier">pi</span><span class="special">&lt;</span><span class="identifier">cpp_dec_float_50</span><span class="special">&gt;();</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">cpp_dec_float_50</span><span class="special">&gt;::</span><span class="identifier">max_digits10</span><span class="special">);</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">pi</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="comment">// 3.141592653589793238462643383279502884197169399375105820974944592307816406</span>
+</pre>
+<p>
+          For integer types, <code class="computeroutput"><span class="identifier">max_digits10</span></code>
+          is implementation-dependent, but is usually <code class="computeroutput"><span class="identifier">digits10</span>
+          <span class="special">+</span> <span class="number">2</span></code>.
+          This is the output field-width required for the maximum value of the type
+          T <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">max</span><span class="special">()</span></code>
+          <span class="emphasis"><em>including a sign and a space</em></span>.
+        </p>
+<p>
+          So this will produce neat columns.
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">setw</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;::</span><span class="identifier">max_digits10</span><span class="special">)</span> <span class="special">...</span>
+</pre>
+<p>
+          The extra two or three least-significant digits are 'noisy' and may be
+          junk, but if you want to 'round-trip' - printing a value out as a decimal
+          digit string and reading it back in - (most commonly during serialization
+          and de-serialization) you must use <code class="computeroutput"><span class="identifier">os</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">max_digits10</span><span class="special">)</span></code>.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            For Microsoft Visual Studio 2010, <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;::</span><span class="identifier">max_digits10</span></code>
+            is wrongly defined as 8. It should be 9.
+          </p></td></tr>
+</table></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>
+            For Microsoft Visual Studio before 2013, and default float format, a
+            small range of values approximately 0.0001 to 0.004, with exponent values
+            of 3F2 to 3F6, are wrongly input by one least significant bit, probably
+            every third value of significand.
+          </p>
+<p>
+            A workaround is using scientific or exponential format <code class="computeroutput"><span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">scientific</span></code>.
+          </p>
+</td></tr>
+</table></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            BOOST_NO_CXX11_NUMERIC_LIMITS is a suitable feature-test macro to determine
+            if <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;::</span><span class="identifier">max_digits10</span></code> is implemented on any
+            platform.
+          </p></td></tr>
+</table></div>
+<p>
+          If <code class="computeroutput"><span class="identifier">max_digits10</span></code> is not
+          available, you should use the <a href="http://www.cs.berkeley.edu/~wkahan/ieee754status/IEEE754.PDF" target="_top">Kahan
+          formula for floating-point type T</a>.
+        </p>
+<p>
+          In C++, the equations for what Kahan (on page 4) describes as 'at least'
+          and 'at most' are:
+        </p>
+<pre class="programlisting"><span class="keyword">static</span> <span class="keyword">long</span> <span class="keyword">double</span> <span class="keyword">const</span> <span class="identifier">log10Two</span> <span class="special">=</span> <span class="number">0.30102999566398119521373889472449L</span><span class="special">;</span> <span class="comment">// log10(2.)</span>
+
+<span class="keyword">static_cast</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">floor</span><span class="special">((</span><span class="identifier">significand_digits</span> <span class="special">-</span> <span class="number">1</span><span class="special">)</span> <span class="special">*</span> <span class="identifier">log10Two</span><span class="special">));</span> <span class="comment">// == digits10  - 'at least' .</span>
+<span class="keyword">static_cast</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">ceil</span><span class="special">(</span><span class="number">1</span> <span class="special">+</span> <span class="identifier">significand_digits</span> <span class="special">*</span> <span class="identifier">log10Two</span><span class="special">));</span> <span class="comment">// == max_digits10  - 'at most'.</span>
+</pre>
+<p>
+          Unfortunately, these cannot be evaluated (at least by C++03) at <span class="bold"><strong>compile-time</strong></span>. So the following expression is often
+          used instead.
+        </p>
+<pre class="programlisting"><span class="identifier">max_digits10</span> <span class="special">=</span> <span class="number">2</span> <span class="special">+</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">digits</span> <span class="special">*</span> <span class="number">3010U</span><span class="special">/</span><span class="number">10000U</span><span class="special">;</span>
+
+<span class="comment">// == 2 + std::numeric_limits&lt;T&gt;::digits for double and 64-bit long double.</span>
+<span class="comment">// == 3 + std::numeric_limits&lt;T&gt;::digits for float,  80-bit long-double and __float128.</span>
+</pre>
+<p>
+          often the actual values are computed for the C limits macros:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">FLT_MAXDIG10</span> <span class="special">(</span><span class="number">2</span><span class="special">+</span><span class="identifier">FLT_MANT_DIG</span> <span class="special">*</span> <span class="number">3010U</span><span class="special">/</span><span class="number">10000U</span><span class="special">)</span>  <span class="comment">// 9</span>
+<span class="preprocessor">#define</span> <span class="identifier">DBL_MAXDIG10</span> <span class="special">(</span><span class="number">2</span><span class="special">+</span> <span class="special">(</span><span class="identifier">DBL_MANT_DIG</span> <span class="special">*</span> <span class="number">3010U</span><span class="special">)/</span><span class="number">10000U</span><span class="special">)</span> <span class="comment">// 17</span>
+<span class="preprocessor">#define</span> <span class="identifier">LDBL_MAXDIG10</span> <span class="special">(</span><span class="number">2</span><span class="special">+</span> <span class="special">(</span><span class="identifier">LDBL_MANT_DIG</span> <span class="special">*</span> <span class="number">3010U</span><span class="special">)/</span><span class="number">10000U</span><span class="special">)</span> <span class="comment">// 17 for MSVC, 18 for others.</span>
+</pre>
+<p>
+          The factor 3010U/10000U is <span class="emphasis"><em>log<sub>10</sub>(2) = 0.3010</em></span> that
+          can be evaluated at compile-time using only <code class="computeroutput"><span class="keyword">short</span>
+          <span class="keyword">unsigned</span> <span class="keyword">int</span></code>s
+          to be a desirable <code class="computeroutput"><span class="keyword">const</span></code> or
+          <code class="computeroutput"><span class="keyword">constexpr</span></code> (and usually also
+          <code class="computeroutput"><span class="keyword">static</span></code>).
+        </p>
+<p>
+          Boost macros allow this to be done portably, see <a href="http://www.boost.org/doc/libs/1_58_0/libs/config/doc/html/boost_config/boost_macro_reference.html" target="_top">BOOST_CONSTEXPR_OR_CONST
+          or BOOST_STATIC_CONSTEXPR</a>.
+        </p>
+<p>
+          (See also <a href="http://www.loria.fr/~zimmerma/mca/mca-cup-0.5.9.pdf" target="_top">Richard
+          P. Brent and Paul Zimmerman, Modern Computer Arithmetic</a> Equation
+          3.8 on page 116).
+        </p>
+<p>
+          For example, to be portable (including obselete platforms) for type <code class="computeroutput"><span class="identifier">T</span></code> where <code class="computeroutput"><span class="identifier">T</span></code>
+          may be: <code class="computeroutput"><span class="keyword">float</span></code>, <code class="computeroutput"><span class="keyword">double</span></code>, <code class="computeroutput"><span class="keyword">long</span>
+          <span class="keyword">double</span></code>, <code class="computeroutput"><span class="number">128</span><span class="special">-</span><span class="identifier">bit</span> <span class="identifier">quad</span> <span class="identifier">type</span></code>,
+          <code class="computeroutput"><span class="identifier">cpp_bin_float_50</span></code> ...
+        </p>
+<pre class="programlisting">  <span class="keyword">typedef</span> <span class="keyword">float</span> <span class="identifier">T</span><span class="special">;</span>
+
+<span class="preprocessor">#if</span> <span class="identifier">defined</span> <span class="identifier">BOOST_NO_CXX11_NUMERIC_LIMITS</span>
+   <span class="comment">// No max_digits10 implemented.</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">max_digits10</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;());</span>
+<span class="preprocessor">#else</span>
+  <span class="preprocessor">#if</span><span class="special">(</span><span class="identifier">_MSC_VER</span> <span class="special">&lt;=</span> <span class="number">1600</span><span class="special">)</span>
+   <span class="comment">//  Wrong value for std::numeric_limits&lt;float&gt;::max_digits10.</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">max_digits10</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;());</span>
+  <span class="preprocessor">#else</span> <span class="comment">// Use the C++11 max_digits10.</span>
+     <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">max_digits10</span><span class="special">);</span>
+  <span class="preprocessor">#endif</span>
+<span class="preprocessor">#endif</span>
+
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"std::cout.precision(max_digits10) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">.</span><span class="identifier">precision</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// 9</span>
+
+  <span class="keyword">double</span> <span class="identifier">x</span> <span class="special">=</span> <span class="number">1.2345678901234567889</span><span class="special">;</span>
+
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"x = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">x</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">//</span>
+</pre>
+<p>
+          which should output:
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">max_digits10</span><span class="special">)</span> <span class="special">=</span> <span class="number">9</span>
+<span class="identifier">x</span> <span class="special">=</span> <span class="number">1.23456789</span>
+</pre>
+<h5>
+<a name="boost_multiprecision.tut.limits.constants.h10"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.limits.constants.round_style"></a></span><a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.round_style">round_style</a>
+        </h5>
+<p>
+          The rounding style determines how the result of floating-point operations
+          is treated when the result cannot be <span class="bold"><strong>exactly represented</strong></span>
+          in the significand. Various rounding modes may be provided:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              round to nearest up or down (default for floating-point types).
+            </li>
+<li class="listitem">
+              round up (toward positive infinity).
+            </li>
+<li class="listitem">
+              round down (toward negative infinity).
+            </li>
+<li class="listitem">
+              round toward zero (integer types).
+            </li>
+<li class="listitem">
+              no rounding (if decimal radix).
+            </li>
+<li class="listitem">
+              rounding mode is not determinable.
+            </li>
+</ul></div>
+<p>
+          For integer types, <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">round_style</span></code>
+          is always towards zero, so
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">round_style</span> <span class="special">==</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">round_to_zero</span><span class="special">;</span>
+</pre>
+<p>
+          A decimal type, <code class="computeroutput"><span class="identifier">cpp_dec_float</span></code>
+          rounds in no particular direction, which is to say it doesn't round at
+          all. And since there are several guard digits, it's not really the same
+          as truncation (round toward zero) either.
+        </p>
+<p>
+          For floating-point types, it is normal to round to nearest.
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">round_style</span> <span class="special">==</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">round_to_nearest</span><span class="special">;</span>
+</pre>
+<p>
+          See function <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">round_error</span></code> for the maximum error (in
+          ULP) that rounding can cause.
+        </p>
+<h5>
+<a name="boost_multiprecision.tut.limits.constants.h11"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.limits.constants.has_denorm_loss"></a></span><a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.has_denorm_loss">has_denorm_loss</a>
+        </h5>
+<p>
+          <code class="computeroutput"><span class="keyword">true</span></code> if a loss of precision
+          is detected as a <a href="http://en.wikipedia.org/wiki/Denormalization" target="_top">denormalization</a>
+          loss, rather than an inexact result.
+        </p>
+<p>
+          Always <code class="computeroutput"><span class="keyword">false</span></code> for integer types.
+        </p>
+<p>
+          <code class="computeroutput"><span class="keyword">false</span></code> for all types which
+          do not have <code class="computeroutput"><span class="identifier">has_denorm</span></code>
+          == <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">denorm_present</span></code>.
+        </p>
+<h5>
+<a name="boost_multiprecision.tut.limits.constants.h12"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.limits.constants.denorm_style"></a></span><a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.denorm_style">denorm_style</a>
+        </h5>
+<p>
+          <a href="http://en.wikipedia.org/wiki/Denormal_number" target="_top">Denormalized
+          values</a> are representations with a variable number of exponent bits
+          that can permit gradual underflow, so that, if type T is <code class="computeroutput"><span class="keyword">double</span></code>.
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">denorm_min</span><span class="special">()</span> <span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">min</span><span class="special">()</span>
+</pre>
+<p>
+          A type may have any of the following <code class="computeroutput"><span class="keyword">enum</span>
+          <span class="identifier">float_denorm_style</span></code> values:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">denorm_absent</span></code>, if it does not allow
+              denormalized values. (Always used for all integer and exact types).
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">denorm_present</span></code>, if the floating-point
+              type allows denormalized values.
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">denorm_indeterminate</span></code>, if indeterminate
+              at compile time.
+            </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.tut.limits.constants.h13"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.limits.constants.tinyness_before_rounding"></a></span><a class="link" href="constants.html#boost_multiprecision.tut.limits.constants.tinyness_before_rounding">Tinyness
+          before rounding</a>
+        </h5>
+<p>
+          <code class="computeroutput"><span class="keyword">bool</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">tinyness_before</span></code>
+        </p>
+<p>
+          <code class="computeroutput"><span class="keyword">true</span></code> if a type can determine
+          that a value is too small to be represent as a normalized value before
+          rounding it.
+        </p>
+<p>
+          Generally true for <code class="computeroutput"><span class="identifier">is_iec559</span></code>
+          floating-point built-in types, but false for integer types.
+        </p>
+<p>
+          Standard-compliant IEEE 754 floating-point implementations may detect the
+          floating-point underflow at three predefined moments:
+        </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+              After computation of a result with absolute value smaller than <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">min</span><span class="special">()</span></code>,
+              such implementation detects <span class="emphasis"><em>tinyness before rounding</em></span>
+              (e.g. UltraSparc).
+            </li>
+<li class="listitem">
+              After rounding of the result to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">digits</span></code>
+              bits, if the result is tiny, such implementation detects <span class="emphasis"><em>tinyness
+              after rounding</em></span> (e.g. SuperSparc).
+            </li>
+<li class="listitem">
+              If the conversion of the rounded tiny result to subnormal form resulted
+              in the loss of precision, such implementation detects <span class="emphasis"><em>denorm
+              loss</em></span>.
+            </li>
+</ol></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2013 John Maddock and Christopher Kormanyos<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../limits.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../limits.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="functions.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

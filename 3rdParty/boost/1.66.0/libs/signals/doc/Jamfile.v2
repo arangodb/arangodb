@@ -1,0 +1,20 @@
+project signals/doc ;
+import boostbook : boostbook ;
+
+boostbook doc 
+    : 
+    signals.xml 
+    :
+        <xsl:param>boost.root=../../../..
+        <format>pdf:<xsl:param>boost.url.prefix=http://www.boost.org/doc/libs/release/doc/html
+    ;
+
+###############################################################################
+alias boostdoc
+    : signals.xml
+    :
+    :
+    : ;
+explicit boostdoc ;
+alias boostrelease ;
+explicit boostrelease ;

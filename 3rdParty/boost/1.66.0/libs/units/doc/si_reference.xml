@@ -1,0 +1,6622 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference id="si_system_reference"><title>SI System Reference</title><header name="boost/units/systems/si.hpp">
+<para>Includes all the si unit headers </para></header>
+<header name="boost/units/systems/si/absorbed_dose.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="absorbed_dose"><type>unit&lt; absorbed_dose_dimension, si::system &gt;</type></typedef>
+<data-member name="gray" specifiers="static"><type>const absorbed_dose</type></data-member>
+<data-member name="grays" specifiers="static"><type>const absorbed_dose</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/acceleration.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="acceleration"><type>unit&lt; acceleration_dimension, si::system &gt;</type></typedef>
+<data-member name="meter_per_second_squared" specifiers="static"><type>const acceleration</type></data-member>
+<data-member name="meters_per_second_squared" specifiers="static"><type>const acceleration</type></data-member>
+<data-member name="metre_per_second_squared" specifiers="static"><type>const acceleration</type></data-member>
+<data-member name="metres_per_second_squared" specifiers="static"><type>const acceleration</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/action.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="action"><type>unit&lt; action_dimension, si::system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/activity.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="activity"><type>unit&lt; activity_dimension, si::system &gt;</type></typedef>
+<data-member name="becquerel" specifiers="static"><type>const activity</type></data-member>
+<data-member name="becquerels" specifiers="static"><type>const activity</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/amount.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="amount"><type>unit&lt; amount_dimension, si::system &gt;</type></typedef>
+<data-member name="mole" specifiers="static"><type>const amount</type></data-member>
+<data-member name="moles" specifiers="static"><type>const amount</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/angular_acceleration.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="angular_acceleration"><type>unit&lt; angular_acceleration_dimension, si::system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/angular_momentum.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="angular_momentum"><type>unit&lt; angular_momentum_dimension, si::system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/angular_velocity.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="angular_velocity"><type>unit&lt; angular_velocity_dimension, si::system &gt;</type></typedef>
+<data-member name="radian_per_second" specifiers="static"><type>const angular_velocity</type></data-member>
+<data-member name="radians_per_second" specifiers="static"><type>const angular_velocity</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/area.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="area"><type>unit&lt; area_dimension, si::system &gt;</type></typedef>
+<data-member name="square_meter" specifiers="static"><type>const area</type></data-member>
+<data-member name="square_meters" specifiers="static"><type>const area</type></data-member>
+<data-member name="square_metre" specifiers="static"><type>const area</type></data-member>
+<data-member name="square_metres" specifiers="static"><type>const area</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/base.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="system"><purpose>placeholder class defining si unit system </purpose><type>make_system&lt; meter_base_unit, kilogram_base_unit, second_base_unit, ampere_base_unit, kelvin_base_unit, mole_base_unit, candela_base_unit, angle::radian_base_unit, angle::steradian_base_unit &gt;::type</type></typedef>
+<typedef name="dimensionless"><purpose>dimensionless si unit </purpose><type>unit&lt; dimensionless_type, system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/capacitance.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="capacitance"><type>unit&lt; capacitance_dimension, si::system &gt;</type></typedef>
+<data-member name="farad" specifiers="static"><type>const capacitance</type></data-member>
+<data-member name="farads" specifiers="static"><type>const capacitance</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/catalytic_activity.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="catalytic_activity_dim"><purpose>catalytic activity : T^-1 A^1 </purpose><type>derived_dimension&lt; time_base_dimension,-1, amount_base_dimension, 1 &gt;::type</type></typedef>
+<typedef name="catalytic_activity"><type>unit&lt; si::catalytic_activity_dim, si::system &gt;</type></typedef>
+<data-member name="katal" specifiers="static"><type>const catalytic_activity</type></data-member>
+<data-member name="katals" specifiers="static"><type>const catalytic_activity</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata/alpha_constants.hpp">
+<para>CODATA recommended values of fundamental atomic and nuclear constants CODATA 2006 values as of 2007/03/30 </para><namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<namespace name="constants">
+<namespace name="codata">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_alpha</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass &gt;</paramtype></parameter><parameter name="kilograms"><paramtype>6.64465620e-27 *</paramtype></parameter><parameter name="kilograms"><paramtype>3.3e-34 *</paramtype></parameter><purpose>CODATA recommended values of the fundamental physical constants: NIST SP 961. </purpose><description><para>alpha particle mass </para></description></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_alpha_over_m_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>7294.2995365 *</paramtype></parameter><parameter name="dimensionless"><paramtype>3.1e-6 *</paramtype></parameter><purpose>alpha-electron mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_alpha_over_m_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>3.97259968951 *</paramtype></parameter><parameter name="dimensionless"><paramtype>4.1e-10 *</paramtype></parameter><purpose>alpha-proton mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>M_alpha</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass_over_amount &gt;</paramtype></parameter><parameter name="mole"><paramtype>4.001506179127e-3 *kilograms/</paramtype></parameter><parameter name="mole"><paramtype>6.2e-14 *kilograms/</paramtype></parameter><purpose>alpha molar mass </purpose></function>
+</namespace>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata/atomic-nuclear_constants.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<namespace name="constants">
+<namespace name="codata">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>alpha</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>7.2973525376e-3 *</paramtype></parameter><parameter name="dimensionless"><paramtype>5.0e-12 *</paramtype></parameter><purpose>CODATA recommended values of the fundamental physical constants: NIST SP 961. </purpose><description><para>fine structure constant </para></description></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>R_infinity</paramtype></parameter><parameter name=""><paramtype>quantity&lt; wavenumber &gt;</paramtype></parameter><parameter name="meter"><paramtype>10973731.568527/</paramtype></parameter><parameter name="meter"><paramtype>7.3e-5/</paramtype></parameter><purpose>Rydberg constant. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>a_0</paramtype></parameter><parameter name=""><paramtype>quantity&lt; length &gt;</paramtype></parameter><parameter name="meters"><paramtype>0.52917720859e-10 *</paramtype></parameter><parameter name="meters"><paramtype>3.6e-20 *</paramtype></parameter><purpose>Bohr radius. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>E_h</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy &gt;</paramtype></parameter><parameter name="joules"><paramtype>4.35974394e-18 *</paramtype></parameter><parameter name="joules"><paramtype>2.2e-25 *</paramtype></parameter><purpose>Hartree energy. </purpose></function>
+
+
+
+
+</namespace>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata/deuteron_constants.hpp">
+<para>CODATA recommended values of fundamental atomic and nuclear constants CODATA 2006 values as of 2007/03/30 </para><namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<namespace name="constants">
+<namespace name="codata">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_d</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass &gt;</paramtype></parameter><parameter name="kilograms"><paramtype>3.34358320e-27 *</paramtype></parameter><parameter name="kilograms"><paramtype>1.7e-34 *</paramtype></parameter><purpose>CODATA recommended values of the fundamental physical constants: NIST SP 961. </purpose><description><para>deuteron mass </para></description></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_d_over_m_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>3670.4829654 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.6e-6 *</paramtype></parameter><purpose>deuteron-electron mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_d_over_m_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>1.99900750108 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.2e-10 *</paramtype></parameter><purpose>deuteron-proton mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>M_d</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass_over_amount &gt;</paramtype></parameter><parameter name="mole"><paramtype>2.013553212724e-3 *kilograms/</paramtype></parameter><parameter name="mole"><paramtype>7.8e-14 *kilograms/</paramtype></parameter><purpose>deuteron molar mass </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>R_d</paramtype></parameter><parameter name=""><paramtype>quantity&lt; length &gt;</paramtype></parameter><parameter name="meters"><paramtype>2.1402e-15 *</paramtype></parameter><parameter name="meters"><paramtype>2.8e-18 *</paramtype></parameter><purpose>deuteron rms charge radius </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_d</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>0.433073465e-26 *joules/</paramtype></parameter><parameter name="tesla"><paramtype>1.1e-34 *joules/</paramtype></parameter><purpose>deuteron magnetic moment </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_d_over_mu_B</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>0.4669754556e-3 *</paramtype></parameter><parameter name="dimensionless"><paramtype>3.9e-12 *</paramtype></parameter><purpose>deuteron-Bohr magneton ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_d_over_mu_N</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>0.8574382308 *</paramtype></parameter><parameter name="dimensionless"><paramtype>7.2e-9 *</paramtype></parameter><purpose>deuteron-nuclear magneton ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>g_d</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>0.8574382308 *</paramtype></parameter><parameter name="dimensionless"><paramtype>7.2e-9 *</paramtype></parameter><purpose>deuteron g-factor </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_d_over_mu_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-4.664345537e-4 *</paramtype></parameter><parameter name="dimensionless"><paramtype>3.9e-12 *</paramtype></parameter><purpose>deuteron-electron magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_d_over_mu_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>0.3070122070 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.4e-9 *</paramtype></parameter><purpose>deuteron-proton magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_d_over_mu_n</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-0.44820652 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.1e-7 *</paramtype></parameter><purpose>deuteron-neutron magnetic moment ratio </purpose></function>
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata/electromagnetic_constants.hpp">
+<para>CODATA recommended values of fundamental electromagnetic constants. </para><para>CODATA recommended values of the fundamental physical constants: NIST SP 961 CODATA 2006 values as of 2007/03/30 </para><namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<namespace name="constants">
+<namespace name="codata">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; electric_charge &gt;</paramtype></parameter><parameter name="coulombs"><paramtype>1.602176487e-19 *</paramtype></parameter><parameter name="coulombs"><paramtype>4.0e-27 *</paramtype></parameter><purpose>elementary charge </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>e_over_h</paramtype></parameter><parameter name=""><paramtype>quantity&lt; current_over_energy &gt;</paramtype></parameter><parameter name="joule"><paramtype>2.417989454e14 *amperes/</paramtype></parameter><parameter name="joule"><paramtype>6.0e6 *amperes/</paramtype></parameter><purpose>elementary charge to Planck constant ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>Phi_0</paramtype></parameter><parameter name=""><paramtype>quantity&lt; magnetic_flux &gt;</paramtype></parameter><parameter name="webers"><paramtype>2.067833667e-15 *</paramtype></parameter><parameter name="webers"><paramtype>5.2e-23 *</paramtype></parameter><purpose>magnetic flux quantum </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>G_0</paramtype></parameter><parameter name=""><paramtype>quantity&lt; conductance &gt;</paramtype></parameter><parameter name="siemens"><paramtype>7.7480917004e-5 *</paramtype></parameter><parameter name="siemens"><paramtype>5.3e-14 *</paramtype></parameter><purpose>conductance quantum </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>K_J</paramtype></parameter><parameter name=""><paramtype>quantity&lt; frequency_over_electric_potential &gt;</paramtype></parameter><parameter name="volt"><paramtype>483597.891e9 *hertz/</paramtype></parameter><parameter name="volt"><paramtype>1.2e7 *hertz/</paramtype></parameter><purpose>Josephson constant. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>R_K</paramtype></parameter><parameter name=""><paramtype>quantity&lt; resistance &gt;</paramtype></parameter><parameter name="ohms"><paramtype>25812.807557 *</paramtype></parameter><parameter name="ohms"><paramtype>1.77e-5 *</paramtype></parameter><purpose>von Klitzing constant </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_B</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>927.400915e-26 *joules/</paramtype></parameter><parameter name="tesla"><paramtype>2.3e-31 *joules/</paramtype></parameter><purpose>Bohr magneton. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_N</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>5.05078324e-27 *joules/</paramtype></parameter><parameter name="tesla"><paramtype>1.3e-34 *joules/</paramtype></parameter><purpose>nuclear magneton </purpose></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata/electron_constants.hpp">
+<para>CODATA recommended values of fundamental atomic and nuclear constants CODATA 2006 values as of 2007/03/30 </para><namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<namespace name="constants">
+<namespace name="codata">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass &gt;</paramtype></parameter><parameter name="kilograms"><paramtype>9.10938215e-31 *</paramtype></parameter><parameter name="kilograms"><paramtype>4.5e-38 *</paramtype></parameter><purpose>CODATA recommended values of the fundamental physical constants: NIST SP 961. </purpose><description><para>electron mass </para></description></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_e_over_m_mu</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>4.83633171e-3 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.2e-10 *</paramtype></parameter><purpose>electron-muon mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_e_over_m_tau</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>2.87564e-4 *</paramtype></parameter><parameter name="dimensionless"><paramtype>4.7e-8 *</paramtype></parameter><purpose>electron-tau mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_e_over_m_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>5.4461702177e-4 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.4e-13 *</paramtype></parameter><purpose>electron-proton mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_e_over_m_n</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>5.4386734459e-4 *</paramtype></parameter><parameter name="dimensionless"><paramtype>3.3e-13 *</paramtype></parameter><purpose>electron-neutron mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_e_over_m_d</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>2.7244371093e-4 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.2e-13 *</paramtype></parameter><purpose>electron-deuteron mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_e_over_m_alpha</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>1.37093355570e-4 *</paramtype></parameter><parameter name="dimensionless"><paramtype>5.8e-14 *</paramtype></parameter><purpose>electron-alpha particle mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>e_over_m_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; electric_charge_over_mass &gt;</paramtype></parameter><parameter name="kilogram"><paramtype>1.758820150e11 *coulombs/</paramtype></parameter><parameter name="kilogram"><paramtype>4.4e3 *coulombs/</paramtype></parameter><purpose>electron charge to mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>M_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass_over_amount &gt;</paramtype></parameter><parameter name="mole"><paramtype>5.4857990943e-7 *kilograms/</paramtype></parameter><parameter name="mole"><paramtype>2.3e-16 *kilograms/</paramtype></parameter><purpose>electron molar mass </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>lambda_C</paramtype></parameter><parameter name=""><paramtype>quantity&lt; length &gt;</paramtype></parameter><parameter name="meters"><paramtype>2.4263102175e-12 *</paramtype></parameter><parameter name="meters"><paramtype>3.3e-21 *</paramtype></parameter><purpose>Compton wavelength. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>r_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; length &gt;</paramtype></parameter><parameter name="meters"><paramtype>2.8179402894e-15 *</paramtype></parameter><parameter name="meters"><paramtype>5.8e-24 *</paramtype></parameter><purpose>classical electron radius </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>sigma_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; area &gt;</paramtype></parameter><parameter name="square_meters"><paramtype>0.6652458558e-28 *</paramtype></parameter><parameter name="square_meters"><paramtype>2.7e-37 *</paramtype></parameter><purpose>Thompson cross section. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>-928.476377e-26 *joules/</paramtype></parameter><parameter name="tesla"><paramtype>2.3e-31 *joules/</paramtype></parameter><purpose>electron magnetic moment </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_e_over_mu_B</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-1.00115965218111 *</paramtype></parameter><parameter name="dimensionless"><paramtype>7.4e-13 *</paramtype></parameter><purpose>electron-Bohr magenton moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_e_over_mu_N</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-183.28197092 *</paramtype></parameter><parameter name="dimensionless"><paramtype>8.0e-7 *</paramtype></parameter><purpose>electron-nuclear magneton moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>a_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>1.15965218111e-3 *</paramtype></parameter><parameter name="dimensionless"><paramtype>7.4e-13 *</paramtype></parameter><purpose>electron magnetic moment anomaly </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>g_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-2.0023193043622 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.5e-12 *</paramtype></parameter><purpose>electron g-factor </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_e_over_mu_mu</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>206.7669877 *</paramtype></parameter><parameter name="dimensionless"><paramtype>5.2e-6 *</paramtype></parameter><purpose>electron-muon magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_e_over_mu_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-658.2106848 *</paramtype></parameter><parameter name="dimensionless"><paramtype>5.4e-6 *</paramtype></parameter><purpose>electron-proton magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_e_over_mu_p_prime</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-658.2275971 *</paramtype></parameter><parameter name="dimensionless"><paramtype>7.2e-6 *</paramtype></parameter><purpose>electron-shielded proton magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_e_over_mu_n</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>960.92050 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.3e-4 *</paramtype></parameter><purpose>electron-neutron magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_e_over_mu_d</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-2143.923498 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.8e-5 *</paramtype></parameter><purpose>electron-deuteron magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_e_over_mu_h_prime</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>864.058257 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.0e-5 *</paramtype></parameter><purpose>electron-shielded helion magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>gamma_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; frequency_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>1.760859770e11/second/</paramtype></parameter><parameter name="tesla"><paramtype>4.4e3/second/</paramtype></parameter><purpose>electron gyromagnetic ratio </purpose></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata/helion_constants.hpp">
+<para>CODATA recommended values of fundamental atomic and nuclear constants CODATA 2006 values as of 2007/03/30 </para><namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<namespace name="constants">
+<namespace name="codata">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_h</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass &gt;</paramtype></parameter><parameter name="kilograms"><paramtype>5.00641192e-27 *</paramtype></parameter><parameter name="kilograms"><paramtype>2.5e-34 *</paramtype></parameter><purpose>CODATA recommended values of the fundamental physical constants: NIST SP 961. </purpose><description><para>helion mass </para></description></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_h_over_m_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>5495.8852765 *</paramtype></parameter><parameter name="dimensionless"><paramtype>5.2e-6 *</paramtype></parameter><purpose>helion-electron mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_h_over_m_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>2.9931526713 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.6e-9 *</paramtype></parameter><purpose>helion-proton mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>M_h</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass_over_amount &gt;</paramtype></parameter><parameter name="mole"><paramtype>3.0149322473e-3 *kilograms/</paramtype></parameter><parameter name="mole"><paramtype>2.6e-12 *kilograms/</paramtype></parameter><purpose>helion molar mass </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_h_prime</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>-1.074552982e-26 *joules/</paramtype></parameter><parameter name="tesla"><paramtype>3.0e-34 *joules/</paramtype></parameter><purpose>helion shielded magnetic moment </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_h_prime_over_mu_B</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-1.158671471e-3 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.4e-11 *</paramtype></parameter><purpose>shielded helion-Bohr magneton ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_h_prime_over_mu_N</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-2.127497718 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.5e-8 *</paramtype></parameter><purpose>shielded helion-nuclear magneton ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_h_prime_over_mu_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-0.761766558 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.1e-8 *</paramtype></parameter><purpose>shielded helion-proton magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_h_prime_over_mu_p_prime</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-0.7617861313 *</paramtype></parameter><parameter name="dimensionless"><paramtype>3.3e-8 *</paramtype></parameter><purpose>shielded helion-shielded proton magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>gamma_h_prime</paramtype></parameter><parameter name=""><paramtype>quantity&lt; frequency_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>2.037894730e8/second/</paramtype></parameter><parameter name="tesla"><paramtype>5.6e-0/second/</paramtype></parameter><purpose>shielded helion gyromagnetic ratio </purpose></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata/muon_constants.hpp">
+<para>CODATA recommended values of fundamental atomic and nuclear constants CODATA 2006 values as of 2007/03/30 </para><namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<namespace name="constants">
+<namespace name="codata">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_mu</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass &gt;</paramtype></parameter><parameter name="kilograms"><paramtype>1.88353130e-28 *</paramtype></parameter><parameter name="kilograms"><paramtype>1.1e-35 *</paramtype></parameter><purpose>CODATA recommended values of the fundamental physical constants: NIST SP 961. </purpose><description><para>muon mass </para></description></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_mu_over_m_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>206.7682823 *</paramtype></parameter><parameter name="dimensionless"><paramtype>5.2e-6 *</paramtype></parameter><purpose>muon-electron mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_mu_over_m_tau</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>5.94592e-2 *</paramtype></parameter><parameter name="dimensionless"><paramtype>9.7e-6 *</paramtype></parameter><purpose>muon-tau mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_mu_over_m_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>0.1126095261 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.9e-9 *</paramtype></parameter><purpose>muon-proton mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_mu_over_m_n</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>0.1124545167 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.9e-9 *</paramtype></parameter><purpose>muon-neutron mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>M_mu</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass_over_amount &gt;</paramtype></parameter><parameter name="mole"><paramtype>0.1134289256e-3 *kilograms/</paramtype></parameter><parameter name="mole"><paramtype>2.9e-12 *kilograms/</paramtype></parameter><purpose>muon molar mass </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>lambda_C_mu</paramtype></parameter><parameter name=""><paramtype>quantity&lt; length &gt;</paramtype></parameter><parameter name="meters"><paramtype>11.73444104e-15 *</paramtype></parameter><parameter name="meters"><paramtype>3.0e-22 *</paramtype></parameter><purpose>muon Compton wavelength </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_mu</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>-4.49044786e-26 *joules/</paramtype></parameter><parameter name="tesla"><paramtype>1.6e-33 *joules/</paramtype></parameter><purpose>muon magnetic moment </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_mu_over_mu_B</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-4.84197049e-3 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.2e-10 *</paramtype></parameter><purpose>muon-Bohr magneton ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_mu_over_mu_N</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-8.89059705 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.3e-7 *</paramtype></parameter><purpose>muon-nuclear magneton ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>a_mu</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>1.16592069e-3 *</paramtype></parameter><parameter name="dimensionless"><paramtype>6.0e-10 *</paramtype></parameter><purpose>muon magnetic moment anomaly </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>g_mu</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-2.0023318414 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.2e-9 *</paramtype></parameter><purpose>muon g-factor </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_mu_over_mu_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-3.183345137 *</paramtype></parameter><parameter name="dimensionless"><paramtype>8.5e-8 *</paramtype></parameter><purpose>muon-proton magnetic moment ratio </purpose></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata/neutron_constants.hpp">
+<para>CODATA recommended values of fundamental atomic and nuclear constants CODATA 2006 values as of 2007/03/30 </para><namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<namespace name="constants">
+<namespace name="codata">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_n</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass &gt;</paramtype></parameter><parameter name="kilograms"><paramtype>1.674927211e-27 *</paramtype></parameter><parameter name="kilograms"><paramtype>8.4e-35 *</paramtype></parameter><purpose>CODATA recommended values of the fundamental physical constants: NIST SP 961. </purpose><description><para>neutron mass </para></description></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_n_over_m_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>1838.6836605 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.1e-6 *</paramtype></parameter><purpose>neutron-electron mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_n_over_m_mu</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>8.89248409 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.3e-7 *</paramtype></parameter><purpose>neutron-muon mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_n_over_m_tau</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>0.528740 *</paramtype></parameter><parameter name="dimensionless"><paramtype>8.6e-5 *</paramtype></parameter><purpose>neutron-tau mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_n_over_m_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>1.00137841918 *</paramtype></parameter><parameter name="dimensionless"><paramtype>4.6e-10 *</paramtype></parameter><purpose>neutron-proton mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>M_n</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass_over_amount &gt;</paramtype></parameter><parameter name="mole"><paramtype>1.00866491597e-3 *kilograms/</paramtype></parameter><parameter name="mole"><paramtype>4.3e-13 *kilograms/</paramtype></parameter><purpose>neutron molar mass </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>lambda_C_n</paramtype></parameter><parameter name=""><paramtype>quantity&lt; length &gt;</paramtype></parameter><parameter name="meters"><paramtype>1.3195908951e-15 *</paramtype></parameter><parameter name="meters"><paramtype>2.0e-24 *</paramtype></parameter><purpose>neutron Compton wavelength </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_n</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>-0.96623641e-26 *joules/</paramtype></parameter><parameter name="tesla"><paramtype>2.3e-33 *joules/</paramtype></parameter><purpose>neutron magnetic moment </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>g_n</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-3.82608545 *</paramtype></parameter><parameter name="dimensionless"><paramtype>9.0e-7 *</paramtype></parameter><purpose>neutron g-factor </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_n_over_mu_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>1.04066882e-3 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.5e-10 *</paramtype></parameter><purpose>neutron-electron magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_n_over_mu_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-0.68497934 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.6e-7 *</paramtype></parameter><purpose>neutron-proton magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_n_over_mu_p_prime</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-0.68499694 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.6e-7 *</paramtype></parameter><purpose>neutron-shielded proton magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>gamma_n</paramtype></parameter><parameter name=""><paramtype>quantity&lt; frequency_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>1.83247185e8/second/</paramtype></parameter><parameter name="tesla"><paramtype>4.3e1/second/</paramtype></parameter><purpose>neutron gyromagnetic ratio </purpose></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata/physico-chemical_constants.hpp">
+<para>CODATA recommended values of fundamental physico-chemical constants CODATA 2014 values as of 2016/04/26 </para><namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<namespace name="constants">
+<namespace name="codata">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>N_A</paramtype></parameter><parameter name=""><paramtype>quantity&lt; inverse_amount &gt;</paramtype></parameter><parameter name="mole"><paramtype>6.022140857e23/</paramtype></parameter><parameter name="mole"><paramtype>7.4e15/</paramtype></parameter><purpose>Avogadro constant. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_u</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass &gt;</paramtype></parameter><parameter name="kilograms"><paramtype>1.660539040e-27 *</paramtype></parameter><parameter name="kilograms"><paramtype>2.0e-35 *</paramtype></parameter><purpose>atomic mass constant </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>F</paramtype></parameter><parameter name=""><paramtype>quantity&lt; electric_charge_over_amount &gt;</paramtype></parameter><parameter name="mole"><paramtype>96485.33289 *coulombs/</paramtype></parameter><parameter name="mole"><paramtype>5.9e-4 *coulombs/</paramtype></parameter><purpose>Faraday constant. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>R</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy_over_temperature_amount &gt;</paramtype></parameter><parameter name="mole"><paramtype>8.3144598 *joules/kelvin/</paramtype></parameter><parameter name="mole"><paramtype>4.8e-06 *joules/kelvin/</paramtype></parameter><purpose>molar gas constant </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>k_B</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy_over_temperature &gt;</paramtype></parameter><parameter name="kelvin"><paramtype>1.38064852e-23 *joules/</paramtype></parameter><parameter name="kelvin"><paramtype>7.9e-30 *joules/</paramtype></parameter><purpose>Boltzmann constant. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>sigma_SB</paramtype></parameter><parameter name=""><paramtype>quantity&lt; power_over_area_temperature_4 &gt;</paramtype></parameter><parameter name=""><paramtype>5.670367e-8 *watts/square_meter/pow&lt; 4 &gt;</paramtype></parameter><parameter name=""><paramtype>1.3e-13 *watts/square_meter/pow&lt; 4 &gt;</paramtype></parameter><purpose>Stefan-Boltzmann constant. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>c_1</paramtype></parameter><parameter name=""><paramtype>quantity&lt; power_area &gt;</paramtype></parameter><parameter name="square_meters"><paramtype>3.741771790e-16 *watt *</paramtype></parameter><parameter name="square_meters"><paramtype>4.6e-24 *watt *</paramtype></parameter><purpose>first radiation constant </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>c_1L</paramtype></parameter><parameter name=""><paramtype>quantity&lt; power_area_over_solid_angle &gt;</paramtype></parameter><parameter name="steradian"><paramtype>1.191042953e-16 *watt *square_meters/</paramtype></parameter><parameter name="steradian"><paramtype>1.5e-24 *watt *square_meters/</paramtype></parameter><purpose>first radiation constant for spectral radiance </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>c_2</paramtype></parameter><parameter name=""><paramtype>quantity&lt; length_temperature &gt;</paramtype></parameter><parameter name="kelvin"><paramtype>1.43877736e-2 *meter *</paramtype></parameter><parameter name="kelvin"><paramtype>8.3e-9 *meter *</paramtype></parameter><purpose>second radiation constant </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>b</paramtype></parameter><parameter name=""><paramtype>quantity&lt; length_temperature &gt;</paramtype></parameter><parameter name="kelvin"><paramtype>2.8977729e-3 *meter *</paramtype></parameter><parameter name="kelvin"><paramtype>1.7e-9 *meter *</paramtype></parameter><purpose>Wien displacement law constant : lambda_max T. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>b_prime</paramtype></parameter><parameter name=""><paramtype>quantity&lt; frequency_over_temperature &gt;</paramtype></parameter><parameter name="kelvin"><paramtype>5.8789238e10 *hertz/</paramtype></parameter><parameter name="kelvin"><paramtype>3.4e4 *hertz/</paramtype></parameter><purpose>Wien displacement law constant : nu_max/T. </purpose></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata/proton_constants.hpp">
+<para>CODATA recommended values of fundamental atomic and nuclear constants CODATA 2006 values as of 2007/03/30 </para><namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<namespace name="constants">
+<namespace name="codata">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass &gt;</paramtype></parameter><parameter name="kilograms"><paramtype>1.672621637e-27 *</paramtype></parameter><parameter name="kilograms"><paramtype>8.3e-35 *</paramtype></parameter><purpose>CODATA recommended values of the fundamental physical constants: NIST SP 961. </purpose><description><para>proton mass </para></description></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_p_over_m_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>1836.15267247 *</paramtype></parameter><parameter name="dimensionless"><paramtype>8.0e-7 *</paramtype></parameter><purpose>proton-electron mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_p_over_m_mu</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>8.88024339 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.3e-7 *</paramtype></parameter><purpose>proton-muon mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_p_over_m_tau</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>0.528012 *</paramtype></parameter><parameter name="dimensionless"><paramtype>8.6e-5 *</paramtype></parameter><purpose>proton-tau mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_p_over_m_n</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>0.99862347824 *</paramtype></parameter><parameter name="dimensionless"><paramtype>4.6e-10 *</paramtype></parameter><purpose>proton-neutron mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>e_over_m_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; electric_charge_over_mass &gt;</paramtype></parameter><parameter name="kilogram"><paramtype>9.57883392e7 *coulombs/</paramtype></parameter><parameter name="kilogram"><paramtype>2.4e0 *coulombs/</paramtype></parameter><purpose>proton charge to mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>M_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass_over_amount &gt;</paramtype></parameter><parameter name="mole"><paramtype>1.00727646677e-3 *kilograms/</paramtype></parameter><parameter name="mole"><paramtype>1.0e-13 *kilograms/</paramtype></parameter><purpose>proton molar mass </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>lambda_C_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; length &gt;</paramtype></parameter><parameter name="meters"><paramtype>1.3214098446e-15 *</paramtype></parameter><parameter name="meters"><paramtype>1.9e-24 *</paramtype></parameter><purpose>proton Compton wavelength </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>R_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; length &gt;</paramtype></parameter><parameter name="meters"><paramtype>0.8768e-15 *</paramtype></parameter><parameter name="meters"><paramtype>6.9e-18 *</paramtype></parameter><purpose>proton rms charge radius </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>1.410606662e-26 *joules/</paramtype></parameter><parameter name="tesla"><paramtype>3.7e-34 *joules/</paramtype></parameter><purpose>proton magnetic moment </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_p_over_mu_B</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>1.521032209e-3 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.2e-11 *</paramtype></parameter><purpose>proton-Bohr magneton ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_p_over_mu_N</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>2.792847356 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.3e-8 *</paramtype></parameter><purpose>proton-nuclear magneton ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>g_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>5.585694713 *</paramtype></parameter><parameter name="dimensionless"><paramtype>4.6e-8 *</paramtype></parameter><purpose>proton g-factor </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_p_over_mu_n</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-1.45989806 *</paramtype></parameter><parameter name="dimensionless"><paramtype>3.4e-7 *</paramtype></parameter><purpose>proton-neutron magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_p_prime</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>1.410570419e-26 *joules/</paramtype></parameter><parameter name="tesla"><paramtype>3.8e-34 *joules/</paramtype></parameter><purpose>shielded proton magnetic moment </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_p_prime_over_mu_B</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>1.520993128e-3 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.7e-11 *</paramtype></parameter><purpose>shielded proton-Bohr magneton ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_p_prime_over_mu_N</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>2.792775598 *</paramtype></parameter><parameter name="dimensionless"><paramtype>3.0e-8 *</paramtype></parameter><purpose>shielded proton-nuclear magneton ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>sigma_p_prime</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>25.694e-6 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.4e-8 *</paramtype></parameter><purpose>proton magnetic shielding correction </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>gamma_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; frequency_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>2.675222099e8/second/</paramtype></parameter><parameter name="tesla"><paramtype>7.0e0/second/</paramtype></parameter><purpose>proton gyromagnetic ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>gamma_p_prime</paramtype></parameter><parameter name=""><paramtype>quantity&lt; frequency_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>2.675153362e8/second/</paramtype></parameter><parameter name="tesla"><paramtype>7.3e0/second/</paramtype></parameter><purpose>shielded proton gyromagnetic ratio </purpose></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata/tau_constants.hpp">
+<para>CODATA recommended values of fundamental atomic and nuclear constants CODATA 2006 values as of 2007/03/30 </para><namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<namespace name="constants">
+<namespace name="codata">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_tau</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass &gt;</paramtype></parameter><parameter name="kilograms"><paramtype>3.16777e-27 *</paramtype></parameter><parameter name="kilograms"><paramtype>5.2e-31 *</paramtype></parameter><purpose>CODATA recommended values of the fundamental physical constants: NIST SP 961. </purpose><description><para>tau mass </para></description></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_tau_over_m_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>3477.48 *</paramtype></parameter><parameter name="dimensionless"><paramtype>5.7e-1 *</paramtype></parameter><purpose>tau-electron mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_tau_over_m_mu</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>16.8183 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.7e-3 *</paramtype></parameter><purpose>tau-muon mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_tau_over_m_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>1.89390 *</paramtype></parameter><parameter name="dimensionless"><paramtype>3.1e-4 *</paramtype></parameter><purpose>tau-proton mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_tau_over_m_n</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>1.89129 *</paramtype></parameter><parameter name="dimensionless"><paramtype>3.1e-4 *</paramtype></parameter><purpose>tau-neutron mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>M_tau</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass_over_amount &gt;</paramtype></parameter><parameter name="mole"><paramtype>1.90768e-3 *kilograms/</paramtype></parameter><parameter name="mole"><paramtype>3.1e-7 *kilograms/</paramtype></parameter><purpose>tau molar mass </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>lambda_C_tau</paramtype></parameter><parameter name=""><paramtype>quantity&lt; length &gt;</paramtype></parameter><parameter name="meters"><paramtype>0.69772e-15 *</paramtype></parameter><parameter name="meters"><paramtype>1.1e-19 *</paramtype></parameter><purpose>tau Compton wavelength </purpose></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata/triton_constants.hpp">
+<para>CODATA recommended values of fundamental atomic and nuclear constants CODATA 2006 values as of 2007/03/30 </para><namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<namespace name="constants">
+<namespace name="codata">
+
+
+
+
+
+
+
+
+
+
+
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_t</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass &gt;</paramtype></parameter><parameter name="kilograms"><paramtype>5.00735588e-27 *</paramtype></parameter><parameter name="kilograms"><paramtype>2.5e-34 *</paramtype></parameter><purpose>CODATA recommended values of the fundamental physical constants: NIST SP 961. </purpose><description><para>triton mass </para></description></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_t_over_m_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>5496.9215269 *</paramtype></parameter><parameter name="dimensionless"><paramtype>5.1e-6 *</paramtype></parameter><purpose>triton-electron mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_t_over_m_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>2.9937170309 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.5e-9 *</paramtype></parameter><purpose>triton-proton mass ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>M_t</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass_over_amount &gt;</paramtype></parameter><parameter name="mole"><paramtype>3.0155007134e-3 *kilograms/</paramtype></parameter><parameter name="mole"><paramtype>2.5e-12 *kilograms/</paramtype></parameter><purpose>triton molar mass </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_t</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy_over_magnetic_flux_density &gt;</paramtype></parameter><parameter name="tesla"><paramtype>1.504609361e-26 *joules/</paramtype></parameter><parameter name="tesla"><paramtype>4.2e-34 *joules/</paramtype></parameter><purpose>triton magnetic moment </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_t_over_mu_B</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>1.622393657e-3 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.1e-11 *</paramtype></parameter><purpose>triton-Bohr magneton ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_t_over_mu_N</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>2.978962448 *</paramtype></parameter><parameter name="dimensionless"><paramtype>3.8e-8 *</paramtype></parameter><purpose>triton-nuclear magneton ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>g_t</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>5.957924896 *</paramtype></parameter><parameter name="dimensionless"><paramtype>7.6e-8 *</paramtype></parameter><purpose>triton g-factor </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_t_over_mu_e</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-1.620514423e-3 *</paramtype></parameter><parameter name="dimensionless"><paramtype>2.1e-11 *</paramtype></parameter><purpose>triton-electron magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_t_over_mu_p</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>1.066639908 *</paramtype></parameter><parameter name="dimensionless"><paramtype>1.0e-8 *</paramtype></parameter><purpose>triton-proton magnetic moment ratio </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_t_over_mu_n</paramtype></parameter><parameter name=""><paramtype>quantity&lt; dimensionless &gt;</paramtype></parameter><parameter name="dimensionless"><paramtype>-1.55718553 *</paramtype></parameter><parameter name="dimensionless"><paramtype>3.7e-7 *</paramtype></parameter><purpose>triton-neutron magnetic moment ratio </purpose></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata/typedefs.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<namespace name="constants">
+<namespace name="codata">
+<typedef name="frequency_over_electric_potential"><type>divide_typeof_helper&lt; frequency, electric_potential &gt;::type</type></typedef>
+<typedef name="electric_charge_over_mass"><type>divide_typeof_helper&lt; electric_charge, mass &gt;::type</type></typedef>
+<typedef name="mass_over_amount"><type>divide_typeof_helper&lt; mass, amount &gt;::type</type></typedef>
+<typedef name="energy_over_magnetic_flux_density"><type>divide_typeof_helper&lt; energy, magnetic_flux_density &gt;::type</type></typedef>
+<typedef name="frequency_over_magnetic_flux_density"><type>divide_typeof_helper&lt; frequency, magnetic_flux_density &gt;::type</type></typedef>
+<typedef name="current_over_energy"><type>divide_typeof_helper&lt; current, energy &gt;::type</type></typedef>
+<typedef name="inverse_amount"><type>divide_typeof_helper&lt; dimensionless, amount &gt;::type</type></typedef>
+<typedef name="energy_over_temperature"><type>divide_typeof_helper&lt; energy, temperature &gt;::type</type></typedef>
+<typedef name="energy_over_temperature_amount"><type>divide_typeof_helper&lt; energy_over_temperature, amount &gt;::type</type></typedef>
+<typedef name="power_over_area_temperature_4"><type>divide_typeof_helper&lt; divide_typeof_helper&lt; power, area &gt;::type, power_typeof_helper&lt; temperature, static_rational&lt; 4 &gt; &gt;::type &gt;::type</type></typedef>
+<typedef name="power_area"><type>multiply_typeof_helper&lt; power, area &gt;::type</type></typedef>
+<typedef name="power_area_over_solid_angle"><type>divide_typeof_helper&lt; power_area, solid_angle &gt;::type</type></typedef>
+<typedef name="length_temperature"><type>multiply_typeof_helper&lt; length, temperature &gt;::type</type></typedef>
+<typedef name="frequency_over_temperature"><type>divide_typeof_helper&lt; frequency, temperature &gt;::type</type></typedef>
+<typedef name="force_over_current_squared"><type>divide_typeof_helper&lt; divide_typeof_helper&lt; force, current &gt;::type, current &gt;::type</type></typedef>
+<typedef name="capacitance_over_length"><type>divide_typeof_helper&lt; capacitance, length &gt;::type</type></typedef>
+<typedef name="volume_over_mass_time_squared"><type>divide_typeof_helper&lt; divide_typeof_helper&lt; divide_typeof_helper&lt; volume, mass &gt;::type, time &gt;::type, time &gt;::type</type></typedef>
+<typedef name="energy_time"><type>multiply_typeof_helper&lt; energy, time &gt;::type</type></typedef>
+<typedef name="electric_charge_over_amount"><type>divide_typeof_helper&lt; electric_charge, amount &gt;::type</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata/universal_constants.hpp">
+<para>CODATA recommended values of fundamental universal constants using CODATA 2006 values as of 2007/03/30 </para><namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<namespace name="constants">
+<namespace name="codata">
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>c</paramtype></parameter><parameter name=""><paramtype>quantity&lt; velocity &gt;</paramtype></parameter><parameter name="second"><paramtype>299792458.0 *meters/</paramtype></parameter><parameter name="second"><paramtype>0.0 *meters/</paramtype></parameter><purpose>CODATA recommended values of the fundamental physical constants: NIST SP 961. </purpose><description><para>speed of light </para></description></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>mu_0</paramtype></parameter><parameter name=""><paramtype>quantity&lt; force_over_current_squared &gt;</paramtype></parameter><parameter name="ampere"><paramtype>12.56637061435917295385057353311801153679e-7 *newtons/ampere/</paramtype></parameter><parameter name="ampere"><paramtype>0.0 *newtons/ampere/</paramtype></parameter><purpose>magnetic constant (exactly 4 pi x 10^(-7) - error is due to finite precision of pi) </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>epsilon_0</paramtype></parameter><parameter name=""><paramtype>quantity&lt; capacitance_over_length &gt;</paramtype></parameter><parameter name="meter"><paramtype>8.854187817620389850536563031710750260608e-12 *farad/</paramtype></parameter><parameter name="meter"><paramtype>0.0 *farad/</paramtype></parameter><purpose>electric constant </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>Z_0</paramtype></parameter><parameter name=""><paramtype>quantity&lt; resistance &gt;</paramtype></parameter><parameter name="ohm"><paramtype>376.7303134617706554681984004203193082686 *</paramtype></parameter><parameter name="ohm"><paramtype>0.0 *</paramtype></parameter><purpose>characteristic impedance of vacuum </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>G</paramtype></parameter><parameter name=""><paramtype>quantity&lt; volume_over_mass_time_squared &gt;</paramtype></parameter><parameter name="second"><paramtype>6.67428e-11 *cubic_meters/kilogram/second/</paramtype></parameter><parameter name="second"><paramtype>6.7e-15 *cubic_meters/kilogram/second/</paramtype></parameter><purpose>Newtonian constant of gravitation. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>h</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy_time &gt;</paramtype></parameter><parameter name="seconds"><paramtype>6.62606896e-34 *joule *</paramtype></parameter><parameter name="seconds"><paramtype>3.3e-41 *joule *</paramtype></parameter><purpose>Planck constant. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>hbar</paramtype></parameter><parameter name=""><paramtype>quantity&lt; energy_time &gt;</paramtype></parameter><parameter name="seconds"><paramtype>1.054571628e-34 *joule *</paramtype></parameter><parameter name="seconds"><paramtype>5.3e-42 *joule *</paramtype></parameter><purpose>Dirac constant. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>m_P</paramtype></parameter><parameter name=""><paramtype>quantity&lt; mass &gt;</paramtype></parameter><parameter name="kilograms"><paramtype>2.17644e-8 *</paramtype></parameter><parameter name="kilograms"><paramtype>1.1e-12 *</paramtype></parameter><purpose>Planck mass. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>T_P</paramtype></parameter><parameter name=""><paramtype>quantity&lt; temperature &gt;</paramtype></parameter><parameter name="kelvin"><paramtype>1.416785e32 *</paramtype></parameter><parameter name="kelvin"><paramtype>7.1e27 *</paramtype></parameter><purpose>Planck temperature. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>l_P</paramtype></parameter><parameter name=""><paramtype>quantity&lt; length &gt;</paramtype></parameter><parameter name="meters"><paramtype>1.616252e-35 *</paramtype></parameter><parameter name="meters"><paramtype>8.1e-40 *</paramtype></parameter><purpose>Planck length. </purpose></function>
+<function name="BOOST_UNITS_PHYSICAL_CONSTANT"><type/><parameter name=""><paramtype>t_P</paramtype></parameter><parameter name=""><paramtype>quantity&lt; time &gt;</paramtype></parameter><parameter name="seconds"><paramtype>5.39124e-44 *</paramtype></parameter><parameter name="seconds"><paramtype>2.7e-48 *</paramtype></parameter><purpose>Planck time. </purpose></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/codata_constants.hpp">
+</header>
+<header name="boost/units/systems/si/conductance.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="conductance"><type>unit&lt; conductance_dimension, si::system &gt;</type></typedef>
+<data-member name="siemen" specifiers="static"><type>const conductance</type></data-member>
+<data-member name="siemens" specifiers="static"><type>const conductance</type></data-member>
+<data-member name="mho" specifiers="static"><type>const conductance</type></data-member>
+<data-member name="mhos" specifiers="static"><type>const conductance</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/conductivity.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="conductivity"><type>unit&lt; conductivity_dimension, si::system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/current.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="current"><type>unit&lt; current_dimension, si::system &gt;</type></typedef>
+<data-member name="ampere" specifiers="static"><type>const current</type></data-member>
+<data-member name="amperes" specifiers="static"><type>const current</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/dimensionless.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<data-member name="si_dimensionless" specifiers="static"><type>const dimensionless</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/dose_equivalent.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="dose_equivalent"><type>unit&lt; dose_equivalent_dimension, si::system &gt;</type></typedef>
+<data-member name="sievert" specifiers="static"><type>const dose_equivalent</type></data-member>
+<data-member name="sieverts" specifiers="static"><type>const dose_equivalent</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/dynamic_viscosity.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="dynamic_viscosity"><type>unit&lt; dynamic_viscosity_dimension, si::system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/electric_charge.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="electric_charge"><type>unit&lt; electric_charge_dimension, si::system &gt;</type></typedef>
+<data-member name="coulomb" specifiers="static"><type>const electric_charge</type></data-member>
+<data-member name="coulombs" specifiers="static"><type>const electric_charge</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/electric_potential.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="electric_potential"><type>unit&lt; electric_potential_dimension, si::system &gt;</type></typedef>
+<data-member name="volt" specifiers="static"><type>const electric_potential</type></data-member>
+<data-member name="volts" specifiers="static"><type>const electric_potential</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/energy.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="energy"><type>unit&lt; energy_dimension, si::system &gt;</type></typedef>
+<data-member name="joule" specifiers="static"><type>const energy</type></data-member>
+<data-member name="joules" specifiers="static"><type>const energy</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/force.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="force"><type>unit&lt; force_dimension, si::system &gt;</type></typedef>
+<data-member name="newton" specifiers="static"><type>const force</type></data-member>
+<data-member name="newtons" specifiers="static"><type>const force</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/frequency.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="frequency"><type>unit&lt; frequency_dimension, si::system &gt;</type></typedef>
+<data-member name="hertz" specifiers="static"><type>const frequency</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/illuminance.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="illuminance"><type>unit&lt; illuminance_dimension, si::system &gt;</type></typedef>
+<data-member name="lux" specifiers="static"><type>const illuminance</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/impedance.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="impedance"><type>unit&lt; impedance_dimension, si::system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/inductance.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="inductance"><type>unit&lt; inductance_dimension, si::system &gt;</type></typedef>
+<data-member name="henry" specifiers="static"><type>const inductance</type></data-member>
+<data-member name="henrys" specifiers="static"><type>const inductance</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/io.hpp">
+<namespace name="boost">
+<namespace name="units">
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::absorbed_dose &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::absorbed_dose &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::capacitance &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::capacitance &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::catalytic_activity &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::catalytic_activity &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::conductance &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::conductance &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::electric_charge &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::electric_charge &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::electric_potential &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::electric_potential &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::energy &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::energy &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::force &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::force &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::frequency &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::frequency &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::illuminance &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::illuminance &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::inductance &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::inductance &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::luminous_flux &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::luminous_flux &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::magnetic_flux &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::magnetic_flux &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::magnetic_flux_density &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::magnetic_flux_density &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::power &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::power &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::pressure &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::pressure &gt;::type &amp;</paramtype></parameter></function>
+<function name="name_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::resistance &gt;::type &amp;</paramtype></parameter></function>
+<function name="symbol_string"><type>std::string</type><parameter name=""><paramtype>const reduce_unit&lt; si::resistance &gt;::type &amp;</paramtype></parameter></function>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/kinematic_viscosity.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="kinematic_viscosity"><type>unit&lt; kinematic_viscosity_dimension, si::system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/length.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="length"><type>unit&lt; length_dimension, si::system &gt;</type></typedef>
+<data-member name="meter" specifiers="static"><type>const length</type></data-member>
+<data-member name="meters" specifiers="static"><type>const length</type></data-member>
+<data-member name="metre" specifiers="static"><type>const length</type></data-member>
+<data-member name="metres" specifiers="static"><type>const length</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/luminous_flux.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="luminous_flux"><type>unit&lt; luminous_flux_dimension, si::system &gt;</type></typedef>
+<data-member name="lumen" specifiers="static"><type>const luminous_flux</type></data-member>
+<data-member name="lumens" specifiers="static"><type>const luminous_flux</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/luminous_intensity.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="luminous_intensity"><type>unit&lt; luminous_intensity_dimension, si::system &gt;</type></typedef>
+<data-member name="candela" specifiers="static"><type>const luminous_intensity</type></data-member>
+<data-member name="candelas" specifiers="static"><type>const luminous_intensity</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/magnetic_field_intensity.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="magnetic_field_intensity"><type>unit&lt; magnetic_field_intensity_dimension, si::system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/magnetic_flux.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="magnetic_flux"><type>unit&lt; magnetic_flux_dimension, si::system &gt;</type></typedef>
+<data-member name="weber" specifiers="static"><type>const magnetic_flux</type></data-member>
+<data-member name="webers" specifiers="static"><type>const magnetic_flux</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/magnetic_flux_density.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="magnetic_flux_density"><type>unit&lt; magnetic_flux_density_dimension, si::system &gt;</type></typedef>
+<data-member name="tesla" specifiers="static"><type>const magnetic_flux_density</type></data-member>
+<data-member name="teslas" specifiers="static"><type>const magnetic_flux_density</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/mass.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="mass"><type>unit&lt; mass_dimension, si::system &gt;</type></typedef>
+<data-member name="kilogram" specifiers="static"><type>const mass</type></data-member>
+<data-member name="kilograms" specifiers="static"><type>const mass</type></data-member>
+<data-member name="kilogramme" specifiers="static"><type>const mass</type></data-member>
+<data-member name="kilogrammes" specifiers="static"><type>const mass</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/mass_density.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="mass_density"><type>unit&lt; mass_density_dimension, si::system &gt;</type></typedef>
+<data-member name="kilogram_per_cubic_meter" specifiers="static"><type>const mass_density</type></data-member>
+<data-member name="kilograms_per_cubic_meter" specifiers="static"><type>const mass_density</type></data-member>
+<data-member name="kilogramme_per_cubic_metre" specifiers="static"><type>const mass_density</type></data-member>
+<data-member name="kilogrammes_per_cubic_metre" specifiers="static"><type>const mass_density</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/moment_of_inertia.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="moment_of_inertia"><type>unit&lt; moment_of_inertia_dimension, si::system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/momentum.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="momentum"><type>unit&lt; momentum_dimension, si::system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/permeability.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="permeability"><type>unit&lt; permeability_dimension, si::system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/permittivity.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="permittivity"><type>unit&lt; permittivity_dimension, si::system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/plane_angle.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="plane_angle"><type>unit&lt; plane_angle_dimension, si::system &gt;</type></typedef>
+<data-member name="radian" specifiers="static"><type>const plane_angle</type></data-member>
+<data-member name="radians" specifiers="static"><type>const plane_angle</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/power.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="power"><type>unit&lt; power_dimension, si::system &gt;</type></typedef>
+<data-member name="watt" specifiers="static"><type>const power</type></data-member>
+<data-member name="watts" specifiers="static"><type>const power</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/prefixes.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name="24"><paramtype>-</paramtype></parameter><parameter name=""><paramtype>yocto</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name="21"><paramtype>-</paramtype></parameter><parameter name=""><paramtype>zepto</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name="18"><paramtype>-</paramtype></parameter><parameter name=""><paramtype>atto</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name="15"><paramtype>-</paramtype></parameter><parameter name=""><paramtype>femto</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name="12"><paramtype>-</paramtype></parameter><parameter name=""><paramtype>pico</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name="9"><paramtype>-</paramtype></parameter><parameter name=""><paramtype>nano</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name="6"><paramtype>-</paramtype></parameter><parameter name=""><paramtype>micro</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name="3"><paramtype>-</paramtype></parameter><parameter name=""><paramtype>milli</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name="2"><paramtype>-</paramtype></parameter><parameter name=""><paramtype>centi</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name="1"><paramtype>-</paramtype></parameter><parameter name=""><paramtype>deci</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name=""><paramtype>1</paramtype></parameter><parameter name=""><paramtype>deka</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name=""><paramtype>2</paramtype></parameter><parameter name=""><paramtype>hecto</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name=""><paramtype>3</paramtype></parameter><parameter name=""><paramtype>kilo</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name=""><paramtype>6</paramtype></parameter><parameter name=""><paramtype>mega</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name=""><paramtype>9</paramtype></parameter><parameter name=""><paramtype>giga</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name=""><paramtype>12</paramtype></parameter><parameter name=""><paramtype>tera</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name=""><paramtype>15</paramtype></parameter><parameter name=""><paramtype>peta</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name=""><paramtype>18</paramtype></parameter><parameter name=""><paramtype>exa</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name=""><paramtype>21</paramtype></parameter><parameter name=""><paramtype>zetta</paramtype></parameter></function>
+<function name="BOOST_UNITS_METRIC_PREFIX"><type/><parameter name=""><paramtype>24</paramtype></parameter><parameter name=""><paramtype>yotta</paramtype></parameter></function>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+<macro name="BOOST_UNITS_METRIC_PREFIX" kind="functionlike"><macro-parameter name="exponent"/><macro-parameter name="name"/></macro>
+</header>
+<header name="boost/units/systems/si/pressure.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="pressure"><type>unit&lt; pressure_dimension, si::system &gt;</type></typedef>
+<data-member name="pascal" specifiers="static"><type>const pressure</type></data-member>
+<data-member name="pascals" specifiers="static"><type>const pressure</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/reluctance.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="reluctance"><type>unit&lt; reluctance_dimension, si::system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/resistance.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="resistance"><type>unit&lt; resistance_dimension, si::system &gt;</type></typedef>
+<data-member name="ohm" specifiers="static"><type>const resistance</type></data-member>
+<data-member name="ohms" specifiers="static"><type>const resistance</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/resistivity.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="resistivity"><type>unit&lt; resistivity_dimension, si::system &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/solid_angle.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="solid_angle"><type>unit&lt; solid_angle_dimension, si::system &gt;</type></typedef>
+<data-member name="steradian" specifiers="static"><type>const solid_angle</type></data-member>
+<data-member name="steradians" specifiers="static"><type>const solid_angle</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/surface_density.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="surface_density"><type>unit&lt; surface_density_dimension, si::system &gt;</type></typedef>
+<data-member name="kilogram_per_square_meter" specifiers="static"><type>const surface_density</type></data-member>
+<data-member name="kilograms_per_square_meter" specifiers="static"><type>const surface_density</type></data-member>
+<data-member name="kilogramme_per_square_metre" specifiers="static"><type>const surface_density</type></data-member>
+<data-member name="kilogrammes_per_square_metre" specifiers="static"><type>const surface_density</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/surface_tension.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="surface_tension"><type>unit&lt; surface_tension_dimension, si::system &gt;</type></typedef>
+<data-member name="newton_per_meter" specifiers="static"><type>const surface_tension</type></data-member>
+<data-member name="newtons_per_meter" specifiers="static"><type>const surface_tension</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/temperature.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="temperature"><type>unit&lt; temperature_dimension, si::system &gt;</type></typedef>
+<data-member name="kelvin" specifiers="static"><type>const temperature</type></data-member>
+<data-member name="kelvins" specifiers="static"><type>const temperature</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/time.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="time"><type>unit&lt; time_dimension, si::system &gt;</type></typedef>
+<data-member name="second" specifiers="static"><type>const time</type></data-member>
+<data-member name="seconds" specifiers="static"><type>const time</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/torque.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="torque"><type>unit&lt; torque_dimension, si::system &gt;</type></typedef>
+<data-member name="newton_meter" specifiers="static"><type>const torque</type></data-member>
+<data-member name="newton_meters" specifiers="static"><type>const torque</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/velocity.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="velocity"><type>unit&lt; velocity_dimension, si::system &gt;</type></typedef>
+<data-member name="meter_per_second" specifiers="static"><type>const velocity</type></data-member>
+<data-member name="meters_per_second" specifiers="static"><type>const velocity</type></data-member>
+<data-member name="metre_per_second" specifiers="static"><type>const velocity</type></data-member>
+<data-member name="metres_per_second" specifiers="static"><type>const velocity</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/volume.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="volume"><type>unit&lt; volume_dimension, si::system &gt;</type></typedef>
+<data-member name="cubic_meter" specifiers="static"><type>const volume</type></data-member>
+<data-member name="cubic_meters" specifiers="static"><type>const volume</type></data-member>
+<data-member name="cubic_metre" specifiers="static"><type>const volume</type></data-member>
+<data-member name="cubic_metres" specifiers="static"><type>const volume</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/si/wavenumber.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="si">
+<typedef name="wavenumber"><type>unit&lt; wavenumber_dimension, si::system &gt;</type></typedef>
+<data-member name="reciprocal_meter" specifiers="static"><type>const wavenumber</type></data-member>
+<data-member name="reciprocal_meters" specifiers="static"><type>const wavenumber</type></data-member>
+<data-member name="reciprocal_metre" specifiers="static"><type>const wavenumber</type></data-member>
+<data-member name="reciprocal_metres" specifiers="static"><type>const wavenumber</type></data-member>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+</library-reference>

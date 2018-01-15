@@ -1,0 +1,140 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Struct template default_delete</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../move/reference.html#header.boost.move.default_delete_hpp" title="Header &lt;boost/move/default_delete.hpp&gt;">
+<link rel="prev" href="../../BOOST_MOVE_BASE.html" title="Macro BOOST_MOVE_BASE">
+<link rel="next" href="../move_iterator.html" title="Class template move_iterator">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../BOOST_MOVE_BASE.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../move/reference.html#header.boost.move.default_delete_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../move_iterator.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.movelib.default_delete"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Struct template default_delete</span></h2>
+<p>boost::movelib::default_delete</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../move/reference.html#header.boost.move.default_delete_hpp" title="Header &lt;boost/move/default_delete.hpp&gt;">boost/move/default_delete.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> 
+<span class="keyword">struct</span> <a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a> <span class="special">{</span>
+  <span class="comment">// <a class="link" href="default_delete.html#boost.movelib.default_deleteconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="default_delete.html#id-1_3_25_20_8_2_1_1_4-bb"><span class="identifier">default_delete</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="default_delete.html#id-1_3_25_20_8_2_1_1_5-bb"><span class="identifier">default_delete</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> U<span class="special">&gt;</span> <a class="link" href="default_delete.html#id-1_3_25_20_8_2_1_1_7-bb"><span class="identifier">default_delete</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a><span class="special">&lt;</span> <span class="identifier">U</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a> <span class="special">&amp;</span> <a class="link" href="default_delete.html#id-1_3_25_20_8_2_1_1_6-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> U<span class="special">&gt;</span> 
+    <a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a> <span class="special">&amp;</span> <a class="link" href="default_delete.html#id-1_3_25_20_8_2_1_1_8-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a><span class="special">&lt;</span> <span class="identifier">U</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="default_delete.html#id-1_3_25_20_8_2_1_1_3-bb">public member functions</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> U<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="default_delete.html#id-1_3_25_20_8_2_1_1_3_1-bb"><span class="keyword">operator</span><span class="special">(</span><span class="special">)</span></a><span class="special">(</span><span class="identifier">U</span> <span class="special">*</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="default_delete.html#id-1_3_25_20_8_2_1_1_3_2-bb"><span class="keyword">operator</span><span class="special">(</span><span class="special">)</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">nullptr_t</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.25.20.9.4.4"></a><h2>Description</h2>
+<p>The class template <code class="computeroutput"><a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a></code> serves as the default deleter (destruction policy) for the class template <code class="computeroutput"><a class="link" href="unique_ptr.html" title="Class template unique_ptr">unique_ptr</a></code>.</p>
+<p>
+</p>
+<div class="refsect2">
+<a name="id-1.3.25.20.9.4.4.4"></a><h3>Template Parameters</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> T</pre>
+<p>The type to be deleted. It may be an incomplete type </p>
+</li></ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.25.20.9.4.4.5"></a><h3>
+<a name="boost.movelib.default_deleteconstruct-copy-destruct"></a><code class="computeroutput">default_delete</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_25_20_8_2_1_1_4-bb"></a><span class="identifier">default_delete</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Default constructor. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_25_20_8_2_1_1_5-bb"></a><span class="identifier">default_delete</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Trivial copy constructor </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> U<span class="special">&gt;</span> <a name="id-1_3_25_20_8_2_1_1_7-bb"></a><span class="identifier">default_delete</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a><span class="special">&lt;</span> <span class="identifier">U</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs a <code class="computeroutput"><a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a></code> object from another <code class="computeroutput">default_delete&lt;U&gt;</code> object.</p>
+<p><span class="bold"><strong>Remarks</strong></span>: This constructor shall not participate in overload resolution unless:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>If T is not an array type and U* is implicitly convertible to T*.</p></li>
+<li class="listitem"><p>If T is an array type and U* is a more CV qualified pointer to remove_extent&lt;T&gt;::type. </p></li>
+</ul></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a> <span class="special">&amp;</span> <a name="id-1_3_25_20_8_2_1_1_6-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Trivial assignment </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> U<span class="special">&gt;</span> 
+  <a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a> <span class="special">&amp;</span> <a name="id-1_3_25_20_8_2_1_1_8-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a><span class="special">&lt;</span> <span class="identifier">U</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs a <code class="computeroutput"><a class="link" href="default_delete.html" title="Struct template default_delete">default_delete</a></code> object from another <code class="computeroutput">default_delete&lt;U&gt;</code> object.</p>
+<p><span class="bold"><strong>Remarks</strong></span>: This constructor shall not participate in overload resolution unless:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>If T is not an array type and U* is implicitly convertible to T*.</p></li>
+<li class="listitem"><p>If T is an array type and U* is a more CV qualified pointer to remove_extent&lt;T&gt;::type. </p></li>
+</ul></div>
+<p>
+</p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.25.20.9.4.4.6"></a><h3>
+<a name="id-1_3_25_20_8_2_1_1_3-bb"></a><code class="computeroutput">default_delete</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> U<span class="special">&gt;</span> <span class="keyword">void</span> <a name="id-1_3_25_20_8_2_1_1_3_1-bb"></a><span class="keyword">operator</span><span class="special">(</span><span class="special">)</span><span class="special">(</span><span class="identifier">U</span> <span class="special">*</span> ptr<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: if T is not an array type, calls <code class="computeroutput">delete</code> on static_cast&lt;T*&gt;(ptr), otherwise calls <code class="computeroutput">delete[]</code> on static_cast&lt;remove_extent&lt;T&gt;::type*&gt;(ptr).</p>
+<p><span class="bold"><strong>Remarks</strong></span>: If U is an incomplete type, the program is ill-formed. This operator shall not participate in overload resolution unless:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>T is not an array type and U* is convertible to T*, OR</p></li>
+<li class="listitem"><p>T is an array type, and remove_cv&lt;U&gt;::type is the same type as remove_cv&lt;remove_extent&lt;T&gt;::type&gt;::type and U* is convertible to remove_extent&lt;T&gt;::type*. </p></li>
+</ul></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="id-1_3_25_20_8_2_1_1_3_2-bb"></a><span class="keyword">operator</span><span class="special">(</span><span class="special">)</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">nullptr_t</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Same as <code class="computeroutput">(<span class="emphasis"><em>this)(static_cast&lt;element_type</em></span>&gt;(nullptr))</code>. </p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008-2014 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../BOOST_MOVE_BASE.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../move/reference.html#header.boost.move.default_delete_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../move_iterator.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

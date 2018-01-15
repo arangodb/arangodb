@@ -1,0 +1,163 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Runtime parameters reference</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../utf_reference.html" title="Unit Test Framework API reference">
+<link rel="prev" href="testout_reference/test_output_macro_disable_type.html" title="BOOST_TEST_DONT_PRINT_LOG_VALUE">
+<link rel="next" href="rt_param_reference/auto_dbg.html" title="auto_start_dbg">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="testout_reference/test_output_macro_disable_type.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../utf_reference.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="rt_param_reference/auto_dbg.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.utf_reference.rt_param_reference"></a><a class="link" href="rt_param_reference.html" title="Runtime parameters reference">Runtime
+      parameters reference</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="rt_param_reference/auto_dbg.html"><code class="computeroutput"><span class="identifier">auto_start_dbg</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/build_info.html"><code class="computeroutput"><span class="identifier">build_info</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/catch_system.html"><code class="computeroutput"><span class="identifier">catch_system_errors</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/color_output.html"><code class="computeroutput"><span class="identifier">color_output</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/detect_fp_exceptions.html"><code class="computeroutput"><span class="identifier">detect_fp_exceptions</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/detect_memory_leaks.html"><code class="computeroutput"><span class="identifier">detect_memory_leaks</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/help.html"><code class="computeroutput"><span class="identifier">help</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/list_content.html"><code class="computeroutput"><span class="identifier">list_content</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/list_labels.html"><code class="computeroutput"><span class="identifier">list_labels</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/log_format.html"><code class="computeroutput"><span class="identifier">log_format</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/log_level.html"><code class="computeroutput"><span class="identifier">log_level</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/log_sink.html"><code class="computeroutput"><span class="identifier">log_sink</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/logger.html"><code class="computeroutput"><span class="identifier">logger</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/output_format.html"><code class="computeroutput"><span class="identifier">output_format</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/random.html"><code class="computeroutput"><span class="identifier">random</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/report_format.html"><code class="computeroutput"><span class="identifier">report_format</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/report_level.html"><code class="computeroutput"><span class="identifier">report_level</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/report_memory_leaks_to.html"><code class="computeroutput"><span class="identifier">report_memory_leaks_to</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/report_sink.html"><code class="computeroutput"><span class="identifier">report_sink</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/result_code.html"><code class="computeroutput"><span class="identifier">result_code</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/run_test.html"><code class="computeroutput"><span class="identifier">run_test</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/save_pattern.html"><code class="computeroutput"><span class="identifier">save_pattern</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/show_progress.html"><code class="computeroutput"><span class="identifier">show_progress</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/use_alt_stack.html"><code class="computeroutput"><span class="identifier">use_alt_stack</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/usage.html"><code class="computeroutput"><span class="identifier">usage</span></code></a></span></dt>
+<dt><span class="section"><a href="rt_param_reference/wait_for_debugger.html"><code class="computeroutput"><span class="identifier">wait_for_debugger</span></code></a></span></dt>
+</dl></div>
+<p>
+        Following sections provide detailed specification for all <span class="emphasis"><em>Unit
+        Test Framework</em></span> runtime parameters. Each parameter specification
+        includes:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            The full parameter name.
+          </li>
+<li class="listitem">
+            Description of parameter semantic and default value.
+          </li>
+<li class="listitem">
+            Acceptable argument values. The default value for the parameter is bold
+            in the acceptable values list.
+          </li>
+<li class="listitem">
+            Command line syntax. The format of all command line arguments is: <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">prefix</span><span class="special">&gt;&lt;</span><span class="identifier">name</span><span class="special">&gt;[&lt;</span><span class="identifier">separator</span><span class="special">&gt;&lt;</span><span class="identifier">value</span><span class="special">&gt;]</span></code>. For example: <code class="computeroutput"><span class="special">--</span><span class="identifier">param</span><span class="special">=&lt;</span><span class="identifier">value</span><span class="special">&gt;</span></code>.
+            <code class="computeroutput"><span class="special">[]</span></code> around separator and
+            value indicate that argument value is optional. For example: <code class="computeroutput"><span class="special">-</span><span class="identifier">q</span><span class="special">[</span> <span class="special">&lt;</span><span class="identifier">value</span><span class="special">&gt;]</span></code>.
+          </li>
+<li class="listitem">
+            Corresponding environment variable name.
+          </li>
+</ul></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>
+          All command line argument formats support parameter name guessing. What
+          this means is that is if command like format is like this:
+        </p>
+<pre class="programlisting">--long_parameter_name=&lt;value&gt;</pre>
+<p>
+          you can in fact use any unambiguous prefix of the parameter name to specify
+          the argument. For example:
+        </p>
+<pre class="programlisting">--long_param=123</pre>
+<p>
+          or
+        </p>
+<pre class="programlisting">--long_p=123.</pre>
+<p>
+          If parameter name prefix you chose is ambiguous the framework lets you
+          know which parameters match specified prefix. For example, try
+        </p>
+<pre class="programlisting">--log=all</pre>
+</td></tr>
+</table></div>
+<h5>
+<a name="boost_test.utf_reference.rt_param_reference.h0"></a>
+        <span class="phrase"><a name="boost_test.utf_reference.rt_param_reference.parameter_value_formats"></a></span><a class="link" href="rt_param_reference.html#boost_test.utf_reference.rt_param_reference.parameter_value_formats">Parameter
+        value formats</a>
+      </h5>
+<p>
+        The <span class="emphasis"><em>Unit Test Framework</em></span> runtime parameters take value
+        of the following types: string, boolean, enumeration, unsigned, long. Formats
+        required for values of these types are following:
+      </p>
+<h6>
+<a name="boost_test.utf_reference.rt_param_reference.h1"></a>
+        <span class="phrase"><a name="boost_test.utf_reference.rt_param_reference.string_unsigned_long"></a></span><a class="link" href="rt_param_reference.html#boost_test.utf_reference.rt_param_reference.string_unsigned_long">String,
+        unsigned, long</a>
+      </h6>
+<p>
+        <a name="regular_param_value"></a>Values of these types are expected in the
+        same format they are represented in C++.
+      </p>
+<h6>
+<a name="boost_test.utf_reference.rt_param_reference.h2"></a>
+        <span class="phrase"><a name="boost_test.utf_reference.rt_param_reference.boolean"></a></span><a class="link" href="rt_param_reference.html#boost_test.utf_reference.rt_param_reference.boolean">Boolean</a>
+      </h6>
+<p>
+        <a name="boolean_param_value"></a>Values of these types are options with
+        yes/no or true/false meaning. True values are represented by case insensitive
+        strings: "Y", "YES", "TRUE", "1".
+        False values are represented by case insensitive strings: "N",
+        "NO", "FALSE", "0".
+      </p>
+<h6>
+<a name="boost_test.utf_reference.rt_param_reference.h3"></a>
+        <span class="phrase"><a name="boost_test.utf_reference.rt_param_reference.enumeration"></a></span><a class="link" href="rt_param_reference.html#boost_test.utf_reference.rt_param_reference.enumeration">Enumeration</a>
+      </h6>
+<p>
+        <a name="enum_param_value"></a>Values of an enumeration type are expected
+        as case sensitive strings representing enumeration value names. Each parameter
+        with an enumeration value lists all valid names in a parameter`s description.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2017 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="testout_reference/test_output_macro_disable_type.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../utf_reference.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="rt_param_reference/auto_dbg.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

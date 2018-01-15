@@ -1,0 +1,391 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Extensions</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../process.html" title="Chapter&#160;29.&#160;Boost.Process">
+<link rel="prev" href="design.html" title="Design Rationale">
+<link rel="next" href="faq.html" title="Frequently Asked Questions">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="design.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../process.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="faq.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_process.extend"></a><a class="link" href="extend.html" title="Extensions">Extensions</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="extend.html#boost_process.extend.structure">Structure</a></span></dt>
+<dt><span class="section"><a href="extend.html#boost_process.extend.simple">Simple extensions</a></span></dt>
+<dt><span class="section"><a href="extend.html#boost_process.extend.handler">Handler Types</a></span></dt>
+<dt><span class="section"><a href="extend.html#boost_process.extend.async">Asynchronous Functionality</a></span></dt>
+<dt><span class="section"><a href="extend.html#boost_process.extend.error">Error handling</a></span></dt>
+<dt><span class="section"><a href="extend.html#boost_process.extend.exec_over">Executor Overloading</a></span></dt>
+</dl></div>
+<p>
+      To extend the library, the header <code class="computeroutput"><a class="link" href="../process/reference.html#header.boost.process.extend_hpp" title="Header &lt;boost/process/extend.hpp&gt;">extend</a></code>
+      is provided.
+    </p>
+<p>
+      It only provides the explicit style for custom properties, but no implicit
+      style.
+    </p>
+<p>
+      What this means is, that a custom initializer can be implemented, a reference
+      to which can be passed to one of the launching functions. If a class inherits
+      <code class="computeroutput"><a class="link" href="../boost/process/extend/handler.html" title="Struct handler">boost::process::extend::handler</a></code>
+      it will be regarded as a initializer and thus directly put into the sequence
+      the executor gets passed.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.extend.structure"></a><a class="link" href="extend.html#boost_process.extend.structure" title="Structure">Structure</a>
+</h3></div></div></div>
+<p>
+        The executor calls different handlers of the initializers during the process
+        launch. The basic structure is consists of three functions, as given below:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/process/extend/on_setup.html" title="Global on_setup">on_setup</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/process/extend/on_error.html" title="Global on_error">on_error</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/process/extend/on_success.html" title="Global on_success">on_success</a></code>
+          </li>
+</ul></div>
+<p>
+        <img src="windows_exec.svg">
+      </p>
+<p>
+        Additionally posix provides three more handlers, listed below:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/process/extend/on_fork_error.html" title="Global on_fork_error">on_fork_error</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/process/extend/on_exec_setup.html" title="Global on_exec_setup">on_exec_setup</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/process/extend/on_exec_error.html" title="Global on_exec_error">on_exec_error</a></code>
+          </li>
+</ul></div>
+<p>
+        For more information see the reference of <code class="computeroutput"><a class="link" href="../boost/process/extend/posix_executor.html" title="Struct template posix_executor">posix_executor</a></code>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.extend.simple"></a><a class="link" href="extend.html#boost_process.extend.simple" title="Simple extensions">Simple extensions</a>
+</h3></div></div></div>
+<p>
+        The simplest extension just takes a single handler, which can be done in
+        a functional style. So let's start with a simple hello-world example, while
+        we use a C++14 generic lambda.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">process</span><span class="special">;</span>
+<span class="keyword">namespace</span> <span class="identifier">ex</span> <span class="special">=</span> <span class="identifier">bp</span><span class="special">::</span><span class="identifier">extend</span><span class="special">;</span>
+
+<code class="computeroutput"><a class="link" href="../boost/process/child.html" title="Class child">child</a></code> <span class="identifier">c</span><span class="special">(</span><span class="string">"foo"</span><span class="special">,</span> <span class="identifier">ex</span><span class="special">::</span><code class="computeroutput"><a class="link" href="../boost/process/extend/on_success.html" title="Global on_success">ex::on_success</a></code><span class="special">=[](</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">exec</span><span class="special">)</span> <span class="special">{</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"hello world"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;});</span>
+</pre>
+<p>
+      </p>
+<p>
+        Considering that lambda can also capture values, data can easily be shared
+        between handlers.
+      </p>
+<p>
+        To see which members the executor has, refer to <code class="computeroutput"><a class="link" href="../boost/process/extend/windows_executor.html" title="Struct template windows_executor">windows_executor</a></code>
+        and <code class="computeroutput"><a class="link" href="../boost/process/extend/posix_executor.html" title="Struct template posix_executor">posix_executor</a></code>.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Combined with <code class="computeroutput"><a class="link" href="../boost/process/on_exit.html" title="Global on_exit">on_exit</a></code>
+          this can also handle the process exit.
+        </p></td></tr>
+</table></div>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          The posix handler symbols are not defined on windows.
+        </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.extend.handler"></a><a class="link" href="extend.html#boost_process.extend.handler" title="Handler Types">Handler Types</a>
+</h3></div></div></div>
+<p>
+        Since the previous example is in a functional style, it is not very reusable.
+        To solve that problem, the <code class="computeroutput"><a class="link" href="../boost/process/extend/handler.html" title="Struct handler">handler</a></code>
+        has an alias in the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">process</span><span class="special">::</span><span class="identifier">extend</span></code>
+        namespace, to be inherited. So let's implement the hello world example in
+        a class.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">hello_world</span> <span class="special">:</span> <code class="computeroutput"><a class="link" href="../boost/process/extend/handler.html" title="Struct handler">handler</a></code>
+<span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Executor</span><span class="special">&gt;</span>
+    <span class="keyword">void</span> <code class="computeroutput"><a class="link" href="../boost/process/extend/on_success.html" title="Global on_success">ex::on_success</a></code><span class="special">(</span><span class="identifier">Executor</span> <span class="special">&amp;</span> <span class="identifier">exec</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"hello world"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">//in our function</span>
+<code class="computeroutput"><a class="link" href="../boost/process/child.html" title="Class child">child</a></code> <span class="identifier">c</span><span class="special">(</span><span class="string">"foo"</span><span class="special">,</span> <span class="identifier">hello_world</span><span class="special">());</span>
+</pre>
+<p>
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          The implementation is done via overloading, not overriding.
+        </p></td></tr>
+</table></div>
+<p>
+        Every handler not implemented dafaults to <code class="computeroutput"><a class="link" href="../boost/process/extend/handler.html" title="Struct handler">handler</a></code>,
+        where an empty handler is defined for each event.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.extend.async"></a><a class="link" href="extend.html#boost_process.extend.async" title="Asynchronous Functionality">Asynchronous Functionality</a>
+</h3></div></div></div>
+<p>
+        Since <code class="computeroutput"><span class="identifier">boost</span><span class="special">.</span><span class="identifier">process</span></code> provides an interface for <a href="http://www.boost.org/doc/libs/release/libs/asio/" target="_top">boost.asio</a>,
+        this functionality is also available for extensions. If the class needs the
+        <a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/io_service.html" target="_top">boost::asio::io_service</a>
+        for some reason, the following code will do that.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">async_foo</span> <span class="special">:</span> <code class="computeroutput"><a class="link" href="../boost/process/extend/handler.html" title="Struct handler">handler</a></code><span class="special">,</span> <code class="computeroutput">ex::require_boost::asio::io_service</code>
+<span class="special">{</span>
+    <span class="identifier">tempalte</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Executor</span><span class="special">&gt;</span>
+    <span class="keyword">void</span> <span class="identifier">on_setup</span><span class="special">(</span><span class="identifier">Executor</span> <span class="special">&amp;</span> <span class="identifier">exec</span><span class="special">)</span>
+    <span class="special">{</span>
+        <a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/io_service.html" target="_top">boost::asio::io_service</a> <span class="special">&amp;</span> <span class="identifier">ios</span> <span class="special">=</span> <code class="computeroutput">ex::get_boost::asio::io_service</code><span class="special">(</span><span class="identifier">exec</span><span class="special">.</span><span class="identifier">seq</span><span class="special">);</span> <span class="comment">//gives us a reference and a compiler error if not present.</span>
+        <span class="comment">//do something with ios</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+      </p>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          All async_handlers use one signal(SIGCHLD) on posix, which is only guaranteed
+          to work when all use the same <code class="computeroutput"><a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/io_service.html" target="_top">boost::asio::io_service</a></code>
+        </p></td></tr>
+</table></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Inheriting <code class="computeroutput">require_boost::asio::io_service</code>
+          is necessary, so <code class="computeroutput"><a class="link" href="../boost/process/system.html" title="Function template system">system</a></code>
+          provides one.
+        </p></td></tr>
+</table></div>
+<p>
+        Additionally the handler can provide a function that is invoked when the
+        child process exits. This is done through <code class="computeroutput"><a class="link" href="../boost/process/extend/async_handler.html" title="Struct async_handler">ex::async_handler</a></code>.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          <code class="computeroutput">async_handler</code>
+          implies <code class="computeroutput">require_boost::asio::io_service</code>
+          .
+        </p></td></tr>
+</table></div>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">async_bar</span> <span class="special">:</span> <span class="identifier">__handler</span><span class="special">,</span> <code class="computeroutput"><a class="link" href="../boost/process/extend/async_handler.html" title="Struct async_handler">ex::async_handler</a></code>
+<span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Executor</span><span class="special">&gt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">(</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;)&gt;</span> <span class="identifier">on_exit_handler</span><span class="special">(</span><span class="identifier">Executor</span> <span class="special">&amp;</span> <span class="identifier">exec</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">auto</span> <span class="identifier">handler</span> <span class="special">=</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">handler</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="special">[</span><span class="identifier">handler</span><span class="special">](</span><span class="keyword">int</span> <span class="identifier">exit_code</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
+               <span class="special">{</span>
+                   <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"hello world, I exited with "</span> <span class="special">&lt;&lt;</span> <span class="identifier">exit_code</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+               <span class="special">};</span>
+
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+      </p>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          <code class="computeroutput"><span class="identifier">on_exit_handler</span></code> does not
+          default and is always required when <code class="computeroutput"><a class="link" href="../boost/process/extend/async_handler.html" title="Struct async_handler">async_handler</a></code>
+          is inherited.
+        </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.extend.error"></a><a class="link" href="extend.html#boost_process.extend.error" title="Error handling">Error handling</a>
+</h3></div></div></div>
+<p>
+        If an error occurs in the initializers it shall be told to the executor and
+        not handles directly. This is because the behaviour can be changed through
+        arguments passed to the launching function. Hence the the executor has the
+        function <code class="computeroutput"><span class="identifier">set_error</span></code>, which
+        takes an <a href="http://en.cppreference.com/w/cpp/error/error_code" target="_top">std::error_code</a>
+        and a string. Depending on the cofiguration of the executor, this may either
+        throw, set an internal <code class="computeroutput"><span class="identifier">error_code</span></code>,
+        or do nothing.
+      </p>
+<p>
+        So let's take a simple example, where we set a randomly chosen <code class="computeroutput"><span class="identifier">error_code</span></code>.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">auto</span> <span class="identifier">set_error</span> <span class="special">=</span> <span class="special">[](</span><span class="keyword">auto</span> <span class="special">&amp;</span> <span class="identifier">exec</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">{</span><span class="number">42</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">system_category</span><span class="special">()};</span>
+            <span class="identifier">exec</span><span class="special">.</span><span class="identifier">set_error</span><span class="special">(</span><span class="identifier">ec</span><span class="special">,</span> <span class="string">"a fake error"</span><span class="special">);</span>
+
+        <span class="special">};</span>
+<code class="computeroutput"><a class="link" href="../boost/process/child.html" title="Class child">child</a></code> <span class="identifier">c</span><span class="special">(</span><span class="string">"foo"</span><span class="special">,</span> <span class="identifier">on_setup</span><span class="special">=</span><span class="identifier">set_error</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        Since we do not specify the error-handling mode in this example, this will
+        throw <code class="computeroutput"><a class="link" href="../boost/process/process_error.html" title="Struct process_error">process_error</a></code>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.extend.exec_over"></a><a class="link" href="extend.html#boost_process.extend.exec_over" title="Executor Overloading">Executor Overloading</a>
+</h3></div></div></div>
+<p>
+        Now that we have a custom initializer, let's consider how we can handle differences
+        between different executors. The distinction is between posix and windows
+        and <code class="computeroutput"><span class="keyword">char</span></code> and <code class="computeroutput"><span class="keyword">wchar_t</span></code>
+        on windows. One solution is to use the <a href="http://www.boost.org/doc/libs/master/boost/system/api_config.hpp" target="_top">BOOST_WINDOWS_API
+        and BOOST_POSIX_API</a> macros, which are automatically available as
+        soon as any process-header is included.
+      </p>
+<p>
+        Another variant are the type aliases <code class="computeroutput"><a class="link" href="../boost/process/extend/posix_executor.html" title="Struct template posix_executor">ex::posix_executor</a></code>
+        and <code class="computeroutput"><a class="link" href="../boost/process/extend/windows_executor.html" title="Struct template windows_executor">ex::windows_executor</a></code>,
+        where the executor, not on the current system is a forward-declaration. This
+        works fine, because the function will never get invoked. So let's implement
+        another example, which prints the executable name <code class="computeroutput"><a class="link" href="../boost/process/extend/on_success.html" title="Global on_success">ex::on_success</a></code>.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">hello_exe</span> <span class="special">:</span> <code class="computeroutput"><a class="link" href="../boost/process/extend/handler.html" title="Struct handler">handler</a></code>
+<span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Sequence</span><span class="special">&gt;</span>
+    <span class="keyword">void</span> <code class="computeroutput"><a class="link" href="../boost/process/extend/on_success.html" title="Global on_success">ex::on_success</a></code><span class="special">(</span><code class="computeroutput"><a class="link" href="../boost/process/extend/posix_executor.html" title="Struct template posix_executor">ex::posix_executor</a></code><span class="special">&lt;</span><span class="identifier">Sequence</span><span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">exec</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"posix-exe: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">exec</span><span class="special">.</span><span class="identifier">exe</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Sequence</span><span class="special">&gt;</span>
+    <span class="keyword">void</span> <code class="computeroutput"><a class="link" href="../boost/process/extend/on_success.html" title="Global on_success">ex::on_success</a></code><span class="special">(</span><code class="computeroutput"><a class="link" href="../boost/process/extend/windows_executor.html" title="Struct template windows_executor">ex::windows_executor</a></code><span class="special">&lt;</span><span class="keyword">char</span><span class="special">,</span> <span class="identifier">Sequence</span><span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">exec</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="comment">//note: exe might be a nullptr on windows.</span>
+        <span class="keyword">if</span> <span class="special">(</span><span class="identifier">exec</span><span class="special">.</span><span class="identifier">exe</span> <span class="special">!=</span> <span class="keyword">nullptr</span><span class="special">)</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"windows-exe: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">exec</span><span class="special">.</span><span class="identifier">exe</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+        <span class="keyword">else</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"windows didn't use exe"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Sequence</span><span class="special">&gt;</span>
+    <span class="keyword">void</span> <code class="computeroutput"><a class="link" href="../boost/process/extend/on_success.html" title="Global on_success">ex::on_success</a></code><span class="special">(</span><code class="computeroutput"><a class="link" href="../boost/process/extend/windows_executor.html" title="Struct template windows_executor">ex::windows_executor</a></code><span class="special">&lt;</span><span class="keyword">wchar_t</span><span class="special">,</span> <span class="identifier">Sequence</span><span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">exec</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="comment">//note: exe might be a nullptr on windows.</span>
+        <span class="keyword">if</span> <span class="special">(</span><span class="identifier">exec</span><span class="special">.</span><span class="identifier">exe</span> <span class="special">!=</span> <span class="keyword">nullptr</span><span class="special">)</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">wcout</span> <span class="special">&lt;&lt;</span> <span class="identifier">L</span><span class="string">"windows-exe: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">exec</span><span class="special">.</span><span class="identifier">exe</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+        <span class="keyword">else</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"windows didn't use exe"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+
+<span class="special">};</span>
+</pre>
+<p>
+      </p>
+<p>
+        So given our example, the definitions with the non-native exectur are still
+        a template so that they will not be evaluated if not used. Hence this provides
+        a way to implement systems-specific code without using the preprocessor.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          If you only write a partial implementation, e.g. only for <code class="computeroutput"><a class="link" href="../boost/process/extend/posix_executor.html" title="Struct template posix_executor">ex::posix_executor</a></code>,
+          the other variants will default to <code class="computeroutput"><a class="link" href="../boost/process/extend/handler.html" title="Struct handler">handler</a></code>
+        </p></td></tr>
+</table></div>
+<p>
+        .
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2006-2012 Julio M. Merino Vidal, Ilya Sokolov,
+      Felipe Tanus, Jeff Flinn, Boris Schaeling<br>Copyright &#169; 2016 Klemens D. Morgenstern<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="design.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../process.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="faq.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>
