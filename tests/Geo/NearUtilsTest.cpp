@@ -371,6 +371,15 @@ TEST_CASE("Query point around", "[geo][s2index]") {
     REQUIRE(result.size() == 100);
     checkResult(near.origin(), result);
   }
+  
+  SECTION("southpole (3)") {
+    params.origin = geo::Coordinate(-89.9, 0);
+    geo::NearUtils<geo::DocumentsAscending> near(std::move(params));
+    
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 110);
+    REQUIRE(result.size() == 100);
+    checkResult(near.origin(), result);
+  }
 }
 
 /* end of NearUtilsTest.cpp  */
