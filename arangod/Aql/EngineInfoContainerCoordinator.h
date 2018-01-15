@@ -30,14 +30,18 @@
 #include "Cluster/ClusterInfo.h"
 
 #include <stack>
-
 namespace arangodb {
+
+
 namespace aql {
 
 class ExecutionEngine;
+class ExecutionEngineResult;
 class ExecutionNode;
 class Query;
 class QueryRegistry;
+
+
 
 class EngineInfoContainerCoordinator {
  private:
@@ -98,7 +102,7 @@ class EngineInfoContainerCoordinator {
   //   * Creates the ExecutionBlocks
   //   * Injects all Parts but the First one into QueryRegistery
   //   Return the first engine which is not added in the Registry
-  ExecutionEngine* buildEngines(
+  ExecutionEngineResult buildEngines(
       Query* query, QueryRegistry* registry, std::string const& dbname,
       std::unordered_set<std::string> const& restrictToShards,
       std::unordered_map<std::string, std::string>& queryIds,

@@ -23,6 +23,7 @@
 
 #include "ExecutionEngine.h"
 
+#include "Aql/AqlResult.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/CalculationBlock.h"
 #include "Aql/ClusterBlocks.h"
@@ -560,8 +561,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   ///        * After this step DBServer-Collections are locked!
   ///
   ///        Returns the First Coordinator Engine, the one not in the registry.
-  ExecutionEngine* buildEngines(Query* query, QueryRegistry* registry,
-                                std::unordered_set<ShardID>* lockedShards) {
+  ExecutionEngineResult buildEngines(Query* query, QueryRegistry* registry,
+                                     std::unordered_set<ShardID>* lockedShards) {
     // QueryIds are filled by responses of DBServer parts.
     std::unordered_map<std::string, std::string> queryIds;
 
@@ -640,13 +641,17 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
         plan->root()->walk(inst.get());
 
-        engine = inst->buildEngines(query, queryRegistry, lockedShards.get());
+        auto result = inst->buildEngines(query, queryRegistry, lockedShards.get());
+        if (!result.ok()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+        }
         // Every engine has copied the list of locked shards anyways. Simply
         // throw this list away.
         // TODO: We can save exactly one copy of this list. Or we could
         // potentially replace it by
         // a single shared_ptr and save the copy all along...
 
+        engine = result.engine();
         TRI_ASSERT(engine != nullptr);
 
         // We can always use the _noLockHeaders. They have not been modified

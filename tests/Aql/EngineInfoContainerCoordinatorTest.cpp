@@ -28,6 +28,7 @@
 #include "catch.hpp"
 #include "fakeit.hpp"
 
+#include "Aql/AqlResult.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
@@ -139,9 +140,11 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     EngineInfoContainerCoordinator testee;
     testee.addNode(&sNode);
 
-    ExecutionEngine* engine = testee.buildEngines(
+    ExecutionEngineResult result = testee.buildEngines(
       &query, &registry, dbname, restrictToShards, queryIds, lockedShards.get() 
     );
+    REQUIRE(result.ok());
+    ExecutionEngine* engine = result.engine();
 
     REQUIRE(engine != nullptr);
     REQUIRE(engine == &myEngine);
@@ -278,9 +281,11 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     // Close the second snippet
     testee.closeSnippet();
 
-    ExecutionEngine* engine = testee.buildEngines(
+    ExecutionEngineResult result = testee.buildEngines(
       &query, &registry, dbname, restrictToShards, queryIds, lockedShards.get() 
     );
+    REQUIRE(result.ok());
+    ExecutionEngine* engine = result.engine();
 
     REQUIRE(engine != nullptr);
     REQUIRE(engine == &myEngine);
@@ -496,10 +501,12 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
     testee.addNode(&tbNode);
 
-    ExecutionEngine* engine = testee.buildEngines(
+    ExecutionEngineResult result = testee.buildEngines(
       &query, &registry, dbname, restrictToShards, queryIds, lockedShards.get() 
     );
 
+    REQUIRE(result.ok());
+    ExecutionEngine* engine = result.engine();
     REQUIRE(engine != nullptr);
     REQUIRE(engine == &myEngine);
 
@@ -633,7 +640,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
           (std::string const& vocbase, QueryId id, int errorCode) {
       REQUIRE(vocbase == dbname);
       REQUIRE(id == secondId);
-      REQUIRE(errorCode == TRI_ERROR_DEBUG);
+      REQUIRE(errorCode == TRI_ERROR_INTERNAL);
     });
 
 
@@ -659,35 +666,31 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     // Close the second snippet
     testee.closeSnippet();
 
+    ExecutionEngineResult result = testee.buildEngines(
+      &query, &registry, dbname, restrictToShards, queryIds, lockedShards.get() 
+    );
 
-    try {
-      ExecutionEngine* engine = testee.buildEngines(
-        &query, &registry, dbname, restrictToShards, queryIds, lockedShards.get() 
-      );
-      // We should never get here, above needs to yield errors
-      REQUIRE(true == false);
-    } catch (basics::Exception& ex) {
-      // Make sure we check the right thing here
-      REQUIRE(ex.code() == TRI_ERROR_DEBUG);
+    REQUIRE(!result.ok());
+    // Make sure we check the right thing here
+    REQUIRE(result.errorNumber() == TRI_ERROR_DEBUG);
 
-      // Validate that the path up to intended error was taken
+    // Validate that the path up to intended error was taken
 
-      // Validate that the query is wired up with the engine
-      Verify(Method(mockQuery, setEngine)).Exactly(1);
-      // Validate that lockedShards and createBlocks have been called!
-      Verify(Method(mockEngine, setLockedShards)).Exactly(1);
-      Verify(Method(mockEngine, createBlocks)).Exactly(1);
+    // Validate that the query is wired up with the engine
+    Verify(Method(mockQuery, setEngine)).Exactly(1);
+    // Validate that lockedShards and createBlocks have been called!
+    Verify(Method(mockEngine, setLockedShards)).Exactly(1);
+    Verify(Method(mockEngine, createBlocks)).Exactly(1);
 
-      // Validate that the second query is wired up with the second engine
-      Verify(Method(mockQueryClone, setEngine)).Exactly(1);
-      // Validate that lockedShards and createBlocks have been called!
-      Verify(Method(mockSecondEngine, setLockedShards)).Exactly(1);
-      Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
-      Verify(Method(mockRegistry, insert)).Exactly(1);
+    // Validate that the second query is wired up with the second engine
+    Verify(Method(mockQueryClone, setEngine)).Exactly(1);
+    // Validate that lockedShards and createBlocks have been called!
+    Verify(Method(mockSecondEngine, setLockedShards)).Exactly(1);
+    Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
+    Verify(Method(mockRegistry, insert)).Exactly(1);
 
-      // Assert unregister of second engine.
-      Verify(OverloadedMethod(mockRegistry, destroy, void(std::string const&, QueryId, int))).Exactly(1);
-    }
+    // Assert unregister of second engine.
+    Verify(OverloadedMethod(mockRegistry, destroy, void(std::string const&, QueryId, int))).Exactly(1);
   }
 
 }

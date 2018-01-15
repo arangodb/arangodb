@@ -23,6 +23,7 @@
 
 #include "EngineInfoContainerCoordinator.h"
 
+#include "Aql/AqlResult.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
@@ -153,13 +154,24 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
   return id;
 }
 
-ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
+ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
     Query* query, QueryRegistry* registry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
     std::unordered_map<std::string, std::string>& queryIds,
     std::unordered_set<ShardID> const* lockedShards) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
+
+  bool needCleanupOnExit = true;
+  auto cleanup = [&]() {
+    if (needCleanupOnExit) {
+      for (auto const& it : queryIds) {
+        QueryId id = basics::StringUtils::uint64(it.second);
+        registry->destroy(dbname, id, TRI_ERROR_INTERNAL);
+      }
+    }
+  };
+  TRI_DEFER(cleanup());
 
   bool first = true;
   Query* localQuery = query;
@@ -169,8 +181,7 @@ ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
         // need a new query instance on the coordinator
         localQuery = query->clone(PART_DEPENDENT, false);
         if (localQuery == nullptr) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "cannot clone query");
+          return {TRI_ERROR_INTERNAL, "cannot clone query"};
         }
       }
       try {
@@ -187,21 +198,12 @@ ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
       first = false;
     }
   } catch (basics::Exception const& ex) {
-    for (auto const& it : queryIds) {
-      QueryId id = basics::StringUtils::uint64(it.second);
-      registry->destroy(dbname, id, ex.code());
-    }
-    throw;
+    return {ex.code(), ex.message()};
   } catch (...) {
-    for (auto const& it : queryIds) {
-      QueryId id = basics::StringUtils::uint64(it.second);
-      registry->destroy(dbname, id, TRI_ERROR_INTERNAL);
-    }
-    throw;
+    return TRI_ERROR_INTERNAL;
   }
 
-
-
-  // Why return?
+  // This deactivates the defered cleanup.
+  needCleanupOnExit = false;
   return query->engine();
 }
