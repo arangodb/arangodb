@@ -311,46 +311,6 @@ inline void insertDocument(
   doc.insert(irs::action::store, primaryKey);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register a callback to be called after recovery to persist properties
-////////////////////////////////////////////////////////////////////////////////
-arangodb::Result persistProperties(
-    arangodb::PhysicalView& physicalView,
-    arangodb::iresearch::IResearchView::AsyncSelf::ptr const& view
-) {
-  if (!view) {
-    return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
-  }
-
-  auto* feature = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
-
-  if (!feature) {
-    auto viewMutex = view->mutex(); // IResearchView can be asynchronously deallocated
-    SCOPED_LOCK(viewMutex);
-    auto* viewPtr = view->get();
-
-    return viewPtr
-      ? physicalView.persistProperties() // database cannot be in recovery if there is no Database feature
-      : arangodb::Result(TRI_ERROR_BAD_PARAMETER)
-      ;
-  }
-
-  return feature->registerPostRecoveryCallback([&physicalView, view]()->arangodb::Result {
-    auto viewMutex = view->mutex(); // IResearchView can be asynchronously deallocated
-    SCOPED_LOCK(viewMutex);
-    auto* viewPtr = view->get();
-
-    if (!viewPtr) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "Invalid call to post-recovery callback of iResearch view";
-
-      return arangodb::Result(); // view no longer in recovery state
-    }
-
-    return physicalView.persistProperties();
-  });
-}
-
 arangodb::Result updateLinks(
     std::unordered_set<TRI_voc_cid_t>& modified,
     TRI_vocbase_t& vocbase,
@@ -1122,13 +1082,6 @@ void IResearchView::drop() {
 }
 
 int IResearchView::drop(TRI_voc_cid_t cid) {
-  // FIXME TODO fix IResearchLink to remove itself properly via updateProperties, then remove this code
-  {
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
-    _meta._collections.erase(cid);
-  }
-
   std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
   ReadMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
@@ -1890,10 +1843,10 @@ arangodb::Result IResearchView::updateProperties(
   bool partialUpdate,
   bool doSync
 ) {
-  if (!_logicalView || !_logicalView->getPhysical()) {
+  if (!_logicalView) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("failed to find meta-store while updating iResearch view '") + std::to_string(id()) + "'"
+      std::string("failed to find logical view while updating IResearch view '") + std::to_string(id()) + "'"
     );
   }
 
@@ -1906,7 +1859,6 @@ arangodb::Result IResearchView::updateProperties(
     );
   }
 
-  auto& metaStore = *(_logicalView->getPhysical());
   std::string error;
   IResearchViewMeta meta;
   IResearchViewMeta::Mask mask;
@@ -1929,6 +1881,34 @@ arangodb::Result IResearchView::updateProperties(
 
     if (!meta.init(slice, error, *_logicalView, initialMeta, &mask)) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::move(error));
+    }
+
+    // FIXME TODO remove once View::updateProperties(...) will be fixed to write
+    // the update delta into the WAL marker instead of the full persisted state
+    // below is a very dangerous hack as it allows multiple links from the same
+    // collection to point to the same view, thus breaking view data consistency
+    {
+      auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+
+      if (engine && engine->inRecovery()) {
+        for (auto& cid: meta._collections) {
+          auto* collection = vocbase->lookupCollection(cid);
+
+          if (collection) {
+            _meta._collections.emplace(cid);
+
+            for (auto& index: collection->getIndexes()) {
+              if (index && arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()) {
+                auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+
+                if (link && link->_defaultId == id() && !link->_view->get()) {
+                  link->_view = _asyncSelf;
+                }
+              }
+            }
+          }
+        }
+      }
     }
 
     // reset non-updatable values to match current meta
@@ -1996,20 +1976,7 @@ arangodb::Result IResearchView::updateProperties(
       }
     }
 
-    IResearchViewMeta metaBackup;
-
-    metaBackup = std::move(_meta);
     _meta = std::move(meta);
-
-    res = persistProperties(metaStore, _asyncSelf); // persist '_meta' definition (so that on failure can revert meta)
-
-    if (!res.ok()) {
-      _meta = std::move(metaBackup); // revert to original meta
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-        << "failed to persist view definition while updating iResearch view '" << id() << "'";
-
-      return res;
-    }
 
     if (mask._dataPath) {
       _storePersisted = std::move(storePersisted);
@@ -2069,21 +2036,10 @@ arangodb::Result IResearchView::updateProperties(
     SCOPED_LOCK(mutex); // '_meta' can be asynchronously read
     collections.insert(_meta._collections.begin(), _meta._collections.end());
     validateLinks(collections, *vocbase, *this); // remove invalid cids (no such collection or no such link)
-
-    // do not update definition if no changes were made (optimization)
-    if (_meta._collections != collections) {
-      IResearchViewMeta metaBackup = _meta;
-
-      _meta._collections = std::move(collections);
-      res = persistProperties(metaStore, _asyncSelf); // persist '_meta' definition (so that on failure can revert meta)
-
-      if (!res.ok()) {
-        _meta = std::move(metaBackup); // revert to original meta
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-          << "failed to persist view definition while updating collection list for IResearch view '" << id() << "'";
-      }
-    }
+    _meta._collections = std::move(collections);
   }
+
+  // FIXME TODO to ensure valid recovery remove the original datapath only if the entire, but under lock to prevent double rename
 
   return res;
 }

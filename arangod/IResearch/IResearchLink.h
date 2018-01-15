@@ -195,6 +195,10 @@ class IResearchLink {
   const IResearchView* view() const;
 
  private:
+  // FIXME TODO remove once View::updateProperties(...) will be fixed to write
+  // the update delta into the WAL marker instead of the full persisted state
+  friend arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice const&, bool, bool);
+
   LogicalCollection* _collection; // the linked collection
   TRI_voc_cid_t _defaultId; // the identifier of the desired view (iff _view == nullptr)
   TRI_idx_iid_t const _id; // the index identifier
