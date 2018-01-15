@@ -217,7 +217,8 @@ public:
         }
         break;
       }
-      case RocksDBLogType::DocumentRemove: {
+      case RocksDBLogType::DocumentRemove:
+      case RocksDBLogType::DocumentRemoveAsPartOfUpdate: {
         // part of an ongoing transaction
         if (_currentDbId != 0 && _currentTrxId != 0 && _currentCid != 0) {
           // collection may be ignored
@@ -357,6 +358,11 @@ public:
           _removeDocumentKey.clear(); // just ignoring this key
         }
       }
+      return rocksdb::Status();
+    }
+
+    if (_lastLogType == RocksDBLogType::DocumentRemoveAsPartOfUpdate) {
+      _removeDocumentKey.clear();
       return rocksdb::Status();
     }
     
