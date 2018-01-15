@@ -1759,10 +1759,10 @@ function ReplicationLoggerSuite () {
       assertEqual(2200, entry[0].type);
       assertEqual(2201, entry[101].type);
       for (i = 1; i < 101; ++i) {
-        assertEqual(2202, entry[i].type);
+        assertEqual(2302, entry[i].type);
         assertEqual(entry[0].tid, entry[i].tid);
         assertEqual("UnitTestsReplication", entry[i].cname);
-        assertEqual("test" + i, entry[i].data._key);
+        assertEqual("test" + (i - 1), entry[i].data._key);
       }
     },
 
