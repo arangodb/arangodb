@@ -1261,7 +1261,7 @@ SECTION("test_unregister_link") {
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     persisted = false;
     CHECK((TRI_ERROR_NO_ERROR == vocbase->dropCollection(logicalCollection, true, -1)));
-    CHECK((false == persisted));
+    CHECK((false == persisted)); // link removal does not persist view meta
     CHECK((nullptr == vocbase->lookupCollection("testCollection")));
 
     {
@@ -1272,15 +1272,9 @@ SECTION("test_unregister_link") {
     }
 
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 100 };
-      std::set<TRI_voc_cid_t> actual = { };
+      std::set<TRI_voc_cid_t> actual;
       view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
-/* TODO FIXME uncomment once IResearchLink is fixed
-      for (auto& cid: expected) {
-        CHECK((1 == actual.erase(cid)));
-      }
-*/
-      CHECK((actual.empty()));
+      CHECK((actual.empty())); // collection removal does modify view meta
     }
 
     CHECK((false == !vocbase->lookupView("testView")));
@@ -1339,7 +1333,7 @@ SECTION("test_unregister_link") {
     CHECK((nullptr != vocbase->lookupCollection("testCollection")));
     persisted = false;
     CHECK((TRI_ERROR_NO_ERROR == vocbase->dropCollection(logicalCollection, true, -1)));
-    CHECK((false == persisted)); // link removal does not modify view meta
+    CHECK((false == persisted)); // link removal does not persist view meta
     CHECK((nullptr == vocbase->lookupCollection("testCollection")));
 
     {
@@ -1350,15 +1344,9 @@ SECTION("test_unregister_link") {
     }
 
     {
-      std::unordered_set<TRI_voc_cid_t> expected = { 100 };
       std::set<TRI_voc_cid_t> actual;
       view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
-/* TODO FIXME uncomment once IResearchLink is fixed
-      for (auto& cid: expected) {
-        CHECK((1 == actual.erase(cid)));
-      }
-*/
-      CHECK((actual.empty()));
+      CHECK((actual.empty())); // collection removal does modify view meta
     }
 
     CHECK((false == !vocbase->lookupView("testView")));
@@ -2261,44 +2249,6 @@ SECTION("test_update_partial") {
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
   }
 
-  // test rollback on persist failure
-  {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto logicalView = vocbase.createView(createJson->slice(), 0);
-    REQUIRE((false == !logicalView));
-    auto view = logicalView->getImplementation();
-    REQUIRE((false == !view));
-
-    arangodb::iresearch::IResearchViewMeta expectedMeta;
-    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
-      \"locale\": \"en\", \
-      \"threadsMaxIdle\": 10, \
-      \"threadsMaxTotal\": 20 \
-    }");
-
-    expectedMeta._dataPath = std::string("iresearch-") + std::to_string(logicalView->id());
-
-    PhysicalViewMock::persistPropertiesResult = TRI_ERROR_INTERNAL; // test fail
-    CHECK((TRI_ERROR_INTERNAL == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
-    PhysicalViewMock::persistPropertiesResult = TRI_ERROR_NO_ERROR; // revert to valid
-
-    arangodb::velocypack::Builder builder;
-
-    builder.openObject();
-    view->getPropertiesVPack(builder, false);
-    builder.close();
-
-    auto slice = builder.slice();
-    arangodb::iresearch::IResearchViewMeta meta;
-    std::string error;
-
-    CHECK((7U == slice.length()));
-    CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
-
-    auto tmpSlice = slice.get("links");
-    CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
-  }
-
   // add a new link (in recovery)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -2358,7 +2308,7 @@ SECTION("test_update_partial") {
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
-    CHECK((true == persisted));
+    CHECK((false == persisted)); // link addition does not persist view meta
 
     arangodb::velocypack::Builder builder;
 
@@ -2428,7 +2378,7 @@ SECTION("test_update_partial") {
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
-    CHECK((true == persisted));
+    CHECK((false == persisted)); // link addition does not persist view meta
 
     arangodb::velocypack::Builder builder;
 
@@ -2518,7 +2468,7 @@ SECTION("test_update_partial") {
       );
       persisted = false;
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
-      CHECK((true == persisted));
+      CHECK((false == persisted)); // link addition does not persist view meta
 
       arangodb::velocypack::Builder builder;
 

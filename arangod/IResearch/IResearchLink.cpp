@@ -27,6 +27,8 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -177,6 +179,7 @@ int IResearchLink::drop() {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
   }
 
+  // FIXME TODO remove link via update properties on view
   return view->drop(_collection->cid());
 }
 
@@ -247,6 +250,16 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       _meta = std::move(meta);
       _view = std::move(viewSelf);
 
+      // FIXME TODO remove once View::updateProperties(...) will be fixed to write
+      // the update delta into the WAL marker instead of the full persisted state
+      {
+        auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+
+        if (engine && engine->inRecovery()) {
+          _defaultId = view->id();
+        }
+      }
+
       return true;
     }
   }
@@ -279,7 +292,7 @@ Result IResearchLink::insert(
   auto* view = _view->get();
 
   if (!view) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
+    return TRI_ERROR_ARANGO_INDEX_HANDLE_BAD; // IResearchView required
   }
 
   return view->insert(*trx, _collection->cid(), documentId, doc, _meta);
@@ -497,6 +510,7 @@ int IResearchLink::unload() {
   }
 
   // if the collection is in the process of being removed then drop it from the view
+  // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
   if (col->deleted()) {
     auto res = view->drop(col->cid());
 
@@ -505,6 +519,8 @@ int IResearchLink::unload() {
 
       return res;
     }
+
+    view->updateProperties(emptyObjectSlice(), true, false); // revalidate all links
   }
 
   _view = NO_VIEW; // release reference to the iResearch View
