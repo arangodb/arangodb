@@ -53,7 +53,7 @@ class NearIterator final : public IndexIterator {
     estimateDensity();
   }
 
-  char const* typeName() const override { return "s2index-index-iterator"; }
+  char const* typeName() const override { return "s2-index-iterator"; }
 
   /// internal retrieval loop
   inline bool nextToken(std::function<bool(LocalDocumentId token)>&& cb,
@@ -145,8 +145,8 @@ class NearIterator final : public IndexIterator {
 
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
-    LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
-    size_t seeks = 0;
+    //LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
+    //size_t seeks = 0;
 
     auto it = tree.begin();
     for (size_t i = 0; i < scan.size(); i++) {
@@ -169,8 +169,7 @@ class NearIterator final : public IndexIterator {
       }
 
       if (seek) { // try to avoid seeking at all cost
-        it = tree.lower_bound(interval.min);
-        seeks++;
+        it = tree.lower_bound(interval.min); //seeks++;
       }
       
       while (it != tree.end() && it->first <= interval.max) {
@@ -178,8 +177,7 @@ class NearIterator final : public IndexIterator {
         it++;
       }
     }
-
-    LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
+    //LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
   }
 
   /// find the first indexed entry to estimate the # of entries

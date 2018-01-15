@@ -63,7 +63,7 @@ class RDBNearIterator final : public IndexIterator {
     estimateDensity();
   }
 
-  char const* typeName() const override { return "s2index-index-iterator"; }
+  char const* typeName() const override { return "s2-index-iterator"; }
 
   /// internal retrieval loop
   inline bool nextToken(std::function<bool(LocalDocumentId token)>&& cb,
@@ -155,8 +155,8 @@ class RDBNearIterator final : public IndexIterator {
     rocksdb::Comparator const* cmp = _index->comparator();
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
-    LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
-    size_t seeks = 0;
+    //LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
+    //size_t seeks = 0;
 
     for (size_t i = 0; i < scan.size(); i++) {
       geo::Interval const& it = scan[i];
@@ -178,7 +178,7 @@ class RDBNearIterator final : public IndexIterator {
           TRI_ASSERT(cmp->Compare(_iter->key(), bds.end()) <= 0);
         } else {  // cursor is positioned below min range key
           TRI_ASSERT(cmp->Compare(_iter->key(), bds.start()) < 0);
-          int k = 10, cc = -1;  // try to skip ahead a bit and catch the range
+          int k = 10, cc = -1;  // try to catch the range
           do {
             _iter->Next();
             cc = cmp->Compare(_iter->key(), bds.start());
@@ -188,9 +188,8 @@ class RDBNearIterator final : public IndexIterator {
       }
 
       if (seek) {  // try to avoid seeking at all cost
-        // LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] seeking:" << it.min;
+        // LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] seeking:" << it.min; seeks++;
         _iter->Seek(bds.start());
-        seeks++;
       }
 
       while (_iter->Valid() && cmp->Compare(_iter->key(), bds.end()) <= 0) {
@@ -201,8 +200,7 @@ class RDBNearIterator final : public IndexIterator {
         _iter->Next();
       }
     }
-
-    LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
+    //LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
   }
 
   /// find the first indexed entry to estimate the # of entries
