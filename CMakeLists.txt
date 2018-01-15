@@ -59,6 +59,7 @@ set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
 
 if (USE_ENTERPRISE)
+  add_definitions("-DUSE_ENTERPRISE=1")
   add_subdirectory(enterprise)
 endif ()
 
@@ -609,7 +610,6 @@ endfunction()
 # ------------------------------------------------------------------------------
 
 if (USE_JEMALLOC)
-  add_subdirectory(3rdParty/jemalloc)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
 
   include_directories("${JEMALLOC_HOME}/include")
@@ -790,14 +790,11 @@ endif()
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/boost)
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
-
-add_subdirectory(3rdParty/rocksdb)
 
 add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
 include_directories(${ROCKSDB_INCLUDE_DIR})

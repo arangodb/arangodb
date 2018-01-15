@@ -79,6 +79,12 @@ if (USE_IRESEARCH)
     PUBLIC ${IRESEARCH_INCLUDE}
   )
 
+  if (USE_ENTERPRISE)
+    target_include_directories(${LIB_ARANGO_IRESEARCH}
+      PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}"
+    )
+  endif()
+
   if(MSVC)
     set(IRESEARCH_TARGET_DEPENDENCY iresearch-static-scrt) # use static + staticCRT to match ArangoDB
   else()
