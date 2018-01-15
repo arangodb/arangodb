@@ -520,7 +520,7 @@ int IResearchLink::unload() {
       return res;
     }
 
-    view->updateProperties(emptyObjectSlice(), true, false); // revalidate all links
+    view->updateProperties(arangodb::velocypack::Slice::emptyObjectSlice(), true, false); // revalidate all links
   }
 
   _view = NO_VIEW; // release reference to the iResearch View
