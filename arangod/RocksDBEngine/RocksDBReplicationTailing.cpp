@@ -223,7 +223,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         }
         break;
       }
-      case RocksDBLogType::DocumentRemove: {
+      case RocksDBLogType::DocumentRemove:
+      case RocksDBLogType::DocumentRemoveAsPartOfUpdate: {
         // part of an ongoing transaction
         if (_currentDbId != 0 && _currentTrxId != 0 && _currentCid != 0) {
           // collection may be ignored
@@ -369,6 +370,11 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       return rocksdb::Status();
     }
 
+    if (_lastLogType == RocksDBLogType::DocumentRemoveAsPartOfUpdate) {
+      _removeDocumentKey.clear();
+      return rocksdb::Status();
+    }
+    
     // document removes, because of a collection drop is not transactional and
     // should not appear in the WAL.
     if (!(_seenBeginTransaction || _singleOp)) {
@@ -420,7 +426,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
   void writeCommitMarker() {
     TRI_ASSERT(_seenBeginTransaction && !_singleOp);
-    LOG_TOPIC(_LOG, Logger::PREGEL) << "tick: " << _currentSequence
+    LOG_TOPIC(_LOG, Logger::ROCKSDB) << "tick: " << _currentSequence
                                     << " commit transaction";
 
     _builder.openObject();

@@ -243,7 +243,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
         }
         break;
       }
-      case RocksDBLogType::DocumentRemove: {
+      case RocksDBLogType::DocumentRemove: 
+      case RocksDBLogType::DocumentRemoveAsPartOfUpdate: {
         // part of an ongoing transaction
         if (_currentDbId != 0 && _currentTrxId != 0) {
           // collection may be ignored
@@ -448,6 +449,11 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
         }
       }
       
+      return rocksdb::Status();
+    }
+    
+    if (_lastLogType == RocksDBLogType::DocumentRemoveAsPartOfUpdate) {
+      _removeDocumentKey.clear();
       return rocksdb::Status();
     }
     

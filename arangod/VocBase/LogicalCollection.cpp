@@ -1260,13 +1260,13 @@ Result LogicalCollection::remove(transaction::Methods* trx,
 
 bool LogicalCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& token,
-                                     ManagedDocumentResult& result) {
+                                     ManagedDocumentResult& result) const {
   return getPhysical()->readDocument(trx, token, result);
 }
 
 bool LogicalCollection::readDocumentWithCallback(transaction::Methods* trx,
                                                  LocalDocumentId const& token,
-                                                 IndexIterator::DocumentCallback const& cb) {
+                                                 IndexIterator::DocumentCallback const& cb) const {
   return getPhysical()->readDocumentWithCallback(trx, token, cb);
 }
 

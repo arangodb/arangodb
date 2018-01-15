@@ -10,11 +10,19 @@ v3.3.3 (XXXX-XX-XX)
 
   The option is set to `false` by default to ensure backwards-compatibility
 
+* make the default value of `--rocksdb.block-cache-shard-bits` use the RocksDB
+  default value. This will mostly mean the default number block cache shard
+  bits is lower than before, allowing each shard to store more data and cause
+  less evictions from block cache
+
+* fixed issue #4255: AQL SORT consuming too much memory
+
 
 v3.3.2 (2018-01-04)
 -------------------
 
-* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' at 98,7: ArangoError 4: Expecting type String
+* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' 
+  at 98,7: ArangoError 4: Expecting type String 
 
 * fixed issue in agency supervision with a good server being left in
   failedServers

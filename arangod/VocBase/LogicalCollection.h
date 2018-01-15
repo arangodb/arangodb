@@ -320,11 +320,11 @@ class LogicalCollection {
 
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& token,
-                    ManagedDocumentResult& result);
+                    ManagedDocumentResult& result) const;
   
   bool readDocumentWithCallback(transaction::Methods* trx,
                                 LocalDocumentId const& token,
-                                IndexIterator::DocumentCallback const& cb);
+                                IndexIterator::DocumentCallback const& cb) const;
 
   /// @brief Persist the connected physical collection.
   ///        This should be called AFTER the collection is successfully
