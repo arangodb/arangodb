@@ -51,6 +51,9 @@
   db._drop("UnitTestsImportEdge");
   db._drop("UnitTestsImportIgnore");
   db._drop("UnitTestsImportUniqueConstraints");
+  try {
+    db._dropDatabase("UnitTestImportCreateDatabase");
+  } catch(err) {}
 })();
 
 return {

@@ -174,6 +174,14 @@ const impTodos = [{
   type: 'csv',
   create: 'true',
   removeAttribute: 'a'
+}, {
+  id: 'createDB',
+  data: tu.makePathUnix('js/common/test-data/import/import-1.json'),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'UnitTestImportCreateDatabase',
+  createDatabase: 'true'
 }];
 
 function importing (options) {
