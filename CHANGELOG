@@ -1,6 +1,8 @@
 devel
 -----
 
+* issue #1439 p: improve any() performance
+
 * issue #3504: added option `--force-same-database` for arangorestore
 
   with this option set to true, it is possible to make any arangorestore attempt

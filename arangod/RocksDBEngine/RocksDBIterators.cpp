@@ -145,7 +145,7 @@ bool RocksDBAllIndexIterator::nextDocument(
 
   return true;
 }
-  
+
 void RocksDBAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
   TRI_ASSERT(_trx->state()->isRunning());
 
@@ -172,7 +172,6 @@ void RocksDBAllIndexIterator::reset() {
 }
 
 // ================ Any Iterator ================
-
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     LogicalCollection* col, transaction::Methods* trx,
     RocksDBPrimaryIndex const* index)
@@ -193,42 +192,52 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   TRI_ASSERT(_iterator);
 
   _total = col->numberDocuments(trx);
+  _forward = RandomGenerator::interval(uint16_t(2)) ? true : false; //prefer forward
 
-  auto checkIter = [&](bool forward){
-    if (!_iterator->Valid() || outOfRange()) {
-      if (forward) {
-        _iterator->Seek(_bounds.start());
-      } else {
-        _iterator->Seek(_bounds.end());
-      }
-      if(!_iterator->Valid()){
-        return false;
-      }
-    }
-    return true;
-  };
-
-  checkIter(true); // get some initial state
-
+  //initial seek
   if (_total > 0) {
     uint64_t steps = RandomGenerator::interval(_total - 1) % 500;
-    bool forward = RandomGenerator::interval(uint16_t(1)) ? true : false;
+    auto initialKey = RocksDBKey();
+    initialKey.constructDocument(
+      static_cast<RocksDBCollection*>(col->getPhysical())->objectId(),
+      RandomGenerator::interval(UINT64_MAX)
+    );
+    _iterator->Seek(initialKey.string());
 
-    if (forward) {
-      while (_iterator->Valid() && steps-- > 0) {
-        _iterator->Next();
-        if(!checkIter(forward)) break;
-      }
-    } else {
-      while (_iterator->Valid() && steps-- > 0) {
-        _iterator->Prev();
-        if(!checkIter(forward)) break;
+    if (checkIter()) {
+      if (_forward) {
+        while (steps-- > 0) {
+          _iterator->Next();
+          if(!checkIter()) break;
+        }
+      } else {
+        while (steps-- > 0) {
+          _iterator->Prev();
+          if(!checkIter()) break;
+        }
       }
     }
-
-    checkIter(forward); // ensure some good state
   }
 }
+
+bool RocksDBAnyIndexIterator::checkIter(){
+  if ( /* not  valid */            !_iterator->Valid() ||
+       /* out of range forward */  ( _forward && _cmp->Compare(_iterator->key(), _bounds.end())   > 0) ||
+       /* out of range backward */ (!_forward && _cmp->Compare(_iterator->key(), _bounds.start()) < 0)  ) {
+
+    if (_forward) {
+      _iterator->Seek(_bounds.start());
+    } else {
+      _iterator->SeekForPrev(_bounds.end());
+    }
+
+    if(!_iterator->Valid()){
+      return false;
+    }
+  }
+  return true;
+}
+
 
 bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
@@ -301,7 +310,7 @@ RocksDBSortedAllIterator::RocksDBSortedAllIterator(
       _trx(trx),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
       _cmp(index->comparator()) {
- 
+
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
   // intentional copy of the read options
   auto options = mthds->readOptions();
