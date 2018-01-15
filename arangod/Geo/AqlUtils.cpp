@@ -137,13 +137,13 @@ void AqlUtils::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       TRI_ASSERT(node->numMembers() == 2);
       geo::Coordinate c =
           AqlUtils::parseDistFCall(node->getMemberUnchecked(0), ref);
-      if (params.centroid != geo::Coordinate::Invalid() &&
-          params.centroid != c) {
+      if (params.origin != geo::Coordinate::Invalid() &&
+          params.origin != c) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
       // LOG_TOPIC(ERR, Logger::FIXME) << "Found center: " << c.toString();
 
-      params.centroid = std::move(c);
+      params.origin = std::move(c);
       aql::AstNode const* max = node->getMemberUnchecked(1);
       TRI_ASSERT(max->type == aql::NODE_TYPE_VALUE);
       if (!max->isValueType(aql::VALUE_TYPE_STRING)) {
@@ -157,15 +157,15 @@ void AqlUtils::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       TRI_ASSERT(node->numMembers() == 2);
       geo::Coordinate c =
           AqlUtils::parseDistFCall(node->getMemberUnchecked(0), ref);
-      if (params.centroid != geo::Coordinate::Invalid() &&
-          params.centroid != c) {
+      if (params.origin != geo::Coordinate::Invalid() &&
+          params.origin != c) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
       // LOG_TOPIC(ERR, Logger::FIXME) << "Found center: " << c.toString();
 
       aql::AstNode const* min = node->getMemberUnchecked(1);
       TRI_ASSERT(min->type == aql::NODE_TYPE_VALUE);
-      params.centroid = c;
+      params.origin = c;
       params.minDistance = min->getDoubleValue();
       break;
     }

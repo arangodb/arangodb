@@ -118,7 +118,7 @@ Result ShapeContainer::parseGeoJson(VPackSlice const& json) {
 ShapeContainer::ShapeContainer(ShapeContainer&& other)
     : _data(other._data), _type(other._type) {
   other._data = nullptr;
-  other._type = ShapeContainer::Type::UNDEFINED;
+  other._type = ShapeContainer::Type::EMPTY;
 }
 ShapeContainer::~ShapeContainer() { delete _data; }
 
@@ -245,6 +245,9 @@ bool ShapeContainer::mayIntersect(S2CellId cell) const {
 
 double ShapeContainer::capBoundRadius() const {
   TRI_ASSERT(_data != nullptr);
+  if (_data == nullptr) {
+    return 0;
+  }
   S1Angle angle = _data->GetCapBound().angle();
   return angle.radians();
 }

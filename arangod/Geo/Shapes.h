@@ -83,7 +83,7 @@ class ShapeContainer final {
 
  public:
   enum class Type {
-    UNDEFINED = 0,
+    EMPTY = 0,
     S2_POINT,
     S2_LATLNGRECT,
     S2_CAP,
@@ -93,7 +93,7 @@ class ShapeContainer final {
     S2_MULTIPOLYLINE
   };
 
-  ShapeContainer() : _data(nullptr), _type(Type::UNDEFINED) {}
+  ShapeContainer() : _data(nullptr), _type(Type::EMPTY) {}
   ShapeContainer(ShapeContainer&& other);
   /*ShapeContainer(std::unique_ptr<S2Region>&& ptr, Type tt)
       : _data(ptr.release()), _type(tt) {}

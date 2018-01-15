@@ -5311,7 +5311,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
           limit = static_cast<LimitNode*>(current);
           break;
         case EN::INDEX:
-        case EN::COLLECT:
+        case EN::COLLECT: // FIXME: can probably be removed?
           info.invalidate();
           break;
         case EN::ENUMERATE_LIST:{

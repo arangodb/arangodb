@@ -41,9 +41,8 @@ using namespace arangodb::geo;
 template <typename CMP>
 NearUtils<CMP>::NearUtils(QueryParams&& qp)
     : _params(std::move(qp)),
-      _centroid(
-          S2LatLng::FromDegrees(qp.centroid.latitude, qp.centroid.longitude)
-              .ToPoint()),
+      _origin(S2LatLng::FromDegrees(qp.origin.latitude,
+                                    qp.origin.longitude).ToPoint()),
       _minBound(qp.minDistanceRad()),
       _maxBound(qp.maxDistanceRad()) {
   qp.cover.configureS2RegionCoverer(&_coverer);
@@ -56,8 +55,8 @@ NearUtils<CMP>::NearUtils(QueryParams&& qp)
 
   /*LOG_TOPIC(ERR, Logger::FIXME)
       << "--------------------------------------------------------";
-  LOG_TOPIC(INFO, Logger::FIXME) << "[Near] centroid target: "
-                                 << _params.centroid.toString();
+  LOG_TOPIC(INFO, Logger::FIXME) << "[Near] origin target: "
+                                 << _params.origin.toString();
   LOG_TOPIC(INFO, Logger::FIXME) << "[Near] minBounds: " <<
   (size_t)(_params.minDistance * kEarthRadiusInMeters)
         << "  maxBounds:" << (size_t)(_maxBound * kEarthRadiusInMeters)
@@ -122,15 +121,15 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   std::vector<S2CellId> cover;
   if (_innerBound == _minBound) {
     // LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] 0 to something";
-    S2Cap ob = S2Cap::FromAxisAngle(_centroid, S1Angle::Radians(_outerBound));
+    S2Cap ob = S2Cap::FromAxisAngle(_origin, S1Angle::Radians(_outerBound));
     _coverer.GetCovering(ob, &cover);
   } else if (_innerBound > _minBound) {
     // LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] something inbetween";
     // create a search ring
     std::vector<S2Region*> regions;
-    S2Cap ib = S2Cap::FromAxisAngle(_centroid, S1Angle::Radians(_innerBound));
+    S2Cap ib = S2Cap::FromAxisAngle(_origin, S1Angle::Radians(_innerBound));
     regions.push_back(new S2Cap(ib.Complement()));
-    S2Cap ob = S2Cap::FromAxisAngle(_centroid, S1Angle::Radians(_outerBound));
+    S2Cap ob = S2Cap::FromAxisAngle(_origin, S1Angle::Radians(_outerBound));
     regions.push_back(new S2Cap(ob));
     S2RegionIntersection ring(&regions);
     _coverer.GetCovering(ring, &cover);
@@ -150,8 +149,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
 
       TRI_ASSERT(cover.empty());  // swap should empty this
       if (_params.filterType != geo::FilterType::NONE) {
-        TRI_ASSERT(_params.filterShape.type() !=
-                   ShapeContainer::Type::UNDEFINED);
+        TRI_ASSERT(_params.filterShape.type() != ShapeContainer::Type::EMPTY);
         for (S2CellId cellId : lookup.cell_ids()) {
           if (_params.filterShape.mayIntersect(cellId)) {
             cover.push_back(cellId);
@@ -186,7 +184,7 @@ template <typename CMP>
 void NearUtils<CMP>::reportFound(LocalDocumentId lid,
                                  geo::Coordinate const& center) {
   S2LatLng cords = S2LatLng::FromDegrees(center.latitude, center.longitude);
-  double rad = _centroid.Angle(cords.ToPoint());  // distance in radians
+  double rad = _origin.Angle(cords.ToPoint());  // distance in radians
 
   /*LOG_TOPIC(INFO, Logger::FIXME)
   << "[Found] " << rid << " at " << (center.toString())
@@ -221,7 +219,7 @@ template <typename CMP>
 void NearUtils<CMP>::estimateDensity(geo::Coordinate const& found) {
   double const minBound = S2::kAvgDiag.GetValue(S2::kMaxCellLevel - 3);
   S2LatLng cords = S2LatLng::FromDegrees(found.latitude, found.longitude);
-  double delta = _centroid.Angle(cords.ToPoint()) * 4;
+  double delta = _origin.Angle(cords.ToPoint()) * 4;
   if (minBound < delta && delta < M_PI) {
     _boundDelta = delta;
     TRI_ASSERT(_innerBound == 0 && _buffer.empty());  // only call after reset

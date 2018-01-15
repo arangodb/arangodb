@@ -80,7 +80,7 @@ double geo::QueryParams::minDistanceRad() const {
 double geo::QueryParams::maxDistanceRad() const {
   double mm = std::max(0.0, std::min(maxDistance / kEarthRadiusInMeters, M_PI));
   if (filterType != FilterType::NONE) {
-    TRI_ASSERT(filterShape.type() != ShapeContainer::Type::UNDEFINED);
+    TRI_ASSERT(filterShape.type() != ShapeContainer::Type::EMPTY);
     return std::min(filterShape.capBoundRadius(), mm);
   }
   return mm;

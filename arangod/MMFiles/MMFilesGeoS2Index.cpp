@@ -90,7 +90,7 @@ class NearIterator final : public IndexIterator {
           geo::FilterType const ft = _near.filterType();
           if (ft != geo::FilterType::NONE) {  // expensive test
             geo::ShapeContainer const& filter = _near.filterShape();
-            TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::UNDEFINED);
+            TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
             geo::ShapeContainer test;
             Result res = geo::GeoJsonParser::parseGeoJson(doc, test);
             TRI_ASSERT(res.ok());  // this should never fail here
@@ -113,7 +113,7 @@ class NearIterator final : public IndexIterator {
           geo::FilterType const ft = _near.filterType();
           if (ft != geo::FilterType::NONE) {
             geo::ShapeContainer const& filter = _near.filterShape();
-            TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::UNDEFINED);
+            TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
             if (!_collection->readDocument(_trx, token, *_mmdr)) {
               return false;
             }
@@ -185,7 +185,7 @@ class NearIterator final : public IndexIterator {
   void estimateDensity() {
     MMFilesGeoS2Index::IndexTree const& tree = _index->tree();
     if (!tree.empty()) {
-      S2CellId cell = S2CellId::FromPoint(_near.centroid());
+      S2CellId cell = S2CellId::FromPoint(_near.origin());
       auto it = tree.upper_bound(cell);
       if (it == tree.end()) {
         it = tree.lower_bound(cell);
@@ -420,10 +420,18 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
   TRI_ASSERT(node != nullptr);
 
   geo::QueryParams params;
-  params.sorted = true;  // opts.sorted;
+  params.sorted = true; // opts.sorted;
   params.ascending = opts.ascending;
   geo::AqlUtils::parseCondition(node, reference, params);
-  TRI_ASSERT(!opts.sorted || params.centroid != geo::Coordinate::Invalid());
+  TRI_ASSERT(!opts.sorted || params.origin != geo::Coordinate::Invalid());
+  
+  // FIXME: Optimize away
+  if (!params.sorted) {
+    TRI_ASSERT(params.filterType != geo::FilterType::NONE);
+    TRI_ASSERT(params.filterShape.type() != geo::ShapeContainer::Type::EMPTY);
+    params.sorted = true;
+    params.origin = params.filterShape.centroid();
+  }
 
   // params.cover.worstIndexedLevel < _coverParams.worstIndexedLevel
   // is not necessary, > would be missing entries.

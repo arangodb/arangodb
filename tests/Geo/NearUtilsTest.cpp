@@ -116,8 +116,8 @@ static std::vector<geo::Coordinate> convert(coords_t const& coords,
 /*   4 is Jo'burg   -26.166667  +28.033333         */
 
 /***********************************/
-/* Simple Near queries  */
-TEST_CASE("geo::NearUtils", "[geo][s2index]") {
+
+TEST_CASE("Simple near queries", "[geo][s2index]") {
   
   // simulated index
   index_t index;
@@ -144,7 +144,7 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
   
   geo::QueryParams params;
   params.sorted = true;
-  params.centroid = geo::Coordinate(0,0);
+  params.origin = geo::Coordinate(0,0);
   
   SECTION("query all sorted ascending") {
     params.ascending = true;
@@ -164,7 +164,7 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
       geo::Coordinate const& cc = docs.at(rev);
       S2LatLng cords = S2LatLng::FromDegrees(cc.latitude, cc.longitude);
       S2Point pp = cords.ToPoint();
-      double rad = near.centroid().Angle(pp);
+      double rad = near.origin().Angle(pp);
       REQUIRE(rad >= lastRad);
       lastRad = rad;
     }
@@ -260,7 +260,7 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
       geo::Coordinate const& cc = docs.at(rev);
       S2LatLng cords = S2LatLng::FromDegrees(cc.latitude, cc.longitude);
       S2Point pp = cords.ToPoint();
-      double rad = near.centroid().Angle(pp);
+      double rad = near.origin().Angle(pp);
       REQUIRE(rad <= lastRad);
       lastRad = rad;
     }
@@ -300,6 +300,76 @@ TEST_CASE("geo::NearUtils", "[geo][s2index]") {
              lng = std::abs(coords[i].longitude);
       REQUIRE(lat + lng == 1); // lat == 1 => lng == 0, etc
     }
+  }
+}
+
+
+/* first main batch of tests                       */
+/* insert 10 x 10 array of points near south pole  */
+/* then do some searches, results checked against  */
+/* the same run with full table scan               */
+
+TEST_CASE("Query point around", "[geo][s2index]") {
+  
+  index_t index;
+  coords_t docs;
+  size_t counter = 0;
+  
+  double lat=-89.0;
+  for(int i=0;i<10;i++) {
+    double lon = 17.0;
+    for(int j=0;j<10;j++) {
+      //geocol.insert({lat,lon});
+      geo::Coordinate cc(lat, lon);
+      
+      std::vector<S2CellId> cells;
+      Result res = geo::GeoUtils::indexCells(cc, cells);
+      REQUIRE(res.ok());
+      REQUIRE(cells.size() == 1);
+      REQUIRE(cells[0].level() == S2::kMaxCellLevel);
+      
+      LocalDocumentId rev(counter++);
+      index.emplace(cells[0], rev);
+      docs.emplace(rev, cc);
+      lon += 1.0;
+    }
+    lat += 1.0;
+  }
+  
+  geo::QueryParams params;
+  params.sorted = true;
+  params.ascending = true;
+  
+  auto checkResult = [&](S2Point const& origin,
+                         std::vector<LocalDocumentId> const& result) {
+    double lastRad = 0;
+    for (LocalDocumentId const& rev : result) {
+      // check sort order
+      geo::Coordinate const& cc = docs.at(rev);
+      S2LatLng cords = S2LatLng::FromDegrees(cc.latitude, cc.longitude);
+      double rad = origin.Angle(cords.ToPoint());
+      REQUIRE(rad >= lastRad);
+      lastRad = rad;
+    }
+    REQUIRE(lastRad != 0);
+  };
+  
+  SECTION("southpole (1)") {
+    params.origin = geo::Coordinate(-83.2, 19.2);
+    geo::NearUtils<geo::DocumentsAscending> near(std::move(params));
+    
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 7);
+    REQUIRE(result.size() == 7);
+    checkResult(near.origin(), result);
+  }
+  
+  SECTION("southpole (2)") {
+    params.origin = geo::Coordinate(-83.2, 19.2);
+    geo::NearUtils<geo::DocumentsAscending> near(std::move(params));
+    
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 110);
+    REQUIRE(result.size() == 100);
+    checkResult(near.origin(), result);
   }
 }
 

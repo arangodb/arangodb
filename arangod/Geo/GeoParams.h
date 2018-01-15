@@ -85,7 +85,7 @@ struct RegionCoverParams {
 
 struct QueryParams {
   QueryParams()
-      : centroid(geo::Coordinate::Invalid()),
+      : origin(geo::Coordinate::Invalid()),
         cover(queryMaxCoverCells, queryWorstLevel, queryBestLevel) {}
 
   /// This query only needs to support points no polygons etc
@@ -110,7 +110,7 @@ struct QueryParams {
   bool ascending = true;
 
   /// @brief Centroid from which to sort by distance
-  geo::Coordinate centroid;
+  geo::Coordinate origin;
 
   // ============= Filtered Params ===============
 

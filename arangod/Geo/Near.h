@@ -89,7 +89,7 @@ class NearUtils {
 
  public:
   /// @brief get cell covering target coordinate (at max level)
-  S2Point centroid() const { return _centroid; }
+  S2Point origin() const { return _origin; }
 
   geo::FilterType filterType() const { return _params.filterType; }
 
@@ -154,7 +154,7 @@ class NearUtils {
   geo::QueryParams const _params;
 
   /// target from which distances are measured
-  S2Point const _centroid;
+  S2Point const _origin;
 
   /// min distance on the unit spherer or <M_PI
   double const _minBound = 0;
