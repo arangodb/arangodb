@@ -25,7 +25,6 @@
 #define ARANGOD_CONSENSUS_STORE_H 1
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
 #include "Node.h"
 
 namespace arangodb {
@@ -67,7 +66,7 @@ enum CheckMode {FIRST_FAIL, FULL};
 class Agent;
 
 /// @brief Key value tree
-class Store : public arangodb::Thread {
+class Store {
  public:
   /// @brief Construct with name
   explicit Store(Agent* agent, std::string const& name = "root");
@@ -109,12 +108,6 @@ class Store : public arangodb::Thread {
   bool read(arangodb::velocypack::Slice const&,
             arangodb::velocypack::Builder&) const;
   
-  /// @brief Begin shutdown of thread
-  void beginShutdown() override final;
-
-  /// @brief Start thread
-  bool start();
-
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;
 
@@ -139,13 +132,9 @@ class Store : public arangodb::Thread {
 
   void clear();
 
-  friend class Node;
-
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);
  
- private:
-
   /// @brief Remove time to live entries for uri
   void removeTTL(std::string const&);
 
@@ -156,6 +145,8 @@ class Store : public arangodb::Thread {
   std::unordered_multimap<std::string, std::string>& observedTable();
   std::unordered_multimap<std::string, std::string> const& observedTable() const;
 
+ private:
+
   /// @brief Check precondition
   check_ret_t check(arangodb::velocypack::Slice const&, CheckMode = FIRST_FAIL) const;
 
@@ -163,8 +154,6 @@ class Store : public arangodb::Thread {
   query_t clearExpired() const;
 
   /// @brief Run thread
-  void run() override final;
-
  private:
   /// @brief Condition variable guarding removal of expired entries
   mutable arangodb::basics::ConditionVariable _cv;

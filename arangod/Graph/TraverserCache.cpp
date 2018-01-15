@@ -27,6 +27,7 @@
 #include "Basics/VelocyPackHelper.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/Query.h"
 #include "Cluster/ServerState.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Logger/Logger.h"
@@ -41,9 +42,10 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraverserCache::TraverserCache(transaction::Methods* trx)
+TraverserCache::TraverserCache(aql::Query* query)
     : _mmdr(new ManagedDocumentResult{}),
-      _trx(trx), _insertedDocuments(0),
+      _query(query),
+      _trx(query->trx()), _insertedDocuments(0),
       _filteredDocuments(0),
       _stringHeap(new StringHeap{4096}) /* arbitrary block-size may be adjusted for performance */ {
 }
@@ -53,15 +55,23 @@ TraverserCache::~TraverserCache() {}
 VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto col = _trx->vocbase()->lookupCollection(idToken.cid());
-  TRI_ASSERT(col != nullptr);
-  if (!col->readDocument(_trx, idToken.token(), *_mmdr.get())) {
-    TRI_ASSERT(false);
-    // We already had this token, inconsistent state. Return NULL in Production
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed Edge Document, return 'null' instead. "
-      << "This is most likely a caching issue. Try: '"
-      << col->name() <<".unload(); " << col->name() << ".load()' in arangosh to fix this.";
+
+  if (col == nullptr) {
+    // collection gone... should not happen
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed edge document. collection not found";
+    TRI_ASSERT(col != nullptr); // for maintainer mode
     return basics::VelocyPackHelper::NullValue();
   }
+
+  if (!col->readDocument(_trx, idToken.localDocumentId(), *_mmdr.get())) {
+    // We already had this token, inconsistent state. Return NULL in Production
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed edge document, return 'null' instead. "
+      << "This is most likely a caching issue. Try: 'db."
+      << col->name() <<".unload(); db." << col->name() << ".load()' in arangosh to fix this.";
+    TRI_ASSERT(false); // for maintainer mode
+    return basics::VelocyPackHelper::NullValue();
+  }
+
   return VPackSlice(_mmdr->vpack());
 }
 
@@ -71,9 +81,10 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
   if (pos == std::string::npos || pos + 1 == id.size()) {
     // Invalid input. If we get here somehow we managed to store invalid _from/_to
     // values or the traverser did a let an illegal start through
-    TRI_ASSERT(false);
+    TRI_ASSERT(false); // for maintainer mode
     return basics::VelocyPackHelper::NullValue();
   }
+
   Result res = _trx->documentFastPathLocal(id.substr(0, pos).toString(),
                                            id.substr(pos + 1), *_mmdr, true);
   if (res.ok()) {
@@ -81,6 +92,11 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
     return VPackSlice(_mmdr->vpack());
   } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
     ++_insertedDocuments;
+
+    // Register a warning. It is okay though but helps the user
+    std::string msg = "vertex '" + id.toString() + "' not found";
+    _query->registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
+
     // This is expected, we may have dangling edges. Interpret as NULL
     return basics::VelocyPackHelper::NullValue();
   } else {

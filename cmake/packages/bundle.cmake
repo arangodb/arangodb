@@ -35,8 +35,8 @@ to_native_path("CPACK_INSTALL_FULL_SYSCONFDIR")
 
 # we wrap HDIUTIL to inject our own parameter:
 find_program(HDIUTIL_EXECUTABLE hdiutil)
-# for now 260MB seems to be enough:
-set(CMAKE_DMG_SIZE 260)
+# for now 280MB seems to be enough:
+set(CMAKE_DMG_SIZE 280)
 configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/hdiutilwrapper.sh.in"
   "${CMAKE_CURRENT_BINARY_DIR}/hdiutilwrapper.sh"
   @ONLY)
@@ -50,12 +50,12 @@ configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/arangodb-cli.sh
 
 set(CPACK_BUNDLE_STARTUP_COMMAND "${CMAKE_CURRENT_BINARY_DIR}/arangodb-cli.sh")
 
-add_custom_target(package-arongodb-server-bundle
+add_custom_target(package-arangodb-server-bundle
   COMMAND ${CMAKE_COMMAND} .
   COMMAND ${CMAKE_CPACK_COMMAND} -G Bundle -C ${CMAKE_BUILD_TYPE}
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
 
-list(APPEND PACKAGES_LIST package-arongodb-server-bundle)
+list(APPEND PACKAGES_LIST package-arangodb-server-bundle)
 
 add_custom_target(copy_bundle_packages
   COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_FILE_NAME}.dmg ${PACKAGE_TARGET_DIR})

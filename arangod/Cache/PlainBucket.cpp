@@ -35,7 +35,7 @@ PlainBucket::PlainBucket() {
   clear();
 }
 
-bool PlainBucket::lock(int64_t maxTries) { return _state.lock(maxTries); }
+bool PlainBucket::lock(uint64_t maxTries) { return _state.lock(maxTries); }
 
 void PlainBucket::unlock() {
   TRI_ASSERT(_state.isLocked());

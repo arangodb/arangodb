@@ -42,8 +42,9 @@ class QueryRegistry;
 
 namespace consensus {
 
-static inline double readSystemClock() {
-  return std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+static inline double steadyClockToDouble() {
+  return std::chrono::duration<double>(
+    std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 class Agent;
@@ -75,10 +76,13 @@ class Constituent : public Thread {
   bool running() const;
 
   // Called by REST handler
-  bool vote(term_t, std::string, index_t, term_t);
+  bool vote(term_t termOfPeer, std::string const& id, index_t prevLogIndex, term_t prevLogTerm);
 
   // Check leader
-  bool checkLeader(term_t, std::string, index_t, term_t);
+  bool checkLeader(term_t term, std::string const& id, index_t prevLogIndex, term_t prevLogTerm);
+
+  // Notify about heartbeat being sent out:
+  void notifyHeartbeatSent(std::string followerId);
 
   // My daily business
   void run() override final;
@@ -101,12 +105,10 @@ class Constituent : public Thread {
 
   bool start(TRI_vocbase_t* vocbase, aql::QueryRegistry*);
 
-  friend class Agent;
-
- private:
   // update leaderId and term if inactive
   void update(std::string const&, term_t);
 
+ private:
   // set term to new term
   void term(term_t);
   void termNoLock(term_t);
@@ -150,7 +152,9 @@ class Constituent : public Thread {
   std::string _leaderID; // Current leader
   std::string _id;       // My own id
 
-  double _lastHeartbeatSeen;
+  // Last time an AppendEntriesRPC message has arrived, this is used to
+  // organise out-of-patience in the follower:
+  std::atomic<double> _lastHeartbeatSeen;
 
   role_t _role;  // My role
   Agent* _agent; // My boss
@@ -162,6 +166,15 @@ class Constituent : public Thread {
   // Keep track of times of last few elections:
   mutable arangodb::Mutex _recentElectionsMutex;
   std::list<double> _recentElections;
+
+  // For leader case: Last time we have sent out AppendEntriesRPC message
+  // to some follower, this is used to find out if additional empty
+  // heartbeats have to be sent out by the Constituent:
+  std::unordered_map<std::string, double> _lastHeartbeatSent;
+
+  /// @brief _heartBeatMutex, protection for _lastHeartbeatSent
+  mutable arangodb::Mutex _heartBeatMutex;
+
 };
 }
 }

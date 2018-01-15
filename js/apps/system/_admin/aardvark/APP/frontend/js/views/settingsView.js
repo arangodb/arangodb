@@ -144,9 +144,12 @@
                   return 0;
                 }
               }
-              var callbackChange = function (error) {
+              var self = this;
+
+              var callbackChange = function (error, data) {
                 if (error) {
-                  arangoHelper.arangoError('Collection error: ' + error.responseText);
+                  self.render();
+                  arangoHelper.arangoError('Collection error: ' + data.responseJSON.errorMessage);
                 } else {
                   arangoHelper.arangoNotification('Collection: ' + 'Successfully changed.');
                   window.App.navigate('#cSettings/' + newname, {trigger: true});
@@ -158,7 +161,11 @@
                   arangoHelper.arangoError('Collection error: ' + error.responseText);
                 } else {
                   var wfs = $('#change-collection-sync').val();
-                  this.model.changeCollection(wfs, journalSize, indexBuckets, callbackChange);
+                  var replicationFactor;
+                  if (frontendConfig.isCluster) {
+                    replicationFactor = $('#change-replication-factor').val();
+                  }
+                  this.model.changeCollection(wfs, journalSize, indexBuckets, replicationFactor, callbackChange);
                 }
               }.bind(this);
 
@@ -221,30 +228,57 @@
           var tableContent = [];
 
           if (!isCoordinator) {
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'change-collection-name',
-                'Name',
-                this.model.get('name'),
-                false,
-                '',
-                true,
-                [
-                  {
-                    rule: Joi.string().regex(/^[a-zA-Z]/),
-                    msg: 'Collection name must always start with a letter.'
-                  },
-                  {
-                    rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-                    msg: 'Only Symbols "_" and "-" are allowed.'
-                  },
-                  {
-                    rule: Joi.string().required(),
-                    msg: 'No collection name given.'
-                  }
-                ]
-              )
-            );
+            if (this.model.get('name').substr(0, 1) === '_') {
+              tableContent.push(
+                window.modalView.createReadOnlyEntry(
+                  'change-collection-name',
+                  'Name',
+                  this.model.get('name'),
+                  false,
+                  '',
+                  true,
+                  [
+                    {
+                      rule: Joi.string().regex(/^[a-zA-Z]/),
+                      msg: 'Collection name must always start with a letter.'
+                    },
+                    {
+                      rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
+                      msg: 'Only Symbols "_" and "-" are allowed.'
+                    },
+                    {
+                      rule: Joi.string().required(),
+                      msg: 'No collection name given.'
+                    }
+                  ]
+                )
+              );
+            } else {
+              tableContent.push(
+                window.modalView.createTextEntry(
+                  'change-collection-name',
+                  'Name',
+                  this.model.get('name'),
+                  false,
+                  '',
+                  true,
+                  [
+                    {
+                      rule: Joi.string().regex(/^[a-zA-Z]/),
+                      msg: 'Collection name must always start with a letter.'
+                    },
+                    {
+                      rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
+                      msg: 'Only Symbols "_" and "-" are allowed.'
+                    },
+                    {
+                      rule: Joi.string().required(),
+                      msg: 'No collection name given.'
+                    }
+                  ]
+                )
+              );
+            }
           }
 
           var after = function () {
@@ -275,12 +309,14 @@
                 this.truncateCollection.bind(this)
               )
             );
-            buttons.push(
-              window.modalView.createNotificationButton(
-                'Load Indexes in Memory',
-                this.warmupCollection.bind(this)
-              )
-            );
+            if (frontendConfig.engine === 'rocksdb') {
+              buttons.push(
+                window.modalView.createNotificationButton(
+                  'Load Indexes into Memory',
+                  this.warmupCollection.bind(this)
+                )
+              );
+            }
             if (collectionIsLoaded) {
               buttons.push(
                 window.modalView.createNotificationButton(
@@ -323,10 +359,10 @@
               if (error) {
                 arangoHelper.arangoError('Collection', 'Could not fetch properties');
               } else {
+                var wfs = data.waitForSync;
                 if (data.journalSize) {
                   var journalSize = data.journalSize / (1024 * 1024);
                   var indexBuckets = data.indexBuckets;
-                  var wfs = data.waitForSync;
 
                   tableContent.push(
                     window.modalView.createTextEntry(
@@ -359,6 +395,24 @@
                         {
                           rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                           msg: 'Must be a number greater than 1 and a power of 2.'
+                        }
+                      ]
+                    )
+                  );
+                }
+                if (data.replicationFactor && frontendConfig.isCluster) {
+                  tableContent.push(
+                    window.modalView.createTextEntry(
+                      'change-replication-factor',
+                      'Replication factor',
+                      data.replicationFactor,
+                      'The replicationFactor parameter is the total number of copies being kept, that is, it is one plus the number of followers. Must be a number.',
+                      '',
+                      true,
+                      [
+                        {
+                          rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                          msg: 'Must be a number.'
                         }
                       ]
                     )

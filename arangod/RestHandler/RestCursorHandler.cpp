@@ -74,7 +74,7 @@ RestStatus RestCursorHandler::execute() {
 }
 
 bool RestCursorHandler::cancel() {
-  RestHandler::cancel();
+  RestVocbaseBaseHandler::cancel();
   return cancelQuery();
 }
 
@@ -112,13 +112,17 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   auto options = std::make_shared<VPackBuilder>(buildOptions(slice));
   VPackValueLength l;
   char const* queryString = querySlice.getString(l);
+  
+  if (l == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_EMPTY);
+  }
 
   arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString(queryString, static_cast<size_t>(l)),
                              bindVarsBuilder, options,
                              arangodb::aql::PART_MAIN);
 
   registerQuery(&query);
-  auto queryResult = query.execute(_queryRegistry);
+  aql::QueryResult queryResult = query.execute(_queryRegistry);
   unregisterQuery();
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -171,7 +175,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         THROW_ARANGO_EXCEPTION(res);
       }
 
-      VPackBuilder result(&options);
+      VPackBuffer<uint8_t> buffer;
+      VPackBuilder result(buffer, &options);
       try {
         VPackObjectBuilder b(&result);
         result.add(VPackValue("result"));
@@ -193,7 +198,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       } catch (...) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
-      generateResult(rest::ResponseCode::CREATED, result.slice(),
+      generateResult(rest::ResponseCode::CREATED, std::move(buffer),
                      queryResult.context);
       return;
     }
@@ -214,7 +219,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         std::move(queryResult), batchSize, extra, ttl, count);
 
     try {
-      VPackBuilder result;
+      VPackBuffer<uint8_t> buffer;
+      VPackBuilder result(buffer);
       result.openObject();
       result.add("error", VPackValue(false));
       result.add("code", VPackValue(static_cast<int>(_response->responseCode())));
@@ -222,7 +228,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       result.close();
 
       _response->setContentType(rest::ContentType::JSON);
-      generateResult(_response->responseCode(), result.slice(),
+      generateResult(_response->responseCode(), std::move(buffer),
                      static_cast<VelocyPackCursor*>(cursor)->result()->context);
 
       cursors->release(cursor);
@@ -414,6 +420,7 @@ void RestCursorHandler::createCursor() {
         parseVelocyPackBody(parseSuccess);
 
     if (!parseSuccess) {
+      // error message generated in parseVelocyPackBody
       return;
     }
     VPackSlice body = parsedBody.get()->slice();

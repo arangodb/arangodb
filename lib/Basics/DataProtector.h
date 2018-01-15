@@ -25,6 +25,8 @@
 #define ARANGODB_BASICS_DATA_PROTECTOR_H 1
 
 #include "Basics/Common.h"
+#include <thread>
+#include <chrono>
 
 namespace arangodb {
 namespace basics {
@@ -65,16 +67,14 @@ namespace basics {
 ///       instantiation for all values of Nr used in the executable.
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO: Make this a template again once everybody has gcc >= 4.9.2
-// template<int Nr>
 class DataProtector {
   static constexpr int DATA_PROTECTOR_MULTIPLICITY = 64;
 
-#ifdef _WIN32
+  // disabled because of: 
+  //   note: uses ‘void* operator new(std::size_t)’, which does not have an alignment parameter
+  //   note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+  // struct alignas(64) Entry {  // 64 is the size of a cache line,
   struct Entry {  // 64 is the size of a cache line,
-#else
-  struct alignas(64) Entry {  // 64 is the size of a cache line,
-#endif
     // it is important that different list entries lie in different
     // cache lines.
     std::atomic<int> _count;
@@ -142,7 +142,7 @@ class DataProtector {
     for (int i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
       while (reinterpret_cast<Entry*>(_list + i)->_count > 0) {
         // let other threads do some work while we're waiting
-        usleep(250);
+        std::this_thread::sleep_for(std::chrono::microseconds(250));
       }
     }
   }

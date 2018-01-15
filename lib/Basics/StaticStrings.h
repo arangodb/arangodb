@@ -89,7 +89,6 @@ class StaticStrings {
   static std::string const ContentEncoding;
   static std::string const ContentLength;
   static std::string const ContentTypeHeader;
-  static std::string const Coordinator;
   static std::string const CorsMethods;
   static std::string const Error;
   static std::string const ErrorMessage;
@@ -101,6 +100,7 @@ class StaticStrings {
   static std::string const ExposedCorsHeaders;
   static std::string const HLCHeader;
   static std::string const KeepAlive;
+  static std::string const LeaderEndpoint;
   static std::string const Location;
   static std::string const MultiPartContentType;
   static std::string const NoSniff;

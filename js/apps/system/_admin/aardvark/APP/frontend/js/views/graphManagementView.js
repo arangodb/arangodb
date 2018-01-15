@@ -57,6 +57,7 @@
       $('#row_general-replicationFactor').show();
       $('#smartGraphInfo').hide();
       $('#row_new-numberOfShards').hide();
+      $('#row_new-replicationFactor').hide();
       $('#row_new-smartGraphAttribute').hide();
     },
 
@@ -65,6 +66,7 @@
       $('#row_general-replicationFactor').hide();
       $('#smartGraphInfo').show();
       $('#row_new-numberOfShards').show();
+      $('#row_new-replicationFactor').show();
       $('#row_new-smartGraphAttribute').show();
     },
 
@@ -654,7 +656,8 @@
           newCollectionObject.isSmart = true;
           newCollectionObject.options = {
             numberOfShards: $('#new-numberOfShards').val(),
-            smartGraphAttribute: $('#new-smartGraphAttribute').val()
+            smartGraphAttribute: $('#new-smartGraphAttribute').val(),
+            replicationFactor: parseInt($('#new-replicationFactor').val())
           };
         }
       } else {
@@ -776,6 +779,17 @@
           );
         }
 
+        if (graph.get('replicationFactor')) {
+          tableContent.push(
+            window.modalView.createReadOnlyEntry(
+              'replicationFactor',
+              'Replication factor',
+              graph.get('replicationFactor'),
+              'Total number of copies of the data in the cluster.'
+            )
+          );
+        }
+
         buttons.push(
           window.modalView.createDeleteButton('Delete', this.deleteGraph.bind(this))
         );
@@ -813,6 +827,23 @@
                 'Shards*',
                 '',
                 'Number of shards the smart graph is using.',
+                '',
+                false,
+                [
+                  {
+                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                    msg: 'Must be a number.'
+                  }
+                ]
+              )
+            );
+
+            tableContent.push(
+              window.modalView.createTextEntry(
+                'new-replicationFactor',
+                'Replication factor',
+                '',
+                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
                 '',
                 false,
                 [
@@ -1010,10 +1041,11 @@
       var collList = []; var collections = this.options.collectionCollection.models;
 
       collections.forEach(function (c) {
-        if (c.get('isSystem')) {
-          return;
+        if (!c.get('isSystem')) {
+          if (c.get('type') !== 'edge') {
+            collList.push(c.id);
+          }
         }
-        collList.push(c.id);
       });
       e.stopPropagation();
       var id = $(e.currentTarget).attr('id'); var number;
@@ -1047,6 +1079,8 @@
         });
         window.modalView.undelegateEvents();
         window.modalView.delegateEvents(this.events);
+
+        arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'right');
 
         var i;
         $('.modal-body .spacer').remove();

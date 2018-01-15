@@ -64,8 +64,11 @@
 typedef enum {
   REPLICATION_INVALID = 0,
 
-  REPLICATION_STOP = 1000,   // not used in ArangoDB 2.2 and higher
-  REPLICATION_START = 1001,  // not used in ArangoDB 2.2 and higher
+  //REPLICATION_STOP = 1000,   // not used in ArangoDB 2.2 and higher
+  //REPLICATION_START = 1001,  // not used in ArangoDB 2.2 and higher
+  
+  REPLICATION_DATABASE_CREATE = 1100,
+  REPLICATION_DATABASE_DROP = 1101,
 
   REPLICATION_COLLECTION_CREATE = 2000,
   REPLICATION_COLLECTION_DROP = 2001,
@@ -78,13 +81,14 @@ typedef enum {
   REPLICATION_VIEW_CREATE = 2110,
   REPLICATION_VIEW_DROP = 2111,
   REPLICATION_VIEW_CHANGE = 2112,
+  REPLICATION_VIEW_RENAME = 2113,
 
   REPLICATION_TRANSACTION_START = 2200,
   REPLICATION_TRANSACTION_COMMIT = 2201,
   REPLICATION_TRANSACTION_ABORT = 2202,
 
   REPLICATION_MARKER_DOCUMENT = 2300,
-  // REPLICATION_MARKER_EDGE = 2301, // not used anymore
+  // REPLICATION_MARKER_EDGE = 2301, // not used anymore since 3.0
   REPLICATION_MARKER_REMOVE = 2302,
 
   REPLICATION_MAX
@@ -106,6 +110,7 @@ void TRI_GetTimeStampReplication(double, char*, size_t);
 /// @brief determine whether a collection should be included in replication
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExcludeCollectionReplication(char const*, bool);
+bool TRI_ExcludeCollectionReplication(char const* name, bool includeSystem);
+bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSystem);
 
 #endif

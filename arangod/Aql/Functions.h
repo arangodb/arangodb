@@ -59,11 +59,17 @@ struct Functions {
 
    static void ValidateParameters(VPackFunctionParameters const& parameters,
                                   char const* function, int minParams);
+  
+   /// @brief register warning
+   static void RegisterWarning(arangodb::aql::Query* query,
+                       char const* functionName, int code);
+   /// @brief register usage of an invalid function argument
+   static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
+                                              char const* functionName);
 
    /// @brief extract a function parameter from the arguments
    static AqlValue ExtractFunctionParameterValue(
-       transaction::Methods*, VPackFunctionParameters const& parameters,
-       size_t position);
+       VPackFunctionParameters const& parameters, size_t position);
 
    /// @brief extra a collection name from an AqlValue
    static std::string ExtractCollectionName(
@@ -137,6 +143,18 @@ struct Functions {
    static AqlValue Upper(arangodb::aql::Query*,
                               transaction::Methods*,
                               VPackFunctionParameters const&);
+   static AqlValue Substring(arangodb::aql::Query*,
+                              transaction::Methods*,
+                              VPackFunctionParameters const&);
+   static AqlValue Left(arangodb::aql::Query*,
+                         transaction::Methods*,
+                         VPackFunctionParameters const&);
+   static AqlValue Right(arangodb::aql::Query*,
+                         transaction::Methods*,
+                         VPackFunctionParameters const&);
+   static AqlValue Trim(arangodb::aql::Query*,
+                        transaction::Methods*,
+                        VPackFunctionParameters const&);
    static AqlValue Like(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
    static AqlValue RegexTest(arangodb::aql::Query*, transaction::Methods*,
@@ -150,6 +168,8 @@ struct Functions {
    static AqlValue UnsetRecursive(arangodb::aql::Query*, transaction::Methods*,
                                   VPackFunctionParameters const&);
    static AqlValue Keep(arangodb::aql::Query*, transaction::Methods*,
+                        VPackFunctionParameters const&);
+   static AqlValue Translate(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
    static AqlValue Merge(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
@@ -169,20 +189,28 @@ struct Functions {
                        VPackFunctionParameters const&);
    static AqlValue Average(arangodb::aql::Query*, transaction::Methods*,
                            VPackFunctionParameters const&);
-    static AqlValue Sleep(arangodb::aql::Query*, transaction::Methods*,
+   static AqlValue Sleep(arangodb::aql::Query*, transaction::Methods*,
                           VPackFunctionParameters const&);
+   static AqlValue Collections(arangodb::aql::Query*, transaction::Methods*,
+                               VPackFunctionParameters const&);
    static AqlValue RandomToken(arangodb::aql::Query*, transaction::Methods*,
                                VPackFunctionParameters const&);
    static AqlValue Md5(arangodb::aql::Query*, transaction::Methods*,
                        VPackFunctionParameters const&);
    static AqlValue Sha1(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
+   static AqlValue Sha512(arangodb::aql::Query*, transaction::Methods*,
+                        VPackFunctionParameters const&);
    static AqlValue Hash(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
+   static AqlValue IsKey(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
    static AqlValue Unique(arangodb::aql::Query*, transaction::Methods*,
                           VPackFunctionParameters const&);
    static AqlValue SortedUnique(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
+   static AqlValue Sorted(arangodb::aql::Query*, transaction::Methods*,
+                          VPackFunctionParameters const&);
    static AqlValue Union(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
    static AqlValue UnionDistinct(arangodb::aql::Query*, transaction::Methods*,
@@ -210,6 +238,8 @@ struct Functions {
                          VPackFunctionParameters const&);
    static AqlValue Document(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
+   static AqlValue Matches(arangodb::aql::Query*, transaction::Methods*,
+                           VPackFunctionParameters const&);
    static AqlValue Round(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
    static AqlValue Abs(arangodb::aql::Query*, transaction::Methods*,
@@ -306,6 +336,7 @@ struct Functions {
                                     transaction::Methods*,
                                     VPackFunctionParameters const&);
 };
+  
 }
 }
 

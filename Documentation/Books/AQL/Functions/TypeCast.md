@@ -168,5 +168,8 @@ The following type check functions are available:
   strings containing invalid dates such as *"2015-02-31"*. The function will return 
   false for all non-string values, even if some of them may be usable in date functions.
 
+- `IS_KEY(value) → bool`: Check whether *value* is a string that can be used as a
+  document key, i.e. as the value of the *_key* attribute.
+
 - `TYPENAME(value) → typeName`: Return the data type name of *value*. The data type
   name can be either *"null"*, *"bool"*, *"number"*, *"string"*, *"array"* or *"object"*.

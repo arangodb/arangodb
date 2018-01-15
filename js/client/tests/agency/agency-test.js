@@ -46,6 +46,17 @@ function guid() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief shuffle array elements
+////////////////////////////////////////////////////////////////////////////////
+
+function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -75,7 +86,7 @@ function agencyTestSuite () {
   }
 
   var compactionConfig = findAgencyCompactionIntervals();
-  require("console").warn("Agency compaction configuration: ", compactionConfig);
+  require("console").topic("agency=info", "Agency compaction configuration: ", compactionConfig);
 
   function accessAgency(api, list) {
     // We simply try all agency servers in turn until one gives us an HTTP
@@ -95,11 +106,11 @@ function agencyTestSuite () {
           l = agencyLeader.indexOf('/', l+1);
         }
         agencyLeader = agencyLeader.substring(0,l);
-        require('console').warn('Redirected to ' + agencyLeader);
+        require('console').topic("agency=info", 'Redirected to ' + agencyLeader);
       } else if (res.statusCode !== 503) {
         break;
       } else {
-        require('console').warn('Waiting for leader ... ');
+        require('console').topic("agency=info", 'Waiting for leader ... ');
         wait(1.0);
       }
     }
@@ -248,7 +259,7 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a"]]), [{a:13}]);
       var res = accessAgency("write", [[{"/a":14},{"/a":12}]]); // fail precond {a:12}
       assertEqual(res.statusCode, 412);
-      assertEqual(res.bodyParsed, {"results":[0]}); 
+      assertEqual(res.bodyParsed, {"results":[0]});
       writeAndCheck([[{a:{op:"delete"}}]]);
       // fail precond oldEmpty
       res = accessAgency("write",[[{"a":14},{"a":{"oldEmpty":false}}]]); 
@@ -267,7 +278,7 @@ function agencyTestSuite () {
       assertEqual(res.bodyParsed, {"results":[0]});
       // check object precondition
       res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":12}}]]);
-      res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":13}},{"a":{"b":{"c":12}}}]]);
+      res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":13}},{"a":{"old":{"b":{"c":12}}}}]]);
       assertEqual(res.statusCode, 200);
       res = accessAgency("write",[[{"/a/b/c":{"op":"set","new":14}},{"/a":{"old":{"b":{"c":12}}}}]]);
       assertEqual(res.statusCode, 412);
@@ -317,175 +328,174 @@ function agencyTestSuite () {
       res = accessAgency("write",[[{"/b":3},{"/a/b/c":{"in":3},"/a/e":{"in":2}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/b"]]), [{b:3}]);
+      // Permute order of keys and objects within precondition
+      var localObj =
+          {"foo" : "bar",
+           "baz" : {
+             "_id": "5a00203e4b660989b2ae5493", "index": 0,
+             "guid": "7a709cc2-1479-4079-a0a3-009cbe5674f4",
+             "isActive": true, "balance": "$3,072.23",
+             "picture": "http://placehold.it/32x32",
+             "age": 21, "eyeColor": "green", "name":
+             { "first": "Durham", "last": "Duke" },
+             "tags": ["anim","et","id","do","est",1.0,-1024,1024]
+           },
+           "qux" : ["3.14159265359",3.14159265359]
+          };
+      var test;
+      var localKeys = [];
+      for (var i in localObj.baz) {
+        localKeys.push(i);
+      }
+      var permuted;
+      res = accessAgency(
+        "write",
+        [[localObj,
+          {"foo":localObj.bar,
+           "baz":{"old":localObj.baz},
+           "qux":localObj.qux}]]);
+      assertEqual(res.statusCode, 412);
+
+      res = writeAndCheck([[localObj]]);
+      res = writeAndCheck([[localObj, {"foo":localObj.foo,"baz":{"old":localObj.baz},"qux":localObj.qux}]]);
+      res = writeAndCheck(
+        [[localObj, {"baz":{"old":localObj.baz},"foo":localObj.foo,"qux":localObj.qux}]]);
+      res = writeAndCheck(
+        [[localObj, {"baz":{"old":localObj.baz},"qux":localObj.qux,"foo":localObj.foo}]]);
+      res = writeAndCheck(
+        [[localObj, {"qux":localObj.qux,"baz":{"old":localObj.baz},"foo":localObj.foo}]]);
+
+      for (var j in localKeys) {
+        permuted = {};      
+        shuffle(localKeys);
+        for (var k in localKeys) {
+          permuted[localKeys[k]] = localObj.baz[localKeys[k]];
+        }
+        res = writeAndCheck(
+          [[localObj, {"baz":{"old":permuted},"foo":localObj.foo,"qux":localObj.qux}]]);
+        res = writeAndCheck(
+          [[localObj, {"foo":localObj.foo,"qux":localObj.qux,"baz":{"old":permuted}}]]);
+        res = writeAndCheck(
+          [[localObj, {"qux":localObj.qux,"baz":{"old":permuted},"foo":localObj.foo}]]);
+      }
+
+      // Permute order of keys and objects within arrays in preconditions
+      writeAndCheck([[{"a":[{"b":12,"c":13}]}]]);
+      writeAndCheck([[{"a":[{"b":12,"c":13}]},{"a":[{"b":12,"c":13}]}]]);
+      writeAndCheck([[{"a":[{"b":12,"c":13}]},{"a":[{"c":13,"b":12}]}]]);
+
+      localObj = {"b":"Hello world!", "c":3.14159265359, "d":314159265359, "e": -3};
+      var localObk = {"b":1, "c":1.0, "d": 100000000001, "e": -1};
+      localKeys  = [];
+      for (var l in localObj) {
+        localKeys.push(l);
+      }
+      permuted = {};
+      var per2 = {};
+      writeAndCheck([[ { "a" : [localObj,localObk] } ]]);
+      writeAndCheck([[ { "a" : [localObj,localObk] }, {"a" : [localObj,localObk] }]]);
+      for (var m = 0; m < 7; m++) {
+        permuted = {};
+        shuffle(localKeys);
+        for (k in localKeys) {
+          permuted[localKeys[k]] = localObj[localKeys[k]];
+          per2 [localKeys[k]] = localObk[localKeys[k]];
+        }
+        writeAndCheck([[ { "a" : [localObj,localObk] }, {"a" : [permuted,per2] }]]);
+        res = accessAgency("write",
+                           [[ { "a" : [localObj,localObk] }, {"a" : [per2,permuted] }]]);
+        assertEqual(res.statusCode, 412);        
+      }
+      
     },
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test clientIds
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief test clientIds
+  ////////////////////////////////////////////////////////////////////////////////
 
     testClientIds : function () {
       var res;
+      var cur;
 
+      res = accessAgency("write", [[{"a":12}]]).bodyParsed;
+      cur = res.results[0];
+
+      writeAndCheck([[{"/a":12}]]);
       var id = [guid(),guid(),guid(),guid(),guid(),guid(),
                 guid(),guid(),guid(),guid(),guid(),guid(),
                 guid(),guid(),guid()];
       var query = [{"a":12},{"a":13},{"a":13}];
       var pre = [{},{"a":12},{"a":12}];
+      cur += 2;
 
-      writeAndCheck([[query[0], pre[0], id[0]]]);
-      res = accessAgency("inquire",[id[0]]).bodyParsed;
-      assertEqual(res.length, 1);
-      assertEqual(res[0].length, 1);
-      assertEqual(res[0][0].query, query[0]);
+      var wres = accessAgency("write", [[query[0], pre[0], id[0]]]);
+      res = accessAgency("inquire",[id[0]]);
+      wres.bodyParsed.inquired = true;
+      assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
 
-      writeAndCheck([[query[1], pre[1], id[0]]]);
-      res = accessAgency("inquire",[id[0]]).bodyParsed;
-      assertEqual(res.length, 1);
-      assertEqual(res[0].length, 2);
-      assertEqual(res[0][0].query, query[0]);
-      assertEqual(res[0][1].query, query[1]);
-
-      res = accessAgency("write",[[query[1], pre[1], id[2]]]);
+      wres = accessAgency("write", [[query[1], pre[1], id[0]]]);
+      res = accessAgency("inquire",[id[0]]);
+      assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
+      cur++;
+      
+      wres = accessAgency("write",[[query[1], pre[1], id[2]]]);
+      assertEqual(wres.statusCode,412);
+      res = accessAgency("inquire",[id[2]]);
       assertEqual(res.statusCode,412);
-      res = accessAgency("inquire",[id[2]]).bodyParsed;
-      assertEqual(res[0].length, 0);
+      assertEqual(res.bodyParsed, {"results":[0],"inquired":true});
+      assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
 
-      res = accessAgency("write",[[query[0], pre[0], id[3]],
-                                  [query[1], pre[1], id[3]]]);
+      wres = accessAgency("write",[[query[0], pre[0], id[3]],
+                                   [query[1], pre[1], id[3]]]);
+      assertEqual(wres.statusCode,200);
+      cur += 2;
+      res = accessAgency("inquire",[id[3]]);
+      assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
+      assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
       assertEqual(res.statusCode,200);
-      res = accessAgency("inquire",[id[3]]).bodyParsed;
-      assertEqual(res.length, 1);
-      assertEqual(res[0][0].query, query[0]);
-      assertEqual(res[0][1].query, query[1]);
-      
-      res = accessAgency("write",[[query[0], pre[0], id[4]],
-                                  [query[1], pre[1], id[4]],
-                                  [query[2], pre[2], id[4]]]);
-      assertEqual(res.statusCode,412);
-      res = accessAgency("inquire",[id[4]]).bodyParsed;
-      assertEqual(res.length, 1);
-      assertEqual(res[0].length, 2);
-      assertEqual(res[0][0].query, query[0]);
-      assertEqual(res[0][1].query, query[1]);
-      
-      res = accessAgency("write",[[query[0], pre[0], id[5]],
-                                  [query[2], pre[2], id[5]],
-                                  [query[1], pre[1], id[5]]]);
-      assertEqual(res.statusCode,412);
 
-      res = accessAgency("inquire",[id[5]]).bodyParsed;
-      assertEqual(res.length, 1);
-      assertEqual(res[0].length, 2);
-      assertEqual(res[0][0].query, query[0]);
-      assertEqual(res[0][1].query, query[1]);
+
+      wres = accessAgency("write",[[query[0], pre[0], id[4]],
+                                   [query[1], pre[1], id[4]],
+                                   [query[2], pre[2], id[4]]]);
+      assertEqual(wres.statusCode,412);
+      cur += 2;
+      res = accessAgency("inquire",[id[4]]);
+      assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
+      assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
+      assertEqual(res.statusCode,200);
       
-      res = accessAgency("write",[[query[2], pre[2], id[6]],
-                                  [query[0], pre[0], id[6]],
-                                  [query[1], pre[1], id[6]]]);
-      assertEqual(res.statusCode,412);
-      res = accessAgency("inquire",[id[6]]).bodyParsed;
-      assertEqual(res.length, 1);
-      assertEqual(res[0].length, 2);
-      assertEqual(res[0][0].query, query[0]);
-      assertEqual(res[0][1].query, query[1]);
+      wres = accessAgency("write",[[query[0], pre[0], id[5]],
+                                   [query[2], pre[2], id[5]],
+                                   [query[1], pre[1], id[5]]]);
+      assertEqual(wres.statusCode,412);
+      cur += 2;
+      res = accessAgency("inquire",[id[5]]);
+      assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
+      assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
+      assertEqual(res.statusCode,200);
       
-      res = accessAgency("write",[[query[2], pre[2], id[7]],
+      wres = accessAgency("write",[[query[2], pre[2], id[6]],
+                                   [query[0], pre[0], id[6]],
+                                   [query[1], pre[1], id[6]]]);
+      assertEqual(wres.statusCode,412);
+      cur += 2;
+      res = accessAgency("inquire",[id[6]]);
+      assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
+      assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[2]);
+      assertEqual(res.statusCode,200);
+      
+      wres = accessAgency("write",[[query[2], pre[2], id[7]],
                                   [query[0], pre[0], id[8]],
                                   [query[1], pre[1], id[9]]]);
+      assertEqual(wres.statusCode,412);
+      cur += 2;
+      res = accessAgency("inquire",[id[7],id[8],id[9]]);
       assertEqual(res.statusCode,412);
-      res = accessAgency("inquire",[id[7],id[8],id[9]]).bodyParsed;
-      assertEqual(res.length, 3);
-      assertEqual(res[0].length, 0);
-      assertEqual(res[1].length, 1);
-      assertEqual(res[1][0].query, query[0]);
-      assertEqual(res[2].length, 1);
-      assertEqual(res[2][0].query, query[1]);
+      assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
 
-      res = accessAgency("inquire",[id[9],id[7],id[8]]).bodyParsed;
-      assertEqual(res.length, 3);
-      assertEqual(res[0].length, 1);
-      assertEqual(res[0][0].query, query[1]);
-      assertEqual(res[1].length, 0);
-      assertEqual(res[2].length, 1);
-      assertEqual(res[2][0].query, query[0]);
-
-      res = accessAgency("inquire",[id[8],id[9],id[7]]).bodyParsed;
-      assertEqual(res.length, 3);
-      assertEqual(res[0].length, 1);
-      assertEqual(res[0][0].query, query[0]);
-      assertEqual(res[1].length, 1);
-      assertEqual(res[1][0].query, query[1]);
-      assertEqual(res[2].length, 0);
-
-      res = accessAgency("inquire",[id[7],id[9],id[8]]).bodyParsed;
-      assertEqual(res.length, 3);
-      assertEqual(res[0].length, 0);
-      assertEqual(res[1].length, 1);
-      assertEqual(res[1][0].query, query[1]);
-      assertEqual(res[2].length, 1);
-      assertEqual(res[2][0].query, query[0]);
-
-      res = accessAgency("inquire",[id[8],id[7],id[9]]).bodyParsed;
-      assertEqual(res.length, 3);
-      assertEqual(res[0].length, 1);
-      assertEqual(res[0][0].query, query[0]);
-      assertEqual(res[1].length, 0);
-      assertEqual(res[2].length, 1);
-      assertEqual(res[2][0].query, query[1]);
-
-      res = accessAgency("inquire",[id[7],id[8],id[9]]).bodyParsed;
-      assertEqual(res.length, 3);
-      assertEqual(res[0].length, 0);
-      assertEqual(res[1].length, 1);
-      assertEqual(res[1][0].query, query[0]);
-      assertEqual(res[2].length, 1);
-      assertEqual(res[2][0].query, query[1]);
-      
-      res = accessAgency("inquire",[id[7],id[8],id[9]]).bodyParsed;
-      assertEqual(res.length, 3);
-      assertEqual(res[0].length, 0);
-      assertEqual(res[1].length, 1);
-      assertEqual(res[1][0].query, query[0]);
-      assertEqual(res[2].length, 1);
-      assertEqual(res[2][0].query, query[1]);
-      
-      res = accessAgency("write",[[query[2], pre[2], id[10]],
-                                  [query[0], pre[0], id[11]],
-                                  [query[1], pre[1], id[12]],
-                                  [query[0], pre[0], id[12]]]);
-
-      res = accessAgency("inquire",[id[10],id[11],id[12]]).bodyParsed;
-      assertEqual(res.length, 3);
-      assertEqual(res[0].length, 0);
-      assertEqual(res[1].length, 1);
-      assertEqual(res[1][0].query, query[0]);
-      assertEqual(res[2].length, 2);
-      assertEqual(res[2][0].query, query[1]);
-      assertEqual(res[2][1].query, query[0]);
-      
-      res = accessAgency("transact",[[query[0], pre[0], id[13]],
-                                     [query[2], pre[2], id[13]],
-                                     [query[1], pre[1], id[13]],
-                                     ["a"]]);
-
-      
-      assertEqual(res.statusCode,412);
-      assertEqual(res.bodyParsed.length, 4);
-      assertEqual(res.bodyParsed[0] > 0, true);
-      assertEqual(res.bodyParsed[1] > 0, true);
-      assertEqual(res.bodyParsed[2], {a : 13});
-      assertEqual(res.bodyParsed[3], query[1]);
-
-      res = accessAgency("inquire",[id[13]]).bodyParsed;
-      assertEqual(res.length, 1);
-      assertEqual(res[0].length, 2);
-      assertEqual(res[0][0].query, query[0]);
-      assertEqual(res[0][1].query, query[2]);
-      
     },
 
-    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test document/transaction assignment
 ////////////////////////////////////////////////////////////////////////////////
@@ -494,7 +504,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
                   [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
-      writeAndCheck(  [[{"a":{"_id":"576d1b7becb6374e24ed5a04","index":0,"guid":"60ffa50e-0211-4c60-a305-dcc8063ae2a5","isActive":true,"balance":"$1,050.96","picture":"http://placehold.it/32x32","age":30,"eyeColor":"green","name":{"first":"Maura","last":"Rogers"},"company":"GENESYNK","email":"maura.rogers@genesynk.net","phone":"+1(804)424-2766","address":"501RiverStreet,Wollochet,Vermont,6410","about":"Temporsintofficiaipsumidnullalaboreminimlaborisinlaborumincididuntexcepteurdolore.Sunteumagnadolaborumsunteaquisipsumaliquaaliquamagnaminim.Cupidatatadproidentullamconisietofficianisivelitculpaexcepteurqui.Suntautemollitconsecteturnulla.Commodoquisidmagnaestsitelitconsequatdoloreupariaturaliquaetid.","registered":"Friday,November28,20148:01AM","latitude":"-30.093679","longitude":"10.469577","tags":["laborum","proident","est","veniam","sunt"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CarverDurham"},{"id":1,"name":"DanielleMalone"},{"id":2,"name":"ViolaBell"}],"greeting":"Hello,Maura!Youhave9unreadmessages.","favoriteFruit":"banana"}}],[{"!!@#$%^&*)":{"_id":"576d1b7bb2c1af32dd964c22","index":1,"guid":"e6bda5a9-54e3-48ea-afd7-54915fec48c2","isActive":false,"balance":"$2,631.75","picture":"http://placehold.it/32x32","age":40,"eyeColor":"blue","name":{"first":"Jolene","last":"Todd"},"company":"QUANTASIS","email":"jolene.todd@quantasis.us","phone":"+1(954)418-2311","address":"818ButlerStreet,Berwind,Colorado,2490","about":"Commodoesseveniamadestirureutaliquipduistempor.Auteeuametsuntessenisidolorfugiatcupidatatsintnulla.Sitanimincididuntelitculpasunt.","registered":"Thursday,June12,201412:08AM","latitude":"-7.101063","longitude":"4.105685","tags":["ea","est","sunt","proident","pariatur"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SwansonMcpherson"},{"id":1,"name":"YoungTyson"},{"id":2,"name":"HinesSandoval"}],"greeting":"Hello,Jolene!Youhave5unreadmessages.","favoriteFruit":"strawberry"}}],[{"1234567890":{"_id":"576d1b7b79527b6201ed160c","index":2,"guid":"2d2d7a45-f931-4202-853d-563af252ca13","isActive":true,"balance":"$1,446.93","picture":"http://placehold.it/32x32","age":28,"eyeColor":"blue","name":{"first":"Pickett","last":"York"},"company":"ECSTASIA","email":"pickett.york@ecstasia.me","phone":"+1(901)571-3225","address":"556GrovePlace,Stouchsburg,Florida,9119","about":"Idnulladolorincididuntirurepariaturlaborumutmolliteavelitnonveniaminaliquip.Adametirureesseanimindoloreduisproidentdeserunteaconsecteturincididuntconsecteturminim.Ullamcoessedolorelitextemporexcepteurexcepteurlaboreipsumestquispariaturmagna.ExcepteurpariaturexcepteuradlaborissitquieiusmodmagnalaborisincididuntLoremLoremoccaecat.","registered":"Thursday,January28,20165:20PM","latitude":"-56.18036","longitude":"-39.088125","tags":["ad","velit","fugiat","deserunt","sint"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"BarryCleveland"},{"id":1,"name":"KiddWare"},{"id":2,"name":"LangBrooks"}],"greeting":"Hello,Pickett!Youhave10unreadmessages.","favoriteFruit":"strawberry"}}],[{"":{"_id":"576d1b7bc674d071a2bccc05","index":3,"guid":"14b44274-45c2-4fd4-8c86-476a286cb7a2","isActive":true,"balance":"$1,861.79","picture":"http://placehold.it/32x32","age":27,"eyeColor":"brown","name":{"first":"Felecia","last":"Baird"},"company":"SYBIXTEX","email":"felecia.baird@sybixtex.name","phone":"+1(821)498-2971","address":"571HarrisonAvenue,Roulette,Missouri,9284","about":"Adesseofficianisiexercitationexcepteurametconsecteturessequialiquaquicupidatatincididunt.Nostrudullamcoutlaboreipsumduis.ConsequatsuntlaborumadLoremeaametveniamesseoccaecat.","registered":"Monday,December21,20156:50AM","latitude":"0.046813","longitude":"-13.86172","tags":["velit","qui","ut","aliquip","eiusmod"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CeliaLucas"},{"id":1,"name":"HensonKline"},{"id":2,"name":"ElliottWalker"}],"greeting":"Hello,Felecia!Youhave9unreadmessages.","favoriteFruit":"apple"}}],[{"|}{[]αв¢∂єƒgαв¢∂єƒg":{"_id":"576d1b7be4096344db437417","index":4,"guid":"f789235d-b786-459f-9288-0d2f53058d02","isActive":false,"balance":"$2,011.07","picture":"http://placehold.it/32x32","age":28,"eyeColor":"brown","name":{"first":"Haney","last":"Burks"},"company":"SPACEWAX","email":"haney.burks@spacewax.info","phone":"+1(986)587-2735","address":"197OtsegoStreet,Chesterfield,Delaware,5551","about":"Quisirurenostrudcupidatatconsequatfugiatvoluptateproidentvoluptate.Duisnullaadipisicingofficiacillumsuntlaborisdeseruntirure.Laborumconsecteturelitreprehenderitestcillumlaboresintestnisiet.Suntdeseruntexercitationutauteduisaliquaametetquisvelitconsecteturirure.Auteipsumminimoccaecatincididuntaute.Irureenimcupidatatexercitationutad.Minimconsecteturadipisicingcommodoanim.","registered":"Friday,January16,20155:29AM","latitude":"86.036358","longitude":"-1.645066","tags":["occaecat","laboris","ipsum","culpa","est"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SusannePacheco"},{"id":1,"name":"SpearsBerry"},{"id":2,"name":"VelazquezBoyle"}],"greeting":"Hello,Haney!Youhave10unreadmessages.","favoriteFruit":"apple"}}]]);
+      writeAndCheck([[{"a":{"_id":"576d1b7becb6374e24ed5a04","index":0,"guid":"60ffa50e-0211-4c60-a305-dcc8063ae2a5","isActive":true,"balance":"$1,050.96","picture":"http://placehold.it/32x32","age":30,"eyeColor":"green","name":{"first":"Maura","last":"Rogers"},"company":"GENESYNK","email":"maura.rogers@genesynk.net","phone":"+1(804)424-2766","address":"501RiverStreet,Wollochet,Vermont,6410","about":"Temporsintofficiaipsumidnullalaboreminimlaborisinlaborumincididuntexcepteurdolore.Sunteumagnadolaborumsunteaquisipsumaliquaaliquamagnaminim.Cupidatatadproidentullamconisietofficianisivelitculpaexcepteurqui.Suntautemollitconsecteturnulla.Commodoquisidmagnaestsitelitconsequatdoloreupariaturaliquaetid.","registered":"Friday,November28,20148:01AM","latitude":"-30.093679","longitude":"10.469577","tags":["laborum","proident","est","veniam","sunt"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CarverDurham"},{"id":1,"name":"DanielleMalone"},{"id":2,"name":"ViolaBell"}],"greeting":"Hello,Maura!Youhave9unreadmessages.","favoriteFruit":"banana"}}],[{"!!@#$%^&*)":{"_id":"576d1b7bb2c1af32dd964c22","index":1,"guid":"e6bda5a9-54e3-48ea-afd7-54915fec48c2","isActive":false,"balance":"$2,631.75","picture":"http://placehold.it/32x32","age":40,"eyeColor":"blue","name":{"first":"Jolene","last":"Todd"},"company":"QUANTASIS","email":"jolene.todd@quantasis.us","phone":"+1(954)418-2311","address":"818ButlerStreet,Berwind,Colorado,2490","about":"Commodoesseveniamadestirureutaliquipduistempor.Auteeuametsuntessenisidolorfugiatcupidatatsintnulla.Sitanimincididuntelitculpasunt.","registered":"Thursday,June12,201412:08AM","latitude":"-7.101063","longitude":"4.105685","tags":["ea","est","sunt","proident","pariatur"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SwansonMcpherson"},{"id":1,"name":"YoungTyson"},{"id":2,"name":"HinesSandoval"}],"greeting":"Hello,Jolene!Youhave5unreadmessages.","favoriteFruit":"strawberry"}}],[{"1234567890":{"_id":"576d1b7b79527b6201ed160c","index":2,"guid":"2d2d7a45-f931-4202-853d-563af252ca13","isActive":true,"balance":"$1,446.93","picture":"http://placehold.it/32x32","age":28,"eyeColor":"blue","name":{"first":"Pickett","last":"York"},"company":"ECSTASIA","email":"pickett.york@ecstasia.me","phone":"+1(901)571-3225","address":"556GrovePlace,Stouchsburg,Florida,9119","about":"Idnulladolorincididuntirurepariaturlaborumutmolliteavelitnonveniaminaliquip.Adametirureesseanimindoloreduisproidentdeserunteaconsecteturincididuntconsecteturminim.Ullamcoessedolorelitextemporexcepteurexcepteurlaboreipsumestquispariaturmagna.ExcepteurpariaturexcepteuradlaborissitquieiusmodmagnalaborisincididuntLoremLoremoccaecat.","registered":"Thursday,January28,20165:20PM","latitude":"-56.18036","longitude":"-39.088125","tags":["ad","velit","fugiat","deserunt","sint"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"BarryCleveland"},{"id":1,"name":"KiddWare"},{"id":2,"name":"LangBrooks"}],"greeting":"Hello,Pickett!Youhave10unreadmessages.","favoriteFruit":"strawberry"}}],[{"@":{"_id":"576d1b7bc674d071a2bccc05","index":3,"guid":"14b44274-45c2-4fd4-8c86-476a286cb7a2","isActive":true,"balance":"$1,861.79","picture":"http://placehold.it/32x32","age":27,"eyeColor":"brown","name":{"first":"Felecia","last":"Baird"},"company":"SYBIXTEX","email":"felecia.baird@sybixtex.name","phone":"+1(821)498-2971","address":"571HarrisonAvenue,Roulette,Missouri,9284","about":"Adesseofficianisiexercitationexcepteurametconsecteturessequialiquaquicupidatatincididunt.Nostrudullamcoutlaboreipsumduis.ConsequatsuntlaborumadLoremeaametveniamesseoccaecat.","registered":"Monday,December21,20156:50AM","latitude":"0.046813","longitude":"-13.86172","tags":["velit","qui","ut","aliquip","eiusmod"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"CeliaLucas"},{"id":1,"name":"HensonKline"},{"id":2,"name":"ElliottWalker"}],"greeting":"Hello,Felecia!Youhave9unreadmessages.","favoriteFruit":"apple"}}],[{"|}{[]αв¢∂єƒgαв¢∂єƒg":{"_id":"576d1b7be4096344db437417","index":4,"guid":"f789235d-b786-459f-9288-0d2f53058d02","isActive":false,"balance":"$2,011.07","picture":"http://placehold.it/32x32","age":28,"eyeColor":"brown","name":{"first":"Haney","last":"Burks"},"company":"SPACEWAX","email":"haney.burks@spacewax.info","phone":"+1(986)587-2735","address":"197OtsegoStreet,Chesterfield,Delaware,5551","about":"Quisirurenostrudcupidatatconsequatfugiatvoluptateproidentvoluptate.Duisnullaadipisicingofficiacillumsuntlaborisdeseruntirure.Laborumconsecteturelitreprehenderitestcillumlaboresintestnisiet.Suntdeseruntexercitationutauteduisaliquaametetquisvelitconsecteturirure.Auteipsumminimoccaecatincididuntaute.Irureenimcupidatatexercitationutad.Minimconsecteturadipisicingcommodoanim.","registered":"Friday,January16,20155:29AM","latitude":"86.036358","longitude":"-1.645066","tags":["occaecat","laboris","ipsum","culpa","est"],"range":[0,1,2,3,4,5,6,7,8,9],"friends":[{"id":0,"name":"SusannePacheco"},{"id":1,"name":"SpearsBerry"},{"id":2,"name":"VelazquezBoyle"}],"greeting":"Hello,Haney!Youhave10unreadmessages.","favoriteFruit":"apple"}}]]);
       assertEqual(readAndCheck([["/!!@#$%^&*)/address"]]),[{"!!@#$%^&*)":{"address": "818ButlerStreet,Berwind,Colorado,2490"}}]);
     },
 
@@ -535,7 +545,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,4]},"e":12},"d":false}],
                      [{"a":{"b":{"c":[1,2,3]}}}]]);
       assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
-                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
+                  [{a:{}},{a:{b:{c:[1,2,3]},d:false}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -925,13 +935,13 @@ function agencyTestSuite () {
           bodyParsed.results[0];
 
       let count = compactionConfig.compactionStepSize - 100 - cur;
-      require("console").warn("Avoiding log compaction for now with", count,
+      require("console").topic("agency=info", "Avoiding log compaction for now with", count,
         "keys, from log entry", cur, "on.");
       doCountTransactions(count, 0);
 
       // Now trigger one log compaction and check all keys:
       let count2 = compactionConfig.compactionStepSize + 100 - (cur + count);
-      require("console").warn("Provoking log compaction for now with", count2,
+      require("console").topic("agency=info", "Provoking log compaction for now with", count2,
         "keys, from log entry", cur + count, "on.");
       doCountTransactions(count2, count);
 
@@ -939,7 +949,7 @@ function agencyTestSuite () {
       // comparison to the compaction interval (with the default settings),
       let count3 = 2 * compactionConfig.compactionStepSize + 100 
         - (cur + count + count2);
-      require("console").warn("Provoking second log compaction for now with", 
+      require("console").topic("agency=info", "Provoking second log compaction for now with",
         count3, "keys, from log entry", cur + count + count2, "on.");
       doCountTransactions(count3, count + count2);
     },
@@ -949,14 +959,71 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testHugeTransactionPackage : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
       var huge = [];
       for (var i = 0; i < 20000; ++i) {
         huge.push([{"a":{"op":"increment"}}]);
       }
       writeAndCheck(huge);
       assertEqual(readAndCheck([["a"]]), [{"a":20000}]);
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Huge transaction package, inc/dec
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionWithIncDec : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+      var trx = [];
+      for (var i = 0; i < 100; ++i) {
+        trx.push([{"a":{"op":"increment"}}]);
+        trx.push([{"a":{"op":"decrement"}}]);
+      }
+      writeAndCheck(trx);
+      assertEqual(readAndCheck([["a"]]), [{"a":0}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transaction, update of same key
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionUpdateSameKey : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+      var trx = [];
+      trx.push([{"a":"foo"}]);
+      trx.push([{"a":"bar"}]);
+      writeAndCheck(trx);
+      assertEqual(readAndCheck([["a"]]), [{"a":"bar"}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transaction, insert and remove of same key
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionInsertRemoveSameKey : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+      var trx = [];
+      trx.push([{"a":"foo"}]);
+      trx.push([{"a":{"op":"delete"}}]);
+      writeAndCheck(trx);
+      assertEqual(readAndCheck([["/a"]]), [{}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Huge transaction package, all different keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionDifferentKeys : function() {
+      writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
+      var huge = [], i;
+      for (i = 0; i < 100; ++i) {
+        huge.push([{["a" + i]:{"op":"increment"}}]);
+      }
+      writeAndCheck(huge);
+      for (i = 0; i < 100; ++i) {
+        assertEqual(readAndCheck([["a" + i]]), [{["a" + i]:1}]);
+      }
+    }
   };
 }
 

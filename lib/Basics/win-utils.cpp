@@ -31,6 +31,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <crtdbg.h>
+#include <atlstr.h>
 #include <VersionHelpers.h>
 
 #include "Logger/Logger.h"
@@ -69,61 +70,6 @@ int getpagesize(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Calls the windows Sleep function which always sleeps for milliseconds
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_sleep(unsigned long waitTime) { Sleep(waitTime * 1000); }
-
-////////////////////////////////////////////////////////////////////////////////
-// Calls a timer which waits for a signal after the elapsed time in 
-// microseconds. The timer is accurate to 100nanoseconds.
-// This is only a Windows workaround, use usleep, which is mapped to 
-// TRI_usleep on Windows!
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_usleep(unsigned long waitTime) {
-  int result;
-  HANDLE hTimer = NULL;            // stores the handle of the timer object
-  LARGE_INTEGER wTime;             // essentially a 64bit number
-  wTime.QuadPart = waitTime * 10;  // *10 to change to microseconds
-  wTime.QuadPart =
-      -wTime.QuadPart;  // negative indicates relative time elapsed,
-
-  // Create an unnamed waitable timer.
-  hTimer = CreateWaitableTimer(NULL, 1, NULL);
-
-  if (hTimer == NULL) {
-    // not much we can do at this low level
-    return;
-  }
-
-  if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "internal error in TRI_usleep()";
-    FATAL_ERROR_EXIT();
-  }
-
-  // Set timer to wait for indicated micro seconds.
-  if (!SetWaitableTimer(hTimer, &wTime, 0, NULL, NULL, 0)) {
-    // not much we can do at this low level
-    CloseHandle(hTimer);
-    return;
-  }
-
-  // Wait for the timer
-  result = WaitForSingleObject(hTimer, INFINITE);
-
-  if (result != WAIT_OBJECT_0) {
-    CloseHandle(hTimer);
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "couldn't wait for timer in TRI_usleep()";
-    FATAL_ERROR_EXIT();
-  }
-
-  CloseHandle(hTimer);
-  // todo: go through what the result is e.g. WAIT_OBJECT_0
-  return;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Sets up a handler when invalid (win) handles are passed to a windows
 // function.
 // This is not of much use since no values can be returned. All we can do
@@ -137,51 +83,6 @@ static void InvalidParameterHandler(
     unsigned int line,          // line within file - NULL
     uintptr_t pReserved) {      // in case microsoft forget something
   LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Invalid handle parameter passed";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Called from the 'main' and performs any initialization requirements which
-// are specific to windows.
-//
-// If this function returns 0, then no errors encountered. If < 0, then the
-// calling function should terminate the application. If > 0, then the
-// calling function should decide what to do.
-////////////////////////////////////////////////////////////////////////////////
-
-int finalizeWindows(const TRI_win_finalize_e finalizeWhat, char const* data) {
-  // ............................................................................
-  // The data is used to transport information from the calling function to here
-  // it may be NULL (and will be in most cases)
-  // ............................................................................
-
-  switch (finalizeWhat) {
-    case TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL: {
-      /*
-        TODO: we can't always determine when to call this properly.
-        if we have closed libev, its ok, if we have active socket operations
-        these will fail with errors.
-      int result =
-        WSACleanup();  // could this cause error on server termination?
-      if (result != 0) {
-        // can not use LOG_ etc here since the logging may have terminated
-        printf(
-            "ERROR: Could not perform a valid Winsock2 cleanup. WSACleanup "
-            "returned error %d.",
-            result);
-        return -1;
-      }
-      */
-      return 0;
-    }
-
-    default: {
-      // can not use LOG_ etc here since the logging may have terminated
-      printf("ERROR: Invalid windows finalization called");
-      return -1;
-    }
-  }
-
-  return -1;
 }
 
 int initializeWindows(const TRI_win_initialize_e initializeWhat,
@@ -598,29 +499,22 @@ void ADB_WindowsExitFunction(int exitCode, void* data) {
   if (serviceAbort != nullptr) {
     serviceAbort();
   }
-  int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
-
-  if (res != 0) {
-    exit(EXIT_FAILURE);
-  }
 
   exit(exitCode);
 }
 
 // Detect cygwin ssh / terminals
-int _cyg_isatty(int fd)
-{
+int _cyg_isatty(int fd) {
   // detect standard windows ttys:
   if (_isatty (fd)) {
     return 1;
   }
 
   // stupid hack to allow forcing a tty..need to understand this better
-  // and create a thorugh fix..without this the logging stuff will not
+  // and create a thorough fix..without this the logging stuff will not
   // log to the foreground which is super annoying for debugging the
   // resilience tests
-  char *forcetty = nullptr;
-  forcetty = getenv("FORCE_WINDOWS_TTY");
+  char* forcetty = getenv("FORCE_WINDOWS_TTY");
   if (forcetty != nullptr) {
     return strcmp(forcetty, "1") == 0;
   }
@@ -711,8 +605,7 @@ int _is_cyg_tty(int fd)
   return 0;
 }
 
-bool terminalKnowsANSIColors()
-{
+bool terminalKnowsANSIColors() {
   if (_is_cyg_tty (STDOUT_FILENO)) {
     // Its a cygwin shell, expected to understand ANSI color codes.
     return true;
@@ -720,4 +613,17 @@ bool terminalKnowsANSIColors()
   
   // Windows 8 onwards the CMD window understands ANSI-Colorcodes.
   return IsWindows8OrGreater();
+}
+
+std::string getFileNameFromHandle(HANDLE fileHandle) {
+  char  buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH];
+  FILE_NAME_INFO *FileInformation = (FILE_NAME_INFO*) buff;
+
+  if (!GetFileInformationByHandleEx(fileHandle,
+                                    FileNameInfo,
+                                    FileInformation, sizeof(buff)
+                                    )) {
+    return std::string();
+  }
+  return std::string((LPCTSTR)CString(FileInformation->FileName));
 }

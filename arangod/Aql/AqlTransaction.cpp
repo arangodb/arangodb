@@ -55,8 +55,9 @@ AqlTransaction* AqlTransaction::create(
 /// distributed AQL query running on the coordinator
 transaction::Methods* AqlTransaction::clone(
     transaction::Options const& options) const {
-  return new AqlTransaction(transaction::StandaloneContext::Create(vocbase()),
-                            &_collections, options, false);
+  
+  auto ctx = transaction::StandaloneContext::Create(vocbase());
+  return new AqlTransaction(ctx, &_collections, options, false);
 }
 
 /// @brief add a collection to the transaction
@@ -88,7 +89,7 @@ Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
     auto startTime = TRI_microtime();
     auto endTime = startTime + 60.0;
     do {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
       if (TRI_microtime() > endTime) {
         break;
       }

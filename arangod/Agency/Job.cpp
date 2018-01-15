@@ -130,7 +130,7 @@ std::string Job::randomIdleGoodAvailableServer(
   // ungood;
   try {
     for (auto const& srv : snap(healthPrefix).children()) {
-      if ((*srv.second)("Status").toJson() != "GOOD") {
+      if ((*srv.second)("Status").getString() != "GOOD") {
         ex.push_back(srv.first);
       }
     }
@@ -290,7 +290,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD
   std::unordered_map<std::string,bool> good;
 
   for (const auto& i : snap(healthPrefix).children()) {
-    good[i.first] = ((*i.second)("Status").toJson() == "GOOD");
+    good[i.first] = ((*i.second)("Status").getString() == "GOOD");
   }
 
   std::unordered_map<std::string,size_t> currentServers;

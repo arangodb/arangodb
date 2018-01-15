@@ -78,6 +78,8 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
 
+  uint64_t numCommits() const { return _numCommits; }
+  uint64_t numInternal() const { return _numInternal; }
   uint64_t numInserts() const { return _numInserts; }
   uint64_t numUpdates() const { return _numUpdates; }
   uint64_t numRemoves() const { return _numRemoves; }
@@ -86,7 +88,7 @@ class RocksDBTransactionState final : public TransactionState {
   void resetLogState() { _lastUsedCollection = 0; }
 
   inline bool hasOperations() const {
-    return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
+    return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0 || _numInternal > 0);
   }
 
   bool hasFailedOperations() const override {
@@ -102,9 +104,22 @@ class RocksDBTransactionState final : public TransactionState {
       TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
       TRI_voc_document_operation_e operationType, uint64_t operationSize,
       uint64_t keySize);
+  
+  /// @brief add an internal operation for a transaction
+  RocksDBOperationResult addInternalOperation(
+      uint64_t operationSize, uint64_t keySize);
 
   RocksDBMethods* rocksdbMethods();
 
+  /// @brief insert a snapshot into a (not yet started) transaction.
+  ///        Only ever valid on a trx in CREATED state
+  void donateSnapshot(rocksdb::Snapshot const* snap);
+  /// @brief steal snapshot of this transaction.
+  /// Does not work on a single operation
+  rocksdb::Snapshot const* stealSnapshot();
+  
+  /// @brief Rocksdb sequence number of snapshot. Works while trx
+  ///        has either a snapshot or a transaction
   uint64_t sequenceNumber() const;
 
   static RocksDBTransactionState* toState(transaction::Methods* trx) {
@@ -123,39 +138,47 @@ class RocksDBTransactionState final : public TransactionState {
 
   /// @brief make some internal preparations for accessing this state in
   /// parallel from multiple threads. READ-ONLY transactions
-  void prepareForParallelReads();
+  void prepareForParallelReads() { _parallel = true; }
   /// @brief in parallel mode. READ-ONLY transactions
   bool inParallelMode() const { return _parallel; }
-  /// @brief temporarily lease a Builder object
+  /// @brief temporarily lease a Builder object. Not thread safe
   RocksDBKey* leaseRocksDBKey();
-  /// @brief return a temporary RocksDBKey object
+  /// @brief return a temporary RocksDBKey object. Not thread safe
   void returnRocksDBKey(RocksDBKey* key);
 
  private:
+  /// @brief create a new rocksdb transaction
   void createTransaction();
+  /// @brief delete transaction, snapshot and cache trx
+  void cleanupTransaction() noexcept;
+  /// @brief internally commit a transaction
   arangodb::Result internalCommit();
+  /// @brief check sizes and call internalCommit if too big
+  void checkIntermediateCommit(uint64_t newSize);
 
  private:
-  /// rocksdb transaction may be null
-  std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
-  /// rocksdb snapshot, may be null
+  /// @brief rocksdb transaction may be null for read only transactions
+  rocksdb::Transaction* _rocksTransaction;
+  /// @brief rocksdb snapshot, is null if _rocksTransaction is set
   rocksdb::Snapshot const* _snapshot;
-  /// write options used
+  /// @brief write options used
   rocksdb::WriteOptions _rocksWriteOptions;
-  /// read options which must be used to guarantee isolation
+  ///@brief read options which must be used to guarantee isolation
   rocksdb::ReadOptions _rocksReadOptions;
-  /// cache transaction to unblock blacklisted keys
+  /// @brief cache transaction to unblock blacklisted keys
   cache::Transaction* _cacheTx;
-  // wrapper to use outside this class to access rocksdb
+  /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
 
+  uint64_t _numCommits;
+  uint64_t _numInternal;
   // if a transaction gets bigger than these values then an automatic
   // intermediate commit will be done
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;
 
-  /// Last collection used for transaction
+  /// @brief Last collection used for transaction. Used for WAL
   TRI_voc_cid_t _lastUsedCollection;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// store the number of log entries in WAL
@@ -163,6 +186,7 @@ class RocksDBTransactionState final : public TransactionState {
 #endif
   SmallVector<RocksDBKey*, 32>::allocator_type::arena_type _arena;
   SmallVector<RocksDBKey*, 32> _keys;
+  /// @brief if true there key buffers will no longer be shared
   bool _parallel;
 };
 

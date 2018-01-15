@@ -42,14 +42,12 @@ using namespace arangodb::aql;
 
 /// @brief creates an executor
 V8Executor::V8Executor(int64_t literalSizeThreshold)
-    : _buffer(nullptr),
-      _constantRegisters(),
+    : _constantRegisters(),
       _literalSizeThreshold(literalSizeThreshold >= 0
                                 ? static_cast<size_t>(literalSizeThreshold)
                                 : defaultLiteralSizeThreshold) {}
 
-/// @brief destroys an executor
-V8Executor::~V8Executor() { delete _buffer; }
+V8Executor::~V8Executor() {}
 
 /// @brief generates an expression execution object
 V8Expression* V8Executor::generateExpression(AstNode const* node) {
@@ -84,7 +82,7 @@ V8Expression* V8Executor::generateExpression(AstNode const* node) {
     v8::Handle<v8::Value> func(compiled->Run());
 
     // exit early if an error occurred
-    HandleV8Error(tryCatch, func,  _buffer, false);
+    HandleV8Error(tryCatch, func, _buffer.get(), false);
 
     // a "simple" expression here is any expression that will only return
     // non-cyclic
@@ -101,8 +99,9 @@ V8Expression* V8Executor::generateExpression(AstNode const* node) {
   }
   else {
     v8::Handle<v8::Value> empty;
-    HandleV8Error(tryCatch, empty,  _buffer, true);
-    
+    TRI_ASSERT(_buffer != nullptr);
+    HandleV8Error(tryCatch, empty, _buffer.get(), true);
+
     // well we're almost sure we never reach this since the above call should throw:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile AQL script code");
   }
@@ -111,8 +110,8 @@ V8Expression* V8Executor::generateExpression(AstNode const* node) {
 /// @brief executes an expression directly
 /// this method is called during AST optimization and will be used to calculate
 /// values for constant expressions
-int V8Executor::executeExpression(Query* query, AstNode const* node, 
-                                VPackBuilder& builder) {
+int V8Executor::executeExpression(Query* query, AstNode const* node,
+                                  VPackBuilder& builder) {
   ISOLATE;
 
   _constantRegisters.clear();
@@ -133,7 +132,7 @@ int V8Executor::executeExpression(Query* query, AstNode const* node,
     v8::Handle<v8::Value> func(compiled->Run());
 
     // exit early if an error occurred
-    HandleV8Error(tryCatch, func,  _buffer, false);
+    HandleV8Error(tryCatch, func, _buffer.get(), false);
 
     TRI_ASSERT(query != nullptr);
 
@@ -153,7 +152,7 @@ int V8Executor::executeExpression(Query* query, AstNode const* node,
       v8g->_query = old;
 
       // exit if execution raised an error
-      HandleV8Error(tryCatch, result,  _buffer, false);
+      HandleV8Error(tryCatch, result, _buffer.get(), false);
     } catch (...) {
       v8g->_query = old;
       throw;
@@ -167,7 +166,7 @@ int V8Executor::executeExpression(Query* query, AstNode const* node,
   }
   else {
     v8::Handle<v8::Value> empty;
-    HandleV8Error(tryCatch, empty, _buffer, true);
+    HandleV8Error(tryCatch, empty, _buffer.get(), true);
 
     // well we're almost sure we never reach this since the above call should throw:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile AQL script code");
@@ -200,7 +199,7 @@ void V8Executor::detectConstantValues(AstNode const* node, AstNodeType previous)
 
   if (previous != NODE_TYPE_FCALL && previous != NODE_TYPE_FCALL_USER) {
     // FCALL has an ARRAY node as its immediate child
-    // however, we do not want to constify this whole array, but just its 
+    // however, we do not want to constify this whole array, but just its
     // individual members
     // otherwise, only the ARRAY node will be marked as constant but not
     // its members. When the code is generated for the function call,
@@ -290,6 +289,8 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
                              bool duringCompile) {
   ISOLATE;
 
+  bool failed = false;
+
   if (tryCatch.HasCaught()) {
     // caught a V8 exception
     if (!tryCatch.CanContinue()) {
@@ -337,8 +338,8 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       std::string details(TRI_ObjectToString(tryCatch.Exception()));
 
       if (buffer) {
-        std::string script(buffer->c_str(), buffer->length());
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << details << " " << script;
+        //std::string script(buffer->c_str(), buffer->length());
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << details << " " << Logger::CHARS(buffer->c_str(), buffer->length());
         details += "\nSee log for more details";
       }
       if (*stacktrace && stacktrace.length() > 0) {
@@ -349,31 +350,25 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, details);
     }
 
-    std::string msg("unknown error in scripting");
-    if (duringCompile) {
-      msg += " (during compilation)";
-    }
-    if (buffer) {
-      std::string script(buffer->c_str(), buffer->length());
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << script;
-      msg += " See log for details";
-    }
-    // we can't figure out what kind of error occurred and throw a generic error
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+    failed = true;
   }
 
   if (result.IsEmpty()) {
+    failed = true;
+  }
+
+  if (failed) {
     std::string msg("unknown error in scripting");
     if (duringCompile) {
       msg += " (during compilation)";
     }
     if (buffer) {
-      std::string script(buffer->c_str(), buffer->length());
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << script;
+      //std::string script(buffer->c_str(), buffer->length());
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << Logger::CHARS(buffer->c_str(), buffer->length());
       msg += " See log for details";
     }
-
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+    // we can't figure out what kind of error occurred and throw a generic error
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, msg);
   }
 
   // if we get here, no exception has been raised
@@ -404,14 +399,14 @@ void V8Executor::generateCodeExpression(AstNode const* node) {
     _buffer->appendText(it.first);
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("\", {}); "));
   }
- 
-  // generate specialized functions for UDFs 
+
+  // generate specialized functions for UDFs
   for (auto const& it : _userFunctions) {
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.e"));
     _buffer->appendInteger(it.second);
-    // "state.e\d+" executes the user function in a wrapper, converting the 
+    // "state.e\d+" executes the user function in a wrapper, converting the
     // function result back into the allowed range, and catching any errors
-    // thrown by the function 
+    // thrown by the function
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR(" = function(params) { try { return _AQL.fixValue(state.f"));
     _buffer->appendInteger(it.second);
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR(".apply({ name: \""));
@@ -420,8 +415,8 @@ void V8Executor::generateCodeExpression(AstNode const* node) {
     _buffer->appendText(it.first);
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("\", require(\"internal\").errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, _AQL.AQL_TO_STRING(err.stack || String(err))); } }; "));
   }
-   
-  // set "state.i" to true (=initialized) 
+
+  // set "state.i" to true (=initialized)
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.i = true; } return "));
 
   generateCodeNode(node);
@@ -703,7 +698,18 @@ void V8Executor::generateCodeCollection(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 0);
 
-  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.GET_DOCUMENTS("));
+  // we should not get here anymore, as all collection accesses should
+  // have either been transformed to collection names (i.e. strings)
+  // or FOR ... RETURN ... subqueries beforehand
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type 'collection' found in script generatin");
+}
+
+/// @brief generate JavaScript code for a full view access
+void V8Executor::generateCodeView(AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 0);
+
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.GET_DOCUMENTS_FROM_VIEW("));
   generateCodeString(node->getStringValue(), node->getStringLength());
   _buffer->appendChar(')');
 }
@@ -720,7 +726,7 @@ void V8Executor::generateCodeFunctionCall(AstNode const* node) {
   TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
 
   if (func->name != "V8") {
-    // special case for the V8 function... this is actually not a function 
+    // special case for the V8 function... this is actually not a function
     // call at all, but a wrapper to ensure that the following expression
     // is executed using V8
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
@@ -908,7 +914,7 @@ void V8Executor::generateCodeNode(AstNode const* node) {
 
   switch (node->type) {
     case NODE_TYPE_VALUE:
-      node->appendValue(_buffer);
+      node->appendValue(_buffer.get());
       break;
 
     case NODE_TYPE_ARRAY:
@@ -966,6 +972,10 @@ void V8Executor::generateCodeNode(AstNode const* node) {
       generateCodeCollection(node);
       break;
 
+    case NODE_TYPE_VIEW:
+      generateCodeView(node);
+      break;
+
     case NODE_TYPE_FCALL:
       generateCodeFunctionCall(node);
       break;
@@ -1017,11 +1027,12 @@ void V8Executor::generateCodeNode(AstNode const* node) {
 }
 
 /// @brief create the string buffer
-arangodb::basics::StringBuffer* V8Executor::initializeBuffer() {
+void V8Executor::initializeBuffer() {
   if (_buffer == nullptr) {
-    _buffer = new arangodb::basics::StringBuffer(512, false);
+    _buffer.reset(new arangodb::basics::StringBuffer(1024, false));
 
     if (_buffer->stringBuffer()->_buffer == nullptr) {
+      _buffer.reset();
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   } else {
@@ -1029,6 +1040,4 @@ arangodb::basics::StringBuffer* V8Executor::initializeBuffer() {
   }
 
   TRI_ASSERT(_buffer != nullptr);
-
-  return _buffer;
 }

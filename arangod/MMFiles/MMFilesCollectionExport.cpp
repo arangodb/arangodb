@@ -29,6 +29,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/CollectionGuard.h"
+#include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Hints.h"
@@ -87,14 +88,13 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       if (mmColl->isFullyCollected()) {
         break;
       }
-      usleep(SleepTime);
+      std::this_thread::sleep_for(std::chrono::microseconds(SleepTime));
     }
   }
 
   {
-    SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(_collection->vocbase()), _name,
-        AccessMode::Type::READ);
+    auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
+    SingleCollectionTransaction trx(ctx, _name, AccessMode::Type::READ);
 
     // already locked by guard above
     trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
@@ -115,7 +115,7 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
     MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
     ManagedDocumentResult mmdr;
-    trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr, mmColl](DocumentIdentifierToken const& token) {
+    trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr, mmColl](LocalDocumentId const& token) {
       if (limit == 0) {
         return false;
       }

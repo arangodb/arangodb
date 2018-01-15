@@ -60,7 +60,8 @@ using StringBuffer = arangodb::basics::StringBuffer;
 GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
       _sortRegisters(),
-      _isSimple(en->getElements().empty()) {
+      _isSimple(en->getElements().empty()),
+      _heap(en->_sortmode == 'h' ? new Heap : nullptr) {
 
   if (!_isSimple) {
     for (auto const& p : en->getElements()) {
@@ -78,7 +79,6 @@ GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
 }
 
 GatherBlock::~GatherBlock() {
-  DEBUG_BEGIN_BLOCK();
   for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
     for (AqlItemBlock* y : x) {
       delete y;
@@ -86,7 +86,6 @@ GatherBlock::~GatherBlock() {
     x.clear();
   }
   _gatherBlockBuffer.clear();
-  DEBUG_END_BLOCK();
 }
 
 /// @brief initialize
@@ -154,12 +153,15 @@ int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     }
     _gatherBlockBuffer.clear();
     _gatherBlockPos.clear();
-
     _gatherBlockBuffer.reserve(_dependencies.size());
     _gatherBlockPos.reserve(_dependencies.size());
     for (size_t i = 0; i < _dependencies.size(); i++) {
       _gatherBlockBuffer.emplace_back();
       _gatherBlockPos.emplace_back(std::make_pair(i, 0));
+    }
+    
+    if (_heap) {
+      _heap->clear();
     }
   }
 
@@ -242,8 +244,8 @@ bool GatherBlock::hasMore() {
 /// @brief getSome
 AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
-     
+  traceGetSomeBegin(atLeast, atMost);
+
   if (_dependencies.empty()) {
     _done = true;
   }
@@ -270,26 +272,27 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   // the non-simple case . . .
   size_t available = 0;  // nr of available rows
   size_t index = 0;      // an index of a non-empty buffer
-
+	  
   // pull more blocks from dependencies . . .
   TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
   TRI_ASSERT(_gatherBlockBuffer.size() == _gatherBlockPos.size());
  
-  for (size_t i = 0; i < _dependencies.size(); i++) {
-    if (_gatherBlockBuffer.at(i).empty()) {
+  for (size_t i = 0; i < _dependencies.size(); ++i) {
+    if (_gatherBlockBuffer[i].empty()) {
       if (getBlock(i, atLeast, atMost)) {
         index = i;
-        _gatherBlockPos.at(i) = std::make_pair(i, 0);
+        _gatherBlockPos[i] = std::make_pair(i, 0);
       }
     } else {
       index = i;
     }
 
-    auto const& cur = _gatherBlockBuffer.at(i);
+    auto const& cur = _gatherBlockBuffer[i];
     if (!cur.empty()) {
-      available += cur.at(0)->size() - _gatherBlockPos.at(i).second;
-      for (size_t j = 1; j < cur.size(); j++) {
-        available += cur.at(j)->size();
+      TRI_ASSERT(cur[0]->size() >= _gatherBlockPos[i].second);
+      available += cur[0]->size() - _gatherBlockPos[i].second;
+      for (size_t j = 1; j < cur.size(); ++j) {
+        available += cur[j]->size();
       }
     }
   }
@@ -303,29 +306,45 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   size_t toSend = (std::min)(available, atMost);  // nr rows in outgoing block
 
   // the following is similar to AqlItemBlock's slice method . . .
-  std::unordered_map<AqlValue, AqlValue> cache;
+  std::vector<std::unordered_map<AqlValue, AqlValue>> cache;
+  cache.resize(_gatherBlockBuffer.size());
 
   // comparison function
   OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters);
+  auto ourGreater = [&ourLessThan](std::pair<std::size_t, std::size_t>& a, std::pair<std::size_t, std::size_t>& b) {
+    return ourLessThan(b, a);
+  };
+
+  TRI_ASSERT(!_gatherBlockBuffer.at(index).empty());
   AqlItemBlock* example = _gatherBlockBuffer.at(index).front();
   size_t nrRegs = example->getNrRegs();
 
   // automatically deleted if things go wrong
   std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, static_cast<arangodb::aql::RegisterId>(nrRegs)));
 
+  if (_heap && _heap->size() != _dependencies.size()) {
+    auto& heap = *_heap;
+    std::copy(_gatherBlockPos.begin(), _gatherBlockPos.end(), std::back_inserter(heap));
+    std::make_heap(heap.begin(), heap.end(), ourGreater);
+  }
+
   for (size_t i = 0; i < toSend; i++) {
     // get the next smallest row from the buffer . . .
-    std::pair<size_t, size_t> val = *(std::min_element(
-        _gatherBlockPos.begin(), _gatherBlockPos.end(), ourLessThan));
+    std::pair<size_t, size_t> val;
+    if (_heap) {
+      val = _heap->front();
+    } else {
+      val = *(std::min_element( _gatherBlockPos.begin(), _gatherBlockPos.end(), ourLessThan));
+    }
 
     // copy the row in to the outgoing block . . .
     for (RegisterId col = 0; col < nrRegs; col++) {
-      AqlValue const& x(
-          _gatherBlockBuffer.at(val.first).front()->getValue(val.second, col));
+      TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
+      AqlValue const& x(_gatherBlockBuffer[val.first].front()->getValueReference(val.second, col));
       if (!x.isEmpty()) {
-        auto it = cache.find(x);
+        auto it = cache[val.first].find(x);
 
-        if (it == cache.end()) {
+        if (it == cache[val.first].end()) {
           AqlValue y = x.clone();
           try {
             res->setValue(i, col, y);
@@ -333,31 +352,46 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
             y.destroy();
             throw;
           }
-          cache.emplace(x, y);
+          cache[val.first].emplace(x, y);
         } else {
-          res->setValue(i, col, it->second);
+          res->setValue(i, col, (*it).second);
         }
       }
     }
 
-    // renew the _gatherBlockPos and clean up the buffer if necessary
     _gatherBlockPos.at(val.first).second++;
-    if (_gatherBlockPos.at(val.first).second ==
-        _gatherBlockBuffer.at(val.first).front()->size()) {
-      AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
-      returnBlock(cur);
-      _gatherBlockBuffer.at(val.first).pop_front();
-      _gatherBlockPos.at(val.first) = std::make_pair(val.first, 0);
+    if (_heap) {
+      auto& heap = *_heap;
+      std::pop_heap(heap.begin(), heap.end(), ourGreater); // remove element from heap but not from vector
+      heap.back().second++; //advance position in itemblock of removed element before it is re-inserted later
+    }
 
-      if (_gatherBlockBuffer.at(val.first).empty()) {
+    // renew the _gatherBlockPos and clean up the buffer if necessary
+    if (_gatherBlockPos.at(val.first).second == _gatherBlockBuffer.at(val.first).front()->size()) {
+      TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
+      AqlItemBlock* cur = _gatherBlockBuffer[val.first].front();
+      returnBlock(cur);
+      _gatherBlockBuffer[val.first].pop_front();
+      _gatherBlockPos[val.first] = {val.first, 0}; 
+
+      if (_heap) {
+        _heap->back().second = 0;
+      }
+
+      if (_gatherBlockBuffer[val.first].empty()) {
         // if we pulled everything from the buffer, we need to fetch
         // more data for the shard for which we have no more local
         // values. 
         getBlock(val.first, atLeast, atMost);
+        cache[val.first].clear();
         // note that if getBlock() returns false here, this is not
         // a problem, because the sort function used takes care of
         // this
       }
+    }
+
+    if (_heap) {
+      std::push_heap(_heap->begin(), _heap->end(), ourGreater); //re-insert element
     }
   }
 
@@ -380,7 +414,7 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
     auto skipped = _dependencies.at(_atDep)->skipSome(atLeast, atMost);
     while (skipped == 0 && _atDep < _dependencies.size() - 1) {
       _atDep++;
-      skipped = _dependencies.at(_atDep)->skipSome(atLeast, atMost);
+      skipped = _dependencies[_atDep]->skipSome(atLeast, atMost);
     }
     if (skipped == 0) {
       _done = true;
@@ -394,9 +428,9 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
 
   // pull more blocks from dependencies . . .
   for (size_t i = 0; i < _dependencies.size(); i++) {
-    if (_gatherBlockBuffer.at(i).empty()) {
+    if (_gatherBlockBuffer[i].empty()) {
       if (getBlock(i, atLeast, atMost)) {
-        _gatherBlockPos.at(i) = std::make_pair(i, 0);
+        _gatherBlockPos[i] = std::make_pair(i, 0);
       }
     }
 
@@ -425,13 +459,14 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
         _gatherBlockPos.begin(), _gatherBlockPos.end(), ourLessThan));
 
     // renew the _gatherBlockPos and clean up the buffer if necessary
-    _gatherBlockPos.at(val.first).second++;
-    if (_gatherBlockPos.at(val.first).second ==
-        _gatherBlockBuffer.at(val.first).front()->size()) {
-      AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
+    _gatherBlockPos[val.first].second++;
+    if (_gatherBlockPos[val.first].second ==
+        _gatherBlockBuffer[val.first].front()->size()) {
+      TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
+      AqlItemBlock* cur = _gatherBlockBuffer[val.first].front();
       returnBlock(cur);
-      _gatherBlockBuffer.at(val.first).pop_front();
-      _gatherBlockPos.at(val.first) = std::make_pair(val.first, 0);
+      _gatherBlockBuffer[val.first].pop_front();
+      _gatherBlockPos[val.first] = std::make_pair(val.first, 0);
     }
   }
 
@@ -449,7 +484,7 @@ bool GatherBlock::getBlock(size_t i, size_t atLeast, size_t atMost) {
   TRI_ASSERT(!_isSimple);
 
   std::unique_ptr<AqlItemBlock> docs(_dependencies.at(i)->getSome(atLeast, atMost));
-  if (docs != nullptr) {
+  if (docs != nullptr && docs->size() > 0) {
     _gatherBlockBuffer.at(i).emplace_back(docs.get());
     docs.release();
     return true;
@@ -471,23 +506,22 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
   if (_gatherBlockBuffer[b.first].empty()) {
     return true;
   }
+  TRI_ASSERT(!_gatherBlockBuffer[a.first].empty());
+  TRI_ASSERT(!_gatherBlockBuffer[b.first].empty());
 
-  size_t i = 0;
   for (auto const& reg : _sortRegisters) {
     // Fast path if there is no attributePath:
     int cmp;
     if (reg.attributePath.empty()) {
       cmp = AqlValue::Compare(
           _trx,
-          _gatherBlockBuffer[a.first].front()->getValue(a.second, reg.reg),
-          _gatherBlockBuffer[b.first].front()->getValue(b.second, reg.reg),
+          _gatherBlockBuffer[a.first].front()->getValueReference(a.second, reg.reg),
+          _gatherBlockBuffer[b.first].front()->getValueReference(b.second, reg.reg),
           true);
     } else {
       // Take attributePath into consideration:
-      AqlValue topA = _gatherBlockBuffer[a.first].front()->getValue(a.second,
-                                                                       reg.reg);
-      AqlValue topB = _gatherBlockBuffer[b.first].front()->getValue(b.second,
-                                                                       reg.reg);
+      AqlValue const& topA = _gatherBlockBuffer[a.first].front()->getValueReference(a.second, reg.reg);
+      AqlValue const& topB = _gatherBlockBuffer[b.first].front()->getValueReference(b.second, reg.reg);
       bool mustDestroyA;
       AqlValue aa = topA.get(_trx, reg.attributePath, mustDestroyA, false);
       AqlValueGuard guardA(aa, mustDestroyA);
@@ -502,8 +536,6 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
     } else if (cmp == 1) {
       return !reg.ascending;
     }
-
-    i++;
   }
 
   return false;
@@ -904,7 +936,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
                                            size_t& skipped,
                                            std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
 
@@ -916,8 +948,6 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
   }
 
   std::deque<std::pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
-
-  BlockCollector collector(&_engine->_itemBlockManager);
 
   if (buf.empty()) {
     if (!getBlockForClient(atLeast, atMost, clientId)) {
@@ -936,10 +966,12 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
     traceGetSomeEnd(result);
     return TRI_ERROR_NO_ERROR;
   }
+  
+  BlockCollector collector(&_engine->_itemBlockManager);
+  std::vector<size_t> chosen;
 
   size_t i = 0;
   while (i < skipped) {
-    std::vector<size_t> chosen;
     size_t const n = buf.front().first;
     while (buf.front().first == n && i < skipped) {
       chosen.emplace_back(buf.front().second);
@@ -954,6 +986,8 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
 
     std::unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
     collector.add(std::move(more));
+
+    chosen.clear();
   }
 
   if (!skipping) {
@@ -1061,7 +1095,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
     cur->destroyValue(_pos, _regId);
 
     // overwrite with new value
-    cur->setValue(_pos, _regId, AqlValue(builder));
+    cur->emplaceValue(_pos, _regId, builder);
 
     value = builder.slice();
     hasCreatedKeyAttribute = true;
@@ -1090,10 +1124,10 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
         // clear the previous value and overwrite with new value:
         if (usedAlternativeRegId) {
           cur->destroyValue(_pos, _alternativeRegId);
-          cur->setValue(_pos, _alternativeRegId, AqlValue(builder2));
+          cur->emplaceValue(_pos, _alternativeRegId, builder2);
         } else {
           cur->destroyValue(_pos, _regId);
-          cur->setValue(_pos, _regId, AqlValue(builder2));
+          cur->emplaceValue(_pos, _regId, builder2);
         }
         value = builder2.slice();
       }
@@ -1116,10 +1150,10 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
         // clear the previous value and overwrite with new value:
         if (usedAlternativeRegId) {
           cur->destroyValue(_pos, _alternativeRegId);
-          cur->setValue(_pos, _alternativeRegId, AqlValue(builder2.slice()));
+          cur->emplaceValue(_pos, _alternativeRegId, builder2.slice());
         } else {
           cur->destroyValue(_pos, _regId);
-          cur->setValue(_pos, _regId, AqlValue(builder2.slice()));
+          cur->emplaceValue(_pos, _regId, builder2.slice());
         }
         value = builder2.slice();
       }
@@ -1389,7 +1423,7 @@ int RemoteBlock::shutdown(int errorCode) {
       // artificially ignore error in case query was not found during shutdown
       return TRI_ERROR_NO_ERROR;
     }
-  } catch (arangodb::basics::Exception &ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE) {
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
     }
@@ -1438,8 +1472,7 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
   
-  traceGetSomeBegin();
-
+  traceGetSomeBegin(atLeast, atMost);
   VPackBuilder builder;
   builder.openObject();
   builder.add("atLeast", VPackValue(atLeast));

@@ -480,7 +480,7 @@ function reloadUserFunctions () {
   });
 
   // now reset the functions for all databases
-  // this ensures that functions of other databases will be reloaded next 
+  // this ensures that functions of other databases will be reloaded next
   // time (the reload does not necessarily need to be carried out in the
   // database in which the function is registered)
   UserFunctions = { };
@@ -590,6 +590,26 @@ function COLLECTION (name, func) {
   }
   return c;
 }
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get access to a view
+// //////////////////////////////////////////////////////////////////////////////
+
+function VIEW (name, func) {
+  'use strict';
+
+  if (typeof name !== 'string') {
+    THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+  }
+
+  var v = INTERNAL.db._view(name);
+
+  if (v === null || v === undefined) {
+    THROW(func, INTERNAL.errors.ERROR_ARANGO_VIEW_NOT_FOUND, String(name));
+  }
+  return v;
+}
+
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief clone an object
@@ -1179,7 +1199,19 @@ function GET_DOCUMENTS (collection, func) {
     return COLLECTION(collection, func).all().toArray();
   }
 
-  return COLLECTION(collection, func).ALL(0, null).documents;
+  return COLLECTION(collection, func).ALL().documents;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get all documents from the specified collection
+// //////////////////////////////////////////////////////////////////////////////
+
+function GET_DOCUMENTS_FROM_VIEW (view, func) {
+  'use strict';
+
+  var v = VIEW(view, func);
+
+  return [];
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2068,11 +2100,23 @@ function AQL_UPPER (value) {
 function AQL_SUBSTRING (value, offset, count) {
   'use strict';
 
+  // https://mathiasbynens.be/notes/javascript-unicode
+  value = [...AQL_TO_STRING(value)];
+
   if (TYPEWEIGHT(count) !== TYPEWEIGHT_NULL) {
     count = AQL_TO_NUMBER(count);
   }
+  if (count === undefined) {
+    count = value.length;
+  }
 
-  return AQL_TO_STRING(value).substr(AQL_TO_NUMBER(offset), count);
+  offset = AQL_TO_NUMBER(offset);
+
+  if (offset < 0) {
+    offset = value.length + offset;
+  }
+
+  return value.slice(offset, offset + count).join('');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2183,7 +2227,12 @@ function AQL_REGEX_REPLACE (value, regex, replacement, caseInsensitive) {
 function AQL_LEFT (value, length) {
   'use strict';
 
-  return AQL_TO_STRING(value).substr(0, AQL_TO_NUMBER(length));
+  let right = AQL_TO_NUMBER(length);
+  if (right < 0) {
+    right = 0;
+  }
+
+  return [...AQL_TO_STRING(value)].slice(0, right).join('');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2193,15 +2242,15 @@ function AQL_LEFT (value, length) {
 function AQL_RIGHT (value, length) {
   'use strict';
 
-  value = AQL_TO_STRING(value);
+  value = [...AQL_TO_STRING(value)];
   length = AQL_TO_NUMBER(length);
 
-  var left = value.length - length;
+  let left = value.length - length;
   if (left < 0) {
     left = 0;
   }
 
-  return value.substr(left, length);
+  return value.slice(left, left+length).join('');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2395,6 +2444,16 @@ function AQL_SHA1 (value) {
   'use strict';
 
   return INTERNAL.sha1(AQL_TO_STRING(value));
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief generates the SHA512 value for a string
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_SHA512 (value) {
+  'use strict';
+
+  return INTERNAL.sha512(AQL_TO_STRING(value));
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2630,6 +2689,27 @@ function AQL_ARRAYIZE (value) {
     return [];
   }
   return value;
+}
+
+function AQL_IS_KEY (value) {
+  'use strict';
+
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_STRING) {
+    return false;
+  }
+
+  for (var i = 0; i < value.length; ++i) {
+    var c = value[i];
+    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+          (c >= '0' && c <= '9') || c === '_' || c === ':' || c === '-' ||
+          c === '@' || c === '.' || c === '(' || c === ')' || c === '+' || c === ',' ||
+          c === '=' || c === ';' || c === '$' || c === '!' || c === '*' || c === '\'' ||
+          c === '%')) {
+      return false;
+    }
+  }
+
+  return (value.length > 0 && value.length <= 254);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -3164,6 +3244,21 @@ function AQL_SORTED_UNIQUE (values) {
 
   unique.sort(RELATIONAL_CMP);
   return unique;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a sorted list of elements 
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_SORTED (values) {
+  'use strict';
+
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
+    return null;
+  }
+
+  values.sort(RELATIONAL_CMP);
+  return values;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -4140,7 +4235,7 @@ function AQL_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief return documents within a bounding rectangle 
+// / @brief return documents within a bounding rectangle
 // //////////////////////////////////////////////////////////////////////////////
 
 function AQL_WITHIN_RECTANGLE (collection, latitude1, longitude1, latitude2, longitude2) {
@@ -4259,7 +4354,8 @@ function AQL_FULLTEXT (collection, attribute, query, limit) {
   var idx = INDEX_FULLTEXT(COLLECTION(collection, 'FULLTEXT'), attribute);
 
   if (idx === null) {
-    THROW('FULLTEXT', INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
+    WARN('FULLTEXT', INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
+    return null;
   }
 
   // Just start a simple query
@@ -5431,8 +5527,8 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
     return null;
   }
 }
-        
-        
+
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief return at most <limit> documents near a certain point
 // //////////////////////////////////////////////////////////////////////////////
@@ -5523,6 +5619,7 @@ exports.KEYS = KEYS;
 exports.GET_INDEX = GET_INDEX;
 exports.DOCUMENT_MEMBER = DOCUMENT_MEMBER;
 exports.GET_DOCUMENTS = GET_DOCUMENTS;
+exports.GET_DOCUMENTS_FROM_VIEW = GET_DOCUMENTS_FROM_VIEW;
 exports.TERNARY_OPERATOR = TERNARY_OPERATOR;
 exports.LOGICAL_AND = LOGICAL_AND;
 exports.LOGICAL_OR = LOGICAL_OR;
@@ -5574,6 +5671,7 @@ exports.AQL_SPLIT = AQL_SPLIT;
 exports.AQL_SUBSTITUTE = AQL_SUBSTITUTE;
 exports.AQL_MD5 = AQL_MD5;
 exports.AQL_SHA1 = AQL_SHA1;
+exports.AQL_SHA512 = AQL_SHA512;
 exports.AQL_HASH = AQL_HASH;
 exports.AQL_TYPENAME = AQL_TYPENAME;
 exports.AQL_RANDOM_TOKEN = AQL_RANDOM_TOKEN;
@@ -5585,6 +5683,7 @@ exports.AQL_TO_STRING = AQL_TO_STRING;
 exports.AQL_TO_ARRAY = AQL_TO_ARRAY;
 exports.AQL_ARRAYIZE = AQL_ARRAYIZE;
 exports.AQL_TO_LIST = AQL_TO_ARRAY; // alias
+exports.AQL_IS_KEY = AQL_IS_KEY;
 exports.AQL_IS_NULL = AQL_IS_NULL;
 exports.AQL_IS_BOOL = AQL_IS_BOOL;
 exports.AQL_IS_NUMBER = AQL_IS_NUMBER;
@@ -5625,6 +5724,7 @@ exports.AQL_REVERSE = AQL_REVERSE;
 exports.AQL_RANGE = AQL_RANGE;
 exports.AQL_UNIQUE = AQL_UNIQUE;
 exports.AQL_SORTED_UNIQUE = AQL_SORTED_UNIQUE;
+exports.AQL_SORTED = AQL_SORTED;
 exports.AQL_UNION = AQL_UNION;
 exports.AQL_UNION_DISTINCT = AQL_UNION_DISTINCT;
 exports.AQL_CALL = AQL_CALL;

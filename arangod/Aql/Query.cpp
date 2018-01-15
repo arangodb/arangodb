@@ -94,7 +94,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
       _isModificationQuery(false) {
-
+    
   AqlFeature* aql = AqlFeature::lease();
   if (aql == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
@@ -470,7 +470,7 @@ ExecutionPlan* Query::prepare() {
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     plan.reset(ExecutionPlan::instantiateFromAst(_ast.get()));
 
-    if (plan.get() == nullptr) {
+    if (plan == nullptr) {
       // oops
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to create query execution engine");
     }
@@ -480,7 +480,7 @@ ExecutionPlan* Query::prepare() {
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
     opt.createPlans(plan.release(), _queryOptions.optimizerRules,
-                    _queryOptions.inspectSimplePlans);
+                    _queryOptions.inspectSimplePlans, false);
     // Now plan and all derived plans belong to the optimizer
     plan.reset(opt.stealBest());  // Now we own the best one again
   } else {  // no queryString, we are instantiating from _queryBuilder
@@ -507,7 +507,7 @@ ExecutionPlan* Query::prepare() {
 
     // we have an execution plan in VelocyPack format
     plan.reset(ExecutionPlan::instantiateFromVelocyPack(_ast.get(), _queryBuilder->slice()));
-    if (plan.get() == nullptr) {
+    if (plan == nullptr) {
       // oops
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not create plan from vpack");
     }
@@ -544,13 +544,11 @@ QueryResult Query::execute(QueryRegistry* registry) {
       arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
+        ExecContext const* exe = ExecContext::CURRENT;
         // got a result from the query cache
-        if(ExecContext::CURRENT != nullptr) {
-          AuthInfo* info = AuthenticationFeature::INSTANCE->authInfo();
+        if(exe != nullptr) {
           for (std::string const& collectionName : cacheEntry->_collections) {
-            if (info->canUseCollection(ExecContext::CURRENT->user(),
-                                       ExecContext::CURRENT->database(),
-                                       collectionName) == AuthLevel::NONE) {
+            if (!exe->canUseCollection(collectionName, AuthLevel::RO)) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
             }
           }
@@ -559,7 +557,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
         QueryResult res;
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
-        res.context = std::make_shared<transaction::StandaloneContext>(_vocbase);
+        res.context = transaction::StandaloneContext::Create(_vocbase);
 
         res.warnings = warningsToVelocyPack();
         TRI_ASSERT(cacheEntry->_queryResult != nullptr);
@@ -592,7 +590,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
     options.buildUnindexedObjects = true;
 
     auto resultBuilder = std::make_shared<VPackBuilder>(&options);
-    resultBuilder->buffer()->reserve(
+    resultBuilder->reserve(
         16 * 1024);  // reserve some space in Builder to avoid frequent reallocs
     
     TRI_ASSERT(_engine != nullptr);
@@ -664,7 +662,10 @@ QueryResult Query::execute(QueryRegistry* registry) {
                                       << "Query::execute: before _trx->commit"
                                       << " this: " << (uintptr_t) this;
 
-    _trx->commit();
+    auto commitResult = _trx->commit();
+    if (commitResult.fail()) {
+        THROW_ARANGO_EXCEPTION(commitResult);
+    }
     
     LOG_TOPIC(DEBUG, Logger::QUERIES)
         << TRI_microtime() - _startTime << " "
@@ -743,13 +744,13 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
+        
+        auto ctx = transaction::StandaloneContext::Create(_vocbase);
+        ExecContext const* exe = ExecContext::CURRENT;
         // got a result from the query cache
-        if(ExecContext::CURRENT != nullptr) {
-          AuthInfo* info = AuthenticationFeature::INSTANCE->authInfo();
+        if(exe != nullptr) {
           for (std::string const& collectionName : cacheEntry->_collections) {
-            if (info->canUseCollection(ExecContext::CURRENT->user(),
-                                       ExecContext::CURRENT->database(),
-                                       collectionName) == AuthLevel::NONE) {
+            if (!exe->canUseCollection(collectionName, AuthLevel::RO)) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
             }
           }
@@ -758,8 +759,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         QueryResultV8 result;
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
-        result.context = std::make_shared<transaction::StandaloneContext>(_vocbase);
-
+        result.context = ctx;
         v8::Handle<v8::Value> values =
             TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(),
                           result.context->getVPackOptions());
@@ -867,7 +867,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
                                       << "Query::executeV8: before _trx->commit"
                                       << " this: " << (uintptr_t) this;
 
-    _trx->commit();
+    auto commitResult = _trx->commit();
+    if (commitResult.fail()) {
+        THROW_ARANGO_EXCEPTION(commitResult);
+    }
 
     LOG_TOPIC(DEBUG, Logger::QUERIES)
         << TRI_microtime() - _startTime << " "
@@ -980,14 +983,14 @@ QueryResult Query::explain() {
 
     if (plan == nullptr) {
       // oops
-      return QueryResult(TRI_ERROR_INTERNAL);
+      return QueryResult(TRI_ERROR_INTERNAL, "unable to create plan from AST");
     }
 
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
-    opt.createPlans(plan, _queryOptions.optimizerRules, _queryOptions.inspectSimplePlans);
+    opt.createPlans(plan, _queryOptions.optimizerRules, _queryOptions.inspectSimplePlans, true);
 
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 
@@ -1025,9 +1028,12 @@ QueryResult Query::explain() {
                        !_isModificationQuery && _warnings.empty() &&
                        _ast->root()->isCacheable());
     }
-
-    _trx->commit();
-
+    
+    auto commitResult = _trx->commit();
+    if (commitResult.fail()) {
+        THROW_ARANGO_EXCEPTION(commitResult);
+    }
+    
     result.warnings = warningsToVelocyPack();
 
     result.stats = opt._stats.toVelocyPack();
@@ -1074,8 +1080,8 @@ void Query::enterContext() {
       _context = V8DealerFeature::DEALER->enterContext(_vocbase, false);
 
       if (_context == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "cannot enter V8 context");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
+                                       "unable to enter V8 context for query execution");
       }
 
       // register transaction and resolver in context
@@ -1301,10 +1307,10 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
 std::shared_ptr<transaction::Context> Query::createTransactionContext() {
   if (_contextOwnedByExterior) {
     // we can use v8
-    return arangodb::transaction::V8Context::Create(_vocbase, true);
+    return transaction::V8Context::Create(_vocbase, true);
   }
 
-  return arangodb::transaction::StandaloneContext::Create(_vocbase);
+  return transaction::StandaloneContext::Create(_vocbase);
 }
 
 /// @brief look up a graph either from our cache list or from the _graphs

@@ -61,26 +61,20 @@ function validate (data, schema) {
 
 function updateQueueDelay () {
   try {
-    db._executeTransaction({
-      collections: {
-        read: ['_queues', '_jobs']
-      },
-      action () {
-        var delayUntil = db._query(global.aqlQuery`
-          LET queues = (FOR queue IN _queues RETURN queue._key)
-          FOR job IN _jobs
-            FILTER ('pending' == job.status)
-            FILTER POSITION(queues, job.queue, false)
-            FILTER (null != job.delayUntil)
-          SORT job.delayUntil ASC
-          RETURN job.delayUntil`).next();
-        if (typeof delayUntil !== 'number') {
-          delayUntil = -1;
-        }
-        global.KEYSPACE_CREATE('queue-control', 1, true);
-        global.KEY_SET('queue-control', 'delayUntil', delayUntil);
-      }
-    });
+    var delayUntil = db._query(global.aqlQuery`
+      LET queues = (FOR queue IN _queues RETURN queue._key)
+      FOR job IN _jobs
+        FILTER ('pending' == job.status)
+        FILTER POSITION(queues, job.queue, false)
+        FILTER (null != job.delayUntil)
+      SORT job.delayUntil ASC
+      LIMIT 1
+      RETURN job.delayUntil`).next();
+    if (typeof delayUntil !== 'number') {
+      delayUntil = -1;
+    }
+    global.KEYSPACE_CREATE('queue-control', 1, true);
+    global.KEY_SET('queue-control', 'delayUntil', delayUntil);
   } catch (e) {}
 }
 
@@ -100,10 +94,7 @@ function getQueue (key) {
 }
 
 function createQueue (key, maxWorkers) {
-  internal.createQueue({
-    _key: key,
-    maxWorkers: maxWorkers || 1
-  });
+  internal.createQueue(key, maxWorkers || 1);
 
   var databaseName = db._name();
   var cache = queueCache[databaseName];
@@ -120,7 +111,7 @@ function deleteQueue (key) {
     internal.deleteQueue(key);
     result = true;
   } catch (e) {
-    internal.print('Deleting queue failed: ' + e.message);
+    console.warn('Deleting queue \'' + key + '\' failed: ' + e.message);
   }
   return result;
 }
@@ -261,6 +252,7 @@ Object.assign(Queue.prototype, {
       opts = {};
     }
 
+    job.type.preprocess = typeof job.type.preprocess === 'function' ? job.type.preprocess.toString() : job.type.preprocess;
     job.delayUntil = asNumber(opts.delayUntil) || now;
     job.delayUntil += asNumber(opts.delay);
 

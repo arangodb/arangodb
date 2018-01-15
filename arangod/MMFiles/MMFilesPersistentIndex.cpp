@@ -35,7 +35,6 @@
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesPersistentIndexKeyComparator.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
-#include "MMFiles/MMFilesToken.h"
 #include "MMFiles/MMFilesTransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -125,7 +124,7 @@ void MMFilesPersistentIndexIterator::reset() {
   }
 }
 
-bool MMFilesPersistentIndexIterator::next(TokenCallback const& cb,
+bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb,
                                           size_t limit) {
   auto comparator = MMFilesPersistentIndexFeature::instance()->comparator();
   while (limit > 0) {
@@ -179,8 +178,8 @@ bool MMFilesPersistentIndexIterator::next(TokenCallback const& cb,
       MMFilesSimpleIndexElement element =
           _primaryIndex->lookupKey(_trx, keySlice[n - 1]);
       if (element) {
-        MMFilesToken doc = MMFilesToken{element.revisionId()};
-        if (doc != 0) {
+        LocalDocumentId doc = element.localDocumentId();
+        if (doc.isSet()) {
           cb(doc);
           --limit;
         }
@@ -207,7 +206,7 @@ bool MMFilesPersistentIndexIterator::next(TokenCallback const& cb,
 MMFilesPersistentIndex::MMFilesPersistentIndex(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     arangodb::velocypack::Slice const& info)
-    : MMFilesPathBasedIndex(iid, collection, info, sizeof(TRI_voc_rid_t),
+    : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId),
                             true) {}
 
 /// @brief destroy the index
@@ -219,13 +218,14 @@ size_t MMFilesPersistentIndex::memory() const {
 
 /// @brief inserts a document into the index
 Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
-                                      TRI_voc_rid_t revisionId,
-                                      VPackSlice const& doc, bool isRollback) {
+                                      LocalDocumentId const& documentId,
+                                      VPackSlice const& doc,
+                                      OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
-    res = fillElement(elements, revisionId, doc);
+    res = fillElement(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -323,6 +323,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
   rocksdb::ReadOptions readOptions;
 
   size_t const count = elements.size();
+  std::string existingId;
   for (size_t i = 0; i < count; ++i) {
     if (_unique) {
       bool uniqueConstraintViolated = false;
@@ -339,6 +340,10 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
 
           if (res <= 0) {
             uniqueConstraintViolated = true;
+            VPackSlice slice(comparator->extractKeySlice(iterator->key()));
+            uint64_t length = slice.length();
+            TRI_ASSERT(length > 0);
+            existingId = slice.at(length - 1).copyString();
           }
         }
 
@@ -379,18 +384,26 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
     }
   }
 
+  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+    if (mode == OperationMode::internal) {
+      return IndexResult(res, existingId);
+    }
+    return IndexResult(res, this, existingId);
+  }
+
   return IndexResult(res, this);
 }
 
 /// @brief removes a document from the index
 Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
-                                      TRI_voc_rid_t revisionId,
-                                      VPackSlice const& doc, bool isRollback) {
+                                      LocalDocumentId const& documentId,
+                                      VPackSlice const& doc,
+                                      OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
-    res = fillElement(elements, revisionId, doc);
+    res = fillElement(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {

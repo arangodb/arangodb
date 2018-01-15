@@ -222,6 +222,8 @@ function computeStatisticsRaw (result, start, clusterId) {
   var ss = internal.serverStatistics();
 
   result.physicalMemory = ss.physicalMemory;
+  result.v8Context = ss.v8Context;
+  result.threads = ss.threads;
 
   // add next start time
   if (lastRaw === null) {

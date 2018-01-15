@@ -23,6 +23,8 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_COLUMN_FAMILY_H
 #define ARANGOD_ROCKSDB_ENGINE_COLUMN_FAMILY_H 1
 
+#include "RocksDBEngine/RocksDBCommon.h"
+
 #include <rocksdb/db.h>
 
 namespace arangodb {
@@ -42,20 +44,22 @@ struct RocksDBColumnFamily {
   static constexpr size_t minNumberOfColumnFamilies = 7;
   static constexpr size_t numberOfColumnFamilies = 7;
 
-  static inline rocksdb::ColumnFamilyHandle* definitions() { return _definitions; }
+  static rocksdb::ColumnFamilyHandle* definitions() { return _definitions; }
 
-  static inline rocksdb::ColumnFamilyHandle* documents() { return _documents; }
+  static rocksdb::ColumnFamilyHandle* documents() { return _documents; }
 
-  static inline rocksdb::ColumnFamilyHandle* primary() { return _primary; }
+  static rocksdb::ColumnFamilyHandle* primary() { return _primary; }
 
-  static inline rocksdb::ColumnFamilyHandle* edge() { return _edge; }
+  static rocksdb::ColumnFamilyHandle* edge() { return _edge; }
 
   /// unique and non unique vpack indexes (skiplist, permanent indexes)
-  static inline rocksdb::ColumnFamilyHandle* vpack() { return _vpack; }
+  static rocksdb::ColumnFamilyHandle* vpack() { return _vpack; }
 
-  static inline rocksdb::ColumnFamilyHandle* geo() { return _geo; }
+  static rocksdb::ColumnFamilyHandle* geo() { return _geo; }
 
-  static inline rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
+  static rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
+
+  static rocksdb::ColumnFamilyHandle* invalid() { return rocksutils::defaultCF(); }
 
   static char const* columnFamilyName(rocksdb::ColumnFamilyHandle* cf) {
     if (cf == _definitions) {
@@ -78,6 +82,9 @@ struct RocksDBColumnFamily {
     }
     if (cf == _fulltext) {
       return "fulltext";
+    }
+    if (cf == rocksutils::defaultCF()) {
+      return "invalid";
     }
     TRI_ASSERT(false);
     return "unknown";

@@ -30,6 +30,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -192,8 +193,7 @@ RestStatus RestBatchHandler::executeHttp() {
     std::shared_ptr<RestHandler> handler = nullptr;
 
     {
-      std::unique_ptr<HttpResponse> response(
-          new HttpResponse(rest::ResponseCode::SERVER_ERROR));
+      std::unique_ptr<HttpResponse> response(new HttpResponse(rest::ResponseCode::SERVER_ERROR));
 
       auto h = GeneralServerFeature::HANDLER_FACTORY->createHandler(
               std::move(request), std::move(response));
@@ -212,19 +212,11 @@ RestStatus RestBatchHandler::executeHttp() {
     {
       // ignore any errors here, will be handled later by inspecting the response
       try {
+        ExecContextScope scope(nullptr);// workaround because of assertions
         handler->syncRunEngine();
       } catch (...) {
       }
 
-#if 0
-      int result = TRI_ERROR_NO_ERROR; 
-      if (result != TRI_ERROR_NO_ERROR) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                      "executing a handler for batch part failed");
-
-        return RestStatus::FAIL;
-      }
-#endif
       HttpResponse* partResponse =
           dynamic_cast<HttpResponse*>(handler->response());
 

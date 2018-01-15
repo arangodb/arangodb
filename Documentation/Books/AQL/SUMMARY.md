@@ -1,6 +1,13 @@
 
 
 # Summary
+* [Tutorial](Tutorial/README.md)
+  * [Basic CRUD](Tutorial/CRUD.md)
+  * [Matching documents](Tutorial/Filter.md)
+  * [Sorting and limiting](Tutorial/SortLimit.md)
+  * [Joining together](Tutorial/Join.md)
+  * [Graph traversal](Tutorial/Traversal.md)
+  * [Geospatial queries](Tutorial/Geospatial.md)
 * [How to invoke AQL](Invocation/README.md)
   * [with Arangosh](Invocation/WithArangosh.md)
   * [with the Web Interface](Invocation/WithWebInterface.md)
@@ -38,8 +45,11 @@
   * [Geo](Functions/Geo.md)
   * [Fulltext](Functions/Fulltext.md)
   * [Miscellaneous](Functions/Miscellaneous.md)
+* [Views](Views/README.md)
+  * [IResearch](Views/IResearch.md)
 * [Graphs](Graphs/README.md)
-  * [Traversal](Graphs/Traversals.md)
+  * [Traversals explained](Graphs/TraversalsExplained.md)
+  * [Traversals](Graphs/Traversals.md)
   * [Shortest Path](Graphs/ShortestPath.md)
 * [Advanced Features](Advanced/README.md)
   * [Array Operators](Advanced/ArrayOperators.md)

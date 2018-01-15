@@ -167,7 +167,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->specialized();
   }
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -194,6 +194,9 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
                en->getType() == ExecutionNode::ENUMERATE_LIST ||
                en->getType() == ExecutionNode::TRAVERSAL ||
                en->getType() == ExecutionNode::SHORTEST_PATH ||
+#ifdef USE_IRESEARCH
+               en->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW ||
+#endif
                en->getType() == ExecutionNode::COLLECT) {
       depth += 1;
     }

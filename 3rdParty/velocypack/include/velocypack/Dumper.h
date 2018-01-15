@@ -106,7 +106,7 @@ class Dumper {
   void appendString(std::string const& str) {
     _sink->reserve(2 + str.size());
     _sink->push_back('"');
-    dumpString(str.c_str(), str.size());
+    dumpString(str.data(), str.size());
     _sink->push_back('"');
   }
 

@@ -79,46 +79,13 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
     _messageBatchSize = 5000;
   }
   _initializeMessageCaches();
-
-  std::function<void()> callback = [this] {
-    VPackBuilder package;
-    package.openObject();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
-    package.add(Utils::vertexCountKey,
-                VPackValue(_graphStore->localVertexCount()));
-    package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
-    package.close();
-    _callConductor(Utils::finishedStartupPath, package);
-  };
-
-  if (_config.lazyLoading()) {
-    // TODO maybe lazy loading needs to be performed on another thread too
-    std::set<std::string> activeSet = _algorithm->initialActiveSet();
-    if (activeSet.size() == 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "There needs to be one active vertice");
-    }
-    for (std::string const& documentID : activeSet) {
-      _graphStore->loadDocument(&_config, documentID);
-    }
-    callback();
-  } else {
-    // initialization of the graphstore might take an undefined amount
-    // of time. Therefore this is performed asynchronous
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->post(
-        [this, callback] { _graphStore->loadShards(&_config, callback); });
-  }
 }
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Called ~Worker()";
   _state = WorkerState::DONE;
-  usleep(50000);  // 50ms wait for threads to die
+  std::this_thread::sleep_for(std::chrono::microseconds(50000));  // 50ms wait for threads to die
   delete _readCache;
   delete _writeCache;
   delete _writeCacheNextGSS;
@@ -168,8 +135,46 @@ void Worker<V, E, M>::_initializeMessageCaches() {
   }
 }
 
+// @brief load the initial worker data, call conductor eventually
 template <typename V, typename E, typename M>
-VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
+void Worker<V, E, M>::setupWorker() {
+  std::function<void()> callback = [this] {
+    VPackBuilder package;
+    package.openObject();
+    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+    package.add(Utils::executionNumberKey,
+                VPackValue(_config.executionNumber()));
+    package.add(Utils::vertexCountKey,
+                VPackValue(_graphStore->localVertexCount()));
+    package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
+    package.close();
+    _callConductor(Utils::finishedStartupPath, package);
+  };
+  
+  if (_config.lazyLoading()) {
+    // TODO maybe lazy loading needs to be performed on another thread too
+    std::set<std::string> activeSet = _algorithm->initialActiveSet();
+    if (activeSet.size() == 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "There needs to be one active vertice");
+    }
+    for (std::string const& documentID : activeSet) {
+      _graphStore->loadDocument(&_config, documentID);
+    }
+    callback();
+  } else {
+    // initialization of the graphstore might take an undefined amount
+    // of time. Therefore this is performed asynchronous
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    scheduler->post(
+                    [this, callback] { _graphStore->loadShards(&_config, callback); });
+  }
+}
+
+template <typename V, typename E, typename M>
+void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
+                                        VPackBuilder& response) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
@@ -229,7 +234,6 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
 
   // responds with info which allows the conductor to decide whether
   // to start the next GSS or end the execution
-  VPackBuilder response;
   response.openObject();
   response.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
   response.add(Utils::activeCountKey, VPackValue(_activeCount));
@@ -238,9 +242,6 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
   response.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
   _workerAggregators->serializeValues(response);
   response.close();
-
-  // LOG_TOPIC(INFO, Logger::PREGEL) << "Responded: " << response.toJson();
-  return response;
 }
 
 template <typename V, typename E, typename M>
@@ -780,17 +781,3 @@ void Worker<V, E, M>::_callConductorWithResponse(
     }
   }
 }
-
-// template types to create
-template class arangodb::pregel::Worker<int64_t, int64_t, int64_t>;
-template class arangodb::pregel::Worker<float, float, float>;
-template class arangodb::pregel::Worker<double, float, double>;
-// custom algorihm types
-template class arangodb::pregel::Worker<SCCValue, int8_t,
-                                        SenderMessage<uint64_t>>;
-template class arangodb::pregel::Worker<HITSValue, int8_t,
-                                        SenderMessage<double>>;
-template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
-template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
-template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
-template class arangodb::pregel::Worker<SLPAValue, int8_t, uint64_t>;

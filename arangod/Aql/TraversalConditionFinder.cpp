@@ -127,14 +127,14 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
     case NODE_TYPE_OPERATOR_BINARY_IN:
     case NODE_TYPE_OPERATOR_BINARY_NIN: {
       // the following types of expressions are not supported
-      //   p.edges[0]._from  op  whatever attribute access 
+      //   p.edges[0]._from  op  whatever attribute access
       //   whatever attribute access  op  p.edges[0]._from
       AstNode const* lhs = node->getMember(0);
       AstNode const* rhs = node->getMember(1);
 
       if (lhs->isAttributeAccessForVariable(pathVar, true)) {
         // p.xxx  op  whatever
-        if (rhs->type != NODE_TYPE_VALUE && 
+        if (rhs->type != NODE_TYPE_VALUE &&
             rhs->type != NODE_TYPE_ARRAY &&
             rhs->type != NODE_TYPE_OBJECT &&
             rhs->type != NODE_TYPE_REFERENCE) {
@@ -142,7 +142,7 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
         }
       } else if (rhs->isAttributeAccessForVariable(pathVar, true)) {
         // whatever  op  p.xxx
-        if (lhs->type != NODE_TYPE_VALUE && 
+        if (lhs->type != NODE_TYPE_VALUE &&
             lhs->type != NODE_TYPE_ARRAY &&
             lhs->type != NODE_TYPE_OBJECT &&
             lhs->type != NODE_TYPE_REFERENCE) {
@@ -315,7 +315,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
         patternStep++;
         break;
       }
-      case 3: 
+      case 3:
         if (depth != UINT64_MAX) {
           // We are in depth pattern.
           // The first Node we encount HAS to be indexed Access
@@ -380,7 +380,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
             }
             parentOfReplace = node;
             replaceIdx = idx;
-            // Ok finally done. 
+            // Ok finally done.
             patternStep++;
             break;
           }
@@ -513,6 +513,9 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::RETURN:
     case EN::SORT:
     case EN::ENUMERATE_COLLECTION:
+#ifdef USE_IRESEARCH
+    case EN::ENUMERATE_IRESEARCH_VIEW:
+#endif
     case EN::LIMIT:
     case EN::SHORTEST_PATH:
       // in these cases we simply ignore the intermediate nodes, note
@@ -602,7 +605,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
           // For now we only! optimize filter conditions on the path
           // So we skip all FILTERS not referencing the path
           andNode->removeMemberUnchecked(i - 1);
-          continue; 
+          continue;
         }
 
         // now we validate that there is no illegal variable used.
@@ -733,7 +736,7 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
   TRI_ASSERT(_plan->getAst() != nullptr);
 
   bool mustDestroy = false;
-  Expression tmpExp(_plan->getAst(), node);
+  Expression tmpExp(_plan, _plan->getAst(), node);
 
   TRI_ASSERT(_plan->getAst()->query() != nullptr);
   auto trx = _plan->getAst()->query()->trx();

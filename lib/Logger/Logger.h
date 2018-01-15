@@ -142,6 +142,7 @@ class Logger {
   static LogTopic FIXME;
   static LogTopic GRAPHS;
   static LogTopic HEARTBEAT;
+  static LogTopic HTTPCLIENT;
   static LogTopic MEMORY;
   static LogTopic MMAP;
   static LogTopic PERFORMANCE;
@@ -152,6 +153,7 @@ class Logger {
   static LogTopic ROCKSDB;
   static LogTopic SSL;
   static LogTopic STARTUP;
+  static LogTopic STATISTICS;
   static LogTopic SUPERVISION;
   static LogTopic SYSCALL;
   static LogTopic THREADS;
@@ -162,22 +164,29 @@ class Logger {
  public:
   struct FIXED {
     explicit FIXED(double value, int precision = 6)
-        : _value(value), _precision(precision){};
+        : _value(value), _precision(precision) {}
     double _value;
     int _precision;
+  };
+  
+  struct CHARS {
+    CHARS(char const* data, size_t size)
+        : data(data), size(size) {}
+    char const* data;
+    size_t size;
   };
 
   struct BINARY {
     BINARY(void const* baseAddress, size_t size)
-        : baseAddress(baseAddress), size(size){}
-    explicit BINARY(std::string const& data) : BINARY(data.c_str(), data.size()) {}
+        : baseAddress(baseAddress), size(size) {}
+    explicit BINARY(std::string const& data) : BINARY(data.data(), data.size()) {}
     void const* baseAddress;
     size_t size;
   };
 
   struct RANGE {
     RANGE(void const* baseAddress, size_t size)
-        : baseAddress(baseAddress), size(size){}
+        : baseAddress(baseAddress), size(size) {}
     void const* baseAddress;
     size_t size;
   };
@@ -211,6 +220,9 @@ class Logger {
   static bool getShowRole() {return _showRole;};
   static void setShortenFilenames(bool);
   static void setShowThreadIdentifier(bool);
+  static void setShowThreadName(bool);
+  static void setUseColor(bool);
+  static bool getUseColor() {return _useColor;};
   static void setUseLocalTime(bool);
   static bool getUseLocalTime() {return _useLocalTime;};
   static void setUseMicrotime(bool);
@@ -248,8 +260,10 @@ class Logger {
   static bool _showLineNumber;
   static bool _shortenFilenames;
   static bool _showThreadIdentifier;
+  static bool _showThreadName;
   static bool _showRole;
   static bool _threaded;
+  static bool _useColor;
   static bool _useLocalTime;
   static bool _keepLogRotate;
   static bool _useMicrotime;

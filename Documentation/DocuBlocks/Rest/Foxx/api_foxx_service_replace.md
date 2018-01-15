@@ -27,6 +27,10 @@ A service definition is an object or form with the following properties or field
 When using multipart data, the *source* field can also alternatively be a file field
 containing either a zip bundle or a standalone JavaScript file.
 
+When using a standalone JavaScript file the given file will be executed
+to define our service's HTTP endpoints. It is the same which would be defined
+in the field `main` of the service manifest.
+
 If *source* is a URL, the URL must be reachable from the server.
 If *source* is a file system path, the path will be resolved on the server.
 In either case the path or URL is expected to resolve to a zip bundle.

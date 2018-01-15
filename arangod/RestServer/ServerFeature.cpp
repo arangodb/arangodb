@@ -29,6 +29,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -91,7 +92,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new UInt32Parameter(&_vstMaxSize));
 }
 
-void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   int count = 0;
 
   if (_console) {
@@ -125,13 +126,18 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     ApplicationServer::disableFeatures({"Daemon", "Endpoint", "GeneralServer",
                                         "SslServer", "Supervisor"});
 
-    DatabaseFeature* database =
-        ApplicationServer::getFeature<DatabaseFeature>("Database");
-    database->disableReplicationApplier();
+    if (!options->processingResult().touched("replication.auto-start")) {
+      // turn off replication applier when we do not have a rest server
+      // but only if the config option is not explicitly set (the recovery
+      // test want the applier to be enabled for testing it)
+      ReplicationFeature* replicationFeature =
+          ApplicationServer::getFeature<ReplicationFeature>("Replication");
+      replicationFeature->disableReplicationApplier();
+    }
 
-    StatisticsFeature* statistics =
+    StatisticsFeature* statisticsFeature =
         ApplicationServer::getFeature<StatisticsFeature>("Statistics");
-    statistics->disableStatistics();
+    statisticsFeature->disableStatistics();
   }
 
   V8DealerFeature* v8dealer =
@@ -202,7 +208,7 @@ void ServerFeature::waitForHeartbeat() {
     if (HeartbeatThread::hasRunOnce()) {
       break;
     }
-    usleep(100 * 1000);
+    std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
   }
 }
 

@@ -71,6 +71,16 @@ inline RestStatus RestAgencyHandler::reportUnknownMethod() {
   return RestStatus::DONE;
 }
 
+inline RestStatus RestAgencyHandler::reportMessage(
+  rest::ResponseCode code, std::string const& message) {
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << message;
+  Builder body;
+  { VPackObjectBuilder b(&body);
+    body.add("message", VPackValue(message)); }
+  generateResult(code, body.slice());
+  return RestStatus::DONE;
+}
+
 void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
   try {
     std::string url = Endpoint::uriForm(_agent->config().poolAt(leaderId)) +
@@ -78,19 +88,15 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
     _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << ":"
-                                    << __LINE__;
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  e.what());
+  } catch (std::exception const&) {
+    reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
 }
 
 RestStatus RestAgencyHandler::handleTransient() {
-
   // Must be a POST request
   if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    return reportMethodNotAllowed();
   }
 
   // Convert to velocypack
@@ -98,78 +104,42 @@ RestStatus RestAgencyHandler::handleTransient() {
   try {
     query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << e.what() << " " << __FILE__ << ":" << __LINE__;
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue(e.what()));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // Need Array input
   if (!query->slice().isArray()) {
-    Builder body;
-    body.openObject();
-    body.add(
-      "message", VPackValue("Expecting array of arrays as body for writes"));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(
+      rest::ResponseCode::BAD, "Expecting array of arrays as body for writes");
   }
-  
+
   // Empty request array
   if (query->slice().length() == 0) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("Empty request."));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, "Empty request");
   }
-  
+
   // Leadership established?
   if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("No leader"));
-    body.close();
-    generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
-  
+
   trans_ret_t ret;
 
   try {
     ret = _agent->transient(query);
   } catch (std::exception const& e) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue(e.what()));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // We're leading and handling the request
-  if (ret.accepted) {  
-
+  if (ret.accepted) {
     generateResult(
       (ret.failed==0) ?
       rest::ResponseCode::OK : rest::ResponseCode::PRECONDITION_FAILED,
       ret.result->slice());
-      
   } else {            // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
-      Builder body;
-      body.openObject();
-      body.add("message", VPackValue("No leader"));
-      body.close();
-      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-      return RestStatus::DONE;
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
     } else {
       TRI_ASSERT(ret.redirect != _agent->id());
       redirectRequest(ret.redirect);
@@ -177,7 +147,7 @@ RestStatus RestAgencyHandler::handleTransient() {
   }
 
   return RestStatus::DONE;
-  
+
 }
 
 RestStatus RestAgencyHandler::handleStores() {
@@ -186,19 +156,19 @@ RestStatus RestAgencyHandler::handleStores() {
     {
       VPackObjectBuilder b(&body);
       {
-        _agent->executeLocked([&]() {
+        _agent->executeLockedRead([&]() {
           body.add(VPackValue("spearhead"));
-          { 
+          {
             VPackArrayBuilder bb(&body);
             _agent->spearhead().dumpToBuilder(body);
           }
           body.add(VPackValue("read_db"));
-          { 
+          {
             VPackArrayBuilder bb(&body);
             _agent->readDB().dumpToBuilder(body);
           }
           body.add(VPackValue("transient"));
-          { 
+          {
             VPackArrayBuilder bb(&body);
             _agent->transient().dumpToBuilder(body);
           }
@@ -206,10 +176,10 @@ RestStatus RestAgencyHandler::handleStores() {
       }
     }
     generateResult(rest::ResponseCode::OK, body.slice());
-  } else {
-    generateError(rest::ResponseCode::BAD, 400);
+    return RestStatus::DONE;
   }
-  return RestStatus::DONE;
+
+  return reportMethodNotAllowed();
 }
 
 RestStatus RestAgencyHandler::handleStore() {
@@ -222,76 +192,50 @@ RestStatus RestAgencyHandler::handleStore() {
     try {
       index = query->slice().getUInt();
     } catch (...) {
-      index = _agent->lastCommitted().second;
+      index = _agent->lastCommitted();
     }
-    
+
     try {
       query_t builder = _agent->buildDB(index);
       generateResult(rest::ResponseCode::OK, builder->slice());
     } catch (...) {
       generateError(rest::ResponseCode::BAD, 400);
     }
-    
-  } else {
-    generateError(rest::ResponseCode::BAD, 400);
+
+    return RestStatus::DONE;
   }
-  
-  return RestStatus::DONE;
-  
+
+  return reportMethodNotAllowed();
 }
 
 RestStatus RestAgencyHandler::handleWrite() {
-
   if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    return reportMethodNotAllowed();
   }
-  
+
   query_t query;
 
   // Convert to velocypack
   try {
     query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << e.what() << " " << __FILE__ << ":" << __LINE__;
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue(e.what()));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // Need Array input
   if (!query->slice().isArray()) {
-    Builder body;
-    body.openObject();
-    body.add(
-      "message", VPackValue("Expecting array of arrays as body for writes"));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(
+      rest::ResponseCode::BAD, "Expecting array of arrays as body for writes");
   }
 
   // Empty request array
   if (query->slice().length() == 0) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("Empty request."));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, "Empty request.");
   }
 
   // Leadership established?
   if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("No leader"));
-    body.close();
-    generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
 
   // Do write
@@ -299,30 +243,19 @@ RestStatus RestAgencyHandler::handleWrite() {
   try {
     ret = _agent->write(query);
   } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Malformed write query " << query;
-    Builder body;
-    body.openObject();
-    body.add("message",
-             VPackValue(std::string("Malformed write query") + e.what()));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // We're leading and handling the request
-  if (ret.accepted) {  
-
+  if (ret.accepted) {
     bool found;
     std::string call_mode = _request->header("x-arangodb-agency-mode", found);
-    if (!found) {
-      call_mode = "waitForCommitted";
-    }
-    
+    if (!found) { call_mode = "waitForCommitted"; }
     size_t errors = 0;
     Builder body;
     body.openObject();
     Agent::raft_commit_t result = Agent::raft_commit_t::OK;
-    
+
     if (call_mode != "noWait") {
       // Note success/error
       body.add("results", VPackValue(VPackValueType::Array));
@@ -333,25 +266,24 @@ RestStatus RestAgencyHandler::handleWrite() {
         }
       }
       body.close();
-      
+
       // Wait for commit of highest except if it is 0?
       if (!ret.indices.empty() && call_mode == "waitForCommitted") {
         arangodb::consensus::index_t max_index = 0;
         try {
           max_index =
             *std::max_element(ret.indices.begin(), ret.indices.end());
-        } catch (std::exception const& e) {
-          LOG_TOPIC(WARN, Logger::AGENCY)
-            << e.what() << " " << __FILE__ << ":" << __LINE__;
+        } catch (std::exception const& ex) {
+          LOG_TOPIC(WARN, Logger::AGENCY) << ex.what();
         }
-        
+
         if (max_index > 0) {
           result = _agent->waitFor(max_index);
         }
-        
+
       }
     }
-    
+
     body.close();
 
     if (result == Agent::raft_commit_t::UNKNOWN) {
@@ -365,16 +297,10 @@ RestStatus RestAgencyHandler::handleWrite() {
         generateResult(rest::ResponseCode::OK, body.slice());
       }
     }
-    
+
   } else {            // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
-      Builder body;
-      body.openObject();
-      body.add("message", VPackValue("No leader"));
-      body.close();
-      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-      return RestStatus::DONE;
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
     } else {
       TRI_ASSERT(ret.redirect != _agent->id());
       redirectRequest(ret.redirect);
@@ -382,63 +308,36 @@ RestStatus RestAgencyHandler::handleWrite() {
   }
 
   return RestStatus::DONE;
-  
 }
 
-
-
 RestStatus RestAgencyHandler::handleTransact() {
-
   if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    return reportMethodNotAllowed();
   }
-  
+
   query_t query;
 
   // Convert to velocypack
   try {
     query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << e.what() << " " << __FILE__ << ":" << __LINE__;
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue(e.what()));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // Need Array input
   if (!query->slice().isArray()) {
-    Builder body;
-    body.openObject();
-    body.add(
-      "message", VPackValue("Expecting array of arrays as body for writes"));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(
+      rest::ResponseCode::BAD, "Expecting array of arrays as body for writes");
   }
 
   // Empty request array
   if (query->slice().length() == 0) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("Empty request."));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, "Empty request");
   }
 
   // Leadership established?
   if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("No leader"));
-    body.close();
-    generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
 
   // Do write
@@ -446,18 +345,11 @@ RestStatus RestAgencyHandler::handleTransact() {
   try {
     ret = _agent->transact(query);
   } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Malformed write query " << query;
-    Builder body;
-    body.openObject();
-    body.add(
-      "message", VPackValue(std::string("Malformed write query") + e.what()));
-    body.close();
-    generateResult(rest::ResponseCode::BAD, body.slice());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // We're leading and handling the request
-  if (ret.accepted) {  
+  if (ret.accepted) {
 
     // Wait for commit of highest except if it is 0?
     if (ret.maxind > 0) {
@@ -467,16 +359,10 @@ RestStatus RestAgencyHandler::handleTransact() {
       (ret.failed==0) ?
         rest::ResponseCode::OK : rest::ResponseCode::PRECONDITION_FAILED,
       ret.result->slice());
-    
+
   } else {            // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
-      Builder body;
-      body.openObject();
-      body.add("message", VPackValue("No leader"));
-      body.close();
-      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-      return RestStatus::DONE;
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
     } else {
       TRI_ASSERT(ret.redirect != _agent->id());
       redirectRequest(ret.redirect);
@@ -484,96 +370,79 @@ RestStatus RestAgencyHandler::handleTransact() {
   }
 
   return RestStatus::DONE;
-  
 }
 
 
-inline RestStatus RestAgencyHandler::handleInquire() {
-
+RestStatus RestAgencyHandler::handleInquire() {
   if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    return reportMethodNotAllowed();
   }
-  
+
   query_t query;
 
   // Get query from body
   try {
     query = _request->toVelocyPackBuilderPtr();
-  } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << e.what() << " " << __FILE__ << ":" << __LINE__;
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << ex.what();
     generateError(rest::ResponseCode::BAD, 400);
     return RestStatus::DONE;
   }
-  
+
   // Leadership established?
   if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("No leader"));
-    body.close();
-    generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
-  
-  inquire_ret_t ret;
+
+  write_ret_t ret;
   try {
     ret = _agent->inquire(query);
   } catch (std::exception const& e) {
-    generateError(
-      rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
-    return RestStatus::DONE;
+    return reportMessage(rest::ResponseCode::SERVER_ERROR, e.what());
   }
-  
-  if (ret.accepted) {  // I am leading
 
-    generateResult(rest::ResponseCode::OK, ret.result->slice());
-    
+  if (ret.accepted) {  // I am leading
+    Builder body;
+    bool failed = false;
+    { VPackObjectBuilder b(&body);
+      if (ret.indices.empty()) {
+        body.add("ongoing", VPackValue(true));
+      } else {
+        body.add(VPackValue("results"));
+        { VPackArrayBuilder bb(&body);
+          for (auto const& index : ret.indices) {
+            body.add(VPackValue(index));
+            failed = (failed || index == 0);
+          }}
+
+      }
+      body.add("inquired", VPackValue(true));
+    }
+    generateResult(failed ? rest::ResponseCode::PRECONDITION_FAILED :
+                   rest::ResponseCode::OK, body.slice());
   } else {  // Redirect to leader
-    
     if (_agent->leaderID() == NO_LEADER) {
-      Builder body;
-      body.openObject();
-      body.add("message", VPackValue("No leader"));
-      body.close();
-      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-      return RestStatus::DONE;
-      
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
     } else {
       TRI_ASSERT(ret.redirect != _agent->id());
       redirectRequest(ret.redirect);
     }
-    
-    return RestStatus::DONE;
-     
   }
-  
+
   return RestStatus::DONE;
-  
 }
 
-inline RestStatus RestAgencyHandler::handleRead() {
+RestStatus RestAgencyHandler::handleRead() {
   if (_request->requestType() == rest::RequestType::POST) {
     query_t query;
     try {
       query = _request->toVelocyPackBuilderPtr();
     } catch (std::exception const& e) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << e.what() << " " << __FILE__ << ":" << __LINE__;
-      generateError(rest::ResponseCode::BAD, 400);
-      return RestStatus::DONE;
+      return reportMessage(rest::ResponseCode::BAD, e.what());
     }
 
     if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-      Builder body;
-      body.openObject();
-      body.add("message", VPackValue("No leader"));
-      body.close();
-      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-      return RestStatus::DONE;
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
     }
 
     read_ret_t ret = _agent->read(query);
@@ -586,25 +455,16 @@ inline RestStatus RestAgencyHandler::handleRead() {
       }
     } else {  // Redirect to leader
       if (_agent->leaderID() == NO_LEADER) {
-        Builder body;
-        body.openObject();
-        body.add("message", VPackValue("No leader"));
-        body.close();
-        generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-        return RestStatus::DONE;
-
+        return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
       } else {
         TRI_ASSERT(ret.redirect != _agent->id());
         redirectRequest(ret.redirect);
       }
-      return RestStatus::DONE;
     }
-  } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return RestStatus::DONE;
   }
-  return RestStatus::DONE;
+
+  return reportMethodNotAllowed();
 }
 
 RestStatus RestAgencyHandler::handleConfig() {
@@ -627,14 +487,13 @@ RestStatus RestAgencyHandler::handleConfig() {
     VPackObjectBuilder b(&body);
     body.add("term", Value(_agent->term()));
     body.add("leaderId", Value(_agent->leaderID()));
-    body.add("lastApplied", Value(last.first));
-    body.add("commitIndex", Value(last.second));
+    body.add("commitIndex", Value(last));
     body.add("lastAcked", _agent->lastAckedAgo()->slice());
     body.add("configuration", _agent->config().toBuilder()->slice());
   }
-  
+
   generateResult(rest::ResponseCode::OK, body.slice());
-  
+
   return RestStatus::DONE;
 }
 
@@ -654,7 +513,7 @@ RestStatus RestAgencyHandler::handleState() {
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyHandler::reportMethodNotAllowed() {
+RestStatus RestAgencyHandler::reportMethodNotAllowed() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   return RestStatus::DONE;
 }

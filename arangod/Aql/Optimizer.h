@@ -165,7 +165,8 @@ class Optimizer {
   /// newly created plans it recalls and will automatically delete them.
   /// If you need to extract the plans from the optimizer use stealBest or
   /// stealPlans.
-  int createPlans(ExecutionPlan* p, std::vector<std::string> const&, bool);
+  int createPlans(ExecutionPlan* p, std::vector<std::string> const& rulesSpecification, 
+                  bool inspectSimplePlans, bool estimateAllPlans);
 
   size_t hasEnoughPlans(size_t extraPlans) const;
 
@@ -201,6 +202,8 @@ class Optimizer {
     return res;
   }
 
+  bool runOnlyRequiredRules() const { return _runOnlyRequiredRules; }
+
   /// @brief numberOfPlans, returns the current number of plans in the system
   /// this should be called from rules, it will consider those that the
   /// current rules has already added
@@ -213,13 +216,6 @@ class Optimizer {
     _plans.levelDone.clear();
     return res;
   }
-
- private:
-  /// @brief estimatePlans
-  void estimatePlans();
-
-  /// @brief sortPlans
-  void sortPlans();
 
  public:
   /// @brief optimizer statistics
@@ -237,9 +233,12 @@ class Optimizer {
 
   /// @brief maximal number of plans to produce
   size_t const _maxNumberOfPlans;
+  
+  /// @brief run only the required optimizer rules
+  bool _runOnlyRequiredRules;
 
   /// @brief default value for maximal number of plans to produce
-  static size_t const DefaultMaxNumberOfPlans = 192;
+  static constexpr size_t defaultMaxNumberOfPlans = 192;
 };
 
 }  // namespace aql

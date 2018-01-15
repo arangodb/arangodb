@@ -186,8 +186,11 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
               << "database '" << _databaseName << "', "
               << "username: '" << _username << "'";
   } else {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not connect to endpoint '" << client->endpoint()
-             << "', username: '" << client->username() << "'";
+    if (client->getWarnConnect()) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Could not connect to endpoint '" << client->endpoint()
+        << "', username: '" << client->username() << "'";
+    }
 
     std::string errorMsg = "could not connect";
 
@@ -404,12 +407,18 @@ static void ClientConnection_reconnect(
   } else {
     password = TRI_ObjectToString(isolate, args[3]);
   }
-  
+
+  bool warnConnect = true;
+  if (args.Length() > 4) {
+    warnConnect = TRI_ObjectToBoolean(args[4]);
+  }
+
   client->setEndpoint(endpoint);
   client->setDatabaseName(databaseName);
   client->setUsername(username);
   client->setPassword(password);
-  
+  client->setWarnConnect(warnConnect);
+
   try {
     v8connection->reconnect(client);
   } catch (std::string const& errorMessage) {
@@ -418,7 +427,7 @@ static void ClientConnection_reconnect(
     std::string errorMessage = "error in '" + endpoint + "'";
     TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage.c_str());
   }
-  
+
   TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
                               TRI_V8_STRING(isolate, "require('internal').db._flushCache();"),
                               TRI_V8_ASCII_STRING(isolate, "reload db object"), false);
@@ -477,7 +486,7 @@ static void ClientConnection_httpGetAny(
     ObjectToMap(isolate, headerFields, args[1]);
   }
 
-  TRI_V8_RETURN(v8connection->getData(isolate, *url, headerFields, raw));
+  TRI_V8_RETURN(v8connection->getData(isolate, StringRef(*url, url.length()), headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -530,7 +539,7 @@ static void ClientConnection_httpHeadAny(
     ObjectToMap(isolate, headerFields, args[1]);
   }
 
-  TRI_V8_RETURN(v8connection->headData(isolate, *url, headerFields, raw));
+  TRI_V8_RETURN(v8connection->headData(isolate, StringRef(*url, url.length()), headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -584,12 +593,11 @@ static void ClientConnection_httpDeleteAny(
   }
 
   if (args.Length() > 2) {
-    TRI_Utf8ValueNFC bodyUtf(args[2]);
-    std::string body = *bodyUtf;
-    TRI_V8_RETURN(v8connection->deleteData(isolate, *url, headerFields, raw, body));
+    TRI_Utf8ValueNFC body(args[2]);
+    TRI_V8_RETURN(v8connection->deleteData(isolate, StringRef(*url, url.length()), StringRef(*body, body.length()), headerFields, raw));
   }
 
-  TRI_V8_RETURN(v8connection->deleteData(isolate, *url, headerFields, raw, std::string()));
+  TRI_V8_RETURN(v8connection->deleteData(isolate, StringRef(*url, url.length()), StringRef(), headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -645,7 +653,7 @@ static void ClientConnection_httpOptionsAny(
   }
 
   TRI_V8_RETURN(
-      v8connection->optionsData(isolate, *url, *body, headerFields, raw));
+      v8connection->optionsData(isolate, StringRef(*url, url.length()), StringRef(*body, body.length()), headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -701,7 +709,7 @@ static void ClientConnection_httpPostAny(
   }
 
   TRI_V8_RETURN(
-      v8connection->postData(isolate, *url, *body, headerFields, raw));
+      v8connection->postData(isolate, StringRef(*url, url.length()), StringRef(*body, body.length()), headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -756,7 +764,7 @@ static void ClientConnection_httpPutAny(
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->putData(isolate, *url, *body, headerFields, raw));
+  TRI_V8_RETURN(v8connection->putData(isolate, StringRef(*url, url.length()), StringRef(*body, body.length()), headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -812,7 +820,7 @@ static void ClientConnection_httpPatchAny(
   }
 
   TRI_V8_RETURN(
-      v8connection->patchData(isolate, *url, *body, headerFields, raw));
+      v8connection->patchData(isolate, StringRef(*url, url.length()), StringRef(*body, body.length()), headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -878,7 +886,7 @@ static void ClientConnection_httpSendFile(
   std::unordered_map<std::string, std::string> headerFields;
 
   v8::Local<v8::Value> result =
-      v8connection->postData(isolate, *url, body, headerFields);
+      v8connection->postData(isolate, StringRef(*url, url.length()), StringRef(body), headerFields);
 
   if (tryCatch.HasCaught()) {
     isolate->ThrowException(tryCatch.Exception());
@@ -1313,116 +1321,89 @@ static void ClientConnection_setDatabaseName(
 }
 
 v8::Handle<v8::Value> V8ClientConnection::getData(
-    v8::Isolate* isolate, std::string const& location,
+    v8::Isolate* isolate, StringRef const& location,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::GET, location,
-                          "", headerFields);
+    return requestDataRaw(isolate, rest::RequestType::GET, location, StringRef(), headerFields);
   }
-  return requestData(isolate, rest::RequestType::GET, location, "",
-                     headerFields);
+  return requestData(isolate, rest::RequestType::GET, location, StringRef(), headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::headData(
-    v8::Isolate* isolate, std::string const& location,
+    v8::Isolate* isolate, StringRef const& location,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::HEAD, location,
-                          "", headerFields);
+    return requestDataRaw(isolate, rest::RequestType::HEAD, location, StringRef(), headerFields);
   }
-  return requestData(isolate, rest::RequestType::HEAD, location, "",
-                     headerFields);
+  return requestData(isolate, rest::RequestType::HEAD, location, StringRef(), headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::deleteData(
-    v8::Isolate* isolate, std::string const& location,
-    std::unordered_map<std::string, std::string> const& headerFields, bool raw,
-    std::string const& body) {
+    v8::Isolate* isolate, StringRef const& location, StringRef const& body,
+    std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::DELETE_REQ, location,
-                          body, headerFields);
+    return requestDataRaw(isolate, rest::RequestType::DELETE_REQ, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::DELETE_REQ, location, body,
-                     headerFields);
+  return requestData(isolate, rest::RequestType::DELETE_REQ, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::optionsData(
-    v8::Isolate* isolate, std::string const& location, std::string const& body,
+    v8::Isolate* isolate, StringRef const& location, StringRef const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::OPTIONS,
-                          location, body, headerFields);
+    return requestDataRaw(isolate, rest::RequestType::OPTIONS, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::OPTIONS, location,
-                     body, headerFields);
+  return requestData(isolate, rest::RequestType::OPTIONS, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::postData(
-    v8::Isolate* isolate, std::string const& location, std::string const& body,
+    v8::Isolate* isolate, StringRef const& location, StringRef const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::POST, location,
-                          body, headerFields);
+    return requestDataRaw(isolate, rest::RequestType::POST, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::POST, location, body,
-                     headerFields);
+  return requestData(isolate, rest::RequestType::POST, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::putData(
-    v8::Isolate* isolate, std::string const& location, std::string const& body,
+    v8::Isolate* isolate, StringRef const& location, StringRef const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::PUT, location,
-                          body, headerFields);
+    return requestDataRaw(isolate, rest::RequestType::PUT, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::PUT, location, body,
-                     headerFields);
+  return requestData(isolate, rest::RequestType::PUT, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::patchData(
-    v8::Isolate* isolate, std::string const& location, std::string const& body,
+    v8::Isolate* isolate, StringRef const& location, StringRef const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::PATCH, location,
-                          body, headerFields);
+    return requestDataRaw(isolate, rest::RequestType::PATCH, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::PATCH, location,
-                     body, headerFields);
+  return requestData(isolate, rest::RequestType::PATCH, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::requestData(
     v8::Isolate* isolate, rest::RequestType method,
-    std::string const& location, std::string const& body,
+    StringRef const& location, StringRef const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
 
-  if (body.empty()) {
-    _httpResult.reset(
-        _client->request(method, location, nullptr, 0, headerFields));
-  } else {
-    _httpResult.reset(_client->request(method, location, body.c_str(),
-                                       body.length(), headerFields));
-  }
+  _httpResult.reset(_client->request(method, location.toString(), body.data(), body.size(), headerFields));
 
   return handleResult(isolate);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
     v8::Isolate* isolate, rest::RequestType method,
-    std::string const& location, std::string const& body,
+    StringRef const& location, StringRef const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
 
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
 
-  if (body.empty()) {
-    _httpResult.reset(
-        _client->request(method, location, nullptr, 0, headerFields));
-  } else {
-    _httpResult.reset(_client->request(method, location, body.c_str(),
-                                       body.size(), headerFields));
-  }
+  _httpResult.reset(_client->request(method, location.toString(), body.data(), body.size(), headerFields));
 
   if (_httpResult == nullptr) {
     // create a fake response to prevent crashes when accessing the response

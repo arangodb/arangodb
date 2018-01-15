@@ -162,6 +162,7 @@ ERROR_REPLICATION_NO_START_TICK,1413,"no start tick","Will be raised when the re
 ERROR_REPLICATION_START_TICK_NOT_PRESENT,1414,"start tick not present","Will be raised when the replication applier fetches data using a start tick, but that start tick is not present on the logger server anymore."
 ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,1415,"the checksum format is wrong", "Will be raised when the format of the checksum is wrong")
 ERROR_REPLICATION_WRONG_CHECKSUM,1416,"wrong checksum","Will be raised when a new born follower submits a wrong checksum"
+ERROR_REPLICATION_SHARD_NONEMPTY,1417,"shard not empty","Will be raised when a shard is not empty and the follower tries a shortcut"
 
 ################################################################################
 ## ArangoDB cluster errors
@@ -212,6 +213,8 @@ ERROR_CLUSTER_SHARD_LEADER_RESIGNED,1491,"a (former) shard leader refuses to per
 ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,1492,"some agency operation failed","Will be raised if after various retries an agency operation could not be performed successfully."
 ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR,1493,"conflicting replication factor with distributeShardsLike parameter assignment","Will be raised if intended replication factor does not match that of the prototype shard given in ditributeShardsLike parameter."
 ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS,1494,"conflicting shard number with distributeShardsLike parameter assignment","Will be raised if intended number of shards does not match that of the prototype shard given in ditributeShardsLike parameter."
+ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,1495,"leadership challenge is ongoing","Will be raised when servers are currently competing for leadership, and the result is still unknown."
+ERROR_CLUSTER_NOT_LEADER,1496,"not a leader","Will be raised when an operation is sent to a non-leading server."
 
 ################################################################################
 ## ArangoDB query errors
@@ -295,6 +298,7 @@ ERROR_USER_INVALID_PASSWORD,1701,"invalid password","Will be raised when an inva
 ERROR_USER_DUPLICATE,1702,"duplicate user","Will be raised when a user name already exists."
 ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is updated that does not exist."
 ERROR_USER_CHANGE_PASSWORD,1704,"user must change his password","Will be raised when the user must change his password."
+ERROR_USER_EXTERNAL,1705,"user is external","Will be raised when the user is authenicated by an external server."
 
 ################################################################################
 ## Service management errors (legacy)

@@ -38,6 +38,11 @@ namespace velocypack {
 class Slice;
 }
 
+namespace aql {
+class ExecutionPlan;
+struct ExecutionContext;
+}
+
 class PhysicalView;
 
 class LogicalView {
@@ -72,6 +77,8 @@ class LogicalView {
   bool deleted() const;
   void setDeleted(bool);
 
+  void rename(std::string const& newName, bool doSync);
+
   PhysicalView* getPhysical() const { return _physical.get(); }
   ViewImplementation* getImplementation() const {
     return _implementation.get();
@@ -80,8 +87,8 @@ class LogicalView {
   void drop();
 
   // SECTION: Serialization
-  VPackBuilder toVelocyPack(bool includeProperties = false,
-                            bool includeSystem = false) const;
+  velocypack::Builder toVelocyPack(bool includeProperties = false,
+                                   bool includeSystem = false) const;
 
   void toVelocyPack(velocypack::Builder&, bool includeProperties = false,
                     bool includeSystem = false) const;

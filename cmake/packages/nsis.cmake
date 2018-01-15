@@ -65,19 +65,19 @@ set(CPACK_ARANGODB_NSIS_DEFINES "
 # hook to build the server package
 ################################################################################
 
-add_custom_target(package-arongodb-server-nsis
+add_custom_target(package-arangodb-server-nsis
   COMMAND ${CMAKE_COMMAND} .
   COMMAND ${CMAKE_CPACK_COMMAND} -G NSIS -C ${CMAKE_BUILD_TYPE}
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
 
-list(APPEND PACKAGES_LIST package-arongodb-server-nsis)
+list(APPEND PACKAGES_LIST package-arangodb-server-nsis)
 
-add_custom_target(package-arongodb-server-zip
+add_custom_target(package-arangodb-server-zip
   COMMAND ${CMAKE_COMMAND} .
   COMMAND ${CMAKE_CPACK_COMMAND} -G ZIP -C ${CMAKE_BUILD_TYPE}
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
 
-list(APPEND PACKAGES_LIST package-arongodb-server-zip)
+list(APPEND PACKAGES_LIST package-arangodb-server-zip)
 
 ################################################################################
 # hook to build the client package
@@ -92,7 +92,7 @@ if (${CLIENT_BUILD_DIR_LEN} EQUAL 0)
 endif()
 
 configure_file(cmake/packages/client/nsis.txt ${CLIENT_BUILD_DIR}/CMakeLists.txt @ONLY)
-add_custom_target(package-arongodb-client-nsis
+add_custom_target(package-arangodb-client-nsis
   COMMAND ${CMAKE_COMMAND} .
   COMMENT "configuring client package environment"
   COMMAND ${CMAKE_CPACK_COMMAND} -G NSIS -C ${CMAKE_BUILD_TYPE}
@@ -102,7 +102,7 @@ add_custom_target(package-arongodb-client-nsis
   WORKING_DIRECTORY ${CLIENT_BUILD_DIR})
 
 
-list(APPEND PACKAGES_LIST package-arongodb-client-nsis)
+list(APPEND PACKAGES_LIST package-arangodb-client-nsis)
 
 add_custom_target(copy_client_nsis_package
   COMMAND ${CMAKE_COMMAND} -E copy ${ARANGODB_CLIENT_PACKAGE_FILE_NAME}.exe ${PACKAGE_TARGET_DIR})

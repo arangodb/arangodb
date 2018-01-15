@@ -31,15 +31,16 @@ namespace arangodb {
 
 class RocksDBReplicationResult : public Result {
  public:
-  RocksDBReplicationResult(int, uint64_t);
+  RocksDBReplicationResult(int errorNumber, uint64_t lastTick);
+  RocksDBReplicationResult(int errorNumber, char const* errorMessage, uint64_t lastTick);
   uint64_t maxTick() const;
-  bool fromTickIncluded() const;
+  bool minTickIncluded() const;
 
-  void includeFromTick();
+  void includeMinTick();
 
  private:
   uint64_t _maxTick;
-  bool _fromTickIncluded;
+  bool _minTickIncluded;
 };
 
 }  // namespace arangodb

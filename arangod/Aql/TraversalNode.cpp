@@ -32,7 +32,6 @@
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
-#include "Cluster/ClusterComm.h"
 #include "Graph/BaseOptions.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
@@ -463,7 +462,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->checkConditionsDefined();
 #endif
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -550,7 +549,7 @@ void TraversalNode::prepareOptions() {
     for (auto const& jt : _globalVertexConditions) {
       it.second->addMember(jt);
     }
-    opts->_vertexExpressions.emplace(it.first, new Expression(ast, it.second));
+    opts->_vertexExpressions.emplace(it.first, new Expression(_plan, ast, it.second));
     TRI_ASSERT(!opts->_vertexExpressions[it.first]->isV8());
   }
   if (!_globalVertexConditions.empty()) {
@@ -559,7 +558,7 @@ void TraversalNode::prepareOptions() {
     for (auto const& it : _globalVertexConditions) {
       cond->addMember(it);
     }
-    opts->_baseVertexExpression = new Expression(ast, cond);
+    opts->_baseVertexExpression = new Expression(_plan, ast, cond);
     TRI_ASSERT(!opts->_baseVertexExpression->isV8());
   }
   // If we use the path output the cache should activate document

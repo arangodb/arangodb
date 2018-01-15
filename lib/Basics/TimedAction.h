@@ -39,9 +39,12 @@ class TimedAction {
   ~TimedAction() {}
 
  public:
+  double elapsed() const {
+    return (TRI_microtime() - _start);
+  }
   bool tick() {
     if (!_done) {
-      if (TRI_microtime() - _start >= _threshold) {
+      if (elapsed() >= _threshold) {
         _done = true;
         _callback(_threshold);
         return true;

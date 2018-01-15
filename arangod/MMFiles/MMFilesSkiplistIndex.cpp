@@ -31,7 +31,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/IndexResult.h"
-#include "MMFiles/MMFilesToken.h"
+#include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -178,7 +179,7 @@ MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
           } else {
             _includeUpper = false;
           }
-        // Fall through intentional
+          // intentionally falls through
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
           if (isReverseOrder) {
             value->toVelocyPackValue(*(_lowerBuilder.get()));
@@ -192,7 +193,7 @@ MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
           } else {
             _includeLower = false;
           }
-        // Fall through intentional
+          // intentionally falls through
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
           if (isReverseOrder) {
             value->toVelocyPackValue(*(_upperBuilder.get()));
@@ -332,7 +333,7 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
         } else {
           _includeUpper = false;
         }
-      // Fall through intentional
+        // intentionally falls through
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
         if (isReverseOrder) {
           TRI_ASSERT(lower == nullptr);
@@ -348,7 +349,7 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
         } else {
           _includeLower = false;
         }
-      // Fall through intentional
+        // intentionally falls through
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
         if (isReverseOrder) {
           TRI_ASSERT(upper == nullptr);
@@ -557,7 +558,7 @@ void MMFilesSkiplistIterator::reset() {
   }
 }
 
-bool MMFilesSkiplistIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesSkiplistIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   while (limit > 0) {
     if (_cursor == nullptr) {
       // We are exhausted already, sorry
@@ -581,7 +582,7 @@ bool MMFilesSkiplistIterator::next(TokenCallback const& cb, size_t limit) {
     }
     TRI_ASSERT(tmp != nullptr);
     TRI_ASSERT(tmp->document() != nullptr);
-    cb(MMFilesToken{tmp->document()->revisionId()});
+    cb(tmp->document()->localDocumentId());
     limit--;
   }
   return true;
@@ -680,7 +681,7 @@ void MMFilesSkiplistIterator::initNextInterval() {
 MMFilesSkiplistIndex::MMFilesSkiplistIndex(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     VPackSlice const& info)
-    : MMFilesPathBasedIndex(iid, collection, info, sizeof(TRI_voc_rid_t), true),
+    : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId), true),
       CmpElmElm(this),
       CmpKeyElm(this),
       _skiplistIndex(nullptr) {
@@ -709,13 +710,13 @@ void MMFilesSkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 
 /// @brief inserts a document into a skiplist index
 Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
-                                    TRI_voc_rid_t revisionId,
-                                    VPackSlice const& doc, bool isRollback) {
+                                    LocalDocumentId const& documentId,
+                                    VPackSlice const& doc, OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
-    res = fillElement<MMFilesSkiplistIndexElement>(elements, revisionId, doc);
+    res = fillElement<MMFilesSkiplistIndexElement>(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -739,10 +740,13 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
   // by the index
   size_t const count = elements.size();
 
+  size_t badIndex = 0;
   for (size_t i = 0; i < count; ++i) {
     res = _skiplistIndex->insert(&context, elements[i]);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      badIndex = i;
+
       // Note: this element is freed already
       for (size_t j = i; j < count; ++j) {
         _allocator->deallocate(elements[j]);
@@ -753,11 +757,54 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
       }
 
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
-        // We ignore unique_constraint violated if we are not unique
-        res = TRI_ERROR_NO_ERROR;
+          // We ignore unique_constraint violated if we are not unique
+          res = TRI_ERROR_NO_ERROR;
       }
+
       break;
     }
+  }
+
+  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+    elements.clear();
+
+    // need to rebuild elements, find conflicting key to return error,
+    // and then free elements again
+    int innerRes = TRI_ERROR_NO_ERROR;
+    try {
+      innerRes = fillElement<MMFilesSkiplistIndexElement>(elements, documentId, doc);
+    } catch (basics::Exception const& ex) {
+      innerRes = ex.code();
+    } catch (std::bad_alloc const&) {
+      innerRes = TRI_ERROR_OUT_OF_MEMORY;
+    } catch (...) {
+      innerRes = TRI_ERROR_INTERNAL;
+    }
+
+    auto cleanup = [this, &elements] {
+      for (auto& element : elements) {
+        // free all elements to prevent leak
+        _allocator->deallocate(element);
+      }
+    };
+    TRI_DEFER(cleanup());
+
+    if (innerRes != TRI_ERROR_NO_ERROR) {
+      return IndexResult(innerRes, this);
+    }
+
+    auto found = _skiplistIndex->rightLookup(&context, elements[badIndex]);
+    TRI_ASSERT(found);
+    LocalDocumentId rev(found->document()->localDocumentId());
+    ManagedDocumentResult mmdr;
+    _collection->getPhysical()->readDocument(trx, rev, mmdr);
+    std::string existingId(VPackSlice(mmdr.vpack())
+                            .get(StaticStrings::KeyString)
+                            .copyString());
+    if (mode == OperationMode::internal) {
+      return IndexResult(res, std::move(existingId));
+    }
+    return IndexResult(res, this, existingId);
   }
 
   return IndexResult(res, this);
@@ -765,13 +812,13 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
 
 /// @brief removes a document from a skiplist index
 Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
-                                    TRI_voc_rid_t revisionId,
-                                    VPackSlice const& doc, bool isRollback) {
+                                    LocalDocumentId const& documentId,
+                                    VPackSlice const& doc, OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
-    res = fillElement<MMFilesSkiplistIndexElement>(elements, revisionId, doc);
+    res = fillElement<MMFilesSkiplistIndexElement>(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -872,7 +919,7 @@ int MMFilesSkiplistIndex::ElementElementComparator::operator()(
 
   if (leftElement == rightElement ||
       (!_idx->_skiplistIndex->isArray() &&
-       leftElement->revisionId() == rightElement->revisionId())) {
+       leftElement->localDocumentId() == rightElement->localDocumentId())) {
     return 0;
   }
 
@@ -898,10 +945,10 @@ int MMFilesSkiplistIndex::ElementElementComparator::operator()(
   }
 
   // We break this tie in the key comparison by looking at the key:
-  if (leftElement->revisionId() < rightElement->revisionId()) {
+  if (leftElement->localDocumentId() < rightElement->localDocumentId()) {
     return -1;
   }
-  if (leftElement->revisionId() > rightElement->revisionId()) {
+  if (leftElement->localDocumentId() > rightElement->localDocumentId()) {
     return 1;
   }
   return 0;
@@ -1033,11 +1080,11 @@ void MMFilesSkiplistIndex::matchAttributes(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
         if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
                             found, nonNullAttributes, isExecution)) {
-          auto m = op->getMember(1);
-          if (m->isArray() && m->numMembers() > 1) {
+          size_t av = SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(op->getMember(1));
+          if (av > 1) {
             // attr IN [ a, b, c ]  =>  this will produce multiple items, so
             // count them!
-            values += m->numMembers() - 1;
+            values += av - 1;
           }
         }
         break;
@@ -1202,7 +1249,7 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
         if (first->getMember(1)->isArray()) {
           usesIn = true;
         }
-      // Fall through intentional
+        // intentionally falls through
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
         TRI_ASSERT(conditions.size() == 1);
         break;
@@ -1236,7 +1283,7 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
                                      // will have _fields many entries.
     TRI_ASSERT(mapping.size() == _fields.size());
     if (!findMatchingConditions(node, reference, mapping, usesIn)) {
-      return new EmptyIndexIterator(_collection, trx, mmdr, this);
+      return new EmptyIndexIterator(_collection, trx, this);
     }
   } else {
     TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {

@@ -168,7 +168,7 @@ void FollowerInfo::add(ServerID const& sid) {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "FollowerInfo::add, could not read "
                                       << path << " in agency.";
     }
-    usleep(500000);
+    std::this_thread::sleep_for(std::chrono::microseconds(500000));
   } while (TRI_microtime() < startTime + 30);
   if (!success) {
     LOG_TOPIC(ERR, Logger::CLUSTER)
@@ -264,14 +264,15 @@ bool FollowerInfo::remove(ServerID const& sid) {
           break;  //
         } else {
           LOG_TOPIC(WARN, Logger::CLUSTER)
-              << "FollowerInfo::remove, could not cas key " << path;
+              << "FollowerInfo::remove, could not cas key " << path 
+              << ". status code: " << res2._statusCode << ", incriminating body: " << res2.bodyRef();
         }
       }
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "FollowerInfo::remove, could not read "
                                       << path << " in agency.";
     }
-    usleep(500000);
+    std::this_thread::sleep_for(std::chrono::microseconds(500000));
   } while (TRI_microtime() < startTime + 30);
   if (!success) {
     _followers = _oldFollowers;

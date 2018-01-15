@@ -36,6 +36,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <thread>
+#include <chrono>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -45,6 +48,7 @@ using namespace arangodb::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 static thread_local uint64_t LOCAL_THREAD_NUMBER = 0;
+static thread_local char const* LOCAL_THREAD_NAME = nullptr;
 
 #if !defined(ARANGODB_HAVE_GETTID) && !defined(_WIN32)
 
@@ -78,6 +82,8 @@ void Thread::startThread(void* arg) {
   TRI_ASSERT(ptr != nullptr);
 
   ptr->_threadNumber = LOCAL_THREAD_NUMBER;
+  
+  LOCAL_THREAD_NAME = ptr->name().c_str();
 
   if (0 <= ptr->_affinity) {
     TRI_SetProcessorAffinity(&ptr->_thread, ptr->_affinity);
@@ -129,6 +135,13 @@ TRI_pid_t Thread::currentProcessId() {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t Thread::currentThreadNumber() { return LOCAL_THREAD_NUMBER; }
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the name of the current thread, if set
+/// note that this function may return a nullptr
+////////////////////////////////////////////////////////////////////////////////
+
+char const* Thread::currentThreadName() { return LOCAL_THREAD_NAME; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the thread id
@@ -177,9 +190,6 @@ Thread::Thread(std::string const& name, bool deleteOnExit)
       _affinity(-1),
       _workDescription(nullptr) {
   TRI_InitThread(&_thread);
-
-  // allow failing memory allocations for all threads by default
-  TRI_AllowMemoryFailures();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,6 +222,8 @@ Thread::~Thread() {
         << ". shutting down hard";
     FATAL_ERROR_ABORT();
   }
+  
+  LOCAL_THREAD_NAME = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -273,7 +285,7 @@ void Thread::shutdown() {
       break;
     }
 
-    usleep(100 * 1000);
+    std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
   }
 
   if (_state.load() != ThreadState::STOPPED) {
@@ -431,6 +443,7 @@ void Thread::runMe() {
 
 void Thread::cleanupMe() {
   if (_deleteOnExit) {
+    LOCAL_THREAD_NAME = nullptr;
     delete this;
   }
 }

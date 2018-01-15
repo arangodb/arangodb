@@ -45,6 +45,18 @@ IndexIterator::IndexIterator(LogicalCollection* collection,
   TRI_ASSERT(_mmdr != nullptr);
 }
 
+IndexIterator::IndexIterator(LogicalCollection* collection, 
+                             transaction::Methods* trx, 
+                             arangodb::Index const* index)
+      : _collection(collection), 
+        _trx(trx), 
+        _mmdr(nullptr),
+        _context(trx, collection, nullptr, index->fields().size()),
+        _responsible(false) {
+  TRI_ASSERT(_collection != nullptr);
+  TRI_ASSERT(_trx != nullptr);
+}
+
 /// @brief default destructor. Does not free anything
 IndexIterator::~IndexIterator() {
   if (_responsible) {
@@ -52,13 +64,8 @@ IndexIterator::~IndexIterator() {
   }
 }
 
-bool IndexIterator::hasExtra() const {
-  // The default index has no extra information
-  return false;
-}
-
 bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
-  return next([this, &cb](DocumentIdentifierToken const& token) {
+  return next([this, &cb](LocalDocumentId const& token) {
     _collection->readDocumentWithCallback(_trx, token, cb);
   }, limit);
 }
@@ -80,7 +87,7 @@ void IndexIterator::reset() {}
 /// @brief default implementation for skip
 void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
   // Skip the first count-many entries
-  auto cb = [&skipped] (DocumentIdentifierToken const& ) {
+  auto cb = [&skipped] (LocalDocumentId const& ) {
     ++skipped;
   };
   // TODO: Can be improved
@@ -91,8 +98,8 @@ void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
 ///        If one iterator is exhausted, the next one is used.
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
-bool MultiIndexIterator::next(TokenCallback const& callback, size_t limit) {
-  auto cb = [&limit, &callback] (DocumentIdentifierToken const& token) {
+bool MultiIndexIterator::next(LocalDocumentIdCallback const& callback, size_t limit) {
+  auto cb = [&limit, &callback] (LocalDocumentId const& token) {
     --limit;
     callback(token);
   };

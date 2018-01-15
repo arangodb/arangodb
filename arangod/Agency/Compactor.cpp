@@ -32,7 +32,7 @@ using namespace arangodb::consensus;
 
 // @brief Construct with agent
 Compactor::Compactor(Agent* agent) :
-  Thread("Compactor"), _agent(agent), _waitInterval(1000000) {
+  Thread("Compactor"), _agent(agent), _wakeupCompactor(false), _waitInterval(1000000) {
 }
 
 
@@ -49,10 +49,14 @@ void Compactor::run() {
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting compactor personality";
 
-  CONDITION_LOCKER(guard, _cv);
-      
   while (true) {
-    _cv.wait();
+    {
+      CONDITION_LOCKER(guard, _cv);
+      if (!_wakeupCompactor) {
+        _cv.wait();
+      }
+      _wakeupCompactor = false;
+    }
     
     if (this->isStopping()) {
       break;
@@ -61,7 +65,7 @@ void Compactor::run() {
     try {
       _agent->compact();
     }
-    catch (std::exception& e) {
+    catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY) << "Expection during compaction, details: "
         << e.what();
     }
@@ -71,11 +75,10 @@ void Compactor::run() {
 
 
 // @brief Wake up compaction
-void Compactor::wakeUp () {
-  {
-    CONDITION_LOCKER(guard, _cv);
-    guard.broadcast();
-  }
+void Compactor::wakeUp() {
+  CONDITION_LOCKER(guard, _cv);
+  _wakeupCompactor = true;
+  _cv.signal();
 }
 
 
@@ -86,9 +89,6 @@ void Compactor::beginShutdown() {
     
   Thread::beginShutdown();
 
-  {
-    CONDITION_LOCKER(guard, _cv);
-    guard.broadcast();
-  }
-  
+  wakeUp();
+
 }

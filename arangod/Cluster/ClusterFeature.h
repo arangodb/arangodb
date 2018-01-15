@@ -46,24 +46,21 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void unprepare() override final;
 
-  std::string agencyPrefix() {
-    return _agencyPrefix;
+  std::vector<std::string> agencyEndpoints() const {
+    return _agencyEndpoints;
   }
 
-  double syncReplTimeoutFactor() {
-    return _syncReplTimeoutFactor;
+  std::string agencyPrefix() {
+    return _agencyPrefix;
   }
 
  private:
   std::vector<std::string> _agencyEndpoints;
   std::string _agencyPrefix;
-  std::string _myLocalInfo;
-  std::string _myId;
   std::string _myRole;
   std::string _myAddress;
   uint32_t _systemReplicationFactor = 2;
   bool _createWaitsForSyncReplication = true;
-  double _syncReplTimeoutFactor = 1.0;
 
  private:
   void reportRole(ServerState::RoleEnum);
@@ -73,12 +70,17 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return _agencyCallbackRegistry.get();
   }
 
-  std::string const agencyCallbacksPath() {
+  std::string const agencyCallbacksPath() const {
     return "/_api/agency/agency-callbacks";
+  };
+
+  std::string const clusterRestPath() const {
+    return "/_api/cluster";
   };
 
   void setUnregisterOnShutdown(bool);
   bool createWaitsForSyncReplication() { return _createWaitsForSyncReplication; };
+  uint32_t systemReplicationFactor() { return _systemReplicationFactor; };
 
   void stop() override final;
 
@@ -90,6 +92,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
   bool _disableHeartbeat;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole;
+  // FIXME: remove in > 3.3
+  std::string _myLocalInfo;
 };
 }
 

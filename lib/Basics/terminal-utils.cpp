@@ -29,20 +29,28 @@
 
 #if !defined(TRI_HAVE_SYS_IOCTL_H) && !defined(TRI_WIN32_CONSOLE)
 
-int TRI_ColumnsWidth(void) {
+TRI_TerminalSize TRI_DefaultTerminalSize() {
   char* e = getenv("COLUMNS");
 
   if (e != 0) {
-    int c = (int)TRI_Int32String(e);
+    int columns = (int)TRI_Int32String(e);
 
-    if (c == 0 || TRI_errno() != TRI_ERROR_NO_ERROR) {
-      return TRI_DEFAULT_COLUMNS;
+    if (columns == 0 || TRI_errno() != TRI_ERROR_NO_ERROR) {
+      return TRI_DEFAULT_TERMINAL_SIZE;
     }
-
-    return c;
+    
+    e = getenv("LINES");
+    if (e != 0) {
+      int rows = (int)TRI_Int32String(e);
+      
+      if (rows == 0 || TRI_errno() != TRI_ERROR_NO_ERROR) {
+        return TRI_DEFAULT_TERM_SIZE;
+      }
+      return TRI_TerminalSize{rows, columns};
+    }
   }
-
-  return TRI_DEFAULT_COLUMNS;
+  
+  return TRI_DEFAULT_TERMINAL_SIZE;
 }
 
 #endif

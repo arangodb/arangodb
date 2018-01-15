@@ -45,9 +45,12 @@ Release64/
 Release32/
 WindowsLibraries/
 cluster/**
+cluster-init*/**
 p/
 
 core
+!3rdParty/iresearch/core
+!core.h
 TAGS
 
 CPackConfig.cmake
@@ -74,6 +77,7 @@ etc/arangodb/*.conf
 
 Installation/epm/arangodb.sublist
 Installation/MacOSX/Bundle/Info.plist
+Installation/Pipeline/Jenkinsfile.groovy
 
 nbproject/
 .idea
@@ -111,6 +115,7 @@ npm-debug.log
 
 /log-*
 data-*
+databases
 cluster-init
 
 datafile-*.db

@@ -24,7 +24,6 @@
 #include "TransactionState.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/FeatureCacheFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -101,40 +100,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
                                     AccessMode::Type accessType,
                                     int nestingLevel, bool force) {
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
-
-  AuthenticationFeature* auth =
-      FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
-    std::string const colName = _resolver->getCollectionNameCluster(cid);
-
-    // only valid on coordinator or single server
-    TRI_ASSERT(ServerState::instance()->isCoordinator() ||
-               !ServerState::instance()->isRunningInCluster());
-    // avoid extra lookups of auth context, if we use the same db as stored
-    // in the execution context initialized by RestServer/VocbaseContext
-    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                     _vocbase->name(), colName);
-    
-    if (level == AuthLevel::NONE) {
-      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << ExecContext::CURRENT->user()
-                                             << " has collection AuthLevel::NONE";
-      return TRI_ERROR_FORBIDDEN;
-    }
-    bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
-    if (level == AuthLevel::RO && collectionWillWrite) {
-      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << ExecContext::CURRENT->user()
-                                              << "has no write right for collection " << colName;
-      return TRI_ERROR_ARANGO_READ_ONLY;
-    }
-  }
-
-  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cid: " << cid
-  //            << ", accessType: " << accessType
-  //            << ", nestingLevel: " << nestingLevel
-  //            << ", force: " << force
-  //            << ", allowImplicitCollections: " <<
-  //            _options.allowImplicitCollections;
-
+  
   // upgrade transaction type if required
   if (nestingLevel == 0) {
     if (!force) {
@@ -149,11 +115,22 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     }
   }
 
-  // check if we already have got this collection in the _collections vector
+  // check if we already got this collection in the _collections vector
   size_t position = 0;
   TransactionCollection* trxCollection = findCollection(cid, position);
 
   if (trxCollection != nullptr) {
+    static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
+                  AccessMode::Type::READ < AccessMode::Type::WRITE &&
+                  AccessMode::Type::READ < AccessMode::Type::EXCLUSIVE,
+                  "AccessMode::Type total order fail");
+    // we may need to recheck permissions here
+    if (trxCollection->accessType() < accessType) {
+      int res = checkCollectionPermission(cid, accessType);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
     // collection is already contained in vector
     return trxCollection->updateUsage(accessType, nestingLevel);
   }
@@ -169,7 +146,13 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
       (isRunning() && !_options.allowImplicitCollections)) {
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
-
+  
+  // now check the permissions
+  int res = checkCollectionPermission(cid, accessType);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+  
   // collection was not contained. now create and insert it
   TRI_ASSERT(trxCollection == nullptr);
 
@@ -231,9 +214,9 @@ int TransactionState::unuseCollections(int nestingLevel) {
 
 int TransactionState::lockCollections() {
   for (auto& trxCollection : _collections) {
-    int res = trxCollection->lock();
+    int res = trxCollection->lockRecursive();
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_LOCKED) {
       return res;
     }
   }
@@ -299,6 +282,36 @@ bool TransactionState::isExclusiveTransactionOnSingleCollection() const {
   return ((numCollections() == 1) && (_collections[0]->accessType() == AccessMode::Type::EXCLUSIVE));
 }
 
+int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
+                                                AccessMode::Type accessType) const {
+  ExecContext const* exec = ExecContext::CURRENT;
+  // no need to check for superuser, cluster_sync tests break otherwise
+  if (exec != nullptr && !exec->isSuperuser() && ExecContext::isAuthEnabled()) {
+    // server is in read-only mode
+    if (accessType > AccessMode::Type::READ && !ServerState::writeOpsEnabled()) {
+      LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "server is in read-only mode";
+      return TRI_ERROR_ARANGO_READ_ONLY;
+    }
+    std::string const colName = _resolver->getCollectionNameCluster(cid);
+    
+    AuthLevel level = exec->collectionAuthLevel(_vocbase->name(), colName);
+    
+    if (level == AuthLevel::NONE) {
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
+      << " has collection AuthLevel::NONE";
+      return TRI_ERROR_FORBIDDEN;
+    }
+    bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
+    if (level == AuthLevel::RO && collectionWillWrite) {
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
+      << " has no write right for collection " << colName;
+      return TRI_ERROR_ARANGO_READ_ONLY;
+    }
+  }
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
 /// @brief release collection locks for a transaction
 int TransactionState::releaseCollections() {
   if (hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
@@ -342,6 +355,13 @@ void TransactionState::clearQueryCache() {
 
 /// @brief update the status of a transaction
 void TransactionState::updateStatus(transaction::Status status) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_status != transaction::Status::CREATED && 
+      _status != transaction::Status::RUNNING) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "trying to update transaction status with an invalid state. current: " << _status << ", future: " << status;
+  }
+#endif
+
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 

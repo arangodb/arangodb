@@ -159,7 +159,7 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
       }
     };
 
-    auto writeWorker = [&store, &writersDone, writerCount, totalDocuments,
+    auto writeWorker = [&store, &writersDone,
                         batchSize, &writeWaitInterval](uint64_t lower,
                                                        uint64_t upper) -> void {
       uint64_t batches = (upper + 1 - lower) / batchSize;
@@ -250,7 +250,7 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
       }
     };
 
-    auto writeWorker = [&store, &writersDone, writerCount, totalDocuments,
+    auto writeWorker = [&store, &writersDone,
                         writeBatchSize, &writeWaitInterval](
         uint64_t lower, uint64_t upper) -> void {
       uint64_t batches = (upper + 1 - lower) / writeBatchSize;
@@ -317,8 +317,8 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
     bool doneRebalancing = false;
     auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
       while (!doneRebalancing) {
-        bool rebalanced = rebalancer.rebalance();
-        if (rebalanced) {
+        int status = rebalancer.rebalance();
+        if (status != TRI_ERROR_ARANGO_BUSY) {
           std::this_thread::sleep_for(std::chrono::milliseconds(500));
         } else {
           std::this_thread::sleep_for(std::chrono::microseconds(100));
@@ -356,8 +356,8 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
       }
     };
 
-    auto writeWorker = [&store1, &store2, &storeBias, &writersDone, writerCount,
-                        totalDocuments, writeBatchSize, &writeWaitInterval](
+    auto writeWorker = [&store1, &store2, &storeBias, &writersDone,
+                        writeBatchSize, &writeWaitInterval](
         uint64_t lower, uint64_t upper) -> void {
       uint64_t batches = (upper + 1 - lower) / writeBatchSize;
       uint64_t choice = lower;

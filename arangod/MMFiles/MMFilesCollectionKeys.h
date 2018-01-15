@@ -46,7 +46,7 @@ class MMFilesCollectionKeys final : public CollectionKeys {
   MMFilesCollectionKeys(MMFilesCollectionKeys const&) = delete;
   MMFilesCollectionKeys& operator=(MMFilesCollectionKeys const&) = delete;
 
-  MMFilesCollectionKeys(TRI_vocbase_t*, std::string const& name, 
+  MMFilesCollectionKeys(TRI_vocbase_t*, std::unique_ptr<CollectionGuard> guard,
                         TRI_voc_tick_t blockerId, double ttl);
 
   ~MMFilesCollectionKeys();
@@ -79,8 +79,8 @@ class MMFilesCollectionKeys final : public CollectionKeys {
   /// @brief dumps documents into the result
   //////////////////////////////////////////////////////////////////////////////
 
-  void dumpDocs(arangodb::velocypack::Builder&, size_t, size_t,
-                arangodb::velocypack::Slice const&) const override;
+  void dumpDocs(arangodb::velocypack::Builder& result, size_t chunk, size_t chunkSize,
+                size_t offsetInChunk, size_t maxChunkSize, arangodb::velocypack::Slice const& ids) const override;
 
  private:
   std::unique_ptr<arangodb::CollectionGuard> _guard;

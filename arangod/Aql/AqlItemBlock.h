@@ -30,6 +30,8 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
 
+#include <utility>
+
 namespace arangodb {
 namespace aql {
 class BlockCollector;
@@ -101,14 +103,56 @@ class AqlItemBlock {
     TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
 
+    size_t mem = 0;
+
     // First update the reference count, if this fails, the value is empty
     if (value.requiresDestruction()) {
       if (++_valueCount[value] == 1) {
-        increaseMemoryUsage(value.memoryUsage());
+        mem = value.memoryUsage();
+        increaseMemoryUsage(mem);
       }
     }
 
-    _data[index * _nrRegs + varNr] = value;
+    try {
+      _data[index * _nrRegs + varNr] = value;
+    } catch (...) {
+      decreaseMemoryUsage(mem);
+      throw;
+    }
+  }
+
+  /// @brief emplaceValue, set the current value of a register, constructing
+  /// it in place
+  template <typename... Args>
+  void emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
+    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+    TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
+
+    void* p = &_data[index * _nrRegs + varNr];
+    // construct the AqlValue in place
+    AqlValue* value;
+    try {
+      value = new (p) AqlValue(std::forward<Args>(args)...);
+    } catch (...) {
+      // clean up the cell
+      _data[index * _nrRegs + varNr].erase();
+      throw;
+    }
+
+    try {
+      // Now update the reference count, if this fails, we'll roll it back
+      if (value->requiresDestruction()) {
+        if (++_valueCount[*value] == 1) {
+          increaseMemoryUsage(value->memoryUsage());
+        }
+      }
+    } catch (...) {
+      // invoke dtor
+      value->~AqlValue();
+
+      _data[index * _nrRegs + varNr].destroy();
+      throw;
+    }
   }
 
   /// @brief eraseValue, erase the current value of a register and freeing it
@@ -178,7 +222,7 @@ class AqlItemBlock {
   
   void copyColValuesFromFirstRow(size_t currentRow, RegisterId col) {
     TRI_ASSERT(currentRow > 0);
-    TRI_ASSERT(_data.capacity() > currentRow * _nrRegs + col);
+    TRI_ASSERT(_data.size() > currentRow * _nrRegs + col);
 
     if (_data[currentRow * _nrRegs + col].isEmpty()) {
       // First update the reference count, if this fails, the value is empty
@@ -191,6 +235,12 @@ class AqlItemBlock {
 
   void copyValuesFromFirstRow(size_t currentRow, RegisterId curRegs) {
     TRI_ASSERT(currentRow > 0);
+
+    if (curRegs == 0) {
+      // nothing to do
+      return;
+    }
+    TRI_ASSERT(_data.size() > currentRow * _nrRegs + curRegs);
 
     for (RegisterId i = 0; i < curRegs; i++) {
       if (_data[currentRow * _nrRegs + i].isEmpty()) {
@@ -249,10 +299,8 @@ class AqlItemBlock {
   inline size_t capacity() const { return _data.size(); }
 
   /// @brief shrink the block to the specified number of rows
-  /// if sweep is set, then the superfluous rows are cleaned
-  /// if sweep is not set, the caller has to ensure that the
-  /// superfluous rows are empty
-  void shrink(size_t nrItems, bool sweep);
+  /// the superfluous rows are cleaned
+  void shrink(size_t nrItems);
 
   /// @brief rescales the block to the specified dimensions
   /// note that the block should be empty before rescaling to prevent

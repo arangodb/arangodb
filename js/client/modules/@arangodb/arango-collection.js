@@ -30,6 +30,21 @@
 
 var internal = require('internal');
 var arangosh = require('@arangodb/arangosh');
+var engine = null;
+ 
+function getEngine(db) {
+  if (engine === null) {
+    try {
+      var requestResult = db._connection.GET('/_api/engine');
+      if (requestResult && requestResult.name) {
+        engine = requestResult.name;
+      }
+    } catch (err) {
+      // ignore any errors
+    }
+  }
+  return engine;
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief add options from arguments to index specification
@@ -335,7 +350,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'numberOfShards': false,
     'keyOptions': false,
     'indexBuckets': true,
-    'replicationFactor': false,
+    'replicationFactor': true,
     'distributeShardsLike': false,
     'cacheEnabled': true
   };
@@ -445,7 +460,8 @@ ArangoCollection.prototype.drop = function (options) {
     requestResult = this._database._connection.DELETE(this._baseurl());
   }
 
-  if (requestResult !== null
+  if (requestResult !== null 
+    && requestResult !== undefined
     && requestResult.error === true
     && requestResult.errorNum !== internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
     // check error in case we got anything else but "collection not found"
@@ -474,12 +490,42 @@ ArangoCollection.prototype.drop = function (options) {
 // / @brief truncates a collection
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.truncate = function () {
-  var requestResult = this._database._connection.PUT(this._baseurl('truncate'), '');
+ArangoCollection.prototype.truncate = function (options) {
+  if (typeof options === 'boolean') {
+    options = { waitForSync: options || false };
+  } else {
+    options = options || {};
+  }
+
+  var append = (options.waitForSync ? '&waitForSync=true' : '');
+  var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, '');
 
   arangosh.checkRequestResult(requestResult);
-
   this._status = null;
+ 
+  if (!options.compact) {
+    return;
+  }
+  
+  // fetch storage engine type
+  var engine = getEngine(this._database);
+
+  if (engine === 'mmfiles') {
+    try {  
+      // after we are done with the truncation, we flush the WAL to move out all
+      // remove operations
+      this._database._connection.PUT(this._prefixurl('/_admin/wal/flush?waitForSync=true&waitForCollector=true&maxWaitTime=5'), '');
+      try {
+        // after the WAL flush, we rotate the collection's active journals, so they can be
+        // compacted
+        this._database._connection.PUT(this._baseurl('rotate'), '');
+      } catch (err) {
+        // this operation is invisible to the user, so we will intentionally ignore all errors here
+      }
+    } catch (err) {
+      // ignore any WAL-flush related error (may be a privilege issue anyway)
+    }
+  }
 };
 
 // //////////////////////////////////////////////////////////////////////////////

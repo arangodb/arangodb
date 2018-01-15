@@ -61,7 +61,7 @@ class V8Executor {
 
   /// @brief checks if a V8 exception has occurred and throws an appropriate C++
   /// exception from it if so
-  static void HandleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&, arangodb::basics::StringBuffer* const, bool duringCompile);
+  static void HandleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&, arangodb::basics::StringBuffer*, bool duringCompile);
 
  private:
   /// @brief traverse the expression and note all user-defined functions
@@ -120,6 +120,9 @@ class V8Executor {
   /// @brief generate JavaScript code for a full collection access
   void generateCodeCollection(AstNode const*);
 
+  /// @brief generate JavaScript code for a full view access
+  void generateCodeView(AstNode const*);
+
   /// @brief generate JavaScript code for a call to a built-in function
   void generateCodeFunctionCall(AstNode const*);
 
@@ -148,7 +151,7 @@ class V8Executor {
   void generateCodeNode(AstNode const*);
 
   /// @brief create the string buffer
-  arangodb::basics::StringBuffer* initializeBuffer();
+  void initializeBuffer();
 
  private:
   /// @brief minimum number of array members / object attributes for considering
@@ -156,11 +159,11 @@ class V8Executor {
   static constexpr size_t defaultLiteralSizeThreshold = 32;
 
   /// @brief a string buffer used for operations
-  arangodb::basics::StringBuffer* _buffer;
+  std::unique_ptr<arangodb::basics::StringBuffer> _buffer;
 
   /// @brief mapping from literal array/objects to register ids
   std::unordered_map<AstNode const*, size_t> _constantRegisters;
-  
+
   /// @brief mapping from user-defined function names to register ids
   std::unordered_map<std::string, size_t> _userFunctions;
 

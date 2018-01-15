@@ -139,7 +139,7 @@ describe('User Rights Management', () => {
 
             const rootTruncateCollection = () => {
               if (rootTestCollection(false)) {
-                db._collection(colName).truncate();
+                db._collection(colName).truncate({ compact: false });
               }
               switchUser(name, dbName);
             };

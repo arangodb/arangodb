@@ -43,17 +43,8 @@ typedef uint64_t TRI_voc_rid_t;
 /// @brief transaction identifier type
 typedef uint64_t TRI_voc_tid_t;
 
-/// @brief size type
-typedef uint32_t TRI_voc_size_t;
-
-/// @brief signed size type
-typedef int32_t TRI_voc_ssize_t;
-
 /// @brief index identifier
 typedef TRI_voc_tick_t TRI_idx_iid_t;
-
-/// @brief crc type
-typedef uint32_t TRI_voc_crc_t;
 
 /// @brief server id type
 typedef uint64_t TRI_server_id_t;
@@ -108,26 +99,6 @@ struct hash<std::vector<arangodb::velocypack::Slice>> {
 };
 
 }
-
-struct DocumentDescriptor {
-  DocumentDescriptor() : _revisionId(0), _vpack(nullptr) {}
-  DocumentDescriptor(TRI_voc_rid_t revisionId, uint8_t const* vpack) : _revisionId(revisionId), _vpack(vpack) {}
-
-  bool empty() const { return _vpack == nullptr; }
-  
-  void reset(DocumentDescriptor const& other) {
-    _revisionId = other._revisionId;
-    _vpack = other._vpack;
-  }
-
-  void clear() {
-    _revisionId = 0;
-    _vpack = nullptr;
-  }
-
-  TRI_voc_rid_t _revisionId;
-  uint8_t const* _vpack;
-};
 
 /// @brief databases list structure
 struct TRI_vocbase_t;

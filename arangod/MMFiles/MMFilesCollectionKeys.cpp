@@ -31,6 +31,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionGuard.h"
+#include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -42,9 +43,10 @@
 
 using namespace arangodb;
 
-MMFilesCollectionKeys::MMFilesCollectionKeys(TRI_vocbase_t* vocbase, std::string const& name,
+MMFilesCollectionKeys::MMFilesCollectionKeys(TRI_vocbase_t* vocbase, std::unique_ptr<CollectionGuard> guard,
                                              TRI_voc_tick_t blockerId, double ttl)
-    : CollectionKeys(vocbase, name, ttl),
+    : CollectionKeys(vocbase, ttl),
+      _guard(std::move(guard)),
       _ditch(nullptr),
       _resolver(vocbase),
       _blockerId(blockerId) {
@@ -52,8 +54,6 @@ MMFilesCollectionKeys::MMFilesCollectionKeys(TRI_vocbase_t* vocbase, std::string
 
   // prevent the collection from being unloaded while the export is ongoing
   // this may throw
-  _guard.reset(new arangodb::CollectionGuard(vocbase, _name.c_str(), false));
-
   _collection = _guard->collection();
   TRI_ASSERT(_collection != nullptr);
 }
@@ -93,12 +93,13 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
 
   // copy all document tokens into the result under the read-lock
   {
-    SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(_collection->vocbase()), _name,
-        AccessMode::Type::READ);
+    auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
+    SingleCollectionTransaction trx(ctx, _collection->cid(), AccessMode::Type::READ);
+
+    // already locked by _guard
+    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
     Result res = trx.begin();
-
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -106,7 +107,7 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
     ManagedDocumentResult mmdr;
     MMFilesCollection *mmColl = MMFilesCollection::toMMFilesCollection(_collection);
     trx.invokeOnAllElements(
-        _collection->name(), [this, &trx, &maxTick, &mmdr, &mmColl](DocumentIdentifierToken const& token) {
+        _collection->name(), [this, &trx, &maxTick, &mmdr, &mmColl](LocalDocumentId const& token) {
           if (mmColl->readDocumentConditional(&trx, token, maxTick, mmdr)) {
             _vpack.emplace_back(mmdr.vpack());
           }
@@ -191,11 +192,14 @@ void MMFilesCollectionKeys::dumpKeys(VPackBuilder& result, size_t chunk,
 ////////////////////////////////////////////////////////////////////////////////
 
 void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size_t chunk,
-                              size_t chunkSize, VPackSlice const& ids) const {
+                                     size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize, 
+                                     VPackSlice const& ids) const {
   if (!ids.isArray()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-
+        
+  auto buffer = result.buffer();
+  size_t offset = 0;
   for (auto const& it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -207,10 +211,20 @@ void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
     
-    VPackSlice current(_vpack.at(position));
-    TRI_ASSERT(current.isObject());
-  
-    result.add(current);
+    if (offset < offsetInChunk) {
+      // skip over the initial few documents
+      result.add(VPackValue(VPackValueType::Null));
+    } else { 
+      VPackSlice current(_vpack.at(position));
+      TRI_ASSERT(current.isObject());
+      result.add(current);
+
+      if (buffer->byteSize() > maxChunkSize) {
+        // buffer is full
+        break;
+      }
+    }
+    ++offset;
   }
 }
 

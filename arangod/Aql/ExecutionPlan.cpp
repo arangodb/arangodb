@@ -47,6 +47,10 @@
 #include "Graph/TraverserOptions.h"
 #include "VocBase/AccessMode.h"
 
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewNode.h"
+#endif
+
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
@@ -61,6 +65,14 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
                                    "invalid traversal depth");
   }
   double v = node->getDoubleValue();
+  if (v > static_cast<double>(INT64_MAX)) {
+    // we cannot safely represent this value in an int64_t.
+    // which is already far bigger than we will ever traverse, so
+    // we can safely abort here and not care about uint64_t.
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+
   double intpart;
   if (modf(v, &intpart) != 0.0 || v < 0.0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
@@ -70,9 +82,9 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
 }
 
 static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
-    transaction::Methods* trx, AstNode const* direction,
+    aql::Query* query, AstNode const* direction,
     AstNode const* optionsNode) {
-  auto options = std::make_unique<traverser::TraverserOptions>(trx);
+  auto options = std::make_unique<traverser::TraverserOptions>(query);
 
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
@@ -121,6 +133,7 @@ static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
                 arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
           }
         } else if (name == "uniqueEdges" && value->isStringValue()) {
+          // path is the default
           if (value->stringEquals("none", true)) {
             options->uniqueEdges =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
@@ -149,8 +162,8 @@ static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
 }
 
 static std::unique_ptr<graph::BaseOptions> CreateShortestPathOptions(
-    arangodb::transaction::Methods* trx, AstNode const* node) {
-  auto options = std::make_unique<graph::ShortestPathOptions>(trx);
+    arangodb::aql::Query* query, AstNode const* node) {
+  auto options = std::make_unique<graph::ShortestPathOptions>(query);
 
   if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
     size_t n = node->numMembers();
@@ -255,29 +268,6 @@ ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(
   return plan.release();
 }
 
-/// @brief clone the plan by recursively cloning starting from the root
-class CloneNodeAdder final : public WalkerWorker<ExecutionNode> {
-  ExecutionPlan* _plan;
-
- public:
-  bool success;
-
-  explicit CloneNodeAdder(ExecutionPlan* plan) : _plan(plan), success(true) {}
-
-  ~CloneNodeAdder() {}
-
-  bool before(ExecutionNode* node) override final {
-    // We need to catch exceptions because the walk has to finish
-    // and either register the nodes or delete them.
-    try {
-      _plan->registerNode(node);
-    } catch (...) {
-      success = false;
-    }
-    return false;
-  }
-};
-
 /// @brief clone an existing execution plan
 ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
   auto plan = std::make_unique<ExecutionPlan>(ast);
@@ -287,12 +277,6 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
   plan->_appliedRules = _appliedRules;
   plan->_isResponsibleForInitialize = _isResponsibleForInitialize;
 
-  CloneNodeAdder adder(plan.get());
-  plan->_root->walk(&adder);
-
-  if (!adder.success) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Could not clone plan");
-  }
   // plan->findVarUsage();
   // Let's not do it here, because supposedly the plan is modified as
   // the very next thing anyway!
@@ -397,15 +381,104 @@ ExecutionNode* ExecutionPlan::createCalculation(
     TRI_ASSERT(expression->numMembers() == 1);
     expression = expression->getMember(0);
   }
+ 
+  bool containsCollection = false;
+  // replace occurrences of collection names used as function call arguments
+  // (that are of type NODE_TYPE_COLLECTION) with their string equivalents
+  // for example, this will turn `WITHIN(collection, ...)` into
+  // `WITHIN("collection", ...)`
+  auto visitor = [this, &containsCollection](AstNode* node, void*) {
+    if (node->type == NODE_TYPE_FCALL) {
+      auto func = static_cast<Function*>(node->getData());
+
+      // check function arguments
+      auto args = node->getMember(0);
+      size_t const n = args->numMembers();
+
+      for (size_t i = 0; i < n; ++i) {
+        auto member = args->getMemberUnchecked(i);
+        auto conversion = func->getArgumentConversion(i);
+
+        if (member->type == NODE_TYPE_COLLECTION &&
+            (conversion == Function::CONVERSION_REQUIRED ||
+             conversion == Function::CONVERSION_OPTIONAL)) {
+          // collection attribute: no need to check for member simplicity
+          args->changeMember(i, _ast->createNodeValueString(member->getStringValue(), member->getStringLength()));
+        }
+      }
+    } else if (node->type == NODE_TYPE_COLLECTION) {
+      containsCollection = true;
+    }
+      
+    return node;
+  };
+
+  // replace NODE_TYPE_COLLECTION function call arguments in the expression
+  auto node = Ast::traverseAndModify(const_cast<AstNode*>(expression), visitor, nullptr);
+
+  if (containsCollection) {
+    // we found at least one occurence of NODE_TYPE_COLLECTION
+    // now replace them with proper (FOR doc IN collection RETURN doc) 
+    // subqueries
+    auto visitor = [this, &previous](AstNode* node, void*) {
+      if (node->type == NODE_TYPE_COLLECTION) {
+        // create an on-the-fly subquery for a full collection access
+        AstNode* rootNode = _ast->createNodeSubquery();
+
+        // FOR part
+        Variable* v = _ast->variables()->createTemporaryVariable();
+        AstNode* forNode = _ast->createNodeFor(v, node);
+        // RETURN part
+        AstNode* returnNode = _ast->createNodeReturn(_ast->createNodeReference(v));
+        
+        // add both nodes to subquery
+        rootNode->addMember(forNode);
+        rootNode->addMember(returnNode);
+
+        // produce the proper ExecutionNodes from the subquery AST 
+        auto subquery = fromNode(rootNode);
+        if (subquery == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+
+        // and register a reference to the subquery result in the expression
+        v = _ast->variables()->createTemporaryVariable();
+        auto en = registerNode(new SubqueryNode(this, nextId(), subquery, v));
+        _subqueries[v->id] = en;
+        en->addDependency(previous);
+        previous = en;
+        return _ast->createNodeReference(v);
+      }
+      
+      return node;
+    };
+
+    // replace remaining NODE_TYPE_COLLECTION occurrences in the expression 
+    node = Ast::traverseAndModify(node, visitor, nullptr);
+  }
+
+  if (!isDistinct && node->type == NODE_TYPE_REFERENCE) {
+    // further optimize if we are only left with a reference to a subquery
+    auto subquery = getSubqueryFromExpression(node);
+
+    if (subquery != nullptr) {
+      // optimization: if the LET a = ... references a variable created by a
+      // subquery,
+      // change the output variable of the (anonymous) subquery to be the
+      // outvariable of
+      // the LET. and don't create the LET
+
+      subquery->replaceOutVariable(out);
+      return subquery;
+    }
+  }
 
   // generate a temporary calculation node
-  auto expr =
-      std::make_unique<Expression>(_ast, const_cast<AstNode*>(expression));
+  auto expr = std::make_unique<Expression>(this, _ast, node);
 
   CalculationNode* en;
   if (conditionVariable != nullptr) {
-    en =
-        new CalculationNode(this, nextId(), expr.get(), conditionVariable, out);
+    en = new CalculationNode(this, nextId(), expr.get(), conditionVariable, out);
   } else {
     en = new CalculationNode(this, nextId(), expr.get(), out);
   }
@@ -503,6 +576,8 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
                             _ast->variables()->variables(false), false, true);
 
   registerNode(reinterpret_cast<ExecutionNode*>(en));
+  en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
+  en->specialized();
 
   return en;
 }
@@ -608,6 +683,7 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
 ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->id() > 0);
+  TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   try {
     _ids.emplace(node->id(), node);
@@ -673,6 +749,23 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     }
     en = registerNode(new EnumerateCollectionNode(
         this, nextId(), _ast->query()->vocbase(), collection, v, false));
+#ifdef USE_IRESEARCH
+  } else if (expression->type == NODE_TYPE_VIEW) {
+    // second operand is a view
+    std::string const viewName = expression->getString();
+    auto vocbase = _ast->query()->vocbase();
+    auto view = vocbase->lookupView(viewName);
+
+    if (view == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "no view for EnumerateView");
+    }
+
+    en = registerNode(
+      new iresearch::IResearchViewNode(
+        this, nextId(), vocbase, view, v, nullptr, {}
+    ));
+#endif
   } else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(expression->getData());
@@ -724,7 +817,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     previous = calc;
   }
 
-  auto options = CreateTraversalOptions(getAst()->query()->trx(), direction,
+  auto options = CreateTraversalOptions(getAst()->query(), direction,
                                         node->getMember(3));
 
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
@@ -806,7 +899,7 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
       parseTraversalVertexNode(previous, node->getMember(2));
   AstNode const* graph = node->getMember(3);
 
-  auto options = CreateShortestPathOptions(getAst()->query()->trx(), node->getMember(4));
+  auto options = CreateShortestPathOptions(getAst()->query(), node->getMember(4));
 
   // First create the node
   auto spNode = new ShortestPathNode(this, nextId(), _ast->query()->vocbase(),
@@ -1991,13 +2084,7 @@ bool ExecutionPlan::isDeadSimple() const {
       return false;
     }
 
-    auto dep = current->getFirstDependency();
-
-    if (dep == nullptr) {
-      break;
-    }
-
-    current = dep;
+    current = current->getFirstDependency();
   }
 
   return true;

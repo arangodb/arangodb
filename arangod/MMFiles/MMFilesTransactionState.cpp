@@ -35,7 +35,6 @@
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/db.h>
@@ -51,7 +50,8 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 }
 
 /// @brief transaction type
-MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase, transaction::Options const& options)
+MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase,
+                                                 transaction::Options const& options)
     : TransactionState(vocbase, options),
       _rocksTransaction(nullptr),
       _beginWritten(false),
@@ -95,7 +95,7 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
           return TRI_ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT;
         }
 
-        usleep(WaitTime);
+        std::this_thread::sleep_for(std::chrono::microseconds(WaitTime));
       }
     }
 
@@ -214,10 +214,11 @@ Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx
 }
 
 /// @brief add a WAL operation for a transaction collection
-int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
-                                   MMFilesDocumentOperation& operation,
-                                   MMFilesWalMarker const* marker,
-                                   bool& waitForSync) {
+int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
+                                          TRI_voc_rid_t revisionId,
+                                          MMFilesDocumentOperation& operation,
+                                          MMFilesWalMarker const* marker,
+                                          bool& waitForSync) {
   LogicalCollection* collection = operation.collection();
   bool const isSingleOperationTransaction = isSingleOperation();
 
@@ -307,7 +308,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
     uint8_t const* vpack = reinterpret_cast<uint8_t const*>(position) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
     TRI_ASSERT(fid > 0);
     operation.setVPack(vpack);
-    physical->updateRevision(revisionId, vpack, fid, true); // always in WAL
+    physical->updateLocalDocumentId(documentId, vpack, fid, true); // always in WAL
   }
 
   TRI_IF_FAILURE("TransactionOperationAfterAdjust") { return TRI_ERROR_DEBUG; }

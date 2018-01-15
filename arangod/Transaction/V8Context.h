@@ -31,7 +31,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class TransactionState;
-
+  
 namespace transaction {
 
 class V8Context final : public Context {
@@ -75,8 +75,12 @@ class V8Context final : public Context {
   /// @brief check whether the transaction is embedded
   static bool isEmbedded();
   
-  /// @brief create a context, returned in a shared ptr
-  static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t*, bool);
+  /// @brief create a context
+  static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t*, bool embeddable);
+
+  /// @brief create a V8 transaction context if we are in a V8 isolate, and a standlone
+  /// transaction context otherwise
+  static std::shared_ptr<transaction::Context> CreateWhenRequired(TRI_vocbase_t*, bool embeddable);
 
  private:
 

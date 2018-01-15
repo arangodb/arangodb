@@ -30,7 +30,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
 
 using namespace arangodb;
@@ -143,7 +142,7 @@ size_t MMFilesGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
   return numDocs;
 }
 
-bool MMFilesGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (!_cursor) {
     createCursor(_lat, _lon);
 
@@ -193,7 +192,7 @@ bool MMFilesGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
     }
 
     for (size_t i = 0; i < numDocs; ++i) {
-      cb(::MMFilesGeoIndex::toDocumentIdentifierToken(
+      cb(::MMFilesGeoIndex::toLocalDocumentId(
           coords->coordinates[i].data));
     }
     // If we return less then limit many docs we are done.
@@ -215,15 +214,9 @@ void MMFilesGeoIndexIterator::createCursor(double lat, double lon) {
   replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &_coor));
 }
 
-uint64_t MMFilesGeoIndex::fromDocumentIdentifierToken(
-    DocumentIdentifierToken const& token) {
-  auto tkn = static_cast<MMFilesToken const*>(&token);
-  return static_cast<uint64_t>(tkn->revisionId());
-}
-
-DocumentIdentifierToken MMFilesGeoIndex::toDocumentIdentifierToken(
+LocalDocumentId MMFilesGeoIndex::toLocalDocumentId(
     uint64_t internal) {
-  return MMFilesToken{internal};
+  return LocalDocumentId{internal};
 }
 
 /// @brief creates an IndexIterator for the given Condition
@@ -243,8 +236,8 @@ void MMFilesGeoIndexIterator::reset() { replaceCursor(nullptr); }
 MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid,
                                  arangodb::LogicalCollection* collection,
                                  VPackSlice const& info)
-    : Index(iid, collection, info),
-      _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
+    : MMFilesIndex(iid, collection, info),
+      _variant(INDEX_GEO_INDIVIDUAL),
       _geoJson(false),
       _geoIndex(nullptr) {
   TRI_ASSERT(iid != 0);
@@ -259,10 +252,9 @@ MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid,
     for (auto const& it : loc) {
       _location.emplace_back(it.name);
     }
-    _variant =
-        _geoJson ? INDEX_GEO_COMBINED_LAT_LON : INDEX_GEO_COMBINED_LON_LAT;
+    _variant = INDEX_GEO_COMBINED;
   } else if (_fields.size() == 2) {
-    _variant = INDEX_GEO_INDIVIDUAL_LAT_LON;
+    _variant = INDEX_GEO_INDIVIDUAL;
     auto& lat = _fields[0];
     _latitude.reserve(lat.size());
     for (auto const& it : lat) {
@@ -303,8 +295,7 @@ void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   // Basic index
   Index::toVelocyPack(builder, withFigures, forPersistence);
 
-  if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
-      _variant == INDEX_GEO_COMBINED_LON_LAT) {
+  if (_variant == INDEX_GEO_COMBINED) {
     builder.add("geoJson", VPackValue(_geoJson));
   }
 
@@ -385,12 +376,13 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result MMFilesGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
-                               VPackSlice const& doc, bool isRollback) {
+Result MMFilesGeoIndex::insert(transaction::Methods*,
+                               LocalDocumentId const& documentId,
+                               VPackSlice const& doc, OperationMode mode) {
   double latitude;
   double longitude;
 
-  if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
+  if (_variant == INDEX_GEO_INDIVIDUAL) {
     VPackSlice lat = doc.get(_latitude);
     if (!lat.isNumber()) {
       // Invalid, no insert. Index is sparse
@@ -433,34 +425,35 @@ Result MMFilesGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
   GeoCoordinate gc;
   gc.latitude = latitude;
   gc.longitude = longitude;
-  gc.data = static_cast<uint64_t>(revisionId);
+  gc.data = static_cast<uint64_t>(documentId.id());
 
   int res = GeoIndex_insert(_geoIndex, &gc);
 
   if (res == -1) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "found duplicate entry in geo-index, should not happen";
-    return IndexResult(TRI_set_errno(TRI_ERROR_INTERNAL), this);
+    return IndexResult(TRI_ERROR_INTERNAL, this);
   } else if (res == -2) {
-    return IndexResult(TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY), this);
+    return IndexResult(TRI_ERROR_OUT_OF_MEMORY, this);
   } else if (res == -3) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
         << "illegal geo-coordinates, ignoring entry";
     return Result(TRI_ERROR_NO_ERROR);
   } else if (res < 0) {
-    return IndexResult(TRI_set_errno(TRI_ERROR_INTERNAL), this);
+    return IndexResult(TRI_ERROR_INTERNAL, this);
   }
 
-  return Result(TRI_ERROR_NO_ERROR);
+  return IndexResult();
 }
 
-Result MMFilesGeoIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
-                               VPackSlice const& doc, bool isRollback) {
+Result MMFilesGeoIndex::remove(transaction::Methods*,
+                               LocalDocumentId const& documentId,
+                               VPackSlice const& doc, OperationMode mode) {
   double latitude = 0.0;
   double longitude = 0.0;
   bool ok = true;
 
-  if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
+  if (_variant == INDEX_GEO_INDIVIDUAL) {
     VPackSlice lat = doc.get(_latitude);
     VPackSlice lon = doc.get(_longitude);
     if (!lat.isNumber()) {
@@ -505,7 +498,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
   GeoCoordinate gc;
   gc.latitude = latitude;
   gc.longitude = longitude;
-  gc.data = static_cast<uint64_t>(revisionId);
+  gc.data = static_cast<uint64_t>(documentId.id());
 
   // ignore non-existing elements in geo-index
   GeoIndex_remove(_geoIndex, &gc);

@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -25,10 +24,11 @@
 #ifndef ARANGOD_INDEXES_INDEX_H
 #define ARANGOD_INDEXES_INDEX_H 1
 
-#include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
+#include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -39,6 +39,7 @@ namespace basics {
 class LocalTaskQueue;
 }
 
+class IndexIterator;
 class LogicalCollection;
 class ManagedDocumentResult;
 class StringRef;
@@ -56,11 +57,7 @@ struct Variable;
 
 namespace transaction {
 class Methods;
-};
 }
-
-namespace arangodb {
-class IndexIterator;
 
 class Index {
  public:
@@ -73,8 +70,6 @@ class Index {
         bool unique, bool sparse);
 
   Index(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&);
-
-  explicit Index(arangodb::velocypack::Slice const&);
 
   virtual ~Index();
 
@@ -90,7 +85,17 @@ class Index {
     TRI_IDX_TYPE_FULLTEXT_INDEX,
     TRI_IDX_TYPE_SKIPLIST_INDEX,
     TRI_IDX_TYPE_PERSISTENT_INDEX,
+#ifdef USE_IRESEARCH
+    TRI_IDX_TYPE_IRESEARCH_LINK,
+#endif
     TRI_IDX_TYPE_NO_ACCESS_INDEX
+  };
+
+  // mode to signal how operation should behave
+  enum OperationMode {
+    normal,
+    internal,
+    rollback
   };
 
  public:
@@ -174,7 +179,7 @@ class Index {
   inline bool unique() const { return _unique; }
 
   /// @brief validate fields from slice
-  static void validateFields(VPackSlice const& slice);
+  static void validateFields(velocypack::Slice const& slice);
 
   /// @brief return the name of the index
   char const* oldtypeName() const { return oldtypeName(type()); }
@@ -210,7 +215,8 @@ class Index {
 
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
-  static bool Compare(VPackSlice const& lhs, VPackSlice const& rhs);
+  static bool Compare(velocypack::Slice const& lhs,
+                      velocypack::Slice const& rhs);
 
   virtual bool isPersistent() const { return false; }
   virtual bool canBeDropped() const = 0;
@@ -231,7 +237,7 @@ class Index {
   /// attribute attribute, a Slice would be more flexible.
   double selectivityEstimate(
       arangodb::StringRef const* extra = nullptr) const;
-  
+
   virtual double selectivityEstimateLocal(
       arangodb::StringRef const* extra) const;
 
@@ -248,14 +254,18 @@ class Index {
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
-  virtual Result insert(transaction::Methods*, TRI_voc_rid_t revisionId,
-                     arangodb::velocypack::Slice const&, bool isRollback) = 0;
-  virtual Result remove(transaction::Methods*, TRI_voc_rid_t revisionId,
-                     arangodb::velocypack::Slice const&, bool isRollback) = 0;
+  virtual Result insert(transaction::Methods*,
+                        LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const&,
+                        OperationMode mode) = 0;
+  virtual Result remove(transaction::Methods*,
+                        LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const&,
+                        OperationMode mode) = 0;
 
   virtual void batchInsert(
       transaction::Methods*,
-      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
+      std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const&,
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
 
   virtual void load() = 0;
@@ -263,6 +273,9 @@ class Index {
 
   // called when the index is dropped
   virtual int drop();
+
+  // called after the collection was truncated
+  virtual int afterTruncate(); 
 
   // give index a hint about the expected size
   virtual int sizeHint(transaction::Methods*, size_t);
@@ -313,7 +326,7 @@ class Index {
 
  private:
   /// @brief set fields from slice
-  void setFields(VPackSlice const& slice, bool allowExpansion);
+  void setFields(velocypack::Slice const& slice, bool allowExpansion);
 
  protected:
   TRI_idx_iid_t const _iid;
@@ -325,7 +338,7 @@ class Index {
   mutable bool _unique;
 
   mutable bool _sparse;
-  
+
   double _clusterSelectivity;
 };
 }

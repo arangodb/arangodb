@@ -52,6 +52,12 @@ rocksdb::TransactionDB* globalRocksDB() {
   return rocks->db();
 }
 
+rocksdb::ColumnFamilyHandle* defaultCF() {
+  auto db = globalRocksDB();
+  TRI_ASSERT(db != nullptr);
+  return db->DefaultColumnFamily();
+}
+
 RocksDBEngine* globalRocksEngine() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);

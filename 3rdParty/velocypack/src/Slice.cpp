@@ -39,7 +39,7 @@
 using namespace arangodb::velocypack;
 using VT = arangodb::velocypack::ValueType;
 
-ValueLength const SliceStaticData::FixedTypeLengths[256] = {
+uint8_t const SliceStaticData::FixedTypeLengths[256] = {
     /* 0x00 */ 1,                    /* 0x01 */ 1,
     /* 0x02 */ 0,                    /* 0x03 */ 0,
     /* 0x04 */ 0,                    /* 0x05 */ 0,
@@ -340,7 +340,9 @@ unsigned int const SliceStaticData::FirstSubMap[32] = {
     3,  // 0x0f, object with unsorted index table
     5,  // 0x10, object with unsorted index table
     9,  // 0x11, object with unsorted index table
-    9,  // 0x12, object with unsorted index table
+    9,  // 0x12, object with unsorted index table,
+    0,  // 0x13, compact array, no index table - note: the offset is dynamic!
+    0,  // 0x14, compact object, no index table - note: the offset is dynamic!
     0};
 
 // creates a Slice from Json and adds it to a scope
@@ -510,10 +512,7 @@ Slice Slice::get(std::string const& attribute) const {
   // otherwise we'll always use the linear search
   constexpr ValueLength SortedSearchEntriesThreshold = 4;
 
-  // bool const isSorted = (h >= 0x0b && h <= 0x0e);
   if (n >= SortedSearchEntriesThreshold && (h >= 0x0b && h <= 0x0e)) {
-    // This means, we have to handle the special case n == 1 only
-    // in the linear search!
     switch (offsetSize) {
       case 1:
         return searchObjectKeyBinary<1>(attribute, ieBase, n);
@@ -664,7 +663,7 @@ bool Slice::isEqualString(std::string const& attribute) const {
   if (static_cast<size_t>(keyLength) != attribute.size()) {
     return false;
   }
-  return (memcmp(k, attribute.c_str(), attribute.size()) == 0);
+  return (memcmp(k, attribute.data(), attribute.size()) == 0);
 }
 
 Slice Slice::getFromCompactObject(std::string const& attribute) const {
@@ -705,6 +704,7 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
   // find the number of items
   ValueLength n;
   if (h <= 0x05) {  // No offset table or length, need to compute:
+    VELOCYPACK_ASSERT(h != 0x00 && h != 0x01);
     dataOffset = findDataOffset(h);
     Slice first(_start + dataOffset);
     ValueLength s = first.byteSize();
@@ -729,6 +729,7 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
     // no index table, but all array items have the same length
     // now fetch first item and determine its length
     if (dataOffset == 0) {
+      VELOCYPACK_ASSERT(h != 0x00 && h != 0x01);
       dataOffset = findDataOffset(h);
     }
     return dataOffset + index * Slice(_start + dataOffset).byteSize();
@@ -776,13 +777,15 @@ Slice Slice::makeKey() const {
 
 // get the offset for the nth member from a compact Array or Object type
 ValueLength Slice::getNthOffsetFromCompact(ValueLength index) const {
+  auto const h = head();
+  VELOCYPACK_ASSERT(h == 0x13 || h == 0x14);
+
   ValueLength end = readVariableValueLength<false>(_start + 1);
   ValueLength n = readVariableValueLength<true>(_start + end - 1);
   if (index >= n) {
     throw Exception(Exception::IndexOutOfBounds);
   }
 
-  auto const h = head();
   ValueLength offset = 1 + getVariableValueLength(end);
   ValueLength current = 0;
   while (current != index) {

@@ -75,6 +75,7 @@
       NOTIFICATION: 'notification',
       DELETE: 'danger',
       NEUTRAL: 'neutral',
+      DISABLED: 'disabled',
       CLOSE: 'close'
     },
     tables: {
@@ -96,17 +97,16 @@
       // submit modal
       $(this.el).unbind('keydown');
       $(this.el).unbind('return');
-      // $(this.el).bind('keydown', 'return', function (e) {});
 
-      $('.modal-body input').unbind('keydown');
-      $('.modal-body input').unbind('return');
-      $('.modal-body input', $(this.el)).bind('keydown', 'return', function () {
+      $('.modal-body .collectionTh > input').unbind('keydown');
+      $('.modal-body .collectionTh > input').unbind('return');
+      $('.modal-body .collectionTh > input', $(this.el)).bind('keydown', 'return', function (e) {
         $('.createModalDialog .modal-footer .button-success').click();
       });
 
-      $('.modal-body select').unbind('keydown');
-      $('.modal-body select').unbind('return');
-      $('.modal-body select', $(this.el)).bind('keydown', 'return', function () {
+      $('.modal-body .collectionTh > select').unbind('keydown');
+      $('.modal-body .collectionTh > select').unbind('return');
+      $('.modal-body .collectionTh > select', $(this.el)).bind('keydown', 'return', function (e) {
         $('.createModalDialog .modal-footer .button-success').click();
       });
     },
@@ -168,7 +168,7 @@
     },
 
     createDisabledButton: function (title) {
-      var disabledButton = createButtonStub(this.buttons.NEUTRAL, title);
+      var disabledButton = createButtonStub(this.buttons.DISABLED, title);
       disabledButton.disabled = true;
       return disabledButton;
     },
@@ -294,7 +294,12 @@
         }
       }
       _.each(buttons, function (b, i) {
-        if (b.disabled || !b.callback) {
+        if (b.disabled || b.type === 'disabled' || !b.callback) {
+          if (divID) {
+            $('#' + divID + ' ' + '#modalButton' + i).attr('disabled', true);
+          } else {
+            $('#modalButton' + i).attr('disabled', true);
+          }
           return;
         }
         if (b.type === self.buttons.DELETE && !noConfirm) {

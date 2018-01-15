@@ -25,8 +25,8 @@
 #define ARANGOD_MMFILES_GEO_INDEX_H 1
 
 #include "Basics/Common.h"
-#include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/mmfiles-geo-index.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -35,7 +35,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 // GeoCoordinate.data must be capable of storing revision ids
-static_assert(sizeof(GeoCoordinate::data) >= sizeof(TRI_voc_rid_t),
+static_assert(sizeof(GeoCoordinate::data) >= sizeof(arangodb::LocalDocumentId),
               "invalid size of GeoCoordinate.data");
 
 namespace arangodb {
@@ -55,7 +55,7 @@ class MMFilesGeoIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "geo-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   void reset() override;
 
@@ -77,7 +77,7 @@ class MMFilesGeoIndexIterator final : public IndexIterator {
   double _radius;
 };
 
-class MMFilesGeoIndex final : public Index {
+class MMFilesGeoIndex final : public MMFilesIndex {
   friend class MMFilesGeoIndexIterator;
 
  public:
@@ -92,15 +92,13 @@ class MMFilesGeoIndex final : public Index {
   /// @brief geo index variants
   enum IndexVariant {
     INDEX_GEO_NONE = 0,
-    INDEX_GEO_INDIVIDUAL_LAT_LON,
-    INDEX_GEO_COMBINED_LAT_LON,
-    INDEX_GEO_COMBINED_LON_LAT
+    INDEX_GEO_INDIVIDUAL,
+    INDEX_GEO_COMBINED
   };
 
  public:
   IndexType type() const override {
-    if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
-        _variant == INDEX_GEO_COMBINED_LON_LAT) {
+    if (_variant == INDEX_GEO_COMBINED) {
       return TRI_IDX_TYPE_GEO1_INDEX;
     }
 
@@ -108,8 +106,7 @@ class MMFilesGeoIndex final : public Index {
   }
 
   char const* typeName() const override {
-    if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
-        _variant == INDEX_GEO_COMBINED_LON_LAT) {
+    if (_variant == INDEX_GEO_COMBINED) {
       return "geo1";
     }
     return "geo2";
@@ -136,11 +133,12 @@ class MMFilesGeoIndex final : public Index {
 
   bool matchesDefinition(VPackSlice const& info) const override;
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
+  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const&, OperationMode mode) override;
 
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
+  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const&,
+                OperationMode mode) override;
 
   void load() override {}
   void unload() override;
@@ -163,10 +161,7 @@ class MMFilesGeoIndex final : public Index {
             _latitude == latitude && _longitude == longitude);
   }
 
-  static uint64_t fromDocumentIdentifierToken(
-      DocumentIdentifierToken const& token);
-
-  static DocumentIdentifierToken toDocumentIdentifierToken(uint64_t internal);
+  static LocalDocumentId toLocalDocumentId(uint64_t internal);
 
  private:
   /// @brief attribute paths

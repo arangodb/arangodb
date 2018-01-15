@@ -22,21 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBOptionFeature.h"
-#include "Basics/Exceptions.h"
-#include "Basics/FileUtils.h"
 #include "Basics/process-utils.h"
-#include "Basics/tri-strings.h"
-#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/DatabasePathFeature.h"
 
 #include <rocksdb/options.h>
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction_db.h>
-
-#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -92,7 +85,17 @@ RocksDBOptionFeature::RocksDBOptionFeature(
   }
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(std::max((size_t)2,
-                                std::min(TRI_numberProcessors(), (size_t)8)));
+                                                     std::min(TRI_numberProcessors(), (size_t)8)));
+#ifdef _WIN32
+  // Windows code does not (yet) support lowering thread priority of
+  //  compactions.  Therefore it is possible for rocksdb to use all
+  //  CPU time on compactions.  Essential network communications can be lost.
+  //  Save one CPU for ArangoDB network and other activities.
+  if (2<_maxBackgroundJobs) {
+    --_maxBackgroundJobs;
+  } // if
+#endif
+
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Daemon");
@@ -108,15 +111,15 @@ void RocksDBOptionFeature::collectOptions(
                              "RocksDB engine is enabled for the persistent "
                              "index",
                              true);
-  
+
   options->addOption("--rocksdb.wal-directory",
                      "optional path to the RocksDB WAL directory. "
                      "If not set, the WAL directory will be located inside the regular data directory",
                      new StringParameter(&_walDirectory));
-  
+
   options->addOption("--rocksdb.transaction-lock-timeout",
                      "If positive, specifies the wait timeout in milliseconds when "
-                     " a transaction attempts to lock a document. Defaults is 1000. A negative value "
+                     " a transaction attempts to lock a document. A negative value "
                      "is not recommended as it can lead to deadlocks (0 = no waiting, < 0 no timeout)",
                      new Int64Parameter(&_transactionLockTimeout));
 
@@ -128,7 +131,7 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption("--rocksdb.max-write-buffer-number",
                      "maximum number of write buffers that built up in memory",
                      new UInt64Parameter(&_maxWriteBufferNumber));
-  
+
   options->addOption("--rocksdb.max-total-wal-size",
                      "maximum total size of WAL files that will force flush stale column families",
                      new UInt64Parameter(&_maxTotalWalSize));
@@ -175,7 +178,7 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption("--rocksdb.enable-pipelined-write",
                      "if true, use a two stage write queue for WAL writes and memtable writes",
                      new BooleanParameter(&_enablePipelinedWrite));
-  
+
   options->addOption("--rocksdb.enable-statistics",
                      "whether or not RocksDB statistics should be turned on",
                      new BooleanParameter(&_enableStatistics));
@@ -289,7 +292,7 @@ void RocksDBOptionFeature::validateOptions(
         << "invalid value for '--rocksdb.max-background-jobs'";
     FATAL_ERROR_EXIT();
   }
-  
+
   if (_numThreadsHigh > 64) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.num-threads-priority-high'";
@@ -339,7 +342,7 @@ void RocksDBOptionFeature::start() {
                                     << ", block_cache_size: " << _blockCacheSize
                                     << ", block_cache_shard_bits: " << _blockCacheShardBits
                                     << ", table_block_size: " << _tableBlockSize
-                                    << ", recycle_log_file_num: " << _recycleLogFileNum 
+                                    << ", recycle_log_file_num: " << _recycleLogFileNum
                                     << ", compaction_read_ahead_size: " << _compactionReadaheadSize
                                     << ", level0_compaction_trigger: " << _level0CompactionTrigger
                                     << ", level0_slowdown_trigger: " << _level0SlowdownTrigger

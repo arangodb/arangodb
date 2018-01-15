@@ -56,6 +56,7 @@ namespace transaction {
 class Methods;
 struct Options;
 }
+class ExecContext;
 class TransactionCollection;
 
 /// @brief transaction type
@@ -159,19 +160,21 @@ class TransactionState {
   TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
 
   void setType(AccessMode::Type type);
-
- protected:
-  /// @brief find a collection in the transaction's list of collections
-  TransactionCollection* findCollection(TRI_voc_cid_t cid,
-                                        size_t& position) const;
-
+  
   /// @brief whether or not a transaction is read-only
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
   }
-
+  
+ protected:
+  /// @brief find a collection in the transaction's list of collections
+  TransactionCollection* findCollection(TRI_voc_cid_t cid,
+                                        size_t& position) const;
+  
   /// @brief whether or not a transaction is an exclusive transaction on a single collection
   bool isExclusiveTransactionOnSingleCollection() const;
+  
+  int checkCollectionPermission(TRI_voc_cid_t cid, AccessMode::Type) const;
 
   /// @brief release collection locks for a transaction
   int releaseCollections();
@@ -179,12 +182,18 @@ class TransactionState {
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache();
-
+  
+  /// @brief check the collection permissions
+  
  protected:
-  TRI_vocbase_t* _vocbase;      // vocbase
-  TRI_voc_tid_t _id;            // local trx id
-  AccessMode::Type _type;       // access type (read|write)
-  transaction::Status _status;  // current status
+  /// @brief vocbase
+  TRI_vocbase_t* _vocbase;
+  /// @brief local trx id
+  TRI_voc_tid_t _id;
+  /// @brief access type (read|write)
+  AccessMode::Type _type;
+  /// @brief current status
+  transaction::Status _status;
 
   SmallVector<TransactionCollection*>::allocator_type::arena_type
       _arena;  // memory for collections

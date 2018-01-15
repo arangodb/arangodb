@@ -172,9 +172,7 @@ Status PosixSequentialFile::Read(size_t n, Slice* result, char* scratch) {
       s = IOError(filename_, errno);
     }
   }
-  // we need to fadvise away the entire range of pages because
-  // we do not want readahead pages to be cached under buffered io
-  Fadvise(fd_, 0, 0, POSIX_FADV_DONTNEED);  // free OS pages
+  // matthewv:  removed Fadvise call here that was also removed by facebook in 5.7.1
   return s;
 }
 

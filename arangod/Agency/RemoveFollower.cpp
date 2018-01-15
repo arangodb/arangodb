@@ -178,7 +178,7 @@ bool RemoveFollower::start() {
     }
   }
   doForAllShards(_snapshot, _database, shardsLikeMe,
-    [this, &planned, &overview, &leaderBad](Slice plan,
+    [&planned, &overview, &leaderBad](Slice plan,
                                             Slice current,
                                             std::string& planPath) {
       if (current.length() > 0) {
@@ -320,7 +320,7 @@ bool RemoveFollower::start() {
 
       // --- Plan changes
       doForAllShards(_snapshot, _database, shardsLikeMe,
-        [this, &trx, &chosenToRemove](Slice plan, Slice current,
+        [&trx, &chosenToRemove](Slice plan, Slice current,
                                       std::string& planPath) {
           trx.add(VPackValue(planPath));
           { VPackArrayBuilder serverList(&trx);

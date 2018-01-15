@@ -31,9 +31,13 @@
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -106,6 +110,35 @@ static void JS_ServerStatistics(
               v8::Number::New(isolate, (double)info._uptime));
   result->Set(TRI_V8_ASCII_STRING(isolate, "physicalMemory"),
               v8::Number::New(isolate, (double)TRI_PhysicalMemory));
+
+  v8::Handle<v8::Object> v8CountersObj = v8::Object::New(isolate);
+  V8DealerFeature* dealer =
+    application_features::ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+
+  auto v8Counters = dealer->getCurrentContextNumbers();
+  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "available"),
+                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.available)));
+  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "busy"),
+                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.busy)));
+  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "dirty"),
+                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.dirty)));
+  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "free"),
+                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.free)));
+  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "max"),
+                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.max)));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "v8Context"), v8CountersObj);
+
+  v8::Handle<v8::Object> counters = v8::Object::New(isolate);
+  auto countersRaw = SchedulerFeature::SCHEDULER->getCounters();
+  counters->Set(TRI_V8_ASCII_STRING(isolate, "running"),
+                v8::Number::New(isolate, static_cast<int32_t>(rest::Scheduler::numRunning(countersRaw))));
+  counters->Set(TRI_V8_ASCII_STRING(isolate, "working"),
+                v8::Number::New(isolate, static_cast<int32_t>(rest::Scheduler::numWorking(countersRaw))));
+  counters->Set(TRI_V8_ASCII_STRING(isolate, "blocked"),
+                v8::Number::New(isolate, static_cast<int32_t>(rest::Scheduler::numBlocked(countersRaw))));
+  counters->Set(TRI_V8_ASCII_STRING(isolate, "queued"),
+                v8::Number::New(isolate, static_cast<int32_t>(SchedulerFeature::SCHEDULER->numQueued())));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "threads"), counters);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

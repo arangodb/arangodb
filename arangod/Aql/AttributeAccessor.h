@@ -32,7 +32,6 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
-;
 
 namespace aql {
 
@@ -43,7 +42,7 @@ struct Variable;
 /// @brief AttributeAccessor
 class AttributeAccessor {
  public:
-  AttributeAccessor(std::vector<std::string>&&, Variable const*);
+  AttributeAccessor(std::vector<std::string>&&, Variable const*, bool dataIsFromCollection);
   ~AttributeAccessor() = default;
 
   /// @brief execute the accessor

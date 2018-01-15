@@ -43,6 +43,7 @@ const testPort = require('internal').testPort;
 const download = require('internal').download;
 const time = require('internal').time;
 const wait = require('internal').wait;
+const sleep = require('internal').sleep;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -68,7 +69,7 @@ let BIN_DIR;
 let ARANGOBENCH_BIN;
 let ARANGODUMP_BIN;
 let ARANGOD_BIN;
-let ARANGOIMP_BIN;
+let ARANGOIMPORT_BIN;
 let ARANGORESTORE_BIN;
 let ARANGOEXPORT_BIN;
 let ARANGOSH_BIN;
@@ -116,7 +117,10 @@ function setupBinaries (builddir, buildType, configDir) {
     BIN_DIR = fs.join(TOP_DIR, BIN_DIR);
   }
 
-  UNITTESTS_DIR = fs.join(TOP_DIR, fs.join(builddir, 'tests'));
+  UNITTESTS_DIR = fs.join(fs.join(builddir, 'tests'));
+  if (!fs.exists(UNITTESTS_DIR)) {
+    UNITTESTS_DIR = fs.join(TOP_DIR, UNITTESTS_DIR);
+  }
 
   if (buildType !== '') {
     BIN_DIR = fs.join(BIN_DIR, buildType);
@@ -126,7 +130,7 @@ function setupBinaries (builddir, buildType, configDir) {
   ARANGOBENCH_BIN = fs.join(BIN_DIR, 'arangobench' + executableExt);
   ARANGODUMP_BIN = fs.join(BIN_DIR, 'arangodump' + executableExt);
   ARANGOD_BIN = fs.join(BIN_DIR, 'arangod' + executableExt);
-  ARANGOIMP_BIN = fs.join(BIN_DIR, 'arangoimp' + executableExt);
+  ARANGOIMPORT_BIN = fs.join(BIN_DIR, 'arangoimport' + executableExt);
   ARANGORESTORE_BIN = fs.join(BIN_DIR, 'arangorestore' + executableExt);
   ARANGOEXPORT_BIN = fs.join(BIN_DIR, 'arangoexport' + executableExt);
   ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executableExt);
@@ -148,7 +152,7 @@ function setupBinaries (builddir, buildType, configDir) {
     ARANGOBENCH_BIN,
     ARANGODUMP_BIN,
     ARANGOD_BIN,
-    ARANGOIMP_BIN,
+    ARANGOIMPORT_BIN,
     ARANGORESTORE_BIN,
     ARANGOEXPORT_BIN,
     ARANGOSH_BIN];
@@ -245,7 +249,21 @@ function cleanupLastDirectory (options) {
       // Avoid attempting to remove the same directory multiple times
       if ((cleanupDirectories.indexOf(cleanupDirectory) === -1) &&
           (fs.exists(cleanupDirectory))) {
-        fs.removeDirectoryRecursive(cleanupDirectory, true);
+        let i = 0;
+        while (i < 5) {
+          try {
+            fs.removeDirectoryRecursive(cleanupDirectory, true);
+            return;
+          } catch (x) {
+            print('failed to delete directory "' + cleanupDirectory + '" - "' +
+                  x + '" - Will retry in 5 seconds"');
+            sleep(5);
+          }
+          i += 1;
+        }
+        print('failed to delete directory "' + cleanupDirectory + '" - "' +
+              '" - Deferring cleanup for test run end."');
+        cleanupDirectories.unshift(cleanupDirectory);
       }
       break;
     }
@@ -511,10 +529,10 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangoimp
+// / @brief runs arangoimport
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoImp (options, instanceInfo, what) {
+function runArangoImport (options, instanceInfo, what) {
   let args = {
     'server.username': options.username,
     'server.password': options.password,
@@ -522,7 +540,8 @@ function runArangoImp (options, instanceInfo, what) {
     'file': fs.join(TOP_DIR, what.data),
     'collection': what.coll,
     'type': what.type,
-    'on-duplicate': what.onDuplicate || 'error'
+    'on-duplicate': what.onDuplicate || 'error',
+    'ignore-missing': what.ignoreMissing || false
   };
 
   if (what.skipLines !== undefined) {
@@ -531,6 +550,14 @@ function runArangoImp (options, instanceInfo, what) {
 
   if (what.create !== undefined) {
     args['create-collection'] = what.create;
+  }
+
+  if (what.createDatabase !== undefined) {
+    args['create-database'] = what.createDatabase;
+  }
+
+  if (what.database !== undefined) {
+    args['server.database'] = what.database;
   }
 
   if (what.backslash !== undefined) {
@@ -548,7 +575,7 @@ function runArangoImp (options, instanceInfo, what) {
     args['remove-attribute'] = what.removeAttribute;
   }
 
-  return executeAndWait(ARANGOIMP_BIN, toArgv(args), options, 'arangoimp', instanceInfo.rootDir);
+  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -562,7 +589,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
     'server.database': database,
-    'include-system-collections': includeSystem ? 'true' : 'false'
+    'include-system-collections': includeSystem ? 'true' : 'false',
   };
 
   let exe;
@@ -575,6 +602,10 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
     args['create-database'] = 'true';
     args['input-directory'] = fs.join(rootDir, dumpDir);
     exe = ARANGORESTORE_BIN;
+  }
+
+  if (options.encrypted) {
+    args['encryption.keyfile'] = fs.join(rootDir, 'secret-key');
   }
 
   if (options.extremeVerbosity === true) {
@@ -750,13 +781,10 @@ function shutdownArangod (arangod, options, forceTerminate) {
   if ((arangod.exitStatus === undefined) ||
       (arangod.exitStatus.status === 'RUNNING')) {
     if (forceTerminate) {
-      killExternal(arangod.pid, abortSignal);
-      arangod.exitStatus = {
-        SIGNAL: String(abortSignal)
-      };
+      arangod.exitStatus = killExternal(arangod.pid, abortSignal);
       analyzeServerCrash(arangod, options, 'shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun');
     } else if (options.useKillExternal) {
-      killExternal(arangod.pid);
+      arangod.exitStatus = killExternal(arangod.pid);
     } else {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
@@ -849,7 +877,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
             ];
           }
           */
-          killExternal(arangod.pid, abortSignal);
+          arangod.exitStatus = killExternal(arangod.pid, abortSignal);
           analyzeServerCrash(arangod, options, 'shutdown timeout; instance forcefully KILLED after 60s - ' + arangod.exitStatus.signal);
           return false;
         } else {
@@ -892,6 +920,11 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
 
 function startInstanceCluster (instanceInfo, protocol, options,
   addArgs, rootDir) {
+  if (options.cluster && options.singleresilient ||
+     !options.cluster && !options.singleresilient) {
+    throw "invalid call to startInstanceCluster";
+  }
+
   let makeArgs = function (name, role, args) {
     args = args || {};
 
@@ -918,32 +951,47 @@ function startInstanceCluster (instanceInfo, protocol, options,
   }
 
   let i;
-  for (i = 0; i < options.dbServers; i++) {
-    let port = findFreePort(options.minPort, options.maxPort, usedPorts);
-    usedPorts.push(port);
-    let endpoint = protocol + '://127.0.0.1:' + port;
-    let primaryArgs = _.clone(options.extraArgs);
-    primaryArgs['server.endpoint'] = endpoint;
-    primaryArgs['cluster.my-address'] = endpoint;
-    primaryArgs['cluster.my-local-info'] = endpoint;
-    primaryArgs['cluster.my-role'] = 'PRIMARY';
-    primaryArgs['cluster.agency-endpoint'] = agencyEndpoint;
+  if (options.cluster) {
+    for (i = 0; i < options.dbServers; i++) {
+      let port = findFreePort(options.minPort, options.maxPort, usedPorts);
+      usedPorts.push(port);
+      let endpoint = protocol + '://127.0.0.1:' + port;
+      let primaryArgs = _.clone(options.extraArgs);
+      primaryArgs['server.endpoint'] = endpoint;
+      primaryArgs['cluster.my-address'] = endpoint;
+      primaryArgs['cluster.my-role'] = 'PRIMARY';
+      primaryArgs['cluster.agency-endpoint'] = agencyEndpoint;
 
-    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, 'dbserver', primaryArgs), 'dbserver');
-  }
+      startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, 'dbserver', primaryArgs), 'dbserver');
+    }
 
-  for (i = 0; i < options.coordinators; i++) {
-    let port = findFreePort(options.minPort, options.maxPort, usedPorts);
-    usedPorts.push(port);
-    let endpoint = protocol + '://127.0.0.1:' + port;
-    let coordinatorArgs = _.clone(options.extraArgs);
-    coordinatorArgs['server.endpoint'] = endpoint;
-    coordinatorArgs['cluster.my-address'] = endpoint;
-    coordinatorArgs['cluster.my-local-info'] = endpoint;
-    coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
-    coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
+    for (i = 0; i < options.coordinators; i++) {
+      let port = findFreePort(options.minPort, options.maxPort, usedPorts);
+      usedPorts.push(port);
+      let endpoint = protocol + '://127.0.0.1:' + port;
+      let coordinatorArgs = _.clone(options.extraArgs);
+      coordinatorArgs['server.endpoint'] = endpoint;
+      coordinatorArgs['cluster.my-address'] = endpoint;
+      coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
+      coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
 
-    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, 'coordinator', coordinatorArgs), 'coordinator');
+      startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, 'coordinator', coordinatorArgs), 'coordinator');
+    }
+  } else if (options.singleresilient) {
+    // for now start just two (TODO config parameter)
+    for (i = 0; i < 2; i++) {
+      let port = findFreePort(options.minPort, options.maxPort, usedPorts);
+      usedPorts.push(port);
+      let endpoint = protocol + '://127.0.0.1:' + port;
+      let singleArgs = _.clone(options.extraArgs);
+      singleArgs['server.endpoint'] = endpoint;
+      singleArgs['cluster.my-address'] = endpoint;
+      singleArgs['cluster.my-role'] = 'SINGLE';
+      singleArgs['cluster.agency-endpoint'] = agencyEndpoint;
+      singleArgs['replication.automatic-failover'] = true;
+      startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('single' + i, 'single', singleArgs), 'single');
+      sleep(1.0);
+    }
   }
 
   // disabled because not in use (jslint)
@@ -972,7 +1020,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
       if (!checkArangoAlive(arangod, options)) {
         instanceInfo.arangods.forEach(arangod => {
-          killExternal(arangod.pid, abortSignal);
+          arangod.exitStatus = killExternal(arangod.pid, abortSignal);
           analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
         });
 
@@ -995,10 +1043,27 @@ function startInstanceCluster (instanceInfo, protocol, options,
     // Didn't startup in 10 minutes? kill it, give up.
     if (count > 1200) {
       instanceInfo.arangods.forEach(arangod => {
-        killExternal(arangod.pid, abortSignal);
+        arangod.exitStatus = killExternal(arangod.pid, abortSignal);
         analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
       });
       throw new Error('cluster startup timed out after 10 minutes!');
+    }
+  }
+
+  // we need to find the leading server
+  if (options.singleresilient) {
+    const internal = require('internal');
+    const reply = download(instanceInfo.url + '/_api/cluster/endpoints', '', makeAuthorizationHeaders(authOpts));
+    if (!reply.error && reply.code === 200) {
+      let res = JSON.parse(reply.body);
+      internal.print("Response ====> " + reply.body);
+      let leader = res.endpoints[0].endpoint;
+      instanceInfo.arangods.forEach(d => {
+        if (d.endpoint === leader) {
+          instanceInfo.endpoint = d.endpoint;
+          instanceInfo.url = d.url;
+        }
+      });
     }
   }
 
@@ -1167,6 +1232,7 @@ function startInstanceSingleServer (instanceInfo, protocol, options,
 
 function startInstance (protocol, options, addArgs, testname, tmpDir) {
   let rootDir = fs.join(tmpDir || fs.getTempPath(), testname);
+
   let instanceInfo = {
     rootDir,
     arangods: []
@@ -1175,12 +1241,14 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   const startTime = time();
   try {
     if (options.hasOwnProperty('server')) {
-      return { endpoint: options.server,
+      let rc = { endpoint: options.server,
                rootDir: options.serverRoot,
                url: options.server.replace('tcp', 'http'),
                arangods: []
-             };
-    } else if (options.cluster) {
+               };
+      arango.reconnect(rc.endpoint, '_system', 'root', '');
+      return rc;
+    } else if (options.cluster || options.singleresilient) {
       startInstanceCluster(instanceInfo, protocol, options,
                            addArgs, rootDir);
     } else if (options.agency) {
@@ -1198,7 +1266,12 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
           wait(0.5, false);
           if (options.useReconnect) {
             try {
-              arango.reconnect(instanceInfo.endpoint, '_system', options.username, options.password);
+              arango.reconnect(instanceInfo.endpoint,
+                               '_system',
+                               options.username,
+                               options.password,
+                               count > 50
+                              );
               break;
             } catch (e) {
             }
@@ -1239,7 +1312,6 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
     print(e, e.stack);
     return false;
   }
-
   return instanceInfo;
 }
 
@@ -1264,7 +1336,7 @@ exports.executeAndWait = executeAndWait;
 
 exports.run = {
   arangoshCmd: runArangoshCmd,
-  arangoImp: runArangoImp,
+  arangoImport: runArangoImport,
   arangoDumpRestore: runArangoDumpRestore,
   arangoBenchmark: runArangoBenchmark
 };

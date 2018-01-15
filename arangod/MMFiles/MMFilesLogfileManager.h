@@ -76,10 +76,12 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   ~MMFilesLogfileManager();
 
   // get the logfile manager instance
-  static MMFilesLogfileManager* instance() {
+  static MMFilesLogfileManager* instance(bool preStart = false) {
     TRI_ASSERT(Instance != nullptr);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(SafeToUseInstance);
+    if (!preStart) {
+      TRI_ASSERT(SafeToUseInstance);
+    }
 #endif
     return Instance;
   }
@@ -99,10 +101,11 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   struct LogfileBarrier {
     LogfileBarrier() = delete;
 
-    LogfileBarrier(TRI_voc_tick_t id, double expires, TRI_voc_tick_t minTick)
-        : id(id), expires(expires), minTick(minTick) {}
+    LogfileBarrier(TRI_voc_tick_t id, TRI_voc_tick_t databaseId, double expires, TRI_voc_tick_t minTick)
+        : id(id), databaseId(databaseId), expires(expires), minTick(minTick) {}
 
     TRI_voc_tick_t const id;
+    TRI_voc_tick_t const databaseId;
     double expires;
     TRI_voc_tick_t minTick;
   };
@@ -182,13 +185,13 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // whether or not there was a SHUTDOWN file with a last tick at
   // server start
-  static bool hasFoundLastTick() { 
+  static bool hasFoundLastTick() {
     // validate that the value is already initialized
     // -1 = uninitialized
     //  0 = last tick not found
     //  1 = last tick found
     TRI_ASSERT(FoundLastTick != -1);
-    return (FoundLastTick == 1); 
+    return (FoundLastTick == 1);
   }
 
   // return the slots manager
@@ -259,14 +262,14 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // write data into the logfile, using database id and collection id
   /// this is a convenience function that combines allocate, memcpy and finalize
-  MMFilesWalSlotInfoCopy allocateAndWrite(TRI_voc_tick_t databaseId, 
-                                TRI_voc_cid_t collectionId, 
+  MMFilesWalSlotInfoCopy allocateAndWrite(TRI_voc_tick_t databaseId,
+                                TRI_voc_cid_t collectionId,
                                 MMFilesWalMarker const*, bool wakeUpSynchronizer,
                                 bool waitForSyncRequested, bool waitUntilSyncDone);
 
   // write data into the logfile
   /// this is a convenience function that combines allocate, memcpy and finalize
-  MMFilesWalSlotInfoCopy allocateAndWrite(MMFilesWalMarker const* marker, bool wakeUpSynchronizer, 
+  MMFilesWalSlotInfoCopy allocateAndWrite(MMFilesWalMarker const* marker, bool wakeUpSynchronizer,
                                 bool waitForSyncRequested, bool waitUntilSyncDone);
 
   // write marker into the logfile
@@ -280,19 +283,13 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // finalize and seal the currently open logfile
   /// this is useful to ensure that any open writes up to this point have made
   /// it into a logfile
-  int flush(bool, bool, bool);
+  int flush(bool waitForSync, bool waitForCollector, bool writeShutdownFile, double maxWaitTime = -1.0);
 
   /// wait until all changes to the current logfile are synced
   bool waitForSync(double);
 
   // re-inserts a logfile back into the inventory only
   void relinkLogfile(MMFilesWalLogfile*);
-
-  // remove a logfile from the inventory only
-  bool unlinkLogfile(MMFilesWalLogfile*);
-
-  // remove a logfile from the inventory only
-  MMFilesWalLogfile* unlinkLogfile(MMFilesWalLogfile::IdType);
 
   // removes logfiles that are allowed to be removed
   bool removeLogfiles();
@@ -321,6 +318,9 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // garbage collect expires logfile barriers
   void collectLogfileBarriers();
+  
+  // drop barriers for a specific database
+  void dropLogfileBarriers(TRI_voc_tick_t databaseId);
 
   // returns a list of all logfile barrier ids
   std::vector<TRI_voc_tick_t> getLogfileBarriers();
@@ -329,7 +329,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   bool removeLogfileBarrier(TRI_voc_tick_t);
 
   // adds a barrier that prevents removal of logfiles
-  TRI_voc_tick_t addLogfileBarrier(TRI_voc_tick_t, double);
+  TRI_voc_tick_t addLogfileBarrier(TRI_voc_tick_t databaseId, TRI_voc_tick_t minTick, double ttl);
 
   // extend the lifetime of a logfile barrier
   bool extendLogfileBarrier(TRI_voc_tick_t, double, TRI_voc_tick_t);
@@ -384,8 +384,8 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // get information about running transactions
   std::tuple<size_t, MMFilesWalLogfile::IdType, MMFilesWalLogfile::IdType> runningTransactions();
-  
-  void waitForCollector();
+
+  void waitForCollectorOnShutdown();
 
   // execute a callback during a phase in which the collector has nothing
   // queued. This is used in the DatabaseManagerThread when dropping
@@ -479,7 +479,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   bool _allowOversizeEntries = true;
   bool _useMLock = false;
   std::string _directory;
-  uint32_t _historicLogfiles = 10; 
+  uint32_t _historicLogfiles = 10;
   bool _ignoreLogfileErrors = false;
   bool _ignoreRecoveryErrors = false;
   uint64_t _flushTimeout = 15000;
@@ -514,7 +514,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // the collector thread
   MMFilesCollectorThread* _collectorThread;
-  
+
   // lock protecting the destruction of the collector thread
   basics::ReadWriteLock _collectorThreadLock;
 

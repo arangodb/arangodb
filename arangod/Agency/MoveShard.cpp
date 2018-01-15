@@ -539,7 +539,7 @@ JOB_STATUS MoveShard::pendingLeader() {
       { VPackObjectBuilder trxObject(&trx);
         VPackObjectBuilder preObject(&pre);
         doForAllShards(_snapshot, _database, shardsLikeMe,
-          [this, &pre](Slice plan, Slice current, std::string& planPath) {
+          [&pre](Slice plan, Slice current, std::string& planPath) {
             // Precondition: Plan still as it was
             pre.add(VPackValue(planPath));
             { VPackObjectBuilder guard(&pre);
@@ -586,7 +586,7 @@ JOB_STATUS MoveShard::pendingFollower() {
 
   size_t done = 0;   // count the number of shards done
   doForAllShards(_snapshot, _database, shardsLikeMe,
-    [this, &done](Slice plan, Slice current, std::string& planPath) {
+    [&done](Slice plan, Slice current, std::string& planPath) {
       if (ClusterHelpers::compareServerLists(plan, current)) {
         ++done;
       }

@@ -111,6 +111,14 @@ const impTodos = [{
   separator: ';',
   backslash: true
 }, {
+  id: 'csv6',
+  data: tu.makePathUnix('js/common/test-data/import/import-6.csv'),
+  coll: 'UnitTestsImportCsv6',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  ignoreMissing: true
+}, {
   id: 'csvnoconvert',
   data: tu.makePathUnix('js/common/test-data/import/import-noconvert.csv'),
   coll: 'UnitTestsImportCsvNoConvert',
@@ -166,25 +174,17 @@ const impTodos = [{
   type: 'csv',
   create: 'true',
   removeAttribute: 'a'
+}, {
+  id: 'createDB',
+  data: tu.makePathUnix('js/common/test-data/import/import-1.json'),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'UnitTestImportCreateDatabase',
+  createDatabase: 'true'
 }];
 
 function importing (options) {
-  if (options.cluster) {
-    if (options.extremeVerbosity) {
-      print('Skipped because of cluster.');
-    }
-
-    return {
-      'failed': 0,
-      'importing': {
-        'failed': 0,
-        'status': true,
-        'message': 'skipped because of cluster',
-        'skipped': true
-      }
-    };
-  }
-
   let instanceInfo = pu.startInstance('tcp', options, {}, 'importing');
 
   if (instanceInfo === false) {
@@ -214,7 +214,7 @@ function importing (options) {
     for (let i = 0; i < impTodos.length; i++) {
       const impTodo = impTodos[i];
 
-      result[impTodo.id] = pu.run.arangoImp(options, instanceInfo, impTodo);
+      result[impTodo.id] = pu.run.arangoImport(options, instanceInfo, impTodo);
       result[impTodo.id].failed = 0;
 
       if (result[impTodo.id].status !== true && !options.force) {

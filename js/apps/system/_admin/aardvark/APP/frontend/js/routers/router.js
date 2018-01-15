@@ -47,6 +47,8 @@
       'nodeInfo/:id': 'nodeInfo',
       'logs': 'logger',
       'helpus': 'helpUs',
+      'views': 'views',
+      'view/:name': 'view',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
@@ -400,11 +402,12 @@
         this.navigate('#dashboard', {trigger: true});
         return;
       }
-      if (!this.shardsView) {
-        this.shardsView = new window.ShardsView({
-          dbServers: this.dbServers
-        });
+      if (this.shardsView) {
+        this.shardsView.remove();
       }
+      this.shardsView = new window.ShardsView({
+        dbServers: this.dbServers
+      });
       this.shardsView.render();
     },
 
@@ -1096,6 +1099,36 @@
         });
       }
       this.userManagementView.render(true);
+    },
+
+    view: function (name, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.view.bind(this), name);
+        return;
+      }
+      if (this.viewView) {
+        this.viewView.remove();
+      }
+
+      this.viewView = new window.ViewView({
+        name: name
+      });
+      this.viewView.render();
+    },
+
+    views: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.views.bind(this));
+        return;
+      }
+      if (this.viewsView) {
+        this.viewsView.remove();
+      }
+
+      this.viewsView = new window.ViewsView({});
+      this.viewsView.render();
     },
 
     fetchDBS: function (callback) {

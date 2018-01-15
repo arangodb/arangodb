@@ -36,20 +36,21 @@
 //
 // Even though the Singleton Node has a label saying it is the "ROOT" node it
 // is not in our definiton. Root Nodes are leaf nodes (at the bottom of the list).
-// 
-// To get down (direction to root) from 4 to 5 you need to clla getFirst Parent
+//
+// To get down (direction to root) from 4 to 5 you need to call getFirst Parent
 // on the SortNode(4) to receive a pointer to the LimitNode(5). If you want to
-// go up from 5 to 4 (away form root) you need to call getFirstDependency at
+// go up from 5 to 4 (away from root) you need to call getFirstDependency at
 // the LimitNode (5) to get a pointer to the SortNode(4).
 //
 // For most maybe all operations you will only need to operate on the
 // Dependencies the parents will be updated automatically.
 //
-// If you wish to unlink (remove) or replace a node you should to it by using
+// If you wish to unlink (remove) or replace a node you should do it by using
 // one of the plans operations.
 //
 // addDependency(Parent) has a totally different functionality as addDependencies(Parents)
 // the latter is not adding a list of Dependencies to a node!!!
+//
 
 #ifndef ARANGOD_AQL_EXECUTION_NODE_H
 #define ARANGOD_AQL_EXECUTION_NODE_H 1
@@ -60,6 +61,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -72,6 +74,7 @@ class Slice;
 namespace aql {
 class Ast;
 struct Collection;
+class Condition;
 class ExecutionBlock;
 class TraversalBlock;
 class ExecutionPlan;
@@ -128,7 +131,10 @@ class ExecutionNode {
     UPSERT = 21,
     TRAVERSAL = 22,
     INDEX = 23,
-    SHORTEST_PATH = 24
+    SHORTEST_PATH = 24,
+#ifdef USE_IRESEARCH
+    ENUMERATE_IRESEARCH_VIEW = 25
+#endif
   };
 
   ExecutionNode() = delete;
@@ -158,10 +164,6 @@ class ExecutionNode {
 
   /// @brief return the node's id
   inline size_t id() const { return _id; }
-
-  /// @brief set the id, use with care! The purpose is to use a cloned node
-  /// together with the original in the same plan.
-  void setId(size_t id) { _id = id; }
 
   /// @brief return the type of the node
   virtual NodeType getType() const = 0;
@@ -376,8 +378,7 @@ class ExecutionNode {
                                bool withProperties) const = 0;
 
   /// @brief execution Node clone utility to be called by derives
-  void cloneHelper(ExecutionNode* Other, ExecutionPlan* plan,
-                   bool withDependencies, bool withProperties) const;
+  void cloneHelper(ExecutionNode* Other, bool withDependencies, bool withProperties) const;
 
   /// @brief helper for cloning, use virtual clone methods for dependencies
   void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone,
@@ -388,6 +389,10 @@ class ExecutionNode {
 
   /// @brief invalidate the cost estimation for the node and its dependencies
   void invalidateCost();
+
+  /// @brief this actually estimates the costs as well as the number of items
+  /// coming out of the node
+  virtual double estimateCost(size_t& nrItems) const = 0;
 
   /// @brief estimate the cost of the node . . .
   double getCost(size_t& nrItems) const {
@@ -401,11 +406,7 @@ class ExecutionNode {
     }
     return _estimatedCost;
   }
-
-  /// @brief this actually estimates the costs as well as the number of items
-  /// coming out of the node
-  virtual double estimateCost(size_t& nrItems) const = 0;
-
+  
   /// @brief walk a complete execution plan recursively
   bool walk(WalkerWorker<ExecutionNode>* worker);
 
@@ -437,8 +438,6 @@ class ExecutionNode {
     auto v(getVariablesUsedHere());
 
     std::unordered_set<VariableId> ids;
-    ids.reserve(v.size());
-
     for (auto& it : v) {
       ids.emplace(it->id);
     }
@@ -491,6 +490,10 @@ class ExecutionNode {
   }
 
   ExecutionPlan const* plan() const {
+    return _plan;
+  }
+  
+  ExecutionPlan* plan() {
     return _plan;
   }
 
@@ -585,6 +588,10 @@ class ExecutionNode {
   ExecutionNode const* getLoop() const;
 
  protected:
+  /// @brief set the id, use with care! The purpose is to use a cloned node
+  /// together with the original in the same plan.
+  void setId(size_t id) { _id = id; }
+
   /// @brief factory for sort elements
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
                               arangodb::velocypack::Slice const& slice,
@@ -678,7 +685,7 @@ class SingletonNode : public ExecutionNode {
                        bool withProperties) const override final {
     auto c = new SingletonNode(plan, _id);
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }
@@ -709,7 +716,7 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
 
   EnumerateCollectionNode(ExecutionPlan* plan,
                           arangodb::velocypack::Slice const& base);
-  
+
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_COLLECTION; }
 
@@ -851,7 +858,7 @@ class LimitNode : public ExecutionNode {
       c->setFullCount();
     }
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }
@@ -1245,7 +1252,7 @@ class NoResultsNode : public ExecutionNode {
                        bool withProperties) const override final {
     auto c = new NoResultsNode(plan, _id);
 
-    cloneHelper(c, plan, withDependencies, withProperties);
+    cloneHelper(c, withDependencies, withProperties);
 
     return static_cast<ExecutionNode*>(c);
   }

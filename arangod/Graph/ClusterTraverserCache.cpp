@@ -23,6 +23,7 @@
 #include "ClusterTraverserCache.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/Query.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -38,9 +39,9 @@ using namespace arangodb::basics;
 using namespace arangodb::graph;
 
 ClusterTraverserCache::ClusterTraverserCache(
-    transaction::Methods* trx,
+    aql::Query* query,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines)
-    : TraverserCache(trx), _engines(engines) {}
+    : TraverserCache(query), _engines(engines) {}
 
 VPackSlice ClusterTraverserCache::lookupToken(EdgeDocumentToken const& token) {
   return VPackSlice(token.vpack());
@@ -50,10 +51,8 @@ aql::AqlValue ClusterTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const&
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   // FIXME: the ClusterTraverserCache lifetime is shorter then the query lifetime
   // therefore we cannot get away here without copying the result
-  //return aql::AqlValue(aql::AqlValueHintNoCopy(token.vpack()));
   return aql::AqlValue(VPackSlice(token.vpack())); // will copy slice
 }
-
 
 aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(StringRef id) {
   // FIXME: this is only used for ShortestPath, where the shortestpath stuff
@@ -61,13 +60,15 @@ aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(StringRef id) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   auto it = _cache.find(id);
   if (it == _cache.end()) {
-    LOG_TOPIC(ERR, Logger::GRAPHS) << __FUNCTION__ << " vertex not found";
+    // Register a warning. It is okay though but helps the user
+    std::string msg = "vertex '" + id.toString() + "' not found";
+    _query->registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
+
     // Document not found return NULL
-    return aql::AqlValue(VelocyPackHelper::NullValue());
+    return aql::AqlValue(aql::AqlValueHintNull());
   }
   // FIXME: the ClusterTraverserCache lifetime is shorter then the query lifetime
   // therefore we cannot get away here without copying the result
-  //return aql::AqlValue(aql::AqlValueHintNoCopy(it->second.begin()));
   return aql::AqlValue(it->second); // will copy slice
 }
 
@@ -81,7 +82,9 @@ void ClusterTraverserCache::insertVertexIntoResult(StringRef id,
                                                    VPackBuilder& result) {
   auto it = _cache.find(id);
   if (it == _cache.end()) {
-    LOG_TOPIC(ERR, Logger::GRAPHS) << __FUNCTION__ << " vertex not found";
+    // Register a warning. It is okay though but helps the user
+    std::string msg = "vertex '" + id.toString() + "' not found";
+    _query->registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
     // Document not found append NULL
     result.add(VelocyPackHelper::NullValue());
   } else {

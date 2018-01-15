@@ -31,12 +31,13 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Cluster/AgencyCallbackRegistry.h"
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -66,7 +67,7 @@ class CollectionInfoCurrent {
 
   CollectionInfoCurrent& operator=(CollectionInfoCurrent&&) = delete;
 
-  ~CollectionInfoCurrent();
+  virtual ~CollectionInfoCurrent();
 
  public:
   bool add(ShardID const& shardID, VPackSlice slice) {
@@ -125,10 +126,9 @@ class CollectionInfoCurrent {
 
   std::unordered_map<ShardID, int> errorNum() const {
     std::unordered_map<ShardID, int> m;
-    TRI_voc_size_t s;
 
     for (auto const& it: _vpacks) {
-      s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum", 0);
+      int s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum", 0);
       m.insert(std::make_pair(it.first, s));
     }
     return m;
@@ -138,7 +138,7 @@ class CollectionInfoCurrent {
   /// @brief returns the current leader and followers for a shard
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<ServerID> servers(ShardID const& shardID) const {
+  virtual std::vector<ServerID> servers(ShardID const& shardID) const {
     std::vector<ServerID> v;
 
     auto it = _vpacks.find(shardID);
@@ -247,7 +247,7 @@ class ClusterInfo {
   /// @brief shuts down library
   //////////////////////////////////////////////////////////////////////////////
 
-  ~ClusterInfo();
+  virtual ~ClusterInfo();
 
  public:
   static void createInstance(AgencyCallbackRegistry*);
@@ -307,16 +307,18 @@ class ClusterInfo {
   /// @brief ask about a collection
   /// If it is not found in the cache, the cache is reloaded once. The second
   /// argument can be a collection ID or a collection name (both cluster-wide).
+  /// if the collection is not found afterwards, this method will throw an 
+  /// exception
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
+  virtual std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
                                                    CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about all collections
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::shared_ptr<LogicalCollection>> const getCollections(
+  virtual std::vector<std::shared_ptr<LogicalCollection>> const getCollections(
       DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -334,7 +336,7 @@ class ClusterInfo {
   /// If it is not found in the cache, the cache is reloaded once.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(
+  virtual std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(
       DatabaseID const&, CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -376,17 +378,17 @@ class ClusterInfo {
   /// @brief set collection properties in coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  int setCollectionPropertiesCoordinator(std::string const& databaseName,
-                                         std::string const& collectionID,
-                                         LogicalCollection const*);
+  Result setCollectionPropertiesCoordinator(std::string const& databaseName,
+                                            std::string const& collectionID,
+                                            LogicalCollection const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set collection status in coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  int setCollectionStatusCoordinator(std::string const& databaseName,
-                                     std::string const& collectionID,
-                                     TRI_vocbase_col_status_e status);
+  Result setCollectionStatusCoordinator(std::string const& databaseName,
+                                        std::string const& collectionID,
+                                        TRI_vocbase_col_status_e status);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
@@ -516,7 +518,9 @@ class ClusterInfo {
   std::vector<std::string> getFailedServers() { MUTEX_LOCKER(guard, _failedServersMutex); return _failedServers; }
   void setFailedServers(std::vector<std::string> const& failedServers) { MUTEX_LOCKER(guard, _failedServersMutex); _failedServers = failedServers; }
 
-  std::unordered_map<ServerID, std::string> getServerAliases();
+  std::unordered_map<ServerID, std::string> getServers();
+
+  virtual std::unordered_map<ServerID, std::string> getServerAliases();
   
  private:
 

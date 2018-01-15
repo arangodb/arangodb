@@ -207,10 +207,8 @@ void AqlItemBlock::destroy() {
 }
 
 /// @brief shrink the block to the specified number of rows
-/// if sweep is set, then the superfluous rows are cleaned
-/// if sweep is not set, the caller has to ensure that the
-/// superfluous rows are empty
-void AqlItemBlock::shrink(size_t nrItems, bool sweep) {
+/// the superfluous rows are cleaned
+void AqlItemBlock::shrink(size_t nrItems) {
   TRI_ASSERT(nrItems > 0);
 
   if (nrItems == _nrItems) {
@@ -224,33 +222,6 @@ void AqlItemBlock::shrink(size_t nrItems, bool sweep) {
                                    "cannot use shrink() to increase block");
   }
 
-  if (sweep) {
-    // erase all stored values in the region that we freed
-    for (size_t i = nrItems; i < _nrItems; ++i) {
-      for (RegisterId j = 0; j < _nrRegs; ++j) {
-        AqlValue& a(_data[_nrRegs * i + j]);
-
-        if (a.requiresDestruction()) {
-          auto it = _valueCount.find(a);
-
-          if (it != _valueCount.end()) {
-            TRI_ASSERT((*it).second > 0);
-
-            if (--((*it).second) == 0) {
-              decreaseMemoryUsage(a.memoryUsage());
-              a.destroy();
-              try {
-                _valueCount.erase(it);
-              } catch (...) {
-              }
-            }
-          }
-        }
-        a.erase();
-      }
-    }
-  }
-    
   decreaseMemoryUsage(sizeof(AqlValue) * (_nrItems - nrItems) * _nrRegs);
 
   // adjust the size of the block
@@ -295,8 +266,8 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
 void AqlItemBlock::clearRegisters(
     std::unordered_set<RegisterId> const& toClear) {
 
-  for (auto const& reg : toClear) {
-    for (size_t i = 0; i < _nrItems; i++) {
+  for (size_t i = 0; i < _nrItems; i++) {
+    for (auto const& reg : toClear) {
       AqlValue& a(_data[_nrRegs * i + reg]);
 
       if (a.requiresDestruction()) {
@@ -325,7 +296,7 @@ void AqlItemBlock::clearRegisters(
 AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= _nrItems);
 
-  std::unordered_map<AqlValue, AqlValue> cache;
+  std::unordered_set<AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
   auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
@@ -346,9 +317,9 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
               b.destroy();
               throw;
             }
-            cache.emplace(a, b);
+            cache.emplace(b);
           } else {
-            res->setValue(row - from, col, it->second);
+            res->setValue(row - from, col, (*it));
           }
         } else {
           // simple copying of values
@@ -364,7 +335,7 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
 /// @brief slice/clone, this does a deep copy of all entries
 AqlItemBlock* AqlItemBlock::slice(
     size_t row, std::unordered_set<RegisterId> const& registers) const {
-  std::unordered_map<AqlValue, AqlValue> cache;
+  std::unordered_set<AqlValue> cache;
 
   auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, 1, _nrRegs);
 
@@ -387,9 +358,9 @@ AqlItemBlock* AqlItemBlock::slice(
             b.destroy();
             throw;
           }
-          cache.emplace(a, b);
+          cache.emplace(b);
         } else {
-          res->setValue(0, col, it->second);
+          res->setValue(0, col, (*it));
         }
       } else {
         res->setValue(0, col, a);
@@ -406,7 +377,7 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen, size_t from
                                   size_t to) const {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  std::unordered_map<AqlValue, AqlValue> cache;
+  std::unordered_set<AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
   auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
@@ -426,9 +397,9 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen, size_t from
             } catch (...) {
               b.destroy();
             }
-            cache.emplace(a, b);
+            cache.emplace(b);
           } else {
-            res->setValue(row - from, col, it->second);
+            res->setValue(row - from, col, (*it));
           }
         } else {
           res->setValue(row - from, col, a);
@@ -475,32 +446,7 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from
 /// @brief concatenate multiple blocks
 AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
     BlockCollector* collector) {
-  
-  size_t totalSize = collector->totalSize();
-  RegisterId nrRegs = collector->nrRegs();
-
-  TRI_ASSERT(totalSize > 0);
-  TRI_ASSERT(nrRegs > 0);
-
-  auto res = std::make_unique<AqlItemBlock>(resourceMonitor, totalSize, nrRegs);
-
-  size_t pos = 0;
-  for (auto& it : collector->_blocks) {
-    size_t const n = it->size();
-    for (size_t row = 0; row < n; ++row) {
-      for (RegisterId col = 0; col < nrRegs; ++col) {
-        // copy over value
-        AqlValue const& a = it->getValueReference(row, col);
-        if (!a.isEmpty()) {
-          res->setValue(pos + row, col, a);
-        }
-      }
-    }
-    it->eraseAll();
-    pos += n;
-  }
-
-  return res.release();
+  return concatenate(resourceMonitor, collector->_blocks); 
 }
 
 /// @brief concatenate multiple blocks, note that the new block now owns all

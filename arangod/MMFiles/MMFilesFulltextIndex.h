@@ -25,7 +25,8 @@
 #define ARANGOD_MMFILES_FULLTEXT_INDEX_H 1
 
 #include "Basics/Common.h"
-#include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
+#include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/mmfiles-fulltext-common.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -34,9 +35,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-struct DocumentIdentifierToken;
+class LocalDocumentId;
 
-class MMFilesFulltextIndex final : public Index {
+class MMFilesFulltextIndex final : public MMFilesIndex {
  public:
   MMFilesFulltextIndex() = delete;
 
@@ -60,19 +61,28 @@ class MMFilesFulltextIndex final : public Index {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool withFigures, bool forPersistence) const override;
+  void toVelocyPack(VPackBuilder&, bool withFigures,
+                    bool forPersistence) const override;
   // Uses default toVelocyPackFigures
 
   bool matchesDefinition(VPackSlice const&) const override;
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
+  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const&,
+                OperationMode mode) override;
 
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
+  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const&,
+                OperationMode mode) override;
 
   void load() override {}
   void unload() override;
+
+  IndexIterator* iteratorForCondition(transaction::Methods*,
+                                      ManagedDocumentResult*,
+                                      arangodb::aql::AstNode const*,
+                                      arangodb::aql::Variable const*,
+                                      bool) override final;
 
   bool isSame(std::string const& field, int minWordLength) const {
     std::string fieldString;
@@ -82,14 +92,10 @@ class MMFilesFulltextIndex final : public Index {
 
   TRI_fts_index_t* internals() { return _fulltextIndex; }
 
-  static TRI_voc_rid_t fromDocumentIdentifierToken(
-      DocumentIdentifierToken const& token);
-  static DocumentIdentifierToken toDocumentIdentifierToken(
-      TRI_voc_rid_t revisionId);
-
  private:
   std::set<std::string> wordlist(arangodb::velocypack::Slice const&);
-  void extractWords(std::set<std::string>& words, arangodb::velocypack::Slice value, int level) const;
+  void extractWords(std::set<std::string>& words,
+                    arangodb::velocypack::Slice value, int level) const;
 
  private:
   /// @brief the indexed attribute (path)
@@ -100,6 +106,46 @@ class MMFilesFulltextIndex final : public Index {
 
   /// @brief minimum word length
   int _minWordLength;
+};
+
+/// El Cheapo index iterator
+class MMFilesFulltextIndexIterator : public IndexIterator {
+ public:
+  MMFilesFulltextIndexIterator(LogicalCollection* collection,
+                               transaction::Methods* trx,
+                               ManagedDocumentResult* mmdr,
+                               MMFilesFulltextIndex const* index,
+                               std::set<TRI_voc_rid_t>&& docs)
+      : IndexIterator(collection, trx, mmdr, index),
+        _docs(std::move(docs)),
+        _pos(_docs.begin()) {}
+
+  ~MMFilesFulltextIndexIterator() {}
+
+  char const* typeName() const override { return "fulltext-index-iterator"; }
+
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+    TRI_ASSERT(limit > 0);
+    while (_pos != _docs.end() && limit > 0) {
+      cb(LocalDocumentId(*_pos));
+      ++_pos;
+      limit--;
+    }
+    return _pos != _docs.end();
+  }
+
+  void reset() override { _pos = _docs.begin(); }
+
+  void skip(uint64_t count, uint64_t& skipped) override {
+    while (_pos != _docs.end()) {
+      ++_pos;
+      skipped++;
+    }
+  }
+
+ private:
+  std::set<TRI_voc_rid_t> const _docs;
+  std::set<TRI_voc_rid_t>::iterator _pos;
 };
 }
 

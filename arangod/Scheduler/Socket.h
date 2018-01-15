@@ -29,6 +29,9 @@
 #include <boost/asio/serial_port_service.hpp>
 #include <boost/asio/ssl.hpp>
 
+#include <thread>
+#include <chrono>
+
 #include "Basics/StringBuffer.h"
 #include "Basics/asio-helper.h"
 #include "Logger/Logger.h"
@@ -82,7 +85,7 @@ bool doSslHandshake(T& socket) {
 	LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "forcefully shutting down connection after wait time";
 	break;
       } else {
-	usleep(10000);
+	std::this_thread::sleep_for(std::chrono::microseconds(10000));
       }
     }
 
@@ -108,6 +111,11 @@ template <typename T>
 void doAsyncWrite(T& socket, boost::asio::mutable_buffers_1 const& buffer,
                   AsyncHandler const& handler) {
   return boost::asio::async_write(socket, buffer, handler);
+}
+template <typename T>
+void doAsyncWrite(T& socket, std::vector<void const*> const& buffers,
+                  AsyncHandler const& handler) {
+  return boost::asio::async_write(socket, buffers, handler);
 }
 template <typename T>
 size_t doRead(T& socket, boost::asio::mutable_buffers_1 const& buffer,

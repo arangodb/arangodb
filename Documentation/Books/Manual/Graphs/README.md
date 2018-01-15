@@ -27,8 +27,8 @@ In queries you can define in which directions the edge relations may be followed
 
 ### Named Graphs
 
-Named graphs are completely managed by arangodb, and thus also [visible in the webinterface](../Administration/WebInterface/Graphs.md).
-They use the full spectrum of ArangoDBs graph features. You may access them via several interfaces.
+Named graphs are completely managed by ArangoDB, and thus also [visible in the web interface](../Administration/WebInterface/Graphs.md).
+They use the full spectrum of ArangoDB's graph features. You may access them via several interfaces.
 
 - [AQL Graph Operations](../../AQL/Graphs/index.html) with several flavors:
   - [AQL Traversals](../../AQL/Graphs/Traversals.html) on both named and anonymous graphs
@@ -275,11 +275,11 @@ It is used to demonstrate raw traversal operations.
 
 The above referenced chapters describe the various APIs of ArangoDBs graph engine with small examples. Our cookbook has some more real life examples:
 
- - [Traversing a graph in full depth](https://docs.arangodb.com/cookbook/Graph/FulldepthTraversal.html)
- - [Using an example vertex with the java driver](https://docs.arangodb.com/cookbook/Graph/JavaDriverGraphExampleVertex.html)
+ - [Traversing a graph in full depth](../../Cookbook/Graph/FulldepthTraversal.html)
+ - [Using an example vertex with the java driver](../../Cookbook/Graph/JavaDriverGraphExampleVertex.html)
  - [Retrieving documents from ArangoDB without knowing the structure](https://docs.arangodb.com/cookbook/Graph/JavaDriverBaseDocument.html)
- - [Using a custom visitor from node.js](https://docs.arangodb.com/cookbook/Graph/CustomVisitorFromNodeJs.html)
- - [AQL Example Queries on an Actors and Movies Database](https://docs.arangodb.com/cookbook/Graph/ExampleActorsAndMovies.html)
+ - [Using a custom visitor from node.js](../../Cookbook/Graph/CustomVisitorFromNodeJs.html)
+ - [AQL Example Queries on an Actors and Movies Database](../../Cookbook/Graph/ExampleActorsAndMovies.html)
 
 ### Higher volume graph examples
 

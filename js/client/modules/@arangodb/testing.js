@@ -58,6 +58,9 @@ let optionsDocumentation = [
   '                   conjunction with `server`.',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
+  '   - `iresearch`: if set to true enable the iResearch-related tests',
+  '   - `minPort`: minimum port number to use',
+  '   - `maxPort`: maximum port number to use',
   '   - `dbServers`: number of DB-Servers to use',
   '   - `coordinators`: number coordinators to use',
   '   - `agency`: if set to true agency tests are done',
@@ -78,6 +81,8 @@ let optionsDocumentation = [
   '',
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer timeouts',
+  '',
+  '   - `resilientsingle` starts resilient single server setup (active/passive)',
   '',
   '   - `valgrind`: if set the programs are run with the valgrind',
   '     memory checker; should point to the valgrind executable',
@@ -113,6 +118,7 @@ const optionsDefaults = {
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
+  'iresearch':false,
   'jsonReply': false,
   'loopEternal': false,
   'loopSleepSec': 1,
@@ -125,6 +131,7 @@ const optionsDefaults = {
   'replication': false,
   'rr': false,
   'sanitizer': false,
+  'resilientsingle': false,
   'skipLogAnalysis': true,
   'skipMemoryIntense': false,
   'skipNightly': true,
@@ -404,10 +411,7 @@ function loadTestSuites () {
   let testSuites = _.filter(fs.list(fs.join(__dirname, 'testsuites')),
                             function (p) {
                               return (p.substr(-3) === '.js');
-                            })
-      .map(function (x) {
-        return x;
-      }).sort();
+                            }).sort();
 
   for (let j = 0; j < testSuites.length; j++) {
     try {
@@ -562,4 +566,3 @@ exports.unitTest = unitTest;
 exports.internalMembers = internalMembers;
 exports.testFuncs = testFuncs;
 exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
-

@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global */
+/* global arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -61,7 +61,10 @@ function replicationOngoing (options) {
   let testCases = tu.scanTestPath('js/server/tests/replication/');
 
   options.replication = true;
-  options.test = 'replication-ongoing';
+  if (options.test === undefined) {
+    options.test = 'replication-ongoing';
+  }
+
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,
@@ -69,7 +72,7 @@ function replicationOngoing (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {}, 'slave_ongoing');
       let state = (typeof slave === 'object');
 
       if (state) {
@@ -109,7 +112,7 @@ function replicationOngoing (options) {
 
   };
 
-  return tu.performTests(options, testCases, 'replication_sync', tu.runInArangosh, {}, startStopHandlers);
+  return tu.performTests(options, testCases, 'replication_ongoing', tu.runInArangosh, {}, startStopHandlers);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -120,7 +123,10 @@ function replicationStatic (options) {
   let testCases = tu.scanTestPath('js/server/tests/replication/');
 
   options.replication = true;
-  options.test = 'replication-static';
+  if (options.test === undefined) {
+    options.test = 'replication-static';
+  }
+
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,
@@ -129,7 +135,7 @@ function replicationStatic (options) {
                          startStopHandlers) {
       let message;
       let res = true;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {}, 'slave_static');
       let state = (typeof slave === 'object');
 
       if (state) {
@@ -203,7 +209,10 @@ function replicationSync (options) {
   let testCases = tu.scanTestPath('js/server/tests/replication/');
 
   options.replication = true;
-  options.test = 'replication-sync';
+  if (options.test === undefined) {
+    options.test = 'replication-sync';
+  }
+
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,

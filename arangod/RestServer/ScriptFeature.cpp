@@ -40,6 +40,7 @@ using namespace arangodb::options;
 ScriptFeature::ScriptFeature(application_features::ApplicationServer* server, int* result)
     : ApplicationFeature(server, "Script"),
       _result(result) {
+  startsAfter("Database");
   startsAfter("Nonce");
   startsAfter("Server");
   startsAfter("GeneralServer");
@@ -87,7 +88,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
     localContext->Enter();
     {
       v8::Context::Scope contextScope(localContext);
-      for (auto script : scripts) {
+      for (auto const& script : scripts) {
         LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "executing script '" << script << "'";
         bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, script.c_str(), true);
 

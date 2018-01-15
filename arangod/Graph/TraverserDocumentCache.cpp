@@ -41,8 +41,8 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraverserDocumentCache::TraverserDocumentCache(transaction::Methods* trx)
-    : TraverserCache(trx), _cache(nullptr) {
+TraverserDocumentCache::TraverserDocumentCache(aql::Query* query)
+    : TraverserCache(query), _cache(nullptr) {
   auto cacheManager = CacheManagerFeature::MANAGER;
   TRI_ASSERT(cacheManager != nullptr);
   _cache = cacheManager->createCache(cache::CacheType::Plain);
@@ -51,7 +51,11 @@ TraverserDocumentCache::TraverserDocumentCache(transaction::Methods* trx)
 TraverserDocumentCache::~TraverserDocumentCache() {
   if (_cache != nullptr) {
     auto cacheManager = CacheManagerFeature::MANAGER;
-    cacheManager->destroyCache(_cache);
+    try {
+      cacheManager->destroyCache(_cache);
+    } catch (...) {
+      // no exceptions allowed here
+    }
   }
 }
 

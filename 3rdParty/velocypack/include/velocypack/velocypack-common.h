@@ -32,6 +32,13 @@
 #include <cstring>
 
 // debug mode
+#ifndef NDEBUG
+#ifndef VELOCYPACK_DEBUG
+// turn on assertions when not compiled with -DNDEBUG
+#define VELOCYPACK_DEBUG
+#endif
+#endif
+
 #ifdef VELOCYPACK_DEBUG
 #include <cassert>
 #define VELOCYPACK_ASSERT(x) assert(x)
@@ -82,7 +89,7 @@ bool assemblerFunctionsDisabled();
 std::size_t checkOverflow(ValueLength);
 #else
 // on a 64 bit platform, the following function is probably a no-op
-static constexpr std::size_t checkOverflow(ValueLength length) {
+static inline constexpr std::size_t checkOverflow(ValueLength length) {
   return static_cast<std::size_t>(length);
 }
 #endif

@@ -23,6 +23,7 @@
 
 #include "V8Context.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 
 #include <v8.h>
@@ -31,16 +32,16 @@
 using namespace arangodb;
 
 /// @brief create the context
-transaction::V8Context::V8Context(TRI_vocbase_t* vocbase,
-                                           bool embeddable)
+transaction::V8Context::V8Context(TRI_vocbase_t* vocbase, bool embeddable)
     : Context(vocbase),
-      _sharedTransactionContext(static_cast<transaction::V8Context*>(
-          static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData(
-                                            V8PlatformFeature::V8_DATA_SLOT))
-              ->_transactionContext)),
+      _sharedTransactionContext(nullptr),
       _mainScope(nullptr),
       _currentTransaction(nullptr),
-      _embeddable(embeddable) {}
+      _embeddable(embeddable) {
+      // need to set everything here
+      TRI_GET_GLOBALS2(v8::Isolate::GetCurrent());
+      _sharedTransactionContext = static_cast<transaction::V8Context*>(v8g->_transactionContext);
+    }
 
 /// @brief order a custom type handler for the collection
 std::shared_ptr<VPackCustomTypeHandler>
@@ -136,4 +137,12 @@ bool transaction::V8Context::isEmbedded() {
 std::shared_ptr<transaction::V8Context> transaction::V8Context::Create(
     TRI_vocbase_t* vocbase, bool embeddable) {
   return std::make_shared<transaction::V8Context>(vocbase, embeddable);
+}
+      
+std::shared_ptr<transaction::Context> transaction::V8Context::CreateWhenRequired(
+    TRI_vocbase_t* vocbase, bool embeddable) {
+  if (v8::Isolate::GetCurrent() != nullptr) {
+    return Create(vocbase, embeddable);
+  }
+  return transaction::StandaloneContext::Create(vocbase);
 }

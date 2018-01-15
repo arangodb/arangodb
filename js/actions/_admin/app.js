@@ -34,8 +34,6 @@ var console = require('console');
 var actions = require('@arangodb/actions');
 var arangodb = require('@arangodb');
 
-// var queue = Foxx.queues.create("internal-demo-queue")
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_get_admin_time
 // //////////////////////////////////////////////////////////////////////////////
@@ -46,24 +44,6 @@ actions.defineHttp({
 
   callback: function (req, res) {
     actions.resultOk(req, res, actions.HTTP_OK, { time: internal.time() });
-  }
-});
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_get_admin_sleep
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/sleep',
-  prefix: false,
-
-  callback: function (req, res) {
-    var time = parseFloat(req.parameters.duration);
-    if (isNaN(time)) {
-      time = 3.0;
-    }
-    internal.wait(time);
-    actions.resultOk(req, res, actions.HTTP_OK, { duration: time });
   }
 });
 

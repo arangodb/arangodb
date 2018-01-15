@@ -19,15 +19,28 @@ mkdir -p ${DBDIR}
 echo Database has its data in ${DBDIR}
 echo Logfile is in ${LOGFILE}
 
+if [ `uname -s` == "Darwin" ]; then
+  EXEC_PATH="$(dirname "$(dirname "$0")")"
+else
+  EXEC_PATH="$(dirname "$(dirname "$(readlink -m "$0")")")"
+fi
+
 if [ -z "${ARANGOSH}" ];  then
   if [ -x build/bin/arangosh ];  then
     ARANGOSH=build/bin/arangosh
   elif [ -x bin/arangosh ];  then
     ARANGOSH=bin/arangosh
   else
-    echo "$0: cannot locate arangosh"
+    ARANGOSH="$(find "${EXEC_PATH}" -name "arangosh" -perm -001 -type f | head -n 1)"
+      [ -x "${ARANGOSH}" ] || {
+        echo "$0: cannot locate arangosh"
+        exit 1
+      }
   fi
 fi
+
+[ "$(uname -s)" != "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(readlink -m "${ARANGOSH}")"
+[ "$(uname -s)" = "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(cd -P -- "$(dirname -- "${ARANGOSH}")" && pwd -P)/$(basename -- "${ARANGOSH}")"
 
 ${ARANGOSH} \
     --configuration none \

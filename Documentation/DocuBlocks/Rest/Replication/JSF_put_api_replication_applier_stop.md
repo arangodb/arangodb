@@ -23,7 +23,7 @@ is returned if an error occurred while assembling the response.
 
 @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStop}
     var re = require("@arangodb/replication");
-    re.applier.shutdown();
+    re.applier.stop();
     re.applier.properties({
       endpoint: "tcp://127.0.0.1:8529",
       username: "replicationApplier",
@@ -35,7 +35,7 @@ is returned if an error occurred while assembling the response.
     re.applier.start();
     var url = "/_api/replication/applier-stop";
     var response = logCurlRequest('PUT', url, "");
-    re.applier.shutdown();
+    re.applier.stop();
 
     assert(response.code === 200);
     logJsonResponse(response);

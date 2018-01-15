@@ -47,7 +47,7 @@ struct ResourceMonitor {
     maxResources.memoryUsage = value;
   }
    
-  void increaseMemoryUsage(size_t value) {
+  inline void increaseMemoryUsage(size_t value) {
     if (maxResources.memoryUsage > 0 && 
         currentResources.memoryUsage + value > maxResources.memoryUsage) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, "query would use more memory than allowed");
@@ -55,7 +55,7 @@ struct ResourceMonitor {
     currentResources.memoryUsage += value;
   }
   
-  void decreaseMemoryUsage(size_t value) noexcept {
+  inline void decreaseMemoryUsage(size_t value) noexcept {
     TRI_ASSERT(currentResources.memoryUsage >= value);
     currentResources.memoryUsage -= value;
   }

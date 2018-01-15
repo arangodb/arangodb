@@ -103,7 +103,13 @@ Manager::Manager(PostFn schedulerPost, uint64_t globalLimit,
   }
 }
 
-Manager::~Manager() { shutdown(); }
+Manager::~Manager() { 
+  try {
+    shutdown(); 
+  } catch (...) {
+    // no exceptions allowed here
+  }
+}
 
 std::shared_ptr<Cache> Manager::createCache(CacheType type,
                                             bool enableWindowedStats,
@@ -133,11 +139,11 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
   if (allowed) {
     switch (type) {
       case CacheType::Plain:
-        result = PlainCache::create(this, id, metadata, table,
+        result = PlainCache::create(this, id, std::move(metadata), table,
                                     enableWindowedStats);
         break;
       case CacheType::Transactional:
-        result = TransactionalCache::create(this, id, metadata, table,
+        result = TransactionalCache::create(this, id, std::move(metadata), table,
                                             enableWindowedStats);
         break;
       default:
@@ -280,7 +286,7 @@ Transaction* Manager::beginTransaction(bool readOnly) {
   return _transactions.begin(readOnly);
 }
 
-void Manager::endTransaction(Transaction* tx) { _transactions.end(tx); }
+void Manager::endTransaction(Transaction* tx) noexcept { _transactions.end(tx); }
 
 bool Manager::post(std::function<void()> fn) { return _schedulerPost(fn); }
 

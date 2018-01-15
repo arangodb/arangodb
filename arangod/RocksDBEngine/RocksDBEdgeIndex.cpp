@@ -34,22 +34,20 @@
 #include "Cache/TransactionalCache.h"
 #include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
+#include "RocksDBEngine/RocksDBTypes.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBCounterManager.h"
-#include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBMethods.h"
-#include "RocksDBEngine/RocksDBToken.h"
-#include "RocksDBEngine/RocksDBTransactionState.h"
-#include "RocksDBEngine/RocksDBTypes.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction_db.h>
@@ -126,9 +124,9 @@ void RocksDBEdgeIndexIterator::reset() {
       VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
 }
 
-bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
-#ifdef USE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
 #else
   // Gracefully return in production code
@@ -143,7 +141,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       // We still have unreturned edges in out memory.
       // Just plainly return those.
       TRI_ASSERT(_builderIterator.value().isNumber());
-      cb(RocksDBToken{_builderIterator.value().getNumericValue<uint64_t>()});
+      cb(LocalDocumentId{_builderIterator.value().getNumericValue<uint64_t>()});
       limit--;
 
       // Twice advance the iterator
@@ -187,7 +185,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
             _builderIterator = VPackArrayIterator(cachedData);
             while (_builderIterator.valid()) {
               TRI_ASSERT(_builderIterator.value().isNumber());
-              cb(RocksDBToken{
+              cb(LocalDocumentId{
                   _builderIterator.value().getNumericValue<uint64_t>()});
               limit--;
 
@@ -231,7 +229,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
 bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
                                          size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
-#ifdef USE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
 #else
   // Gracefully return in production code
@@ -246,7 +244,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
       // We still have unreturned edges in out memory.
       // Just plainly return those.
       TRI_ASSERT(_builderIterator.value().isNumber());
-      RocksDBToken tkn{_builderIterator.value().getNumericValue<uint64_t>()};
+      LocalDocumentId tkn{_builderIterator.value().getNumericValue<uint64_t>()};
       _builderIterator.next();
       TRI_ASSERT(_builderIterator.valid());
       // For now we store the complete opposite _from/_to value
@@ -292,7 +290,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
             _builderIterator = VPackArrayIterator(cachedData);
             while (_builderIterator.valid()) {
               TRI_ASSERT(_builderIterator.value().isNumber());
-              RocksDBToken tkn{
+              LocalDocumentId tkn{
                   _builderIterator.value().getNumericValue<uint64_t>()};
 
               _builderIterator.next();
@@ -328,6 +326,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
     if (needRocksLookup) {
       lookupInRocksDB(fromTo);
     }
+
     _keysIterator.next();
   }
   TRI_ASSERT(limit == 0);
@@ -345,12 +344,11 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   _builder.openArray(true);
   auto end = _bounds.end();
   while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(
-        RocksDBEntryType::EdgeIndexValue, _iterator->key());
-    RocksDBToken token(revisionId);
+    LocalDocumentId const documentId = LocalDocumentId(RocksDBKey::revisionId(
+        RocksDBEntryType::EdgeIndexValue, _iterator->key()));
 
     // adding revision ID and _from or _to value
-    _builder.add(VPackValue(token.revisionId()));
+    _builder.add(VPackValue(documentId.id()));
     StringRef vertexId = RocksDBValue::vertexId(_iterator->value());
     _builder.add(VPackValuePair(vertexId.data(), vertexId.size(),
                                 VPackValueType::String));
@@ -410,7 +408,8 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                    !ServerState::instance()->isCoordinator() /*useCache*/),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
-      _estimator(nullptr) {
+      _estimator(nullptr),
+      _estimatorSerializedSeq(0) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::edge());
 
   if (!ServerState::instance()->isCoordinator()) {
@@ -448,13 +447,14 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 
 Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
                                         RocksDBMethods* mthd,
-                                        TRI_voc_rid_t revisionId,
-                                        VPackSlice const& doc) {
+                                        LocalDocumentId const& documentId,
+                                        VPackSlice const& doc,
+                                        OperationMode mode) {
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
   auto fromToRef = StringRef(fromTo);
   RocksDBKeyLeaser key(trx);
-  key->constructEdgeIndexValue(_objectId, fromToRef, revisionId);
+  key->constructEdgeIndexValue(_objectId, fromToRef, documentId.id());
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
@@ -471,7 +471,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     _estimator->insert(hash);
-    return IndexResult(TRI_ERROR_NO_ERROR);
+    return IndexResult();
   } else {
     return IndexResult(r.errorNumber(), this);
   }
@@ -479,14 +479,15 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
 
 Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
                                         RocksDBMethods* mthd,
-                                        TRI_voc_rid_t revisionId,
-                                        VPackSlice const& doc) {
+                                        LocalDocumentId const& documentId,
+                                        VPackSlice const& doc,
+                                        OperationMode mode) {
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   auto fromToRef = StringRef(fromTo);
   TRI_ASSERT(fromTo.isString());
   RocksDBKeyLeaser key(trx);
-  key->constructEdgeIndexValue(_objectId, fromToRef, revisionId);
+  key->constructEdgeIndexValue(_objectId, fromToRef, documentId.id());
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
@@ -501,24 +502,28 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     _estimator->remove(hash);
-    return IndexResult(TRI_ERROR_NO_ERROR);
+    return IndexResult();
   } else {
     return IndexResult(res.errorNumber(), this);
   }
 }
 
+std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t>
+RocksDBEdgeIndex::estimator() const {
+  return std::make_pair(_estimator.get(), _estimatorSerializedSeq);
+}
+
 void RocksDBEdgeIndex::batchInsert(
     transaction::Methods* trx,
-    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
+    std::vector<std::pair<LocalDocumentId, VPackSlice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   auto* mthds = RocksDBTransactionState::toMethods(trx);
-  for (std::pair<TRI_voc_rid_t, VPackSlice> const& doc : documents) {
-    // VPackSlice primaryKey = doc.second.get(StaticStrings::KeyString);
+  for (auto const& doc : documents) {
     VPackSlice fromTo = doc.second.get(_directionAttr);
     TRI_ASSERT(fromTo.isString());
     auto fromToRef = StringRef(fromTo);
     RocksDBKeyLeaser key(trx);
-    key->constructEdgeIndexValue(_objectId, fromToRef, doc.first);
+    key->constructEdgeIndexValue(_objectId, fromToRef, doc.first.id());
 
     blackListKey(fromToRef);
     Result r = mthds->Put(_cf, key.ref(),
@@ -573,13 +578,13 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(_collection, trx, mmdr, this);
+      return new EmptyIndexIterator(_collection, trx, this);
     }
     return createInIterator(trx, mmdr, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(_collection, trx, mmdr, this);
+  return new EmptyIndexIterator(_collection, trx, this);
 }
 
 /// @brief specializes the condition for use with the index
@@ -798,7 +803,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
         while (cc->isBusy()) {
           // We should wait here, the cache will reject
           // any inserts anyways.
-          usleep(10000);
+          std::this_thread::sleep_for(std::chrono::microseconds(10000));
         }
 
         auto entry = cache::CachedValue::construct(
@@ -834,11 +839,9 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       }
     }
     if (needsInsert) {
-      TRI_voc_rid_t revId =
-          RocksDBKey::revisionId(RocksDBEntryType::EdgeIndexValue, key);
-      RocksDBToken token(revId);
-      if (rocksColl->readDocument(trx, token, mmdr)) {
-        builder.add(VPackValue(token.revisionId()));
+      LocalDocumentId const documentId(RocksDBKey::revisionId(RocksDBEntryType::EdgeIndexValue, key));
+      if (rocksColl->readDocument(trx, documentId, mmdr)) {
+        builder.add(VPackValue(documentId.id()));
 
         VPackSlice doc(mmdr.vpack());
         VPackSlice toFrom =
@@ -846,7 +849,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
                          : transaction::helpers::extractFromFromDocument(doc);
         TRI_ASSERT(toFrom.isString());
         builder.add(toFrom);
-#ifdef USE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       } else {
         // Data Inconsistency.
         // We have a revision id without a document...
@@ -951,12 +954,14 @@ void RocksDBEdgeIndex::handleValNode(
   }
 }
 
-void RocksDBEdgeIndex::serializeEstimate(std::string& output) const {
+void RocksDBEdgeIndex::serializeEstimate(std::string& output,
+                                         uint64_t seq) const {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->serialize(output);
+  _estimatorSerializedSeq = seq;
 }
 
-bool RocksDBEdgeIndex::deserializeEstimate(RocksDBCounterManager* mgr) {
+bool RocksDBEdgeIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   // We simply drop the current estimator and steal the one from recovery
   // We are than save for resizing issues in our _estimator format
@@ -964,13 +969,14 @@ bool RocksDBEdgeIndex::deserializeEstimate(RocksDBCounterManager* mgr) {
 
   TRI_ASSERT(mgr != nullptr);
   auto tmp = mgr->stealIndexEstimator(_objectId);
-  if (tmp == nullptr) {
+  if (tmp.first == nullptr) {
     // We expected to receive a stored index estimate, however we got none.
     // We use the freshly created estimator but have to recompute it.
     return false;
   }
-  _estimator.swap(tmp);
+  _estimator.swap(tmp.first);
   TRI_ASSERT(_estimator != nullptr);
+  _estimatorSerializedSeq = tmp.second;
   return true;
 }
 
@@ -1002,5 +1008,5 @@ Result RocksDBEdgeIndex::postprocessRemove(transaction::Methods* trx,
 
   uint64_t hash = RocksDBEdgeIndex::HashForKey(key);
   _estimator->remove(hash);
-  return {TRI_ERROR_NO_ERROR};
+  return Result();
 }

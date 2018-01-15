@@ -68,11 +68,8 @@ function catchRunner (options) {
   if (!options.skipCatch) {
     if (run !== '') {
       let argv = [
-        '[exclude:longRunning][exclude:cache]',
-        '-r',
-        'junit',
-        '-o',
-        fs.join(options.testOutputDirectory, 'catch-standard.xml')];
+        '[exclude:longRunning][exclude:cache]'
+      ];
       results.basics = pu.executeAndWait(run, argv, options, 'all-catch', rootDir);
       results.basics.failed = results.basics.status ? 0 : 1;
       if (!results.basics.status) {

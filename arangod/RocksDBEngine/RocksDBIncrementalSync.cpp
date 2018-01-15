@@ -24,13 +24,15 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Indexes/IndexIterator.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/DatabaseInitialSyncer.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -40,13 +42,12 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-int syncChunkRocksDB(
-    InitialSyncer& syncer, SingleCollectionTransaction* trx,
+Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
+    SingleCollectionTransaction* trx,
     std::string const& keysId, uint64_t chunkId, std::string const& lowString,
     std::string const& highString,
-    std::vector<std::pair<std::string, uint64_t>> const& markers,
-    std::string& errorMsg) {
-  std::string const baseUrl = syncer.BaseUrl + "/keys";
+    std::vector<std::pair<std::string, uint64_t>> const& markers) {
+  std::string const baseUrl = syncer.ReplicationUrl + "/keys";
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const& collectionName = trx->documentCollection()->name();
   PhysicalCollection* physical = trx->documentCollection()->getPhysical();
@@ -54,11 +55,12 @@ int syncChunkRocksDB(
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
+  options.indexOperationMode = Index::OperationMode::internal;
   if (!syncer._leaderId.empty()) {
     options.isSynchronousReplicationFrom = syncer._leaderId;
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "synching chunk. low: '" << lowString
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "syncing chunk. low: '" << lowString
                                         << "', high: '" << highString << "'";
 
   // no match
@@ -75,40 +77,25 @@ int syncChunkRocksDB(
       syncer._client->retryRequest(rest::RequestType::PUT, url, nullptr, 0, syncer.createHeaders()));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "could not connect to master at " +
-               syncer._masterInfo._endpoint + ": " +
-               syncer._client->getErrorMessage();
-
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + syncer._masterInfo._endpoint + ": " + syncer._client->getErrorMessage());
   }
 
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " +
-               syncer._masterInfo._endpoint + ": HTTP " +
-               basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-               response->getHttpReturnMessage();
-
-    return TRI_ERROR_REPLICATION_MASTER_ERROR;
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
   }
 
-  auto builder = std::make_shared<VPackBuilder>();
-  int res = syncer.parseResponse(builder, response.get());
+  VPackBuilder builder;
+  Result r = syncer.parseResponse(builder, response.get());
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg = "got invalid response from master at " +
-               syncer._masterInfo._endpoint + ": response is no array";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  if (r.fail()) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
   }
 
-  VPackSlice const responseBody = builder->slice();
+  VPackSlice const responseBody = builder.slice();
   if (!responseBody.isArray()) {
-    errorMsg = "got invalid response from master at " +
-               syncer._masterInfo._endpoint + ": response is no array";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
   }
 
   transaction::BuilderLeaser keyBuilder(trx);
@@ -117,33 +104,23 @@ int syncChunkRocksDB(
 
   size_t const numKeys = static_cast<size_t>(responseBody.length());
   if (numKeys == 0) {
-    errorMsg = "got invalid response from master at " +
-               syncer._masterInfo._endpoint +
-               ": response contains an empty chunk. Collection: " +
-               collectionName + " Chunk: " + std::to_string(chunkId);
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response contains an empty chunk. Collection: " + collectionName + " Chunk: " + std::to_string(chunkId));
   }
   TRI_ASSERT(numKeys > 0);
 
+  ManagedDocumentResult mmdr;
   size_t i = 0;
   size_t nextStart = 0;
 
   for (VPackSlice const& pair : VPackArrayIterator(responseBody)) {
     if (!pair.isArray() || pair.length() != 2) {
-      errorMsg = "got invalid response from master at " +
-                 syncer._masterInfo._endpoint +
-                 ": response key pair is no valid array";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response key pair is no valid array");
     }
 
     // key
     VPackSlice const keySlice = pair.at(0);
     if (!keySlice.isString()) {
-      errorMsg = "got invalid response from master at " +
-                 syncer._masterInfo._endpoint + ": response key is no string";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response key is no string");
     }
 
     // rid
@@ -186,18 +163,23 @@ int syncChunkRocksDB(
       toFetch.emplace_back(i);
     } else {
       // see if key exists
-      DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
-      if (token._data == 0) {
+      LocalDocumentId const documentId = physical->lookupKey(trx, keySlice);
+      if (!documentId.isSet()) {
         // key not found locally
         toFetch.emplace_back(i);
-      } else if (token._data !=
-                 basics::StringUtils::uint64(pair.at(1).copyString())) {
-        // key found, but revision id differs
-        toFetch.emplace_back(i);
-        ++nextStart;
       } else {
-        // a match - nothing to do!
-        ++nextStart;
+        TRI_voc_rid_t currentRevisionId = 0;
+        if (physical->readDocument(trx, documentId, mmdr)) {
+          currentRevisionId = transaction::helpers::extractRevFromDocument(VPackSlice(mmdr.vpack()));
+        }
+        if (TRI_RidToString(currentRevisionId) != pair.at(1).copyString()) {
+          // key found, but revision id differs
+          toFetch.emplace_back(i);
+          ++nextStart;
+        } else {
+          // a match - nothing to do!
+          ++nextStart;
+        }
       }
     }
 
@@ -220,140 +202,172 @@ int syncChunkRocksDB(
     ++nextStart;
   }
 
+  if (toFetch.empty()) {
+    // nothing to do
+    return Result();
+  }
+
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "will refetch " << toFetch.size()
                                         << " documents for this chunk";
 
-  if (!toFetch.empty()) {
-    VPackBuilder keysBuilder;
-    keysBuilder.openArray();
-    for (auto& it : toFetch) {
-      keysBuilder.add(VPackValue(it));
-    }
-    keysBuilder.close();
+  VPackBuilder keysBuilder;
+  keysBuilder.openArray();
+  for (auto const& it : toFetch) {
+    keysBuilder.add(VPackValue(it));
+  }
+  keysBuilder.close();
 
+  std::string const keyJsonString(keysBuilder.slice().toJson());
+
+  size_t offsetInChunk = 0;
+
+  while (true) {
     std::string url = baseUrl + "/" + keysId + "?type=docs&chunk=" +
                       std::to_string(chunkId) + "&chunkSize=" +
-                      std::to_string(chunkSize) + "&low=" + lowString;
+                      std::to_string(chunkSize) + "&low=" + lowString +
+                      "&offset=" + std::to_string(offsetInChunk);
 
     progress = "fetching documents chunk " + std::to_string(chunkId) +
                " for collection '" + collectionName + "' from " + url;
     syncer.setProgress(progress);
 
-    std::string const keyJsonString(keysBuilder.slice().toJson());
-
-    
     std::unique_ptr<httpclient::SimpleHttpResult> response(
         syncer._client->retryRequest(rest::RequestType::PUT, url,
                                      keyJsonString.c_str(),
                                      keyJsonString.size(), syncer.createHeaders()));
 
     if (response == nullptr || !response->isComplete()) {
-      errorMsg = "could not connect to master at " +
-                 syncer._masterInfo._endpoint + ": " +
-                 syncer._client->getErrorMessage();
-
-      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + syncer._masterInfo._endpoint + ": " + syncer._client->getErrorMessage());
     }
 
     TRI_ASSERT(response != nullptr);
 
     if (response->wasHttpError()) {
-      errorMsg = "got invalid response from master at " +
-                 syncer._masterInfo._endpoint + ": HTTP " +
-                 basics::StringUtils::itoa(response->getHttpReturnCode()) +
-                 ": " + response->getHttpReturnMessage();
-
-      return TRI_ERROR_REPLICATION_MASTER_ERROR;
+      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
     }
 
-    auto builder = std::make_shared<VPackBuilder>();
-    int res = syncer.parseResponse(builder, response.get());
+    VPackBuilder builder;
+    Result r = syncer.parseResponse(builder, response.get());
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = "got invalid response from master at " +
-                 std::string(syncer._masterInfo._endpoint) +
-                 ": response is no array";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    if (r.fail()) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
     }
 
-    VPackSlice const slice = builder->slice();
+    VPackSlice const slice = builder.slice();
     if (!slice.isArray()) {
-      errorMsg = "got invalid response from master at " +
-                 syncer._masterInfo._endpoint + ": response is no array";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
     }
+
+    size_t foundLength = slice.length();
 
     for (auto const& it : VPackArrayIterator(slice)) {
-      if (!it.isObject()) {
-        errorMsg = "got invalid response from master at " +
-                   syncer._masterInfo._endpoint + ": document is no object";
+      if (it.isNull()) {
+        continue;
+      }
 
-        return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      if (!it.isObject()) {
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document is no object");
       }
 
       VPackSlice const keySlice = it.get(StaticStrings::KeyString);
 
       if (!keySlice.isString()) {
-        errorMsg = "got invalid response from master at " +
-                   syncer._masterInfo._endpoint + ": document key is invalid";
-
-        return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document key is invalid");
       }
 
       VPackSlice const revSlice = it.get(StaticStrings::RevString);
 
       if (!revSlice.isString()) {
-        errorMsg = "got invalid response from master at " +
-                   syncer._masterInfo._endpoint +
-                   ": document revision is invalid";
-
-        return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document revision is invalid");
       }
 
-      DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
+      LocalDocumentId const documentId = physical->lookupKey(trx, keySlice);
 
-      if (!token._data) {
+      auto removeConflict = [&](std::string const& conflictingKey) -> OperationResult {
+        VPackBuilder conflict;
+        conflict.add(VPackValue(conflictingKey));
+        LocalDocumentId conflictId = physical->lookupKey(trx, conflict.slice());
+        if (conflictId.isSet()) {
+          ManagedDocumentResult mmdr;
+          bool success = physical->readDocument(trx, conflictId, mmdr);
+          if (success) {
+            VPackSlice conflictingKey(mmdr.vpack());
+            return trx->remove(collectionName, conflictingKey, options);
+          }
+        }
+        return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      };
+
+      if (!documentId.isSet()) {
         // INSERT
         OperationResult opRes = trx->insert(collectionName, it, options);
-        res = opRes.code;
+        if (opRes.fail()) {
+          if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) && opRes.errorMessage() > keySlice.copyString()) {
+            // remove conflict and retry
+            auto inner = removeConflict(opRes.errorMessage());
+            if (inner.fail()) {
+              return opRes.result;
+            }
+            opRes = trx->insert(collectionName, it, options);
+            if (opRes.fail()) {
+              return opRes.result;
+            }
+          } else {
+            return opRes.result;
+          }
+        }
       } else {
-        // UPDATE
-        OperationResult opRes = trx->update(collectionName, it, options);
-        res = opRes.code;
-      }
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
+        // REPLACE
+        OperationResult opRes = trx->replace(collectionName, it, options);
+        if (opRes.fail()) {
+          if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) && opRes.errorMessage() > keySlice.copyString()) {
+            // remove conflict and retry
+            auto inner = removeConflict(opRes.errorMessage());
+            if (inner.fail()) {
+              return opRes.result;
+            }
+            opRes = trx->replace(collectionName, it, options);
+            if (opRes.fail()) {
+              return opRes.result;
+            }
+          } else {
+            return opRes.result;
+          }
+        }
       }
     }
+
+    if (foundLength >= toFetch.size()) {
+      break;
+    }
+
+    // try again in next round
+    offsetInChunk = foundLength;
   }
-  return TRI_ERROR_NO_ERROR;
+
+  return Result();
 }
 
-int handleSyncKeysRocksDB(InitialSyncer& syncer,
-                          arangodb::LogicalCollection* col,
-                          std::string const& keysId, std::string const& cid,
-                          std::string const& collectionName,
-                          TRI_voc_tick_t maxTick, std::string& errorMsg) {
+Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
+                             arangodb::LogicalCollection* col,
+                             std::string const& keysId) {
   std::string progress =
-      "collecting local keys for collection '" + collectionName + "'";
+      "collecting local keys for collection '" + col->name() + "'";
   syncer.setProgress(progress);
 
   if (syncer.checkAborted()) {
-    return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+    return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
   syncer.sendExtendBatch();
   syncer.sendExtendBarrier();
 
   TRI_voc_tick_t const chunkSize = 5000;
-  std::string const baseUrl = syncer.BaseUrl + "/keys";
+  std::string const baseUrl = syncer.ReplicationUrl + "/keys";
 
   std::string url =
       baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize);
-  progress = "fetching remote keys chunks for collection '" + collectionName +
+  progress = "fetching remote keys chunks for collection '" + col->name() +
              "' from " + url;
   syncer.setProgress(progress);
   auto const headers = syncer.createHeaders();
@@ -361,42 +375,26 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
       syncer._client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "could not connect to master at " +
-               syncer._masterInfo._endpoint + ": " +
-               syncer._client->getErrorMessage();
-
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + syncer._masterInfo._endpoint + ": " + syncer._client->getErrorMessage());
   }
 
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " +
-               syncer._masterInfo._endpoint + ": HTTP " +
-               basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-               response->getHttpReturnMessage();
-
-    return TRI_ERROR_REPLICATION_MASTER_ERROR;
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
   }
 
-  auto builder = std::make_shared<VPackBuilder>();
-  int res = syncer.parseResponse(builder, response.get());
+  VPackBuilder builder;
+  Result r  = syncer.parseResponse(builder, response.get());
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg = "got invalid response from master at " +
-               std::string(syncer._masterInfo._endpoint) +
-               ": invalid response is no array";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  if (r.fail()) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
   }
 
-  VPackSlice const chunkSlice = builder->slice();
+  VPackSlice const chunkSlice = builder.slice();
 
   if (!chunkSlice.isArray()) {
-    errorMsg = "got invalid response from master at " +
-               syncer._masterInfo._endpoint + ": response is no array";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
   }
 
   ManagedDocumentResult mmdr;
@@ -415,16 +413,13 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
   if (numChunks > 0) {
     // first chunk
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer._vocbase), col->cid(),
+        transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
         AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
 
     if (!res.ok()) {
-      errorMsg =
-          std::string("unable to start transaction: ") + res.errorMessage();
-      res.reset(res.errorNumber(), errorMsg);
-      return res.errorNumber();
+      return Result(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
     }
 
     VPackSlice chunk = chunkSlice.at(0);
@@ -446,41 +441,42 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
     LogicalCollection* coll = trx.documentCollection();
     auto ph = static_cast<RocksDBCollection*>(coll->getPhysical());
     std::unique_ptr<IndexIterator> iterator =
-        ph->getSortedAllIterator(&trx, &mmdr);
+        ph->getSortedAllIterator(&trx);
     iterator->next(
-        [&](DocumentIdentifierToken const& token) {
+        [&](LocalDocumentId const& token) {
           if (coll->readDocument(&trx, token, mmdr) == false) {
             return;
           }
           VPackSlice doc(mmdr.vpack());
           VPackSlice key = doc.get(StaticStrings::KeyString);
           if (key.compareString(lowKey.data(), lowKey.length()) < 0) {
-            trx.remove(collectionName, doc, options);
+            trx.remove(col->name(), doc, options);
           } else if (key.compareString(highKey.data(), highKey.length()) > 0) {
-            trx.remove(collectionName, doc, options);
+            trx.remove(col->name(), doc, options);
           }
         },
         UINT64_MAX);
 
     res = trx.commit();
+
+    if (!res.ok()) {
+      return res;
+    }
   }
 
   {
     if (syncer.checkAborted()) {
-      return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer._vocbase), col->cid(),
+        transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
         AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
 
     if (!res.ok()) {
-      errorMsg =
-          std::string("unable to start transaction: ") + res.errorMessage();
-      res.reset(res.errorNumber(), res.errorMessage());
-      return res.errorNumber();
+      return Result(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
     }
 
     // We do not take responsibility for the index.
@@ -502,15 +498,13 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
       syncer.sendExtendBarrier();
 
       progress = "processing keys chunk " + std::to_string(currentChunkId) +
-                 " for collection '" + collectionName + "'";
+                 " for collection '" + col->name() + "'";
       syncer.setProgress(progress);
 
       // read remote chunk
       VPackSlice chunk = chunkSlice.at(currentChunkId);
       if (!chunk.isObject()) {
-        errorMsg = "got invalid response from master at " +
-                   syncer._masterInfo._endpoint + ": chunk is no object";
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": chunk is no object");
       }
 
       VPackSlice const lowSlice = chunk.get("low");
@@ -518,10 +512,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
       VPackSlice const hashSlice = chunk.get("hash");
       if (!lowSlice.isString() || !highSlice.isString() ||
           !hashSlice.isString()) {
-        errorMsg = "got invalid response from master at " +
-                   syncer._masterInfo._endpoint +
-                   ": chunks in response have an invalid format";
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": chunks in response have an invalid format");
       }
 
       // now reset chunk information
@@ -546,7 +537,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
 
       if (cmp1 < 0) {
         // smaller values than lowKey mean they don't exist remotely
-        trx.remove(collectionName, key, options);
+        trx.remove(col->name(), key, options);
         return;
       } else if (cmp1 >= 0 && cmp2 <= 0) {
         // we only need to hash we are in the range
@@ -579,9 +570,9 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
       TRI_ASSERT(!rangeUnequal || nextChunk);  // A => B
       if (nextChunk) {  // we are out of range, see next chunk
         if (rangeUnequal && currentChunkId < numChunks) {
-          int res = syncChunkRocksDB(syncer, &trx, keysId, currentChunkId,
-                                     lowKey, highKey, markers, errorMsg);
-          if (res != TRI_ERROR_NO_ERROR) {
+          Result res = syncChunkRocksDB(syncer, &trx, keysId, currentChunkId,
+                                        lowKey, highKey, markers);
+          if (!res.ok()) {
             THROW_ARANGO_EXCEPTION(res);
           }
         }
@@ -598,9 +589,9 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
 
     auto ph = static_cast<RocksDBCollection*>(col->getPhysical());
     std::unique_ptr<IndexIterator> iterator =
-        ph->getSortedAllIterator(&trx, &mmdr);
+        ph->getSortedAllIterator(&trx);
     iterator->next(
-        [&](DocumentIdentifierToken const& token) {
+        [&](LocalDocumentId const& token) {
           if (col->readDocument(&trx, token, mmdr) == false) {
             return;
           }
@@ -612,9 +603,9 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
 
     // we might have missed chunks, if the keys don't exist at all locally
     while (currentChunkId < numChunks) {
-      int res = syncChunkRocksDB(syncer, &trx, keysId, currentChunkId, lowKey,
-                                 highKey, markers, errorMsg);
-      if (res != TRI_ERROR_NO_ERROR) {
+      Result res = syncChunkRocksDB(syncer, &trx, keysId, currentChunkId, lowKey,
+                                    highKey, markers);
+      if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }
       currentChunkId++;
@@ -625,10 +616,10 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
 
     res = trx.commit();
     if (!res.ok()) {
-      return res.errorNumber();
+      return res;
     }
   }
 
-  return res;
+  return Result();
 }
 }

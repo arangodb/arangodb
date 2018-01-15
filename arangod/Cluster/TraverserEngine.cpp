@@ -100,6 +100,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
   // FIXME: in the future this needs to be replaced with t
   // he new cluster wide transactions
   transaction::Options trxOpts;
+  auto ctx = arangodb::transaction::StandaloneContext::Create(vocbase);
 #ifdef USE_ENTERPRISE
   VPackSlice inaccessSlice = shardsSlice.get(INACCESSIBLE);
   if (inaccessSlice.isArray()) {
@@ -109,18 +110,15 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
       TRI_ASSERT(shard.isString());
       inaccessible.insert(shard.copyString());
     }
-    _trx = aql::AqlTransaction::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        _collections.collections(), trxOpts, true, inaccessible);
+    _trx = aql::AqlTransaction::create(ctx, _collections.collections(),
+                                       trxOpts, true, inaccessible);
   } else {
-    _trx = aql::AqlTransaction::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        _collections.collections(), trxOpts, true);
+    _trx = aql::AqlTransaction::create(ctx, _collections.collections(),
+                                       trxOpts, true);
   }
 #else
-  _trx = aql::AqlTransaction::create(
-       arangodb::transaction::StandaloneContext::Create(vocbase),
-       _collections.collections(), trxOpts, true);
+  _trx = aql::AqlTransaction::create(ctx, _collections.collections(),
+                                     trxOpts, true);
 #endif
 
   // true here as last argument is crucial: it leads to the fact that the
@@ -168,13 +166,16 @@ bool BaseEngine::lockCollection(std::string const& shard) {
     return false;
   }
   _trx->pinData(cid);  // will throw when it fails
-  Result res = _trx->lock(cid, AccessMode::Type::READ);
-  if (!res.ok()) {
+
+  Result lockResult = _trx->lockRecursive(cid, AccessMode::Type::READ);
+  
+  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Logging Shard " << shard << " lead to exception '"
-        << res.errorNumber() << "' (" << res.errorMessage() << ") ";
+        << "Locking shard " << shard << " lead to exception '"
+        << lockResult.errorNumber() << "' (" << lockResult.errorMessage() << ") ";
     return false;
   }
+
   return true;
 }
 
@@ -209,7 +210,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
       // Maybe handle differently
     }
     
-    StringRef vertex = id.substr(pos+1);
+    StringRef vertex = id.substr(pos + 1);
     for (std::string const& shard : shards->second) {
       Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
       if (res.ok()) {
@@ -262,6 +263,9 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
         if (edge.isString()) {
           edge = _opts->cache()->lookupToken(eid);
         }
+        if (edge.isNull()) {
+          return;
+        }
         if (_opts->evaluateEdgeExpression(edge, StringRef(v), depth,
                                           cursorId)) {
           builder.add(edge);
@@ -276,6 +280,9 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
                             VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
         edge = _opts->cache()->lookupToken(eid);
+      }
+      if (edge.isNull()) {
+        return;
       }
       if (_opts->evaluateEdgeExpression(edge, StringRef(vertex), depth,
                                         cursorId)) {
@@ -307,6 +314,9 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
   builder.add(VPackValue("vertices"));
 
   auto workOnOneDocument = [&](VPackSlice v) {
+    if (v.isNull()) {
+      return;
+    }
     StringRef id(v);
     size_t pos = id.find('/');
     if (pos == std::string::npos || pos + 1 == id.size()) {
@@ -325,7 +335,7 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
       // Maybe handle differently
     }
     
-    StringRef vertex = id.substr(pos+1);
+    StringRef vertex = id.substr(pos + 1);
     for (std::string const& shard : shards->second) {
       Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
       if (res.ok()) {
@@ -402,6 +412,9 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
   builder.openArray();
   if (vertex.isArray()) {
     for (VPackSlice v : VPackArrayIterator(vertex)) {
+      if (!vertex.isString()) {
+        continue;
+      }
       TRI_ASSERT(v.isString());
       // result.clear();
       StringRef vertexId(v);
@@ -415,6 +428,9 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
                               VPackSlice edge, size_t cursorId) {
         if (edge.isString()) {
           edge = _opts->cache()->lookupToken(eid);
+        } 
+        if (edge.isNull()) {
+          return;
         }
         builder.add(edge);
       });
@@ -431,6 +447,9 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
                             VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
         edge = _opts->cache()->lookupToken(eid);
+      }
+      if (edge.isNull()) {
+        return;
       }
       builder.add(edge);
     });

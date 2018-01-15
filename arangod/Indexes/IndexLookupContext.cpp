@@ -35,10 +35,10 @@ IndexLookupContext::IndexLookupContext(transaction::Methods* trx,
     : _trx(trx), _collection(collection), _result(result), _numFields(numFields) {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_collection != nullptr);
-  TRI_ASSERT(_result != nullptr);
+  // note: _result can be a nullptr
 }
  
-uint8_t const* IndexLookupContext::lookup(DocumentIdentifierToken token) {
+uint8_t const* IndexLookupContext::lookup(LocalDocumentId token) {
   try {
     if (_collection->readDocument(_trx, token, *_result)) {
       return _result->vpack();

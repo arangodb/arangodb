@@ -30,12 +30,10 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::aql;
@@ -45,13 +43,12 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     : ExecutionBlock(engine, ep), 
       DocumentProducingBlock(ep, _trx),
       _collection(ep->_collection),
-      _mmdr(new ManagedDocumentResult),
       _cursor(
           _trx->indexScan(_collection->getName(),
                           (ep->_random ? transaction::Methods::CursorType::ANY
                                        : transaction::Methods::CursorType::ALL),
-                          _mmdr.get(), 0, UINT64_MAX, 1000, false)) {
-  TRI_ASSERT(_cursor->successful());
+                          false)) {
+  TRI_ASSERT(_cursor->ok());
 }
 
 int EnumerateCollectionBlock::initialize() {
@@ -79,7 +76,7 @@ int EnumerateCollectionBlock::initialize() {
         if (endTime - now < waitInterval) {
           waitInterval = static_cast<unsigned long>(endTime - now);
         }
-        usleep((TRI_usleep_t)waitInterval);
+        std::this_thread::sleep_for(std::chrono::microseconds(waitInterval));
       }
       now = TRI_microtime();
       if (now > endTime) {
@@ -120,10 +117,10 @@ int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
 }
 
 /// @brief getSome
-AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
+AqlItemBlock* EnumerateCollectionBlock::getSome(size_t atLeast,
                                                 size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
 
   TRI_ASSERT(_cursor.get() != nullptr);
   // Invariants:
@@ -195,13 +192,13 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     if (produceResult()) {
       // properly build up results by fetching the actual documents
       // using nextDocument()
-      tmp = _cursor->nextDocument([&](DocumentIdentifierToken const&, VPackSlice slice) {
+      tmp = _cursor->nextDocument([&](LocalDocumentId const&, VPackSlice slice) {
         _documentProducer(res.get(), slice, curRegs, send, 0);
       }, atMost);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
-      tmp = _cursor->next([&](DocumentIdentifierToken const&) {
+      tmp = _cursor->next([&](LocalDocumentId const&) {
         _documentProducer(res.get(), VPackSlice::nullSlice(), curRegs, send, 0);
       }, atMost);
     }
@@ -216,7 +213,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
 
   if (send < atMost) {
     // The collection did not have enough results
-    res->shrink(send, false);
+    res->shrink(send);
   }
 
   // Clear out registers no longer needed later:

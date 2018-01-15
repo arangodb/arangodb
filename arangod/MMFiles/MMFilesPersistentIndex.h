@@ -77,7 +77,7 @@ class MMFilesPersistentIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "rocksdb-index-iterator"; }
 
   /// @brief Get the next limit many element in the index
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;
@@ -161,11 +161,13 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
     return value;
   }
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
+  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const&,
+                OperationMode mode) override;
 
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
+  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const&,
+                OperationMode mode) override;
 
   void unload() override {}
 

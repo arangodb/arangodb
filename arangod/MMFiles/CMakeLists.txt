@@ -13,6 +13,7 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesCollectionExport.cpp
   MMFiles/MMFilesCollectionKeys.cpp
   MMFiles/MMFilesCollectorThread.cpp
+  MMFiles/MMFilesCompactionFeature.cpp
   MMFiles/MMFilesCompactorThread.cpp
   MMFiles/MMFilesDatafile.cpp
   MMFiles/MMFilesDatafileStatistics.cpp
@@ -48,11 +49,13 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesTransactionState.cpp
   MMFiles/MMFilesV8Functions.cpp
   MMFiles/MMFilesView.cpp
+  MMFiles/MMFilesWalAccess.cpp
   MMFiles/MMFilesWalLogfile.cpp
   MMFiles/MMFilesWalRecoverState.cpp
   MMFiles/MMFilesWalRecoveryFeature.cpp
   MMFiles/MMFilesWalSlot.cpp
   MMFiles/MMFilesWalSlots.cpp
+  MMFiles/mmfiles-replication-common.cpp
   MMFiles/mmfiles-replication-dump.cpp
   )
 set(MMFILES_SOURCES ${MMFILES_SOURCES} PARENT_SCOPE)

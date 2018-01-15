@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
@@ -277,7 +278,7 @@ void TRI_GetBacktrace(std::string& btstr) {
              std::string(" [") + address + std::string("]\n");
   }
 
-  TRI_SystemFree(symbol);
+  TRI_Free(symbol);
 
 #else
   void* stack_frames[50];
@@ -316,12 +317,14 @@ void TRI_GetBacktrace(std::string& btstr) {
             btstr += strings[i] + std::string("() [") + ss.str() +
                      std::string("] ") + demangled_name + '\n';
           } else {
-            btstr += strings[i] + '\n';
+            btstr += strings[i];
+            btstr += '\n';
           }
-          TRI_SystemFree(demangled_name);
+          TRI_Free(demangled_name);
         }
       } else {
-        btstr += strings[i] + '\n';
+        btstr += strings[i];
+        btstr += '\n';
       }
     } else {
       ss << stack_frames[i];
@@ -329,7 +332,7 @@ void TRI_GetBacktrace(std::string& btstr) {
     }
   }
   if (strings != nullptr) {
-    TRI_SystemFree(strings);
+    TRI_Free(strings);
   }
 #endif
 #endif
@@ -340,9 +343,11 @@ void TRI_GetBacktrace(std::string& btstr) {
 void TRI_PrintBacktrace() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
-  std::string out;
-  TRI_GetBacktrace(out);
-  fprintf(stderr, "%s", out.c_str());
+  if (LogAppender::allowStdLogging()) {
+    std::string out;
+    TRI_GetBacktrace(out);
+    fprintf(stderr, "%s", out.c_str());
+  }
 #endif
 #if TRI_HAVE_PSTACK
   char buf[64];

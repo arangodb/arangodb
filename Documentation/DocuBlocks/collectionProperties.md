@@ -51,9 +51,12 @@ In a cluster setup, the result will also contain the following attributes:
 * *shardKeys*: contains the names of document attributes that are used to
   determine the target shard for documents.
 
+* *replicationFactor*: determines how many copies of each shard are kept 
+  on different DBServers.
+
 `collection.properties(properties)`
 
-Changes the collection properties. *properties* must be a object with
+Changes the collection properties. *properties* must be an object with
 one or more of the following attribute(s):
 
 * *waitForSync*: If *true* creating a document will only return
@@ -65,6 +68,10 @@ one or more of the following attribute(s):
 * *indexBuckets* : See above, changes are only applied when the
   collection is loaded the next time.
   This option is meaningful for the MMFiles storage engine only.
+
+* *replicationFactor* : Change the number of shard copies kept on 
+  different DBServers, valid values are  integer numbers
+  in the range of 1-10 *(Cluster only)*
 
 *Note*: it is not possible to change the journal size after the journal or
 datafile has been created. Changing this parameter will only effect newly

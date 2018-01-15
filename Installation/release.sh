@@ -1,9 +1,9 @@
 #!/bin/bash
-set -ex
+set -e
 
-SCRIPT_DIR=`dirname $0`
+SCRIPT_DIR=$(dirname "$0")
 SRC_DIR="${SCRIPT_DIR}/../"
-ENTERPRISE_SRC_DIR=${SRC_DIR}enterprise
+ENTERPRISE_SRC_DIR="${SRC_DIR}enterprise"
 
 FORCE_TAG=0
 TAG=1
@@ -15,11 +15,16 @@ LINT=1
 PARALLEL=8
 
 SED=sed
-isMac=0
+IS_MAC=0
+
+NOTIFY='if test -x /usr/games/oneko; then /usr/games/oneko& fi'
+trap "$NOTIFY"
+
+
 if test "$(uname)" == "Darwin"; then
-    isMac=1
     SED=gsed
     OSNAME=darwin
+    IS_MAC=1
 fi
 
 if flex --version; then
@@ -99,6 +104,12 @@ while [ "$#" -gt 0 ];  do
             shift
             ;;
 
+        --sync-user)
+            shift
+            DOWNLOAD_SYNCER_USER=$1
+            shift
+            ;;
+            
         --no-book)
             BOOK=0
             shift
@@ -114,11 +125,12 @@ while [ "$#" -gt 0 ];  do
     esac
 done
 
-if [ -d ${ENTERPRISE_SRC_DIR} ];  then
+if [ ! -d "${ENTERPRISE_SRC_DIR}" ];  then
     echo "enterprise directory missing"
+    exit 1
 fi
 
-if echo ${VERSION} | grep -q -- '-'; then
+if echo "${VERSION}" | grep -q -- '-'; then
     echo "${VERSION} mustn't contain minuses! "
     exit 1
 fi
@@ -137,14 +149,63 @@ else
     exit 1
 fi
 
+if test -z "${DOWNLOAD_SYNCER_USER}"; then
+    echo "$0: have to specify --sync-user <githublogin> to fetch the arangosync revision"
+    exit 1
+fi
 
-GITSHA=`git log -n1 --pretty='%h'`
-if git describe --exact-match --tags ${GITSHA}; then
-    GITARGS=`git describe --exact-match --tags ${GITSHA}`
+count=0
+SEQNO="$$"
+while test -z "${OAUTH_REPLY}"; do
+    OAUTH_REPLY=$(
+        curl -s "https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations" \
+             --data "{\"scopes\":[\"repo\", \"repo_deployment\"],\"note\":\"Release-tag-${SEQNO}-${OSNAME}\"}"
+               )
+    if test -n "$(echo "${OAUTH_REPLY}" |grep already_exists)"; then
+        # retry with another number... 
+        OAUTH_REPLY=""
+        SEQNO=$((SEQNO + 1))
+        count=$((count + 1))
+        if test "${count}" -gt 20; then
+            echo "failed to login to github! Giving up."
+            exit 1
+        fi
+    fi
+done
+OAUTH_TOKEN=$(echo "$OAUTH_REPLY" | \
+                     grep '"token"'  |\
+                     $SED -e 's;.*": *";;' -e 's;".*;;'
+           )
+OAUTH_ID=$(echo "$OAUTH_REPLY" | \
+                  grep '"id"'  |\
+                  $SED -e 's;.*": *;;' -e 's;,;;'
+        )
+
+# shellcheck disable=SC2064
+trap "$NOTIFY; curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
+
+
+GET_SYNCER_REV=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases?access_token=${OAUTH_TOKEN}")
+
+SYNCER_REV=$(echo "${GET_SYNCER_REV}"| \
+                    grep tag_name | \
+                    head -n 1 | \
+                    ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'
+          )
+if test -z "${SYNCER_REV}"; then
+    echo "failed to determine the revision of arangosync with github!"
+    exit 1
+fi
+
+${SED} -i VERSIONS -e "s;SYNCER_REV.*;SYNCER_REV \"${SYNCER_REV}\";"
+
+GITSHA=$(git log -n1 --pretty='%h')
+if git describe --exact-match --tags "${GITSHA}"; then
+    GITARGS=$(git describe --exact-match --tags "${GITSHA}")
     echo "I'm on tag: ${GITARGS}"
 else
-    GITARGS=`git branch --no-color| grep '^\*' | sed "s;\* *;;"`
-    if echo $GITARGS |grep -q ' '; then
+    GITARGS=$(git branch --no-color| grep '^\*' | $SED "s;\* *;;")
+    if echo "$GITARGS" |grep -q ' '; then
         GITARGS=devel
     fi
     echo "I'm on Branch: ${GITARGS}"
@@ -153,23 +214,24 @@ fi
 
 
 
-VERSION_MAJOR=`echo $VERSION | awk -F. '{print $1}'`
-VERSION_MINOR=`echo $VERSION | awk -F. '{print $2}'`
-VERSION_REVISION=`echo $VERSION | awk -F. '{print $3}'`
+VERSION_MAJOR=$(echo "$VERSION" | awk -F. '{print $1}')
+VERSION_MINOR=$(echo "$VERSION" | awk -F. '{print $2}')
+VERSION_REVISION=$(echo "$VERSION" | awk -F. '{print $3}')
 VERSION_PACKAGE="1"
 
+# shellcheck disable=SC2002
 cat CMakeLists.txt \
-    | sed -e "s~set(ARANGODB_VERSION_MAJOR.*~set(ARANGODB_VERSION_MAJOR      \"$VERSION_MAJOR\")~" \
-    | sed -e "s~set(ARANGODB_VERSION_MINOR.*~set(ARANGODB_VERSION_MINOR      \"$VERSION_MINOR\")~" \
-    | sed -e "s~set(ARANGODB_VERSION_REVISION.*~set(ARANGODB_VERSION_REVISION   \"$VERSION_REVISION\")~" \
-    | sed -e "s~set(ARANGODB_PACKAGE_REVISION.*~set(ARANGODB_PACKAGE_REVISION   \"$VERSION_PACKAGE\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_MAJOR.*~set(ARANGODB_VERSION_MAJOR      \"$VERSION_MAJOR\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_MINOR.*~set(ARANGODB_VERSION_MINOR      \"$VERSION_MINOR\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_REVISION.*~set(ARANGODB_VERSION_REVISION   \"$VERSION_REVISION\")~" \
+    | $SED -e "s~set(ARANGODB_PACKAGE_REVISION.*~set(ARANGODB_PACKAGE_REVISION   \"$VERSION_PACKAGE\")~" \
           > CMakeLists.txt.tmp
 
 mv CMakeLists.txt.tmp CMakeLists.txt
 
 CMAKE_CONFIGURE="-DUSE_MAINTAINER_MODE=ON"
 
-if [ `uname` == "Darwin" ];  then
+if [ "${IS_MAC}" == 1 ];  then
     CMAKE_CONFIGURE="${CMAKE_CONFIGURE} -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11"
 fi
 
@@ -178,18 +240,21 @@ if [ "$BUILD" != "0" ];  then
     rm -rf build && mkdir build
     (
         cd build
+        # shellcheck disable=SC2086
         cmake .. ${CMAKE_CONFIGURE}
         make clean_autogenerated_files
+        # shellcheck disable=SC2086
         cmake .. ${CMAKE_CONFIGURE}
-        make -j ${PARALLEL}
+        make -j "${PARALLEL}"
     )
 
     echo "COMPILING ENTERPRISE"
     rm -rf build-enterprise && mkdir build-enterprise
     (
         cd build-enterprise
+        # shellcheck disable=SC2086
         cmake .. ${CMAKE_CONFIGURE} -DUSE_ENTERPRISE=ON
-        make -j ${PARALLEL}
+        make -j "${PARALLEL}"
     )
 fi
 
@@ -199,10 +264,11 @@ if [ "$LINT" == "1" ]; then
 fi
 
 # we utilize https://developer.github.com/v3/repos/ to get the newest release of the arangodb starter:
-curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
+STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
                          grep tag_name | \
                          head -n 1 | \
-                         ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;' > STARTER_REV
+                         ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;')
+${SED} -i VERSIONS -e "s;STARTER_REV.*;STARTER_REV \"${STARTER_REV}\";"
 
 git add -f \
     README \
@@ -214,7 +280,7 @@ git add -f \
     lib/Basics/voc-errors.cpp \
     js/common/bootstrap/errors.js \
     CMakeLists.txt \
-    STARTER_REV
+    VERSIONS
 
 if [ "$EXAMPLES" == "1" ];  then
     echo "EXAMPLES"
@@ -241,7 +307,7 @@ if [ "$BOOK" == "1" ];  then
     (cd Documentation/Books; make)
 fi
 
-case "$TAG" in
+case "$VERSION" in
     *-milestone*|*-alpha*|*-beta*|devel)
     ;;
 
@@ -264,7 +330,7 @@ if [ "$TAG" == "1" ];  then
         git push --tags -f
     fi        
 
-    cd ${ENTERPRISE_SRC_DIR}
+    cd "${ENTERPRISE_SRC_DIR}"
     git commit --allow-empty -m "release version $VERSION enterprise" -a
     git push
 

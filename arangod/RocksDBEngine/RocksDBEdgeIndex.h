@@ -32,7 +32,6 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBToken.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -58,7 +57,7 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   ~RocksDBEdgeIndexIterator();
   char const* typeName() const override { return "edge-index-iterator"; }
   bool hasExtra() const override { return true; }
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
   bool nextExtra(ExtraCallback const& cb, size_t limit) override;
   void reset() override;
 
@@ -130,7 +129,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   void batchInsert(
       transaction::Methods*,
-      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
+      std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const&,
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override;
 
   bool hasBatchInsert() const override { return false; }
@@ -158,17 +157,23 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   void warmup(arangodb::transaction::Methods* trx,
               std::shared_ptr<basics::LocalTaskQueue> queue) override;
 
-  void serializeEstimate(std::string& output) const override;
+  void serializeEstimate(std::string& output, uint64_t seq) const override;
 
-  bool deserializeEstimate(arangodb::RocksDBCounterManager* mgr) override;
+  bool deserializeEstimate(arangodb::RocksDBSettingsManager* mgr) override;
 
   void recalculateEstimates() override;
 
-  Result insertInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
-                        arangodb::velocypack::Slice const&) override;
+  Result insertInternal(transaction::Methods*, RocksDBMethods*,
+                        LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const&,
+                        OperationMode mode) override;
 
-  Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
-                        arangodb::velocypack::Slice const&) override;
+  Result removeInternal(transaction::Methods*, RocksDBMethods*,
+                        LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const&,
+                        OperationMode mode) override;
+
+  virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const override;
 
  protected:
   Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
@@ -187,10 +192,10 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   /// @brief add a single value node to the iterator's keys
   void handleValNode(VPackBuilder* keys,
                      arangodb::aql::AstNode const* valNode) const;
-  
+
   void warmupInternal(transaction::Methods* trx,
                       rocksdb::Slice const& lower, rocksdb::Slice const& upper);
-  
+
  private:
 
   std::string _directionAttr;
@@ -200,6 +205,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.
   std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> _estimator;
+  mutable uint64_t _estimatorSerializedSeq;
 };
 }  // namespace arangodb
 

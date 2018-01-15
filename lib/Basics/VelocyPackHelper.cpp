@@ -23,6 +23,7 @@
 
 #include "VelocyPackHelper.h"
 #include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/OpenFilesTracker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -392,12 +393,12 @@ int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
     // fallthrough to double comparison
   }
 
-  double left = lhs.getNumericValue<double>();
-  double right = rhs.getNumericValue<double>();
-  if (left == right) {
+  double l = lhs.getNumericValue<double>();
+  double r = rhs.getNumericValue<double>();
+  if (l == r) {
     return 0;
   }
-  return (left < right ? -1 : 1);
+  return (l < r ? -1 : 1);
 }
   
 //////////////////////////////////////////////////////////////////////////////
@@ -413,18 +414,17 @@ int VelocyPackHelper::compareStringValues(char const* left, VPackValueLength nl,
     size_t len = static_cast<size_t>(nl < nr ? nl : nr);
     res = memcmp(left, right, len);
   }
-  if (res < 0) {
-    return -1;
+  
+  if (res != 0) {
+    return (res < 0 ? -1 : 1);
   }
-  if (res > 0) {
-    return 1;
-  }
+  
   // res == 0
   if (nl == nr) {
     return 0;
   }
   // res == 0, but different string lengths
-  return nl < nr ? -1 : 1;
+  return (nl < nr ? -1 : 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -573,22 +573,22 @@ uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
 /// @brief parses a json file to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile(
+VPackBuilder VelocyPackHelper::velocyPackFromFile(
     std::string const& path) {
   size_t length;
   char* content = TRI_SlurpFile(path.c_str(), &length);
   if (content != nullptr) {
     // The Parser might throw;
-    std::shared_ptr<VPackBuilder> b;
+    VPackBuilder builder;
     try {
-      auto b = VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content),
-                                     length);
+      VPackParser parser(builder);
+      parser.parse(reinterpret_cast<uint8_t const*>(content), length);
       TRI_Free(content);
-      return b;
     } catch (...) {
       TRI_Free(content);
       throw;
     }
+    return builder;
   }
   THROW_ARANGO_EXCEPTION(TRI_errno());
 }
@@ -719,12 +719,8 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     int8_t lWeight = TypeWeight(lhs);
     int8_t rWeight = TypeWeight(rhs);
 
-    if (lWeight < rWeight) {
-      return -1;
-    }
-
-    if (lWeight > rWeight) {
-      return 1;
+    if (lWeight != rWeight) {
+      return (lWeight < rWeight ? -1 : 1);
     }
 
     TRI_ASSERT(lWeight == rWeight);
@@ -765,32 +761,40 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     case VPackValueType::SmallInt: {
       return compareNumberValues(lhsType, lhs, rhs);
     }
-    case VPackValueType::String: {
-      VPackValueLength nl;
-      char const* left = lhs.getString(nl);
-      TRI_ASSERT(left != nullptr);
-
-      VPackValueLength nr;
-      char const* right = rhs.getString(nr);
-      TRI_ASSERT(right != nullptr);
-
-      return compareStringValues(left, nl, right, nr, useUTF8);
-    }
+    case VPackValueType::String: 
     case VPackValueType::Custom: {
-      if (lhsBase == nullptr || rhsBase == nullptr || 
-          options == nullptr ||
-          options->customTypeHandler == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "Could not extract custom attribute.");
-      }
-      std::string lhsString(options->customTypeHandler->toString(lhs, options, *lhsBase));
-      char const* left = lhsString.data();
-      VPackValueLength nl = lhsString.size();
-      TRI_ASSERT(left != nullptr);
+      VPackValueLength nl;
+      VPackValueLength nr;
+      char const* left;
+      char const* right;
+      std::string lhsString;
+      std::string rhsString;
 
-      std::string rhsString(options->customTypeHandler->toString(rhs, options, *rhsBase));
-      char const* right = rhsString.data();
-      VPackValueLength nr = rhsString.size();
+      if (lhs.isCustom()) {
+        if (lhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "Could not extract custom attribute.");
+        }
+        lhsString = options->customTypeHandler->toString(lhs, options, *lhsBase);
+        left = lhsString.data();
+        nl = lhsString.size();
+      } else {
+        left = lhs.getString(nl);
+      }
+      
+      if (rhs.isCustom()) {
+        if (rhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "Could not extract custom attribute.");
+        }
+        rhsString = options->customTypeHandler->toString(rhs, options, *rhsBase);
+        right = rhsString.data();
+        nr = rhsString.size();
+      } else {
+        right = rhs.getString(nr);
+      }
+
+      TRI_ASSERT(left != nullptr);
       TRI_ASSERT(right != nullptr);
 
       return compareStringValues(left, nl, right, nr, useUTF8);
@@ -1099,7 +1103,9 @@ uint64_t VelocyPackHelper::extractIdValue(VPackSlice const& slice) {
 
   if (id.isString()) {
     // string cid, e.g. "9988488"
-    return StringUtils::uint64(id.copyString());
+    VPackValueLength l;
+    char const* p = id.getString(l);
+    return NumberUtils::atoi_zero<uint64_t>(p, p + l);
   } else if (id.isNumber()) {
     // numeric cid, e.g. 9988488
     return id.getNumericValue<uint64_t>();

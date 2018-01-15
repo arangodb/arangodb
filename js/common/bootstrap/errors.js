@@ -1,9 +1,7 @@
 /*jshint maxlen: 240 */
 /*global require */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief auto-generated file generated from errors.dat
-////////////////////////////////////////////////////////////////////////////////
+/// auto-generated file generated from errors.dat
 
 (function () {
   "use strict";
@@ -131,6 +129,7 @@
     "ERROR_REPLICATION_START_TICK_NOT_PRESENT" : { "code" : 1414, "message" : "start tick not present" },
     "ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT" : { "code" : 1415, "message" : "the checksum format is wrong" },
     "ERROR_REPLICATION_WRONG_CHECKSUM" : { "code" : 1416, "message" : "wrong checksum" },
+    "ERROR_REPLICATION_SHARD_NONEMPTY" : { "code" : 1417, "message" : "shard not empty" },
     "ERROR_CLUSTER_NO_AGENCY"      : { "code" : 1450, "message" : "could not connect to agency" },
     "ERROR_CLUSTER_NO_COORDINATOR_HEADER" : { "code" : 1451, "message" : "missing coordinator header" },
     "ERROR_CLUSTER_COULD_NOT_LOCK_PLAN" : { "code" : 1452, "message" : "could not lock plan in agency" },
@@ -176,6 +175,8 @@
     "ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED" : { "code" : 1492, "message" : "some agency operation failed" },
     "ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR" : { "code" : 1493, "message" : "conflicting replication factor with distributeShardsLike parameter assignment" },
     "ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS" : { "code" : 1494, "message" : "conflicting shard number with distributeShardsLike parameter assignment" },
+    "ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING" : { "code" : 1495, "message" : "leadership challenge is ongoing" },
+    "ERROR_CLUSTER_NOT_LEADER"     : { "code" : 1496, "message" : "not a leader" },
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" },
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" },
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },
@@ -229,6 +230,7 @@
     "ERROR_USER_DUPLICATE"         : { "code" : 1702, "message" : "duplicate user" },
     "ERROR_USER_NOT_FOUND"         : { "code" : 1703, "message" : "user not found" },
     "ERROR_USER_CHANGE_PASSWORD"   : { "code" : 1704, "message" : "user must change his password" },
+    "ERROR_USER_EXTERNAL"          : { "code" : 1705, "message" : "user is external" },
     "ERROR_SERVICE_INVALID_NAME"   : { "code" : 1750, "message" : "invalid service name" },
     "ERROR_SERVICE_INVALID_MOUNT"  : { "code" : 1751, "message" : "invalid mount" },
     "ERROR_SERVICE_DOWNLOAD_FAILED" : { "code" : 1752, "message" : "service download failed" },

@@ -31,6 +31,8 @@ namespace httpclient {
 class SimpleHttpResult;
 }
 
+class EncryptionFeature;
+
 class DumpFeature final : public application_features::ApplicationFeature,
                           public ArangoClientHelper {
  public:
@@ -56,7 +58,6 @@ class DumpFeature final : public application_features::ApplicationFeature,
   bool _progress;
   uint64_t _tickStart;
   uint64_t _tickEnd;
-  bool _compat28;
 
  private:
   int startBatch(std::string DBserver, std::string& errorMsg);
@@ -71,16 +72,16 @@ class DumpFeature final : public application_features::ApplicationFeature,
                 std::string& errorMsg);
   int runClusterDump(std::string& errorMsg);
 
+  bool writeData(int fd, char const* data, size_t len);
+  void beginEncryption(int fd);
+  void endEncryption(int fd);
+
  private:
   int* _result;
-
-  // our batch id
   uint64_t _batchId;
-
-  // cluster mode flag
   bool _clusterMode;
+  EncryptionFeature* _encryption;
 
-  // statistics
   struct {
     uint64_t _totalBatches;
     uint64_t _totalCollections;

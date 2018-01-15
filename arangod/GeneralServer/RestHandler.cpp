@@ -79,11 +79,25 @@ RestHandler::~RestHandler() {
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-int RestHandler::prepareEngine() {
-  RequestStatistics::SET_REQUEST_START(_statistics);
+uint64_t RestHandler::messageId() const {
+  uint64_t messageId = 0UL;
+  auto req = _request.get();
+  auto res = _response.get();
+  if (req) {
+    messageId = req->messageId();
+  } else if (res) {
+    messageId = res->messageId();
+  } else {
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+        << "could not find corresponding request/response";
+  }
 
+  return messageId;
+}
+
+int RestHandler::prepareEngine() {
   // set end immediately so we do not get netative statistics
-  RequestStatistics::SET_REQUEST_END(_statistics);
+  RequestStatistics::SET_REQUEST_START_END(_statistics);
 
   if (_canceled) {
     _engine.setState(RestEngine::State::DONE);
@@ -164,9 +178,8 @@ int RestHandler::finalizeEngine() {
 
 int RestHandler::executeEngine() {
   TRI_ASSERT(ExecContext::CURRENT == nullptr);
-  ExecContext::CURRENT = _request->execContext();
-  TRI_DEFER(ExecContext::CURRENT = nullptr);
-  
+  ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
+  ExecContextScope scope(exec);
   try {
     RestStatus result = execute();
 
@@ -235,9 +248,8 @@ int RestHandler::executeEngine() {
 
 int RestHandler::runEngine(bool synchron) {
   TRI_ASSERT(ExecContext::CURRENT == nullptr);
-  ExecContext::CURRENT = _request->execContext();
-  TRI_DEFER(ExecContext::CURRENT = nullptr);
-  
+  ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
+  ExecContextScope scope(exec);
   try {
     while (_engine.hasSteps()) {
       std::shared_ptr<RestStatusElement> result = _engine.popStep();

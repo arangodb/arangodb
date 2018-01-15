@@ -34,6 +34,7 @@
 
 (function () {
   const internal = require('internal');
+  // note: this script will only be called and executed in V8 context #0
   if (internal.threadNumber === 0) {
     // run the local upgrade-database script (global.UPGRADE_ARGS has been set)
     global.UPGRADE_ARGS = {
@@ -54,11 +55,6 @@
 
     if (!result) {
       console.error('upgrade-database.js script failed!');
-    }
-
-    // statistics can be turned off
-    if (internal.enableStatistics) {
-      require('@arangodb/statistics').startup();
     }
 
     console.info('bootstrapped DB server %s', global.ArangoServerState.id());

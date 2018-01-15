@@ -48,7 +48,7 @@ class DocumentProducingBlock {
   virtual ~DocumentProducingBlock() = default;
 
  public:
-  bool produceResult() const { return _produceResult; }
+  inline bool produceResult() const { return _produceResult; }
 
  private:
   DocumentProducingFunction buildCallback() const;

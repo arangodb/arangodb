@@ -39,7 +39,6 @@ const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const download = require('internal').download;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -344,8 +343,42 @@ function SynchronousReplicationSuite () {
 
     tearDown : function () {
       db._drop(cn);
-      global.ArangoAgency.remove('Target/FailedServers');
-      global.ArangoAgency.set('Target/FailedServers', {});
+      //global.ArangoAgency.set('Target/FailedServers', {});
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check inquiry functionality
+////////////////////////////////////////////////////////////////////////////////
+    testInquiry : function () {
+      console.warn("Checking inquiry");
+      var writeResult = global.ArangoAgency.write(
+        [[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
+      console.log(
+        "Inquired successfully a matched precondition under 503 response from write");
+      assertTrue(typeof writeResult === "object");
+      assertTrue(writeResult !== null);
+      assertTrue("results" in writeResult);
+      assertTrue(writeResult.results[0]>0);
+      try {
+        writeResult = global.ArangoAgency.write(
+          [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
+        fail();
+      } catch (e1) {
+        console.log(
+          "Inquired successfully a failed precondition under 503 response from write");
+      }
+      writeResult = global.ArangoAgency.write(
+        [[{"a":1},{"a":1},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
+      console.log(
+        "Inquired successfully a matched precondition under 0 response from write");
+      try {
+        writeResult = global.ArangoAgency.write(
+          [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
+        fail();
+      } catch (e1) {
+        console.log(
+          "Inquired successfully a failed precondition under 0 response from write");
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

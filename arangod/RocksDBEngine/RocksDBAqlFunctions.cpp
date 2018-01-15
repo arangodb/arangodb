@@ -23,12 +23,13 @@
 #include "RocksDBAqlFunctions.h"
 
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Collection.h"
 #include "Aql/Function.h"
+#include "Aql/Query.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBGeoIndex.h"
-#include "RocksDBEngine/RocksDBToken.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
 #include "StorageEngine/TransactionState.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
@@ -52,39 +53,34 @@ AqlValue RocksDBAqlFunctions::Fulltext(
     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "FULLTEXT", 3, 4);
 
-  AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
-
+  AqlValue collectionValue = ExtractFunctionParameterValue(parameters, 0);
   if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
   }
 
-  std::string const collectionName(collectionValue.slice().copyString());
-
-  AqlValue attribute = ExtractFunctionParameterValue(trx, parameters, 1);
-
+  std::string const cname(collectionValue.slice().copyString());
+  
+  AqlValue attribute = ExtractFunctionParameterValue(parameters, 1);
   if (!attribute.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
   }
+  std::string const attributeName(attribute.slice().copyString());
 
-  std::string attributeName(attribute.slice().copyString());
-
-  AqlValue queryValue = ExtractFunctionParameterValue(trx, parameters, 2);
-
+  AqlValue queryValue = ExtractFunctionParameterValue(parameters, 2);
   if (!queryValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
   }
-
-  std::string queryString = queryValue.slice().copyString();
+  std::string const queryString = queryValue.slice().copyString();
 
   size_t maxResults = 0;  // 0 means "all results"
   if (parameters.size() >= 4) {
-    AqlValue limit = ExtractFunctionParameterValue(trx, parameters, 3);
+    AqlValue limit = ExtractFunctionParameterValue(parameters, 3);
     if (!limit.isNull(true) && !limit.isNumber()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+      RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return AqlValue(AqlValueHintNull());
     }
     if (limit.isNumber()) {
       int64_t value = limit.toInt64(trx);
@@ -94,15 +90,14 @@ AqlValue RocksDBAqlFunctions::Fulltext(
     }
   }
 
-  auto resolver = trx->resolver();
-  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(collectionName);
-  trx->addCollectionAtRuntime(cid, collectionName);
-
+  // add the collection to the query for proper cache handling
+  query->collections()->add(cname, AccessMode::Type::READ);
+  TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(cname);
+  trx->addCollectionAtRuntime(cid, cname);
   LogicalCollection* collection = trx->documentCollection(cid);
-
   if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "",
-                                  collectionName.c_str());
+    RegisterWarning(query, "FULLTEXT", TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return AqlValue(AqlValueHintNull());
   }
 
   // NOTE: The shared_ptr is protected by trx lock.
@@ -132,24 +127,52 @@ AqlValue RocksDBAqlFunctions::Fulltext(
 
   if (fulltextIndex == nullptr) {
     // fiddle collection name into error message
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING,
-                                  collectionName.c_str());
+    RegisterWarning(query, "FULLTEXT", TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING);
+    return AqlValue(AqlValueHintNull());
   }
   // do we need this in rocksdb?
   trx->pinData(cid);
-
-  transaction::BuilderLeaser builder(trx);
+  
   FulltextQuery parsedQuery;
   Result res = fulltextIndex->parseQueryString(queryString, parsedQuery);
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  if (res.fail()) {
+    RegisterWarning(query, "FULLTEXT", res.errorNumber());
+    return AqlValue(AqlValueHintNull());
   }
-  res = fulltextIndex->executeQuery(trx, parsedQuery, maxResults,
-                                    *(builder.get()));
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  std::set<LocalDocumentId> results;
+  res = fulltextIndex->executeQuery(trx, parsedQuery, results);
+  if (res.fail()) {
+    RegisterWarning(query, "FULLTEXT", res.errorNumber());
+    return AqlValue(AqlValueHintNull());
   }
-  return AqlValue(builder.get());
+  
+  PhysicalCollection* physical = collection->getPhysical();
+  ManagedDocumentResult mmdr;
+  if (maxResults == 0) {  // 0 appearantly means "all results"
+    maxResults = SIZE_MAX;
+  }
+  
+  auto buffer = std::make_unique<VPackBuffer<uint8_t>>();
+  VPackBuilder builder(*buffer.get());
+  builder.openArray();
+  // get the first N results
+  std::set<LocalDocumentId>::iterator it = results.cbegin();
+  while (maxResults > 0 && it != results.cend()) {
+    LocalDocumentId const& documentId = (*it);
+    if (documentId.isSet() && physical->readDocument(trx, documentId, mmdr)) {
+      mmdr.addToBuilder(builder, false);
+      maxResults--;
+    }
+    ++it;
+  }
+  builder.close();
+  
+  bool shouldDelete = true;
+  AqlValue value = AqlValue(buffer.get(), shouldDelete);
+  if (!shouldDelete) {
+    buffer.release();
+  }
+  return value;
 }
 
 /// @brief Load geoindex for collection name
@@ -163,8 +186,8 @@ static arangodb::RocksDBGeoIndex* getGeoIndex(
   // It can only be used until trx is finished.
   trx->addCollectionAtRuntime(cid, collectionName);
   Result res = trx->state()->ensureCollections();
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   auto document = trx->documentCollection(cid);
@@ -208,10 +231,10 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
   }
 
   struct geo_coordinate_distance_t {
-    geo_coordinate_distance_t(double distance, RocksDBToken token)
+    geo_coordinate_distance_t(double distance, LocalDocumentId token)
         : _distance(distance), _token(token) {}
     double _distance;
-    RocksDBToken _token;
+    LocalDocumentId _token;
   };
 
   std::vector<geo_coordinate_distance_t> distances;
@@ -221,7 +244,7 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
 
     for (size_t i = 0; i < nCoords; ++i) {
       distances.emplace_back(geo_coordinate_distance_t(
-          cors->distances[i], RocksDBToken(cors->coordinates[i].data)));
+          cors->distances[i], LocalDocumentId(cors->coordinates[i].data)));
     }
   } catch (...) {
     GeoIndex_CoordinatesFree(cors);
@@ -273,7 +296,7 @@ AqlValue RocksDBAqlFunctions::Near(arangodb::aql::Query* query,
                                    VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "NEAR", 3, 5);
 
-  AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue collectionValue = ExtractFunctionParameterValue(parameters, 0);
   if (!collectionValue.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
@@ -281,8 +304,8 @@ AqlValue RocksDBAqlFunctions::Near(arangodb::aql::Query* query,
 
   std::string const collectionName(collectionValue.slice().copyString());
 
-  AqlValue latitude = ExtractFunctionParameterValue(trx, parameters, 1);
-  AqlValue longitude = ExtractFunctionParameterValue(trx, parameters, 2);
+  AqlValue latitude = ExtractFunctionParameterValue(parameters, 1);
+  AqlValue longitude = ExtractFunctionParameterValue(parameters, 2);
 
   if (!latitude.isNumber() || !longitude.isNumber()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -293,7 +316,7 @@ AqlValue RocksDBAqlFunctions::Near(arangodb::aql::Query* query,
   int64_t limitValue = 100;
 
   if (parameters.size() > 3) {
-    AqlValue limit = ExtractFunctionParameterValue(trx, parameters, 3);
+    AqlValue limit = ExtractFunctionParameterValue(parameters, 3);
 
     if (limit.isNumber()) {
       limitValue = limit.toInt64(trx);
@@ -306,7 +329,7 @@ AqlValue RocksDBAqlFunctions::Near(arangodb::aql::Query* query,
   std::string attributeName;
   if (parameters.size() > 4) {
     // have a distance attribute
-    AqlValue distanceValue = ExtractFunctionParameterValue(trx, parameters, 4);
+    AqlValue distanceValue = ExtractFunctionParameterValue(parameters, 4);
 
     if (!distanceValue.isNull(true) && !distanceValue.isString()) {
       THROW_ARANGO_EXCEPTION_PARAMS(
@@ -338,7 +361,7 @@ AqlValue RocksDBAqlFunctions::Within(
     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "WITHIN", 4, 5);
 
-  AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue collectionValue = ExtractFunctionParameterValue(parameters, 0);
 
   if (!collectionValue.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
@@ -347,9 +370,9 @@ AqlValue RocksDBAqlFunctions::Within(
 
   std::string const collectionName(collectionValue.slice().copyString());
 
-  AqlValue latitudeValue = ExtractFunctionParameterValue(trx, parameters, 1);
-  AqlValue longitudeValue = ExtractFunctionParameterValue(trx, parameters, 2);
-  AqlValue radiusValue = ExtractFunctionParameterValue(trx, parameters, 3);
+  AqlValue latitudeValue = ExtractFunctionParameterValue(parameters, 1);
+  AqlValue longitudeValue = ExtractFunctionParameterValue(parameters, 2);
+  AqlValue radiusValue = ExtractFunctionParameterValue(parameters, 3);
 
   if (!latitudeValue.isNumber() || !longitudeValue.isNumber() ||
       !radiusValue.isNumber()) {
@@ -360,7 +383,7 @@ AqlValue RocksDBAqlFunctions::Within(
   std::string attributeName;
   if (parameters.size() > 4) {
     // have a distance attribute
-    AqlValue distanceValue = ExtractFunctionParameterValue(trx, parameters, 4);
+    AqlValue distanceValue = ExtractFunctionParameterValue(parameters, 4);
 
     if (!distanceValue.isNull(true) && !distanceValue.isString()) {
       THROW_ARANGO_EXCEPTION_PARAMS(
@@ -391,7 +414,7 @@ void RocksDBAqlFunctions::registerResources() {
   TRI_ASSERT(functions != nullptr);
 
   // fulltext functions
-  functions->add({"FULLTEXT", ".h,.,.|.", false, true,
+  functions->add({"FULLTEXT", ".h,.,.|.", true, false,
                   false, true, &RocksDBAqlFunctions::Fulltext,
                   NotInCoordinator});
   functions->add({"NEAR", ".h,.,.|.,.", false, true, false,

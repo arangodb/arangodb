@@ -27,10 +27,10 @@
 #include "Agency/GossipCallback.h"
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/RestHandlerFactory.h"
 
 #include <chrono>
-#include <iomanip>
 #include <numeric>
 #include <thread>
 
@@ -67,7 +67,7 @@ void Inception::gossip() {
   LOG_TOPIC(INFO, Logger::AGENCY) << "Entering gossip phase ...";
   using namespace std::chrono;
   
-  auto startTime = system_clock::now();
+  auto startTime = steady_clock::now();
   seconds timeout(3600);
   size_t j = 0;
   long waitInterval = 250000;
@@ -98,7 +98,8 @@ void Inception::gossip() {
       if (p != config.endpoint()) {
         {
           MUTEX_LOCKER(ackedLocker,_vLock);
-          if (_acked[p] >= version) {
+          auto const& ackedPeer = _acked.find(p);
+          if (ackedPeer != _acked.end() && ackedPeer->second >= version) {
             continue;
           }
         }
@@ -148,13 +149,13 @@ void Inception::gossip() {
       if (complete) {
         LOG_TOPIC(INFO, Logger::AGENCY) << "Agent pool completed. Stopping "
           "active gossipping. Starting RAFT process.";
-        _agent->startConstituent();
+        _agent->activateAgency();
         break;
       }
     }
 
     // Timed out? :(
-    if ((system_clock::now() - startTime) > timeout) {
+    if ((steady_clock::now() - startTime) > timeout) {
       if (config.poolComplete()) {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
       } else {
@@ -194,7 +195,7 @@ bool Inception::restartingActiveAgent() {
 
   auto const  path      = pubApiPrefix + "config";
   auto const  myConfig  = _agent->config();
-  auto const  startTime = system_clock::now();
+  auto const  startTime = steady_clock::now();
   auto        active    = myConfig.active();
   auto const& clientId  = myConfig.id();
   auto const& clientEp  = myConfig.endpoint();
@@ -313,28 +314,48 @@ bool Inception::restartingActiveAgent() {
               _agent->notify(agency);
               return true;
             }
-            
-            auto const theirActive = tcc.get("active").toJson();
-            auto const myActive = myConfig.activeToBuilder()->toJson();
+
+            auto const theirActive = tcc.get("active");
+            auto const myActiveB = myConfig.activeToBuilder();
+            auto const myActive = myActiveB->slice();
             auto i = std::find(active.begin(),active.end(),p.first);
-            
-            if (i != active.end()) {
-              if (theirActive != myActive) {
-                if (!this->isStopping()) {
-                  LOG_TOPIC(FATAL, Logger::AGENCY)
-                    << "Assumed active RAFT peer and I disagree on active membership:";
-                  LOG_TOPIC(FATAL, Logger::AGENCY)
-                    << "Their active list is " << theirActive;  
-                  LOG_TOPIC(FATAL, Logger::AGENCY)
-                    << "My active list is " << myActive;  
-                  FATAL_ERROR_EXIT();
+
+            if (i != active.end()) { // Member in my active list
+              TRI_ASSERT(theirActive.isArray());
+              if (theirActive.length() == 0 || theirActive.length() == myActive.length()) {
+                std::vector<std::string> theirActVec, myActVec;
+                for (auto const i : VPackArrayIterator(theirActive)) {
+                  theirActVec.push_back(i.copyString());
                 }
-                return false;
+                for (auto const i : VPackArrayIterator(myActive)) {
+                  myActVec.push_back(i.copyString());
+                }
+                std::sort(myActVec.begin(),myActVec.end());
+                std::sort(theirActVec.begin(),theirActVec.end());
+                if (!theirActVec.empty() && theirActVec != myActVec) {
+                  if (!this->isStopping()) {
+                    LOG_TOPIC(FATAL, Logger::AGENCY)
+                      << "Assumed active RAFT peer and I disagree on active membership:";
+                    LOG_TOPIC(FATAL, Logger::AGENCY)
+                      << "Their active list is " << theirActive.toJson();  
+                    LOG_TOPIC(FATAL, Logger::AGENCY)
+                      << "My active list is " << myActive.toJson();  
+                    FATAL_ERROR_EXIT();
+                  }
+                  return false;
+                } else {
+                  *i = "";
+                }
               } else {
-                *i = "";
+                LOG_TOPIC(FATAL, Logger::AGENCY)
+                  << "Assumed active RAFT peer and I disagree on active agency size:";
+                LOG_TOPIC(FATAL, Logger::AGENCY)
+                  << "Their active list is " << theirActive.toJson();  
+                LOG_TOPIC(FATAL, Logger::AGENCY)
+                  << "My active list is " << myActive.toJson();  
+                FATAL_ERROR_EXIT();
               }
-            }
-            
+            }    
           } catch (std::exception const& e) {
             if (!this->isStopping()) {
               LOG_TOPIC(FATAL, Logger::AGENCY)
@@ -345,13 +366,12 @@ bool Inception::restartingActiveAgent() {
             return false;
           }
         } 
-        
       }
-      
     }
+
     
     // Timed out? :(
-    if ((system_clock::now() - startTime) > timeout) {
+    if ((steady_clock::now() - startTime) > timeout) {
       if (myConfig.poolComplete()) {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Joined complete pool!";
       } else {
@@ -372,11 +392,6 @@ bool Inception::restartingActiveAgent() {
   
 }
 
-void Inception::reportIn(query_t const& query) {
-  // does nothing at the moment
-}
-
-
 void Inception::reportVersionForEp(std::string const& endpoint, size_t version) {
   MUTEX_LOCKER(versionLocker, _vLock);
   if (_acked[endpoint] < version) {
@@ -386,9 +401,9 @@ void Inception::reportVersionForEp(std::string const& endpoint, size_t version) 
 
 // @brief Thread main
 void Inception::run() {
-  while (arangodb::rest::RestHandlerFactory::isMaintenance() &&
+  while (ServerState::isMaintenance() &&
          !this->isStopping() && !_agent->isStopping()) {
-    usleep(1000000);
+    std::this_thread::sleep_for(std::chrono::microseconds(1000000));
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Waiting for RestHandlerFactory to exit maintenance mode before we "
          " start gossip protocol...";

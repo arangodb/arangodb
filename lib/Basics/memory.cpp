@@ -23,288 +23,9 @@
 
 #include "Basics/Common.h"
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-#include <new>
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief threshold for producing malloc warnings
-///
-/// this is only active if zone debug is enabled. Any malloc operations that
-/// try to alloc more memory than the threshold will be logged so we can check
-/// why so much memory is needed
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define MALLOC_WARNING_THRESHOLD (1024 * 1024 * 1024)
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief macros for producing stderr output
-///
-/// these will include the location of the problematic if we are in zone debug
-/// mode, and will not include it if in non debug mode
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-#define ZONE_DEBUG_LOCATION " in %s:%d"
-#define ZONE_DEBUG_PARAMS , file, line
-
-#else
-
-#define ZONE_DEBUG_LOCATION
-#define ZONE_DEBUG_PARAMS
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for malloc calls
-////////////////////////////////////////////////////////////////////////////////
-
-#define BuiltInMalloc(n) malloc(n)
-#define BuiltInRealloc(ptr, n) realloc(ptr, n)
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-#define MALLOC_WRAPPER(n) FailMalloc(n)
-#define REALLOC_WRAPPER(ptr, n) FailRealloc(ptr, n)
-#else
-#define MALLOC_WRAPPER(n) BuiltInMalloc(n)
-#define REALLOC_WRAPPER(ptr, n) BuiltInRealloc(ptr, n)
-#endif
-
-/// @brief configuration parameters for memory error tests
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-static size_t FailMinSize = 0;
-static double FailProbability = 0.0;
-static double FailStartStamp = 0.0;
-static thread_local int AllowMemoryFailures = -1;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the size of the memory that is requested
-/// prints a warning if size is above a threshold
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-static inline void CheckSize(uint64_t n, char const* file, int line) {
-  // warn in the case of big malloc operations
-  if (n >= MALLOC_WARNING_THRESHOLD) {
-    fprintf(stderr, "big malloc action: %llu bytes" ZONE_DEBUG_LOCATION "\n",
-            (unsigned long long)n ZONE_DEBUG_PARAMS);
-  }
-}
-#endif
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-/// @brief timestamp for failing malloc
-static inline double CurrentTimeStamp(void) {
-  struct timeval tv;
-  gettimeofday(&tv, 0);
-
-  return (tv.tv_sec) + (tv.tv_usec / 1000000.0);
-}
-#endif
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-/// @brief whether or not a malloc operation should intentionally fail
-static bool ShouldFail(size_t n) {
-  if (FailMinSize > 0 && FailMinSize > n) {
-    return false;
-  }
-
-  if (FailProbability == 0.0) {
-    return false;
-  }
-
-  if (AllowMemoryFailures != 1) {
-    return false;
-  }
-
-  if (FailStartStamp > 0.0 && CurrentTimeStamp() < FailStartStamp) {
-    return false;
-  }
-
-  if (FailProbability < 1.0 && FailProbability * RAND_MAX < rand()) {
-    return false;
-  }
-
-  return true;
-}
-#endif
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-/// @brief intentionally failing malloc - used for failure tests
-static void* FailMalloc(size_t n) {
-  // we can fail, so let's check whether we should fail intentionally...
-  if (ShouldFail(n)) {
-    // intentionally return NULL
-    errno = ENOMEM;
-    return nullptr;
-  }
-
-  return BuiltInMalloc(n);
-}
-#endif
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-/// @brief intentionally failing realloc - used for failure tests
-static void* FailRealloc(void* old, size_t n) {
-  // we can fail, so let's check whether we should fail intentionally...
-  if (ShouldFail(n)) {
-    // intentionally return NULL
-    errno = ENOMEM;
-    return nullptr;
-  }
-
-  return BuiltInRealloc(old, n);
-}
-#endif
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-/// @brief initialize failing malloc
-static void InitFailMalloc(void) {
-  // get failure probability
-  char* value = getenv("ARANGODB_FAILMALLOC_PROBABILITY");
-
-  if (value != nullptr) {
-    double v = strtod(value, nullptr);
-    if (v >= 0.0 && v <= 1.0) {
-      FailProbability = v;
-    }
-  }
-
-  // get startup delay
-  value = getenv("ARANGODB_FAILMALLOC_DELAY");
-
-  if (value != nullptr) {
-    double v = strtod(value, nullptr);
-    if (v > 0.0) {
-      FailStartStamp = CurrentTimeStamp() + v;
-    }
-  }
-
-  // get minimum size for failures
-  value = getenv("ARANGODB_FAILMALLOC_MINSIZE");
-
-  if (value != nullptr) {
-    unsigned long long v = strtoull(value, nullptr, 10);
-    if (v > 0) {
-      FailMinSize = (size_t)v;
-    }
-  }
-}
-#endif
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-/// @brief overloaded, intentionally failing operator new
-void* operator new(size_t size) {
-  if (ShouldFail(size)) {
-    throw std::bad_alloc();
-  }
-
-  void* pointer = malloc(size);
-
-  if (pointer == nullptr) {
-    throw std::bad_alloc();
-  }
-
-  return pointer;
-}
-
-/// @brief overloaded, intentionally failing operator new, non-throwing
-void* operator new(size_t size, std::nothrow_t const&) noexcept {
-  if (ShouldFail(size)) {
-    return nullptr;
-  }
-  return malloc(size);
-}
-
-/// @brief overloaded, intentionally failing operator new[]
-void* operator new[](size_t size) {
-  if (ShouldFail(size)) {
-    throw std::bad_alloc();
-  }
-
-  void* pointer = malloc(size);
-
-  if (pointer == nullptr) {
-    throw std::bad_alloc();
-  }
-
-  return pointer;
-}
-
-/// @brief overloaded, intentionally failing operator new[], non-throwing
-void* operator new[](size_t size, std::nothrow_t const&) noexcept {
-  if (ShouldFail(size)) {
-    return nullptr;
-  }
-  return malloc(size);
-}
-
-/// @brief overloaded operator delete
-void operator delete(void* pointer) noexcept {
-  if (pointer) {
-    free(pointer);
-  }
-}
-
-/// @brief overloaded operator delete
-void operator delete(void* pointer, std::nothrow_t const&) noexcept {
-  if (pointer) {
-    free(pointer);
-  }
-}
-
-/// @brief overloaded operator delete
-void operator delete[](void* pointer) noexcept {
-  if (pointer) {
-    free(pointer);
-  }
-}
-
-/// @brief overloaded operator delete
-void operator delete[](void* pointer, std::nothrow_t const&) noexcept {
-  if (pointer) {
-    free(pointer);
-  }
-}
-#endif
-
-/// @brief system memory allocation
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void* TRI_SystemAllocateZ(uint64_t n, bool set, char const* file, int line) {
-#else
-void* TRI_SystemAllocate(uint64_t n, bool set) {
-#endif
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  CheckSize(n, file, line);
-#endif
-
-  char* m = static_cast<char*>(BuiltInMalloc((size_t)n));
-
-  if (m != nullptr) {
-    if (set) {
-      memset(m, 0, (size_t)n);
-    }
-  }
-
-  return m;
-}
-
 /// @brief basic memory management for allocate
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void* TRI_AllocateZ(uint64_t n,
-                    char const* file, int line) {
-#else
-void* TRI_Allocate(uint64_t n) {
-#endif
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  CheckSize(n, file, line);
-#endif
-
-  char* m = static_cast<char*>(MALLOC_WRAPPER((size_t)n));
+void* TRI_Allocate(size_t n) {
+  void* m = ::malloc(n);
 
   if (m == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -313,35 +34,19 @@ void* TRI_Allocate(uint64_t n) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // prefill with 0xA5 (magic value, same as Valgrind will use)
-  memset(m, 0xA5, (size_t)n);
+  memset(m, 0xA5, n);
 #endif
 
   return m;
 }
 
 /// @brief basic memory management for reallocate
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void* TRI_ReallocateZ(void* m, uint64_t n,
-                      char const* file, int line) {
-#else
-void* TRI_Reallocate(void* m, uint64_t n) {
-#endif
-
+void* TRI_Reallocate(void* m, size_t n) {
   if (m == nullptr) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    return TRI_AllocateZ(n, file, line);
-#else
     return TRI_Allocate(n);
-#endif
   }
 
-  char* p = (char*)m;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  CheckSize(n, file, line);
-#endif
-
-  p = static_cast<char*>(REALLOC_WRAPPER(p, (size_t)n));
+  void* p = ::realloc(m, n);
 
   if (p == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -352,54 +57,9 @@ void* TRI_Reallocate(void* m, uint64_t n) {
 }
 
 /// @brief basic memory management for deallocate
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void TRI_FreeZ(void* m, char const* file, int line) {
-#else
 void TRI_Free(void* m) {
-#endif
-
-  char* p = (char*)m;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (p == nullptr) {
-    fprintf(stderr, "freeing nil ptr " ZONE_DEBUG_LOCATION ZONE_DEBUG_PARAMS);
-    // crash intentionally
-    TRI_ASSERT(false);
-  }
-#endif
-
-  free(p);
+  ::free(m);
 }
-
-/// @brief free memory allocated by some low-level functions
-///
-/// this can be used to free memory that was not allocated by TRI_Allocate, but
-/// by malloc et al
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void TRI_SystemFreeZ(void* p, char const* file, int line) {
-#else
-void TRI_SystemFree(void* p) {
-#endif
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (p == nullptr) {
-    fprintf(stderr, "freeing nil ptr in %s:%d\n", file, line);
-  }
-#endif
-  free(p);
-}
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_AllowMemoryFailures() {
-  AllowMemoryFailures = 1;
-}
-#endif
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_DisallowMemoryFailures() {
-  AllowMemoryFailures = 0;
-}
-#endif
 
 /// @brief securely zero memory
 void TRI_ZeroMemory(void* m, size_t size) {
@@ -412,12 +72,5 @@ void TRI_ZeroMemory(void* m, size_t size) {
   while (ptr < end) {
     *ptr++ = '\0';
   }
-#endif
-}
-
-/// @brief initialize memory subsystem
-void TRI_InitializeMemory() {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  InitFailMalloc();
 #endif
 }

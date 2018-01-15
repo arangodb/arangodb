@@ -25,6 +25,7 @@
 #include "RocksDBEngine/RocksDBExportCursor.h"
 #include "Basics/WriteLocker.h"
 #include "Indexes/IndexIterator.h"
+#include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -34,8 +35,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
-
-#include "Logger/Logger.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -50,11 +49,10 @@ RocksDBExportCursor::RocksDBExportCursor(
     CollectionExport::Restrictions const& restrictions, CursorId id,
     size_t limit, size_t batchSize, double ttl, bool hasCount)
     : Cursor(id, batchSize, nullptr, ttl, hasCount),
-      _vocbaseGuard(vocbase),
+      _guard(vocbase),
       _resolver(vocbase),
       _restrictions(restrictions),
-      _name(name),
-      _mdr() {
+      _name(name) {
   // prevent the collection from being unloaded while the export is ongoing
   // this may throw
   _collectionGuard.reset(
@@ -63,7 +61,7 @@ RocksDBExportCursor::RocksDBExportCursor(
   _collection = _collectionGuard->collection();
 
   _trx.reset(new SingleCollectionTransaction(
-      transaction::StandaloneContext::Create(_collection->vocbase()), _name,
+      transaction::StandaloneContext::Create(vocbase), _name,
       AccessMode::Type::READ));
 
   // already locked by guard above
@@ -76,7 +74,7 @@ RocksDBExportCursor::RocksDBExportCursor(
 
   auto rocksCollection =
       static_cast<RocksDBCollection*>(_collection->getPhysical());
-  _iter = rocksCollection->getAllIterator(_trx.get(), &_mdr, false);
+  _iter = rocksCollection->getAllIterator(_trx.get(), false);
 
   _size = _collection->numberDocuments(_trx.get());
   if (limit > 0 && limit < _size) {
@@ -114,12 +112,9 @@ VPackSlice RocksDBExportCursor::next() {
 size_t RocksDBExportCursor::count() const { return _size; }
 
 void RocksDBExportCursor::dump(VPackBuilder& builder) {
-  auto transactionContext =
-      std::make_shared<transaction::StandaloneContext>(_vocbaseGuard.vocbase());
-
+  auto ctx = transaction::StandaloneContext::Create(_guard.database());
   VPackOptions const* oldOptions = builder.options;
-
-  builder.options = transactionContext->getVPackOptions();
+  builder.options = ctx->getVPackOptions();
 
   TRI_ASSERT(_iter.get() != nullptr);
 
@@ -129,7 +124,7 @@ void RocksDBExportCursor::dump(VPackBuilder& builder) {
     builder.add("result", VPackValue(VPackValueType::Array));
     size_t const n = batchSize();
 
-    auto cb = [&, this](DocumentIdentifierToken const& token, VPackSlice slice) {
+    auto cb = [&, this](LocalDocumentId const& token, VPackSlice slice) {
       if (_position == _size) {
         return false;
       }

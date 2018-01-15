@@ -9,10 +9,10 @@ AQL
 
 * AQL breaking change in cluster:
   The SHORTEST_PATH statement using edge-collection names instead
-  of a graph name now requires to explicitly name the vertex-collection names 
+  of a graph name now requires to explicitly name the vertex-collection names
   within the AQL query in the cluster. It can be done by adding `WITH <name>`
   at the beginning of the query.
-  
+
   Example:
   ```
   FOR v,e IN OUTBOUND SHORTEST_PATH @start TO @target edges [...]
@@ -38,7 +38,7 @@ REST API
   The documented GET /_api/edges and the undocumented POST /_api/edges remains unmodified.
 
 * change undocumented behaviour in case of invalid revision ids in
-  `If-Match` and `If-None-Match` headers from returning HTTP status code 400 (bad request) 
+  `If-Match` and `If-None-Match` headers from returning HTTP status code 400 (bad request)
   to returning HTTP status code 412 (precondition failed).
 
 * the REST API for fetching the list of currently running AQL queries and the REST API
@@ -55,6 +55,9 @@ REST API
 * The REST API for creating indexes (POST /_api/index) now accepts the optional *deduplicate*
   attribute
 
+* The REST API for executing a server-side transaction (POST /_api/transaction) now accepts the optional attributes: `maxTransactionSize`, `intermediateCommitCount`, `intermediateCommitSize`
+
+* The REST API for creating a cursor (POST /_api/cursor) now accepts the optional attributes: `failOnWarning`, `maxTransactionSize`, `maxWarningCount`, `intermediateCommitCount`, `satelliteSyncWait`, `intermediateCommitSize`. `skipInaccessibleCollections`
 
 JavaScript API
 --------------
@@ -118,7 +121,7 @@ Command-line options changed
 
   This option can be used to control whether user-defined JavaScript code
   is allowed to be executed on server by sending via HTTP to the API endpoint
-  `/_admin/execute`  with an authenticated user account. 
+  `/_admin/execute`  with an authenticated user account.
   The default value is `false`, which disables the execution of user-defined
   code. This is also the recommended setting for production. In test environments,
   it may be convenient to turn the option on in order to send arbitrary setup

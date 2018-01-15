@@ -45,6 +45,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   void start() override final;
   void beginShutdown() override final;
   void stop() override final;
+  void unprepare() override final;
 
  private:
   bool _activated;
@@ -53,6 +54,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   double _minElectionTimeout;  // min election timeout
   double _maxElectionTimeout;  // max election timeout
   bool _supervision;
+  bool _supervisionTouched;
   bool _waitForSync;
   double _supervisionFrequency;
   uint64_t _compactionStepSize;
@@ -62,6 +64,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   std::string _agencyMyAddress;
   std::vector<std::string> _agencyEndpoints;
   bool _cmdLineTimings;
+  std::string _recoveryId;
 
  public:
   consensus::Agent* agent() const { return _agent.get(); }

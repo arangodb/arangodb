@@ -35,6 +35,7 @@
 #include <iostream>
 #include <thread>
 
+#include "Agency/State.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/Query.h"
@@ -65,6 +66,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/UserTransaction.h"
 #include "Transaction/V8Context.h"
+#include "Utils/ExecContext.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
@@ -82,7 +84,6 @@
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Transactions.h"
 
@@ -936,7 +937,7 @@ static void JS_QueriesPropertiesAql(
           obj->Get(TRI_V8_ASCII_STRING(isolate, "maxQueryStringLength")))));
     }
 
-    // fall-through intentional
+    // intentionally falls through
   }
 
   // return current settings
@@ -1247,7 +1248,7 @@ static void JS_QuerySleepAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   double const until = TRI_microtime() + n;
 
   while (TRI_microtime() < until) {
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
 
     if (query != nullptr) {
       if (query->killed()) {
@@ -1386,7 +1387,12 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
     // check if the collection is from the same database
     if (collection != nullptr && collection->vocbase() == vocbase) {
-      TRI_vocbase_col_status_e status = collection->getStatusLocked();
+      // we cannot use collection->getStatusLocked() here, because we
+      // have no idea who is calling us (db[...]). The problem is that
+      // if we are called from within a JavaScript transaction, the
+      // caller may have already acquired the collection's status lock
+      // with that transaction. if we now lock again, we may deadlock!
+      TRI_vocbase_col_status_e status = collection->status();
       TRI_voc_cid_t cid = collection->cid();
       uint32_t internalVersion = collection->internalVersion();
 
@@ -1749,10 +1755,6 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_ASSERT(!vocbase->isDangling());
 
-  if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
-  }
-
   if (!vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
@@ -1774,11 +1776,11 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8ToVPackSimple(isolate, users, user);
     }
   }
-  
+    
   std::string const dbName = TRI_ObjectToString(args[0]);
-  Result res = methods::Databases::create(dbName, users.slice(), options.slice());
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  Result res = methods::Databases::create( dbName, users.slice(), options.slice());
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_V8_RETURN_TRUE();
@@ -1804,16 +1806,16 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
-
-  if (ExecContext::CURRENT != nullptr &&
-      ExecContext::CURRENT->systemAuthLevel() != AuthLevel::RW) {
+  
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr && exec->systemAuthLevel() != AuthLevel::RW) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   std::string const name = TRI_ObjectToString(args[0]);
   Result res = methods::Databases::drop(vocbase, name);
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
   
   TRI_V8_RETURN_TRUE();
@@ -2071,6 +2073,41 @@ static void JS_CurrentWalFiles(v8::FunctionCallbackInfo<v8::Value> const& args) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief this is for single server mode to dump an agency
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_AgencyDump(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AGENCY_DUMP()");
+  }
+
+  uint64_t index = 0;
+  uint64_t term = 0;
+  std::shared_ptr<VPackBuilder> b
+    = arangodb::consensus::State::latestAgencyState(vocbase, index, term);
+
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  result->Set(TRI_V8_ASCII_STRING(isolate, "index"),
+    v8::Number::New(isolate, static_cast<double>(index)));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "term"),
+    v8::Number::New(isolate, static_cast<double>(term)));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "data"),
+    TRI_VPackToV8(isolate, b->slice()));
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2259,6 +2296,10 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate, "ARANGODB_CONTEXT"),
                                JS_ArangoDBContext,
                                true);
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "AGENCY_DUMP"),
+                               JS_AgencyDump, true);
 
   // .............................................................................
   // create global variables

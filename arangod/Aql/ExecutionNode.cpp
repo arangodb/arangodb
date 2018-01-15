@@ -32,10 +32,16 @@
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
+#include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Transaction/Methods.h"
+
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewNode.h"
+#endif
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -73,7 +79,11 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
     {static_cast<int>(NORESULTS), "NoResultsNode"},
     {static_cast<int>(UPSERT), "UpsertNode"},
     {static_cast<int>(TRAVERSAL), "TraversalNode"},
-    {static_cast<int>(SHORTEST_PATH), "ShortestPathNode"}};
+    {static_cast<int>(SHORTEST_PATH), "ShortestPathNode"},
+#ifdef USE_IRESEARCH
+    {static_cast<int>(ENUMERATE_IRESEARCH_VIEW), "EnumerateViewNode"}
+#endif
+};
 
 /// @brief returns the type name of the node
 std::string const& ExecutionNode::getTypeString() const {
@@ -141,6 +151,10 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new EnumerateCollectionNode(plan, slice);
     case ENUMERATE_LIST:
       return new EnumerateListNode(plan, slice);
+#ifdef USE_IRESEARCH
+    case ENUMERATE_IRESEARCH_VIEW:
+      return new iresearch::IResearchViewNode(plan, slice);
+#endif
     case FILTER:
       return new FilterNode(plan, slice);
     case LIMIT:
@@ -375,7 +389,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 }
 
 /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
-void ExecutionNode::toVelocyPack(VPackBuilder& builder, 
+void ExecutionNode::toVelocyPack(VPackBuilder& builder,
                                  bool verbose, bool keepTopLevelOpen) const {
   // default value is to NOT keep top level open
   builder.openObject();
@@ -390,9 +404,18 @@ void ExecutionNode::toVelocyPack(VPackBuilder& builder,
 }
 
 /// @brief execution Node clone utility to be called by derives
-void ExecutionNode::cloneHelper(ExecutionNode* other, ExecutionPlan* plan,
+void ExecutionNode::cloneHelper(ExecutionNode* other,
                                 bool withDependencies,
                                 bool withProperties) const {
+  ExecutionPlan* plan = other->plan();
+
+  if (plan == _plan) {
+    // same execution plan for source and target
+    // now assign a new id to the cloned node, otherwise it will leak
+    // upon node registration and its meaning is ambiguous
+    other->setId(plan->nextId());
+  }
+
   plan->registerNode(other);
 
   if (withProperties) {
@@ -551,7 +574,11 @@ ExecutionNode const* ExecutionNode::getLoop() const {
     auto type = node->getType();
 
     if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
-        type == ENUMERATE_LIST || type == SHORTEST_PATH) {
+        type == ENUMERATE_LIST || type == SHORTEST_PATH
+#ifdef USE_IRESEARCH
+        || type == ENUMERATE_IRESEARCH_VIEW
+#endif
+        ) {
       return node;
     }
   }
@@ -674,7 +701,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
 /// @brief static analysis debugger
 #if 0
 struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
-  RegisterPlanningDebugger () 
+  RegisterPlanningDebugger ()
     : indent(0) {
   }
 
@@ -841,6 +868,15 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       totalNrRegs++;
       break;
     }
+#ifdef USE_IRESEARCH
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+      auto ep = static_cast<iresearch::IResearchViewNode const*>(en);
+      TRI_ASSERT(ep);
+
+      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
+      break;
+    }
+#endif
 
     case ExecutionNode::CALCULATION: {
       nrRegsHere[depth]++;
@@ -1091,7 +1127,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
         en->getVarsUsedLater();
     std::vector<Variable const*> const& varsUsedHere =
         en->getVariablesUsedHere();
-  
+
     // We need to delete those variables that have been used here but are not
     // used any more later:
     std::unordered_set<RegisterId> regsToClear;
@@ -1104,7 +1140,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
 
         if (it2 == varInfo.end()) {
           // report an error here to prevent crashing
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("missing variable #") + std::to_string(v->id) + " (" + v->name + ") for node #" + std::to_string(en->id()) + " (" + en->getTypeString() + ") while planning registers"); 
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("missing variable #") + std::to_string(v->id) + " (" + v->name + ") for node #" + std::to_string(en->id()) + " (" + en->getTypeString() + ") while planning registers");
         }
 
         // finally adjust the variable inside the IN calculation
@@ -1135,14 +1171,14 @@ double SingletonNode::estimateCost(size_t& nrItems) const {
 EnumerateCollectionNode::EnumerateCollectionNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      DocumentProducingNode(plan, base), 
+      DocumentProducingNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
       _random(base.get("random").getBoolean()) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
-  
+
   if (_collection == nullptr) {
     std::string msg("collection '");
     msg.append(base.get("collection").copyString());
@@ -1185,7 +1221,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
 
   c->setProjection(_projection);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1241,7 +1277,7 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
 
   auto c = new EnumerateListNode(plan, _id, inVariable, outVariable);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1332,7 +1368,7 @@ CalculationNode::CalculationNode(ExecutionPlan* plan,
     : ExecutionNode(plan, base),
       _conditionVariable(Variable::varFromVPack(plan->getAst(), base, "conditionVariable", true)),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
-      _expression(new Expression(plan->getAst(), base)),
+      _expression(new Expression(plan, plan->getAst(), base)),
       _canRemoveIfThrows(false) {}
 
 /// @brief toVelocyPack, for CalculationNode
@@ -1373,11 +1409,11 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto c = new CalculationNode(plan, _id, _expression->clone(plan->getAst()),
+  auto c = new CalculationNode(plan, _id, _expression->clone(plan, plan->getAst()),
                                conditionVariable, outVariable);
   c->_canRemoveIfThrows = _canRemoveIfThrows;
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1410,7 +1446,7 @@ void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   // And add it:
   nodes.close();
 }
-  
+
 bool SubqueryNode::isConst() {
   if (isModificationQuery() || !isDeterministic()) {
     return false;
@@ -1432,7 +1468,7 @@ bool SubqueryNode::isConst() {
       return false;
     }
   }
-      
+
   return true;
 }
 
@@ -1446,7 +1482,7 @@ ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = new SubqueryNode(
       plan, _id, _subquery->clone(plan, true, withProperties), outVariable);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1461,7 +1497,7 @@ bool SubqueryNode::isModificationQuery() const {
     if (current->isModificationNode()) {
       return true;
     }
-    
+
     stack.pop_back();
 
     current->addDependencies(stack);
@@ -1636,7 +1672,7 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
   }
   auto c = new FilterNode(plan, _id, inVariable);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1685,7 +1721,7 @@ ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = new ReturnNode(plan, _id, inVariable);
 
-  cloneHelper(c, plan, withDependencies, withProperties);
+  cloneHelper(c, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1711,4 +1747,3 @@ double NoResultsNode::estimateCost(size_t& nrItems) const {
   nrItems = 0;
   return 0.5;  // just to make it non-zero
 }
-

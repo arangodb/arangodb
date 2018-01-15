@@ -75,7 +75,7 @@ void MMFilesCleanupThread::run() {
         
       // check if we can get the compactor lock exclusively
       // check if compaction is currently disallowed
-      engine->tryPreventCompaction(_vocbase, [this, &collections, &iterations](TRI_vocbase_t* vocbase) {
+      engine->tryPreventCompaction(_vocbase, [this, &collections](TRI_vocbase_t* vocbase) {
         try {
           // copy all collections
           collections = vocbase->collections(true);
@@ -113,7 +113,7 @@ void MMFilesCleanupThread::run() {
         locker.wait(cleanupInterval());
       } else {
         // prevent busy waiting
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
       }
 
     } catch (...) {
@@ -171,7 +171,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
         if (!unloadChecked && !isInShutdown) {
           return false;
         }
-        // fall-through intentional
+        // intentionally falls through
       } else {
         // retry in next iteration
         unloadChecked = false;
@@ -287,7 +287,8 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
       }
     } else {
       // unknown type
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unknown ditch type '" << type << "'"; FATAL_ERROR_EXIT();
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unknown ditch type '" << type << "'"; 
+      FATAL_ERROR_EXIT();
     }
 
     // next iteration

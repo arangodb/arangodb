@@ -1,4 +1,4 @@
-/* global describe, beforeEach, afterEach, it, instanceInfo */
+/* global describe, beforeEach, afterEach, it, instanceInfo, before */
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -24,8 +24,12 @@
 'use strict';
 
 const expect = require('chai').expect;
+const assert = require('chai').assert;
 const internal = require('internal');
 const download = require('internal').download;
+const colName = "UnitTestDistributionTest";
+const _ = require("lodash");
+const request = require('@arangodb/request');
 
 let coordinator = instanceInfo.arangods.filter(arangod => {
   return arangod.role === 'coordinator';
@@ -36,35 +40,22 @@ let dbServerCount = instanceInfo.arangods.filter(arangod => {
 }).length;
 
 describe('Shard distribution', function () {
-  afterEach(function() {
-    internal.db._drop('distributionTest');
-  });
-  it('should properly distribute a collection', function() {
-    internal.db._create('distributionTest', {replicationFactor: 2, numberOfShards: 16});
-    internal.print(coordinator.url + '/_admin/cluster/shardDistribution');
-    var d = download(coordinator.url + '/_admin/cluster/shardDistribution');
-    require('internal').print(d);
-    let distribution = JSON.parse(d.body).results;
-    
-    let leaders = Object.keys(distribution.distributionTest.Current).reduce((current, shardKey) => {
-      let shard = distribution.distributionTest.Current[shardKey];
-      if (current.indexOf(shard.leader) === -1) {
-        current.push(shard.leader);
-      }
-      return current;
-    }, []);
-    expect(leaders).to.have.length.of.at.least(2);
-  });
-  it('should properly distribute a collection with full replication factor', function() {
-    internal.db._create('distributionTest', {replicationFactor: dbServerCount, numberOfShards: 16});
-    internal.print(coordinator.url + '/_admin/cluster/shardDistribution');
-    var d = download(coordinator.url + '/_admin/cluster/shardDistribution');
-    internal.print(d);
-    
-    let distribution = JSON.parse(d.body).results;
 
-    let leaders = Object.keys(distribution.distributionTest.Current).reduce((current, shardKey) => {
-      let shard = distribution.distributionTest.Current[shardKey];
+  before(function() {
+    internal.db._drop(colName);
+  });
+
+  afterEach(function() {
+    internal.db._drop(colName);
+  });
+
+  it('should properly distribute a collection', function() {
+    internal.db._create(colName, {replicationFactor: 2, numberOfShards: 16});
+    var d = request.get(coordinator.url + '/_admin/cluster/shardDistribution');
+    let distribution = JSON.parse(d.body).results;
+    
+    let leaders = Object.keys(distribution[colName].Current).reduce((current, shardKey) => {
+      let shard = distribution[colName].Current[shardKey];
       if (current.indexOf(shard.leader) === -1) {
         current.push(shard.leader);
       }
@@ -72,4 +63,95 @@ describe('Shard distribution', function () {
     }, []);
     expect(leaders).to.have.length.of.at.least(2);
   });
+
+  describe('the format with full replication factor', function () {
+
+    let distribution;
+    const nrShards = 16;
+
+    before(function () {
+      // First wait until the cluster is complete, otherwise the creation
+      // of the collection with replicationFactor dbServerCount will
+      // fail, we use the health api:
+      let count = 0;
+      while (true) {
+        if (++count >= 300) {
+          throw "Did not find " + dbServerCount + " dbServers within 5 mins.";
+        }
+        let health = JSON.parse(request.get(coordinator.url + '/_admin/cluster/health').body);
+        let serverCount = 0;
+        let serverIds = Object.keys(health.Health);
+        for (let i = 0; i < serverIds.length; ++i) {
+          if (serverIds[i].slice(0, 4) === "PRMR") {
+            serverCount += 1;
+          }
+        }
+        console.log("Found health records:", serverCount, serverIds, count);
+        if (serverCount >= dbServerCount) {
+          break;
+        }
+        require("internal").wait(1);
+      }
+      internal.db._create(colName, {replicationFactor: dbServerCount, numberOfShards: nrShards});
+      var d = request.get(coordinator.url + '/_admin/cluster/shardDistribution');
+      distribution = JSON.parse(d.body).results[colName];
+      assert.isObject(distribution, 'The distribution for each collection has to be an object');
+    });
+
+    it('should have current and plan on top level', function () {
+      expect(distribution).to.have.all.keys(["Current", "Plan"]);
+      assert.isObject(distribution.Current, 'The Current has to be an object');
+      assert.isObject(distribution.Plan, 'The Current has to be an object');
+    });
+
+    it('should list identical shards in Current and Plan', function () {
+      let keys = Object.keys(distribution.Plan);
+      expect(keys.length).to.equal(nrShards);
+      // Check that keys (shardnames) are identical 
+      expect(distribution.Current).to.have.all.keys(distribution.Plan);
+    });
+
+    it('should have the correct format of each shard in Plan', function () {
+      _.forEach(distribution.Plan, function (info, shard) {
+        if (info.hasOwnProperty('progress')) {
+          expect(info).to.have.all.keys(['leader', 'progress', 'followers']);
+          expect(info.progress).to.have.all.keys(['total', 'current']);
+        } else {
+          expect(info).to.have.all.keys(['leader', 'followers']);
+        }
+        expect(info.leader).to.match(/^DBServer/);
+        assert.isArray(info.followers, 'The followers need to be an array');
+        // We have one replica for each server, except the leader
+        expect(info.followers.length).to.equal(dbServerCount - 1);
+        _.forEach(info.followers, function (follower) {
+          expect(follower).to.match(/^DBServer/);
+        });
+      });
+    });
+
+    it('should have the correct format of each shard in Current', function () {
+      _.forEach(distribution.Current, function (info, shard) {
+        expect(info).to.have.all.keys(['leader', 'followers']);
+
+        expect(info.leader).to.match(/^DBServer/);
+        assert.isArray(info.followers, 'The followers need to be an array');
+
+        // We have at most one replica per db server. They may not be in sync yet.
+        expect(info.followers.length).to.below(dbServerCount);
+        _.forEach(info.followers, function (follower) {
+          expect(follower).to.match(/^DBServer/);
+        });
+      });
+    });
+
+    it('should distribute shards on all servers', function () {
+      let leaders = new Set();
+      _.forEach(distribution.Plan, function (info, shard) {
+        leaders.add(info.leader);
+      });
+      expect(leaders.size).to.equal(Math.min(dbServerCount, nrShards));
+    });
+
+  });
+
 });

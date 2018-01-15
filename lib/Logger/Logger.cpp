@@ -56,7 +56,9 @@ std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 bool Logger::_showLineNumber(false);
 bool Logger::_shortenFilenames(true);
 bool Logger::_showThreadIdentifier(false);
+bool Logger::_showThreadName(false);
 bool Logger::_threaded(false);
+bool Logger::_useColor(true);
 bool Logger::_useLocalTime(false);
 bool Logger::_keepLogRotate(false);
 bool Logger::_useMicrotime(false);
@@ -87,9 +89,12 @@ void Logger::setLogLevel(std::string const& levelName) {
     return;
   }
 
+  // if log level is "foo = bar", we better get rid of the whitespace
+  StringUtils::trimInPlace(v[0]);
   bool isGeneral = v.size() == 1;
 
   if (!isGeneral) {
+    StringUtils::trimInPlace(v[1]);
     l = v[1];
   }
 
@@ -180,6 +185,27 @@ void Logger::setShowThreadIdentifier(bool show) {
 
   _showThreadIdentifier = show;
 }
+
+// NOTE: this function should not be called if the logging is active.
+void Logger::setShowThreadName(bool show) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot change show thread name if logging is active");
+  }
+
+  _showThreadName = show;
+}
+
+// NOTE: this function should not be called if the logging is active.
+void Logger::setUseColor(bool value) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot change color if logging is active");
+  }
+
+  _useColor = value;
+}
+
 
 // NOTE: this function should not be called if the logging is active.
 void Logger::setUseLocalTime(bool show) {
@@ -291,17 +317,23 @@ void Logger::log(char const* function, char const* file, long int line,
   }
 
   // append the process / thread identifier
-  TRI_pid_t processId = Thread::currentProcessId();
+  out << '[' << Thread::currentProcessId();
 
   if (_showThreadIdentifier) {
-    uint64_t threadNumber = Thread::currentThreadNumber();
-    snprintf(buf, sizeof(buf), "[%llu-%llu] ",
-             (unsigned long long)processId, (unsigned long long)threadNumber);
-  } else {
-    snprintf(buf, sizeof(buf), "[%llu] ",
-             (unsigned long long)processId);
+    out << '-' << Thread::currentThreadNumber();
   }
-  out << buf;
+
+  // log thread name
+  if (_showThreadName) {
+    char const* threadName =  Thread::currentThreadName();
+    if (threadName == nullptr) {
+      threadName = "main";
+    }
+   
+    out << '-' << threadName;
+  }
+
+  out << "] ";
   
   if (_showRole && _role != '\0') {
     out << _role << ' ';
@@ -311,7 +343,7 @@ void Logger::log(char const* function, char const* file, long int line,
   out << Logger::translateLogLevel(level) << ' ';
 
   // check if we must display the line number
-  if (_showLineNumber) {
+  if (_showLineNumber && file != nullptr && function != nullptr) {
     char const* filename = file;
 
     if (_shortenFilenames) {
@@ -321,7 +353,7 @@ void Logger::log(char const* function, char const* file, long int line,
         filename = shortened + 1;
       }
     }
-    out << '[' << filename << ':' << line << "] ";
+    out << '[' << function << "@" << filename << ':' << line << "] ";
   }
 
   // generate the complete message
@@ -392,7 +424,7 @@ void Logger::shutdown() {
     int tries = 0;
     while (_loggingThread->hasMessages() && ++tries < 1000) {
       _loggingThread->wakeup();
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
     _loggingThread->beginShutdown();
     _loggingThread.reset();

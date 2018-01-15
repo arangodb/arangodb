@@ -33,6 +33,8 @@
 #include "Ssl/ssl-helper.h"
 
 #include <iostream>
+#include <thread>
+#include <chrono>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -53,6 +55,7 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
       _sslProtocol(TLS_V12),
       _retries(DEFAULT_RETRIES),
       _warn(false),
+      _warnConnect(true),
       _haveServerPassword(false){
   setOptional(true);
   requiresElevatedPrivileges(false);
@@ -149,7 +152,7 @@ void ClientFeature::prepare() {
   if (_authentication &&
       isEnabled() &&
       _haveServerPassword) {
-    usleep(10 * 1000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
 
     try {
       ConsoleFeature* console =

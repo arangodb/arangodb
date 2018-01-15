@@ -31,6 +31,7 @@
 #include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
 
+#include <iomanip>
 #include <iostream>
 
 using namespace arangodb;
@@ -62,7 +63,9 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
       _promptError(false),
       _supportsColors(isatty(STDIN_FILENO) != 0),
       _toPager(stdout),
-      _toAuditFile(nullptr) {
+      _toAuditFile(nullptr),
+      _lastDuration(0.0),
+      _startTime(TRI_microtime()) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
@@ -111,7 +114,7 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--console.pager-command", "pager command",
                            new StringParameter(&_pagerCommand));
 
-  options->addOption("--console.prompt", "prompt used in REPL",
+  options->addOption("--console.prompt", "prompt used in REPL. prompt components are: '%t': current time as timestamp, '%p': duration of last command in seconds, '%d': name of current database, '%e': current endpoint, '%E': current endpoint without protocol, '%u': current user",
                      new StringParameter(&_prompt));
 
 #if _WIN32
@@ -416,6 +419,18 @@ ConsoleFeature::Prompt ConsoleFeature::buildPrompt(ClientFeature* client) {
     if (esc) {
       if (c == '%') {
         result.push_back(c);
+      } else if (c == 't') {
+        std::ostringstream tmp;
+        tmp << std::setprecision(6) << std::fixed << TRI_microtime();
+        result.append(tmp.str());
+      } else if (c == 'a') {
+        std::ostringstream tmp;
+        tmp << std::setprecision(6) << std::fixed << (TRI_microtime() - _startTime);
+        result.append(tmp.str());
+      } else if (c == 'p') {
+        std::ostringstream tmp;
+        tmp << std::setprecision(6) << std::fixed << _lastDuration;
+        result.append(tmp.str());
       } else if (c == 'd') {
         if (client != nullptr) {
           result.append(client->databaseName());

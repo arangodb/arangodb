@@ -47,8 +47,7 @@ class CollectionKeys {
   CollectionKeys(CollectionKeys const&) = delete;
   CollectionKeys& operator=(CollectionKeys const&) = delete;
 
-  CollectionKeys(TRI_vocbase_t*, std::string const& name, 
-                 double ttl);
+  CollectionKeys(TRI_vocbase_t*, double ttl);
 
   virtual ~CollectionKeys() = default;
 
@@ -103,13 +102,13 @@ class CollectionKeys {
   /// @brief dumps documents into the result
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void dumpDocs(arangodb::velocypack::Builder&, size_t, size_t,
-                        arangodb::velocypack::Slice const&) const = 0;
+  virtual void dumpDocs(arangodb::velocypack::Builder& result, size_t chunk, 
+                        size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize,
+                        arangodb::velocypack::Slice const& ids) const = 0;
 
  protected:
   TRI_vocbase_t* _vocbase;
   arangodb::LogicalCollection* _collection;
-  std::string const _name;
   CollectionKeysId _id;
   double _ttl;
   double _expires;

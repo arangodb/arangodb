@@ -13,9 +13,9 @@ include(ExternalProject)
 option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
 
-set(V8_SUB_DIR "v5.7.0.0")
+set(V8_SUB_DIR "v5.7.492.77")
 set(V8_VERSION
-  "5.7.0.0"
+  "5.7.492.77"
   CACHE INTERNAL
   "${PROJECT_NAME}: Version"
   FORCE
@@ -47,9 +47,26 @@ if (USE_PRECOMPILED_V8)
     FORCE
   )
 
+  add_library(libicui18n-static IMPORTED STATIC)
+  set_target_properties(libicui18n-static PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${ICU_BIN_DIR}/libicui18n.a"
+  )
+
+  add_library(libicuuc-static IMPORTED STATIC)
+  set_target_properties(libicuuc-static PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${ICU_BIN_DIR}/libicuuc.a"
+  )
+
+  add_library(libev-static IMPORTED STATIC)
+  set_target_properties(libev-static PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${libev_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${libev_BINARY_DIR}/libev.a"
+  )
+
   set(ICU_LIBS
-    "${ICU_BIN_DIR}/libicui18n.a;${ICU_BIN_DIR}/libicuuc.a"
-    ${libev_BINARY_DIR}/libev.a
+    libicui18n-static libicuuc-static libev-static
     CACHE INTERNAL
     "ICU: Libraries"
     FORCE
@@ -64,7 +81,6 @@ if (USE_PRECOMPILED_V8)
 
   set(V8_LIBS
     "${V8_BIN_DIR}/libv8_base.a;${V8_BIN_DIR}/libv8_libbase.a;${V8_BIN_DIR}/libv8_libplatform.a;${V8_BIN_DIR}/libv8_nosnapshot.a"
-    ${libev_BINARY_DIR}/libev.a
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
     FORCE
@@ -74,6 +90,75 @@ else ()
   set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
   set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
 endif ()
+
+################################################################################
+## IResearch
+################################################################################
+
+if (USE_IRESEARCH)
+  add_library(boost-static IMPORTED STATIC)
+  set_target_properties(boost-static PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0"
+    IMPORTED_LOCATION "boost_filesystem;boost_locale;boost_system;boost_thread"
+  )
+
+  set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0") # explicitly set since suppressing Boost search
+
+  # IResearch on MacOS requires a complete build of ICU for encoding conversion
+  if(APPLE)
+    set(ICU_LIBS icu-static CACHE INTERNAL "ICU: Libraries" FORCE) # use complete ICU build
+    set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/v5.7.492.77/third_party/icu")
+  elseif(MSVC)
+    add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
+    add_library(icu-static STATIC IMPORTED GLOBAL)
+    set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/build/Debug/lib/icui18n.lib")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icui18n.lib")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icui18n.lib")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icui18n.lib")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/build/Debug/lib/icuuc.lib")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icuuc.lib")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icuuc.lib")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icuuc.lib")
+    set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
+  else()
+    add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
+    add_library(icu-static STATIC IMPORTED GLOBAL)
+    set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicuuc.a")
+    set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
+  endif()
+
+  set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
+  set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
+  set(UNWIND_ROOT "invalid")
+
+  set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
+  find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
+
+  set(CMAKE_MODULE_PATH_ORIGINAL ${CMAKE_MODULE_PATH}) # remember CMAKE_MODULE_PATH
+  list(APPEND CMAKE_MODULE_PATH
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)
+    "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
+  )
+  add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
+  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
+  unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
+  unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
+
+  # IResearch on MacOS requires a complete build of ICU for encoding conversion
+  if(APPLE)
+    # cmake does not build ICU without this (cmake does not inherit dependencies)
+    add_dependencies(v8_build icu-build icudata-static icui18n-static icuuc-static)
+  endif()
+endif()
 
 ################################################################################
 ## ZLIB
@@ -108,3 +193,32 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
 ################################################################################
 
 set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
+
+set(STARTER_SOURCE "${PROJECT_SOURCE_DIR}/3rdParty/arangodb-starter/")
+set(STARTER_BUILD "${CMAKE_CURRENT_BINARY_DIR}/arangodb-starter/")
+set(STARTER_BINARY "${STARTER_BUILD}/arangodb${CMAKE_EXECUTABLE_SUFFIX}")
+if (EXISTS ${STARTER_SOURCE})
+  find_program(GO_COMMAND "go")
+  if (GO_COMMAND)
+    MESSAGE("-- building arangodb starter.")
+    ExternalProject_Add(arangodb_starter_build
+      SOURCE_DIR
+      ${STARTER_SOURCE}
+      CONFIGURE_COMMAND
+      ""
+      BINARY_DIR
+      ${STARTER_BUILD}
+      BUILD_COMMAND
+      $(MAKE) -f "${STARTER_SOURCE}Makefile" "NODOCKER=1" "BUILDDIR=${STARTER_BUILD}" "SCRIPTDIR=${STARTER_SOURCE}" local
+      LOG_INSTALL 1
+      INSTALL_DIR
+      ${CMAKE_INSTALL_BINDIR}
+      INSTALL_COMMAND
+      ${CMAKE_COMMAND} -E copy ${STARTER_BINARY} ${CMAKE_INSTALL_BINDIR}
+      )
+    list(APPEND THIRDPARTY_BIN ${STARTER_BINARY})
+    set(THIRDPARTY_BIN ${THIRDPARTY_BIN} PARENT_SCOPE)
+  else()
+    MESSAGE(WARNING "arangodb starter source present, but no go command to build it found.")
+  endif()
+endif()

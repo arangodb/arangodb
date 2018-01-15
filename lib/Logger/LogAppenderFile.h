@@ -32,12 +32,16 @@ class LogAppenderStream : public LogAppender {
   LogAppenderStream(std::string const& filename, std::string const& filter, int fd);
   ~LogAppenderStream() {}
 
-  bool logMessage(LogLevel, std::string const& message,
+  void logMessage(LogLevel, std::string const& message,
                   size_t offset) override final;
 
   virtual std::string details() override = 0;
 
+  int fd() const { return _fd; }
+
  protected:
+  void updateFd(int fd) { _fd = fd; }
+
   virtual void writeLogMessage(LogLevel, char const*, size_t) = 0;
 
   /// @brief maximum size for reusable log buffer
@@ -56,8 +60,8 @@ class LogAppenderStream : public LogAppender {
   /// @brief file descriptor 
   int _fd;
   
-  /// @brief whether or not the outfile is a tty 
-  bool _isTty;
+  /// @brief whether or not we should use colors
+  bool _useColors;
 };
 
 class LogAppenderFile : public LogAppenderStream {
@@ -71,9 +75,12 @@ class LogAppenderFile : public LogAppenderStream {
  public:
   static void reopenAll();
   static void closeAll();
+  static std::vector<std::tuple<int, std::string, LogAppenderFile*>> getFds() { return _fds; }
+  static void setFds(std::vector<std::tuple<int, std::string, LogAppenderFile*>> const& fds) { _fds = fds; }
+  static void clear(); 
 
  private:
-  static std::vector<std::pair<int, std::string>> _fds;
+  static std::vector<std::tuple<int, std::string, LogAppenderFile*>> _fds;
 
   std::string _filename;
 };
@@ -85,7 +92,7 @@ class LogAppenderStdStream : public LogAppenderStream {
 
   std::string details() override final { return std::string(); }
   
-  static void writeLogMessage(int fd, bool isTty, LogLevel, char const* p, size_t length, bool appendNewline);
+  static void writeLogMessage(int fd, bool useColors, LogLevel, char const* p, size_t length, bool appendNewline);
 
  private:
   void writeLogMessage(LogLevel, char const*, size_t) override final;

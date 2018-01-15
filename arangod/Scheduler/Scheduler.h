@@ -39,9 +39,6 @@ namespace arangodb {
 class JobQueue;
 class JobGuard;
 
-namespace basics {
-class ConditionVariable;
-}
 namespace velocypack {
 class Builder;
 }
@@ -73,7 +70,7 @@ class Scheduler {
 
   void post(std::function<void()> callback);
 
-  bool start(basics::ConditionVariable*);
+  bool start();
   bool isRunning() const { return numRunning(_counters) > 0; }
 
   void beginShutdown();
@@ -93,11 +90,17 @@ class Scheduler {
   bool shouldQueueMore() const;
   bool hasQueueCapacity() const;
 
+  /// queue processing of an async rest job
   bool queue(std::unique_ptr<Job> job);
+  
+  std::string infoStatus();
 
   uint64_t minimum() const { return _nrMinimum; }
-
-  std::string infoStatus();
+  inline uint64_t numQueued() const noexcept { return  _nrQueued; };
+  inline uint64_t getCounters() const noexcept { return _counters; }
+  static uint64_t numRunning(uint64_t value) noexcept { return value & 0xFFFFULL; }
+  static uint64_t numWorking(uint64_t value) noexcept { return (value >> 16) & 0xFFFFULL; }
+  static uint64_t numBlocked(uint64_t value) noexcept { return (value >> 32) & 0xFFFFULL; }
 
   inline void queueJob() noexcept { ++_nrQueued; } 
   inline void unqueueJob() noexcept { 
@@ -126,17 +129,14 @@ class Scheduler {
   inline void setStopping() noexcept { _counters |= (1ULL << 63); }
 
   inline void incRunning() noexcept { _counters += 1ULL << 0; }
-  inline void decRunning() noexcept { _counters -= 1ULL << 0; }
+  inline void decRunning() noexcept { TRI_ASSERT((_counters & 0xFFFFUL) > 0); _counters -= 1ULL << 0; }
 
   inline void workThread() noexcept { _counters += 1ULL << 16; } 
-  inline void unworkThread() noexcept { _counters -= 1ULL << 16; }
+  inline void unworkThread() noexcept { TRI_ASSERT(((_counters & 0XFFFF0000UL) >> 16) > 0); _counters -= 1ULL << 16; }
 
   inline void blockThread() noexcept { _counters += 1ULL << 32; }
-  inline void unblockThread() noexcept { _counters -= 1ULL << 32; }
+  inline void unblockThread() noexcept { TRI_ASSERT(((_counters & 0XFFFF00000000UL) >> 32) > 0); _counters -= 1ULL << 32; }
 
-  inline uint64_t numRunning(uint64_t value) const noexcept { return value & 0xFFFFULL; }
-  inline uint64_t numWorking(uint64_t value) const noexcept { return (value >> 16) & 0xFFFFULL; }
-  inline uint64_t numBlocked(uint64_t value) const noexcept { return (value >> 32) & 0xFFFFULL; }
   inline bool isStopping(uint64_t value) const noexcept { return (value & (1ULL << 63)) != 0; }
 
   void startIoService();

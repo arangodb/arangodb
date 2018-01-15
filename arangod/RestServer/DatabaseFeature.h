@@ -35,6 +35,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class LogicalCollection;
 
 namespace aql {
 class QueryRegistry;
@@ -45,7 +46,7 @@ class DatabaseManagerThread : public Thread {
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
 
-  DatabaseManagerThread(); 
+  DatabaseManagerThread();
   ~DatabaseManagerThread();
 
   void run() override;
@@ -57,7 +58,7 @@ class DatabaseManagerThread : public Thread {
   }
 };
 
-class DatabaseFeature final : public application_features::ApplicationFeature {
+class DatabaseFeature : public application_features::ApplicationFeature {
  friend class DatabaseManagerThread;
 
  public:
@@ -82,12 +83,23 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   /// the replication appliers) for all databases
   void recoveryDone();
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief register a callback
+  ///        if StorageEngine.inRecovery() -> call at start of recoveryDone()
+  ///                                         and fail recovery if callback
+  ///                                         !ok()
+  ///        if !StorageEngine.inRecovery() -> call immediately and return
+  ///                                          result
+  //////////////////////////////////////////////////////////////////////////////
+  Result registerPostRecoveryCallback(std::function<Result()>&& callback);
+
  public:
 
-   /// @brief get the ids of all local coordinator databases
+  /// @brief get the ids of all local coordinator databases
   std::vector<TRI_voc_tick_t> getDatabaseIdsCoordinator(bool includeSystem);
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
   std::vector<std::string> getDatabaseNames();
+  std::vector<std::string> getDatabaseNamesCoordinator();
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
   int createDatabaseCoordinator(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
@@ -95,6 +107,10 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   int dropDatabaseCoordinator(TRI_voc_tick_t id, bool force);
   int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);
+
+  void inventory(arangodb::velocypack::Builder& result,
+                 TRI_voc_tick_t,
+                 std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
   TRI_vocbase_t* useDatabaseCoordinator(std::string const& name);
   TRI_vocbase_t* useDatabaseCoordinator(TRI_voc_tick_t id);
@@ -104,6 +120,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   TRI_vocbase_t* lookupDatabaseCoordinator(std::string const& name);
   TRI_vocbase_t* lookupDatabase(std::string const& name);
   void enumerateDatabases(std::function<void(TRI_vocbase_t*)>);
+  std::string translateCollectionName(std::string const& dbName, std::string const& collectionName);
 
   void useSystemDatabase();
   TRI_vocbase_t* systemDatabase() const { return _vocbase; }
@@ -116,7 +133,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool waitForSync() const { return _defaultWaitForSync; }
   uint64_t maximalJournalSize() const { return _maximalJournalSize; }
 
-  void disableReplicationApplier() { _replicationApplier = false; }
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
   bool throwCollectionNotLoadedError() const { return _throwCollectionNotLoadedError.load(std::memory_order_relaxed); }
@@ -131,7 +147,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
   /// @brief create base app directory
   int createBaseApplicationDirectory(std::string const& appPath, std::string const& type);
-  
+
   /// @brief create app subdirectory for a database
   int createApplicationDirectory(std::string const& name, std::string const& basePath);
 
@@ -149,8 +165,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   /// @brief activates deadlock detection in all existing databases
   void enableDeadlockDetection();
 
-  
-
  private:
   uint64_t _maximalJournalSize;
   bool _defaultWaitForSync;
@@ -159,22 +173,23 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   std::string _check30Revisions;
   std::atomic<bool> _throwCollectionNotLoadedError;
 
-  TRI_vocbase_t* _vocbase;
+
+  TRI_vocbase_t* _vocbase; // _system database
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 
-  std::atomic<DatabasesLists*> _databasesLists; 
+  std::atomic<DatabasesLists*> _databasesLists;
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
   // arangodb::basics::DataProtector<64>
   arangodb::basics::DataProtector _databasesProtector;
   arangodb::Mutex _databasesMutex;
 
   bool _isInitiallyEmpty;
-  bool _replicationApplier;
   bool _checkVersion;
   bool _upgrade;
 
   /// @brief lock for serializing the creation of databases
   arangodb::Mutex _databaseCreateLock;
+  std::vector<std::function<Result()>> _pendingRecoveryCallbacks;
 };
 }
 

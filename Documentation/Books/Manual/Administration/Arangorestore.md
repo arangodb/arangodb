@@ -4,6 +4,13 @@ Arangorestore
 To reload data from a dump previously created with [arangodump](Arangodump.md),
 ArangoDB provides the _arangorestore_ tool.
 
+Please note that arangorestore
+**must not be used to create several similar database instances in one installation**.
+
+This means if you have an arangodump output of database `a`, and you create a second database `b`
+on the same instance of ArangoDB, and restore the dump of `a` into `b` - data integrity can not
+be guaranteed.
+
 Reloading Data into an ArangoDB database
 ----------------------------------------
 
@@ -34,6 +41,16 @@ target database, the username and passwords passed to _arangorestore_ (in option
 *--server.username* and *--server.password*) will be used to create an initial user for the 
 new database.
 
+The option `--force-same-database` allows restricting arangorestore operations to a
+database with the same name as in the source dump's "dump.json" file. It can thus be used
+to prevent restoring data into a "wrong" database by accident.
+
+For example, if a dump was taken from database `a`, and the restore is attempted into 
+database `b`, then with the `--force-same-database` option set to `true`, arangorestore
+will abort instantly.
+
+The `--force-same-database` option is set to `false` by default to ensure backwards-compatibility.
+
 Here's an example of reloading data to a non-standard endpoint, using a dedicated
 [database name](../Appendix/Glossary.md#database-name):
 
@@ -60,8 +77,8 @@ The following parameters are available to adjust this behavior:
   database. If the target database already contains a collection with the same name,
   it will be dropped first and then re-created with the properties found in the input
   directory. Set to *false* to keep existing collections in the target database. If 
-  set to *false* and _arangorestore_ encounters a collection that is present in both 
-  the target database and the input directory, it will abort. The default value is *true*.
+  set to *false* and _arangorestore_ encounters a collection that is present in the
+  input directory but not in the target database, it will abort. The default value is *true*.
 * *--import-data <bool>*: set to *true* to load document data into the collections in
   the target database. Set to *false* to not load any document data. The default value 
   is *true*.
@@ -100,6 +117,10 @@ collections being processed before all [edge collection](../Appendix/Glossary.md
 data into edge collections will have the document collections linked in edges (*_from* and
 *_to* attributes) loaded.
 
+### Encryption
+
+See [arangodump](Arangodump.md) for details.
+
 ### Restoring Revision Ids and Collection Ids
  
 _arangorestore_ will reload document and edges data with the exact same *_key*, *_from* and 
@@ -109,15 +130,11 @@ intentional (normally, every server should create its own *_rev* values) there m
 situations when it is required to re-use the exact same *_rev* values for the reloaded data.
 This can be achieved by setting the *--recycle-ids* parameter to *true*:
 
-    unix> arangorestore --collection myusers --collection myvalues --recycle-ids true --input-directory "dump"
+    unix> arangorestore --collection myusers --collection myvalues --input-directory "dump"
 
 Note that setting *--recycle-ids* to *true* will also cause collections to be (re-)created in
 the target database with the exact same collection id as in the input directory. Any potentially
 existing collection in the target database with the same collection id will then be dropped.
-
-Setting *--recycle-ids* to *false* or omitting it will only use the [collection name](../Appendix/Glossary.md#collection-name) from the
-input directory and allow the target database to create the collection with a different id
-(though with the same name) than in the input directory.
 
 ### Reloading Data into a different Collection
 

@@ -43,7 +43,7 @@ using namespace arangodb::basics;
 bool VstResponse::HIDE_PRODUCT_HEADER = false;
 
 VstResponse::VstResponse(ResponseCode code, uint64_t id)
-    : GeneralResponse(code), _header(nullptr), _messageId(id) {
+    : GeneralResponse(code), _messageId(id), _header(nullptr) {
   _contentType = ContentType::VPACK;
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
 }
@@ -56,15 +56,96 @@ void VstResponse::reset(ResponseCode code) {
   _generateBody = false;  // payload has to be set
 }
 
+void VstResponse::addPayload(VPackSlice const& slice,
+                             velocypack::Options const* options,
+                             bool resolveExternals) {
+  if (!options) {
+    options = &VPackOptions::Options::Defaults;
+  }
+  
+  // only copy buffer if it contains externals
+  if (resolveExternals) {
+    bool resolveExt = VelocyPackHelper::hasNonClientTypes(slice, true, true);
+    if (resolveExt) {  // resolve
+      VPackBuffer<uint8_t> tmpBuffer;
+      tmpBuffer.reserve(slice.byteSize()); // reserve space already
+      VPackBuilder builder(tmpBuffer, options);
+      VelocyPackHelper::sanitizeNonClientTypes(slice, VPackSlice::noneSlice(),
+                                               builder, options, true, true);
+      _vpackPayloads.push_back(std::move(tmpBuffer));
+    } else {
+      // just copy
+      _vpackPayloads.emplace_back(slice.byteSize());
+      _vpackPayloads.back().append(slice.startAs<char const>(),
+                                   slice.byteSize());
+    }
+  } else {
+    // just copy
+    _vpackPayloads.emplace_back(slice.byteSize());
+    _vpackPayloads.back().append(slice.startAs<char const>(),
+                                 slice.byteSize());
+  }
+}
+
+void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
+                             velocypack::Options const* options,
+                             bool resolveExternals) {
+  if (!options) {
+    options = &VPackOptions::Options::Defaults;
+  }
+  
+  // only copy buffer if it contains externals
+  if (resolveExternals) {
+    VPackSlice input(buffer.data());
+    bool resolveExt = VelocyPackHelper::hasNonClientTypes(input, true, true);
+    if (resolveExt) {  // resolve
+      VPackBuffer<uint8_t> tmpBuffer;
+      tmpBuffer.reserve(buffer.length()); // reserve space already
+      VPackBuilder builder(tmpBuffer, options);
+      VelocyPackHelper::sanitizeNonClientTypes(input, VPackSlice::noneSlice(),
+                                               builder, options, true, true);
+      _vpackPayloads.push_back(std::move(tmpBuffer));
+    } else {
+      _vpackPayloads.push_back(std::move(buffer));
+    }
+  } else {
+    _vpackPayloads.push_back(std::move(buffer));
+  }
+}
+
 VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
   // initalize builder with vpackbuffer. then we do not need to
   // steal the header and can avoid the shared pointer
   VPackBuilder builder;
   builder.openArray();
-  builder.add(VPackValue(int(1)));
+  builder.add(VPackValue(int(1)));  // 1 == version
   builder.add(VPackValue(int(2)));  // 2 == response
-  builder.add(
-      VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));
+  builder.add(VPackValue(static_cast<int>(meta::underlyingValue(_responseCode)))); // 3 == request - return code
+
+  std::string currentHeader;
+  builder.openObject(); // 4 == meta
+  for (auto& item : _headers) {
+    currentHeader.assign(item.first);
+    int capState = 1;
+    for (auto& it : currentHeader) {
+      if (capState == 1) {
+        // upper case
+        it = ::toupper(it);
+        capState = 0;
+      } else if (capState == 0) {
+        // normal case
+        it = ::tolower(it);
+        if (it == '-') {
+          capState = 1;
+        } else if (it == ':') {
+          capState = 2;
+        }
+      } 
+    }
+    builder.add(currentHeader, VPackValue(item.second));
+  }
+  builder.close();
+
   builder.close();
   _header = builder.steal();
   if (_vpackPayloads.empty()) {

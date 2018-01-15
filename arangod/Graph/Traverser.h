@@ -43,7 +43,6 @@ class ManagedDocumentResult;
 namespace transaction {
 class Methods;
 }
-;
 
 namespace velocypack {
 class Builder;
@@ -185,7 +184,7 @@ class Traverser {
   /// @brief Destructor
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~Traverser();
+  virtual ~Traverser() {};
 
   void done() { _done = true; }
     

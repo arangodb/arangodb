@@ -264,7 +264,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
       other.valueNode->isConstant()) {
     return CompareAstNodes(other.valueNode, valueNode, false) == 0;
   }
-  
+
   bool a = operatorNode->isArrayComparisonOperator();
   bool b = other.operatorNode->isArrayComparisonOperator();
   if (a || b) {
@@ -273,7 +273,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
     }
     TRI_ASSERT(operatorNode->numMembers() == 3 &&
                other.operatorNode->numMembers() == 3);
-    
+
     AstNode* q1 = operatorNode->getMemberUnchecked(2);
     TRI_ASSERT(q1->type == NODE_TYPE_QUANTIFIER);
     AstNode* q2 = other.operatorNode->getMemberUnchecked(2);
@@ -283,7 +283,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
         q1->getIntValue() == Quantifier::ANY) {
       return false;
     }
-    
+
     if (isExpanded && other.isExpanded &&
         operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
         other.operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
@@ -397,7 +397,17 @@ std::pair<bool, bool> Condition::findIndexes(
 
   transaction::Methods* trx = _ast->query()->trx();
 
-  size_t const itemsInIndex = node->collection()->count(trx);
+  size_t itemsInIndex;
+  if (!collectionName.empty() && collectionName[0] == '_' &&
+      collectionName.substr(0, 11) == "_statistics") {
+    // use hard-coded number of items in index, because we are dealing with
+    // the statistics collection here. this saves a roundtrip to the DB servers
+    // for statistics queries that do not need a fully accurate collection count
+    itemsInIndex = 1024;
+  } else {
+    // actually count number of items in index
+    itemsInIndex = node->collection()->count(trx);
+  }
   if (_root == nullptr) {
     size_t dummy;
     return trx->getIndexForSortCondition(collectionName, sortCondition,
@@ -1233,6 +1243,66 @@ AstNode* Condition::collapse(AstNode const* node) {
   return newOperator;
 }
 
+void switchSidesInCompare(AstNode* node) {
+  // switch members of BINARY_LT/GT/LE/GE_NODES
+  // and change operator accordingly
+
+  auto first = node->getMemberUnchecked(0);
+  auto second = node->getMemberUnchecked(1);
+
+  node->changeMember(0,second);
+  node->changeMember(1,first);
+
+  switch(node->type) {
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+      node->type = NODE_TYPE_OPERATOR_BINARY_GT;
+      break;
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+      node->type = NODE_TYPE_OPERATOR_BINARY_LT;
+      break;
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+      node->type = NODE_TYPE_OPERATOR_BINARY_GE;
+      break;
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+      node->type = NODE_TYPE_OPERATOR_BINARY_LE;
+      break;
+    default:
+      LOG_TOPIC(ERR, Logger::QUERIES) << "normalize condition tries to swap children"
+                                      << "of wrong node type - this needs to be fixed";
+      TRI_ASSERT(false);
+  }
+}
+
+void normalizeCompare(AstNode* node) {
+  // Moves attribute access to the LHS of a comparison.
+  // If there are 2 attribute accesses it does a
+  // string compare of the access path and makes sure
+  // the one that compares less ends up on the LHS
+
+  if (node->type != NODE_TYPE_OPERATOR_BINARY_LE &&
+      node->type != NODE_TYPE_OPERATOR_BINARY_LT &&
+      node->type != NODE_TYPE_OPERATOR_BINARY_GE &&
+      node->type != NODE_TYPE_OPERATOR_BINARY_GT )
+  {
+    // no binary compare in node
+    return;
+  }
+
+  auto first = node->getMemberUnchecked(0);
+  auto second = node->getMemberUnchecked(1);
+
+  if (second->type == NODE_TYPE_ATTRIBUTE_ACCESS){
+    if (first->type != NODE_TYPE_ATTRIBUTE_ACCESS){
+      switchSidesInCompare(node);
+    } else {
+      //both are of type attribute access
+      if(first->toString() > second->toString()){
+        switchSidesInCompare(node);
+      }
+    }
+  }
+}
+
 /// @brief converts binary logical operators into n-ary operators
 AstNode* Condition::transformNode(AstNode* node) {
   if (node == nullptr) {
@@ -1390,10 +1460,12 @@ AstNode* Condition::transformNode(AstNode* node) {
       }
 
       return transformNode(newOperator);
-    } 
+    }
 
     node->changeMember(0, transformNode(sub));
   }
+
+  normalizeCompare(node);
 
   return node;
 }

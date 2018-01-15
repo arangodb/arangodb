@@ -23,6 +23,7 @@
 #include "AuthenticationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
@@ -45,9 +46,11 @@ AuthenticationFeature::AuthenticationFeature(
       _authInfo(nullptr),
       _authenticationUnixSockets(true),
       _authenticationSystemOnly(true),
+      _authenticationTimeout(0.0),
+      _localAuthentication(true),
       _jwtSecretProgramOption(""),
       _active(true) {
-  setOptional(true);
+  setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Random");
 #ifdef USE_ENTERPRISE
@@ -79,6 +82,14 @@ void AuthenticationFeature::collectOptions(
                      "enable or disable authentication for ALL client requests",
                      new BooleanParameter(&_active));
 
+  options->addOption("--server.authentication-timeout",
+                     "timeout for the authentication cache (0 = indefinitely)",
+                     new DoubleParameter(&_authenticationTimeout));
+
+  options->addOption("--server.local-authentication",
+                     "enable or disable authentication using the local user database",
+                     new BooleanParameter(&_localAuthentication));
+
   options->addOption(
       "--server.authentication-system-only",
       "use HTTP authentication only for requests to /_api and /_admin",
@@ -98,92 +109,75 @@ void AuthenticationFeature::collectOptions(
 void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   if (!_jwtSecretProgramOption.empty()) {
     if (_jwtSecretProgramOption.length() > _maxSecretLength) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
           << "Given JWT secret too long. Max length is " << _maxSecretLength;
       FATAL_ERROR_EXIT();
     }
   }
 }
 
-std::string AuthenticationFeature::generateNewJwtSecret() {
-  std::string jwtSecret = "";
-  uint16_t m = 254;
-
-  for (size_t i = 0; i < _maxSecretLength; i++) {
-    jwtSecret += (1 + RandomGenerator::interval(m));
-  }
-  return jwtSecret;
+void AuthenticationFeature::generateJwtToken() {
+  VPackBuilder body;
+  body.openObject();
+  body.add("server_id", VPackValue(ServerState::instance()->getId()));
+  body.close();
+  _jwtToken = authInfo()->generateJwt(body);
 }
 
 void AuthenticationFeature::prepare() {
-  if (isEnabled()) {
-    std::unique_ptr<AuthenticationHandler> handler;
+  TRI_ASSERT(isEnabled());
+  
+  std::unique_ptr<AuthenticationHandler> handler;
 #if USE_ENTERPRISE
-    if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
-            ->isEnabled()) {
-      handler.reset(new LdapAuthenticationHandler());
-    } else {
-      handler.reset(new DefaultAuthenticationHandler());
-    }
-#else
+  if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
+          ->isEnabled()) {
+    handler.reset(new LdapAuthenticationHandler());
+  } else {
     handler.reset(new DefaultAuthenticationHandler());
-#endif
-    _authInfo = new AuthInfo(std::move(handler));
-
-    std::string jwtSecret = _jwtSecretProgramOption;
-    if (jwtSecret.empty()) {
-      jwtSecret = generateNewJwtSecret();
-    }
-    authInfo()->setJwtSecret(jwtSecret);
   }
+#else
+  handler.reset(new DefaultAuthenticationHandler());
+#endif
+  _authInfo = new AuthInfo(std::move(handler));
+
+  std::string jwtSecret = _jwtSecretProgramOption;
+  if (jwtSecret.empty()) {
+    uint16_t m = 254;
+    for (size_t i = 0; i < _maxSecretLength; i++) {
+      jwtSecret += (1 + RandomGenerator::interval(m));
+    }
+  }
+  authInfo()->setJwtSecret(jwtSecret);
+  generateJwtToken();
+  
+  INSTANCE = this;
 }
 
 void AuthenticationFeature::start() {
-  INSTANCE = this;
+  TRI_ASSERT(isEnabled());
 
   std::ostringstream out;
 
   out << "Authentication is turned " << (_active ? "on" : "off");
 
-  if (isEnabled()) {
-    auto queryRegistryFeature =
-        application_features::ApplicationServer::getFeature<
-            QueryRegistryFeature>("QueryRegistry");
-    _authInfo->setQueryRegistry(queryRegistryFeature->queryRegistry());
+  auto queryRegistryFeature =
+      application_features::ApplicationServer::getFeature<
+          QueryRegistryFeature>("QueryRegistry");
+  _authInfo->setQueryRegistry(queryRegistryFeature->queryRegistry());
 
-    if (_active && _authenticationSystemOnly) {
-      out << " (system only)";
-    }
+  if (_active && _authenticationSystemOnly) {
+    out << " (system only)";
+  }
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
     out << ", authentication for unix sockets is turned "
         << (_authenticationUnixSockets ? "on" : "off");
 #endif
-  }
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << out.str();
+  LOG_TOPIC(INFO, arangodb::Logger::AUTHENTICATION) << out.str();
 }
 
-AuthLevel AuthenticationFeature::canUseDatabase(std::string const& username,
-                                                std::string const& dbname) {
-  if (!isActive()) {
-    return AuthLevel::RW;
-  }
-
-  return authInfo()->canUseDatabase(username, dbname);
-}
-
-AuthLevel AuthenticationFeature::canUseCollection(std::string const& username,
-                                                  std::string const& dbname,
-                                                  std::string const& coll) {
-  if (!isActive()) {
-    return AuthLevel::RW;
-  }
-
-  return authInfo()->canUseCollection(username, dbname, coll);
-}
-
-AuthInfo* AuthenticationFeature::authInfo() {
+AuthInfo* AuthenticationFeature::authInfo() const {
   TRI_ASSERT(_authInfo != nullptr);  
   return _authInfo;
 }

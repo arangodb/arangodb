@@ -24,46 +24,36 @@
 #include "MMFilesRevisionsCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/xxhash.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 
 using namespace arangodb;
 
-namespace {
-static inline uint64_t HashKey(void*, TRI_voc_rid_t const* key) {
-  return std::hash<TRI_voc_rid_t>()(*key);
-//  return XXH64(key, sizeof(TRI_voc_rid_t), 0x12345678);
-}
-
-static inline uint64_t HashElement(void*, MMFilesDocumentPosition const& element) {
-  return std::hash<TRI_voc_rid_t>()(element.revisionId());
-//  TRI_voc_rid_t revisionId = element.revisionId();
-//  return HashKey(nullptr, &revisionId);
-}
-
-static bool IsEqualKeyElement(void*, TRI_voc_rid_t const* key,
-                              uint64_t hash, MMFilesDocumentPosition const& element) {
-  return *key == element.revisionId();
-}
-
-static bool IsEqualElementElement(void*, MMFilesDocumentPosition const& left,
-                                  MMFilesDocumentPosition const& right) {
-  return left.revisionId() == right.revisionId();
-}
-
-} // namespace
-
 MMFilesRevisionsCache::MMFilesRevisionsCache() 
-    : _positions(HashKey, HashElement, IsEqualKeyElement, IsEqualElementElement, IsEqualElementElement, 8, []() -> std::string { return "mmfiles revisions"; }) {}
+    : _positions(MMFilesRevisionsCacheHelper(), 8, []() -> std::string { return "mmfiles revisions"; }) {}
 
 MMFilesRevisionsCache::~MMFilesRevisionsCache() {}
 
-MMFilesDocumentPosition MMFilesRevisionsCache::lookup(TRI_voc_rid_t revisionId) const {
-  TRI_ASSERT(revisionId != 0);
+MMFilesDocumentPosition MMFilesRevisionsCache::lookup(LocalDocumentId const& documentId) const {
+  TRI_ASSERT(documentId.isSet());
   READ_LOCKER(locker, _lock);
 
-  return _positions.findByKey(nullptr, &revisionId);
+  return _positions.findByKey(nullptr, documentId.data());
+}
+
+void MMFilesRevisionsCache::batchLookup(std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds) const {
+  READ_LOCKER(locker, _lock);
+
+  for (auto& it : documentIds) {
+    MMFilesDocumentPosition const old = _positions.findByKey(nullptr, it.first.data());
+    if (old) {
+      uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
+      TRI_ASSERT(VPackSlice(vpack).isObject());
+      it.second = vpack;
+    } else {
+      it.second = nullptr;
+    }
+  }
 }
 
 void MMFilesRevisionsCache::sizeHint(int64_t hint) {
@@ -93,16 +83,17 @@ void MMFilesRevisionsCache::clear() {
   _positions.truncate([](MMFilesDocumentPosition&) { return true; });
 }
 
-MMFilesDocumentPosition MMFilesRevisionsCache::insert(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock) {
-  TRI_ASSERT(revisionId != 0);
+MMFilesDocumentPosition MMFilesRevisionsCache::insert(LocalDocumentId const& documentId, 
+                                                      uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock) {
+  TRI_ASSERT(documentId.isSet());
   TRI_ASSERT(dataptr != nullptr);
 
   CONDITIONAL_WRITE_LOCKER(locker, _lock, shouldLock);
-  int res = _positions.insert(nullptr, MMFilesDocumentPosition(revisionId, dataptr, fid, isInWal));
+  int res = _positions.insert(nullptr, MMFilesDocumentPosition(documentId, dataptr, fid, isInWal));
 
   if (res != TRI_ERROR_NO_ERROR) {
-    MMFilesDocumentPosition old = _positions.removeByKey(nullptr, &revisionId);
-    _positions.insert(nullptr, MMFilesDocumentPosition(revisionId, dataptr, fid, isInWal));
+    MMFilesDocumentPosition old = _positions.removeByKey(nullptr, documentId.data());
+    _positions.insert(nullptr, MMFilesDocumentPosition(documentId, dataptr, fid, isInWal));
     return old;
   }
 
@@ -114,14 +105,17 @@ void MMFilesRevisionsCache::insert(MMFilesDocumentPosition const& position, bool
   _positions.insert(nullptr, position);
 }
 
-void MMFilesRevisionsCache::update(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) {
-  TRI_ASSERT(revisionId != 0);
+void MMFilesRevisionsCache::update(LocalDocumentId const& documentId, 
+                                   uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) {
+  TRI_ASSERT(documentId.isSet());
   TRI_ASSERT(dataptr != nullptr);
 
   WRITE_LOCKER(locker, _lock);
   
-  MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, &revisionId);
-  if (old == nullptr) {
+  MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, documentId.data());
+  TRI_ASSERT(old != nullptr);
+
+  if (!(*old)) {
     return;
   }
      
@@ -130,15 +124,18 @@ void MMFilesRevisionsCache::update(TRI_voc_rid_t revisionId, uint8_t const* data
   old->fid(fid, isInWal); 
 }
   
-bool MMFilesRevisionsCache::updateConditional(TRI_voc_rid_t revisionId, MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition, TRI_voc_fid_t newFid, bool isInWal) {
+bool MMFilesRevisionsCache::updateConditional(LocalDocumentId const& documentId,
+                                              MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition, TRI_voc_fid_t newFid, bool isInWal) {
   WRITE_LOCKER(locker, _lock);
 
-  MMFilesDocumentPosition old = _positions.findByKey(nullptr, &revisionId);
-  if (!old) {
+  MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, documentId.data());
+  TRI_ASSERT(old != nullptr);
+
+  if (!(*old)) {
     return false;
   }
      
-  uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
+  uint8_t const* vpack = static_cast<uint8_t const*>(old->dataptr());
   TRI_ASSERT(vpack != nullptr);
 
   MMFilesMarker const* markerPtr = reinterpret_cast<MMFilesMarker const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
@@ -148,27 +145,22 @@ bool MMFilesRevisionsCache::updateConditional(TRI_voc_rid_t revisionId, MMFilesM
     return false;
   }
   
-  _positions.removeByKey(nullptr, &revisionId);
-
-  old.dataptr(reinterpret_cast<char const*>(newPosition) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
-  old.fid(newFid, isInWal); 
-
-  _positions.insert(nullptr, old);
+  old->dataptr(reinterpret_cast<char const*>(newPosition) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+  old->fid(newFid, isInWal); 
   
   return true;
 }
    
-void MMFilesRevisionsCache::remove(TRI_voc_rid_t revisionId) {
-  TRI_ASSERT(revisionId != 0);
+void MMFilesRevisionsCache::remove(LocalDocumentId const& documentId) {
+  TRI_ASSERT(documentId.isSet());
 
   WRITE_LOCKER(locker, _lock);
-  _positions.removeByKey(nullptr, &revisionId);
+  _positions.removeByKey(nullptr, documentId.data());
 }
 
-MMFilesDocumentPosition MMFilesRevisionsCache::fetchAndRemove(TRI_voc_rid_t revisionId) {
-  TRI_ASSERT(revisionId != 0);
+MMFilesDocumentPosition MMFilesRevisionsCache::fetchAndRemove(LocalDocumentId const& documentId) {
+  TRI_ASSERT(documentId.isSet());
 
   WRITE_LOCKER(locker, _lock);
-  return _positions.removeByKey(nullptr, &revisionId);
+  return _positions.removeByKey(nullptr, documentId.data());
 }
-

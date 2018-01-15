@@ -72,7 +72,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static const uint64_t minLogSize;
 
  public:
-  Cache(ConstructionGuard guard, Manager* manager, uint64_t id, Metadata metadata,
+  Cache(ConstructionGuard guard, Manager* manager, uint64_t id, Metadata&& metadata,
         std::shared_ptr<Table> table, bool enableWindowedStats,
         std::function<Table::BucketClearer(Metadata*)> bucketClearer,
         size_t slotsPerBucket);

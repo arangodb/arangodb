@@ -47,7 +47,9 @@ using namespace arangodb;
 
 PhysicalCollection::PhysicalCollection(LogicalCollection* collection,
                                        VPackSlice const& info)
-    : _logicalCollection(collection), _indexes() {}
+  : _logicalCollection(collection),
+    _isDBServer(ServerState::instance()->isDBServer()),
+    _indexes() {}
 
 void PhysicalCollection::figures(
     std::shared_ptr<arangodb::velocypack::Builder>& builder) {
@@ -87,14 +89,17 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(
   }
   return nullptr;
 }
+  
+TRI_voc_rid_t PhysicalCollection::newRevisionId() const {
+  return TRI_HybridLogicalClock();
+}
 
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
-
 void PhysicalCollection::mergeObjectsForUpdate(
     transaction::Methods* trx, VPackSlice const& oldValue,
-    VPackSlice const& newValue, bool isEdgeCollection, std::string const& rev,
-    bool mergeObjects, bool keepNull, VPackBuilder& b) const {
+    VPackSlice const& newValue, bool isEdgeCollection, LocalDocumentId const& documentId,
+    bool mergeObjects, bool keepNull, VPackBuilder& b, bool isRestore, TRI_voc_rid_t& revisionId) const {
   b.openObject();
 
   VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
@@ -158,7 +163,22 @@ void PhysicalCollection::mergeObjectsForUpdate(
   }
 
   // _rev
-  b.add(StaticStrings::RevString, VPackValue(rev));
+  bool handled = false;
+  if (isRestore) {
+    // copy revision id verbatim
+    VPackSlice s = newValue.get(StaticStrings::RevString);
+    if (s.isString()) {
+      b.add(StaticStrings::RevString, s);
+      VPackValueLength l;
+      char const* p = s.getString(l);
+      revisionId = TRI_StringToRid(p, l, false);
+      handled = true;
+    }
+  }
+  if (!handled) {
+    revisionId = newRevisionId();
+    b.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+  }
 
   // add other attributes after the system attributes
   {
@@ -223,8 +243,8 @@ void PhysicalCollection::mergeObjectsForUpdate(
 int PhysicalCollection::newObjectForInsert(
     transaction::Methods* trx, VPackSlice const& value,
     VPackSlice const& fromSlice, VPackSlice const& toSlice,
-    bool isEdgeCollection, VPackBuilder& builder, bool isRestore) const {
-  TRI_voc_tick_t newRev = 0;
+    LocalDocumentId const& documentId, bool isEdgeCollection, 
+    VPackBuilder& builder, bool isRestore, TRI_voc_rid_t& revisionId) const {
   builder.openObject();
 
   // add system attributes first, in this order:
@@ -234,7 +254,6 @@ int PhysicalCollection::newObjectForInsert(
   VPackSlice s = value.get(StaticStrings::KeyString);
   if (s.isNone()) {
     TRI_ASSERT(!isRestore);  // need key in case of restore
-    newRev = TRI_HybridLogicalClock();
     std::string keyString =
         _logicalCollection->keyGenerator()->generate();
     if (keyString.empty()) {
@@ -259,7 +278,7 @@ int PhysicalCollection::newObjectForInsert(
   uint8_t* p = builder.add(StaticStrings::IdString,
                            VPackValuePair(9ULL, VPackValueType::Custom));
   *p++ = 0xf3;  // custom type for _id
-  if (trx->state()->isDBServer() && !_logicalCollection->isSystem()) {
+  if (_isDBServer && !_logicalCollection->isSystem()) {
     // db server in cluster, note: the local collections _statistics,
     // _statisticsRaw and _statistics15 (which are the only system
     // collections)
@@ -281,27 +300,22 @@ int PhysicalCollection::newObjectForInsert(
   }
 
   // _rev
-  std::string newRevSt;
+  bool handled = false;
   if (isRestore) {
-    VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(value);
-    if (!oldRev.isString()) {
-      return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
+    // copy revision id verbatim
+    s = value.get(StaticStrings::RevString);
+    if (s.isString()) {
+      builder.add(StaticStrings::RevString, s);
+      VPackValueLength l;
+      char const* p = s.getString(l);
+      revisionId = TRI_StringToRid(p, l, false);
+      handled = true;
     }
-    bool isOld;
-    VPackValueLength l;
-    char const* p = oldRev.getString(l);
-    TRI_voc_rid_t oldRevision = TRI_StringToRid(p, l, isOld, false);
-    if (isOld || oldRevision == UINT64_MAX) {
-      oldRevision = TRI_HybridLogicalClock();
-    }
-    newRevSt = TRI_RidToString(oldRevision);
-  } else {
-    if (newRev == 0) {
-      newRev = TRI_HybridLogicalClock();
-    }
-    newRevSt = TRI_RidToString(newRev);
   }
-  builder.add(StaticStrings::RevString, VPackValue(newRevSt));
+  if (!handled) {
+    revisionId = newRevisionId();
+    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+  }
 
   // add other attributes after the system attributes
   TRI_SanitizeObjectWithEdges(value, builder);
@@ -313,8 +327,9 @@ int PhysicalCollection::newObjectForInsert(
 /// @brief new object for remove, must have _key set
 void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
                                             VPackSlice const& oldValue,
-                                            std::string const& rev,
-                                            VPackBuilder& builder) const {
+                                            LocalDocumentId const& documentId,
+                                            VPackBuilder& builder,
+                                            bool isRestore, TRI_voc_rid_t& revisionId) const {
   // create an object consisting of _key and _rev (in this order)
   builder.openObject();
   if (oldValue.isString()) {
@@ -324,7 +339,8 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
     TRI_ASSERT(s.isString());
     builder.add(StaticStrings::KeyString, s);
   }
-  builder.add(StaticStrings::RevString, VPackValue(rev));
+  revisionId = newRevisionId();
+  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
   builder.close();
 }
 
@@ -333,8 +349,8 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
 void PhysicalCollection::newObjectForReplace(
     transaction::Methods* trx, VPackSlice const& oldValue,
     VPackSlice const& newValue, VPackSlice const& fromSlice,
-    VPackSlice const& toSlice, bool isEdgeCollection, std::string const& rev,
-    VPackBuilder& builder) const {
+    VPackSlice const& toSlice, bool isEdgeCollection, LocalDocumentId const& documentId,
+    VPackBuilder& builder, bool isRestore, TRI_voc_rid_t& revisionId) const {
   builder.openObject();
 
   // add system attributes first, in this order:
@@ -359,7 +375,22 @@ void PhysicalCollection::newObjectForReplace(
   }
 
   // _rev
-  builder.add(StaticStrings::RevString, VPackValue(rev));
+  bool handled = false;
+  if (isRestore) {
+    // copy revision id verbatim
+    s = newValue.get(StaticStrings::RevString);
+    if (s.isString()) {
+      builder.add(StaticStrings::RevString, s);
+      VPackValueLength l;
+      char const* p = s.getString(l);
+      revisionId = TRI_StringToRid(p, l, false);
+      handled = true;
+    }
+  }
+  if (!handled) {
+    revisionId = newRevisionId();
+    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+  }
 
   // add other attributes after the system attributes
   TRI_SanitizeObjectWithEdges(newValue, builder);
@@ -384,11 +415,14 @@ PhysicalCollection::getIndexes() const {
   return _indexes;
 }
 
-void PhysicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures,
-                                         bool forPersistence) const {
+void PhysicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures, bool forPersistence, 
+                                         std::function<bool(arangodb::Index const*)> const& filter) const {
   READ_LOCKER(guard, _indexesLock);
   result.openArray();
   for (auto const& idx : _indexes) {
+    if (!filter(idx.get())) {
+      continue;
+    }
     idx->toVelocyPack(result, withFigures, forPersistence);
   }
   result.close();

@@ -25,13 +25,11 @@
 #ifndef ARANGOD_AQL_INDEX_BLOCK_H
 #define ARANGOD_AQL_INDEX_BLOCK_H 1
 
-#include "Aql/BlockCollector.h"
 #include "Aql/DocumentProducingBlock.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexNode.h"
 #include "Indexes/IndexIterator.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
 
 namespace arangodb {
 class ManagedDocumentResult;

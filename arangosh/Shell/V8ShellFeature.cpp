@@ -27,6 +27,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/terminal-utils.h"
 #include "Basics/Utf8Helper.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -43,6 +44,10 @@
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+
+extern "C" {
+#include <linenoise.h>
+}
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -146,9 +151,6 @@ void V8ShellFeature::start() {
 }
 
 void V8ShellFeature::unprepare() {
-  // turn off memory allocation failures before we move into V8 code
-  TRI_DisallowMemoryFailures();
-
   {
     v8::Locker locker{_isolate};
 
@@ -185,9 +187,6 @@ void V8ShellFeature::unprepare() {
   }
   
   _isolate->Dispose();
-  
-  // turn on memory allocation failures again
-  TRI_AllowMemoryFailures();
 }
 
 bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
@@ -344,8 +343,10 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
   bool const isBatch = isatty(STDIN_FILENO) == 0;
   bool lastEmpty = isBatch;
+  double lastDuration = 0.0;
 
   while (true) {
+    _console->setLastDuration(lastDuration);
     _console->setPromptError(promptError);
     auto prompt = _console->buildPrompt(client);
 
@@ -360,6 +361,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     if (input.empty()) {
       promptError = false;
       lastEmpty = true;
+      lastDuration = 0.0;
       continue;
     }
     lastEmpty = isBatch;
@@ -387,9 +389,12 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
     // execute command and register its result in __LAST__
     v8LineEditor.setExecutingCommand(true);
+    double t1 = TRI_microtime();
 
     v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(
         _isolate, context, TRI_V8_STD_STRING(_isolate, input), name, true);
+
+    lastDuration = TRI_microtime() - t1;
 
     v8LineEditor.setExecutingCommand(false);
 
@@ -767,6 +772,34 @@ static void JS_StopOutputPager(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief start the invasion
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_StartFlux(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+  V8ShellFeature* shell = static_cast<V8ShellFeature*>(wrap->Value());
+  
+  linenoiseEnableRawMode();
+  TRI_SetStdinVisibility(false);
+  TRI_DEFER(
+            linenoiseDisableRawMode();
+            TRI_SetStdinVisibility(true););
+  
+  
+  auto path = FileUtils::buildFilename(shell->startupDirectory(),
+                                       "contrib/flux/flux.js");
+
+  TRI_ExecuteGlobalJavaScriptFile(isolate, path.c_str(), true);
+  
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -926,6 +959,12 @@ void V8ShellFeature::initGlobals() {
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_STOP_PAGER"),
       v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, console)
           ->GetFunction());
+  
+  v8::Local<v8::Value> shell = v8::External::New(_isolate, this);
+  TRI_AddGlobalVariableVocbase(
+       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_START_FLUX"),
+       v8::FunctionTemplate::New(_isolate, JS_StartFlux, shell)
+       ->GetFunction());
 }
 
 void V8ShellFeature::initMode(ShellFeature::RunMode runMode,

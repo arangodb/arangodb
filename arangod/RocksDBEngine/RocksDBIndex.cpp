@@ -120,7 +120,6 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 void RocksDBIndex::load() {
   if (_cacheEnabled) {
     createCache();
-    TRI_ASSERT(_cachePresent);
   }
 }
 
@@ -145,6 +144,7 @@ void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 
 void RocksDBIndex::createCache() {
   if (!_cacheEnabled || _cachePresent ||
+      _collection->isAStub() ||
       ServerState::instance()->isCoordinator()) {
     // we leave this if we do not need the cache
     // or if cache already created
@@ -176,11 +176,11 @@ void RocksDBIndex::destroyCache() {
   TRI_ASSERT(_cacheEnabled);
 }
 
-void RocksDBIndex::serializeEstimate(std::string&) const {
+void RocksDBIndex::serializeEstimate(std::string&, uint64_t) const {
   // All indexes that do not have an estimator do not serialize anything.
 }
 
-bool RocksDBIndex::deserializeEstimate(RocksDBCounterManager*) {
+bool RocksDBIndex::deserializeEstimate(RocksDBSettingsManager*) {
   // All indexes that do not have an estimator do not deserialize anything.
   // So the estimate is always recreatable.
   // We do not advance anything here.
@@ -198,7 +198,7 @@ int RocksDBIndex::drop() {
   bool prefix_same_as_start = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
   arangodb::Result r = rocksutils::removeLargeRange(
     rocksutils::globalRocksDB(), this->getBounds(), prefix_same_as_start);
-  
+
   // Try to drop the cache as well.
   if (_cachePresent) {
     try {
@@ -210,36 +210,48 @@ int RocksDBIndex::drop() {
     } catch (...) {
     }
   }
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   //check if documents have been deleted
   size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(),
                                              this->getBounds(), prefix_same_as_start);
   if (numDocs > 0) {
-    
+
     std::string errorMsg("deletion check in index drop failed - not all documents in the index have been deleted. remaining: ");
     errorMsg.append(std::to_string(numDocs));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
   }
 #endif
-  
+
   return r.errorNumber();
 }
 
-Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,
-                      TRI_voc_rid_t oldRevision,
-                      arangodb::velocypack::Slice const& oldDoc,
-                      TRI_voc_rid_t newRevision,
-                                    arangodb::velocypack::Slice const& newDoc) {
-  Result res = removeInternal(trx, mthd, oldRevision, oldDoc);
-  if (!res.ok()) {
-      return res;
+int RocksDBIndex::afterTruncate() {
+  // simply drop the cache and re-create it
+  if (_cacheEnabled) {
+    destroyCache();
+    createCache();
+    TRI_ASSERT(_cachePresent);
   }
-  return insertInternal(trx, mthd, newRevision, newDoc);
+  return TRI_ERROR_NO_ERROR;
+}
+
+Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,
+                                    LocalDocumentId const& oldDocumentId,
+                                    arangodb::velocypack::Slice const& oldDoc,
+                                    LocalDocumentId const& newDocumentId,
+                                    arangodb::velocypack::Slice const& newDoc,
+                                    OperationMode mode) {
+  Result res = removeInternal(trx, mthd, oldDocumentId, oldDoc, mode);
+  if (!res.ok()) {
+    return res;
+  }
+  return insertInternal(trx, mthd, newDocumentId, newDoc, mode);
 }
 
 void RocksDBIndex::truncate(transaction::Methods* trx) {
   auto* mthds = RocksDBTransactionState::toMethods(trx);
+  auto state = RocksDBTransactionState::toState(trx);
   RocksDBKeyBounds indexBounds = getBounds(type(), _objectId, _unique);
 
   rocksdb::ReadOptions options = mthds->readOptions();
@@ -259,6 +271,15 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
 
+    // report size of key
+    RocksDBOperationResult result = state->addInternalOperation(
+        0, iter->key().size());
+
+    // transaction size limit reached -- fail
+    if (result.fail()) {
+      THROW_ARANGO_EXCEPTION(result);
+    }
+
     Result r = mthds->Delete(_cf, RocksDBKey(iter->key()));
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
@@ -271,7 +292,7 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
 
     iter->Next();
   }
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   //check if index entries have been deleted
   if (type() != TRI_IDX_TYPE_GEO1_INDEX && type() != TRI_IDX_TYPE_GEO2_INDEX) {
@@ -303,16 +324,18 @@ size_t RocksDBIndex::memory() const {
 void RocksDBIndex::cleanup() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::CompactRangeOptions opts;
-  RocksDBKeyBounds bounds = this->getBounds();
-  TRI_ASSERT(_cf == bounds.columnFamily());
-  rocksdb::Slice b = bounds.start(), e = bounds.end();
-  db->CompactRange(opts, _cf, &b, &e);
+  if (_cf != RocksDBColumnFamily::invalid()) {
+    RocksDBKeyBounds bounds = this->getBounds();
+    TRI_ASSERT(_cf == bounds.columnFamily());
+    rocksdb::Slice b = bounds.start(), e = bounds.end();
+    db->CompactRange(opts, _cf, &b, &e);
+  }
 }
 
 Result RocksDBIndex::postprocessRemove(transaction::Methods* trx,
                                        rocksdb::Slice const& key,
                                        rocksdb::Slice const& value) {
-  return {TRI_ERROR_NO_ERROR};
+  return Result();
 }
 
 // blacklist given key from transactional cache
@@ -351,8 +374,16 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
     case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_GEO2_INDEX:
       return RocksDBKeyBounds::GeoIndex(objectId);
+#ifdef USE_IRESEARCH
+    case RocksDBIndex::TRI_IDX_TYPE_IRESEARCH_LINK:
+      return RocksDBKeyBounds::Empty();
+#endif
     case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+}
+
+std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> RocksDBIndex::estimator() const {
+  return std::make_pair(nullptr, 0);
 }

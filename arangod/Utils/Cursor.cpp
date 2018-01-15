@@ -59,7 +59,7 @@ VelocyPackCursor::VelocyPackCursor(TRI_vocbase_t* vocbase, CursorId id,
                                    std::shared_ptr<VPackBuilder> extra,
                                    double ttl, bool hasCount)
     : Cursor(id, batchSize, extra, ttl, hasCount),
-      _vocbaseGuard(vocbase),
+      _guard(vocbase),
       _result(std::move(result)),
       _iterator(_result.result->slice()),
       _cached(_result.cached) {
@@ -100,7 +100,7 @@ void VelocyPackCursor::dump(VPackBuilder& builder) {
     // reserve an arbitrary number of bytes for the result to save
     // some reallocs
     // (not accurate, but the actual size is unknown anyway)
-    builder.buffer()->reserve(num * 32);
+    builder.reserve(num * 32);
 
     VPackOptions const* oldOptions = builder.options;
 

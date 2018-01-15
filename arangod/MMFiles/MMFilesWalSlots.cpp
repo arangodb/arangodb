@@ -224,7 +224,7 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_vo
               return MMFilesWalSlotInfo(res);
             }
 
-            usleep(10 * 1000);
+            std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
             // try again in next iteration
           } else {
             TRI_ASSERT(_logfile != nullptr);
@@ -559,7 +559,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
           // new one
           _logfile = nullptr;
 
-          // fall-through intentional
+          // intentionally falls through
         }
 
         TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
@@ -578,7 +578,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
             return res;
           }
 
-          usleep(10 * 1000);
+          std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
           // try again in next iteration
         } else {
           TRI_ASSERT(_logfile != nullptr);
@@ -635,7 +635,7 @@ int MMFilesWalSlots::writeHeader(MMFilesWalSlot* slot) {
   TRI_ASSERT(_logfile != nullptr);
 
   MMFilesDatafileHeaderMarker header = MMFilesDatafileHelper::CreateHeaderMarker(
-    static_cast<TRI_voc_size_t>(_logfile->allocatedSize()), 
+    static_cast<uint32_t>(_logfile->allocatedSize()), 
     static_cast<TRI_voc_fid_t>(_logfile->id())
   );
   size_t const size = header.base.getSize();

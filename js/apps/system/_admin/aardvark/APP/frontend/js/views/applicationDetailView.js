@@ -1,5 +1,5 @@
 /* jshint browser: true */
-/* global Backbone, $, window, ace, arangoHelper, templateEngine, Joi, _ */
+/* global Backbone, $, window, ace, arangoHelper, CryptoJS, templateEngine, Joi, _ */
 (function () {
   'use strict';
 
@@ -397,7 +397,7 @@
     applyConfig: function () {
       var cfg = {};
       _.each(this.model.get('config'), function (opt, key) {
-        var $el = $('#app_config_' + key);
+        var $el = $('#app_config_' + CryptoJS.MD5(key).toString());
         var val = $el.val();
         if (opt.type === 'boolean' || opt.type === 'bool') {
           cfg[key] = $el.is(':checked');
@@ -479,8 +479,9 @@
             msg: 'This field is required.'
           });
         }
+        console.log(name);
         return window.modalView[methodName](
-          'app_config_' + name,
+          'app_config_' + CryptoJS.MD5(name).toString(),
           name,
           currentValue,
           obj.description,

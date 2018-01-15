@@ -37,6 +37,9 @@
     * [Collection Methods](DataModeling/Documents/DocumentMethods.md)
     * [Database Methods](DataModeling/Documents/DatabaseMethods.md)
   * [Graphs, Vertices & Edges](DataModeling/GraphsVerticesEdges.md)
+  * [Views](DataModeling/Views/README.md)
+    * [Database Methods](DataModeling/Views/DatabaseMethods.md)
+    * [View Methods](DataModeling/Views/ViewMethods.md)
   * [Naming Conventions](DataModeling/NamingConventions/README.md)
     * [Database Names](DataModeling/NamingConventions/DatabaseNames.md)
     * [Collection Names](DataModeling/NamingConventions/CollectionNames.md)
@@ -68,6 +71,13 @@
   * [Working with Edges](Graphs/Edges/README.md)
   * [Pregel](Graphs/Pregel/README.md)
 #
+
+#
+* [Views](Views/README.md)
+#
+  * [IResearch](Views/IResearch.md)
+    * [Analyzers](Views/IResearch/Analyzers.md)
+
 * [Foxx Microservices](Foxx/README.md)
   * [At a glance](Foxx/AtAGlance.md)
   * [Getting started](Foxx/GettingStarted.md)
@@ -126,6 +136,7 @@
   * [Single instance](Deployment/Single.md)
   * [Cluster: Mesos, DC/OS](Deployment/Mesos.md)
   * [Cluster: Generic & Docker](Deployment/ArangoDBStarter.md)
+  * [Multiple Datacenters](Deployment/DC2DC.md)
   * [Advanced Topics](Deployment/Advanced.md)
     * [Standalone Agency](Deployment/Agency.md)
     * [Cluster: Local test setups](Deployment/Local.md)
@@ -148,7 +159,7 @@
     * [Configuration](Administration/Arangosh/Configuration.md)
     # relocate file?
     * [Details](GettingStarted/Arangosh.md)
-  * [Arangoimp](Administration/Arangoimp.md)
+  * [Arangoimport](Administration/Arangoimport.md)
   * [Arangodump](Administration/Arangodump.md)
   * [Arangorestore](Administration/Arangorestore.md)
   * [Arangoexport](Administration/Arangoexport.md)
@@ -162,6 +173,7 @@
     * [Logging Options](Administration/Configuration/Logging.md)
     * [General Options](Administration/Configuration/GeneralArangod.md)
     * [Write-Ahead Log Options](Administration/Configuration/Wal.md)
+    * [Compaction Options](Administration/Configuration/Compaction.md)
     * [Cluster Options](Administration/Configuration/Cluster.md)
     * [RocksDB Engine Options](Administration/Configuration/RocksDB.md)
     * [Hash Cache Options](Administration/Configuration/Cache.md)
@@ -174,7 +186,8 @@
   * [Replication](Administration/Replication/README.md)
     * [Asynchronous Replication](Administration/Replication/Asynchronous/README.md)
       * [Components](Administration/Replication/Asynchronous/Components.md)
-      * [Example Setup](Administration/Replication/Asynchronous/ExampleSetup.md)
+      * [Per-Database Setup](Administration/Replication/Asynchronous/DatabaseSetup.md)
+      * [Server-Level Setup](Administration/Replication/Asynchronous/ServerLevelSetup.md)
       * [Syncing Collections](Administration/Replication/Asynchronous/SyncingCollections.md)
       * [Replication Limitations](Administration/Replication/Asynchronous/Limitations.md)
     * [Synchronous Replication](Administration/Replication/Synchronous/README.md)
@@ -185,6 +198,7 @@
 #    * [Authentication](Administration/Sharding/Authentication.md)
 #    * [Firewall setup](Administration/Sharding/FirewallSetup.md)
   * [Upgrading](Administration/Upgrading/README.md)
+    * [Upgrading to 3.3](Administration/Upgrading/Upgrading33.md)
     * [Upgrading to 3.2](Administration/Upgrading/Upgrading32.md)
     * [Upgrading to 3.1](Administration/Upgrading/Upgrading31.md)
     * [Upgrading to 3.0](Administration/Upgrading/Upgrading30.md)
@@ -207,6 +221,8 @@
 #  * [Server Internals](Architecture/ServerInternals.md)
 #
 * [Release notes](ReleaseNotes/README.md)
+  * [Whats New in 3.3](ReleaseNotes/NewFeatures33.md)
+  * [Incompatible changes in 3.3](ReleaseNotes/UpgradingChanges33.md)
   * [Whats New in 3.2](ReleaseNotes/NewFeatures32.md)
   * [Known Issues in 3.2](ReleaseNotes/KnownIssues32.md)
   * [Incompatible changes in 3.2](ReleaseNotes/UpgradingChanges32.md)

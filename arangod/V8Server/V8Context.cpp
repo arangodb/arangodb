@@ -57,23 +57,28 @@ void V8Context::lockAndEnter() {
   TRI_ASSERT(_locker == nullptr);
   _locker = new v8::Locker(_isolate);
   _isolate->Enter();
-      
-  TRI_ASSERT(_locker->IsLocked(_isolate));
-  TRI_ASSERT(v8::Locker::IsLocked(_isolate));
+     
+  assertLocked(); 
 
   ++_invocations;
   ++_invocationsSinceLastGc;
 }
 
 void V8Context::unlockAndExit() {
-  TRI_ASSERT(_locker != nullptr);
-  TRI_ASSERT(_isolate != nullptr);
+  assertLocked();
   
   _isolate->Exit();
   delete _locker;
   _locker = nullptr;
   
   TRI_ASSERT(!v8::Locker::IsLocked(_isolate));
+}
+
+void V8Context::assertLocked() const {
+  TRI_ASSERT(_locker != nullptr);
+  TRI_ASSERT(_isolate != nullptr);
+  TRI_ASSERT(_locker->IsLocked(_isolate));
+  TRI_ASSERT(v8::Locker::IsLocked(_isolate));
 }
   
 bool V8Context::hasGlobalMethodsQueued() {
@@ -178,7 +183,7 @@ void V8Context::handleGlobalContextMethods() {
 void V8Context::handleCancelationCleanup() {
   v8::HandleScope scope(_isolate);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "executing cancelation cleanup context " << _id;
+  LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "executing cancelation cleanup context #" << _id;
 
   try {
     TRI_ExecuteJavaScriptString(

@@ -33,18 +33,12 @@
 // .............................................................................
 
 typedef enum {
-  TRI_WIN_FINAL_SET_INVALID_HANLE_HANDLER,
-  TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL
-} TRI_win_finalize_e;
-
-typedef enum {
   TRI_WIN_INITIAL_SET_DEBUG_FLAG,
   TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER,
   TRI_WIN_INITIAL_SET_MAX_STD_IO,
   TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL
 } TRI_win_initialize_e;
 
-int finalizeWindows(const TRI_win_finalize_e, char const*);
 int initializeWindows(const TRI_win_initialize_e, char const*);
 
 void ADB_WindowsEntryFunction();
@@ -75,21 +69,6 @@ int TRI_createFile(char const* filename, int openFlags, int modeFlags);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_OPEN_WIN32(char const* filename, int openFlags);
-
-// .............................................................................
-// the sleep function in windows is for milliseconds, on linux it is for seconds
-// this provides a translation
-// .............................................................................
-
-void TRI_sleep(unsigned long);
-
-// .............................................................................
-// there is no usleep (micro sleep) in windows, so we create one here
-// This is only a Windows workaround, use usleep, which is mapped to 
-// TRI_usleep on Windows!
-// .............................................................................
-
-void TRI_usleep(unsigned long);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a Windows error to a *nix system error
@@ -151,5 +130,9 @@ int _is_cyg_tty(int fd);
 ////////////////////////////////////////////////////////////////////////////////
 bool terminalKnowsANSIColors();
 
+////////////////////////////////////////////////////////////////////////////////
+// returns returns the filename in conjunction with a handle
+////////////////////////////////////////////////////////////////////////////////
+std::string getFileNameFromHandle(HANDLE fileHandle);
 
 #endif

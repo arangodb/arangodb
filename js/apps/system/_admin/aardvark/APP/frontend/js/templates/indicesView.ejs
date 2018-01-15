@@ -38,6 +38,7 @@
                 <th class="collectionTh">Type:</th>
                 <th class="">
                   <select id="newIndexType">
+                    <option style="display: none" disabled selected value="unknown"> -- select an index -- </option>
                     <% if (supported.indexOf('geo') > -1) { %> 
                       <option value="Geo">Geo Index</option>
                     <% } %> 
