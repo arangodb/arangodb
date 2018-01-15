@@ -363,7 +363,7 @@ SECTION("test_defaults") {
   // new view definition with links (not supported for link creation)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101, \"properties\": { \"links\": { \"testCollection\": {} } } }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"properties\": { \"links\": { \"testCollection\": {} } } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());CHECK((nullptr != logicalCollection));
@@ -386,7 +386,7 @@ SECTION("test_drop") {
   std::string dataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme")).utf8();
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"iresearch\", \
+    \"type\": \"arangosearch\", \
     \"properties\": { \
       \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
     } \
@@ -419,7 +419,7 @@ SECTION("test_drop_with_link") {
   std::string dataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme")).utf8();
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"iresearch\", \
+    \"type\": \"arangosearch\", \
     \"properties\": { \
       \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
     } \
@@ -782,7 +782,7 @@ SECTION("test_move_datapath") {
   auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"iresearch\", \
+    \"type\": \"arangosearch\", \
     \"properties\": { \
       \"dataPath\": \"" + arangodb::basics::StringUtils::replace(createDataPath, "\\", "/") + "\" \
     } \
@@ -878,7 +878,7 @@ SECTION("test_open") {
 SECTION("test_query") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"iresearch\" \
+    \"type\": \"arangosearch\" \
   }");
   static std::vector<std::string> const EMPTY;
   arangodb::aql::AstNode noop(arangodb::aql::AstNodeType::NODE_TYPE_FILTER);
@@ -994,7 +994,7 @@ SECTION("test_query") {
   {
     auto dataPath = arangodb::basics::StringUtils::replace(((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme")).utf8(), "\\", "/");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"properties\": { \"dataPath\": \"" + dataPath + "\" } }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"dataPath\": \"" + dataPath + "\" } }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }");
     auto* feature = arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
     REQUIRE(feature);
@@ -1053,8 +1053,8 @@ SECTION("test_register_link") {
   PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
-  auto viewJson0 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101 }");
-  auto viewJson1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101, \"properties\": { \"collections\": [ 100 ] } }");
+  auto viewJson0 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
+  auto viewJson1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"properties\": { \"collections\": [ 100 ] } }");
   auto linkJson  = arangodb::velocypack::Parser::fromJson("{ \"view\": 101 }");
 
   // new link in recovery
@@ -1204,7 +1204,7 @@ SECTION("test_unregister_link") {
   PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
-  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101, \"properties\": { } }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"properties\": { } }");
 
   // link removed before view (in recovery)
   {
@@ -1453,7 +1453,7 @@ SECTION("test_self_token") {
 
 SECTION("test_tracked_cids") {
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
-  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101, \"properties\": { } }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"properties\": { } }");
 
   // test empty before open (TRI_vocbase_t::createView(...) will call open())
   {
@@ -1537,7 +1537,7 @@ SECTION("test_tracked_cids") {
   {
     // initial populate persisted view
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 102, \"properties\": { } }");
+      auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 102, \"properties\": { } }");
       auto* feature = arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
       REQUIRE(feature);
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -1559,7 +1559,7 @@ SECTION("test_tracked_cids") {
 
     // test persisted CIDs on open
     {
-      auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 102, \"properties\": { } }");
+      auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 102, \"properties\": { } }");
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
       auto logicalView = vocbase.createView(createJson->slice(), 0);
       REQUIRE((false == !logicalView));
@@ -1637,7 +1637,7 @@ SECTION("test_tracked_cids") {
 SECTION("test_transaction_registration") {
   auto collectionJson0 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
   auto collectionJson1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
-  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\" }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   auto* logicalCollection0 = vocbase.createCollection(collectionJson0->slice());
   REQUIRE((nullptr != logicalCollection0));
@@ -1919,7 +1919,7 @@ SECTION("test_transaction_registration") {
 SECTION("test_update_overwrite") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"iresearch\" \
+    \"type\": \"arangosearch\" \
   }");
 
   // modify meta params
@@ -1939,7 +1939,7 @@ SECTION("test_update_overwrite") {
         \"threadsMaxTotal\": 20 \
       }");
 
-      expectedMeta._dataPath = std::string("iresearch-") + std::to_string(logicalView->id());
+      expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
       expectedMeta._locale = irs::locale_utils::locale("en", true);
       expectedMeta._threadsMaxIdle = 10;
       expectedMeta._threadsMaxTotal = 20;
@@ -1969,7 +1969,7 @@ SECTION("test_update_overwrite") {
         \"locale\": \"ru\" \
       }");
 
-      expectedMeta._dataPath = std::string("iresearch-") + std::to_string(logicalView->id());
+      expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
       expectedMeta._locale = irs::locale_utils::locale("ru", true);
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
@@ -2014,7 +2014,7 @@ SECTION("test_update_overwrite") {
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
       expectedMeta._collections.insert(logicalCollection0->cid());
-      expectedMeta._dataPath = std::string("iresearch-") + std::to_string(logicalView->id());
+      expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
       expectedLinkMeta["testCollection0"]; // use defaults
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -2062,7 +2062,7 @@ SECTION("test_update_overwrite") {
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
       expectedMeta._collections.insert(logicalCollection1->cid());
-      expectedMeta._dataPath = std::string("iresearch-") + std::to_string(logicalView->id());
+      expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
       expectedLinkMeta["testCollection1"]; // use defaults
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
@@ -2166,7 +2166,7 @@ SECTION("test_update_overwrite") {
 SECTION("test_update_partial") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"iresearch\" \
+    \"type\": \"arangosearch\" \
   }");
   bool persisted = false;
   auto before = PhysicalViewMock::before;
@@ -2188,7 +2188,7 @@ SECTION("test_update_partial") {
       \"threadsMaxTotal\": 20 \
     }");
 
-    expectedMeta._dataPath = std::string("iresearch-") + std::to_string(logicalView->id());
+    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
     expectedMeta._locale = irs::locale_utils::locale("en", true);
     expectedMeta._threadsMaxIdle = 10;
     expectedMeta._threadsMaxTotal = 20;
@@ -2229,7 +2229,7 @@ SECTION("test_update_partial") {
       \"threadsMaxTotal\": 20 \
     }");
 
-    expectedMeta._dataPath = std::string("iresearch-") + std::to_string(logicalView->id());
+    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
     CHECK((TRI_ERROR_BAD_PARAMETER == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
     arangodb::velocypack::Builder builder;
@@ -2304,7 +2304,7 @@ SECTION("test_update_partial") {
       }}");
 
     expectedMeta._collections.insert(logicalCollection->cid());
-    expectedMeta._dataPath = std::string("iresearch-") + std::to_string(logicalView->id());
+    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
@@ -2374,7 +2374,7 @@ SECTION("test_update_partial") {
       }}");
 
     expectedMeta._collections.insert(logicalCollection->cid());
-    expectedMeta._dataPath = std::string("iresearch-") + std::to_string(logicalView->id());
+    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
@@ -2425,7 +2425,7 @@ SECTION("test_update_partial") {
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
 
-    expectedMeta._dataPath = std::string("iresearch-") + std::to_string(logicalView->id());
+    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
 
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \
@@ -2525,7 +2525,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
 
     expectedMeta._collections.insert(logicalCollection->cid());
-    expectedMeta._dataPath = std::string("iresearch-") + std::to_string(logicalView->id());
+    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
 
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
@@ -2589,7 +2589,7 @@ SECTION("test_update_partial") {
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
 
-    expectedMeta._dataPath = std::string("iresearch-") + std::to_string(logicalView->id());
+    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
 
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \
@@ -2628,7 +2628,7 @@ SECTION("test_update_partial") {
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
 
-    expectedMeta._dataPath = std::string("iresearch-") + std::to_string(logicalView->id());
+    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
 
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \

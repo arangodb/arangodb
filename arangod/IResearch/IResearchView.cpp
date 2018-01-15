@@ -86,6 +86,11 @@ const irs::string_ref IRESEARCH_STORE_FORMAT("1_0");
 ////////////////////////////////////////////////////////////////////////////////
 const std::string LINKS_FIELD("links");
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the string representing the view type
+////////////////////////////////////////////////////////////////////////////////
+static const std::string& VIEW_TYPE = arangodb::iresearch::IResearchFeature::type();
+
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
@@ -1833,9 +1838,7 @@ bool IResearchView::sync(SyncState& state, size_t maxMsec /*= 0*/) {
 }
 
 /*static*/ std::string const& IResearchView::type() noexcept {
-  static const std::string  type = "iresearch";
-
-  return type;
+  return VIEW_TYPE;
 }
 
 arangodb::Result IResearchView::updateProperties(

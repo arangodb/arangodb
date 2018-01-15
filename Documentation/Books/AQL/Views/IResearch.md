@@ -1,7 +1,7 @@
-IResearch Views in AQL
+ArangoSearch Views in AQL
 ======================
 
-Views of type **iresearch** are an integration layer meant to seamlessly
+Views of type **arangosearch** are an integration layer meant to seamlessly
 integrate with and natively expose the full power of the
 [IResearch library](https://github.com/iresearch-toolkit/iresearch)
 to the ArangoDB user.
@@ -11,8 +11,8 @@ It provides the capability to:
 * filter documents based on AQL boolean expressions and functions
 * sort the resultset based on how closely each document matched the filter
 
-IResearch value analysis
-------------------------
+ArangoSearch value analysis
+---------------------------
 
 A concept of value 'analysis' that is meant to break up a given value into
 a set of sub-values internally tied together by metadata which influences both
@@ -25,9 +25,10 @@ In plain terms this means a user can for example:
 * request documents where the 'name' attribute best matches gender
 * etc... (via custom analyzers described in the next section)
 
-To a limited degree the concept of 'analysis' is even available in non-IResearch
-AQL, e.g. the TOKENS(...) function will utilize the power of IResearch to break
-up a value into an AQL array that can be used anywhere in the AQL query.
+To a limited degree the concept of 'analysis' is even available in
+non-ArangoSearch AQL, e.g. the TOKENS(...) function will utilize the power of
+IResearch to break up a value into an AQL array that can be used anywhere in the
+AQL query.
 
 In plain terms this means a user can match a document attribute when its
 value matches at least one entry from a set,
@@ -37,14 +38,14 @@ e.g. to match docs with 'word == quick' OR 'word == brown' OR 'word == fox'
       FILTER doc.word IN TOKENS('a quick brown fox', 'text_en')
       RETRUN doc
 
-IResearch filters
------------------
+ArangoSearch filters
+--------------------
 
-The basic IReserch functionality can be accessed via common AQL filters and
+The basic ArangoSearch functionality can be accessed via common AQL filters and
 operators, e.g.:
 <br>AND, OR, NOT, ==, <=, >=, <, >, !=, IN \<ARRAY\>, IN \<RANGE\>
 
-However, the full power of IResearch is harnessed and exposed via functions,
+However, the full power of ArangoSearch is harnessed and exposed via functions,
 during both the filter and sort stages.
 
 The supported filter functions are:
@@ -149,11 +150,11 @@ to match documents where 'description' best matches 'a quick brown fox'
       FILTER doc.description IN TOKENS('a quick brown fox', 'text_en')
       RETURN doc
 
-IResearch sort
---------------
+ArangoSearch sort
+-----------------
 
-A major feature of IResearch views is their capability of sorting results based
-on the supplied filter conditions and zero or more sorting functions. The
+A major feature of ArangoSearch views is their capability of sorting results
+based on the supplied filter conditions and zero or more sorting functions. The
 sorting functions are meant to be user-defined.
 
 However out-of-the-box the following functions are provided:

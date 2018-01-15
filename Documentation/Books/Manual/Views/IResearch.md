@@ -40,9 +40,9 @@ the behaviour of the engine.
 To simplify query syntax ArangoDB provides a concept of named analyzers which
 are merely aliases for type+configuration of IResearch analyzers. Management of
 named analyzers is exposed via both REST, GUI and JavaScript APIs, e.g.
-<br>db._globalSettings("iresearch.analyzers")
+<br>db._globalSettings("arangosearch.analyzers")
 
-A user then merely uses these analyzer names in IResearch view configurations
+A user then merely uses these analyzer names in ArangoSearch view configurations
 and AQL queries, e.g.
 
 IResearch provides a 'text' analyzer to analyze human readable text. A required
@@ -61,9 +61,10 @@ Similarly an administrator may choose to deploy a custom DNA analyzer 'DnaSeq':
 The user is then immediately able to run queries with the said analyzer, e.g.
 <br>FILTER doc.dna IN TOKENS('ACGTCGTATGCACTGA', 'DnaSeq')
 
-To a limited degree the concept of 'analysis' is even available in non-IResearch
-AQL, e.g. the TOKENS(...) function will utilize the power of IResearch to break
-up a value into an AQL array that can be used anywhere in the AQL query.
+To a limited degree the concept of 'analysis' is even available in
+non-ArangoSearch AQL, e.g. the TOKENS(...) function will utilize the power of
+IResearch to break up a value into an AQL array that can be used anywhere in
+the AQL query.
 
 In plain terms this means a user can match a document attribute when its
 value matches at least one value form a set, (yes this is independent of doc),
@@ -174,7 +175,7 @@ point in time, so ArangoDB comes with a few default-initialized scores:
   order results based on the
   [TFIDF algorithm](https://en.wikipedia.org/wiki/TF-IDF)
 
-### IResearch is much more than a fulltext search
+### ArangoSearch is much more than a fulltext search
 
 But fulltext searching is a subset of its available functionality, supported via
 the 'text' analyzer and 'tfidf'/'bm25' scorers, without impact to performance
@@ -184,46 +185,46 @@ document attributes.
 ### View datasource
 
 IResearch functionality is exposed through an ArangoDB view API because the
-IResearch view is merely an identity transformation applied onto documents
+ArangoSearch view is merely an identity transformation applied onto documents
 stored in linked collections of the same ArangoDB database. In plain terms an
-IResearch view only allows filtering and sorting of documents located in
+ArangoSearch view only allows filtering and sorting of documents located in
 collections of the same database. The matching documents themselves are returned
 as-is from their corresponding collections.
 
 ### Links to ArangoDB collections
 
 A concept of an ArangoDB collection 'link' is introduced to allow specifying
-which ArangoDB collections a given IResearch View should query for documents and
-how these documents should be queried.
+which ArangoDB collections a given ArangoSearch View should query for documents
+and how these documents should be queried.
 
-An IResearch Link is a uni-directional connection from an ArangoDB collection
-to an IResearch view describing how data coming from the said collection should
-be made available in the given view. Each IResearch Link in an IResearch view is
-uniquely identified by the name of the ArangoDB collection it links to. An
-IResearch view may have zero or more links, each to a distinct ArangoDB
-collection. Similarly an ArangoDB collection may be referenced via links by zero
-or more distinct IResearch views. In plain terms any given IResearch view may be
-linked to any given ArangoDB collection of the same database with zero or at
-most one link. However, any IResearch view may be linked to multiple distinct
-ArangoDB collections and similarly any ArangoDB collection may be referenced by
-multiple IResearch views.
+An ArangoSearch Link is a uni-directional connection from an ArangoDB collection
+to an ArangoSearch view describing how data coming from the said collection
+should be made available in the given view. Each ArangoSearch Link in an
+ArangoSearch view is uniquely identified by the name of the ArangoDB collection
+it links to. An ArangoSearch view may have zero or more links, each to a
+distinct ArangoDB collection. Similarly an ArangoDB collection may be referenced
+via links by zero or more distinct ArangoSearch views. In plain terms any given
+ArangoSearch view may be linked to any given ArangoDB collection of the same
+database with zero or at most one link. However, any ArangoSearch view may be
+linked to multiple distinct ArangoDB collections and similarly any ArangoDB
+collection may be referenced by multiple ArangoSearch views.
 
-To configure an IResearch view for consideration of documents from a given
+To configure an ArangoSearch view for consideration of documents from a given
 ArangoDB collection a link definition must be added to the properties of the
-said IResearch view defining the link parameters as per the section
+said ArangoSearch view defining the link parameters as per the section
 [View definition/modification].
 
 
 ### View definition/modification
 
-An IResearch view is configured via an object containing a set of
+An ArangoSearch view is configured via an object containing a set of
 view-specific configuration directives and a map of link-specific configuration
 directives.
 
 During view creation the following directives apply:
 * id: \<optional\> the desired view identifier
 * name: \<required\> the view name
-* type: \<required\> the value "iresearch"
+* type: \<required\> the value "arangosearch"
 <br>any of the directives from the section [View properties (modifiable)]
 
 During view modification the following directives apply:
@@ -237,12 +238,12 @@ During view modification the following directives apply:
 ### View properties (modifiable)
 
 * commit: \<optional\>(default: use defaults for all values)
-  configure IResearch View commit policy for single-item inserts/removals,
+  configure ArangoSearch View commit policy for single-item inserts/removals,
   e.g. when adding removing documents from a linked ArangoDB collection
 
   * cleanupIntervalStep: \<optional\> (default: 10) (to disable use: 0)
     wait at least this many commits between removing unused files in the
-    IResearch data directory
+    ArangoSearch view data directory
     for the case where the consolidation policies merge segments often (i.e. a
     lot of commit+consolidate), a lower value will cause a lot of disk space to
     be wasted
@@ -306,7 +307,7 @@ During view modification the following directives apply:
       * threshold: <optional> (default: 0.85)
         consolidate IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
 
-* dataPath: <optional> (default: \<ArangoDB database path\>/iresearch-\<view-id\>)
+* dataPath: <optional> (default: \<ArangoDB database path\>/arangosearch-\<view-id\>)
   the filesystem path where to store persisted view metadata
 
 * locale: <optional> (default: 'C')

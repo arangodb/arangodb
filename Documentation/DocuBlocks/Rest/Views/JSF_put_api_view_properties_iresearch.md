@@ -1,8 +1,8 @@
 
 @startDocuBlock JSF_put_api_view_properties_iresearch
-@brief changes properties of an iresearch view
+@brief changes properties of an ArangoSearch view
 
-@RESTHEADER{PUT /_api/view/{view-name}/properties#iresearch, Change properties of an iresearch view}
+@RESTHEADER{PUT /_api/view/{view-name}/properties#iresearch, Change properties of an ArangoSearch view}
 
 @RESTURLPARAMETERS
 
@@ -91,7 +91,7 @@ For the case where there are a few inserts/updates, a higher value will impact p
 commit call without any added benefits.
 
 @RESTBODYPARAM{dataPath,string,optional,string}
-The filesystem path where to store persisted index data (default: *"<ArangoDB database path>/iresearch-<index id>"*).
+The filesystem path where to store persisted view data (default: *"<ArangoDB database path>/arangosearch-<view-id>"*).
 
 @RESTBODYPARAM{locale,string,optional,string}
 The default locale used for queries on analyzed string values (default: *C*).
@@ -113,7 +113,7 @@ On success an object with the following attributes is returned:
 - *id*: The identifier of the view.
 - *name*: The name of the view.
 - *type*: The view type. Valid types are:
-  - iresearch : IResearch view
+  - arangosearch: ArangoSearch view
 - *properties*: The updated properties of the view.
 
 @RESTRETURNCODES
@@ -130,7 +130,7 @@ is returned.
 
 @EXAMPLE_ARANGOSH_RUN{RestIResearchViewPutProperties}
     var viewName = "products";
-    var viewType = "iresearch";
+    var viewType = "arangosearch";
     db._dropView(viewName);
     var view = db._createView(viewName, viewType, {});
     var url = "/_api/view/"+ view.name() + "/properties";

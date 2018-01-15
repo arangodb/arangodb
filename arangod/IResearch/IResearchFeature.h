@@ -34,15 +34,15 @@ class IResearchFeature final : public application_features::ApplicationFeature {
  public:
   static arangodb::LogTopic IRESEARCH;
 
-  static std::string const& name();
-
   explicit IResearchFeature(application_features::ApplicationServer* server);
 
   void beginShutdown() override;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  static std::string const& name();
   void prepare() override;
   void start() override;
   void stop() override;
+  static std::string const& type();
   void unprepare() override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 

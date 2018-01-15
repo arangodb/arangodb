@@ -1,8 +1,8 @@
 
 @startDocuBlock JSF_patch_api_view_properties_iresearch
-@brief partially changes properties of an iresearch view
+@brief partially changes properties of an ArangoSearch view
 
-@RESTHEADER{PATCH /_api/view/{view-name}/properties#iresearch, Partially changes properties of an iresearch view}
+@RESTHEADER{PATCH /_api/view/{view-name}/properties#iresearch, Partially changes properties of an ArangoSearch view}
 
 @RESTURLPARAMETERS
 
@@ -113,7 +113,7 @@ On success an object with the following attributes is returned:
 - *id*: The identifier of the view.
 - *name*: The name of the view.
 - *type*: The view type. Valid types are:
-  - iresearch : IResearch view
+  - arangosearch: ArangoSearch view
 - *properties*: The updated properties of the view.
 
 @RESTRETURNCODES
@@ -130,7 +130,7 @@ is returned.
 
 @EXAMPLE_ARANGOSH_RUN{RestIResearchViewPatchProperties}
     var viewName = "products";
-    var viewType = "iresearch";
+    var viewType = "arangosearch";
     db._dropView(viewName);
     var view = db._createView(viewName, viewType, {});
     var url = "/_api/view/"+ view.name() + "/properties";

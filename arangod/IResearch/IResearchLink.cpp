@@ -23,6 +23,7 @@
 
 #include "ApplicationServerHelper.h"
 #include "IResearchFeature.h"
+#include "VelocyPackHelper.h"
 
 #include "Basics/LocalTaskQueue.h"
 #include "Logger/Logger.h"
@@ -41,7 +42,7 @@ NS_LOCAL
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the string representing the link type
 ////////////////////////////////////////////////////////////////////////////////
-static const std::string LINK_TYPE("iresearch");
+static const std::string& LINK_TYPE = arangodb::iresearch::IResearchFeature::type();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the name of the field in the iResearch Link definition denoting the
@@ -520,7 +521,7 @@ int IResearchLink::unload() {
       return res;
     }
 
-    view->updateProperties(arangodb::velocypack::Slice::emptyObjectSlice(), true, false); // revalidate all links
+    view->updateProperties(emptyObjectSlice(), true, false); // revalidate all links
   }
 
   _view = NO_VIEW; // release reference to the iResearch View
