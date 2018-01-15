@@ -76,6 +76,7 @@
 * [Views](Views/README.md)
 #
   * [ArangoSearch](Views/IResearch.md)
+    * [Analyzers](Views/IResearch/Analyzers.md)
 
 * [Foxx Microservices](Foxx/README.md)
   * [At a glance](Foxx/AtAGlance.md)

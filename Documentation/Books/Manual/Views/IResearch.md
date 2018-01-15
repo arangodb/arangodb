@@ -1,10 +1,8 @@
-# Bringing the power of IResearch to ArangoDB
+# Bringing the power of IResearch to ArangoDB via ArangoSearch
 
-## What is IResearch
+## What is ArangoSearch
 
-### To the end-user
-
-A natively integrated AQL extension that allows one to:
+ArangoSearch is a natively integrated AQL extension that allows one to:
 * evaluate together documents located in different collections
 * filter documents based on AQL boolean expressions and functions
 * sort the resultset based on how closely each document matched the filter
@@ -20,9 +18,9 @@ In plain terms this means a user can for example:
 * request documents where the 'name' attribute best matches gender
 * etc... (via custom analyzers described in the next section)
 
-### To the developer
+### The IResearch Library
 
-A cross-platform open source indexing and searching engine written in C++,
+is a cross-platform open source indexing and searching engine written in C++,
 optimized for speed and memory footprint, with source available from:
 https://github.com/iresearch-toolkit/iresearch
 
@@ -35,143 +33,61 @@ custom implementations of analyzers (used during the indexing and filtering
 stages) and scorers (used during the sorting stage) allowing full control over
 the behaviour of the engine.
 
-### Analyzers:
-
-To simplify query syntax ArangoDB provides a concept of named analyzers which
-are merely aliases for type+configuration of IResearch analyzers. Management of
-named analyzers is exposed via both REST, GUI and JavaScript APIs, e.g.
-<br>db._globalSettings("arangosearch.analyzers")
-
-A user then merely uses these analyzer names in ArangoSearch view configurations
-and AQL queries, e.g.
-
-IResearch provides a 'text' analyzer to analyze human readable text. A required
-configuration parameter for this type of analyzer is 'locale' used to specify
-the language used for analysis.
-
-The ArangoDB administrator may then set up a named analyzer 'text_des':
-<br>{ "name": "text_des", "type": "text", "properties": { "locale": "de-ch" } }
-
-The user is then immediately able to run queries with the said analyzer, e.g.
-<br>FILTER doc.description IN TOKENS('Ein brauner Fuchs springt', 'text_des')
-
-Similarly an administrator may choose to deploy a custom DNA analyzer 'DnaSeq':
-<br>{ "name": "dna", "type": "DnaSeq", "properties": "use-human-config" }
-
-The user is then immediately able to run queries with the said analyzer, e.g.
-<br>FILTER doc.dna IN TOKENS('ACGTCGTATGCACTGA', 'DnaSeq')
-
-To a limited degree the concept of 'analysis' is even available in
-non-ArangoSearch AQL, e.g. the TOKENS(...) function will utilize the power of
-IResearch to break up a value into an AQL array that can be used anywhere in
-the AQL query.
-
-In plain terms this means a user can match a document attribute when its
-value matches at least one value form a set, (yes this is independent of doc),
-e.g. to match docs with 'word == quick' OR 'word == brown' OR 'word == fox'
-
-    FOR doc IN someCollection
-      FILTER doc.word IN TOKENS('a quick brown fox', 'text_en')
-      RETRUN doc
-
-Runtime-plugging functionality for analyzers is not avaiable in ArangoDB at this
-point in time, so ArangoDB comes with a few default-initialized analyzers:
-
-* identity
-  treat the value as an atom
-
-* text_de
-  tokenize the value into case-insensitive word stems as per the German locale,
-  do not discard any any stopwords
-
-* text_en
-  tokenize the value into case-insensitive word stems as per the English locale,
-  do not discard any any stopwords
-
-* text_es
-  tokenize the value into case-insensitive word stems as per the Spanish locale,
-  do not discard any any stopwords
-
-* text_fi
-  tokenize the value into case-insensitive word stems as per the Finnish locale,
-  do not discard any any stopwords
-
-* text_fr
-  tokenize the value into case-insensitive word stems as per the French locale,
-  do not discard any any stopwords
-
-* text_it
-  tokenize the value into case-insensitive word stems as per the Italian locale,
-  do not discard any any stopwords
-
-* text_nl
-  tokenize the value into case-insensitive word stems as per the Dutch locale,
-  do not discard any any stopwords
-
-* text_no
-  tokenize the value into case-insensitive word stems as per the Norwegian
-  locale, do not discard any any stopwords
-
-* text_pt
-  tokenize the value into case-insensitive word stems as per the Portuguese
-  locale, do not discard any any stopwords
-
-* text_ru
-  tokenize the value into case-insensitive word stems as per the Russian locale,
-  do not discard any any stopwords
-
-* text_sv
-  tokenize the value into case-insensitive word stems as per the Swedish locale,
-  do not discard any any stopwords
-
-* text_zh
-  tokenize the value into case-insensitive word stems as per the Chinese locale,
-  do not discard any any stopwords
 
 ### Scorers:
 
-ArangoDB accesses IResearch scorers directly by their internal names. The name
-(in upper-case) of the scorer is the function name to be used in the 'SORT'
-section. Function arguments, (excluding the first argument), are serialized as a
+ArangoSearch accesses the IResearch scorers directly by their internal names.
+The name (in upper-case) of the scorer is the function name to be used in the 
+['SORT' section](../../../AQL/Views/IResearch/IResearch.html#arangosearch-sort).
+Function arguments, (excluding the first argument), are serialized as a
 string representation of a JSON array and passed directly to the corresponding
-scorer. The first argument to any scorer function (an AQL requirement) is the
-current document parameter from the 'FOR', i.e. it would be 'doc' for the
+scorer. The first argument to any scorer function is the reference to the 
+current document emitted by the `FOR` statement, i.e. it would be 'doc' for this
 statement:
-<br>FOR doc IN VIEW someView
+
+    FOR doc IN VIEW someView
 
 IResearch provides a 'bm25' scorer implementing the
 [BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25). This scorer
 optionally takes 'k' and 'b' positional parameters.
 
 The user is able to run queries with the said scorer, e.g.
-<br>SORT BM25(doc, 1.2, 0.75)
+
+    SORT BM25(doc, 1.2, 0.75)
 
 The function arguments will then be serialized into a JSON representation:
-<br>"[ 1.2, 0.75 ]"
-<br>
+
+```json
+[ 1.2, 0.75 ]
+```
+
 and passed to the scorer implementation.
 
 Similarly an administrator may choose to deploy a custom DNA analyzer 'DnaRank'.
 
 The user is then immediately able to run queries with the said scorer, e.g.
-<br>SORT DNARANK(doc, 123, 456, "abc", { "def", "ghi" })
+
+    SORT DNARANK(doc, 123, 456, "abc", { "def", "ghi" })
 
 The function arguments will then be serialized into a JSON representation:
-<br>"[ 123, 456, \"abc\", { \"def\", \"ghi\" } ]"
-<br>
+
+```json
+[ 123, 456, "abc", { "def", "ghi" } ]
+```
+
 and passed to the scorer implementation.
 
 Runtime-plugging functionality for scores is not avaiable in ArangoDB at this
 point in time, so ArangoDB comes with a few default-initialized scores:
 
-* \<attribute-name\>
+- *attribute-name*
   order results based on the value of **attribute-name**
 
-* BM25
+- BM25
   order results based on the
   [BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25)
 
-* TFIDF
+- TFIDF
   order results based on the
   [TFIDF algorithm](https://en.wikipedia.org/wiki/TF-IDF)
 
@@ -184,35 +100,42 @@ document attributes.
 
 ### View datasource
 
-IResearch functionality is exposed through an ArangoDB view API because the
-ArangoSearch view is merely an identity transformation applied onto documents
-stored in linked collections of the same ArangoDB database. In plain terms an
-ArangoSearch view only allows filtering and sorting of documents located in
-collections of the same database. The matching documents themselves are returned
-as-is from their corresponding collections.
+The IResearch functionality is exposed to ArangoDB via the the ArangoSearch view
+API because the ArangoSearch view is merely an identity transformation applied
+onto documents stored in linked collections of the same ArangoDB database.
+In plain terms an ArangoSearch view only allows filtering and sorting of documents
+located in collections of the same database.
+The matching documents themselves are returned as-is from their corresponding collections.
 
 ### Links to ArangoDB collections
 
 A concept of an ArangoDB collection 'link' is introduced to allow specifying
-which ArangoDB collections a given ArangoSearch View should query for documents
+which ArangoDB collections a given ArangoSearch View should query for documents and
 and how these documents should be queried.
 
 An ArangoSearch Link is a uni-directional connection from an ArangoDB collection
-to an ArangoSearch view describing how data coming from the said collection
-should be made available in the given view. Each ArangoSearch Link in an
-ArangoSearch view is uniquely identified by the name of the ArangoDB collection
-it links to. An ArangoSearch view may have zero or more links, each to a
-distinct ArangoDB collection. Similarly an ArangoDB collection may be referenced
-via links by zero or more distinct ArangoSearch views. In plain terms any given
-ArangoSearch view may be linked to any given ArangoDB collection of the same
-database with zero or at most one link. However, any ArangoSearch view may be
-linked to multiple distinct ArangoDB collections and similarly any ArangoDB
-collection may be referenced by multiple ArangoSearch views.
+to an ArangoSearch view describing how data coming from the said collection should
+be made available in the given view. Each ArangoSearch Link in an ArangoSearch view is
+uniquely identified by the name of the ArangoDB collection it links to. An
+ArangoSearch view may have zero or more links, each to a distinct ArangoDB
+collection. Similarly an ArangoDB collection may be referenced via links by zero
+or more distinct ArangoSearch views. In plain terms any given ArangoSearch view may be
+linked to any given ArangoDB collection of the same database with zero or at
+most one link. However, any ArangoSearch view may be linked to multiple distinct
+ArangoDB collections and similarly any ArangoDB collection may be referenced by
+multiple ArangoSearch views.
 
 To configure an ArangoSearch view for consideration of documents from a given
 ArangoDB collection a link definition must be added to the properties of the
 said ArangoSearch view defining the link parameters as per the section
-[View definition/modification].
+[View definition/modification](#view-definitionmodification).
+
+### Analyzers:
+
+To simplify query syntax ArangoSearch provides a concept of 
+[named analyzers](IResearch/Analyzers.md) which
+are merely aliases for type+configuration of IResearch analyzers. Management of
+named analyzers is exposed via both REST, GUI and JavaScript APIs, e.g.
 
 
 ### View definition/modification
@@ -222,28 +145,28 @@ view-specific configuration directives and a map of link-specific configuration
 directives.
 
 During view creation the following directives apply:
-* id: \<optional\> the desired view identifier
-* name: \<required\> the view name
+* id: (optional) the desired view identifier
+* name: (required) the view name
 * type: \<required\> the value "arangosearch"
-<br>any of the directives from the section [View properties (modifiable)]
+  any of the directives from the section [View properties](#view-properties-modifiable)
 
 During view modification the following directives apply:
-* links: \<optional\>
+* links: (optional)
   a mapping of collection-name/collection-identifier to one of:
-  * link creation - link definition as per the section [Link properties]
+  * link creation - link definition as per the section [Link properties](#link-properties)
   * link removal - JSON keyword *null* (i.e. nullify a link if present)
-<br>any of the directives from the section [View properties (modifiable)]
+    any of the directives from the section [modifiable view properties ](#view-properties-modifiable)
 
 
 ### View properties (modifiable)
 
-* commit: \<optional\>(default: use defaults for all values)
+* commit: (optional; default: use defaults for all values)
   configure ArangoSearch View commit policy for single-item inserts/removals,
   e.g. when adding removing documents from a linked ArangoDB collection
 
-  * cleanupIntervalStep: \<optional\> (default: 10) (to disable use: 0)
+  * cleanupIntervalStep: (optional; default: `10`; to disable use: `0`)
     wait at least this many commits between removing unused files in the
-    ArangoSearch view data directory
+    ArangoSearch data directory
     for the case where the consolidation policies merge segments often (i.e. a
     lot of commit+consolidate), a lower value will cause a lot of disk space to
     be wasted
@@ -251,7 +174,7 @@ During view modification the following directives apply:
     few inserts/deletes), a higher value will impact performance without any
     added benefits
 
-  * commitIntervalMsec: \<optional\> (default: 60000) (to disable use: 0)
+  * commitIntervalMsec: (optional; default: `60000`; to disable use: `0`)
     wait at least *count* milliseconds between committing view data store
     changes and making documents visible to queries
     for the case where there are a lot of inserts/updates, a lower value will
@@ -261,7 +184,7 @@ During view modification the following directives apply:
     impact performance and waste disk space for each commit call without any
     added benefits
 
-  * commitTimeoutMsec: \<optional\> (default: 5000) (to disable use: 0)
+  * commitTimeoutMsec: (optional; default: `5000`; to disable use: `0`)
     try to commit as much as possible before *count* milliseconds
     for the case where there are a lot of inserts/updates, a lower value will
     cause a delay in the view accounting for them, due skipping of some commits
@@ -269,58 +192,58 @@ During view modification the following directives apply:
     cause higher memory consumption between commits due to accumulation of
     document modifications while a commit is in progress
 
-  * consolidate: \<optional\> (default: \<none\>)
-    a per-policy mapping of thresholds in the range [0.0, 1.0] to determine data
+  * consolidate: (optional; default: `none`)
+    a per-policy mapping of thresholds in the range `[0.0, 1.0]` to determine data
     store segment merge candidates, if specified then only the listed policies
     are used, keys are any of:
 
-    * bytes: \<optional\> (for default values use: {})
+    * bytes: (optional; for default values use an empty object: `{}`)
 
-      * intervalStep: \<optional\> (default: 10) (to disable use: 0)
+      * intervalStep: (optional, default: `10`; to disable use: `0`)
         apply consolidation policy with every Nth commit
 
-      * threshold: \<optional\> (default: 0.85)
-        consolidate IFF {threshold} > segment_bytes / (all_segment_bytes / #segments)
+      * threshold: (optional; default: `0.85`)
+        consolidate `IFF {threshold} > segment_bytes / (all_segment_bytes / #segments)`
 
-    * bytes_accum: \<optional\> (for default values use: {})
+    * bytes_accum: (optional; for default values use: `{}`)
 
-      * intervalStep: \<optional\> (default: 10) (to disable use: 0)
+      * intervalStep: (optional; default: `10`; to disable use: `0`)
         apply consolidation policy with every Nth commit
 
-      * threshold: \<optional\> (default: 0.85)
-        consolidate IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
+      * threshold: (optional; default: `0.85`)
+        consolidate `IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
 
-    * count: \<optional\> (for default values use: {})
+    * count: (optional; for default values use: `{}`)
 
-      * intervalStep: \<optional\> (default: 10) (to disable use: 0)
+      * intervalStep: (optional; default: `10`; to disable use: `0`)
         apply consolidation policy with every Nth commit
 
-      * threshold: <optional> (default: 0.85)
-        consolidate IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
+      * threshold: (optional; default: `0.85`)
+        consolidate `IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)`
 
-    * fill: \<optional\>
-      if specified, use empty object for default values, i.e. {}
+    * fill: (optional)
+      if specified, use empty object for default values, i.e. `{}`
 
-      * intervalStep: \<optional\> (default: 10) (to disable use: 0)
+      * intervalStep: (optional; default: `10`; to disable use: `0`)
         apply consolidation policy with every Nth commit
 
-      * threshold: <optional> (default: 0.85)
-        consolidate IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
+      * threshold: (optional; default: `0.85`)
+        consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`
 
 * dataPath: <optional> (default: \<ArangoDB database path\>/arangosearch-\<view-id\>)
   the filesystem path where to store persisted view metadata
 
-* locale: <optional> (default: 'C')
+* locale: (optional; default: `C`)
   the default locale used for ordering processed attribute names
 
-* threadsMaxIdle: <optional> (default: 5)
+* threadsMaxIdle: (optional; default: `5`)
   maximum idle number of threads for single-run tasks
   for the case where there are a lot of short-lived asynchronous tasks, a lower
   value will cause a lot of thread creation/deletion calls
   for the case where there are no short-lived asynchronous tasks, a higher
   value will only waste memory
 
-* threadsMaxTotal: <optional> (default: 5)
+* threadsMaxTotal: (optional; default: `5`)
   maximum total number of threads (>0) for single-run tasks
   for the case where there are a lot of parallelizable tasks and an abundance
   of resources, a lower value would limit performance
@@ -330,39 +253,34 @@ During view modification the following directives apply:
 ### View properties (unmodifiable)
 
 * collections:
-  an internally tracked list of collection identifiers which were explicitly
-  added to the current view by the user via view 'link' property modification
-  the list may have no-longer valid identifiers if the user did not explicitly
-  drop the link for the said collection identifier from the current view
-  invalid collection identifiers are removed during view property modification
-  among other things used for acquiring collection locks in transactions (i.e.
-  during a view query no documents will be returned for collections not in this
-  list) and generating view properties 'links' list
+  an internally tracked array of collection identifiers which are known to have
+  links to the current collection
+  among other things used for adding collections during a view query transaction
 
 ### Link properties
 
-* analyzers: \<optional\> (default: [ 'identity' ])
-  a list of analyzers, by name as defined via the section [Analyzers], that
+* analyzers: (optional; default: `[ 'identity' ]`)
+  a list of analyzers, by name as defined via the [Analyzers](IResearch/Analyzers.md), that
   should be applied to values of processed document attributes
 
-* fields: \<optional\> (default: {})
-  a map{\<attribute-name\>, [Link properties]} of fields that should be
+* fields: (optional; default: `{}`)
+  an object `{attribute-name: [Link properties]}` of fields that should be
   processed at each level of the document
   each key specifies the document attribute to be processed, the value of
   *includeAllFields* is also consulted when selecting fields to be processed
-  each value specifies the [Link properties] directives to be used when
-  processing the specified field, a [Link properties] value of '{}' denotes
+  each value specifies the [Link properties](#link-properties) directives to be used when
+  processing the specified field, a Link properties value of `{}` denotes
   inheritance of all (except *fields*) directives from the current level
 
-* includeAllFields: \<optional\> (default: false)
+* includeAllFields: (optional; default: `false`)
   if true then process all document attributes (if not explicitly specified
-  then process the fields with default [Link properties] directives, i.e. {}),
+  then process the fields with default Link properties directives, i.e. `{}`),
   otherwise only consider attributes mentioned in *fields*
 
-* trackListPositions: \<optional\> (default: false)
+* trackListPositions: (optional; default: false)
   if true then for array values track the value position in the array, e.g. when
-  querying for the input: { attr: [ 'valueX', 'valueY', 'valueZ' ] }
-  the user must specify: doc.attr[1] == 'valueY'
+  querying for the input: `{ attr: [ 'valueX', 'valueY', 'valueZ' ] }`
+  the user must specify: `doc.attr[1] == 'valueY'`
   otherwise all values in an array are treated as equal alternatives, e.g. when
-  querying for the input: { attr: [ 'valueX', 'valueY', 'valueZ' ] }
-  the user must specify: doc.attr == 'valueY'
+  querying for the input: `{ attr: [ 'valueX', 'valueY', 'valueZ' ] }`
+  the user must specify: `doc.attr == 'valueY'`

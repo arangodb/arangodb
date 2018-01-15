@@ -134,7 +134,6 @@ inline T atoi_negative(char const* p, char const* e, bool& valid) noexcept {
     } 
     result *= 10;
     result -= c;
-    ++p;
   } while (++p < e);
 
   valid = true;
