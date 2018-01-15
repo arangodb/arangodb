@@ -100,7 +100,7 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
     password: "",
     verbose: true,
     includeSystem: false,
-    keepBarrier: false
+    keepBarrier: true
   });
 
   assertTrue(syncResult.hasOwnProperty('lastLogTick'));
@@ -124,7 +124,7 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
   connectToSlave();
 
   replication.applier.properties(applierConfiguration);
-  replication.applier.start(syncResult.lastLogTick);
+  replication.applier.start(syncResult.lastLogTick, syncResult.barrierId);
 
   var printed = false, handled = false;
 
