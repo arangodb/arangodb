@@ -5256,7 +5256,7 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
         } else if (keep.size() == 2) {
           return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, keep[0], keep[1]);
         } else if (keep.size() == 1) {
-          return node->getMemberUnchecked(0);
+          return keep[0];
         }
         return node == root ? nullptr : ast->createNodeValueBool(true);
       } else if (info.nodesToRemove.find(node) != info.nodesToRemove.end()) {
