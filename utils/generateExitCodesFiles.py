@@ -30,7 +30,7 @@ def genJsFile(errors):
       + "  var internal = require(\"internal\");\n"\
       + "\n"\
       + "  internal.exitCodes = {\n"
-  
+
   # print individual errors
   i = 0
   for e in errors:
@@ -38,7 +38,7 @@ def genJsFile(errors):
     msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
     out = out\
         + "    " + name.ljust(30) + " : { \"code\" : " + e[1] + ", \"message\" : \"" + msg + "\" }"
- 
+
     i = i + 1 
 
     if i < len(errors):

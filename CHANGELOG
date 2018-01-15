@@ -1,9 +1,12 @@
 devel
 -----
 
+
 * Fixed an issue with the index estimates in RocksDB in the case a transaction is aborted.
   Former the index estimates were modified if the transaction commited or not.
   Now they will only be modified if the transaction commited successfully.
+
+* issue #1190: added option `--create-database` for arangoimport
 
 * issue #3504: added option `--force-same-database` for arangorestore
 
