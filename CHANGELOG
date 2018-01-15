@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated Swagger UI to version 3.9.0
+
 * issue #1190: added option `--create-database` for arangoimport
 
 * issue #3504: added option `--force-same-database` for arangorestore
