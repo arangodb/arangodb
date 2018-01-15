@@ -21,15 +21,15 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MAINTENANCE_REST_HANDLER
-#define ARANGOD_MAINTENANCE_REST_HANDLER 1
+#ifndef ARANGOD_CLUSTER_MAINTENANCE_REST_HANDLER
+#define ARANGOD_CLUSTER_MAINTENANCE_REST_HANDLER 1
 
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief job control request handler
+/// @brief Object that directs processing of one user maintenance requests
 ////////////////////////////////////////////////////////////////////////////////
 
 class MaintenanceRestHandler : public RestBaseHandler {
@@ -37,21 +37,16 @@ class MaintenanceRestHandler : public RestBaseHandler {
   MaintenanceRestHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  char const* name() const override final { return "MaintenanceRestHandler"; }
+  char const* name() const override { return "MaintenanceRestHandler"; }
 
   bool isDirect() const override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief executes the handler
-  //////////////////////////////////////////////////////////////////////////////
-
+  /// @brief Performs routing of request to appropriate subroutines
   RestStatus execute() override;
 
  protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief
-  //////////////////////////////////////////////////////////////////////////////
-
+  /// @brief PUT method adds an Action to the worklist (or executes action directly)
+  void putAction();
 
 };
 }
