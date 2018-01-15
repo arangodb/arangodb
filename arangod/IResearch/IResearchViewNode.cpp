@@ -295,23 +295,7 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
       << "', previous snapshot will be used instead";
   }
 
-  std::set<TRI_voc_cid_t> cids;
   auto reader = impl->snapshot();
-
-  // get a list of collections currently defined in the view
-  // Note: this list will not contain any collections not added via the view
-  //       even though data from the corresponding collection may still exist in
-  //       the view, e.g. droped collections for which records have not yet been
-  //       removed from the view
-  impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool {
-    cids.emplace(cid);
-    return true;
-  });
-
-  // add CIDs of tracked collections to transaction in TRI_voc_cid_t order
-  for (auto& cid: cids) {
-    trx->addCollectionAtRuntime(arangodb::basics::StringUtils::itoa(cid));
-  }
 
   if (_sortCondition.empty()) {
     // unordered case
