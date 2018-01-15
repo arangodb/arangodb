@@ -48,6 +48,20 @@ class RocksDBReplicationContext {
   typedef std::function<void(LocalDocumentId const& token)>
       LocalDocumentIdCallback;
 
+  struct CollectionIterator {
+    LogicalCollection* logical;
+    std::unique_ptr<IndexIterator> iter;
+    bool isUsed;
+    bool hasMore;
+
+    bool isUsed() const;
+    void use(double ttl);
+    void release();
+
+  private:
+    double _expires;
+  };
+
  public:
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
@@ -91,7 +105,7 @@ class RocksDBReplicationContext {
                             size_t chunkSize, std::string const& lowKey);
   /// dump keys and document
   arangodb::Result dumpDocuments(velocypack::Builder& b, size_t chunk,
-                                 size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize, 
+                                 size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize,
                                  std::string const& lowKey, velocypack::Slice const& ids);
 
   double expires() const;
@@ -99,30 +113,28 @@ class RocksDBReplicationContext {
   void deleted();
   bool isUsed() const;
   void use(double ttl);
-  bool more() const;
   /// remove use flag
   void release();
 
  private:
   void releaseDumpingResources();
+  CollectionIterator* getCollectionIterator(TRI_voc_cid_t id);
 
  private:
   TRI_voc_tick_t _id; // batch id
   uint64_t _lastTick; // the time at which the snapshot was taken
-  uint64_t _currentTick; // shows how often dump was called
+  std::atomic<uint64_t> _currentTick; // shows how often dump was called
   std::unique_ptr<DatabaseGuard> _guard;
   std::unique_ptr<transaction::Methods> _trx;
-  
-  /// @brief Collection used in dump and incremental sync
-  LogicalCollection* _collection;
-  
-  /// @brief Iterator on collection
-  std::unique_ptr<IndexIterator> _iter;
+  std::unordered_map<TRI_voc_cid_t, std::unique_ptr<CollectionIterator>> _iterators;
+  Mutex _iteratorsLock;
+
+  /// @brief bound collection iterator for single-threaded methods
+  CollectionIterator* _collection;
 
   /// @brief offset in the collection used with the incremental sync
   uint64_t _lastIteratorOffset;
 
-  
   /// @brief holds last document
   ManagedDocumentResult _mdr;
   /// @brief type handler used to render documents
@@ -132,7 +144,6 @@ class RocksDBReplicationContext {
   double _expires;
   bool _isDeleted;
   bool _isUsed;
-  bool _hasMore; //used during dump to check if there are more documents
 };
 
 }  // namespace arangodb
