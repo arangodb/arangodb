@@ -149,8 +149,6 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
     // turn off RocksDBThrottle, and release our pointers to it
     if (nullptr != _listener.get()) {
       _listener->StopThread();
-      _listener.reset();
-      _options.listeners.clear();
     } // if
     
     for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
@@ -1344,7 +1342,7 @@ Result RocksDBEngine::registerRecoveryHelper(
     std::shared_ptr<RocksDBRecoveryHelper> helper) {
   try {
     _recoveryHelpers.emplace_back(helper);
-  } catch (std::bad_alloc const& ex) {
+  } catch (std::bad_alloc const&) {
     return {TRI_ERROR_OUT_OF_MEMORY};
   }
 

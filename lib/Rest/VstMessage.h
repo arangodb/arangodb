@@ -37,8 +37,7 @@ namespace arangodb {
 namespace rest {
 
 struct VstInputMessage {
-  VstInputMessage() : _buffer(), _id(0), _payloadAmount(0),
-                      _header(VPackSlice::noneSlice()), _payload() {}
+  VstInputMessage() : _buffer(), _id(0), _payloadAmount(0), _header(VPackSlice::emptyArraySlice()), _payload() {}
 
   // cppcheck-suppress *
   VstInputMessage(uint64_t id, VPackBuffer<uint8_t>&& buff,
