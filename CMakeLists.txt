@@ -612,11 +612,6 @@ endfunction()
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
 
-  include_directories("${JEMALLOC_HOME}/include")
-  link_directories("${JEMALLOC_HOME}/lib")
-
-  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB})
-
   if (LINUX OR DARWIN)
     add_definitions("-DARANGODB_MMAP_JEMALLOC=1")
   endif ()
