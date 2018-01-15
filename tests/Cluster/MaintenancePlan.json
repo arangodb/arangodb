@@ -6,6 +6,12 @@ R"=(
         "_system": {
           "id": "1",
           "name": "_system"
+        },
+        "testdb": {
+          "id": "4097106",
+          "coordinator": "CRDN-755ffe10-8d93-40f3-be64-4dfb8d6fcab3",
+          "options": {},
+          "name": "testdb"
         }
       },
       "Collections": {
@@ -763,6 +769,498 @@ R"=(
               "allowUserKeys": true
             }
           }
+        },
+        "testdb": {
+          "4097118": {
+            "shardKeys": [
+              "_key"
+            ],
+            "replicationFactor": 1,
+            "path": "",
+            "name": "_frontend",
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              }
+            ],
+            "statusString": "loaded",
+            "shards": {
+              "s4097119": [
+                "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
+                "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
+              ]
+            },
+            "status": 3,
+            "waitForSync": false,
+            "indexBuckets": 8,
+            "type": 2,
+            "id": "4097118",
+            "isSmart": false,
+            "doCompact": true,
+            "deleted": false,
+            "distributeShardsLike": "4097107",
+            "numberOfShards": 1,
+            "isSystem": true,
+            "isVolatile": false,
+            "journalSize": 1048576,
+            "keyOptions": {
+              "lastValue": 0,
+              "type": "traditional",
+              "allowUserKeys": true
+            }
+          },
+          "4097107": {
+            "shards": {
+              "s4097108": [
+                "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
+                "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
+              ]
+            },
+            "shardKeys": [
+              "_key"
+            ],
+            "replicationFactor": 2,
+            "path": "",
+            "statusString": "loaded",
+            "deleted": false,
+            "indexBuckets": 8,
+            "type": 2,
+            "status": 3,
+            "waitForSync": false,
+            "id": "4097107",
+            "isSmart": false,
+            "name": "_graphs",
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              }
+            ],
+            "doCompact": true,
+            "isSystem": true,
+            "isVolatile": false,
+            "journalSize": 1048576,
+            "keyOptions": {
+              "lastValue": 0,
+              "type": "traditional",
+              "allowUserKeys": true
+            },
+            "numberOfShards": 1
+          },
+          "4097111": {
+            "shardKeys": [
+              "_key"
+            ],
+            "replicationFactor": 1,
+            "path": "",
+            "name": "_routing",
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              }
+            ],
+            "statusString": "loaded",
+            "shards": {
+              "s4097112": [
+                "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
+                "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
+              ]
+            },
+            "status": 3,
+            "waitForSync": false,
+            "indexBuckets": 8,
+            "type": 2,
+            "id": "4097111",
+            "isSmart": false,
+            "doCompact": true,
+            "deleted": false,
+            "distributeShardsLike": "4097107",
+            "numberOfShards": 1,
+            "isSystem": true,
+            "isVolatile": false,
+            "journalSize": 4194304,
+            "keyOptions": {
+              "lastValue": 0,
+              "type": "traditional",
+              "allowUserKeys": true
+            }
+          },
+          "4097122": {
+            "shardKeys": [
+              "_key"
+            ],
+            "replicationFactor": 1,
+            "path": "",
+            "name": "_queues",
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              }
+            ],
+            "statusString": "loaded",
+            "shards": {
+              "s4097123": [
+                "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
+                "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
+              ]
+            },
+            "status": 3,
+            "waitForSync": false,
+            "indexBuckets": 8,
+            "type": 2,
+            "id": "4097122",
+            "isSmart": false,
+            "doCompact": true,
+            "deleted": false,
+            "distributeShardsLike": "4097107",
+            "numberOfShards": 1,
+            "isSystem": true,
+            "isVolatile": false,
+            "journalSize": 1048576,
+            "keyOptions": {
+              "lastValue": 0,
+              "type": "traditional",
+              "allowUserKeys": true
+            }
+          },
+          "4097131": {
+            "shardKeys": [
+              "_key"
+            ],
+            "replicationFactor": 1,
+            "path": "",
+            "name": "_appbundles",
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              }
+            ],
+            "statusString": "loaded",
+            "shards": {
+              "s4097132": [
+                "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
+                "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
+              ]
+            },
+            "status": 3,
+            "waitForSync": false,
+            "indexBuckets": 8,
+            "type": 2,
+            "id": "4097131",
+            "isSmart": false,
+            "doCompact": true,
+            "deleted": false,
+            "distributeShardsLike": "4097107",
+            "numberOfShards": 1,
+            "isSystem": true,
+            "isVolatile": false,
+            "journalSize": 2097152,
+            "keyOptions": {
+              "lastValue": 0,
+              "type": "traditional",
+              "allowUserKeys": true
+            }
+          },
+          "4097109": {
+            "shardKeys": [
+              "_key"
+            ],
+            "replicationFactor": 1,
+            "path": "",
+            "name": "_modules",
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              }
+            ],
+            "statusString": "loaded",
+            "shards": {
+              "s4097110": [
+                "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
+                "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
+              ]
+            },
+            "status": 3,
+            "waitForSync": false,
+            "indexBuckets": 8,
+            "type": 2,
+            "id": "4097109",
+            "isSmart": false,
+            "doCompact": true,
+            "deleted": false,
+            "distributeShardsLike": "4097107",
+            "numberOfShards": 1,
+            "isSystem": true,
+            "isVolatile": false,
+            "journalSize": 1048576,
+            "keyOptions": {
+              "lastValue": 0,
+              "type": "traditional",
+              "allowUserKeys": true
+            }
+          },
+          "4097116": {
+            "shardKeys": [
+              "_key"
+            ],
+            "replicationFactor": 1,
+            "path": "",
+            "name": "_aqlfunctions",
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              }
+            ],
+            "statusString": "loaded",
+            "shards": {
+              "s4097117": [
+                "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
+                "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
+              ]
+            },
+            "status": 3,
+            "waitForSync": false,
+            "indexBuckets": 8,
+            "type": 2,
+            "id": "4097116",
+            "isSmart": false,
+            "doCompact": true,
+            "deleted": false,
+            "distributeShardsLike": "4097107",
+            "numberOfShards": 1,
+            "isSystem": true,
+            "isVolatile": false,
+            "journalSize": 1048576,
+            "keyOptions": {
+              "lastValue": 0,
+              "type": "traditional",
+              "allowUserKeys": true
+            }
+          },
+          "4097157": {
+            "deleted": false,
+            "doCompact": true,
+            "id": "4097157",
+            "isSmart": false,
+            "shardKeys": [
+              "_key"
+            ],
+            "statusString": "loaded",
+            "shards": {
+              "s4097159": [
+                "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c",
+                "PRMR-2d087658-79b9-4106-a84e-030309651d4b"
+              ],
+              "s4097160": [
+                "PRMR-2d087658-79b9-4106-a84e-030309651d4b",
+                "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7"
+              ],
+              "s4097158": [
+                "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
+                "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
+              ]
+            },
+            "status": 3,
+            "waitForSync": false,
+            "type": 2,
+            "indexBuckets": 8,
+            "replicationFactor": 2,
+            "path": "",
+            "numberOfShards": 3,
+            "keyOptions": {
+              "lastValue": 0,
+              "type": "traditional",
+              "allowUserKeys": true
+            },
+            "journalSize": 33554432,
+            "isVolatile": false,
+            "isSystem": false,
+            "name": "foo",
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              },
+              {
+                "deduplicate": true,
+                "fields": [
+                  "bar"
+                ],
+                "id": "4097210",
+                "sparse": true,
+                "type": "hash",
+                "unique": false
+              }
+            ]
+          },
+          "4097128": {
+            "deleted": false,
+            "distributeShardsLike": "4097107",
+            "doCompact": true,
+            "id": "4097128",
+            "isSmart": false,
+            "shardKeys": [
+              "_key"
+            ],
+            "statusString": "loaded",
+            "shards": {
+              "s4097129": [
+                "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
+                "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
+              ]
+            },
+            "status": 3,
+            "waitForSync": false,
+            "type": 2,
+            "indexBuckets": 8,
+            "replicationFactor": 1,
+            "path": "",
+            "numberOfShards": 1,
+            "keyOptions": {
+              "lastValue": 0,
+              "type": "traditional",
+              "allowUserKeys": true
+            },
+            "journalSize": 2097152,
+            "isVolatile": false,
+            "isSystem": true,
+            "name": "_apps",
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              },
+              {
+                "deduplicate": true,
+                "fields": [
+                  "mount"
+                ],
+                "id": "4097130",
+                "sparse": false,
+                "type": "hash",
+                "unique": true
+              }
+            ]
+          },
+          "4097124": {
+            "deleted": false,
+            "distributeShardsLike": "4097107",
+            "doCompact": true,
+            "id": "4097124",
+            "isSmart": false,
+            "shardKeys": [
+              "_key"
+            ],
+            "statusString": "loaded",
+            "shards": {
+              "s4097125": [
+                "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
+                "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
+              ]
+            },
+            "status": 3,
+            "waitForSync": false,
+            "type": 2,
+            "indexBuckets": 8,
+            "replicationFactor": 1,
+            "path": "",
+            "numberOfShards": 1,
+            "keyOptions": {
+              "lastValue": 0,
+              "type": "traditional",
+              "allowUserKeys": true
+            },
+            "journalSize": 2097152,
+            "isVolatile": false,
+            "isSystem": true,
+            "name": "_jobs",
+            "indexes": [
+              {
+                "fields": [
+                  "_key"
+                ],
+                "id": "0",
+                "sparse": false,
+                "type": "primary",
+                "unique": true
+              },
+              {
+                "deduplicate": true,
+                "fields": [
+                  "queue",
+                  "status",
+                  "delayUntil"
+                ],
+                "id": "4097126",
+                "sparse": false,
+                "type": "skiplist",
+                "unique": true
+              },
+              {
+                "deduplicate": true,
+                "fields": [
+                  "status",
+                  "queue",
+                  "delayUntil"
+                ],
+                "id": "4097127",
+                "sparse": false,
+                "type": "skiplist",
+                "unique": true
+              }
+            ]
+          }
         }
       },
       "Coordinators": {
@@ -771,7 +1269,7 @@ R"=(
       },
       "AsyncReplication": {},
       "Lock": "UNLOCKED",
-      "Version": 24,
+      "Version": 53,
       "Singles": {},
       "DBServers": {
         "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7": "none",

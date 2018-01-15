@@ -1,55 +1,208 @@
 R"=(
-{ "_system" : { 
-  "s4026974" : { 
-    "id" : "3010006", 
-    "name" : "s4026974", 
-    "type" : 2, 
-    "status" : 3, 
-    "doCompact" : true, 
-    "journalSize" : 33554432, 
-    "isSystem" : false, 
-    "isVolatile" : false, 
-    "waitForSync" : false, 
-    "keyOptions" : { 
-      "type" : "traditional", 
-      "allowUserKeys" : true, 
-      "lastValue" : 0 
-    }, 
-    "indexBuckets" : 8 
-  }, 
-  "s4026975" : { 
-    "id" : "3010004", 
-    "name" : "s4026975", 
-    "type" : 2, 
-    "status" : 3, 
-    "doCompact" : true, 
-    "journalSize" : 33554432, 
-    "isSystem" : false, 
-    "isVolatile" : false, 
-    "waitForSync" : false, 
-    "keyOptions" : { 
-      "type" : "traditional", 
-      "allowUserKeys" : true, 
-      "lastValue" : 0 
-    }, 
-    "indexBuckets" : 8 
-  }, 
-  "s4026976" : { 
-    "id" : "3010005", 
-    "name" : "s4026976", 
-    "type" : 2, 
-    "status" : 3, 
-    "doCompact" : true, 
-    "journalSize" : 33554432, 
-    "isSystem" : false, 
-    "isVolatile" : false, 
-    "waitForSync" : false, 
-    "keyOptions" : { 
-      "type" : "traditional", 
-      "allowUserKeys" : true, 
-      "lastValue" : 0 
-    }, 
-    "indexBuckets" : 8 
-  } 
-}}
+{
+  "_system": {
+    "s4026974": {
+      "id": "3010006",
+      "name": "s4026974",
+      "type": 2,
+      "status": 3,
+      "doCompact": true,
+      "journalSize": 33554432,
+      "isSystem": false,
+      "isVolatile": false,
+      "waitForSync": false,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 0
+      },
+      "indexBuckets": 8,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s4026974/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "bar"
+          ],
+          "id": "s4026974/4027011",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "hash",
+          "unique": false
+        }
+      ]
+    },
+    "s4026975": {
+      "id": "3010004",
+      "name": "s4026975",
+      "type": 2,
+      "status": 3,
+      "doCompact": true,
+      "journalSize": 33554432,
+      "isSystem": false,
+      "isVolatile": false,
+      "waitForSync": false,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 0
+      },
+      "indexBuckets": 8,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s4026975/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "bar"
+          ],
+          "id": "s4026975/4027011",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "hash",
+          "unique": false
+        }
+      ]
+    },
+    "s4026976": {
+      "id": "3010005",
+      "name": "s4026976",
+      "type": 2,
+      "status": 3,
+      "doCompact": true,
+      "journalSize": 33554432,
+      "isSystem": false,
+      "isVolatile": false,
+      "waitForSync": false,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 0
+      },
+      "indexBuckets": 8,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s4026976/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "bar"
+          ],
+          "id": "s4026976/4027011",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "hash",
+          "unique": false
+        }
+      ]
+    }
+  },
+  "testdb": {
+    "s4097159": {
+      "id": "3010007",
+      "name": "s4097159",
+      "type": 2,
+      "status": 3,
+      "doCompact": true,
+      "journalSize": 33554432,
+      "isSystem": false,
+      "isVolatile": false,
+      "waitForSync": false,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 0
+      },
+      "indexBuckets": 8,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s4097159/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "bar"
+          ],
+          "id": "s4097159/4097210",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "hash",
+          "unique": false
+        }
+      ]
+    },
+    "s4097160": {
+      "id": "3010008",
+      "name": "s4097160",
+      "type": 2,
+      "status": 3,
+      "doCompact": true,
+      "journalSize": 33554432,
+      "isSystem": false,
+      "isVolatile": false,
+      "waitForSync": false,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 0
+      },
+      "indexBuckets": 8,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s4097160/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "bar"
+          ],
+          "id": "s4097160/4097210",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "hash",
+          "unique": false
+        }
+      ]
+    }
+  }
+}
 )="
