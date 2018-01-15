@@ -48,7 +48,7 @@ function iResearchAqlTestSuite () {
       ac = db._create("AnotherUnitTestsCollection");
 
       db._dropView("UnitTestsView");
-      v = db._createView("UnitTestsView", "iresearch", {});
+      v = db._createView("UnitTestsView", "arangosearch", {});
       var meta = { 
         links: { 
           "UnitTestsCollection": { 

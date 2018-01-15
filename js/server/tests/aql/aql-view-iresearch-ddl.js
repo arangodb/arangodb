@@ -57,7 +57,7 @@ function iResearchFeatureAqlTestSuite () {
         db._create("TestCollection0");
         db._create("TestCollection1");
         db._create("TestCollection2");
-        var view = db._createView("TestView", "iresearch", {});
+        var view = db._createView("TestView", "arangosearch", {});
 
         var properties = view.properties();
         assertTrue(Array === properties.collections.constructor);
@@ -85,7 +85,7 @@ function iResearchFeatureAqlTestSuite () {
       // commit
       {
         db._dropView("TestView");
-        var view = db._createView("TestView", "iresearch", {});
+        var view = db._createView("TestView", "arangosearch", {});
 
         var properties = view.properties();
         assertTrue(Object === properties.commit.constructor);
@@ -153,7 +153,7 @@ function iResearchFeatureAqlTestSuite () {
       // data path
       {
         db._dropView("TestView");
-        var view = db._createView("TestView", "iresearch", {});
+        var view = db._createView("TestView", "arangosearch", {});
 
         var properties = view.properties();
         assertTrue(String === properties.dataPath.constructor);
@@ -170,7 +170,7 @@ function iResearchFeatureAqlTestSuite () {
       // locale
       {
         db._dropView("TestView");
-        var view = db._createView("TestView", "iresearch", {});
+        var view = db._createView("TestView", "arangosearch", {});
 
         var properties = view.properties();
         assertTrue(String === properties.dataPath.constructor);
@@ -187,7 +187,7 @@ function iResearchFeatureAqlTestSuite () {
       // threads max idle/total
       {
         db._dropView("TestView");
-        var view = db._createView("TestView", "iresearch", {});
+        var view = db._createView("TestView", "arangosearch", {});
 
         var properties = view.properties();
         assertTrue(Number === properties.threadsMaxIdle.constructor);
@@ -229,7 +229,7 @@ function iResearchFeatureAqlTestSuite () {
       db._create("TestCollection0");
       db._create("TestCollection1");
       db._create("TestCollection2");
-      var view = db._createView("TestView", "iresearch", {});
+      var view = db._createView("TestView", "arangosearch", {});
 
       var meta = { links: {
         "TestCollection0": {},
@@ -369,7 +369,7 @@ function iResearchFeatureAqlTestSuite () {
         db._dropView("TestView");
         db._drop("TestCollection0");
         var col0 = db._create("TestCollection0");
-        var view = db._createView("TestView", "iresearch", {});
+        var view = db._createView("TestView", "arangosearch", {});
 
         var meta = { links: { "TestCollection0": { includeAllFields: true } } };
         view.properties(meta, true); // partial update
@@ -388,7 +388,7 @@ function iResearchFeatureAqlTestSuite () {
         db._dropView("TestView");
         db._drop("TestCollection0");
         var col0 = db._create("TestCollection0");
-        var view = db._createView("TestView", "iresearch", {});
+        var view = db._createView("TestView", "arangosearch", {});
 
         col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
         col0.save({ name: "half", text: "quick fox over lazy" });
@@ -413,7 +413,7 @@ function iResearchFeatureAqlTestSuite () {
         db._drop("TestCollection1");
         var col0 = db._create("TestCollection0");
         var col1 = db._create("TestCollection1");
-        var view = db._createView("TestView", "iresearch", {});
+        var view = db._createView("TestView", "arangosearch", {});
 
         col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
         col0.save({ name: "half", text: "quick fox over lazy" });
@@ -443,7 +443,7 @@ function iResearchFeatureAqlTestSuite () {
         var col0 = db._create("TestCollection0");
         var col1 = db._create("TestCollection1");
         var col2 = db._create("TestCollection2");
-        var view = db._createView("TestView", "iresearch", {});
+        var view = db._createView("TestView", "arangosearch", {});
 
         col2.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
         col2.save({ name: "half", text: "quick fox over lazy" });
@@ -472,7 +472,7 @@ function iResearchFeatureAqlTestSuite () {
         db._dropView("TestView");
         db._drop("TestCollection0");
         var col0 = db._create("TestCollection0");
-        var view = db._createView("TestView", "iresearch", {});
+        var view = db._createView("TestView", "arangosearch", {});
 
         var meta = { links: { "TestCollection0": { includeAllFields: true } } };
         view.properties(meta, true); // partial update
@@ -522,7 +522,7 @@ function iResearchFeatureAqlTestSuite () {
         db._dropView("TestView");
         db._drop("TestCollection0");
         var col0 = db._create("TestCollection0");
-        var view = db._createView("TestView", "iresearch", {});
+        var view = db._createView("TestView", "arangosearch", {});
 
         col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
         col0.save({ name: "half", text: "quick fox over lazy" });
@@ -578,7 +578,7 @@ function iResearchFeatureAqlTestSuite () {
         db._drop("TestCollection1");
         var col0 = db._create("TestCollection0");
         var col1 = db._create("TestCollection1");
-        var view = db._createView("TestView", "iresearch", {});
+        var view = db._createView("TestView", "arangosearch", {});
 
         col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
         col0.save({ name: "half", text: "quick fox over lazy" });
@@ -640,7 +640,7 @@ function iResearchFeatureAqlTestSuite () {
         var col0 = db._create("TestCollection0");
         var col1 = db._create("TestCollection1");
         var col2 = db._create("TestCollection2");
-        var view = db._createView("TestView", "iresearch", {});
+        var view = db._createView("TestView", "arangosearch", {});
 
         col2.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
         col2.save({ name: "half", text: "quick fox over lazy" });
@@ -698,7 +698,7 @@ function iResearchFeatureAqlTestSuite () {
       db._dropView("TestView");
       db._drop("TestCollection0");
       var col0 = db._create("TestCollection0");
-      var view = db._createView("TestView", "iresearch", {});
+      var view = db._createView("TestView", "arangosearch", {});
 
       col0.save({ a: "foo", c: "bar", z: 0 });
       col0.save({ a: "foz", d: "baz", z: 1 });
