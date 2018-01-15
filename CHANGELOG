@@ -1,6 +1,8 @@
 v3.3.3 (XXXX-XX-XX)
 -------------------
 
+* UI: upgraded swagger ui to version 3.9.0
+
 * fixed issue #4255: AQL SORT consuming too much memory
 
 
