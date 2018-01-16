@@ -3,6 +3,11 @@ v3.2.11 (2018-XX-XX)
 
 * issue #4222: Permission error preventing AQL query import / export on webui
 
+* UI: optimized login view for very small screen sizes
+
+* UI: Shard distribution view now has an accordion view instead of displaying
+  all shards of all collections at once.
+
 * UI: optimized error messages for invalid query bind parameter
 
 * fixed issue #4255: AQL SORT consuming too much memory
