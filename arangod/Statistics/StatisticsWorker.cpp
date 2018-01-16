@@ -43,6 +43,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -975,6 +976,11 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
   methods::Collections::create(
       vocbase, collection, TRI_COL_TYPE_DOCUMENT, s.slice(), false, true,
       [&](LogicalCollection* coll) {
+        // we must be sure to delete the just-created collection objects, otherwise we'll leak memory
+        std::unique_ptr<LogicalCollection> deleter;
+        if (ServerState::instance()->isCoordinator()) {
+          deleter.reset(coll);
+        }
         VPackBuilder t;
         t.openObject();
         t.add("collection", VPackValue(collection));

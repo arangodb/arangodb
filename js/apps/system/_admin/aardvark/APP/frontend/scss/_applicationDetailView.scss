@@ -346,15 +346,17 @@ main {
   .pending {
     color: $c-darker-grey;
   }
-
 }
 
 #swagger {
   #jsonLink {
     @extend %animated;
+    background: $c-white;
+    border-radius: 3px;
     color: $c-bluegrey-light;
     font-weight: 500;
-    opacity: .5;
+    opacity: .8;
+    padding: 5px;
     position: absolute;
     right: 33px;
     z-index: 99;

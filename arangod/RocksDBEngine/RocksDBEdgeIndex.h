@@ -175,10 +175,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const override;
 
- protected:
-  Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
-                           rocksdb::Slice const& value) override;
-
  private:
   /// @brief create the iterator
   IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,
