@@ -407,6 +407,6 @@ anonymousRouter.use('/docs', module.context.createDocumentationRouter((req, res)
   }
   return {
     mount: decodeURIComponent(req.queryParams.mount),
-    indexFile: 'index-alt.html'
+    indexFile: 'index.html'
   };
 }));

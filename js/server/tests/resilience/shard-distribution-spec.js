@@ -70,6 +70,28 @@ describe('Shard distribution', function () {
     const nrShards = 16;
 
     before(function () {
+      // First wait until the cluster is complete, otherwise the creation
+      // of the collection with replicationFactor dbServerCount will
+      // fail, we use the health api:
+      let count = 0;
+      while (true) {
+        if (++count >= 300) {
+          throw "Did not find " + dbServerCount + " dbServers within 5 mins.";
+        }
+        let health = JSON.parse(request.get(coordinator.url + '/_admin/cluster/health').body);
+        let serverCount = 0;
+        let serverIds = Object.keys(health.Health);
+        for (let i = 0; i < serverIds.length; ++i) {
+          if (serverIds[i].slice(0, 4) === "PRMR") {
+            serverCount += 1;
+          }
+        }
+        console.log("Found health records:", serverCount, serverIds, count);
+        if (serverCount >= dbServerCount) {
+          break;
+        }
+        require("internal").wait(1);
+      }
       internal.db._create(colName, {replicationFactor: dbServerCount, numberOfShards: nrShards});
       var d = request.get(coordinator.url + '/_admin/cluster/shardDistribution');
       distribution = JSON.parse(d.body).results[colName];

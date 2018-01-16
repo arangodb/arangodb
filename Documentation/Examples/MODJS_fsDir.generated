@@ -1,3 +1,0 @@
-arangosh&gt; <span class="hljs-keyword">var</span> files = <span class="hljs-built_in">require</span>(<span class="hljs-string">"fs"</span>);
-arangosh&gt; relativeFile = files.join(__dirname, <span class="hljs-string">"scripts"</span>, <span class="hljs-string">"test.js"</span>);
-<span class="hljs-regexp">/local/</span>home/willi/src/devel/scripts/test.js
