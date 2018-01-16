@@ -120,6 +120,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
                 }
                 
                 // Indexes
+                /*
                 if (cprops.has("indexes") && ) {
                   auto const& indexes = cprops.get("indexes");
                   TRI_ASSERT(indexes.isArray());
@@ -127,10 +128,13 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
                     for (auto const& index :
                            VPackArrayIterator(cprops.get("indexes"))) {
                       ActionDescription(
-                        {{"name": "EnsureIndex"},{"collection": shname}},index});
-                    }
+                        {{"name": "EnsureIndex"},
+                          {"collection": shname},
+                          {"database", dbname},
+                          {"fields", }},index});
+                          }
                   }
-                }
+                }*/
               } else {                   // Create the sucker!
                 actions.push_back(
                   ActionDescription(
