@@ -101,7 +101,7 @@ _TRI_BlockCrc32_SSE42:
         lea     crctj(%rip),%rdi /* get address of jump table     */
         movq    (%rdi,%rdx),%rdi /* compute jump address    */
 /*  now for the relative instruction XXXQQQ                 */
-        lea     x0,%rdx
+        lea     x0(%rip),%rdx
 /* Your task is to get the address of x0 into %rdx!         */
         addq    %rdx,%rdi
         andq    $-128,%r10 /* now get length correct        */
