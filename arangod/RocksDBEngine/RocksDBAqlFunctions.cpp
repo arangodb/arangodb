@@ -99,8 +99,6 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   // add the collection to the query for proper cache handling
   query->collections()->add(cname, AccessMode::Type::READ);
   trx->addCollectionAtRuntime(cid, cname);
-  LogicalCollection const* collection = trx->documentCollection(cid);
-  TRI_ASSERT(collection != nullptr);
 
   // NOTE: The shared_ptr is protected by trx lock.
   // It is save to use the raw pointer directly.
@@ -115,7 +113,8 @@ AqlValue RocksDBAqlFunctions::Fulltext(
     search.back().emplace_back(it, false);
   }
 
-  for (auto const& idx : collection->getIndexes()) {
+  auto indexes = trx->indexesForCollection(cname);
+  for (auto const& idx : indexes) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
       // test if index is on the correct field
       if (arangodb::basics::AttributeName::isIdentical(idx->fields(), search,
@@ -146,7 +145,9 @@ AqlValue RocksDBAqlFunctions::Fulltext(
     THROW_ARANGO_EXCEPTION(res);
   }
   
-  PhysicalCollection* physical = collection->getPhysical();
+  LogicalCollection const* collection = trx->documentCollection(cid);
+  TRI_ASSERT(collection != nullptr);
+  PhysicalCollection const* physical = collection->getPhysical();
   ManagedDocumentResult mmdr;
   if (maxResults == 0) {  // 0 appearantly means "all results"
     maxResults = SIZE_MAX;

@@ -196,7 +196,7 @@ class Methods {
   Result finish(Result const& res);
 
   /// @brief return a collection name
-  std::string name(TRI_voc_cid_t cid) const;
+  ENTERPRISE_VIRT std::string name(TRI_voc_cid_t cid) const;
 
   /// @brief order a ditch for a collection
   ENTERPRISE_VIRT void pinData(TRI_voc_cid_t);
@@ -339,8 +339,8 @@ class Methods {
   /// @brief Get the index features:
   ///        Returns the covered attributes, and sets the first bool value
   ///        to isSorted and the second bool value to isSparse
-  std::vector<std::vector<arangodb::basics::AttributeName>> getIndexFeatures(
-      IndexHandle const&, bool&, bool&);
+  std::vector<std::vector<basics::AttributeName>> getIndexFeatures(
+                              IndexHandle const&, bool&, bool&);
 
   /// @brief Gets the best fitting index for an AQL sort condition
   /// note: the caller must have read-locked the underlying collection when
@@ -371,7 +371,7 @@ class Methods {
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*,
                                 AccessMode::Type) const;
 
-  arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
+  ENTERPRISE_VIRT LogicalCollection* documentCollection(TRI_voc_cid_t) const;
 
   /// @brief get the index by its identifier. Will either throw or
   ///        return a valid index. nullptr is impossible.
