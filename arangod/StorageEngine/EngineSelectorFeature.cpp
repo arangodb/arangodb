@@ -38,7 +38,9 @@ StorageEngine* EngineSelectorFeature::ENGINE = nullptr;
 
 EngineSelectorFeature::EngineSelectorFeature(
     application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "EngineSelector"), _engine("auto") {
+    : ApplicationFeature(server, "EngineSelector"), 
+      _engine("auto"), 
+      _hasStarted(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");

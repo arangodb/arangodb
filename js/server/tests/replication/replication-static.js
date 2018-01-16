@@ -241,6 +241,50 @@ function BaseTestConfig() {
     },
     
     ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test trx with multiple collections
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testTrxMultiCollections: function() {
+      connectToMaster();
+
+      compare(
+        function() {
+          db._create(cn);
+          db._create(cn2);
+
+          db[cn].insert({ _key: "foo", value: 1 });
+          db[cn2].insert({ _key: "bar", value: "A" });
+          
+          db._executeTransaction({
+            collections: {
+              write: [ cn, cn2 ]
+            },
+            action: function(params) {
+              var c = require("internal").db._collection(params.cn);
+              var c2 = require("internal").db._collection(params.cn2);
+
+              c.replace("foo", { value: 2 });
+              c.insert({ _key: "foo2", value: 3 });
+              
+              c2.replace("bar", { value: "B" });
+              c2.insert({ _key: "bar2", value: "C" });
+            },
+            params: { cn, cn2 }
+          });
+        },
+        function() {
+          assertEqual(2, db[cn].count());
+          assertEqual(2, db[cn].document("foo").value);
+          assertEqual(3, db[cn].document("foo2").value);
+          
+          assertEqual(2, db[cn2].count());
+          assertEqual("B", db[cn2].document("bar").value);
+          assertEqual("C", db[cn2].document("bar2").value);
+        }
+      );
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
     /// @brief test few documents
     ////////////////////////////////////////////////////////////////////////////////
 

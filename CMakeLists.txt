@@ -50,6 +50,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 option(SKIP_PACKAGING "" OFF)
+option(STATIC_EXECUTABLES "" OFF)
+if (STATIC_EXECUTABLES)
+  set(CMAKE_EXE_LINKER_FLAGS "-static -no-pie")
+endif()
 
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
@@ -74,7 +78,9 @@ endif ()
 
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "3")
-set(ARANGODB_VERSION_REVISION   "devel")
+if (NOT DEFINED ARANGODB_VERSION_REVISION)
+  set(ARANGODB_VERSION_REVISION   "devel")
+endif()
 set(ARANGODB_PACKAGE_REVISION   "1")
 # version for the windows rc file needs to be numeric:
 if (ARANGODB_VERSION_REVISION GREATER -1)

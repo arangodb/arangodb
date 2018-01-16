@@ -999,14 +999,3 @@ void RocksDBEdgeIndex::recalculateEstimates() {
     _estimator->insert(hash);
   }
 }
-
-Result RocksDBEdgeIndex::postprocessRemove(transaction::Methods* trx,
-                                           rocksdb::Slice const& key,
-                                           rocksdb::Slice const& value) {
-  // blacklist keys during truncate
-  blackListKey(key.data(), key.size());
-
-  uint64_t hash = RocksDBEdgeIndex::HashForKey(key);
-  _estimator->remove(hash);
-  return Result();
-}
