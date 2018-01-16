@@ -110,12 +110,26 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
               if (ldb.hasKey(shname)) {   // Have local collection with that name
                 auto const properties = 
                   compareRelevantProps(pcol.value, ldb.get(shname));
+                
                 // If comparison has brought any updates
                 if (properties.slice() != VPackSlice::emptyObjectSlice()) {
                   actions.push_back(
                     ActionDescription(
                       {{"name", "AlterCollection"}, {"collection", shname}},
                       properties));
+                }
+                
+                // Indexes
+                if (cprops.has("indexes") && ) {
+                  auto const& indexes = cprops.get("indexes");
+                  TRI_ASSERT(indexes.isArray());
+                  if (indexes.length() > 1) { // _key Index always there
+                    for (auto const& index :
+                           VPackArrayIterator(cprops.get("indexes"))) {
+                      ActionDescription(
+                        {{"name": "EnsureIndex"},{"collection": shname}},index});
+                    }
+                  }
                 }
               } else {                   // Create the sucker!
                 actions.push_back(
@@ -124,8 +138,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
                      {"database", dbname}}, props));
               }
 
-              // Indexes
-              
               
             }
             
