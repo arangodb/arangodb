@@ -125,9 +125,9 @@ class PhysicalCollection {
   virtual bool dropIndex(TRI_idx_iid_t iid) = 0;
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(
-      transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) const = 0;
+      transaction::Methods* trx, bool reverse) const = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(
-      transaction::Methods* trx, ManagedDocumentResult* mdr) const = 0;
+      transaction::Methods* trx) const = 0;
   virtual void invokeOnAllElements(
       transaction::Methods* trx,
       std::function<bool(LocalDocumentId const&)> callback) = 0;
@@ -152,11 +152,11 @@ class PhysicalCollection {
 
   virtual bool readDocument(transaction::Methods* trx,
                             LocalDocumentId const& token,
-                            ManagedDocumentResult& result) = 0;
+                            ManagedDocumentResult& result) const = 0;
   
   virtual bool readDocumentWithCallback(transaction::Methods* trx,
                                         LocalDocumentId const& token,
-                                        IndexIterator::DocumentCallback const& cb) = 0;
+                                        IndexIterator::DocumentCallback const& cb) const = 0;
 
   virtual Result insert(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice const newSlice,
@@ -213,6 +213,8 @@ class PhysicalCollection {
       std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
 
   // SECTION: Document pre commit preperation
+
+  TRI_voc_rid_t newRevisionId() const;
 
   /// @brief new object for insert, value must have _key set correctly.
   int newObjectForInsert(transaction::Methods* trx,

@@ -87,7 +87,7 @@ static UniformCharacter JSSaltGenerator(
 }
 
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
-TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(                                   v8::Handle<v8::Value> const obj)
+TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(v8::Handle<v8::Value> const obj)
     : _str(nullptr), _length(0) {
   v8::String::Value str(obj);
 
@@ -2681,7 +2681,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "invalid <content> buffer value");
     }
 
-    std::ofstream file;
+    std::fstream file;
 
     file.open(*name, std::ios::out | std::ios::binary);
 
@@ -2689,6 +2689,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
       file.write(data, size);
       if (flush) {
         file.flush();
+        file.sync();
       }
       file.close();
       TRI_V8_RETURN_TRUE();
@@ -2700,7 +2701,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("<content> must be a string");
     }
 
-    std::ofstream file;
+    std::fstream file;
 
     file.open(*name, std::ios::out | std::ios::binary);
 
@@ -2708,6 +2709,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
       file << *content;
       if (flush) {
         file.flush();
+        file.sync();
       }
       file.close();
       TRI_V8_RETURN_TRUE();
@@ -4137,7 +4139,7 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
       result = "JavaScript exception: " + std::string(exceptionString) + "\n";
     }
   } else {
-    TRI_Utf8ValueNFC filename(                              message->GetScriptResourceName());
+    TRI_Utf8ValueNFC filename(message->GetScriptResourceName());
     char const* filenameString = *filename;
     int linenum = message->GetLineNumber();
     int start = message->GetStartColumn() + 1;

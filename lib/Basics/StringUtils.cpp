@@ -1617,34 +1617,12 @@ int64_t int64(std::string const& str) {
   }
 }
 
-int64_t int64_check(std::string const& str) {
-  size_t n;
-  int64_t value = std::stoll(str, &n, 10);
-
-  if (n < str.size()) {
-    throw std::invalid_argument("cannot convert '" + str + "' to int64");
-  }
-
-  return value;
-}
-
 uint64_t uint64(std::string const& str) {
   try {
     return std::stoull(str, 0, 10);
   } catch (...) {
     return 0;
   }
-}
-
-uint64_t uint64_check(std::string const& str) {
-  size_t n;
-  int64_t value = std::stoull(str, &n, 10);
-
-  if (n < str.size()) {
-    throw std::invalid_argument("cannot convert '" + str + "' to uint64");
-  }
-
-  return value;
 }
 
 uint64_t uint64_trusted(char const* value, size_t length) {

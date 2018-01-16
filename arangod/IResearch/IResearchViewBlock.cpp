@@ -239,9 +239,9 @@ bool IResearchViewBlockBase::readDocument(
   );
 }
 
-AqlItemBlock* IResearchViewBlockBase::getSome(size_t, size_t atMost) {
+AqlItemBlock* IResearchViewBlockBase::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
 
   if (_done) {
     traceGetSomeEnd(nullptr);
@@ -718,7 +718,7 @@ bool IResearchViewOrderedBlock::next(
   return (limit == 0); // exceeded limit
 }
 
-size_t IResearchViewOrderedBlock::skip(uint64_t limit) {
+size_t IResearchViewOrderedBlock::skip(size_t limit) {
   TRI_ASSERT(_filter);
 
   size_t skipped = 0;

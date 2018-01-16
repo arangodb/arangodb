@@ -405,13 +405,12 @@ void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
 }
 
 std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) {
-  return _physical->getAllIterator(trx, mdr, reverse);
+    transaction::Methods* trx, bool reverse) {
+  return _physical->getAllIterator(trx, reverse);
 }
 
-std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr) {
-  return _physical->getAnyIterator(trx, mdr);
+std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(transaction::Methods* trx) {
+  return _physical->getAnyIterator(trx);
 }
 
 void LogicalCollection::invokeOnAllElements(
@@ -1256,13 +1255,13 @@ Result LogicalCollection::remove(transaction::Methods* trx,
 
 bool LogicalCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& token,
-                                     ManagedDocumentResult& result) {
+                                     ManagedDocumentResult& result) const {
   return getPhysical()->readDocument(trx, token, result);
 }
 
 bool LogicalCollection::readDocumentWithCallback(transaction::Methods* trx,
                                                  LocalDocumentId const& token,
-                                                 IndexIterator::DocumentCallback const& cb) {
+                                                 IndexIterator::DocumentCallback const& cb) const {
   return getPhysical()->readDocumentWithCallback(trx, token, cb);
 }
 

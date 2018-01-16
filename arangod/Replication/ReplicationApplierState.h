@@ -45,6 +45,7 @@ struct ReplicationApplierState {
   ReplicationApplierState();
   ~ReplicationApplierState();
   
+  ReplicationApplierState(ReplicationApplierState const& other) = delete;
   ReplicationApplierState& operator=(ReplicationApplierState const& other);
 
   void reset(bool resetState);

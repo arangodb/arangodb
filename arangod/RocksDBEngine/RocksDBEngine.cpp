@@ -139,15 +139,34 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
 }
 
 RocksDBEngine::~RocksDBEngine() {
-  // turn off RocksDBThrottle, and release our pointers to it
-  if (nullptr != _listener.get()) {
-    _listener->StopThread();
-    _listener.reset();
-    _options.listeners.clear();
-  } // if
+  shutdownRocksDBInstance(); 
+}
 
-  delete _db;
-  _db = nullptr;
+/// shuts down the RocksDB instance. this is called from unprepare
+/// and the dtor
+void RocksDBEngine::shutdownRocksDBInstance() noexcept {
+  if (_db) {
+    // turn off RocksDBThrottle, and release our pointers to it
+    if (nullptr != _listener.get()) {
+      _listener->StopThread();
+    } // if
+    
+    for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
+      _db->DestroyColumnFamilyHandle(h);
+    }
+    
+    // now prune all obsolete WAL files
+    try {
+      determinePrunableWalFiles(0);
+      pruneWalFiles();
+    } catch (...) {
+      // this is allowed to go wrong on shutdown
+      // we must not throw an exception from here
+    }
+
+    delete _db;
+    _db = nullptr;
+  }
 }
 
 // inherited from ApplicationFeature
@@ -611,18 +630,7 @@ void RocksDBEngine::unprepare() {
     return;
   }
 
-  if (_db) {
-    for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
-      _db->DestroyColumnFamilyHandle(h);
-    }
-
-    // now prune all obsolete WAL files
-    determinePrunableWalFiles(0);
-    pruneWalFiles();
-
-    delete _db;
-    _db = nullptr;
-  }
+  shutdownRocksDBInstance();
 }
 
 TransactionManager* RocksDBEngine::createTransactionManager() {
@@ -1334,7 +1342,7 @@ Result RocksDBEngine::registerRecoveryHelper(
     std::shared_ptr<RocksDBRecoveryHelper> helper) {
   try {
     _recoveryHelpers.emplace_back(helper);
-  } catch (std::bad_alloc const& ex) {
+  } catch (std::bad_alloc const&) {
     return {TRI_ERROR_OUT_OF_MEMORY};
   }
 

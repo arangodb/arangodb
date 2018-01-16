@@ -31,6 +31,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
@@ -325,9 +326,6 @@ void DatabaseFeature::prepare() {}
 void DatabaseFeature::start() {
   // set singleton
   DATABASE = this;
-
-  // init key generator
-  KeyGenerator::Initialize();
 
   verifyAppPaths();
 
@@ -1079,7 +1077,7 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
   
   // database names with a number in front are invalid names
   if (name[0] >= '0' && name[0] <= '9') {
-    TRI_voc_tick_t id = StringUtils::uint64(name);
+    TRI_voc_tick_t id = NumberUtils::atoi_zero<TRI_voc_tick_t>(name.data(), name.data() + name.size());
     for (auto& p : theLists->_databases) {
       TRI_vocbase_t* vocbase = p.second;
       if (vocbase->id() == id) {
@@ -1113,7 +1111,7 @@ std::string DatabaseFeature::translateCollectionName(std::string const& dbName, 
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
 
     CollectionNameResolver resolver(vocbase);
-    return resolver.getCollectionNameCluster(StringUtils::uint64(collectionName));
+    return resolver.getCollectionNameCluster(NumberUtils::atoi_zero<TRI_voc_cid_t>(collectionName.data(), collectionName.data() + collectionName.size()));
   } else {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
@@ -1126,7 +1124,7 @@ std::string DatabaseFeature::translateCollectionName(std::string const& dbName, 
     TRI_vocbase_t* vocbase = (*it).second;
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-    return vocbase->collectionName(StringUtils::uint64(collectionName));
+    return vocbase->collectionName(NumberUtils::atoi_zero<uint64_t>(collectionName.data(), collectionName.data() + collectionName.size()));
   }
 }
 
