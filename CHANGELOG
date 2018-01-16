@@ -1,6 +1,8 @@
 devel
 -----
 
+* issue #4222: Permission error preventing AQL query import / export on webui
+
 * Fixed an issue with the index estimates in RocksDB in the case a transaction is aborted.
   Former the index estimates were modified if the transaction commited or not.
   Now they will only be modified if the transaction commited successfully.
