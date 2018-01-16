@@ -454,6 +454,7 @@ if (USE_ENTERPRISE)
     target_link_libraries(arangoserver
       ldap
       lber
+      ssl
     )
   endif()
 endif()
