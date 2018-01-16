@@ -1091,12 +1091,8 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
   // the update delta into the WAL marker instead of the full persisted state
   // below is a very dangerous hack as it allows multiple links from the same
   // collection to point to the same view, thus breaking view data consistency
-  {
-    auto* engine = arangodb::EngineSelectorFeature::ENGINE;
-
-    if (engine && engine->inRecovery()) {
-      _meta._collections.erase(cid);
-    }
+  if (_inRecovery) {
+    _meta._collections.erase(cid);
   }
 
   std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
