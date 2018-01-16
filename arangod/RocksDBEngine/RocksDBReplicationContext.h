@@ -25,6 +25,7 @@
 #define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_CONTEXT_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
@@ -72,12 +73,7 @@ class RocksDBReplicationContext {
   uint64_t lastTick() const;
   uint64_t count() const;
 
-  TRI_vocbase_t* vocbase() const {
-    if (!_guard) {
-      return nullptr;
-    }
-    return _guard->database();
-  }
+  TRI_vocbase_t* vocbase() const;
 
   // creates new transaction/snapshot
   void bind(TRI_vocbase_t*);
@@ -85,7 +81,7 @@ class RocksDBReplicationContext {
 
   // returns inventory
   std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>
-  getInventory(TRI_vocbase_t* vocbase, bool includeSystem, bool global);
+  getInventory(TRI_vocbase_t* vocbase, bool includeSystem, bool global) const;
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
@@ -110,8 +106,8 @@ class RocksDBReplicationContext {
   double expires() const;
   bool isDeleted() const;
   void deleted();
-  bool isUsed() const;
-  void use(double ttl);
+  bool isUsed(bool exclusive) const;
+  void use(double ttl, bool exclusive);
   /// remove use flag
   void release();
   bool more(std::string const& collectionIdentifier);
@@ -119,14 +115,15 @@ class RocksDBReplicationContext {
  private:
   void releaseDumpingResources();
   CollectionIterator* getCollectionIterator(TRI_voc_cid_t id);
+  void internalBind(TRI_vocbase_t*);
 
  private:
+  mutable basics::ReadWriteLock _contextLock;
   TRI_voc_tick_t _id; // batch id
   uint64_t _lastTick; // the time at which the snapshot was taken
   std::unique_ptr<DatabaseGuard> _guard;
   std::unique_ptr<transaction::Methods> _trx;
   std::unordered_map<TRI_voc_cid_t, std::unique_ptr<CollectionIterator>> _iterators;
-  Mutex _iteratorsLock;
 
   /// @brief bound collection iterator for single-threaded methods
   CollectionIterator* _collection;
@@ -140,7 +137,8 @@ class RocksDBReplicationContext {
 
   double _expires;
   bool _isDeleted;
-  bool _isUsed;
+  bool _exclusive;
+  size_t _users;
 };
 
 }  // namespace arangodb

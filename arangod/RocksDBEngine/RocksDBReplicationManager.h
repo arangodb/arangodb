@@ -71,7 +71,7 @@ class RocksDBReplicationManager {
   //////////////////////////////////////////////////////////////////////////////
 
   RocksDBReplicationContext* find(
-      RocksDBReplicationId, bool& isBusy,
+      RocksDBReplicationId, bool& isBusy, bool exclusive = true,
       double ttl = RocksDBReplicationContext::DefaultTTL);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -109,12 +109,12 @@ class RocksDBReplicationManager {
   //////////////////////////////////////////////////////////////////////////////
 
   bool garbageCollect(bool);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief tell the replication manager that a shutdown is in progress
   /// effectively this will block the creation of new contexts
   //////////////////////////////////////////////////////////////////////////////
-    
+
   void beginShutdown();
 
  private:
@@ -130,7 +130,7 @@ class RocksDBReplicationManager {
 
   std::unordered_map<RocksDBReplicationId, RocksDBReplicationContext*>
       _contexts;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not a shutdown is in progress
   //////////////////////////////////////////////////////////////////////////////
@@ -140,23 +140,23 @@ class RocksDBReplicationManager {
 
 class RocksDBReplicationContextGuard {
  public:
-  
+
   RocksDBReplicationContextGuard(RocksDBReplicationManager* manager,
                                  RocksDBReplicationContext* ctx)
     : _manager(manager), _ctx(ctx) {
     if (_ctx != nullptr) {
-      TRI_ASSERT(_ctx->isUsed());
+      TRI_ASSERT(_ctx->isUsed(true));
     }
   }
 
   RocksDBReplicationContextGuard(RocksDBReplicationContextGuard&& other)
     noexcept : _manager(other._manager), _ctx(other._ctx) {
     other._ctx = nullptr;
-  } 
-  
+  }
+
   ~RocksDBReplicationContextGuard()  {
     if (_ctx != nullptr) {
-      TRI_ASSERT(_ctx->isUsed());
+      TRI_ASSERT(_ctx->isUsed(true));
       _manager->release(_ctx);
     }
   }

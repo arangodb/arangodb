@@ -124,7 +124,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     int res = TRI_ERROR_NO_ERROR;
     bool busy;
-    RocksDBReplicationContext* ctx = _manager->find(id, busy, expires);
+    RocksDBReplicationContext* ctx = _manager->find(id, busy, false, expires);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     if (busy) {
       res = TRI_ERROR_CURSOR_BUSY;
@@ -682,7 +682,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
   // acquire context
   bool isBusy = false;
-  RocksDBReplicationContext* context = _manager->find(contextId, isBusy);
+  RocksDBReplicationContext* context = _manager->find(contextId, isBusy, false);
   RocksDBReplicationContextGuard guard(_manager, context);
 
   if (context == nullptr) {
@@ -695,7 +695,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "replication dump - context is busy");
     return;
-  }
+  } // we allow dumping in parallel
 
   // print request
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME)

@@ -912,17 +912,6 @@ void DumpFeature::start() {
   }
 
   // set up threads and workers
-  bool usingRocksDB = false;
-  std::tie(result, usingRocksDB) =
-      _clientManager.getArangoIsUsingEngine(*httpClient, "rocksdb");
-  if (result.fail()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Error: could not detect ArangoDB storage engine";
-    FATAL_ERROR_EXIT();
-  }
-  if (usingRocksDB) {
-    _threadCount = 1;
-  }
   _clientTaskQueue.spawnWorkers(_clientManager, _threadCount);
 
   if (_progress) {
