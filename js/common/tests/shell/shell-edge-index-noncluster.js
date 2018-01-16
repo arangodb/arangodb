@@ -422,7 +422,7 @@ function EdgeIndexSuite () {
             // This should significantly modify the estimate
             // if successful
             require('@arangodb').db[en].save(docs);
-            throw {errorMessage: "banana"};
+            throw {errorNum: 1337, errorMessage: "banana"};
           }
         });
         fail();
