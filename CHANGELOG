@@ -1,6 +1,8 @@
 devel
 -----
 
+* UI: optimized login view for very small screen sizes
+
 * UI: optimized error messages for invalid query bind parameter
 
 * Truncate in RocksDB will now do intermediate commits every 10.000 documents
