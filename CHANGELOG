@@ -1,6 +1,8 @@
 devel
 -----
 
+* issue #4222: Permission error preventing AQL query import / export on webui
+
 * UI: optimized login view for very small screen sizes
 
 * UI: optimized error messages for invalid query bind parameter
