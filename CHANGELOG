@@ -1,6 +1,8 @@
 devel
 -----
 
+* issue #1689 p: upgrade boost to version 1.66.0
+
 * make the default value of `--rocksdb.block-cache-shard-bits` use the RocksDB
   default value. This will mostly mean the default number block cache shard
   bits is lower than before, allowing each shard to store more data and cause
