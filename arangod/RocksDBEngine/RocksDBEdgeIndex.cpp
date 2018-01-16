@@ -470,7 +470,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
   if (r.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
-    RocksDBTransactionState::toState(trx)->trackIndexInsert(_collection->cid(), id(), hash);
+    _estimator->insert(hash);
     return IndexResult();
   } else {
     return IndexResult(r.errorNumber(), this);
@@ -501,7 +501,7 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
   if (res.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
-    RocksDBTransactionState::toState(trx)->trackIndexRemove(_collection->cid(), id(), hash);
+    _estimator->remove(hash);
     return IndexResult();
   } else {
     return IndexResult(res.errorNumber(), this);
@@ -997,20 +997,5 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     uint64_t hash = RocksDBEdgeIndex::HashForKey(it->key());
     _estimator->insert(hash);
-  }
-}
-
-void RocksDBEdgeIndex::applyCommitedEstimates(
-    std::vector<uint64_t> const& inserts,
-    std::vector<uint64_t> const& removes) {
-  if (_estimator != nullptr) {
-    // If we have an estimator apply the changes to it.
-    for (auto const& hash : inserts) {
-      _estimator->insert(hash);
-    }
-
-    for (auto const& hash : removes) {
-      _estimator->remove(hash);
-    }
   }
 }

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, fail */
+/*global assertEqual, assertTrue, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the hash index, selectivity estimates
@@ -150,47 +150,7 @@ function HashIndexSuite() {
 
       idx = collection.ensureHashIndex("value");
       assertTrue(idx.selectivityEstimate <= (2 / 3000 + 0.0001));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Validate that selectivity estimate is not modified if the transaction
-///        is aborted.
-////////////////////////////////////////////////////////////////////////////////
-
-    testSelectivityAfterAbortion : function () {
-      let idx = collection.ensureHashIndex("value");
-      let docs = [];
-      for (let i = 0; i < 1000; ++i) {
-        docs.push({value: i % 100});
-      }
-      collection.save(docs);
-      idx = collection.ensureHashIndex("value");
-
-      assertTrue(idx.selectivityEstimate === 100 / 1000);
-      try {
-        internal.db._executeTransaction({
-          collections: {write: cn},
-          action: function () {
-            const cn = "UnitTestsCollectionHash";
-            let docs = [];
-            for (let i = 0; i < 1000; ++i) {
-              docs.push({value: 1});
-            }
-            // This should significantly modify the estimate
-            // if successful
-            require('@arangodb').db[cn].save(docs);
-            throw "banana";
-          }
-        });
-        fail();
-      } catch (e) {
-        assertEqual(e.errorMessage, "banana");
-        // Insert failed.
-        // Validate that estimate is non modified
-        idx = collection.ensureHashIndex("value");
-        assertTrue(idx.selectivityEstimate === 100 / 1000);
-      }
-    },
+    }
 
   };
 }

@@ -610,11 +610,10 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
-    auto state = RocksDBTransactionState::toState(trx);
     for (auto& it : hashes) {
       // The estimator is only useful if we are in a non-unique indexes
       TRI_ASSERT(!_unique);
-      state->trackIndexInsert(_collection->cid(), id(), it);
+      _estimator->insert(it);
     }
   }
 
@@ -738,11 +737,10 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
-    auto state = RocksDBTransactionState::toState(trx);
     for (auto& it : hashes) {
       // The estimator is only useful if we are in a non-unique indexes
       TRI_ASSERT(!_unique);
-      state->trackIndexRemove(_collection->cid(), id(), it);
+      _estimator->remove(it);
     }
   }
 
@@ -1585,19 +1583,4 @@ void RocksDBVPackIndex::recalculateEstimates() {
 std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t>
 RocksDBVPackIndex::estimator() const {
   return std::make_pair(_estimator.get(), _estimatorSerializedSeq);
-}
-
-void RocksDBVPackIndex::applyCommitedEstimates(
-    std::vector<uint64_t> const& inserts,
-    std::vector<uint64_t> const& removes) {
-  if (_estimator != nullptr) {
-    // If we have an estimator apply the changes to it.
-    for (auto const& hash : inserts) {
-      _estimator->insert(hash);
-    }
-
-    for (auto const& hash : removes) {
-      _estimator->remove(hash);
-    }
-  }
 }

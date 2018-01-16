@@ -271,18 +271,13 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
                                                           collection->revision());
           engine->settingsManager()->updateCounter(coll->objectId(), update);
         }
+
         // we need this in case of an intermediate commit. The number of
         // initial documents is adjusted and numInserts / removes is set to 0
         collection->commitCounts();
       }
     }
   } else {
-    for (auto& trxCollection : _collections) {
-      RocksDBTransactionCollection* collection =
-          static_cast<RocksDBTransactionCollection*>(trxCollection);
-      // We get here if we have filled indexes. So let us commit counts
-      collection->commitCounts();
-    }
     // don't write anything if the transaction is empty
     result = rocksutils::convertStatus(_rocksTransaction->Rollback());
   }
@@ -598,25 +593,6 @@ void RocksDBTransactionState::returnRocksDBKey(RocksDBKey* key) {
   } catch (...) {
     // no harm done. just wipe the key
     delete key;
-  }
-}
-
-
-void RocksDBTransactionState::trackIndexInsert(TRI_voc_cid_t cid, TRI_idx_iid_t idxId, uint64_t hash) {
-  auto col = findCollection(cid);
-  if (col != nullptr) {
-    static_cast<RocksDBTransactionCollection*>(col)->trackIndexInsert(idxId, hash);
-  } else {
-    TRI_ASSERT(false);
-  }
-}
-
-void RocksDBTransactionState::trackIndexRemove(TRI_voc_cid_t cid, TRI_idx_iid_t idxId, uint64_t hash) {
-  auto col = findCollection(cid);
-  if (col != nullptr) {
-    static_cast<RocksDBTransactionCollection*>(col)->trackIndexRemove(idxId, hash);
-  } else {
-    TRI_ASSERT(false);
   }
 }
 
