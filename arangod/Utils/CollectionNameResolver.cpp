@@ -337,7 +337,9 @@ bool CollectionNameResolver::visitCollections(
     });
   }
 
-  return false; // no way to determine what to visit
+  // no way to determine what to visit
+  // emulate the original behaviour, assume 'cid' is for a regular collection and visit it as is
+  return visitor(cid);
 }
 
 // -----------------------------------------------------------------------------
