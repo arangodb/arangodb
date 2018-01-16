@@ -21,6 +21,8 @@ v3.3.3 (XXXX-XX-XX)
 
 * UI: optimized login view for very small screen sizes
 
+* issue #4222: Permission error preventing AQL query import / export on webui
+
 * UI: optimized error messages for invalid query bind parameter
 
 * UI: upgraded swagger ui to version 3.9.0
