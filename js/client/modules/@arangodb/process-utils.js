@@ -552,6 +552,14 @@ function runArangoImport (options, instanceInfo, what) {
     args['create-collection'] = what.create;
   }
 
+  if (what.createDatabase !== undefined) {
+    args['create-database'] = what.createDatabase;
+  }
+
+  if (what.database !== undefined) {
+    args['server.database'] = what.database;
+  }
+
   if (what.backslash !== undefined) {
     args['backslash-escape'] = what.backslash;
   }

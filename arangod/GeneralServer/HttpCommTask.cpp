@@ -295,7 +295,7 @@ bool HttpCommTask::processRead(double startTime) {
       if (!abandon()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "task is already abandoned");
       }
-      
+
       std::shared_ptr<GeneralCommTask> commTask = std::make_shared<VstCommTask>(
           _loop, _server, std::move(_peer), std::move(_connectionInfo),
           GeneralServerFeature::keepAliveTimeout(), 
