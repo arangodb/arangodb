@@ -1,6 +1,5 @@
 tags
 build
-/core.*
 *.vim
 .deps
 .dirstamp
@@ -48,7 +47,9 @@ cluster/**
 cluster-init*/**
 p/
 
-core
+/*core
+/core*
+!3rdParry/*/core
 !3rdParty/iresearch/core
 !core.h
 TAGS
