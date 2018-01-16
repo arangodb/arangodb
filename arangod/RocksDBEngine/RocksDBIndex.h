@@ -148,7 +148,11 @@ class RocksDBIndex : public Index {
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
                                     bool unique);
 
-  virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const;
+  virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t>
+  estimator() const;
+
+  virtual void applyCommitedEstimates(std::vector<uint64_t> const& inserts,
+                                      std::vector<uint64_t> const& removes);
 
  protected:
   inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
