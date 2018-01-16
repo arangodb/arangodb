@@ -38,7 +38,7 @@ the behaviour of the engine.
 
 ArangoSearch accesses the IResearch scorers directly by their internal names.
 The name (in upper-case) of the scorer is the function name to be used in the 
-['SORT' section](../../../AQL/Views/IResearch/IResearch.html#arangosearch-sort).
+['SORT' section](../../AQL/Views/IResearch.html#arangosearch-sort).
 Function arguments, (excluding the first argument), are serialized as a
 string representation of a JSON array and passed directly to the corresponding
 scorer. The first argument to any scorer function is the reference to the 
