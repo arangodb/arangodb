@@ -207,9 +207,10 @@ static void mergeResults(
   resultBody->openArray();
   for (auto const& pair : reverseMapping) {
     VPackSlice arr = resultMap.find(pair.first)->second->slice();
-    if (arr.isObject() && arr.hasKey("error") && arr.get("error").isBoolean() && arr.get("error").getBoolean()) {
+    if (arr.isObject() && arr.hasKey(StaticStrings::Error) &&
+        arr.get(StaticStrings::Error).isBoolean() && arr.get(StaticStrings::Error).getBoolean()) {
       // an error occurred, now rethrow the error
-      int res = arr.get("errorNum").getNumericValue<int>();
+      int res = arr.get(StaticStrings::ErrorNum).getNumericValue<int>();
       THROW_ARANGO_EXCEPTION(res);
     }
     resultBody->add(arr.at(pair.second));
@@ -245,8 +246,8 @@ static void mergeResultsAllShards(
   size_t realNotFound = 0;
   VPackBuilder cmp;
   cmp.openObject();
-  cmp.add("error", VPackValue(true));
-  cmp.add("errorNum", VPackValue(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
+  cmp.add(StaticStrings::Error, VPackValue(true));
+  cmp.add(StaticStrings::ErrorNum, VPackValue(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
   cmp.close();
   VPackSlice notFound = cmp.slice();
   resultBody->clear();
@@ -450,8 +451,8 @@ static void collectResultsFromAllShards(
       size_t count = weSend->second.size();
       for (size_t i = 0; i < count; ++i) {
         tmpBuilder->openObject();
-        tmpBuilder->add("error", VPackValue(true));
-        tmpBuilder->add("errorNum", VPackValue(commError));
+        tmpBuilder->add(StaticStrings::Error, VPackValue(true));
+        tmpBuilder->add(StaticStrings::ErrorNum, VPackValue(commError));
         tmpBuilder->close();
       }
       resultMap.emplace(sId, tmpBuilder);
@@ -1868,7 +1869,7 @@ void fetchVerticesFromEngines(
       // We have an error case here. Throw it.
       THROW_ARANGO_EXCEPTION_MESSAGE(
           code, arangodb::basics::VelocyPackHelper::getStringValue(
-                    resSlice, "errorMessage", TRI_errno_string(code)));
+                    resSlice, StaticStrings::ErrorMessage, TRI_errno_string(code)));
     }
     for (auto const& pair : VPackObjectIterator(resSlice)) {
       StringRef key(pair.key);
@@ -1973,7 +1974,7 @@ void fetchVerticesFromEngines(
       // We have an error case here. Throw it.
       THROW_ARANGO_EXCEPTION_MESSAGE(
           code, arangodb::basics::VelocyPackHelper::getStringValue(
-                    resSlice, "errorMessage", TRI_errno_string(code)));
+                    resSlice, StaticStrings::ErrorMessage, TRI_errno_string(code)));
     }
     bool cached = false;
 

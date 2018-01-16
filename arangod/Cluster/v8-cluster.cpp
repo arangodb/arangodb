@@ -78,12 +78,12 @@ static void CreateAgencyException(
     return;
   }
 
-  errorObject->Set(TRI_V8_ASCII_STRING(isolate, "code"),
+  errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Code),
                    v8::Number::New(isolate, result.httpCode()));
-  errorObject->Set(TRI_V8_ASCII_STRING(isolate, "errorNum"),
+  errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
                    v8::Number::New(isolate, result.errorCode()));
-  errorObject->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"), errorMessage);
-  errorObject->Set(TRI_V8_ASCII_STRING(isolate, "error"), v8::True(isolate));
+  errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage);
+  errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error), v8::True(isolate));
 
   TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
   v8::Handle<v8::Value> proto = ArangoErrorTempl->NewInstance();
@@ -721,12 +721,12 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
 
   // Finally, report any possible error:
   bool error = cic->error(shardID);
-  result->Set(TRI_V8_ASCII_STRING(isolate, "error"), v8::Boolean::New(isolate, error));
+  result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error), v8::Boolean::New(isolate, error));
   if (error) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "errorNum"),
+    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
                 v8::Number::New(isolate, cic->errorNum(shardID)));
     std::string const errorMessage = cic->errorMessage(shardID);
-    result->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
                 TRI_V8_STD_STRING(isolate, errorMessage));
   }
   auto servers = cic->servers(shardID);

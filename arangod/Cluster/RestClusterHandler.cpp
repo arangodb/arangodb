@@ -134,8 +134,8 @@ void RestClusterHandler::handleCommandEndpoints() {
   
   VPackBuilder builder;
   builder.openObject();
-  builder.add("error", VPackValue(false));
-  builder.add("code", VPackValue(200));
+  builder.add(StaticStrings::Error, VPackValue(false));
+  builder.add(StaticStrings::Code, VPackValue(200));
   {
     VPackArrayBuilder array(&builder, "endpoints", true);
 

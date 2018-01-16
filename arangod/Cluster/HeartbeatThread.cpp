@@ -488,20 +488,19 @@ void HeartbeatThread::runSingleServer() {
       
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Looking at Sync/Commands/" << _myId;
       handleStateChange(result);
-      
+            
       // performing failover checks
-      std::string const leaderPath = "/Plan/AsyncReplication/Leader";
-      VPackSlice asyncRepl = response.get(AgencyCommManager::slicePath(leaderPath));
-      if (!asyncRepl.isObject()) {
+      VPackSlice async = response.get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
+      if (!async.isObject()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
-          << "Heartbeat: Could not read async-repl metadata from agency!";
+          << "Heartbeat: Could not read async-replication metadata from agency!";
         continue;
       }
       
       VPackBuilder myIdBuilder;
       myIdBuilder.add(VPackValue(_myId));
       
-      VPackSlice leader = asyncRepl.get("Leader");
+      VPackSlice leader = async.get("Leader");
       if (!leader.isString() || leader.getStringLength() == 0) {
         // Case 1: No leader in agency. Race for leadership
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
@@ -509,6 +508,7 @@ void HeartbeatThread::runSingleServer() {
         
         // if we stay a slave, the redirect will be turned on again
         ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
+        std::string const leaderPath = "Plan/AsyncReplication/Leader";
         if (leader.isNone()) {
           result = _agency.casValue(leaderPath, myIdBuilder.slice(), /*prevExist*/ false,
                                     /*ttl*/ 0, /*timeout*/ 5.0);

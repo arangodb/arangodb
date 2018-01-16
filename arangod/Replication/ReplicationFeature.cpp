@@ -30,6 +30,7 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Rest/GeneralResponse.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -155,5 +156,75 @@ void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
 
   if (vocbase->replicationApplier() != nullptr) {
     vocbase->replicationApplier()->stopAndJoin();
+  }
+}
+
+// replace tcp:// with http://, and ssl:// with https://
+static std::string FixEndpointProto(std::string const& endpoint) {
+  if (endpoint.find("tcp://", 0, 6) == 0) {
+    return "http://" + endpoint.substr(6); // strlen("tcp://")
+  }
+  if (endpoint.find("ssl://", 0, 6) == 0) {
+    return "https://" + endpoint.substr(6); // strlen("ssl://")
+  }
+  return endpoint;
+}
+
+static void writeError(int code, GeneralResponse* response) {
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  try {
+    builder.add(VPackValue(VPackValueType::Object));
+    builder.add(StaticStrings::Error, VPackValue(true));
+    builder.add(StaticStrings::ErrorNum, VPackValue(code));
+    builder.add(StaticStrings::ErrorMessage, VPackValue(TRI_errno_string(code)));
+    builder.add(StaticStrings::Code, VPackValue((int)response->responseCode()));
+    builder.close();
+    
+    VPackOptions options(VPackOptions::Defaults);
+    options.escapeUnicode = true;
+    response->setPayload(std::move(buffer), true, VPackOptions::Defaults);
+  } catch (...) {
+    // Building the error response failed
+  }
+}
+
+
+/// @brief fill a response object with correct response for a follower
+void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
+                                                 ServerState::Mode mode) {
+  switch (mode) {
+    case ServerState::Mode::REDIRECT: {
+      std::string endpoint;
+      ReplicationFeature* replication = ReplicationFeature::INSTANCE;
+      if (replication != nullptr && replication->isAutomaticFailoverEnabled()) {
+        GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+        if (applier != nullptr) {
+          endpoint = applier->endpoint();
+          // replace tcp:// with http://, and ssl:// with https://
+          endpoint = FixEndpointProto(endpoint);
+        }
+      }
+      response->setHeader(StaticStrings::LeaderEndpoint, endpoint);
+      writeError(TRI_ERROR_CLUSTER_NOT_LEADER, response);
+      // return the endpoint of the actual leader
+    }
+    break;
+      
+    case ServerState::Mode::TRYAGAIN:
+      // intentionally do not set "Location" header, but use a custom header that
+      // clients can inspect. if they find an empty endpoint, it means that there
+      // is an ongoing leadership challenge
+      response->setHeader(StaticStrings::LeaderEndpoint, "");
+      writeError(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, response);
+      break;
+
+    case ServerState::Mode::INVALID:
+      writeError(TRI_ERROR_SHUTTING_DOWN, response);
+      break;
+    case ServerState::Mode::MAINTENANCE:
+    default: {
+      break;
+    }
   }
 }

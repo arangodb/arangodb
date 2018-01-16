@@ -906,8 +906,8 @@ std::string SimpleHttpClient::getHttpErrorMessage(
 
     VPackSlice slice = builder->slice();
     if (slice.isObject()) {
-      VPackSlice msg = slice.get("errorMessage");
-      int errorNum = slice.get("errorNum").getNumericValue<int>();
+      VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
+      int errorNum = slice.get(StaticStrings::ErrorNum).getNumericValue<int>();
 
       if (msg.isString() && msg.getStringLength() > 0 && errorNum > 0) {
         if (errorCode != nullptr) {

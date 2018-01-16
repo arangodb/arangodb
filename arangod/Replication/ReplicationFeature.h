@@ -24,11 +24,13 @@
 #define ARANGODB_REPLICATION_REPLICATION_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Cluster/ServerState.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 class GlobalReplicationApplier;
+class GeneralResponse;
 
 class ReplicationFeature final
     : public application_features::ApplicationFeature {
@@ -67,6 +69,10 @@ class ReplicationFeature final
   bool isAutomaticFailoverEnabled() const {
     return _enableReplicationFailover;
   }
+      
+  /// @brief fill a response object with correct response for a follower
+  static void prepareFollowerResponse(GeneralResponse*,
+                                      arangodb::ServerState::Mode);
  
  public:
   static ReplicationFeature* INSTANCE;

@@ -93,8 +93,8 @@ static std::string extractErrorMessage(std::string const& shardId,
                                                             "errorMessage", "");
 
   // add error number
-  if (slice.hasKey("errorNum")) {
-    VPackSlice const errorNum = slice.get("errorNum");
+  if (slice.hasKey(StaticStrings::ErrorNum)) {
+    VPackSlice const errorNum = slice.get(StaticStrings::ErrorNum);
     if (errorNum.isNumber()) {
       msg += " (errNum=" + arangodb::basics::StringUtils::itoa(
                                errorNum.getNumericValue<uint32_t>()) +
@@ -943,9 +943,9 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
               tmpHaveError = true;
               tmpMsg += " DBServer:" + dbserver.key.copyString() + ":";
               tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(
-                  slice, "errorMessage", "");
-              if (slice.hasKey("errorNum")) {
-                VPackSlice errorNum = slice.get("errorNum");
+                  slice, StaticStrings::ErrorMessage, "");
+              if (slice.hasKey(StaticStrings::ErrorNum)) {
+                VPackSlice errorNum = slice.get(StaticStrings::ErrorNum);
                 if (errorNum.isNumber()) {
                   tmpMsg += " (errorNum=";
                   tmpMsg += basics::StringUtils::itoa(
@@ -1197,9 +1197,9 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                     p.value, "error", false)) {
               tmpError += " shardID:" + p.key.copyString() + ":";
               tmpError += arangodb::basics::VelocyPackHelper::getStringValue(
-                  p.value, "errorMessage", "");
-              if (p.value.hasKey("errorNum")) {
-                VPackSlice const errorNum = p.value.get("errorNum");
+                  p.value, "error", "");
+              if (p.value.hasKey(StaticStrings::ErrorNum)) {
+                VPackSlice const errorNum = p.value.get(StaticStrings::ErrorNum);
                 if (errorNum.isNumber()) {
                   tmpError += " (errNum=";
                   tmpError += basics::StringUtils::itoa(

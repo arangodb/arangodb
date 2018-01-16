@@ -1438,9 +1438,9 @@ Result RestReplicationHandler::processRestoreDataBatch(
 
     while (itRequest.valid()) {
       VPackSlice result = *itResult;
-      VPackSlice error = result.get("error");
+      VPackSlice error = result.get(StaticStrings::Error);
       if (error.isTrue()) {
-        error = result.get("errorNum");
+        error = result.get(StaticStrings::ErrorNum);
         if (error.isNumber()) {
           int code = error.getNumericValue<int>();
           if (code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
@@ -1963,7 +1963,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
           VPackBuilder b;
           {
             VPackObjectBuilder bb(&b);
-            b.add("error", VPackValue(false));
+            b.add(StaticStrings::Error, VPackValue(false));
           }
 
           generateResult(rest::ResponseCode::OK, b.slice());
@@ -2032,7 +2032,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
-    b.add("error", VPackValue(false));
+    b.add(StaticStrings::Error, VPackValue(false));
   }
 
   generateResult(rest::ResponseCode::OK, b.slice());
@@ -2077,7 +2077,7 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
-    b.add("error", VPackValue(false));
+    b.add(StaticStrings::Error, VPackValue(false));
   }
 
   generateResult(rest::ResponseCode::OK, b.slice());
@@ -2215,7 +2215,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
-    b.add("error", VPackValue(false));
+    b.add(StaticStrings::Error, VPackValue(false));
   }
 
   generateResult(rest::ResponseCode::OK, b.slice());
@@ -2264,7 +2264,7 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
-    b.add("error", VPackValue(false));
+    b.add(StaticStrings::Error, VPackValue(false));
     b.add("lockHeld", VPackValue(lockHeld));
   }
 
@@ -2315,7 +2315,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
-    b.add("error", VPackValue(false));
+    b.add(StaticStrings::Error, VPackValue(false));
     b.add("lockHeld", VPackValue(lockHeld));
   }
 

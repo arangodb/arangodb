@@ -645,8 +645,8 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("id", VPackValue(id));  // id as a string
-  resultBuilder.add("error", VPackValue(false));
-  resultBuilder.add("code",
+  resultBuilder.add(StaticStrings::Error, VPackValue(false));
+  resultBuilder.add(StaticStrings::Code,
                     VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   resultBuilder.close();
 
