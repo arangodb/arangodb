@@ -132,13 +132,11 @@ RestStatus RestAgencyHandler::handleTransient() {
   }
 
   // We're leading and handling the request
-  if (ret.accepted) {  
-
+  if (ret.accepted) {
     generateResult(
       (ret.failed==0) ?
       rest::ResponseCode::OK : rest::ResponseCode::PRECONDITION_FAILED,
       ret.result->slice());
-      
   } else {            // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
       return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
@@ -149,7 +147,7 @@ RestStatus RestAgencyHandler::handleTransient() {
   }
 
   return RestStatus::DONE;
-  
+
 }
 
 RestStatus RestAgencyHandler::handleStores() {
@@ -249,14 +247,10 @@ RestStatus RestAgencyHandler::handleWrite() {
   }
 
   // We're leading and handling the request
-  if (ret.accepted) {  
-
+  if (ret.accepted) {
     bool found;
     std::string call_mode = _request->header("x-arangodb-agency-mode", found);
-    if (!found) {
-      call_mode = "waitForCommitted";
-    }
-    
+    if (!found) { call_mode = "waitForCommitted"; }
     size_t errors = 0;
     Builder body;
     body.openObject();
@@ -408,8 +402,6 @@ RestStatus RestAgencyHandler::handleInquire() {
   }
 
   if (ret.accepted) {  // I am leading
-
-    
     Builder body;
     bool failed = false;
     { VPackObjectBuilder b(&body);
@@ -422,14 +414,13 @@ RestStatus RestAgencyHandler::handleInquire() {
             body.add(VPackValue(index));
             failed = (failed || index == 0);
           }}
+
       }
       body.add("inquired", VPackValue(true));
     }
     generateResult(failed ? rest::ResponseCode::PRECONDITION_FAILED :
                    rest::ResponseCode::OK, body.slice());
-    
   } else {  // Redirect to leader
-    
     if (_agent->leaderID() == NO_LEADER) {
       return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
     } else {
