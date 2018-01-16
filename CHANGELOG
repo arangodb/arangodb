@@ -1,6 +1,8 @@
 v3.2.11 (2018-XX-XX)
 --------------------
 
+* issue #4222: Permission error preventing AQL query import / export on webui
+
 * UI: optimized error messages for invalid query bind parameter
 
 * fixed issue #4255: AQL SORT consuming too much memory
