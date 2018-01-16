@@ -45,7 +45,7 @@ function iResearchAqlTestSuite () {
       c = db._create("UnitTestsCollection");
 
       db._drop("AnotherUnitTestsCollection");
-      ac = db._create("AnotherUnitTestsCollection");
+      var ac = db._create("AnotherUnitTestsCollection");
 
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "arangosearch", {});
@@ -98,55 +98,49 @@ function iResearchAqlTestSuite () {
 
     testTransactionRegistration : function () {
       // read lock
-      {
-        var result = db._executeTransaction({
-          collections: {
-            allowImplicit: false,
-            read: [ v.name() ]
-          },
-          action: function () {
-            var db = require("@arangodb").db;
-            var c = db._collection("UnitTestsCollection");
-            assertEqual(1, c.document('foo').xyz);
-            return c.toArray().length;
-          }
-        });
-        assertEqual(28, result);
-      }
+      var result = db._executeTransaction({
+        collections: {
+          allowImplicit: false,
+          read: [ v.name() ]
+        },
+        action: function () {
+          var db = require("@arangodb").db;
+          var c = db._collection("UnitTestsCollection");
+          assertEqual(1, c.document('foo').xyz);
+          return c.toArray().length;
+        }
+      });
+      assertEqual(28, result);
 
       // write lock
-      {
-        var result = db._executeTransaction({
-          collections: {
-            allowImplicit: false,
-            write: [ v.name() ]
-          },
-          action: function () {
-            var db = require("@arangodb").db;
-            var c = db._collection("UnitTestsCollection");
-            c.save({ _key: "bar", xyz: 2 });
-            return c.toArray().length;
-          }
-        });
-        assertEqual(29, result);
-      }
+      result = db._executeTransaction({
+        collections: {
+          allowImplicit: false,
+          write: [ v.name() ]
+        },
+        action: function () {
+          var db = require("@arangodb").db;
+          var c = db._collection("UnitTestsCollection");
+          c.save({ _key: "bar", xyz: 2 });
+          return c.toArray().length;
+        }
+      });
+      assertEqual(29, result);
 
       // exclusive lock
-      {
-        var result = db._executeTransaction({
-          collections: {
-            allowImplicit: false,
-            exclusive: [ v.name() ]
-          },
-          action: function () {
-            var db = require("@arangodb").db;
-            var c = db._collection("UnitTestsCollection");
-            c.save({ _key: "baz", xyz: 3 });
-            return c.toArray().length;
-          }
-        });
-        assertEqual(30, result);
-      }
+      result = db._executeTransaction({
+        collections: {
+          allowImplicit: false,
+          exclusive: [ v.name() ]
+        },
+        action: function () {
+          var db = require("@arangodb").db;
+          var c = db._collection("UnitTestsCollection");
+          c.save({ _key: "baz", xyz: 3 });
+          return c.toArray().length;
+        }
+      });
+      assertEqual(30, result);
     },
 
     testAttributeEqualityFilter : function () {
@@ -430,7 +424,7 @@ function iResearchAqlTestSuite () {
     },
 
     testViewInInnerLoopSortByAttribute : function() {
-      var expected = new Array();
+      var expected = [];
       expected.push({ a: "bar", b: "foo", c: 1 });
       expected.push({ a: "baz", b: "foo", c: 1 });
       expected.push({ a: "foo", b: "bar", c: 0 });
@@ -454,7 +448,7 @@ function iResearchAqlTestSuite () {
     },
 
     testViewInInnerLoopSortByTFIDF_BM25_Attribute : function() {
-      var expected = new Array();
+      var expected = [];
       expected.push({ a: "baz", b: "foo", c: 1 });
       expected.push({ a: "bar", b: "foo", c: 1 });
       expected.push({ a: "foo", b: "bar", c: 0 });

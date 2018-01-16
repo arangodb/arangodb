@@ -95,23 +95,21 @@ function recoverySuite () {
       assertEqual(result[0], 10000);
 
       // validate state
-      {
-        var properties = v.properties();
-        assertEqual(10, properties.commit.cleanupIntervalStep);
-        assertEqual(10000, properties.commit.commitIntervalMsec);
-        assertEqual(5000, properties.commit.commitTimeoutMsec);
-        assertEqual(3, Object.keys(properties.commit.consolidate).length);
-        assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
-        assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-        assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
-        assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-        assertEqual(10, properties.commit.consolidate.count.intervalStep);
-        assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
-        assertEqual("TestPath", properties.dataPath);
-        assertEqual("de_DE.UTF-8", properties.locale);
-        assertEqual(42, properties.threadsMaxIdle);
-        assertEqual(1, properties.threadsMaxTotal);
-      }
+      var properties = v.properties();
+      assertEqual(10, properties.commit.cleanupIntervalStep);
+      assertEqual(10000, properties.commit.commitIntervalMsec);
+      assertEqual(5000, properties.commit.commitTimeoutMsec);
+      assertEqual(3, Object.keys(properties.commit.consolidate).length);
+      assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+      assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
+      assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
+      assertEqual(10, properties.commit.consolidate.count.intervalStep);
+      assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
+      assertEqual("TestPath", properties.dataPath);
+      assertEqual("de_DE.UTF-8", properties.locale);
+      assertEqual(42, properties.threadsMaxIdle);
+      assertEqual(1, properties.threadsMaxTotal);
     }
 
   };

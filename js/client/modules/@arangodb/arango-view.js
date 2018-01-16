@@ -183,7 +183,7 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
 
   if (properties === undefined) {
     requestResult = this._database._connection.GET(this._baseurl('properties'));
-  } else if (partialUpdate == undefined || partialUpdate == true) {
+  } else if (partialUpdate === undefined || partialUpdate === true) {
     requestResult = this._database._connection.PATCH(
       this._baseurl('properties'), JSON.stringify(properties)
     );
