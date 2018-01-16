@@ -408,26 +408,6 @@ void HeartbeatThread::runDBServer() {
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
 }
 
-/// CAS a key in the agency, works only if it does not exist, result should
-/// contain the value of the written key.
-static AgencyCommResult CasWithResult(
-  AgencyComm agency, std::string const& key, VPackSlice const& oldValue,
-  VPackSlice const& newJson, double timeout) {
-  AgencyOperation write(key, AgencyValueOperationType::SET, newJson);
-  write._ttl = 0; // no ttl
-  if (oldValue.isNone()) { // for some reason this doesn't work
-    // precondition: the key must be empty
-    AgencyPrecondition pre(key, AgencyPrecondition::Type::EMPTY, true);
-    AgencyGeneralTransaction trx(write, pre);
-    return agency.sendTransactionWithFailover(trx, timeout);
-  } else {
-    // precondition: the key must equal old value
-    AgencyPrecondition pre(key, AgencyPrecondition::Type::VALUE, oldValue);
-    AgencyGeneralTransaction trx(write, pre);
-    return agency.sendTransactionWithFailover(trx, timeout);
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop, single server version
 ////////////////////////////////////////////////////////////////////////////////
@@ -510,8 +490,8 @@ void HeartbeatThread::runSingleServer() {
       handleStateChange(result);
       
       // performing failover checks
-      VPackSlice asyncRepl =
-        response.get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
+      std::string const leaderPath = "/Plan/AsyncReplication/Leader";
+      VPackSlice asyncRepl = response.get(AgencyCommManager::slicePath(leaderPath));
       if (!asyncRepl.isObject()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
           << "Heartbeat: Could not read async-repl metadata from agency!";
@@ -521,32 +501,31 @@ void HeartbeatThread::runSingleServer() {
       VPackBuilder myIdBuilder;
       myIdBuilder.add(VPackValue(_myId));
       
-      VPackSlice leaderSlice = asyncRepl.get("Leader");
-      if (!leaderSlice.isString() || leaderSlice.getStringLength() == 0) {
+      VPackSlice leader = asyncRepl.get("Leader");
+      if (!leader.isString() || leader.getStringLength() == 0) {
         // Case 1: No leader in agency. Race for leadership
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
         << "attempting a takeover";
         
         // if we stay a slave, the redirect will be turned on again
         ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
-        result = CasWithResult(_agency, "/Plan/AsyncReplication/Leader",
-                               /*oldJson*/leaderSlice, /*newJson*/myIdBuilder.slice(),
-                              /*timeout*/5.0);
+        if (leader.isNone()) {
+          result = _agency.casValue(leaderPath, myIdBuilder.slice(), /*prevExist*/ false,
+                                    /*ttl*/ 0, /*timeout*/ 5.0);
+        } else {
+          result = _agency.casValue(leaderPath, /*old*/leader, /*new*/myIdBuilder.slice(),
+                                    /*ttl*/ 0, /*timeout*/ 5.0);
+        }
+        
         if (result.successful()) { // sucessfull leadership takeover
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "All your base are belong to us";
-          leaderSlice = myIdBuilder.slice();
+          leader = myIdBuilder.slice();
           // intentionally falls through to case 2
-
         } else if (result.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
           // we did not become leader, someone else is, response contains
           // current value in agency
-          VPackSlice const res = result.slice();
-          TRI_ASSERT(res.length() == 1 && res[0].isObject());
-          leaderSlice = res[0].get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
-          TRI_ASSERT(leaderSlice.isString());
-          TRI_ASSERT(leaderSlice.compareString(_myId) != 0);
-          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader, current leader is: " << leaderSlice.copyString();
-          // intentionally falls through to case 3
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader";
+          continue;
         } else {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "got an unexpected agency error "
           << "code: " << result.httpCode() << " msg: " << result.errorMessage();
@@ -555,7 +534,7 @@ void HeartbeatThread::runSingleServer() {
       }
       
       // Case 2: Current server is leader
-      if (leaderSlice.compareString(_myId) == 0) {
+      if (leader.compareString(_myId) == 0) {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Current leader: " << _myId;
         
         if (applier->isRunning()) {
@@ -569,12 +548,12 @@ void HeartbeatThread::runSingleServer() {
       }
       
       // Case 3: Current server is follower, should not get here otherwise
-      std::string const leader = leaderSlice.copyString();
-      TRI_ASSERT(!leader.empty());
+      std::string const leaderStr = leader.copyString();
+      TRI_ASSERT(!leaderStr.empty());
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following " << leader;
       
-      ServerState::instance()->setFoxxmaster(leader);
-      std::string endpoint = ci->getServerEndpoint(leader);
+      ServerState::instance()->setFoxxmaster(leaderStr);
+      std::string endpoint = ci->getServerEndpoint(leaderStr);
       if (endpoint.empty()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
         continue; // try again next time
