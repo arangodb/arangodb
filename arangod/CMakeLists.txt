@@ -74,6 +74,10 @@ if (USE_IRESEARCH)
     IResearch/AqlHelper.cpp IResearch/AqlHelper.h
   )
 
+  target_compile_definitions(${LIB_ARANGO_IRESEARCH}
+    PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>"
+  )
+
   target_include_directories(${LIB_ARANGO_IRESEARCH}
     PUBLIC ${Boost_INCLUDE_DIR} # for boost/lockfree/queue.hpp from WorkMonitor.h
     PUBLIC ${IRESEARCH_INCLUDE}
