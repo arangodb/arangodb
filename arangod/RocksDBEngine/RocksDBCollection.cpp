@@ -797,7 +797,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 // read using a token!
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
-                                     ManagedDocumentResult& result) {
+                                     ManagedDocumentResult& result) const {
   if (documentId.isSet()) {
     auto res = lookupDocumentVPack(documentId, trx, result, true);
     return res.ok();
@@ -808,7 +808,7 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
 // read using a token!
 bool RocksDBCollection::readDocumentWithCallback(
     transaction::Methods* trx, LocalDocumentId const& documentId,
-    IndexIterator::DocumentCallback const& cb) {
+    IndexIterator::DocumentCallback const& cb) const {
   if (documentId.isSet()) {
     auto res = lookupDocumentVPack(documentId, trx, cb, true);
     return res.ok();

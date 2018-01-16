@@ -1015,7 +1015,7 @@ def example_arangosh_run(cargo, r=Regexen()):
     except:
         print >> sys.stderr, "Failed to open example file:\n  '%s'" % fn
         raise
-    operation['x-examples'][currentExample]= '\n\n#Example:\n ' + exampleHeader.strip('\n ') + '\n\n<pre><code class="json">'
+    operation['x-examples'][currentExample]= '\n\n# Example:\n ' + exampleHeader.strip('\n ') + '\n\n<pre><code class="json">'
 
     for line in examplefile.readlines():
         operation['x-examples'][currentExample] += line
@@ -1287,7 +1287,7 @@ for route in swagger['paths'].keys():
                     #print descOffset 
                     #print offsetPlus
                     descOffset += offsetPlus
-                    addText = '\n##HTTP ' + nRC
+                    addText = '\n## HTTP ' + nRC
                     #print thisVerb['responses'][nRC]['description']
                     postText = thisVerb['description'][:descOffset]
                     #print postText
