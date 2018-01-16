@@ -138,8 +138,6 @@ class RocksDBGeoIndex final : public RocksDBIndex {
 
   void unload() override {}
 
-  void truncate(transaction::Methods*) override;
-
   /// @brief looks up all points within a given radius
   arangodb::rocksdbengine::GeoCoordinates* withinQuery(transaction::Methods*,
                                                        double, double,

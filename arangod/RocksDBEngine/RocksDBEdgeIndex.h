@@ -178,10 +178,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   virtual void applyCommitedEstimates(std::vector<uint64_t> const& inserts,
                                       std::vector<uint64_t> const& removes) override;
 
- protected:
-  Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
-                           rocksdb::Slice const& value) override;
-
  private:
   /// @brief create the iterator
   IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,

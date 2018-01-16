@@ -25,6 +25,7 @@
 
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/MutexUnlocker.h"
+#include "Basics/Result.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -404,10 +405,10 @@ bool VstCommTask::processRead(double startTime) {
                               chunkHeader._messageID);
           } else {
             request->setClientTaskId(_taskId);
-            
+
             // temporarily release the mutex
             MUTEX_UNLOCKER(locker, _lock);
-            
+
             std::unique_ptr<VstResponse> response(new VstResponse(
                  rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
             response->setContentTypeRequested(request->contentTypeResponse());
