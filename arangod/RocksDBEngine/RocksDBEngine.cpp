@@ -130,7 +130,8 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
       _intermediateCommitCount(
           transaction::Options::defaultIntermediateCommitCount),
       _pruneWaitTime(10.0),
-      _releasedTick(0) {
+      _releasedTick(0),
+      _hasDoneShutdown(false) {
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine and the MMFiles PersistentIndexFeature
   startsAfter("RocksDBOption");
@@ -140,32 +141,36 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
 
 RocksDBEngine::~RocksDBEngine() {
   shutdownRocksDBInstance(); 
+
+  delete _db;
 }
 
 /// shuts down the RocksDB instance. this is called from unprepare
 /// and the dtor
 void RocksDBEngine::shutdownRocksDBInstance() noexcept {
-  if (_db) {
-    // turn off RocksDBThrottle, and release our pointers to it
-    if (nullptr != _listener.get()) {
-      _listener->StopThread();
-    } // if
-    
-    for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
-      _db->DestroyColumnFamilyHandle(h);
-    }
-    
-    // now prune all obsolete WAL files
-    try {
-      determinePrunableWalFiles(0);
-      pruneWalFiles();
-    } catch (...) {
-      // this is allowed to go wrong on shutdown
-      // we must not throw an exception from here
-    }
+  if (_hasDoneShutdown || !_db) {
+    return;
+  }
 
-    delete _db;
-    _db = nullptr;
+  // prevent duplicate execution
+  _hasDoneShutdown = true;
+
+  // turn off RocksDBThrottle, and release our pointers to it
+  if (nullptr != _listener.get()) {
+    _listener->StopThread();
+  } // if
+  
+  // now prune all obsolete WAL files
+  try {
+    determinePrunableWalFiles(0);
+    pruneWalFiles();
+  } catch (...) {
+    // this is allowed to go wrong on shutdown
+    // we must not throw an exception from here
+  }
+  
+  for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
+    _db->DestroyColumnFamilyHandle(h);
   }
 }
 

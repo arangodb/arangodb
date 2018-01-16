@@ -363,6 +363,9 @@ class RocksDBEngine final : public StorageEngine {
   // code to pace ingest rate of writes to reduce chances of compactions getting
   //  too far behind and blocking incoming writes
   std::shared_ptr<RocksDBThrottle> _listener;
+  
+  // flag used to execute the RocksDB instance shutdown only once 
+  bool _hasDoneShutdown;
 
 };
 }  // namespace arangodb
