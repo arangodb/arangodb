@@ -50,6 +50,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 option(SKIP_PACKAGING "" OFF)
+option(STATIC_EXECUTABLES "" OFF)
+if (STATIC_EXECUTABLES)
+  set(CMAKE_EXE_LINKER_FLAGS "-static -no-pie")
+endif()
 
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
