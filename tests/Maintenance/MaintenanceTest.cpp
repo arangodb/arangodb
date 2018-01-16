@@ -173,7 +173,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     arangodb::maintenance::diffPlanLocal(
       plan.toBuilder().slice(), localNodes.begin()->second.toBuilder().slice(),
       localNodes.begin()->first, actions);
-    
+
     REQUIRE(actions.size() == 1);
     for (auto const& action : actions) {
       REQUIRE(action.name() == "CreateCollection");
@@ -251,7 +251,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
         arangodb::maintenance::diffPlanLocal(
           plan.toBuilder().slice(), node.second.toBuilder().slice(),
           node.first, actions);
-        
+
         REQUIRE(actions.size() == 1);
         for (auto const& action : actions) {
           REQUIRE(action.name() == "AlterCollection");

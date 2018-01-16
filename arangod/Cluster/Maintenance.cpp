@@ -62,10 +62,11 @@ VPackBuilder compareRelevantProps (
   { VPackObjectBuilder b(&result);
     for (auto property : cmp) {
       auto const& planned = first.get(property);
-      if (planned != second.get(property)) {
+      if (planned != second.get(property)) { // Register any change
         result.add(property,planned);
       }
-    }}
+    }
+  }
   return result;
 }
 
@@ -95,16 +96,21 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
         auto const& shards = cprops.get("shards");
         for (auto const& shard : VPackObjectIterator(shards)) {
           auto const& shname = shard.key.copyString();
-          size_t pos = 0; // Want to understand leadership
+          size_t leader = true; // Want to understand leadership
           for (auto const& db : VPackArrayIterator(shard.value)) {
-            if (db.copyString() == serverId)  {  // We have some responsibility
+
+            // We only care for shards, where we find our own ID
+            if (db.copyString() == serverId)  {
+
               intersection.emplace(shname);
               if (props.isEmpty()) {             // Must not have name or id 
                 props = createProps(pcol.value); // Only once might need often!
               }
+
               if (ldb.hasKey(shname)) {   // Have local collection with that name
                 auto const properties = 
                   compareRelevantProps(pcol.value, ldb.get(shname));
+                // If comparison has brought any updates
                 if (properties.slice() != VPackSlice::emptyObjectSlice()) {
                   actions.push_back(
                     ActionDescription(
@@ -117,8 +123,17 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
                     {{"name", "CreateCollection"}, {"collection", shname},
                      {"database", dbname}}, props));
               }
+
+              // Indexes
+              
+              
             }
-            ++pos;
+            
+            // Only first entry is leader
+            leader = false;
+
+            
+            
           }
         }
       }
