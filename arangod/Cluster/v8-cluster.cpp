@@ -1071,6 +1071,30 @@ static void JS_getFoxxmasterQueueupdate(
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("setFoxxmasterQueueupdate(bool)");
+  }
+  
+  bool queueUpdate = TRI_ObjectToBoolean(args[0]);
+  ServerState::instance()->setFoxxmasterQueueupdate(queueUpdate);
+
+  if (AgencyCommManager::isEnabled()) {
+    AgencyComm comm;
+    std::string key = "Current/FoxxmasterQueueupdate";
+    VPackSlice val = queueUpdate ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
+    AgencyCommResult result = comm.setValue(key, val, 0.0);
+    if (!result.successful()) {
+      THROW_AGENCY_EXCEPTION(result);
+    }
+  }
+  
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the primary servers id (only for secondaries)
 ////////////////////////////////////////////////////////////////////////////////
@@ -2055,6 +2079,8 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_isFoxxmaster);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getFoxxmasterQueueupdate"),
                        JS_getFoxxmasterQueueupdate);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setFoxxmasterQueueupdate"),
+                       JS_setFoxxmasterQueueupdate);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "idOfPrimary"),
                        JS_IdOfPrimaryServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "javaScriptPath"),

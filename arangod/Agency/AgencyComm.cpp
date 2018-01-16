@@ -1688,11 +1688,6 @@ bool AgencyComm::tryInitializeStructure() {
     builder.add(VPackValue("Current")); // Current ----------------------------
     {
       VPackObjectBuilder c(&builder);
-      builder.add(VPackValue("AsyncReplication"));
-      {
-        VPackObjectBuilder d(&builder);
-        builder.add("Leader", VPackValue(""));
-      }
       builder.add(VPackValue("Collections"));
       {
         VPackObjectBuilder d(&builder);

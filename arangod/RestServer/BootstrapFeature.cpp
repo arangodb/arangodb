@@ -223,20 +223,28 @@ void BootstrapFeature::start() {
         myIdBuilder.add(VPackValue(myId));
         AgencyComm agency;
         AgencyCommResult res = agency.getValues(leaderPath);
-        VPackSlice leaderSlice;
         if (res.successful()) {
-          leaderSlice = res.slice()[0].get(AgencyCommManager::slicePath(leaderPath));
-          if (!leaderSlice.isString() || leaderSlice.getStringLength() == 0) {
-            res = agency.casValue(leaderPath, leaderSlice, myIdBuilder.slice(),
-                                  /* ttl */ 0, /* timeout */ 5.0);
-            if (res.successful()) {
-              // sucessfull leadership takeover
-              ss->setFoxxmaster(myId);
+          VPackSlice leader = res.slice()[0].get(AgencyCommManager::slicePath(leaderPath));
+          if (!leader.isString() || leader.getStringLength() == 0) { // no leader in agency
+            if (leader.isNone()) {
+              res = agency.casValue(leaderPath, myIdBuilder.slice(), /*prevExist*/ false,
+                                    /*ttl*/ 0, /*timeout*/ 5.0);
+            } else {
+              res = agency.casValue(leaderPath, /*old*/leader, /*new*/myIdBuilder.slice(),
+                                    /*ttl*/ 0, /*timeout*/ 5.0);
+            }
+            if (res.successful()) { // sucessfull leadership takeover
+              leader = myIdBuilder.slice();
+            } // ignore for now, heartbeat thread will handle it
+          }
+          
+          if (leader.isString() && leader.getStringLength() > 0) {
+            ss->setFoxxmaster(leader.copyString());
+            if (leader == myIdBuilder.slice()) {
               LOG_TOPIC(INFO, Logger::STARTUP) << "Became leader in automatic failover setup";
-            } // heartbeat thread will take care later
-          } else {
-            ss->setFoxxmaster(leaderSlice.copyString());
-            LOG_TOPIC(INFO, Logger::STARTUP) << "Following leader: " << ss->getFoxxmaster();
+            } else {
+              LOG_TOPIC(INFO, Logger::STARTUP) << "Following leader: " << ss->getFoxxmaster();
+            }
           }
         }
       } catch(...) {} // weglaecheln

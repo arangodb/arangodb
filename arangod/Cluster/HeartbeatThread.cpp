@@ -488,7 +488,7 @@ void HeartbeatThread::runSingleServer() {
             << result._statusCode << ", incriminating body: " 
             << result.bodyRef() << ", timeout: " << timeout;
         
-        if (!applier->isRunning()) {
+        if (!applier->isRunning()) { // assume agency and leader are gone
           ServerState::instance()->setFoxxmaster(_myId);
           ServerState::setServerMode(ServerState::Mode::DEFAULT);
         }
@@ -510,19 +510,18 @@ void HeartbeatThread::runSingleServer() {
       handleStateChange(result);
       
       // performing failover checks
-      VPackSlice asyncReplication =
-      response.get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
-      if (!asyncReplication.isObject()) {
+      VPackSlice asyncRepl =
+        response.get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
+      if (!asyncRepl.isObject()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
           << "Heartbeat: Could not read async-repl metadata from agency!";
         continue;
       }
-      std::string const leaderPath = "/Plan/AsyncReplication/Leader";
       
-      VPackSlice leaderSlice = asyncReplication.get("Leader");
       VPackBuilder myIdBuilder;
       myIdBuilder.add(VPackValue(_myId));
       
+      VPackSlice leaderSlice = asyncRepl.get("Leader");
       if (!leaderSlice.isString() || leaderSlice.getStringLength() == 0) {
         // Case 1: No leader in agency. Race for leadership
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
@@ -530,9 +529,9 @@ void HeartbeatThread::runSingleServer() {
         
         // if we stay a slave, the redirect will be turned on again
         ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
-        result = CasWithResult(_agency, leaderPath, /*oldJson*/leaderSlice,
-                               /*newJson*/myIdBuilder.slice(), /*timeout*/5.0);
-        
+        result = CasWithResult(_agency, "/Plan/AsyncReplication/Leader",
+                               /*oldJson*/leaderSlice, /*newJson*/myIdBuilder.slice(),
+                              /*timeout*/5.0);
         if (result.successful()) { // sucessfull leadership takeover
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "All your base are belong to us";
           leaderSlice = myIdBuilder.slice();
@@ -543,7 +542,7 @@ void HeartbeatThread::runSingleServer() {
           // current value in agency
           VPackSlice const res = result.slice();
           TRI_ASSERT(res.length() == 1 && res[0].isObject());
-          leaderSlice = res[0].get(AgencyCommManager::slicePath(leaderPath));
+          leaderSlice = res[0].get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
           TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader, current leader is: " << leaderSlice.copyString();
           // intentionally falls through to case 3
@@ -603,7 +602,7 @@ void HeartbeatThread::runSingleServer() {
         if (applier->isRunning()) {
           applier->stopAndJoin();
         }
-        while (applier->isShuttingDown()) {
+        while (applier->isShuttingDown() && !isStopping()) {
           std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
         }
         
@@ -617,19 +616,19 @@ void HeartbeatThread::runSingleServer() {
         config._autoResyncRetries = 2;
         // TODO: how do we initially configure the applier
         
-        // start initial synchronization
+        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "start initial sync from leader";
         TRI_ASSERT(!config._skipCreateDrop);
         GlobalInitialSyncer syncer(config);
         // sync incrementally on failover to other follower,
         // but not initially
         Result r = syncer.run(false);
         if (r.fail()) {
-          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "initial sync from leader "
-          << "failed: " << r.errorMessage();
+          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "initial sync from leader failed: "
+             << r.errorMessage();
           continue; // try again next time
         }
         
-        LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "initial sync from leader finished";
+        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "initial sync from leader finished";
         // steal the barrier from the syncer
         TRI_voc_tick_t barrierId = syncer.stealBarrier();
         TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();

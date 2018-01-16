@@ -115,7 +115,7 @@ exports.manage = function () {
       foxxManager.healAll(true);
     }
     // do not call again immediately
-    global.ArangoAgency.set('Current/FoxxmasterQueueupdate', false);
+    global.ArangoServerState.setFoxxmasterQueueupdate(false);
   }
 
   var initialDatabase = db._name();

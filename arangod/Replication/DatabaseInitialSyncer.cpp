@@ -149,8 +149,10 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     auto pair = rocksutils::stripObjectIds(inventoryColls);
     r = handleLeaderCollections(pair.first, incremental);
 
-    // all done here
-    sendFinishBatch();
+    // all done here, do not try to finish batch if master is unresponsive
+    if (r.isNot(TRI_ERROR_REPLICATION_NO_RESPONSE)) {
+      sendFinishBatch();
+    }
     return r;
   } catch (arangodb::basics::Exception const& ex) {
     sendFinishBatch();
@@ -1140,7 +1142,7 @@ Result DatabaseInitialSyncer::iterateCollections(
     VPackSlice const parameters = collection.first;
     VPackSlice const indexes = collection.second;
 
-    Result res =  handleCollection(parameters, indexes, incremental, phase);
+    Result res = handleCollection(parameters, indexes, incremental, phase);
 
     if (res.fail()) {
       return res;
