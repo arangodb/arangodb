@@ -189,13 +189,15 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 1 || !args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("document(username)");
   }
-  if (!IsAdminUser()) {
+
+  std::string username = TRI_ObjectToString(args[0]);
+
+  if (!CanAccessUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
-  std::string username = TRI_ObjectToString(args[0]);
   VPackBuilder result = authentication->authInfo()->serializeUser(username);
   if (!result.isEmpty()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
