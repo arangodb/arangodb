@@ -96,7 +96,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
         auto const& shards = cprops.get("shards");
         for (auto const& shard : VPackObjectIterator(shards)) {
           auto const& shname = shard.key.copyString();
-          size_t leader = true; // Want to understand leadership
+          bool leader = true; // Want to understand leadership
           for (auto const& db : VPackArrayIterator(shard.value)) {
 
             // We only care for shards, where we find our own ID
