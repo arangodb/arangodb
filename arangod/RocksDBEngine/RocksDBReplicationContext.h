@@ -49,17 +49,16 @@ class RocksDBReplicationContext {
       LocalDocumentIdCallback;
 
   struct CollectionIterator {
-    LogicalCollection* logical;
+    CollectionIterator(
+        LogicalCollection& collection, transaction::Methods& trx) noexcept;
+    LogicalCollection& logical;
     std::unique_ptr<IndexIterator> iter;
-    bool isUsed;
+    uint64_t currentTick;
+    std::atomic<bool> isUsed;
     bool hasMore;
+    ManagedDocumentResult mdr;
 
-    bool isUsed() const;
-    void use(double ttl);
     void release();
-
-  private:
-    double _expires;
   };
 
  public:
@@ -115,6 +114,7 @@ class RocksDBReplicationContext {
   void use(double ttl);
   /// remove use flag
   void release();
+  bool more(std::string const& collectionIdentifier);
 
  private:
   void releaseDumpingResources();
@@ -123,7 +123,6 @@ class RocksDBReplicationContext {
  private:
   TRI_voc_tick_t _id; // batch id
   uint64_t _lastTick; // the time at which the snapshot was taken
-  std::atomic<uint64_t> _currentTick; // shows how often dump was called
   std::unique_ptr<DatabaseGuard> _guard;
   std::unique_ptr<transaction::Methods> _trx;
   std::unordered_map<TRI_voc_cid_t, std::unique_ptr<CollectionIterator>> _iterators;
@@ -135,8 +134,6 @@ class RocksDBReplicationContext {
   /// @brief offset in the collection used with the incremental sync
   uint64_t _lastIteratorOffset;
 
-  /// @brief holds last document
-  ManagedDocumentResult _mdr;
   /// @brief type handler used to render documents
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler> _customTypeHandler;
   arangodb::velocypack::Options _vpackOptions;

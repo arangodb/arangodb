@@ -56,11 +56,11 @@ using namespace arangodb::rest;
 
 namespace {
 /// @brief minimum amount of data to fetch from server in a single batch
-uint64_t MinChunkSize = 1024 * 128;
+constexpr uint64_t MinChunkSize = 1024 * 128;
 /// @brief maximum amount of data to fetch from server in a single batch
-uint64_t MaxChunkSize = 1024 * 1024 * 96;  // larger value may cause tcp issues
+constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;  // larger value may cause tcp issues
 /// @brief generic error for if server returns bad/unexpected json
-Result ErrorMalformedJsonResponse = {TRI_ERROR_INTERNAL,
+const Result ErrorMalformedJsonResponse = {TRI_ERROR_INTERNAL,
                                      "got malformed JSON response from server"};
 }  // namespace
 

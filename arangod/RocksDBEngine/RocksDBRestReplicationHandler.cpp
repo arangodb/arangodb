@@ -90,7 +90,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     if (!found) {
       LOG_TOPIC(DEBUG, Logger::FIXME) << "no serverId parameter found in request to " << _request->fullUrl();
     }
-     
+
     if (!found || (!value.empty() && value != "none")) {
       TRI_server_id_t serverId = 0;
 
@@ -142,7 +142,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     if (!found) {
       LOG_TOPIC(DEBUG, Logger::FIXME) << "no serverId parameter found in request to " << _request->fullUrl();
     }
-     
+
     if (!found || (!value.empty() && value != "none")) {
       TRI_server_id_t serverId = 0;
 
@@ -177,7 +177,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
-  
+
 void RocksDBRestReplicationHandler::handleCommandBarrier() {
   auto const type = _request->requestType();
   if (type == rest::RequestType::POST) {
@@ -378,7 +378,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   // produce inventory for all databases?
   bool isGlobal = false;
   getApplier(isGlobal);
-  
+
   std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
       ctx->getInventory(this->_vocbase, includeSystem, isGlobal);
   if (!result.first.ok()) {
@@ -429,7 +429,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
   // to is ignored because the snapshot time is the latest point in time
-  
+
   RocksDBReplicationContext* ctx = nullptr;
   //get batchId from url parameters
   bool found, busy;
@@ -445,7 +445,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
                   "batchId not specified");
     return;
   }
- 
+
   // TRI_voc_tick_t tickEnd = UINT64_MAX;
   // determine end tick for keys
   // std::string const& value = _request->value("to", found);
@@ -569,7 +569,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
                   "invalid 'type' value");
     return;
   }
-  
+
   size_t offsetInChunk = 0;
   size_t maxChunkSize = SIZE_MAX;
   std::string const& value4 = _request->value("offset", found);
@@ -578,10 +578,10 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
     // "offset" was introduced with ArangoDB 3.3. if the client sends it,
     // it means we can adapt the result size dynamically and the client
     // may refetch data for the same chunk
-    maxChunkSize = 8 * 1024 * 1024; 
+    maxChunkSize = 8 * 1024 * 1024;
     // if a client does not send an "offset" parameter at all, we are
     // not sure if it supports this protocol (3.2 and before) or not
-  } 
+  }
 
   std::string const& id = suffixes[1];
 
@@ -606,7 +606,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer, transactionContext->getVPackOptions());
-  
+
   if (keys) {
     Result rv = ctx->dumpKeys(builder, chunk, static_cast<size_t>(chunkSize), lowKey);
     if (rv.fail()) {
@@ -620,7 +620,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
     }
-    
+
     Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk, maxChunkSize, lowKey, parsedIds->slice());
     if (rv.fail()) {
       generateError(rv);
@@ -684,7 +684,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   bool isBusy = false;
   RocksDBReplicationContext* context = _manager->find(contextId, isBusy);
   RocksDBReplicationContextGuard guard(_manager, context);
-  
+
   if (context == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "replication dump - unable to find context (it could be expired)");
@@ -725,7 +725,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   response->setContentType(rest::ContentType::DUMP);
   // set headers
   _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
-                         (context->more() ? "true" : "false"));
+                         (context->more(collection) ? "true" : "false"));
 
   _response->setHeaderNC(
       TRI_REPLICATION_HEADER_LASTINCLUDED,

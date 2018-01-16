@@ -38,11 +38,11 @@ using namespace arangodb::velocypack;
 
 namespace {
 /// @brief the filename for the encryption file
-static constexpr auto EncryptionFilename = "ENCRYPTION";
+constexpr auto EncryptionFilename = "ENCRYPTION";
 /// @brief encryption type specification for no encryption
-static constexpr auto EncryptionTypeNone = "none";
+constexpr auto EncryptionTypeNone = "none";
 /// @brief size of char buffer to use for file slurping
-static constexpr size_t DefaultIOChunkSize = 8192;
+constexpr size_t DefaultIOChunkSize = 8192;
 }  // namespace
 
 namespace {
