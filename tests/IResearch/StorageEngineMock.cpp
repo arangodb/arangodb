@@ -763,7 +763,7 @@ arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*, a
   return TRI_ERROR_INTERNAL;
 }
 
-bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) {
+bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) const {
   before();
 
   if (token.id() > documents.size()) {
@@ -781,7 +781,7 @@ bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx, a
   return true;
 }
 
-bool PhysicalCollectionMock::readDocumentWithCallback(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::IndexIterator::DocumentCallback const& cb) {
+bool PhysicalCollectionMock::readDocumentWithCallback(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::IndexIterator::DocumentCallback const& cb) const {
   before();
 
   if (token.id() > documents.size()) {
