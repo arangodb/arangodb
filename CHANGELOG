@@ -1,6 +1,9 @@
 devel
 -----
 
+
+* UI: fixed a query editor caching and parsing issue
+
 * issue #4222: Permission error preventing AQL query import / export on webui
 
 * Fixed an issue with the index estimates in RocksDB in the case a transaction is aborted.
