@@ -157,6 +157,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
     }
 
     res = trx.finish(result.code);
+
   }
 }
 
@@ -709,7 +710,6 @@ void Constituent::run() {
           LOG_TOPIC(TRACE, Logger::AGENCY) << "last heartbeat: " << diff << "sec ago";
 
           isTimeout = (static_cast<int64_t>(M * diff) > randTimeout);
-
         }
 
         if (isTimeout) {
