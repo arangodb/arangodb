@@ -212,9 +212,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
 
-  Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
-                           rocksdb::Slice const& value) override;
-
  private:
   bool isDuplicateOperator(arangodb::aql::AstNode const*,
                            std::unordered_set<int> const&) const;

@@ -150,6 +150,11 @@ class RocksDBTransactionState final : public TransactionState {
   RocksDBKey* leaseRocksDBKey();
   /// @brief return a temporary RocksDBKey object. Not thread safe
   void returnRocksDBKey(RocksDBKey* key);
+  /// @brief Trigger an intermediate commit.
+  /// Handle with care if failing after this commit it will only
+  /// be rolled back until this point of time.
+  /// Not thread safe
+  void triggerIntermediateCommit();
 
  private:
   /// @brief create a new rocksdb transaction

@@ -1576,13 +1576,3 @@ void RocksDBVPackIndex::recalculateEstimates() {
                             },
                             bounds.columnFamily());
 }
-
-Result RocksDBVPackIndex::postprocessRemove(transaction::Methods* trx,
-                                            rocksdb::Slice const& key,
-                                            rocksdb::Slice const& value) {
-  if (!unique()) {
-    uint64_t hash = RocksDBVPackIndex::HashForKey(key);
-    _estimator->remove(hash);
-  }
-  return Result();
-}

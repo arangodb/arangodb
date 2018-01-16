@@ -173,10 +173,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
 
- protected:
-  Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
-                           rocksdb::Slice const& value) override;
-
  private:
   /// @brief create the iterator
   IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,
