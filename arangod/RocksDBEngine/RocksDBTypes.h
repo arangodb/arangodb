@@ -72,7 +72,8 @@ enum class RocksDBLogType : char {
   DocumentOperationsPrologue = '=',
   DocumentRemove = '>',
   SinglePut = '?',
-  SingleRemove = '@'
+  SingleRemove = '@',
+  DocumentRemoveAsPartOfUpdate = 'A'
 };
   
 enum class RocksDBSettingsType : char {
