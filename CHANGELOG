@@ -3,6 +3,19 @@ devel
 
 * UI: optimized login view for very small screen sizes
 
+* UI: optimized error messages for invalid query bind parameter
+
+* Truncate in RocksDB will now do intermediate commits every 10.000 documents
+  if truncate fails or the server crashes during this operation all deletes
+  that have been commited so far are persisted.
+
+* make the default value of `--rocksdb.block-cache-shard-bits` use the RocksDB
+  default value. This will mostly mean the default number block cache shard
+  bits is lower than before, allowing each shard to store more data and cause
+  less evictions from block cache
+
+* Updated Swagger UI to version 3.9.0
+
 * issue #1190: added option `--create-database` for arangoimport
 
 * issue #3504: added option `--force-same-database` for arangorestore
@@ -185,7 +198,6 @@ v3.3.rc2 (2017-11-22)
 * UI: the graph viewer now displays updated label values correctly.
   Additionally the included node/edge editor now closes automatically
 	after a successful node/edge update.
->>>>>>> devel
 
 * removed `--recycle-ids` option for arangorestore
 
