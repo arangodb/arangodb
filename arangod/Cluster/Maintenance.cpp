@@ -71,6 +71,35 @@ VPackBuilder compareRelevantProps (
 }
 
 
+VPackBuilder compareIndexes(VPackSlice const& plan, VPackSlice const& local) {
+  VPackBuilder builder;
+  { VPackArrayBuilder a(&builder);
+    for (auto const& pindex : VPackArrayIterator(plan)) {
+      auto const& pfields = pindex.get("fields").toJson();
+      auto const& ptype   = pindex.get("type").copyString();
+      if (pfields == "[\"_key\"]" && ptype == "primary") {
+        continue;
+      }
+      LOG_TOPIC(ERR, arangodb::Logger::MAINTENANCE) << pfields << " " << ptype;
+      for (auto const& lindex : VPackArrayIterator(local)) {
+        auto const& lfields = lindex.get("fields").toJson();
+        auto const& ltype   = lindex.get("type").copyString();
+        if (lfields == "[\"_key\"]" && ltype == "primary") {
+          continue;
+        }
+        LOG_TOPIC(WARN, arangodb::Logger::MAINTENANCE) << "#" << lfields << "#" << ltype << "#";
+        if (pfields == lfields && ptype == ltype) {
+          continue;
+        } 
+        builder.add(pindex);
+      }
+    }
+  }
+  
+  return builder;
+}
+
+
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
@@ -108,8 +137,9 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
               }
 
               if (ldb.hasKey(shname)) {   // Have local collection with that name
+                auto const lcol = ldb.get(shname);
                 auto const properties = 
-                  compareRelevantProps(pcol.value, ldb.get(shname));
+                  compareRelevantProps(pcol.value, lcol);
                 
                 // If comparison has brought any updates
                 if (properties.slice() != VPackSlice::emptyObjectSlice()) {
@@ -120,21 +150,23 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
                 }
                 
                 // Indexes
-                /*
-                if (cprops.has("indexes") && ) {
-                  auto const& indexes = cprops.get("indexes");
-                  TRI_ASSERT(indexes.isArray());
-                  if (indexes.length() > 1) { // _key Index always there
+                if (cprops.hasKey("indexes")) {
+                  auto const& pindexes = cprops.get("indexes");
+                  auto const& lindexes = lcol.get("indexes");
+                  auto difference = compareIndexes(pindexes, lindexes);
+                  
+                  if (difference.slice().length() != 0) {
                     for (auto const& index :
-                           VPackArrayIterator(cprops.get("indexes"))) {
-                      ActionDescription(
-                        {{"name": "EnsureIndex"},
-                          {"collection": shname},
-                          {"database", dbname},
-                          {"fields", }},index});
-                          }
+                           VPackArrayIterator(difference.slice())) {
+                      actions.push_back(
+                        ActionDescription({{"name", "EnsureIndex"},
+                            {"collection", shname}, {"database", dbname},
+                            {"type", index.get("type").copyString()},
+                            {"fields", index.get("fields").toJson()}},
+                            VPackBuilder(index)));
+                    }
                   }
-                }*/
+                }
               } else {                   // Create the sucker!
                 actions.push_back(
                   ActionDescription(
@@ -147,9 +179,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
             
             // Only first entry is leader
             leader = false;
-
-            
-            
           }
         }
       }

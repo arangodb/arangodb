@@ -282,18 +282,6 @@ R"=(
           "sparse": false,
           "type": "skiplist",
           "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "status",
-            "queue",
-            "delayUntil"
-          ],
-          "id": "s1010022/1010024",
-          "sparse": false,
-          "type": "skiplist",
-          "unique": true
         }
       ]
     },
@@ -804,30 +792,6 @@ R"=(
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
-          "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "queue",
-            "status",
-            "delayUntil"
-          ],
-          "id": "s4097125/4097126",
-          "sparse": false,
-          "type": "skiplist",
-          "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "status",
-            "queue",
-            "delayUntil"
-          ],
-          "id": "s4097125/4097127",
-          "sparse": false,
-          "type": "skiplist",
           "unique": true
         }
       ]
