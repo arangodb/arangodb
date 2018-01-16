@@ -82,8 +82,6 @@ class RocksDBIndex : public Index {
   void load() override;
   void unload() override;
 
-  virtual void truncate(transaction::Methods*);
-
   size_t memory() const override;
 
   void cleanup();
@@ -153,12 +151,6 @@ class RocksDBIndex : public Index {
   virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const;
 
  protected:
-  // Will be called during truncate to allow the index to update selectivity
-  // estimates, blacklist keys, etc.
-  virtual Result postprocessRemove(transaction::Methods* trx,
-                                   rocksdb::Slice const& key,
-                                   rocksdb::Slice const& value);
-
   inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
   void blackListKey(char const* data, std::size_t len);
   void blackListKey(StringRef& ref) { blackListKey(ref.data(), ref.size()); };

@@ -155,18 +155,18 @@ class Socket {
   virtual std::size_t available(boost::system::error_code& ec) = 0;
   virtual void asyncRead(boost::asio::mutable_buffers_1 const& buffer,
                          AsyncHandler const& handler) = 0;
-  
+
   virtual void close(boost::system::error_code& ec) = 0;
-  virtual void shutdown(boost::system::error_code& ec, bool closeSend, bool closeReceive) {
-    if (closeSend) {
+  virtual void shutdown(boost::system::error_code& ec, bool mustCloseSend, bool mustCloseReceive) {
+    if (mustCloseSend) {
       this->shutdownSend(ec);
       if (ec && ec != boost::asio::error::not_connected) {
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
             << "shutdown send stream failed with: " << ec.message();
       }
     }
-    
-    if (closeReceive) {
+
+    if (mustCloseReceive) {
       this->shutdownReceive(ec);
       if (ec && ec != boost::asio::error::not_connected) {
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
