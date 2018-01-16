@@ -19,6 +19,8 @@ v3.3.3 (XXXX-XX-XX)
   bits is lower than before, allowing each shard to store more data and cause
   less evictions from block cache
 
+* UI: optimized login view for very small screen sizes
+
 * UI: optimized error messages for invalid query bind parameter
 
 * UI: upgraded swagger ui to version 3.9.0
