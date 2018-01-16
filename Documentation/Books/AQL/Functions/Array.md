@@ -199,6 +199,9 @@ Return whether *search* is contained in *array*. Optionally return the position.
   *false* otherwise. If *returnIndex* is enabled, the position of the match is
   returned (positions start at 0), or *-1* if it's not found.
 
+To determine if or at which position a string occurs in another string, see the
+[CONTAINS() string function](String.md#contains).
+
 ### PUSH()
 
 `PUSH(anyArray, value, unique) → newArray`
@@ -327,6 +330,29 @@ SLICE( [ 1, 2, 3, 4, 5 ], 1, -1 ) // [ 2, 3, 4 ]
 SLICE( [ 1, 2, 3, 4, 5 ], 0, -2 ) // [ 1, 2, 3 ]
 SLICE( [ 1, 2, 3, 4, 5 ], -3, 2 ) // [ 3, 4 ]
 ```
+
+### SORTED()
+
+`SORTED(anyArray) → newArray`
+
+Sort all elements in *anyArray*. The function will use the default comparison 
+order for AQL value types.
+
+- **anyArray** (array): array with elements of arbitrary type
+- returns **newArray** (array): *anyArray*, with elements sorted
+
+
+### SORTED_UNIQUE()
+
+`SORTED_UNIQUE(anyArray) → newArray`
+
+Sort all elements in *anyArray*. The function will use the default comparison 
+order for AQL value types. Additionally, the values in the result array will
+be made unique.
+
+- **anyArray** (array): array with elements of arbitrary type
+- returns **newArray** (array): *anyArray*, with elements sorted and duplicates
+  removed
 
 ### UNION()
 

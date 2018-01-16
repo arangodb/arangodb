@@ -186,7 +186,7 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
         break;
       }
     }
-    usleep(100000);  // 100ms
+    std::this_thread::sleep_for(std::chrono::microseconds(100000));  // 100ms
     tries++;
   } while (tries < 3);
 }

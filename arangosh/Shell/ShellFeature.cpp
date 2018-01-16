@@ -133,9 +133,6 @@ void ShellFeature::start() {
 
   V8ShellFeature* shell = application_features::ApplicationServer::getFeature<V8ShellFeature>("V8Shell");
 
-  // turn off memory allocation failures before we move into V8 code
-  TRI_DisallowMemoryFailures();
-
   bool ok = false;
 
   try {
@@ -164,9 +161,6 @@ void ShellFeature::start() {
         ok = shell->jslint(_jslint);
         break;
     }
-  } catch (basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
-    ok = false;
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
     ok = false;
@@ -175,7 +169,5 @@ void ShellFeature::start() {
     ok = false;
   }
 
-  // turn on memory allocation failures again
-  TRI_AllowMemoryFailures();
   *_result = ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

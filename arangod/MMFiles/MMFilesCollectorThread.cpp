@@ -116,7 +116,7 @@ static bool ScanMarker(MMFilesMarker const* marker, void* data,
 
   TRI_ASSERT(marker != nullptr);
   MMFilesMarkerType const type = marker->getType();
-  
+
   switch (type) {
     case TRI_DF_MARKER_PROLOGUE: {
       // simply note the last state
@@ -126,7 +126,7 @@ static bool ScanMarker(MMFilesMarker const* marker, void* data,
       break;
     }
 
-    case TRI_DF_MARKER_VPACK_DOCUMENT: 
+    case TRI_DF_MARKER_VPACK_DOCUMENT:
     case TRI_DF_MARKER_VPACK_REMOVE: {
       TRI_voc_tick_t const databaseId = state->lastDatabaseId;
       TRI_voc_cid_t const collectionId = state->lastCollectionId;
@@ -213,7 +213,7 @@ static bool ScanMarker(MMFilesMarker const* marker, void* data,
       break;
     }
 
-    case TRI_DF_MARKER_HEADER: 
+    case TRI_DF_MARKER_HEADER:
     case TRI_DF_MARKER_FOOTER: {
       // new datafile or end of datafile. forget state!
       state->resetCollection();
@@ -262,7 +262,7 @@ void MMFilesCollectorThread::beginShutdown() {
   Thread::beginShutdown();
 
   // deactivate write-throttling on shutdown
-  _logfileManager->throttleWhenPending(0); 
+  _logfileManager->throttleWhenPending(0);
 
   CONDITION_LOCKER(guard, _condition);
   guard.signal();
@@ -353,7 +353,7 @@ void MMFilesCollectorThread::run() {
           guard.wait(interval);
         }
       }
-    } 
+    }
   }
 
   // all queues are empty, so we can exit
@@ -404,7 +404,7 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
 
   try {
     int res = collect(logfile);
-    // LOG_TOPIC(TRACE, Logger::COLLECTOR) << "collected logfile: " << logfile->id() << ". result: " << res;
+    LOG_TOPIC(TRACE, Logger::COLLECTOR) << "collected logfile: " << logfile->id() << ". result: " << res;
 
     if (res == TRI_ERROR_NO_ERROR) {
       // reset collector status
@@ -451,9 +451,7 @@ int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
 
   {
     MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
-    TRI_ASSERT(!_operationsQueueInUse);
-
-    if (_operationsQueue.empty()) {
+    if (_operationsQueueInUse || _operationsQueue.empty()) {
       // nothing to do
       return TRI_ERROR_NO_ERROR;
     }
@@ -547,7 +545,7 @@ int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
     // finally remove all entries from the map with empty vectors
     {
       MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
-      TRI_ASSERT(_operationsQueueInUse); 
+      TRI_ASSERT(_operationsQueueInUse);
 
       if (worked) {
         for (auto it = _operationsQueue.begin(); it != _operationsQueue.end();
@@ -567,14 +565,76 @@ int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
     {
       MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
       // always make sure the queue can now be used by others, too
-      TRI_ASSERT(_operationsQueueInUse); 
+      TRI_ASSERT(_operationsQueueInUse);
       _operationsQueueInUse = false;
     }
- 
+
     throw;
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+void MMFilesCollectorThread::clearQueuedOperations() {
+  // get exclusive access to operationsQueue
+  while (true) {
+    {
+      MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
+
+      if (!_operationsQueueInUse) {
+        _operationsQueueInUse = true;
+        break;
+      }
+    }
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+  }
+
+  try {
+    for (auto& it : _operationsQueue) {
+      auto& operations = it.second;
+      TRI_ASSERT(!operations.empty());
+
+      for (auto const& cache : operations) {
+        {
+          arangodb::DatabaseGuard dbGuard(cache->databaseId);
+          TRI_vocbase_t* vocbase = dbGuard.database();
+          TRI_ASSERT(vocbase != nullptr);
+
+          arangodb::CollectionGuard collectionGuard(vocbase, cache->collectionId,
+                                                    true);
+          arangodb::LogicalCollection* collection = collectionGuard.collection();
+
+          TRI_ASSERT(collection != nullptr);
+
+          auto physical =
+            static_cast<MMFilesCollection*>(collection->getPhysical());
+          TRI_ASSERT(physical != nullptr);
+
+          physical->decreaseUncollectedLogfileEntries(
+              cache->totalOperationsCount);
+        }
+        _numPendingOperations -= cache->operations->size();
+        _logfileManager->decreaseCollectQueueSize(cache->logfile);
+
+        delete cache;
+      }
+
+      it.second.clear();
+    }
+  } catch (...) {
+    // must clear the inuse flag here
+    MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
+    TRI_ASSERT(_operationsQueueInUse); // used by us
+    _operationsQueueInUse = false;
+    throw;
+  }
+
+
+  MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
+  TRI_ASSERT(_operationsQueueInUse); // used by us
+
+  _operationsQueue.clear();
+  _operationsQueueInUse = false;
 }
 
 /// @brief return the number of queued operations
@@ -605,11 +665,11 @@ void MMFilesCollectorThread::processCollectionMarker(
 
     VPackSlice slice(reinterpret_cast<char const*>(walMarker) + MMFilesDatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
-    
+
     VPackSlice keySlice;
     TRI_voc_rid_t revisionId = 0;
     transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
-  
+
     bool wasAdjusted = false;
     MMFilesSimpleIndexElement element = physical->primaryIndex()->lookupKey(&trx, keySlice);
 
@@ -622,12 +682,12 @@ void MMFilesCollectorThread::processCollectionMarker(
           if (revisionId == currentRevision) {
             // make it point to datafile now
             MMFilesMarker const* newPosition = reinterpret_cast<MMFilesMarker const*>(operation.datafilePosition);
-            wasAdjusted = physical->updateLocalDocumentIdConditional(element.localDocumentId(), walMarker, newPosition, fid, false); 
+            wasAdjusted = physical->updateLocalDocumentIdConditional(element.localDocumentId(), walMarker, newPosition, fid, false);
           }
         }
       }
     }
-      
+
     if (wasAdjusted) {
       // revision is still active
       dfi.numberAlive++;
@@ -645,14 +705,14 @@ void MMFilesCollectorThread::processCollectionMarker(
 
     VPackSlice slice(reinterpret_cast<char const*>(walMarker) + MMFilesDatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
-    
+
     VPackSlice keySlice;
     TRI_voc_rid_t revisionId = 0;
     transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
     MMFilesSimpleIndexElement found = physical->primaryIndex()->lookupKey(&trx, keySlice);
 
-    if (found) { 
+    if (found) {
       ManagedDocumentResult mmdr;
       if (collection->readDocument(&trx, found.localDocumentId(), mmdr)) {
         uint8_t const* vpack = mmdr.vpack();
@@ -687,7 +747,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   // collection
   // if any locking attempt fails, release and try again next time
   MMFilesTryCompactionPreventer compactionPreventer(physical);
-  
+
   if (!compactionPreventer.isLocked()) {
     return TRI_ERROR_LOCK_TIMEOUT;
   }
@@ -809,7 +869,7 @@ int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
       collectionIds.emplace(cid);
     }
   }
-    
+
   MMFilesOperationsType sortedOperations;
 
   // now for each collection, write all surviving markers into collection
@@ -832,7 +892,7 @@ int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
       }
       sortedOperations.reserve(requiredSize);
     }
-  
+
     // insert structural operations - those are already sorted by tick
     if (state.structuralOperations.find(cid) !=
         state.structuralOperations.end()) {
@@ -926,7 +986,7 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
   arangodb::CollectionGuard collectionGuard(vocbase, collectionId, true);
   arangodb::LogicalCollection* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
-  
+
   // no need to go on if the collection is already deleted
   if (collection->status() == TRI_VOC_COL_STATUS_DELETED) {
     return TRI_ERROR_NO_ERROR;
@@ -935,7 +995,7 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
   LOG_TOPIC(TRACE, Logger::COLLECTOR) << "collector transferring markers for '"
              << collection->name()
              << "', totalOperationsCount: " << totalOperationsCount;
-    
+
   auto cache = std::make_unique<MMFilesCollectorCache>(collectionId, databaseId, logfile,
                          totalOperationsCount, operations.size());
 
@@ -945,7 +1005,7 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
   try {
     auto en = static_cast<MMFilesEngine*>(engine);
     res = en->transferMarkers(collection, cache.get(), operations);
-    
+
     if (res == TRI_ERROR_NO_ERROR && !cache->operations->empty()) {
       queueOperations(logfile, cache);
     }
@@ -997,7 +1057,7 @@ int MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfile
     }
 
     // wait outside the mutex for the flag to be cleared
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 
   if (maxNumPendingOperations > 0 &&
@@ -1008,8 +1068,8 @@ int MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfile
     _logfileManager->activateWriteThrottling();
     LOG_TOPIC(WARN, Logger::COLLECTOR)
         << "queued more than " << maxNumPendingOperations
-        << " pending WAL collector operations." 
-        << " current queue size: " << (_numPendingOperations + numOperations) 
+        << " pending WAL collector operations."
+        << " current queue size: " << (_numPendingOperations + numOperations)
         << ". now activating write-throttling";
   }
 
@@ -1044,7 +1104,7 @@ int MMFilesCollectorThread::updateDatafileStatistics(
   return TRI_ERROR_NO_ERROR;
 }
 
-void MMFilesCollectorThread::broadcastCollectorResult(int res) { 
+void MMFilesCollectorThread::broadcastCollectorResult(int res) {
   CONDITION_LOCKER(guard, _collectorResultCondition);
   _collectorResult = res;
   _collectorResultCondition.broadcast();

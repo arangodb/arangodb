@@ -264,7 +264,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
       other.valueNode->isConstant()) {
     return CompareAstNodes(other.valueNode, valueNode, false) == 0;
   }
-  
+
   bool a = operatorNode->isArrayComparisonOperator();
   bool b = other.operatorNode->isArrayComparisonOperator();
   if (a || b) {
@@ -273,7 +273,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
     }
     TRI_ASSERT(operatorNode->numMembers() == 3 &&
                other.operatorNode->numMembers() == 3);
-    
+
     AstNode* q1 = operatorNode->getMemberUnchecked(2);
     TRI_ASSERT(q1->type == NODE_TYPE_QUANTIFIER);
     AstNode* q2 = other.operatorNode->getMemberUnchecked(2);
@@ -283,7 +283,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
         q1->getIntValue() == Quantifier::ANY) {
       return false;
     }
-    
+
     if (isExpanded && other.isExpanded &&
         operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
         other.operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
@@ -397,7 +397,17 @@ std::pair<bool, bool> Condition::findIndexes(
 
   transaction::Methods* trx = _ast->query()->trx();
 
-  size_t const itemsInIndex = node->collection()->count(trx);
+  size_t itemsInIndex;
+  if (!collectionName.empty() && collectionName[0] == '_' &&
+      collectionName.substr(0, 11) == "_statistics") {
+    // use hard-coded number of items in index, because we are dealing with
+    // the statistics collection here. this saves a roundtrip to the DB servers
+    // for statistics queries that do not need a fully accurate collection count
+    itemsInIndex = 1024;
+  } else {
+    // actually count number of items in index
+    itemsInIndex = node->collection()->count(trx);
+  }
   if (_root == nullptr) {
     size_t dummy;
     return trx->getIndexForSortCondition(collectionName, sortCondition,

@@ -29,15 +29,190 @@
 
 using namespace arangodb::aql;
 
-SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
-    : ExecutionBlock(engine, en), _sortRegisters(), _stable(en->_stable), _mustFetchAll(true) {
-  for (auto const& p : en->_elements) {
-    auto it = en->getRegisterPlan()->varInfo.find(p.var->id);
-    TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
-    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-    _sortRegisters.emplace_back(
-        std::make_pair(it->second.registerId, p.ascending));
+#ifdef USE_IRESEARCH
+
+#include "IResearch/IResearchViewNode.h"
+#include "IResearch/IResearchOrderFactory.h"
+#include "IResearch/AqlHelper.h"
+
+namespace {
+
+int compareIResearchScores(
+    irs::sort::prepared const* comparer,
+    arangodb::transaction::Methods*,
+    AqlValue const& lhs,
+    AqlValue const& rhs
+) {
+  arangodb::velocypack::ValueLength tmp;
+
+  auto const* lhsScore = reinterpret_cast<irs::byte_type const*>(lhs.slice().getString(tmp));
+  auto const* rhsScore = reinterpret_cast<irs::byte_type const*>(rhs.slice().getString(tmp));
+
+  if (comparer->less(lhsScore, rhsScore)) {
+    return -1;
   }
+
+  if (comparer->less(rhsScore, lhsScore)) {
+    return 1;
+  }
+
+  return 0;
+}
+
+int compareAqlValues(
+    irs::sort::prepared const*,
+    arangodb::transaction::Methods* trx,
+    AqlValue const& lhs,
+    AqlValue const& rhs) {
+  return AqlValue::Compare(
+    reinterpret_cast<arangodb::transaction::Methods*>(trx), lhs, rhs, true
+  );
+}
+
+void fillSortRegisters(
+    std::vector<SortRegister>& sortRegisters,
+    SortNode const& en
+) {
+  TRI_ASSERT(en.plan());
+  auto& execPlan = *en.plan();
+
+  auto const& elements = en.getElements();
+  sortRegisters.reserve(elements.size());
+  std::unordered_map<ExecutionNode const*, size_t> offsets(sortRegisters.capacity());
+
+  irs::sort::ptr comparer;
+
+  for (auto const& p : elements) {
+    auto const varId = p.var->id;
+    auto it = en.getRegisterPlan()->varInfo.find(varId);
+    TRI_ASSERT(it != en.getRegisterPlan()->varInfo.end());
+    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    sortRegisters.emplace_back(it->second.registerId, p.ascending, nullptr, &compareAqlValues);
+
+    auto const* setter = execPlan.getVarSetBy(varId);
+
+    if (setter && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == setter->getType()) {
+      // sort condition is covered by `IResearchViewNode`
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto const& viewNode = dynamic_cast<arangodb::iresearch::IResearchViewNode const&>(*setter);
+#else
+      auto const& viewNode = static_cast<arangodb::iresearch::IResearchViewNode const&>(*setter);
+#endif // ARANGODB_ENABLE_MAINTAINER_MODE
+
+      auto& offset = offsets[&viewNode];
+      auto* node = viewNode.sortCondition()[offset++].node;
+
+      if (arangodb::iresearch::OrderFactory::comparer(&comparer, *node)) {
+        auto& reg = sortRegisters.back();
+        std::get<2>(reg) = comparer->prepare(); // set score comparer
+        std::get<3>(reg) = &compareIResearchScores; // set comparator
+      }
+    }
+  }
+}
+
+/// @brief OurLessThan
+class OurLessThan {
+ public:
+  OurLessThan(
+      arangodb::transaction::Methods* trx,
+      std::deque<AqlItemBlock*>& buffer,
+      std::vector<SortRegister>& sortRegisters) noexcept
+    : _trx(trx),
+      _buffer(buffer),
+      _sortRegisters(sortRegisters) {
+  }
+
+  bool operator()(std::pair<size_t, size_t> const& a,
+                  std::pair<size_t, size_t> const& b) const {
+    for (auto const& reg : _sortRegisters) {
+      auto const& lhs = _buffer[a.first]->getValueReference(a.second, std::get<0>(reg));
+      auto const& rhs = _buffer[b.first]->getValueReference(b.second, std::get<0>(reg));
+
+      auto const comparator = std::get<3>(reg);
+      TRI_ASSERT(comparator);
+
+      int const cmp = (*comparator)(std::get<2>(reg).get(), _trx, lhs, rhs);
+
+      if (cmp < 0) {
+        return std::get<1>(reg);
+      } else if (cmp > 0) {
+        return !std::get<1>(reg);
+      }
+    }
+
+    return false;
+  }
+
+ private:
+  arangodb::transaction::Methods* _trx;
+  std::deque<AqlItemBlock*>& _buffer;
+  std::vector<SortRegister>& _sortRegisters;
+};
+
+}
+
+#else
+
+void fillSortRegisters(
+    std::vector<SortRegister>& sortRegisters,
+    SortNode const& en
+) {
+  auto const& elements = en.getElements();
+  sortRegisters.reserve(elements.size());
+
+  for (auto const& p : elements) {
+    auto const varId = p.var->id;
+    auto it = en.getRegisterPlan()->varInfo.find(varId);
+    TRI_ASSERT(it != en.getRegisterPlan()->varInfo.end());
+    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    sortRegisters.emplace_back(it->second.registerId, p.ascending);
+  }
+}
+
+/// @brief OurLessThan
+class OurLessThan {
+ public:
+  OurLessThan(arangodb::transaction::Methods* trx,
+              std::deque<AqlItemBlock*>& buffer,
+              std::vector<SortRegister>& sortRegisters)
+      : _trx(trx),
+        _buffer(buffer),
+        _sortRegisters(sortRegisters) {}
+
+  bool operator()(std::pair<size_t, size_t> const& a,
+                  std::pair<size_t, size_t> const& b) const {
+    for (auto const& reg : _sortRegisters) {
+      auto const& lhs = _buffer[a.first]->getValueReference(a.second, std::get<0>(reg));
+      auto const& rhs = _buffer[b.first]->getValueReference(b.second, std::get<0>(reg));
+
+      int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+
+      if (cmp < 0) {
+        return std::get<1>(reg);
+      } else if (cmp > 0) {
+        return !std::get<1>(reg);
+      }
+    }
+
+    return false;
+  }
+
+ private:
+  arangodb::transaction::Methods* _trx;
+  std::deque<AqlItemBlock*>& _buffer;
+  std::vector<SortRegister>& _sortRegisters;
+};
+
+#endif // USE_IRESEARCH
+
+SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
+  : ExecutionBlock(engine, en),
+    _stable(en->_stable),
+    _mustFetchAll(true) {
+  TRI_ASSERT(en);
+  fillSortRegisters(_sortRegisters, *en);
 }
 
 SortBlock::~SortBlock() {}
@@ -126,7 +301,7 @@ void SortBlock::doSorting() {
     count = 0;
     RegisterId const nrRegs = _buffer.front()->getNrRegs();
 
-    std::unordered_set<AqlValue> cache;
+    std::unordered_map<AqlValue, AqlValue> cache;
 
     // install the rearranged values from _buffer into newbuffer
 
@@ -144,7 +319,6 @@ void SortBlock::doSorting() {
         throw;
       }
 
-      cache.clear();
       // only copy as much as needed!
       for (size_t i = 0; i < sizeNext; i++) {
         for (RegisterId j = 0; j < nrRegs; j++) {
@@ -160,7 +334,7 @@ void SortBlock::doSorting() {
               // the new block already has either a copy or stolen
               // the AqlValue:
               _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-              next->setValue(i, j, (*it));
+              next->setValue(i, j, (*it).second);
             } else {
               // We need to copy a, if it has already been stolen from
               // its original buffer, which we know by looking at the
@@ -174,7 +348,7 @@ void SortBlock::doSorting() {
                   TRI_IF_FAILURE("SortBlock::doSortingCache") {
                     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
                   }
-                  cache.emplace(b);
+                  cache.emplace(a, b);
                 } catch (...) {
                   b.destroy();
                   throw;
@@ -193,8 +367,7 @@ void SortBlock::doSorting() {
                 // It does not matter whether the following works or not,
                 // since the original block keeps its responsibility
                 // for a:
-                _buffer[coords[count].first]->eraseValue(coords[count].second,
-                                                         j);
+                _buffer[coords[count].first]->eraseValue(coords[count].second, j);
               } else {
                 TRI_IF_FAILURE("SortBlock::doSortingNext2") {
                   THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -203,13 +376,12 @@ void SortBlock::doSorting() {
                 // steal it:
                 next->setValue(i, j, a);
                 _buffer[coords[count].first]->steal(a);
-                _buffer[coords[count].first]->eraseValue(coords[count].second,
-                                                         j);
+                _buffer[coords[count].first]->eraseValue(coords[count].second, j);
                 // If this has worked, responsibility is now with the
                 // new block or indeed with us!
                 // If the following does not work, we will create a
                 // few unnecessary copies, but this does not matter:
-                cache.emplace(a);
+                cache.emplace(a, a);
               }
             }
           }
@@ -230,21 +402,4 @@ void SortBlock::doSorting() {
     delete x;
   }
   DEBUG_END_BLOCK();  
-}
-
-bool SortBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
-                                        std::pair<size_t, size_t> const& b) const {
-  for (auto const& reg : _sortRegisters) {
-    int cmp = AqlValue::Compare(
-        _trx, _buffer[a.first]->getValueReference(a.second, reg.first),
-        _buffer[b.first]->getValueReference(b.second, reg.first), true);
-
-    if (cmp < 0) {
-      return reg.second;
-    } else if (cmp > 0) {
-      return !reg.second;
-    }
-  }
-
-  return false;
 }

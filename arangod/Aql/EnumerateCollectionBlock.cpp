@@ -34,7 +34,6 @@
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::aql;
@@ -44,12 +43,11 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     : ExecutionBlock(engine, ep), 
       DocumentProducingBlock(ep, _trx),
       _collection(ep->_collection),
-      _mmdr(new ManagedDocumentResult),
       _cursor(
           _trx->indexScan(_collection->getName(),
                           (ep->_random ? transaction::Methods::CursorType::ANY
                                        : transaction::Methods::CursorType::ALL),
-                          _mmdr.get(), false)) {
+                          false)) {
   TRI_ASSERT(_cursor->ok());
 }
 
@@ -78,7 +76,7 @@ int EnumerateCollectionBlock::initialize() {
         if (endTime - now < waitInterval) {
           waitInterval = static_cast<unsigned long>(endTime - now);
         }
-        usleep((TRI_usleep_t)waitInterval);
+        std::this_thread::sleep_for(std::chrono::microseconds(waitInterval));
       }
       now = TRI_microtime();
       if (now > endTime) {
@@ -119,10 +117,10 @@ int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
 }
 
 /// @brief getSome
-AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
+AqlItemBlock* EnumerateCollectionBlock::getSome(size_t atLeast,
                                                 size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
 
   TRI_ASSERT(_cursor.get() != nullptr);
   // Invariants:

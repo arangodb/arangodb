@@ -53,12 +53,16 @@
 #include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
 
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewNode.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
 // @brief Local struct to create the
 // information required to build traverser engines
-// on DB servers. 
+// on DB servers.
 struct TraverserEngineShardLists {
   explicit TraverserEngineShardLists(size_t length) {
     // Make sure they all have a fixed size.
@@ -105,6 +109,14 @@ static ExecutionBlock* CreateBlock(
       return new EnumerateListBlock(engine,
                                     static_cast<EnumerateListNode const*>(en));
     }
+#ifdef USE_IRESEARCH
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+      // FIXME better to replace switch with factory method
+      TRI_ASSERT(engine);
+      auto const* viewNode = static_cast<arangodb::iresearch::IResearchViewNode const*>(en);
+      return viewNode->createExecutionBlock(*engine);
+    }
+#endif
     case ExecutionNode::TRAVERSAL: {
       return new TraversalBlock(engine, static_cast<TraversalNode const*>(en));
     }
@@ -128,16 +140,13 @@ static ExecutionBlock* CreateBlock(
       auto aggregationMethod =
           static_cast<CollectNode const*>(en)->aggregationMethod();
 
-      if (aggregationMethod ==
-          CollectOptions::CollectMethod::COLLECT_METHOD_HASH) {
+      if (aggregationMethod == CollectOptions::CollectMethod::HASH) {
         return new HashedCollectBlock(engine,
                                       static_cast<CollectNode const*>(en));
-      } else if (aggregationMethod ==
-                 CollectOptions::CollectMethod::COLLECT_METHOD_SORTED) {
+      } else if (aggregationMethod == CollectOptions::CollectMethod::SORTED) {
         return new SortedCollectBlock(engine,
                                       static_cast<CollectNode const*>(en));
-      } else if (aggregationMethod ==
-                 CollectOptions::CollectMethod::COLLECT_METHOD_DISTINCT) {
+      } else if (aggregationMethod == CollectOptions::CollectMethod::DISTINCT) {
         return new DistinctCollectBlock(engine,
                                       static_cast<CollectNode const*>(en));
       }
@@ -260,7 +269,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
       }
 
       engine->addBlock(eb.get());
-      
+
       if (!en->hasParent()) {
         // yes. found a new root!
         root = eb.get();
@@ -451,7 +460,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     bool populated;
     // in the original plan that needs this engine
   };
-    
+
   void includedShards(std::unordered_set<std::string> const& allowed) {
     _includedShards = allowed;
   }
@@ -616,7 +625,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // the toVelocyPack will open & close the "options" object
     query->queryOptions().toVelocyPack(result, true);
 #endif
-    
+
     result.close();
 
     TRI_ASSERT(result.isClosed());
@@ -693,8 +702,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
       }
     }
-     
-    size_t numShards = shardIds->size();   
+
+    size_t numShards = shardIds->size();
     //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
     if (nrok != static_cast<int>(numShards)) {
@@ -1254,7 +1263,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     engines[currentEngineId].nodes.emplace_back(en);
   }
 };
-  
+
 /// @brief shutdown, will be called exactly once for the whole query
 int ExecutionEngine::shutdown(int errorCode) {
   int res = TRI_ERROR_NO_ERROR;
@@ -1271,7 +1280,7 @@ int ExecutionEngine::shutdown(int errorCode) {
     }
 
     res = _root->shutdown(errorCode);
- 
+
     // prevent a duplicate shutdown
     _wasShutdown = true;
   }
@@ -1287,7 +1296,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
   bool const isCoordinator =
       arangodb::ServerState::instance()->isCoordinator(role);
   bool const isDBServer = arangodb::ServerState::instance()->isDBServer(role);
-    
+
   TRI_ASSERT(queryRegistry != nullptr);
 
   ExecutionEngine* engine = nullptr;

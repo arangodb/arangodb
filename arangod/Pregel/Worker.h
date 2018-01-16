@@ -42,6 +42,7 @@ namespace pregel {
 class IWorker {
  public:
   virtual ~IWorker(){};
+  virtual void setupWorker() = 0;
   virtual void prepareGlobalStep(VPackSlice const& data,
                                  VPackBuilder& result) = 0;
   virtual void startGlobalStep(
@@ -150,6 +151,7 @@ class Worker : public IWorker {
   ~Worker();
 
   // ====== called by rest handler =====
+  void setupWorker() override;
   void prepareGlobalStep(VPackSlice const& data,
                          VPackBuilder& result) override;
   void startGlobalStep(VPackSlice const& data) override;

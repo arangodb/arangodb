@@ -94,7 +94,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
       _isModificationQuery(false) {
-
+    
   AqlFeature* aql = AqlFeature::lease();
   if (aql == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
@@ -480,7 +480,7 @@ ExecutionPlan* Query::prepare() {
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
     opt.createPlans(plan.release(), _queryOptions.optimizerRules,
-                    _queryOptions.inspectSimplePlans);
+                    _queryOptions.inspectSimplePlans, false);
     // Now plan and all derived plans belong to the optimizer
     plan.reset(opt.stealBest());  // Now we own the best one again
   } else {  // no queryString, we are instantiating from _queryBuilder
@@ -590,7 +590,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
     options.buildUnindexedObjects = true;
 
     auto resultBuilder = std::make_shared<VPackBuilder>(&options);
-    resultBuilder->buffer()->reserve(
+    resultBuilder->reserve(
         16 * 1024);  // reserve some space in Builder to avoid frequent reallocs
     
     TRI_ASSERT(_engine != nullptr);
@@ -662,7 +662,10 @@ QueryResult Query::execute(QueryRegistry* registry) {
                                       << "Query::execute: before _trx->commit"
                                       << " this: " << (uintptr_t) this;
 
-    _trx->commit();
+    auto commitResult = _trx->commit();
+    if (commitResult.fail()) {
+        THROW_ARANGO_EXCEPTION(commitResult);
+    }
     
     LOG_TOPIC(DEBUG, Logger::QUERIES)
         << TRI_microtime() - _startTime << " "
@@ -864,7 +867,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
                                       << "Query::executeV8: before _trx->commit"
                                       << " this: " << (uintptr_t) this;
 
-    _trx->commit();
+    auto commitResult = _trx->commit();
+    if (commitResult.fail()) {
+        THROW_ARANGO_EXCEPTION(commitResult);
+    }
 
     LOG_TOPIC(DEBUG, Logger::QUERIES)
         << TRI_microtime() - _startTime << " "
@@ -984,7 +990,7 @@ QueryResult Query::explain() {
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
-    opt.createPlans(plan, _queryOptions.optimizerRules, _queryOptions.inspectSimplePlans);
+    opt.createPlans(plan, _queryOptions.optimizerRules, _queryOptions.inspectSimplePlans, true);
 
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 
@@ -1022,9 +1028,12 @@ QueryResult Query::explain() {
                        !_isModificationQuery && _warnings.empty() &&
                        _ast->root()->isCacheable());
     }
-
-    _trx->commit();
-
+    
+    auto commitResult = _trx->commit();
+    if (commitResult.fail()) {
+        THROW_ARANGO_EXCEPTION(commitResult);
+    }
+    
     result.warnings = warningsToVelocyPack();
 
     result.stats = opt._stats.toVelocyPack();

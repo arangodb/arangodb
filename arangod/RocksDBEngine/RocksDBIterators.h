@@ -45,12 +45,8 @@ class RocksDBPrimaryIndex;
 /// basically sorted after revision ID
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
-  typedef std::function<void(LocalDocumentId const& token,
-                             StringRef const& key)>
-      TokenKeyCallback;
   RocksDBAllIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           RocksDBPrimaryIndex const* index, bool reverse);
 
   ~RocksDBAllIndexIterator() {}
@@ -76,7 +72,6 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
   RocksDBAnyIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           RocksDBPrimaryIndex const* index);
 
   ~RocksDBAnyIndexIterator() {}
@@ -104,12 +99,8 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 /// into the document store. E.g. used for incremental sync
 class RocksDBSortedAllIterator final : public IndexIterator {
  public:
-  typedef std::function<void(LocalDocumentId const& token,
-                             StringRef const& key)>
-      TokenKeyCallback;
   RocksDBSortedAllIterator(LogicalCollection* collection,
                            transaction::Methods* trx,
-                           ManagedDocumentResult* mmdr,
                            RocksDBPrimaryIndex const* index);
 
   ~RocksDBSortedAllIterator() {}
@@ -120,7 +111,6 @@ class RocksDBSortedAllIterator final : public IndexIterator {
   void reset() override;
 
   // engine specific optimizations
-  bool nextWithKey(TokenKeyCallback const& cb, size_t limit);
   void seek(StringRef const& key);
 
  private:
@@ -129,9 +119,6 @@ class RocksDBSortedAllIterator final : public IndexIterator {
   transaction::Methods* _trx;
   RocksDBKeyBounds const _bounds;
   std::unique_ptr<rocksdb::Iterator> _iterator;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  RocksDBPrimaryIndex const* _index;
-#endif
   rocksdb::Comparator const* _cmp;
 };
 }

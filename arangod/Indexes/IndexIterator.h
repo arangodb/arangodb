@@ -74,6 +74,7 @@ class IndexIterator {
   IndexIterator() = delete;
 
   IndexIterator(LogicalCollection*, transaction::Methods*, ManagedDocumentResult*, arangodb::Index const*);
+  IndexIterator(LogicalCollection*, transaction::Methods*, arangodb::Index const*);
 
   virtual ~IndexIterator();
 
@@ -82,7 +83,10 @@ class IndexIterator {
   LogicalCollection* collection() const { return _collection; }
   transaction::Methods* transaction() const { return _trx; }
 
-  virtual bool hasExtra() const;
+  virtual bool hasExtra() const {
+    // The default index has no extra information
+    return false;
+  }
 
   virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) = 0;
   virtual bool nextDocument(DocumentCallback const& callback, size_t limit);
@@ -103,8 +107,8 @@ class IndexIterator {
 /// @brief Special iterator if the condition cannot have any result
 class EmptyIndexIterator final : public IndexIterator {
  public:
-  EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, ManagedDocumentResult* mmdr, arangodb::Index const* index) 
-      : IndexIterator(collection, trx, mmdr, index) {}
+  EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, arangodb::Index const* index) 
+      : IndexIterator(collection, trx, index) {}
 
   ~EmptyIndexIterator() {}
 

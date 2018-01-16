@@ -36,6 +36,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -489,7 +490,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
         return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED;
       }
 
-      usleep(collectionStatusPollInterval());
+      std::this_thread::sleep_for(std::chrono::microseconds(collectionStatusPollInterval()));
     }
 
     return loadCollection(collection, status, false);
@@ -598,7 +599,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
     // sleep for a while
     std::this_thread::yield();
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -896,7 +897,7 @@ LogicalCollection* TRI_vocbase_t::lookupCollection(std::string const& name) cons
   // lookupbyid function
   // this is safe because collection names must not start with a digit
   if (name[0] >= '0' && name[0] <= '9') {
-    return lookupCollection(StringUtils::uint64(name));
+    return lookupCollection(NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size()));
   }
   
   READ_LOCKER(readLocker, _collectionsLock);
@@ -927,7 +928,7 @@ LogicalCollection* TRI_vocbase_t::lookupCollectionNoLock(
   // function
   // this is safe because collection names must not start with a digit
   if (name[0] >= '0' && name[0] <= '9') {
-    TRI_voc_cid_t id = StringUtils::uint64(name);
+    TRI_voc_cid_t id = NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
     auto it = _collectionsById.find(id);
 
     if (it == _collectionsById.end()) {
@@ -967,7 +968,7 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
   // function
   // this is safe because view names must not start with a digit
   if (name[0] >= '0' && name[0] <= '9') {
-    return lookupView(StringUtils::uint64(name));
+    return lookupView(NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size()));
   }
 
   // otherwise we'll look up the view by name
@@ -1073,7 +1074,7 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection,
           break;
         }
         // sleep without lock
-        usleep(collectionStatusPollInterval());
+        std::this_thread::sleep_for(std::chrono::microseconds(collectionStatusPollInterval()));
       }
       // if we get here, the status has changed
       return unloadCollection(collection, force);
@@ -1118,7 +1119,6 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
     int res;
     {
       READ_LOCKER(readLocker, _inventoryLock);
-
       res = dropCollectionWorker(collection, state, timeout);
     }
 
@@ -1138,8 +1138,56 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
 
     // try again in next iteration
     TRI_ASSERT(state == DROP_AGAIN);
-    usleep(collectionStatusPollInterval());
+    std::this_thread::sleep_for(std::chrono::microseconds(collectionStatusPollInterval()));
   }
+}
+
+/// @brief renames a view
+int TRI_vocbase_t::renameView(std::shared_ptr<arangodb::LogicalView> view,
+                              std::string const& newName) {
+
+  // lock collection because we are going to copy its current name
+  std::string oldName = view->name();
+
+  // old name should be different
+
+  // check if names are actually different
+  if (oldName == newName) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  if (!LogicalView::IsAllowedName(newName)) {
+    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
+
+  READ_LOCKER(readLocker, _inventoryLock);
+
+  WRITE_LOCKER(writeLocker, _viewsLock);
+
+  // Check for duplicate name
+  auto it = _viewsByName.find(newName);
+
+  if (it != _viewsByName.end()) {
+    // new name already in use
+    return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+  }
+
+  _viewsByName.emplace(newName, view);
+  _viewsByName.erase(oldName);
+  
+  // stores the parameters on disk
+  bool const doSync =
+      application_features::ApplicationServer::getFeature<DatabaseFeature>(
+         "Database")
+          ->forceSyncProperties();
+  view->rename(newName, doSync);
+
+  // Tell the engine.
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  arangodb::Result res = engine->renameView(this, view, oldName);
+
+  return res.errorNumber();
 }
 
 /// @brief renames a collection
@@ -1207,7 +1255,7 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
 
     // sleep for a while
     std::this_thread::yield();
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -1382,9 +1430,16 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
 
     // now let's actually create the backing implementation
     view->spawnImplementation(creator, parameters, true);
+    if (view->getImplementation() == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not spawn view "
+        "implementation");
+    }
 
     // Let's try to persist it.
     view->persistPhysicalView();
+
+    // And lets open it.
+    view->getImplementation()->open();
 
     events::CreateView(name, TRI_ERROR_NO_ERROR);
     return view;
@@ -1465,7 +1520,7 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
 
     // sleep for a while
     std::this_thread::yield();
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -1780,7 +1835,7 @@ TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld,
 TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld,
                               bool warn) {
   if (len > 0 && *p >= '1' && *p <= '9') {
-    TRI_voc_rid_t r = arangodb::basics::StringUtils::uint64_check(p, len);
+    auto r = NumberUtils::atoi_positive_unchecked<TRI_voc_rid_t>(p, p + len);
     if (warn && r > tickLimit) {
       // An old tick value that could be confused with a time stamp
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)

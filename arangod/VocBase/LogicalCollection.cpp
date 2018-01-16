@@ -26,6 +26,7 @@
 
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
+#include "Basics/conversions.h"
 #include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/PerformanceLogScope.h"
@@ -43,6 +44,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -403,13 +405,12 @@ void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
 }
 
 std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) {
-  return _physical->getAllIterator(trx, mdr, reverse);
+    transaction::Methods* trx, bool reverse) {
+  return _physical->getAllIterator(trx, reverse);
 }
 
-std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr) {
-  return _physical->getAnyIterator(trx, mdr);
+std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(transaction::Methods* trx) {
+  return _physical->getAnyIterator(trx);
 }
 
 void LogicalCollection::invokeOnAllElements(
@@ -825,7 +826,8 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
 
 void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                                         bool useSystem,
-                                                        bool isReady) const {
+                                                        bool isReady,
+                                                        bool allInSync) const {
   if (_isSystem && !useSystem) {
     return;
   }
@@ -854,6 +856,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   getIndexesVPack(result, false, false);
   result.add("planVersion", VPackValue(getPlanVersion()));
   result.add("isReady", VPackValue(isReady));
+  result.add("allInSync", VPackValue(allInSync));
   result.close();  // CollectionInfo
 }
 
@@ -1056,12 +1059,8 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 
   if (!_isLocal) {
     // We need to inform the cluster as well
-    int tmp = ClusterInfo::instance()->setCollectionPropertiesCoordinator(
+    return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
         _vocbase->name(), cid_as_string(), this);
-    if (tmp == TRI_ERROR_NO_ERROR) {
-      return {};
-    }
-    return {tmp, TRI_errno_string(tmp)};
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -1381,30 +1380,36 @@ Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string
 }
 
 std::string LogicalCollection::generateGloballyUniqueId() const {
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
+  if (_version < VERSION_33) {
+    return _name; // predictable UUID for legacy collections
+  }
   
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
   std::string result;
   result.reserve(64);
-
   if (ServerState::isCoordinator(role)) {
     TRI_ASSERT(_planId != 0);
+    result.append("c");
     result.append(std::to_string(_planId));
   } else if (ServerState::isDBServer(role)) {
     TRI_ASSERT(_planId != 0);
+    result.append("c");
     // we add the shard name to the collection. If we ever
     // replicate shards, we can identify them cluster-wide
     result.append(std::to_string(_planId));
     result.push_back('/');
     result.append(_name);
-  } else {
+  } else { // single server
     if (isSystem()) { // system collection can't be renamed
       result.append(_name);
     } else {
-      std::string id = ServerState::instance()->getId();
-      if (!id.empty()) {
-        result.append(id);
-        result.push_back('/');
-      }
+      TRI_ASSERT(_cid != 0);
+      result.append("h");
+      char buff[sizeof(TRI_server_id_t) * 2 + 1];
+      size_t len = TRI_StringUInt64HexInPlace(ServerIdFeature::getId(), buff);
+      result.append(buff, len);
+      TRI_ASSERT(result.size() > 3);
+      result.push_back('/');
       result.append(std::to_string(_cid));
     }
   }

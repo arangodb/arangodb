@@ -79,7 +79,7 @@ GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, GraphFormat<V, E>* graphFormat)
 template <typename V, typename E>
 GraphStore<V, E>::~GraphStore() {
   _destroyed = true;
-  usleep(25 * 1000);
+  std::this_thread::sleep_for(std::chrono::microseconds(25 * 1000));
   delete _vertexData;
   delete _edges;
 }
@@ -210,7 +210,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       }
       
       while (_runningThreads > 0) {
-        usleep(5000);
+        std::this_thread::sleep_for(std::chrono::microseconds(5000));
       }
     }
     scheduler->post(callback);
@@ -358,9 +358,8 @@ void GraphStore<V, E>::_loadVertices(size_t i,
   trx->pinData(cid);  // will throw when it fails
   PregelShard sourceShard = (PregelShard)_config->shardId(vertexShard);
 
-  ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
-      trx->indexScan(vertexShard, transaction::Methods::CursorType::ALL, &mmdr, false);
+      trx->indexScan(vertexShard, transaction::Methods::CursorType::ALL, false);
 
   if (cursor->fail()) {
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",

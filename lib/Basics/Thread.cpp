@@ -36,6 +36,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <thread>
+#include <chrono>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -187,9 +190,6 @@ Thread::Thread(std::string const& name, bool deleteOnExit)
       _affinity(-1),
       _workDescription(nullptr) {
   TRI_InitThread(&_thread);
-
-  // allow failing memory allocations for all threads by default
-  TRI_AllowMemoryFailures();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -285,7 +285,7 @@ void Thread::shutdown() {
       break;
     }
 
-    usleep(100 * 1000);
+    std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
   }
 
   if (_state.load() != ThreadState::STOPPED) {

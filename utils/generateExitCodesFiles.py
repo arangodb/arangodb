@@ -30,7 +30,7 @@ def genJsFile(errors):
       + "  var internal = require(\"internal\");\n"\
       + "\n"\
       + "  internal.exitCodes = {\n"
-  
+
   # print individual errors
   i = 0
   for e in errors:
@@ -38,7 +38,7 @@ def genJsFile(errors):
     msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
     out = out\
         + "    " + name.ljust(30) + " : { \"code\" : " + e[1] + ", \"message\" : \"" + msg + "\" }"
- 
+
     i = i + 1 
 
     if i < len(errors):
@@ -97,9 +97,12 @@ def genCFile(errors, filename):
 
   impl = prologue\
          + "#include \"Basics/Common.h\"\n"\
-         + "#include \"" + headerfile + "\"\n"\
+         + "#include \"Basics/exitcodes.h\"\n"\
          + "\n"\
-         + "void TRI_InitializeExitMessages () {\n"
+         + "/// helper macro to define an exit code string\n"\
+         + "#define REG_EXIT(id, label) TRI_set_exitno_string(TRI_ ## id, label);\n"\
+         + "\n"\
+         + "void TRI_InitializeExitMessages() {\n"
 
   # print individual errors
   for e in errors:
@@ -115,55 +118,31 @@ def genCFile(errors, filename):
 
 # generate C header file from errors
 def genCHeaderFile(errors):
-  wiki = "////////////////////////////////////////////////////////////////////////////////\n"\
-       + "/// Exit codes and meanings\n"\
-       + "///\n"\
-       + "/// The following codes might be retured when exiting ArangoDB:\n"\
-       + "///\n"\
-       + "#include \"Basics/error.h\"\n"
+  wiki = "/// Exit codes and meanings\n"\
+       + "/// The following codes might be returned when exiting ArangoDB:\n"
 
-  for e in errors:
-    wiki = wiki\
-         + "/// - " + e[1] + ": @LIT{" + e[2].replace("%", "\%").replace("<", "\<").replace(">", "\>") + "}\n"\
-         + wrap(e[3], 80, 0, 0, "///   ") + "\n"
-
-  wiki = wiki\
-       + "////////////////////////////////////////////////////////////////////////////////\n"
-
-  header = "\n"\
-           + "#ifndef TRIAGENS_BASICS_EXIT_CODES_H\n"\
-           + "#define TRIAGENS_BASICS_EXIT_CODES_H 1\n"\
+  header =   "#ifndef ARANGODB_BASICS_EXIT_CODES_H\n"\
+           + "#define ARANGODB_BASICS_EXIT_CODES_H 1\n"\
+           + "\n"\
+           + "#include \"Basics/error.h\"\n"\
            + "\n"\
            + wiki\
-           + "\n"\
-           + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "/// @brief helper macro to define an exit code string\n"\
-           + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "\n"\
-           + "#define REG_EXIT(id, label) TRI_set_exitno_string(TRI_ ## id, label);\n"\
-           + "\n"\
-           + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "/// @brief register all exit codes for ArangoDB\n"\
-           + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "\n"\
-           + "void TRI_InitializeExitMessages ();\n"\
            + "\n"
  
   # print individual errors
   for e in errors:
     header = header\
-           + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "/// @brief " + e[1] + ": " + e[0] + "\n"\
-           + "///\n"\
-           + wrap(e[2], 80, 0, 0, "/// ").replace("<", "\<").replace(">", "\>") + "\n"\
-           + "///\n"\
+           + "/// " + e[1] + ": " + e[0] + "\n"\
+           + wrap(e[2], 80, 0, 0, "/// ") + "\n"\
            + wrap(e[3], 80, 0, 0, "/// ") + "\n"\
-           + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "\n"\
-           + "#define TRI_" + e[0].ljust(61) + " (" + e[1] + ")\n"\
+           + "constexpr int TRI_" + e[0].ljust(61) + " = " + e[1] + ";\n"\
            + "\n"
 
   header = header\
+         + "\n"\
+         + "/// register all exit codes for ArangoDB\n"\
+         + "void TRI_InitializeExitMessages();\n"\
+         + "\n"\
          + "#endif\n"\
          + "\n"
 
@@ -171,9 +150,7 @@ def genCHeaderFile(errors):
 
 
 # define some globals 
-prologue = "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "/// @brief auto-generated file generated from exitcodes.dat\n"\
-         + "////////////////////////////////////////////////////////////////////////////////\n"\
+prologue = "/// auto-generated file generated from exitcodes.dat\n"\
          + "\n"
 
 if len(sys.argv) < 3:

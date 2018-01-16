@@ -292,10 +292,9 @@ class MMFilesCollection final : public PhysicalCollection {
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const override;
 
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mdr,
                                                 bool reverse) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(
-      transaction::Methods* trx, ManagedDocumentResult* mdr) const override;
+      transaction::Methods* trx) const override;
   void invokeOnAllElements(
       transaction::Methods* trx,
       std::function<bool(LocalDocumentId const&)> callback) override;
@@ -537,6 +536,8 @@ class MMFilesCollection final : public PhysicalCollection {
                         MMFilesDocumentOperation&,
                         MMFilesWalMarker const*, OperationOptions& options,
                         bool& waitForSync);
+
+  LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options) const;
 
  private:
   mutable arangodb::MMFilesDitches _ditches;

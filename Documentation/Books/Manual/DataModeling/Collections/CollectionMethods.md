@@ -338,4 +338,9 @@ for the collection, the operation will fail with an error.
 **Note**: this method is specific for the MMFiles storage engine, and there
 it is not available in a cluster.
 
+**Note**: please note that you need appropriate user permissions to execute this. 
+ - To do the rename collections in first place you need to have administrative rights on the database
+ - To have access to the resulting renamed collection you either need to have access to 
+   all collections of that database (`*`) or a main system administrator has to give you access to 
+   the newly named one.
 

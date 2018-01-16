@@ -87,7 +87,7 @@ static UniformCharacter JSSaltGenerator(
 }
 
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
-TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(                                   v8::Handle<v8::Value> const obj)
+TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(v8::Handle<v8::Value> const obj)
     : _str(nullptr), _length(0) {
   v8::String::Value str(obj);
 
@@ -3209,7 +3209,7 @@ static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
                             ? 500000
                             : static_cast<uint64_t>((until - now) * 1000000);
 
-    usleep(static_cast<TRI_usleep_t>(duration));
+    std::this_thread::sleep_for(std::chrono::microseconds(duration));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -3266,7 +3266,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // wait without gc
   double until = TRI_microtime() + n;
   while (TRI_microtime() < until) {
-    usleep(1000);
+    std::this_thread::sleep_for(std::chrono::microseconds(1000));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -4137,7 +4137,7 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
       result = "JavaScript exception: " + std::string(exceptionString) + "\n";
     }
   } else {
-    TRI_Utf8ValueNFC filename(                              message->GetScriptResourceName());
+    TRI_Utf8ValueNFC filename(message->GetScriptResourceName());
     char const* filenameString = *filename;
     int linenum = message->GetLineNumber();
     int start = message->GetStartColumn() + 1;
@@ -4220,7 +4220,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
                                               << exceptionString;
     }
   } else {
-    TRI_Utf8ValueNFC filename(                              message->GetScriptResourceName());
+    TRI_Utf8ValueNFC filename(message->GetScriptResourceName());
     char const* filenameString = *filename;
     // if ifdef is not used, the compiler will complain about linenum being
     // unused
@@ -4523,7 +4523,7 @@ bool TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
         }
       }
 
-      usleep(1000);
+      std::this_thread::sleep_for(std::chrono::microseconds(1000));
     }
 
     return true;

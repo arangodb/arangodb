@@ -42,8 +42,9 @@ class QueryRegistry;
 
 namespace consensus {
 
-static inline double readSystemClock() {
-  return std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+static inline double steadyClockToDouble() {
+  return std::chrono::duration<double>(
+    std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 class Agent;

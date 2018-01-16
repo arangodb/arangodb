@@ -609,6 +609,7 @@ def setBuildsAndTests() {
         useLinux = false
         useMac = false
         useWindows = false
+        useDocker = false
     }
     else if (buildType == "Customized") {
         useLinux = params.Linux
@@ -624,6 +625,11 @@ def setBuildsAndTests() {
 
         runTests = params.RunTests
         runResilience = params.RunResilience
+
+        if (!useLinux && !userMac && !useWindows && !useDocker){
+            throw("No build type selected for custom build!")
+        }
+
     }
     else if (buildType == "Quick Test") {
         restrictions = [
@@ -1345,7 +1351,19 @@ def buildEdition(os, edition, maintainer) {
             }
         }
         else if (os == 'windows') {
-            powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}_${maintainer}.ps1"
+            logFile = "..\\" + logFile
+            extra = "-DUSE_CATCH_TESTS=ON -DUSE_FAILURE_TESTS=ON -DDEBUG_SYNC_REPLICATION=ON"
+            if( edition == "enterprise"){
+                extra += " -DUSE_ENTERPRISE=ON"
+            }
+            if( maintainer == "maintainer"){
+                extra += " -DUSE_MAINTAINER_MODE=ON"
+            }
+
+            powershell "Remove-Item -Force -Recurse ${arch} -ErrorAction SilentlyContinue"
+            powershell "New-Item -Force -ItemType Directory ${arch} -ErrorAction SilentlyContinue"
+            powershell "New-Item -ItemType Directory -Force -Path build"
+            powershell "cd build; ..\\configure\\${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
         }
 
         logStopStage(os, logFile)

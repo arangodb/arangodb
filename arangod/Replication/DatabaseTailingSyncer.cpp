@@ -100,6 +100,7 @@ std::unique_ptr<InitialSyncer> DatabaseTailingSyncer::initialSyncer() {
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
 Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collectionName) {
+  setAborted(false);
   // fetch master state just once
   Result r = getMasterState();
   if (r.fail()) {

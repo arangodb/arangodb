@@ -26,6 +26,7 @@
 #define ARANGODB_IMPORT_IMPORT_HELPER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 
 #include "Basics/StringBuffer.h"
@@ -129,6 +130,9 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   void useBackslash(bool value) { _useBackslash = value; }
+
+  /// @brief whether or not missing values in CSV files should be ignored
+  void ignoreMissing(bool value) { _ignoreMissing = value; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the separator
@@ -268,6 +272,7 @@ class ImportHelper {
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
   uint64_t const _maxUploadSize;
   std::vector<std::unique_ptr<SenderThread>> _senderThreads;
+  basics::ConditionVariable _threadsCondition; 
 
   std::string _separator;
   std::string _quote;
@@ -278,6 +283,7 @@ class ImportHelper {
   bool _overwrite;
   bool _progress;
   bool _firstChunk;
+  bool _ignoreMissing;
 
   size_t _numberLines;
   ImportStatistics _stats;

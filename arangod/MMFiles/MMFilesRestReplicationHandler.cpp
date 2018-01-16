@@ -61,8 +61,8 @@ void MMFilesRestReplicationHandler::insertClient(
   bool found;
   std::string const& value = _request->value("serverId", found);
 
-  if (found) {
-    TRI_server_id_t serverId = (TRI_server_id_t)StringUtils::uint64(value);
+  if (found && !value.empty() && value != "none") {
+    TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
 
     if (serverId > 0) {
       _vocbase->updateReplicationClient(serverId, lastServedTick);
@@ -652,9 +652,9 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
 
-  arangodb::CollectionGuard guard(_vocbase, c->cid(), false);
+  auto guard = std::make_unique<arangodb::CollectionGuard>(_vocbase, c->cid(), false);
 
-  arangodb::LogicalCollection* col = guard.collection();
+  arangodb::LogicalCollection* col = guard->collection();
   TRI_ASSERT(col != nullptr);
 
   // turn off the compaction for the collection
@@ -665,10 +665,10 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-
+  
   // initialize a container with the keys
   auto keys =
-      std::make_unique<MMFilesCollectionKeys>(_vocbase, col->name(), id, 300.0);
+      std::make_unique<MMFilesCollectionKeys>(_vocbase, std::move(guard), id, 300.0);
 
   std::string const idString(std::to_string(keys->id()));
 

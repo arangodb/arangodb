@@ -480,7 +480,7 @@ function reloadUserFunctions () {
   });
 
   // now reset the functions for all databases
-  // this ensures that functions of other databases will be reloaded next 
+  // this ensures that functions of other databases will be reloaded next
   // time (the reload does not necessarily need to be carried out in the
   // database in which the function is registered)
   UserFunctions = { };
@@ -590,6 +590,26 @@ function COLLECTION (name, func) {
   }
   return c;
 }
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get access to a view
+// //////////////////////////////////////////////////////////////////////////////
+
+function VIEW (name, func) {
+  'use strict';
+
+  if (typeof name !== 'string') {
+    THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+  }
+
+  var v = INTERNAL.db._view(name);
+
+  if (v === null || v === undefined) {
+    THROW(func, INTERNAL.errors.ERROR_ARANGO_VIEW_NOT_FOUND, String(name));
+  }
+  return v;
+}
+
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief clone an object
@@ -1180,6 +1200,18 @@ function GET_DOCUMENTS (collection, func) {
   }
 
   return COLLECTION(collection, func).ALL().documents;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get all documents from the specified collection
+// //////////////////////////////////////////////////////////////////////////////
+
+function GET_DOCUMENTS_FROM_VIEW (view, func) {
+  'use strict';
+
+  var v = VIEW(view, func);
+
+  return [];
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2659,6 +2691,27 @@ function AQL_ARRAYIZE (value) {
   return value;
 }
 
+function AQL_IS_KEY (value) {
+  'use strict';
+
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_STRING) {
+    return false;
+  }
+
+  for (var i = 0; i < value.length; ++i) {
+    var c = value[i];
+    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+          (c >= '0' && c <= '9') || c === '_' || c === ':' || c === '-' ||
+          c === '@' || c === '.' || c === '(' || c === ')' || c === '+' || c === ',' ||
+          c === '=' || c === ';' || c === '$' || c === '!' || c === '*' || c === '\'' ||
+          c === '%')) {
+      return false;
+    }
+  }
+
+  return (value.length > 0 && value.length <= 254);
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test if value is of type null
 // /
@@ -3191,6 +3244,21 @@ function AQL_SORTED_UNIQUE (values) {
 
   unique.sort(RELATIONAL_CMP);
   return unique;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a sorted list of elements 
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_SORTED (values) {
+  'use strict';
+
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
+    return null;
+  }
+
+  values.sort(RELATIONAL_CMP);
+  return values;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -4167,7 +4235,7 @@ function AQL_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief return documents within a bounding rectangle 
+// / @brief return documents within a bounding rectangle
 // //////////////////////////////////////////////////////////////////////////////
 
 function AQL_WITHIN_RECTANGLE (collection, latitude1, longitude1, latitude2, longitude2) {
@@ -4286,7 +4354,8 @@ function AQL_FULLTEXT (collection, attribute, query, limit) {
   var idx = INDEX_FULLTEXT(COLLECTION(collection, 'FULLTEXT'), attribute);
 
   if (idx === null) {
-    THROW('FULLTEXT', INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
+    WARN('FULLTEXT', INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
+    return null;
   }
 
   // Just start a simple query
@@ -5458,8 +5527,8 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
     return null;
   }
 }
-        
-        
+
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief return at most <limit> documents near a certain point
 // //////////////////////////////////////////////////////////////////////////////
@@ -5550,6 +5619,7 @@ exports.KEYS = KEYS;
 exports.GET_INDEX = GET_INDEX;
 exports.DOCUMENT_MEMBER = DOCUMENT_MEMBER;
 exports.GET_DOCUMENTS = GET_DOCUMENTS;
+exports.GET_DOCUMENTS_FROM_VIEW = GET_DOCUMENTS_FROM_VIEW;
 exports.TERNARY_OPERATOR = TERNARY_OPERATOR;
 exports.LOGICAL_AND = LOGICAL_AND;
 exports.LOGICAL_OR = LOGICAL_OR;
@@ -5613,6 +5683,7 @@ exports.AQL_TO_STRING = AQL_TO_STRING;
 exports.AQL_TO_ARRAY = AQL_TO_ARRAY;
 exports.AQL_ARRAYIZE = AQL_ARRAYIZE;
 exports.AQL_TO_LIST = AQL_TO_ARRAY; // alias
+exports.AQL_IS_KEY = AQL_IS_KEY;
 exports.AQL_IS_NULL = AQL_IS_NULL;
 exports.AQL_IS_BOOL = AQL_IS_BOOL;
 exports.AQL_IS_NUMBER = AQL_IS_NUMBER;
@@ -5653,6 +5724,7 @@ exports.AQL_REVERSE = AQL_REVERSE;
 exports.AQL_RANGE = AQL_RANGE;
 exports.AQL_UNIQUE = AQL_UNIQUE;
 exports.AQL_SORTED_UNIQUE = AQL_SORTED_UNIQUE;
+exports.AQL_SORTED = AQL_SORTED;
 exports.AQL_UNION = AQL_UNION;
 exports.AQL_UNION_DISTINCT = AQL_UNION_DISTINCT;
 exports.AQL_CALL = AQL_CALL;
