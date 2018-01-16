@@ -543,7 +543,8 @@ void HeartbeatThread::runSingleServer() {
           VPackSlice const res = result.slice();
           TRI_ASSERT(res.length() == 1 && res[0].isObject());
           leaderSlice = res[0].get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
-          TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
+          TRI_ASSERT(leaderSlice.isString());
+          TRI_ASSERT(leaderSlice.compareString(_myId) != 0);
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader, current leader is: " << leaderSlice.copyString();
           // intentionally falls through to case 3
         } else {
