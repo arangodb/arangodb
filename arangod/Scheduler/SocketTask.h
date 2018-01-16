@@ -29,6 +29,7 @@
 
 #include <boost/asio/ssl.hpp>
 #include <list>
+#include <utility>
 
 #include "Basics/Mutex.h"
 #include "Basics/SmallVector.h"
@@ -67,7 +68,7 @@ class SocketTask : virtual public Task {
   virtual void compactify() {}
 
   // This function is used during the protocol switch from http
-  // to VelocyStream. This way we no not require additional
+  // to VelocyStream. This way we do not require additional
   // constructor arguments. It should not be used otherwise.
   void addToReadBuffer(char const* data, std::size_t len);
 
@@ -78,7 +79,7 @@ class SocketTask : virtual public Task {
 
     WriteBuffer(basics::StringBuffer* buffer, RequestStatistics* statistics)
         : _buffer(buffer), _statistics(statistics) {}
-    
+
     WriteBuffer(WriteBuffer const&) = delete;
     WriteBuffer& operator=(WriteBuffer const&) = delete;
 
@@ -144,7 +145,7 @@ class SocketTask : virtual public Task {
 
   // will acquire the _lock
   void closeStream();
-  
+
   // caller must hold the _lock
   void closeStreamNoLock();
 
@@ -153,11 +154,11 @@ class SocketTask : virtual public Task {
 
   // caller must hold the _lock
   void cancelKeepAlive();
-  
-  
+
+
   basics::StringBuffer* leaseStringBuffer(size_t length);
   void returnStringBuffer(basics::StringBuffer*);
- 
+
  private:
   void writeWriteBuffer();
   bool completedWriteBuffer();
@@ -167,7 +168,7 @@ class SocketTask : virtual public Task {
   bool processAll();
   void asyncReadSome();
   bool abandon();
-  
+
  protected:
   Mutex _lock;
   ConnectionStatistics* _connectionStatistics;
