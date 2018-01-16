@@ -173,6 +173,9 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
 
+  virtual void applyCommitedEstimates(std::vector<uint64_t> const& inserts,
+                                      std::vector<uint64_t> const& removes) override;
+
  private:
   /// @brief create the iterator
   IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,

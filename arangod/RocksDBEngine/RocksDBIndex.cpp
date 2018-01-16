@@ -314,3 +314,11 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 }
+
+void RocksDBIndex::applyCommitedEstimates(
+    std::vector<uint64_t> const& inserts,
+    std::vector<uint64_t> const& removes) {
+  // This function is required to be overloaded by indexes with Estimates. All other should not call this function.
+  // In Production this call will be ignored, it is not critical
+  TRI_ASSERT(false);
+}

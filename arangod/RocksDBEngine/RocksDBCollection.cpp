@@ -757,7 +757,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
-  if (state->numIntermediateCommits() == 0 &&
+  if (state->numCommits() == 0 &&
       mthd->countInBounds(documentBounds, true)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "deletion check in collection truncate "

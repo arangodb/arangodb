@@ -147,6 +147,9 @@ class RocksDBIndex : public Index {
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
                                     bool unique);
 
+  virtual void applyCommitedEstimates(std::vector<uint64_t> const& inserts,
+                                      std::vector<uint64_t> const& removes);
+
  protected:
   inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
   void blackListKey(char const* data, std::size_t len);
