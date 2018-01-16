@@ -1556,10 +1556,26 @@
 
     verifyQueryAndParams: function () {
       var quit = false;
+      var self = this;
 
       if (this.aqlEditor.getValue().length === 0) {
         arangoHelper.arangoError('Query', 'Your query is empty');
         quit = true;
+      }
+
+      // if query bind parameter editor is visible
+      if ($('#bindParamAceEditor').is(':visible')) {
+        try {
+          // check if parameters are parseable
+          JSON.parse(self.bindParamAceEditor.getValue());
+        } catch (e) {
+          arangoHelper.arangoError('Bind Parameter', 'Could not parse bind parameter');
+          quit = true;
+        }
+      }
+
+      if (quit === true) {
+        return quit;
       }
 
       var keys = [];
