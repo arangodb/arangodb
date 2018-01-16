@@ -604,10 +604,11 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
+    auto state = RocksDBTransactionState::toState(trx);
     for (auto& it : hashes) {
       // The estimator is only useful if we are in a non-unique indexes
       TRI_ASSERT(!_unique);
-      _estimator->insert(it);
+      state->trackIndexInsert(_collection->cid(), id(), it);
     }
   }
 
@@ -716,10 +717,11 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
+    auto state = RocksDBTransactionState::toState(trx);
     for (auto& it : hashes) {
       // The estimator is only useful if we are in a non-unique indexes
       TRI_ASSERT(!_unique);
-      _estimator->remove(it);
+      state->trackIndexRemove(_collection->cid(), id(), it);
     }
   }
 
@@ -1557,12 +1559,17 @@ void RocksDBVPackIndex::recalculateEstimates() {
                             bounds.columnFamily());
 }
 
-Result RocksDBVPackIndex::postprocessRemove(transaction::Methods* trx,
-                                            rocksdb::Slice const& key,
-                                            rocksdb::Slice const& value) {
-  if (!unique()) {
-    uint64_t hash = RocksDBVPackIndex::HashForKey(key);
-    _estimator->remove(hash);
+void RocksDBVPackIndex::applyCommitedEstimates(
+    std::vector<uint64_t> const& inserts,
+    std::vector<uint64_t> const& removes) {
+  if (_estimator != nullptr) {
+    // If we have an estimator apply the changes to it.
+    for (auto const& hash : inserts) {
+      _estimator->insert(hash);
+    }
+
+    for (auto const& hash : removes) {
+      _estimator->remove(hash);
+    }
   }
-  return {TRI_ERROR_NO_ERROR};
 }

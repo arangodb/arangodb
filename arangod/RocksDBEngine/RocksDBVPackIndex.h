@@ -207,8 +207,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) override;
 
-  Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
-                           rocksdb::Slice const& value) override;
+  virtual void applyCommitedEstimates(std::vector<uint64_t> const& inserts,
+                                      std::vector<uint64_t> const& removes) override;
 
  private:
   bool isDuplicateOperator(arangodb::aql::AstNode const*,

@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var ArangoCollection = arangodb.ArangoCollection;
 var testHelper = require("@arangodb/test-helper").Helper;
+const internal = require("internal");
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 
@@ -571,7 +572,6 @@ function CollectionCacheSuite () {
     }
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
