@@ -469,10 +469,14 @@ IndexIterator* RocksDBFulltextIndex::iteratorForCondition(transaction::Methods* 
   size_t numMembers = args->numMembers();
   TRI_ASSERT(numMembers == 3 || numMembers == 4);
   
-  std::string query = args->getMember(2)->getString();
-  
+  aql::AstNode const* queryNode = args->getMember(2);
+  if (queryNode->type != aql::NODE_TYPE_VALUE ||
+      queryNode->value.type != aql::VALUE_TYPE_STRING) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  }
+    
   FulltextQuery parsedQuery;
-  Result res = parseQueryString(query, parsedQuery);
+  Result res = parseQueryString(queryNode->getString(), parsedQuery);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
