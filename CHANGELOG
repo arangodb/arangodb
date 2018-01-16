@@ -1,6 +1,8 @@
 devel
 -----
 
+* UI: fixed an issue where a collection name gets wrongly cached within the
+  documents overview of a collection.
 
 * UI: fixed a query editor caching and parsing issue
 
