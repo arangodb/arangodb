@@ -16,7 +16,8 @@
       'click #submitLogin': 'validate',
       'submit #dbForm': 'goTo',
       'click #logout': 'logout',
-      'change #loginDatabase': 'renderDBS'
+      'change #loginDatabase': 'renderDBS',
+      'keyup #databaseInputName': 'renderDBS'
     },
 
     template: templateEngine.createTemplate('loginView.ejs'),
@@ -48,17 +49,30 @@
           //  enable db select and login button
           $('#loginDatabase').html('');
           // fill select with allowed dbs
-          _.each(permissions.result, function (rule, db) {
-            if (frontendConfig.authenticationEnabled) {
-              $('#loginDatabase').append(
-                '<option>' + db + '</option>'
-              );
-            } else {
-              $('#loginDatabase').append(
-                '<option>' + rule + '</option>'
-              );
-            }
-          });
+          if (Object.keys(permissions.result).length > 0) {
+            // show select, remove input
+            $('#loginDatabase').show();
+            $('.fa-database').show();
+            $('#databaseInputName').remove();
+
+            _.each(permissions.result, function (rule, db) {
+              if (frontendConfig.authenticationEnabled) {
+                $('#loginDatabase').append(
+                  '<option>' + db + '</option>'
+                );
+              } else {
+                $('#loginDatabase').append(
+                  '<option>' + rule + '</option>'
+                );
+              }
+            });
+          } else {
+            $('#loginDatabase').hide();
+            $('.fa-database').hide();
+            $('#loginDatabase').after(
+              '<input id="databaseInputName" class="databaseInput"" placeholder="_system" value="_system"></input>'
+            );
+          }
 
           self.renderDBS();
         }).error(function () {
@@ -188,17 +202,30 @@
         // enable db select and login button
         $('#loginDatabase').html('');
 
-        _.each(permissions.result, function (rule, db) {
-          if (frontendConfig.authenticationEnabled) {
-            $('#loginDatabase').append(
-              '<option>' + db + '</option>'
-            );
-          } else {
-            $('#loginDatabase').append(
-              '<option>' + rule + '</option>'
-            );
-          }
-        });
+        if (Object.keys(permissions.result).length > 0) {
+          // show select, remove input
+          $('#loginDatabase').show();
+          $('.fa-database').show();
+          $('#databaseInputName').remove();
+
+          _.each(permissions.result, function (rule, db) {
+            if (frontendConfig.authenticationEnabled) {
+              $('#loginDatabase').append(
+                '<option>' + db + '</option>'
+              );
+            } else {
+              $('#loginDatabase').append(
+                '<option>' + rule + '</option>'
+              );
+            }
+          });
+        } else {
+          $('#loginDatabase').hide();
+          $('.fa-database').hide();
+          $('#loginDatabase').after(
+            '<input id="databaseInputName" class="databaseInput"" placeholder="_system" value="_system"></input>'
+          );
+        }
 
         self.renderDBS();
       }).error(function () {
@@ -207,18 +234,24 @@
     },
 
     renderDBS: function () {
+      var message = 'Select DB: ';
+
+      $('#noAccess').hide();
       if ($('#loginDatabase').children().length === 0) {
-        $('#dbForm').remove();
-        $('.login-window #databases').prepend(
-          '<div class="no-database">You do not have permission to a database.</div>'
-        );
-      } else {
-        var db = $('#loginDatabase').val();
-        $('#goToDatabase').html('Select DB: ' + db);
-        window.setTimeout(function () {
-          $('#goToDatabase').focus();
-        }, 300);
+        if ($('#loginDatabase').is(':visible')) {
+          $('#dbForm').remove();
+          $('.login-window #databases').prepend(
+            '<div class="no-database">You do not have permission to a database.</div>'
+          );
+          message = message + $('#loginDatabase').val();
+          window.setTimeout(function () {
+            $('#goToDatabase').focus();
+          }, 150);
+        } else {
+          message = message + $('#databaseInputName').val();
+        }
       }
+      $('#goToDatabase').html(message);
     },
 
     logout: function () {
@@ -228,7 +261,13 @@
     goTo: function (e) {
       e.preventDefault();
       var username = $('#loginUsername').val();
-      var database = $('#loginDatabase').val();
+      var database;
+
+      if ($('#databaseInputName').is(':visible')) {
+        database = $('#databaseInputName').val();
+      } else {
+        database = $('#loginDatabase').val();
+      }
       window.App.dbSet = database;
 
       var callback2 = function (error) {
@@ -240,16 +279,29 @@
       var path = window.location.protocol + '//' + window.location.host +
         frontendConfig.basePath + '/_db/' + database + '/_admin/aardvark/index.html';
 
-      window.location.href = path;
+      var continueFunction = function () {
+        window.location.href = path;
 
-      // show hidden divs
-      $(this.el2).show();
-      $(this.el3).show();
-      $('.bodyWrapper').show();
-      $('.navbar').show();
+        // show hidden divs
+        $(this.el2).show();
+        $(this.el3).show();
+        $('.bodyWrapper').show();
+        $('.navbar').show();
 
-      $('#currentUser').text(username);
-      this.collection.loadUserSettings(callback2);
+        $('#currentUser').text(username);
+        this.collection.loadUserSettings(callback2);
+      };
+
+      $.ajax({
+        url: path,
+        success: function (data) {
+          continueFunction();
+        },
+        error: function (data) {
+          $('#noAccess').html('Error (DB: ' + database + '): ' + data.responseJSON.errorMessage);
+          $('#noAccess').show();
+        }
+      });
     }
 
   });
