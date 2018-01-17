@@ -486,8 +486,3 @@ Result RocksDBGeoS2Index::removeInternal(transaction::Methods* trx,
   }
   return IndexResult();
 }
-
-void RocksDBGeoS2Index::truncate(transaction::Methods* trx) {
-  RocksDBIndex::truncate(trx);
-  // GeoIndex_reset(_geoIndex, RocksDBTransactionState::toMethods(trx));
-}

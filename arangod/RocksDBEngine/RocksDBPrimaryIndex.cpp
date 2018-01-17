@@ -339,13 +339,6 @@ arangodb::aql::AstNode* RocksDBPrimaryIndex::specializeCondition(
   return matcher.specializeOne(this, node, reference);
 }
 
-Result RocksDBPrimaryIndex::postprocessRemove(transaction::Methods* trx,
-                                              rocksdb::Slice const& key,
-                                              rocksdb::Slice const& value) {
-  blackListKey(key.data(), key.size());
-  return Result();
-}
-
 /// @brief create the iterator, for a single attribute, IN operator
 IndexIterator* RocksDBPrimaryIndex::createInIterator(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,

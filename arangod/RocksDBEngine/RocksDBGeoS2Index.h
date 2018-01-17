@@ -83,8 +83,6 @@ class RocksDBGeoS2Index final : public arangodb::RocksDBIndex {
 
   bool matchesDefinition(velocypack::Slice const& info) const override;
 
-  void truncate(transaction::Methods*) override;
-
   /// insert index elements into the specified write batch.
   Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
                         LocalDocumentId const& documentId,

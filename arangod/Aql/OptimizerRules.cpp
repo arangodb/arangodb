@@ -53,6 +53,7 @@
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include "Transaction/Methods.h"
+#include "VocBase/Methods/Collections.h"
 
 #include <boost/optional.hpp>
 #include <tuple>
@@ -4546,40 +4547,41 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   AstNode* attrArg = fargs->getMember(1);
   AstNode* queryArg = fargs->getMember(2);
   AstNode* limitArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
-  if ((collArg->type != NODE_TYPE_COLLECTION && !isValueTypeString(collArg)) ||
-      !isValueTypeString(attrArg) || !isValueTypeString(queryArg) ||
+  if (!isValueTypeCollection(collArg) || !isValueTypeString(attrArg) ||
+      !isValueTypeString(queryArg) || // (...  || queryArg->type == NODE_TYPE_REFERENCE)
       (limitArg != nullptr && !isValueTypeNumber(limitArg))) {
     return false;
   }
   
-  std::string name = collArg->getString();
-  TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
-  aql::Collections* colls = plan->getAst()->query()->collections();
-  aql::Collection const* coll = colls->add(name, AccessMode::Type::READ);
+  std::string cname = collArg->getString();
   std::vector<basics::AttributeName> field;
   TRI_ParseAttributeString(attrArg->getString(), field, /*allowExpansion*/false);
   if (field.empty()) {
     return false;
   }
   
-  //check for suitiable indexes
-  std::shared_ptr<LogicalCollection> logical = coll->getCollection();
+  // check for suitable indexes
   std::shared_ptr<arangodb::Index> index;
-  for (auto idx : logical->getIndexes()) {
-    if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-      TRI_ASSERT(idx->fields().size() == 1);
-      if (basics::AttributeName::isIdentical(idx->fields()[0], field, false)) {
-        index = idx;
-        break;
+  try {
+    auto indexes = plan->getAst()->query()->trx()->indexesForCollection(cname);
+    for (auto idx : indexes) {
+      if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+        TRI_ASSERT(idx->fields().size() == 1);
+        if (basics::AttributeName::isIdentical(idx->fields()[0], field, false)) {
+          index = idx;
+          break;
+        }
       }
     }
+  } catch(...) {
+    return false;
   }
   if (!index) { // no index found
     return false;
   }
   
   Ast* ast = plan->getAst();  
-  AstNode* args = ast->createNodeArray(2);
+  AstNode* args = ast->createNodeArray(3 + (limitArg != nullptr ? 0 : 1));
   args->addMember(ast->clone(collArg));  // only so createNodeFunctionCall doesn't throw
   args->addMember(attrArg);
   args->addMember(queryArg);
@@ -4592,26 +4594,43 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   condition->andCombine(cond);
   condition->normalize(plan);
   
-  IndexIteratorOptions opts;
+  // we assume by now that collection `name` exists
+  TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
+  aql::Collections* colls = plan->getAst()->query()->collections();
+  aql::Collection* coll = colls->get(cname);
+  if (coll == nullptr) { // TODO: cleanup this mess
+    coll = colls->add(cname, AccessMode::Type::READ);
+    if (!ServerState::instance()->isCoordinator()) {
+      TRI_ASSERT(coll != nullptr);
+      coll->setCollection(vocbase->lookupCollection(cname));
+      // FIXME: does this need to happen in the coordinator?
+      plan->getAst()->query()->trx()->addCollectionAtRuntime(cname);
+    }
+  }
+  
   auto inode = new IndexNode(plan, plan->nextId(), vocbase,
                              coll, elnode->outVariable(),
                              std::vector<transaction::Methods::IndexHandle>{
                                transaction::Methods::IndexHandle{index}},
-                             condition.get(), opts);
+                             condition.get(), IndexIteratorOptions());
   plan->registerNode(inode);
   condition.release();
   plan->replaceNode(elnode, inode);
-  
+  // mark removable, because it will not throw for most params
+  // FIXME: technically we need to validate the query parameter
+  calcNode->canRemoveIfThrows(true);
+
   if (limitArg != nullptr) { // add LIMIT
     size_t limit = static_cast<size_t>(limitArg->getIntValue());
     if (ln == nullptr) {
       ln = new LimitNode(plan, plan->nextId(), 0, limit);
       plan->registerNode(ln);
       plan->insertAfter(inode, ln);
-    } else if (limit < ln->limit()) {
+    } else if (limit < ln->limit()) { // always use the smaller one
       ln->setLimit(limit);
     }
   }
+  
   return true;
 }
 

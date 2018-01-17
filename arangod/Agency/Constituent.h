@@ -93,9 +93,12 @@ class Constituent : public Thread {
   // Configuration
   config_t const& config() const;
 
-  // Become follower
-  void follow(term_t);
-  void followNoLock(term_t);
+  // Become follower, if t is > 0, termNoLock is called and _term and 
+  // _votedFor is set as a consequence. If t is 0, neither _term nor
+  // _votedFor are adjusted! This, or calling term or termNoLock is the
+  // only way to change _term or _votedFor that is allowed!
+  void follow(term_t t, std::string const& votedFor = NO_LEADER);
+  void followNoLock(term_t t, std::string const& votedFor = NO_LEADER);
 
   // Agency size
   size_t size() const;
@@ -109,9 +112,10 @@ class Constituent : public Thread {
   void update(std::string const&, term_t);
 
  private:
-  // set term to new term
-  void term(term_t);
-  void termNoLock(term_t);
+  // set term to new term, will always overwrite _term, so term 0 is
+  // not allowed. This will always overwrite _votedFor!
+  void term(term_t term, std::string const& votedFor);
+  void termNoLock(term_t term, std::string const& votedFor);
 
   // Agency endpoints
   std::vector<std::string> const& endpoints() const;
@@ -147,7 +151,6 @@ class Constituent : public Thread {
   aql::QueryRegistry* _queryRegistry;
 
   term_t _term;            // term number
-  bool _cast;              // cast a vote this term
 
   std::string _leaderID; // Current leader
   std::string _id;       // My own id
@@ -158,10 +161,25 @@ class Constituent : public Thread {
 
   role_t _role;  // My role
   Agent* _agent; // My boss
-  std::string _votedFor;
+  std::string _votedFor;  // indicates whether or not we have voted for
+                          // anybody in this term, we will always reset
+                          // this to NO_LEADER if _term is advanced
+                          // unless we immediately cast a vote for us or
+                          // somebody else, _term and _votedFor are only
+                          // ever changed together via the termNoLock
+                          // method (which might be called through term,
+                          // followNoLock or follow), termNoLock persists
+                          // the pair for every change
 
-  arangodb::basics::ConditionVariable _cv;  // agency callbacks
-  mutable arangodb::Mutex _castLock;
+  arangodb::basics::ConditionVariable _cv;  // this is  only used to wake
+                                            // up the Constituent thread
+                                            // when an AgentCallback
+                                            // arrives
+  mutable arangodb::Mutex _termVoteLock;
+    // This mutex protects _term, _votedFor, _role and _leaderID, note that
+    // all this Constituent data is usually only accessed from the Constituent
+    // thread. However, the AgentCallback is executed in a Scheduler thread
+    // which calls methods of Constituent. This is why we need mutexes here.
 
   // Keep track of times of last few elections:
   mutable arangodb::Mutex _recentElectionsMutex;
