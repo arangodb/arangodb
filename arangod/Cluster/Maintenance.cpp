@@ -191,7 +191,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
                      {"database", dbname}}, props));
               }
 
-              
             }
             
             // Only first entry is leader
@@ -244,7 +243,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
                 } else {
                   actions.push_back(
                     ActionDescription({{"name", "DropIndex"},
-                        {"database", dbname}, {"collection", "colname"},
+                        {"database", dbname}, {"collection", colname},
                         {"id", id}}));
                 }
               }
@@ -252,8 +251,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
           }
 
         }
-        
-        
       }
     } else {
       actions.push_back(

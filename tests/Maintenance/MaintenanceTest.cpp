@@ -31,7 +31,11 @@
 #include "Cluster/ActionRegistry.h"
 #include "Cluster/Maintenance.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include <iostream>
+#include <typeinfo>
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -270,7 +274,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
 
     plan("/arango/Plan/Collections/db2") =
       arangodb::basics::VelocyPackHelper::EmptyObjectValue();
-    
+
     for (auto& node : localNodes) {
       
       std::vector<ActionDescription> actions;
@@ -303,6 +307,65 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     
   } 
   
+  // Plan also now has db3 =====================================================
+  SECTION("Indexes missing in local") {
+
+    auto planned =
+      plan("/arango/Plan/Collections/_system/1010021/indexes").getArray();
+    
+    for (auto& node : localNodes) {
+
+      if (node.second.has("_system/s1010022/")) {
+        std::vector<ActionDescription> actions;
+        node.second("_system/s1010022/indexes") =
+          arangodb::basics::VelocyPackHelper::EmptyArrayValue();
+
+        arangodb::maintenance::diffPlanLocal (
+          plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
+          actions);
+
+        REQUIRE(actions.size() == 2);
+        for (auto const action : actions) {
+          REQUIRE(actions.front().name() == "EnsureIndex");
+          REQUIRE(actions.front().get("collection") == "s1010022");
+          REQUIRE(actions.front().get("database") == "_system");
+          REQUIRE(actions.front().get("type") == planned[1].get("type").copyString());
+          REQUIRE(actions.front().get("fields") == planned[1].get("fields").toJson());
+        }
+        
+      }
+    }
+    
+  }
+
+  // Plan also now has db3 =====================================================
+  SECTION("Indexes missing in local") {
+
+    plan("/arango/Plan/Collections/_system/1010021/indexes") =
+      arangodb::basics::VelocyPackHelper::EmptyArrayValue();
+
+    for (auto& node : localNodes) {
+
+      if (node.second.has("_system/s1010022/")) {
+
+        std::vector<ActionDescription> actions;
+
+        arangodb::maintenance::diffPlanLocal (
+          plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
+          actions);
+
+        REQUIRE(actions.size() == 2);
+        for (auto const action : actions) {
+          REQUIRE(actions.front().name() == "DropIndex");
+          REQUIRE(actions.front().get("collection") == "s1010022");
+          REQUIRE(actions.front().get("database") == "_system");
+        }
+        
+      }
+    }
+    
+  }
+
 } 
 
 
