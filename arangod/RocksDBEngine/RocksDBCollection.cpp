@@ -694,10 +694,8 @@ void RocksDBCollection::invokeOnAllElements(
 void RocksDBCollection::truncate(transaction::Methods* trx,
                                  OperationOptions& options) {
   TRI_ASSERT(_objectId != 0);
-  TRI_voc_cid_t cid = _logicalCollection->cid();
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthd = state->rocksdbMethods();
-
   // delete documents
   RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(this->objectId());
@@ -712,54 +710,65 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   iter->Seek(documentBounds.start());
 
   uint64_t found = 0;
+
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     ++found;
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
+    LocalDocumentId docId(RocksDBKey::revisionId(RocksDBEntryType::Document, iter->key()));
+    VPackSlice doc = VPackSlice(iter->value().data());
+    TRI_ASSERT(doc.isObject());
 
-    TRI_voc_rid_t revId =
-        RocksDBKey::revisionId(RocksDBEntryType::Document, iter->key());
-    VPackSlice key =
-        VPackSlice(iter->value().data()).get(StaticStrings::KeyString);
+    VPackSlice key = doc.get(StaticStrings::KeyString);
     TRI_ASSERT(key.isString());
 
     blackListKey(iter->key().data(), static_cast<uint32_t>(iter->key().size()));
 
-    // add possible log statement
-    state->prepareOperation(cid, revId, StringRef(key),
-                            TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    Result r =
-        mthd->Delete(RocksDBColumnFamily::documents(), RocksDBKey(iter->key()));
-    if (!r.ok()) {
-      THROW_ARANGO_EXCEPTION(r);
+    state->prepareOperation(_logicalCollection->cid(), docId.id(),
+                            StringRef(key),TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    auto res = removeDocument(trx, docId, doc, options);
+    if (res.fail()) {
+      // Failed to remove document in truncate.
+      // Throw
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
-    // report size of key
-    RocksDBOperationResult result = state->addOperation(
-        cid, revId, TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0, iter->key().size());
+    res = state->addOperation(_logicalCollection->cid(), docId.id(),
+                              TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0,
+                              res.keySize());
 
-    // transaction size limit reached -- fail
-    if (result.fail()) {
-      THROW_ARANGO_EXCEPTION(result);
+    // transaction size limit reached
+    if (res.fail()) {
+      // This should never happen...
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    }
+
+    if (found % 10000 == 0) {
+      state->triggerIntermediateCommit();
     }
     iter->Next();
   }
 
-  // delete index items
-  READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> const& index : _indexes) {
-    RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
-    rindex->truncate(trx);
+  if (found > 0) {
+    _needToPersistIndexEstimates = true;
   }
-  _needToPersistIndexEstimates = true;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // check if documents have been deleted
-  if (mthd->countInBounds(documentBounds, true)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "deletion check in collection truncate "
-                                   "failed - not all documents have been "
-                                   "deleted");
+  if (state->numCommits() == 0) {
+    // check if documents have been deleted
+    if (mthd->countInBounds(documentBounds, true)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "deletion check in collection truncate "
+                                     "failed - not all documents have been "
+                                     "deleted");
+    }
   }
 #endif
+
+  TRI_IF_FAILURE("FailAfterAllCommits") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  TRI_IF_FAILURE("SegfaultAfterAllCommits") {
+    TRI_SegfaultDebugging("SegfaultAfterAllCommits");
+  }
 
   if (found > 64 * 1024) {
     // also compact the ranges in order to speed up all further accesses
@@ -788,7 +797,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 // read using a token!
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
-                                     ManagedDocumentResult& result) {
+                                     ManagedDocumentResult& result) const {
   if (documentId.isSet()) {
     auto res = lookupDocumentVPack(documentId, trx, result, true);
     return res.ok();
@@ -799,7 +808,7 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
 // read using a token!
 bool RocksDBCollection::readDocumentWithCallback(
     transaction::Methods* trx, LocalDocumentId const& documentId,
-    IndexIterator::DocumentCallback const& cb) {
+    IndexIterator::DocumentCallback const& cb) const {
   if (documentId.isSet()) {
     auto res = lookupDocumentVPack(documentId, trx, cb, true);
     return res.ok();

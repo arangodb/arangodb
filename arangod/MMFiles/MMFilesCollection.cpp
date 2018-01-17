@@ -1955,7 +1955,7 @@ Result MMFilesCollection::read(transaction::Methods* trx, StringRef const& key,
 
 bool MMFilesCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
-                                     ManagedDocumentResult& result) {
+                                     ManagedDocumentResult& result) const {
   uint8_t const* vpack = lookupDocumentVPack(documentId);
   if (vpack != nullptr) {
     result.setUnmanaged(vpack, documentId);
@@ -1966,7 +1966,7 @@ bool MMFilesCollection::readDocument(transaction::Methods* trx,
 
 bool MMFilesCollection::readDocumentWithCallback(transaction::Methods* trx,
                                                  LocalDocumentId const& documentId,
-                                                 IndexIterator::DocumentCallback const& cb) {
+                                                 IndexIterator::DocumentCallback const& cb) const {
   uint8_t const* vpack = lookupDocumentVPack(documentId);
   if (vpack != nullptr) {
     cb(documentId, VPackSlice(vpack));
@@ -1977,7 +1977,7 @@ bool MMFilesCollection::readDocumentWithCallback(transaction::Methods* trx,
 
 size_t MMFilesCollection::readDocumentWithCallback(transaction::Methods* trx,
                                                    std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds,
-                                                   IndexIterator::DocumentCallback const& cb) {
+                                                   IndexIterator::DocumentCallback const& cb){
   size_t count = 0;
   batchLookupRevisionVPack(documentIds);
   for (auto const& it : documentIds) {

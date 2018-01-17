@@ -231,6 +231,13 @@ TransactionCollection* TransactionState::findCollection(
 }
 
 /// @brief find a collection in the transaction's list of collections
+///        The idea is if a collection is found it will be returned.
+///        In this case the position is not used.
+///        In case the collection is not found. It will return a
+///        nullptr and the position will be set. The position
+///        defines where the collection should be inserted,
+///        so whenever we want to insert the collection we
+///        have to use this position for insert.
 TransactionCollection* TransactionState::findCollection(
     TRI_voc_cid_t cid, size_t& position) const {
   size_t const n = _collections.size();

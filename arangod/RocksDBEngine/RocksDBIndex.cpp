@@ -249,63 +249,6 @@ Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* m
   return insertInternal(trx, mthd, newDocumentId, newDoc, mode);
 }
 
-void RocksDBIndex::truncate(transaction::Methods* trx) {
-  auto* mthds = RocksDBTransactionState::toMethods(trx);
-  auto state = RocksDBTransactionState::toState(trx);
-  RocksDBKeyBounds indexBounds = getBounds(type(), _objectId, _unique);
-
-  rocksdb::ReadOptions options = mthds->readOptions();
-  rocksdb::Slice end = indexBounds.end();
-  rocksdb::Comparator const* cmp = this->comparator();
-  options.iterate_upper_bound = &end;
-  if (type() == RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX) {
-    options.prefix_same_as_start = false;
-    options.total_order_seek = true;
-  }
-  options.verify_checksums = false;
-  options.fill_cache = false;
-
-  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(options, _cf);
-  iter->Seek(indexBounds.start());
-
-  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
-    TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
-
-    // report size of key
-    RocksDBOperationResult result = state->addInternalOperation(
-        0, iter->key().size());
-
-    // transaction size limit reached -- fail
-    if (result.fail()) {
-      THROW_ARANGO_EXCEPTION(result);
-    }
-
-    Result r = mthds->Delete(_cf, RocksDBKey(iter->key()));
-    if (!r.ok()) {
-      THROW_ARANGO_EXCEPTION(r);
-    }
-
-    r = postprocessRemove(trx, iter->key(), iter->value());
-    if (!r.ok()) {
-      THROW_ARANGO_EXCEPTION(r);
-    }
-
-    iter->Next();
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  //check if index entries have been deleted
-  if (type() != TRI_IDX_TYPE_GEO1_INDEX && type() != TRI_IDX_TYPE_GEO2_INDEX) {
-    if (mthds->countInBounds(getBounds(), true)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "deletion check in collection truncate "
-                                     "failed - not all documents in an index "
-                                     "have been deleted");
-    }
-  }
-#endif
-}
-
 /// @brief return the memory usage of the index
 size_t RocksDBIndex::memory() const {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
@@ -330,12 +273,6 @@ void RocksDBIndex::cleanup() {
     rocksdb::Slice b = bounds.start(), e = bounds.end();
     db->CompactRange(opts, _cf, &b, &e);
   }
-}
-
-Result RocksDBIndex::postprocessRemove(transaction::Methods* trx,
-                                       rocksdb::Slice const& key,
-                                       rocksdb::Slice const& value) {
-  return Result();
 }
 
 // blacklist given key from transactional cache
@@ -386,4 +323,12 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
 
 std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> RocksDBIndex::estimator() const {
   return std::make_pair(nullptr, 0);
+}
+
+void RocksDBIndex::applyCommitedEstimates(
+    std::vector<uint64_t> const& inserts,
+    std::vector<uint64_t> const& removes) {
+  // This function is required to be overloaded by indexes with Estimates. All other should not call this function.
+  // In Production this call will be ignored, it is not critical
+  TRI_ASSERT(false);
 }

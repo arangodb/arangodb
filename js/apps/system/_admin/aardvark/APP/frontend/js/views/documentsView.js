@@ -71,11 +71,16 @@
       this.collection.setPage(page);
       this.page = page;
 
-      var callback = function (error, type) {
+      var callback = function (error, type, responseData) {
         if (error) {
           self.renderNotFound(this.collection.collectionID);
         } else {
           this.type = type;
+          if (responseData) {
+            this.collectionName = responseData.name;
+          } else {
+            this.collectionName = colid;
+          }
           this.collection.getDocuments(this.getDocsCallback.bind(this));
           this.collectionModel = this.collectionsStore.get(colid);
 
@@ -962,6 +967,8 @@
     },
 
     render: function () {
+      this.collectionName = window.location.hash.split('/')[1];
+
       $(this.el).html(this.template.render({}));
       if (this.type === 2) {
         this.type = 'document';
@@ -975,21 +982,10 @@
         this.collection.collectionID
       );
 
-      this.collectionName = window.location.hash.split('/')[1];
-
       this.checkCollectionState();
 
       // set last active collection name
       this.lastCollectionName = this.collectionName;
-
-      /*
-      if (this.collectionContext.prev === null) {
-        $('#collectionPrev').parent().addClass('disabledPag')
-      }
-      if (this.collectionContext.next === null) {
-        $('#collectionNext').parent().addClass('disabledPag')
-      }
-      */
 
       this.uploadSetup();
 

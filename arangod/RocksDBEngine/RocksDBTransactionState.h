@@ -145,6 +145,19 @@ class RocksDBTransactionState final : public TransactionState {
   RocksDBKey* leaseRocksDBKey();
   /// @brief return a temporary RocksDBKey object. Not thread safe
   void returnRocksDBKey(RocksDBKey* key);
+  /// @brief Trigger an intermediate commit.
+  /// Handle with care if failing after this commit it will only
+  /// be rolled back until this point of time.
+  /// Not thread safe
+  void triggerIntermediateCommit();
+
+  /// @brief Every index can track hashes inserted into this index
+  ///        Used to update the estimate after the trx commited
+  void trackIndexInsert(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
+
+  /// @brief Every index can track hashes removed from this index
+  ///        Used to update the estimate after the trx commited
+  void trackIndexRemove(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
 
  private:
   /// @brief create a new rocksdb transaction
