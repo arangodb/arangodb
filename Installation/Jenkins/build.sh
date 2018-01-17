@@ -183,11 +183,10 @@ case "$1" in
         CXXFLAGS="${CXXFLAGS} -O0"
         CONFIGURE_OPTIONS+=(
             '-DV8_TARGET_ARCHS=Debug'
-            '-DCMAKE_BUILD_TYPE=${BUILD_CONFIG}'
             '-DUSE_MAINTAINER_MODE=On'
             '-DUSE_FAILURE_TESTS=On'
-            '-DCMAKE_BUILD_TYPE=Debug'
             '-DOPTDBG=On'
+            "-DCMAKE_BUILD_TYPE=${BUILD_CONFIG}"
         )
         
         echo "using debug compile configuration"
@@ -726,7 +725,7 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
         if ! test -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"; then
             rm -f "${FN}"
             curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" || \
-                ${SRC}/Installation/Jenkins/curl_time_machine.sh "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" "${FN}"
+                "${SRC}/Installation/Jenkins/curl_time_machine.sh" "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" "${FN}"
             if ! test -s "${FN}" ; then
                 echo "failed to download syncer binary - aborting!"
                 exit 1
