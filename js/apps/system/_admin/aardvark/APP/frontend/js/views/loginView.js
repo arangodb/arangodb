@@ -16,7 +16,8 @@
       'click #submitLogin': 'validate',
       'submit #dbForm': 'goTo',
       'click #logout': 'logout',
-      'change #loginDatabase': 'renderDBS'
+      'change #loginDatabase': 'renderDBS',
+      'keyup #databaseInputName': 'renderDBS'
     },
 
     template: templateEngine.createTemplate('loginView.ejs'),
@@ -73,7 +74,7 @@
             );
           }
 
-          // self.renderDBS();
+          self.renderDBS();
         }).error(function () {
           if (errCallback) {
             errCallback();
@@ -233,18 +234,24 @@
     },
 
     renderDBS: function () {
+      var message = 'Select DB: ';
+
+      $('#noAccess').hide();
       if ($('#loginDatabase').children().length === 0) {
-        $('#dbForm').remove();
-        $('.login-window #databases').prepend(
-          '<div class="no-database">You do not have permission to a database.</div>'
-        );
-      } else {
-        var db = $('#loginDatabase').val();
-        $('#goToDatabase').html('Select DB: ' + db);
-        window.setTimeout(function () {
-          $('#goToDatabase').focus();
-        }, 300);
+        if ($('#loginDatabase').is(':visible')) {
+          $('#dbForm').remove();
+          $('.login-window #databases').prepend(
+            '<div class="no-database">You do not have permission to a database.</div>'
+          );
+          message = message + $('#loginDatabase').val();
+          window.setTimeout(function () {
+            $('#goToDatabase').focus();
+          }, 150);
+        } else {
+          message = message + $('#databaseInputName').val();
+        }
       }
+      $('#goToDatabase').html(message);
     },
 
     logout: function () {
@@ -272,16 +279,29 @@
       var path = window.location.protocol + '//' + window.location.host +
         frontendConfig.basePath + '/_db/' + database + '/_admin/aardvark/index.html';
 
-      window.location.href = path;
+      var continueFunction = function () {
+        window.location.href = path;
 
-      // show hidden divs
-      $(this.el2).show();
-      $(this.el3).show();
-      $('.bodyWrapper').show();
-      $('.navbar').show();
+        // show hidden divs
+        $(this.el2).show();
+        $(this.el3).show();
+        $('.bodyWrapper').show();
+        $('.navbar').show();
 
-      $('#currentUser').text(username);
-      this.collection.loadUserSettings(callback2);
+        $('#currentUser').text(username);
+        this.collection.loadUserSettings(callback2);
+      };
+
+      $.ajax({
+        url: path,
+        success: function (data) {
+          continueFunction();
+        },
+        error: function (data) {
+          $('#noAccess').html('Error (DB: ' + database + '): ' + data.responseJSON.errorMessage);
+          $('#noAccess').show();
+        }
+      });
     }
 
   });
