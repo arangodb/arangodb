@@ -1542,7 +1542,10 @@ void MMFilesCollection::fillIndex(
   // FIXME remove deprecated isPersistent() method
   if (idx->isPersistent()
       && skipPersistent
-      && idx->type() != Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) { // allow IResearchLink to be filled in recovery
+#ifdef USE_IRESEARCH
+      && idx->type() != Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK
+#endif
+      ) { // allow IResearchLink to be filled in recovery
     return;
   }
 
