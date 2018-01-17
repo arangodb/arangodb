@@ -79,7 +79,7 @@
         });
       }.bind(this);
 
-      window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index', callback);
+      window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index', callbackF);
     },
 
     initialize: function () {
