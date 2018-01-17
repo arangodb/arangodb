@@ -192,7 +192,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   TRI_ASSERT(_iterator);
 
   _total = col->numberDocuments(trx);
-  _forward = RandomGenerator::interval(uint16_t(2)) ? true : false; //prefer forward
+  _forward = RandomGenerator::interval(uint16_t(1)) ? true : false;
 
   //initial seek
   if (_total > 0) {
@@ -208,12 +208,12 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
       if (_forward) {
         while (steps-- > 0) {
           _iterator->Next();
-          if(!checkIter()) break;
+          if(!checkIter()) { break };
         }
       } else {
         while (steps-- > 0) {
           _iterator->Prev();
-          if(!checkIter()) break;
+          if(!checkIter()) { break };
         }
       }
     }
