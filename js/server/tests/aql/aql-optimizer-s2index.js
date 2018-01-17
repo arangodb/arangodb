@@ -101,21 +101,6 @@ function optimizerRuleTestSuite() {
     assertEqual(node.type, type, query.string + " check whether this node is of type " + type);
   };
 
-  var geodistance = function(latitude1, longitude1, latitude2, longitude2) {
-    var p1 = (latitude1) * (Math.PI / 180.0);
-    var p2 = (latitude2) * (Math.PI / 180.0);
-    var d1 = (latitude2 - latitude1) * (Math.PI / 180.0);
-    var d2 = (longitude2 - longitude1) * (Math.PI / 180.0);
-
-    var a = Math.sin(d1 / 2.0) * Math.sin(d1 / 2.0) +
-            Math.cos(p1) * Math.cos(p2) *
-            Math.sin(d2 / 2.0) * Math.sin(d2 / 2.0);
-    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1.0 - a));
-
-    return (6371e3 * c);
-  };
-
-
   return {
 
     ////////////////////////////////////////////////////////////////////////////////

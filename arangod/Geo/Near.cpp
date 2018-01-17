@@ -222,7 +222,9 @@ void NearUtils<CMP>::estimateDensity(geo::Coordinate const& found) {
   double delta = _origin.Angle(cords.ToPoint()) * 4;
   if (minBound < delta && delta < M_PI) {
     _boundDelta = delta;
-    TRI_ASSERT(_innerBound == 0 && _buffer.empty());  // only call after reset
+    // only call after reset
+    TRI_ASSERT(!isAcending() || _innerBound == _minBound && _buffer.empty());
+    TRI_ASSERT(!isDescending() || _innerBound == _maxBound && _buffer.empty());
     LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Estimating density with "
                                       << _boundDelta * kEarthRadiusInMeters
                                       << "m";

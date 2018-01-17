@@ -4792,15 +4792,15 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
 }
 
 // checks parameter of GEO_* function
-static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* arg,
+static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
                             bool supportLegacy, GeoIndexInfo& info) {
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> attributeAccess;
-  // "arg" is either [doc.lat, doc.lng] or doc.geometry
-  if (arg->isArray() && arg->numMembers() == 2) {
-    return distanceFuncArgCheck(plan, /*lat*/arg->getMemberUnchecked(1),
-                                /*lng*/arg->getMemberUnchecked(0), supportLegacy, info);
-  } else if (!arg->isAttributeAccessForVariable(attributeAccess,true)) {
-    return false;
+  // "arg" is either `[doc.lat, doc.lng]` or `doc.geometry`
+  if (args->isArray() && args->numMembers() == 2) {
+    return distanceFuncArgCheck(plan, /*lat*/args->getMemberUnchecked(1),
+                                /*lng*/args->getMemberUnchecked(0), supportLegacy, info);
+  } else if (!args->isAttributeAccessForVariable(attributeAccess,true)) {
+    return false; // no attribute access, no index check
   }
   TRI_ASSERT(attributeAccess.first != nullptr);
   // expect access of the for doc.attribute
@@ -4828,10 +4828,10 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* arg,
       // check access paths of attributes in ast and those in index match
       if (idx->fields()[0] == attributeAccess.second) {
         if (info.index != nullptr && info.index != idx) {
-          return false; 
+          return false; // different index
         }
         info.index = idx;
-        info.locationVar = arg;
+        info.locationVar = args;
         return true;
       }
     }
@@ -4841,8 +4841,16 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* arg,
 
 /// returns true if left side is same as right or lhs is null
 static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
-  if (lhs == nullptr) {
-    return true; // lhs is from the GeoIndexInfo struct
+  if (lhs == nullptr) { // lhs is from the GeoIndexInfo struct
+    return true; // if geoindex field is null everything is valid
+  } else if (lhs->type != rhs->type) {
+    return false;
+  } else if (lhs->type == NODE_TYPE_ARRAY) { // expect `[doc.lng, doc.lat]`
+    if (lhs->numMembers() >= 2 && rhs->numMembers() >= 2) {
+      return isValidGeoArg(lhs->getMemberUnchecked(0), rhs->getMemberUnchecked(0)) &&
+      isValidGeoArg(lhs->getMemberUnchecked(1), rhs->getMemberUnchecked(1));
+    }
+    return false;
   }
   // CompareAstNodes does not handle non const attribute access
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> res1, res2;
@@ -4857,10 +4865,9 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
 static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
                               bool legacy, GeoIndexInfo& info) {
   // get the ast node of the expression
-  if (funcNode->numMembers() != 1) {
+  if (funcNode ->type != NODE_TYPE_FCALL || funcNode->numMembers() != 1) {
     return false;
   }
-  
   AstNode* fargs = funcNode->getMemberUnchecked(0);
   auto func = static_cast<Function const*>(funcNode->getData());
   if (fargs->numMembers() >= 4 && func->name == "DISTANCE") { // allow DISTANCE(a,b,c,d)
@@ -4870,14 +4877,14 @@ static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
     if (isValidGeoArg(info.distanceCenterLat, fargs->getMemberUnchecked(2)) &&
         isValidGeoArg(info.distanceCenterLng, fargs->getMemberUnchecked(3)) &&
         distanceFuncArgCheck(plan, fargs->getMemberUnchecked(0),
-                             fargs->getMemberUnchecked(1), /*legacy*/true, info)) {
+                             fargs->getMemberUnchecked(1), legacy, info)) {
       info.distanceCenterLat = fargs->getMemberUnchecked(2);
       info.distanceCenterLng = fargs->getMemberUnchecked(3);
       return true;
     } else if (isValidGeoArg(info.distanceCenterLat, fargs->getMemberUnchecked(0)) &&
                isValidGeoArg(info.distanceCenterLng, fargs->getMemberUnchecked(1)) &&
                distanceFuncArgCheck(plan, fargs->getMemberUnchecked(2),
-                                    fargs->getMemberUnchecked(3), /*legacy*/true, info)) {
+                                    fargs->getMemberUnchecked(3), legacy, info)) {
       info.distanceCenterLat = fargs->getMemberUnchecked(0);
       info.distanceCenterLng = fargs->getMemberUnchecked(1);
       return true;
@@ -4887,11 +4894,11 @@ static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
       return false; // do not allow mixing of DISTANCE and GEO_DISTANCE
     }
     if (isValidGeoArg(info.distanceCenter, fargs->getMemberUnchecked(1)) &&
-        geoFuncArgCheck(plan, fargs->getMemberUnchecked(0), /*legacy*/true, info)) {
+        geoFuncArgCheck(plan, fargs->getMemberUnchecked(0), legacy, info)) {
       info.distanceCenter = fargs->getMemberUnchecked(1);
       return true;
     } else if (isValidGeoArg(info.distanceCenter, fargs->getMemberUnchecked(0)) &&
-               geoFuncArgCheck(plan, fargs->getMemberUnchecked(1), /*legacy*/true, info)) {
+               geoFuncArgCheck(plan, fargs->getMemberUnchecked(1), legacy, info)) {
       info.distanceCenter = fargs->getMemberUnchecked(0);
       return true;
     }
@@ -5033,12 +5040,10 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
       return true;
     } else if (second->type == NODE_TYPE_FCALL && isValueOrReference(first) &&
                info.minDistance == nullptr &&
-               checkDistanceFunc(plan, second, /*legacy*/true, info)) {
-      if (info.index->type() == Index::TRI_IDX_TYPE_S2_INDEX) {
-        info.minDistance = second;
-        info.minInclusive = lessequal;
-        info.nodesToRemove.insert(node);
-      }
+               checkDistanceFunc(plan, second, /*legacy*/false, info)) {
+      info.minDistance = first;
+      info.minInclusive = lessequal;
+      info.nodesToRemove.insert(node);
       return true;
     }
     return false;
@@ -5195,7 +5200,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
                info.sorted && info.ascending);
 
     if (info.minDistance != nullptr) {
-      AstNodeType t = info.minInclusive ? NODE_TYPE_OPERATOR_BINARY_GE : NODE_TYPE_OPERATOR_BINARY_ARRAY_GT;
+      AstNodeType t = info.minInclusive ? NODE_TYPE_OPERATOR_BINARY_GE : NODE_TYPE_OPERATOR_BINARY_GT;
       cond->andCombine(ast->createNodeBinaryOperator(t, func, info.minDistance));
     }
     if (info.maxDistance != nullptr) {
