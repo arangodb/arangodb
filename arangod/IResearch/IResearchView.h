@@ -296,6 +296,16 @@ class IResearchView final: public arangodb::ViewImplementation,
   static std::string const& type() noexcept;
 
   ///////////////////////////////////////////////////////////////////////////////
+  /// @brief update the view properties via the LogicalView allowing for tracking
+  ///        update via WAL entries
+  ///////////////////////////////////////////////////////////////////////////////
+  arangodb::Result updateLogicalProperties(
+    arangodb::velocypack::Slice const& slice,
+    bool partialUpdate,
+    bool doSync
+  );
+
+  ///////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)
   ///////////////////////////////////////////////////////////////////////////////
   arangodb::Result updateProperties(

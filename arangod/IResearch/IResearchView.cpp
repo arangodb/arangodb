@@ -1087,14 +1087,6 @@ void IResearchView::drop() {
 }
 
 int IResearchView::drop(TRI_voc_cid_t cid) {
-  // FIXME TODO remove once View::updateProperties(...) will be fixed to write
-  // the update delta into the WAL marker instead of the full persisted state
-  // below is a very dangerous hack as it allows multiple links from the same
-  // collection to point to the same view, thus breaking view data consistency
-  if (_inRecovery) {
-    _meta._collections.erase(cid);
-  }
-
   std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
   ReadMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
@@ -1849,6 +1841,17 @@ bool IResearchView::sync(SyncState& state, size_t maxMsec /*= 0*/) {
   return VIEW_TYPE;
 }
 
+arangodb::Result IResearchView::updateLogicalProperties(
+  arangodb::velocypack::Slice const& slice,
+  bool partialUpdate,
+  bool doSync
+) {
+  return _logicalView
+    ? _logicalView->updateProperties(slice, partialUpdate, doSync)
+    : arangodb::Result(TRI_ERROR_ARANGO_VIEW_NOT_FOUND)
+    ;
+}
+
 arangodb::Result IResearchView::updateProperties(
   arangodb::velocypack::Slice const& slice,
   bool partialUpdate,
@@ -1902,6 +1905,20 @@ arangodb::Result IResearchView::updateProperties(
       auto* engine = arangodb::EngineSelectorFeature::ENGINE;
 
       if (engine && engine->inRecovery()) {
+        arangodb::velocypack::Builder linksBuilder;
+
+        linksBuilder.openObject();
+
+        // remove links no longer present in incming update
+        for (auto& cid: _meta._collections) {
+          if (meta._collections.find(cid) == meta._collections.end()) {
+            linksBuilder.add(
+              std::to_string(cid),
+              arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
+            );
+          }
+        }
+
         for (auto& cid: meta._collections) {
           auto* collection = vocbase->lookupCollection(cid);
 
@@ -1913,12 +1930,34 @@ arangodb::Result IResearchView::updateProperties(
                 auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
 
                 if (link && link->_defaultId == id() && !link->_view->get()) {
-                  link->_view = _asyncSelf;
+                  arangodb::velocypack::Builder linkBuilder;
+                  bool valid;
+
+                  linkBuilder.openObject();
+                  valid = link->json(linkBuilder, true);
+                  linkBuilder.close();
+
+                  linksBuilder.add(
+                    std::to_string(cid),
+                    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
+                  );
+
+                  if (valid) {
+                    linksBuilder.add(std::to_string(cid), linkBuilder.slice());
+                  }
                 }
               }
             }
           }
         }
+
+        std::unordered_set<TRI_voc_cid_t> collections;
+
+        linksBuilder.close();
+        updateLinks(collections, *vocbase, *this, linksBuilder.slice());
+        collections.insert(_meta._collections.begin(), _meta._collections.end());
+        validateLinks(collections, *vocbase, *this); // remove invalid cids (no such collection or no such link)
+        _meta._collections = std::move(collections);
       }
     }
 

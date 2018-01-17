@@ -1333,7 +1333,7 @@ SECTION("test_unregister_link") {
     CHECK((nullptr != vocbase->lookupCollection("testCollection")));
     persisted = false;
     CHECK((TRI_ERROR_NO_ERROR == vocbase->dropCollection(logicalCollection, true, -1)));
-    CHECK((false == persisted)); // link removal does not persist view meta
+    CHECK((true == persisted)); // collection removal persists view meta
     CHECK((nullptr == vocbase->lookupCollection("testCollection")));
 
     {

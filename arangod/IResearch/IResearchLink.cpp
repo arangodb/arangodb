@@ -513,6 +513,14 @@ int IResearchLink::unload() {
   // if the collection is in the process of being removed then drop it from the view
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
   if (col->deleted()) {
+    auto result = view->updateLogicalProperties(emptyObjectSlice(), true, false); // revalidate all links
+
+    if (!result.ok()) {
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to force view link revalidation while unloading dropped IResearch link '" << _id << "' for IResearch view '" << view->id() << "'";
+
+      return result.errorNumber();
+    }
+
     auto res = view->drop(col->cid());
 
     if (TRI_ERROR_NO_ERROR != res) {
@@ -520,8 +528,6 @@ int IResearchLink::unload() {
 
       return res;
     }
-
-    view->updateProperties(emptyObjectSlice(), true, false); // revalidate all links
   }
 
   _view = NO_VIEW; // release reference to the iResearch View
