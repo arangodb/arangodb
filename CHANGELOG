@@ -1,6 +1,8 @@
 devel
 -----
 
+* UI: fixed an login issue with ldap authentication enabled
+
 * UI: fixed an issue where a collection name gets wrongly cached within the
   documents overview of a collection.
 
