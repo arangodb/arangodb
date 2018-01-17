@@ -1,6 +1,8 @@
 v3.3.3 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #4308: Crash when getter for error.name throws an error (on Windows)
+
 * UI: fixed a query editor caching and parsing issue
 
 * Fixed internal issue #1683: fixes an UI issue where a collection name gets wrongly cached
