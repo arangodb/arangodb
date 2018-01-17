@@ -3,6 +3,9 @@ v3.2.11 (2018-XX-XX)
 
 * UI: fixed a query editor caching and parsing issue
 
+* Fixed internal issue #1683: fixes an UI issue where a collection name gets wrongly cached
+  within the documents overview of a collection.
+
 * issue #4222: Permission error preventing AQL query import / export on webui
 
 * UI: optimized login view for very small screen sizes
