@@ -4919,7 +4919,7 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
   AstNode const* lngArg = fargs->getMemberUnchecked(2);
   AstNode const* rangeArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
   if (!isValueTypeCollection(collArg) || !isValueTypeNumber(latArg) ||
-      !isValueTypeNumber(lngArg) || (rangeArg != nullptr && !isValueTypeNumber(rangeArg))) {
+      !isValueTypeNumber(lngArg)) {
     return false;
   }
   
@@ -4943,7 +4943,7 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
     info.ascending = true; // always ascending
     info.distanceCenterLat = latArg;
     info.distanceCenterLng = lngArg;
-    if (rangeArg != nullptr) {
+    if (rangeArg != nullptr && isValueTypeNumber(rangeArg)) {
       if (func->name == "NEAR") {
         info.actualLimit = rangeArg->getIntValue();
       } else if (func->name == "WITHIN") {
@@ -4968,8 +4968,8 @@ static bool checkEnumerateListNode(ExecutionPlan* plan, EnumerateListNode* el, G
   CalculationNode* calcNode = static_cast<CalculationNode*>(node);
   Expression* expr = calcNode->expression();
   // the expression must exist and it must have an astNode
-  if (expr->node() == nullptr) {
-    return false;// not the right type of node
+  if (expr == nullptr || expr->node() == nullptr) {
+    return false; // not the right type of node
   }
   
   if (checkLegacyGeoFunc(plan, expr->node(), info)) {
@@ -4984,6 +4984,7 @@ static bool checkEnumerateListNode(ExecutionPlan* plan, EnumerateListNode* el, G
       info.latitudeVar = ast->createNodeAccess(info.collectionNodeOutVar, fields[0]);
       info.longitudeVar = ast->createNodeAccess(info.collectionNodeOutVar, fields[1]);
     }
+    calcNode->canRemoveIfThrows(true);
     return true;
   }
   return false;
@@ -5092,10 +5093,10 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
     if (setter == nullptr || setter->getType() != EN::CALCULATION) {
       return; // FIXME does this ever happen
     }
-    Expression* expr = static_cast<CalculationNode*>(setter)->expression();
+    CalculationNode* calc = static_cast<CalculationNode*>(setter);
+    Expression* expr = calc->expression();
     // the expression must exist and it must have an astNode
     if (expr == nullptr || expr->node() == nullptr) {
-      // not the right type of node
       return;
     }
     
@@ -5105,7 +5106,7 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
       info.ascending = elements[0].ascending;
       info.exesToModify.emplace(en, expr);
       info.nodesToRemove.emplace(expr->node());
-      return;
+      calc->canRemoveIfThrows(true);
     }
   } else if (en->getType() == EN::FILTER) {
     FilterNode* fn = static_cast<FilterNode*>(en);
@@ -5117,9 +5118,9 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
     if (setter == nullptr || setter->getType() != EN::CALCULATION) {
       return;
     }
-    
-    Expression* expr = static_cast<CalculationNode*>(setter)->expression();
-    if (expr->node() == nullptr) {
+    CalculationNode* calc = static_cast<CalculationNode*>(setter);
+    Expression* expr = calc->expression();
+    if (expr == nullptr || expr->node() == nullptr) {
       return;
     }
     
@@ -5137,6 +5138,7 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
                               // do not visit below OR or into <=, <, >, >= expressions
                               if (checkGeoFilterExpression(plan, node, info)) {
                                 info.exesToModify.emplace(fn, expr);
+                                calc->canRemoveIfThrows(true);
                               }
                             }
                           }, [&](AstNode const* node, void*) { // post

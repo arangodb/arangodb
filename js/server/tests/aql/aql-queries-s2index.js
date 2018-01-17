@@ -134,8 +134,8 @@ function ahuacatlGeoTestSuite () {
       var actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, 10000, \"distance\") SORT x.distance DESC LIMIT 3 RETURN x");
       assertEqual(expected, actual);
      
-      expected = [ {"distance" : "4487652.12954", "latitude" : -37, "longitude" : 26 }, { "distance" : "4485565.93668", "latitude" : -39, "longitude" : 20 }, { "distance" : "4484371.86154" , "latitude" : -38, "longitude" : 23 } ]; 
-      actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, null, \"distance\") SORT x.distance DESC LIMIT 3 RETURN x");
+      let expected = [ {"distance" : "4487652.12954", "latitude" : -37, "longitude" : 26 }, { "distance" : "4485565.93668", "latitude" : -39, "longitude" : 20 }, { "distance" : "4484371.86154" , "latitude" : -38, "longitude" : 23 } ]; 
+      let actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, null, \"distance\") SORT x.distance DESC LIMIT 3 RETURN x");
       assertEqual(expected, actual);
     },*/
 

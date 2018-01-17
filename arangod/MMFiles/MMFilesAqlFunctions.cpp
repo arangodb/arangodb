@@ -408,8 +408,8 @@ void MMFilesAqlFunctions::registerResources() {
 
   // fulltext functions
   functions->add({"FULLTEXT", ".h,.,.|.", false, true,
-                 false, true, &MMFilesAqlFunctions::Fulltext,
-                 NotInCoordinator});
+                  false, true, &MMFilesAqlFunctions::Fulltext,
+                  NotInCoordinator});
   functions->add({"NEAR", ".h,.,.|.,.", false, true, false,
                   true, &MMFilesAqlFunctions::Near, NotInCoordinator});
   functions->add({"WITHIN", ".h,.,.,.|.", false, true,
