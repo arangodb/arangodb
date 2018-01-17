@@ -17,6 +17,8 @@
       var version;
       _.each(response, function (foxx) {
         version = Number.parseInt(foxx.latestVersion.charAt(0));
+        console.log(foxx);
+        console.log(version);
         if (version >= 3) {
           foxxes.push(foxx);
         }

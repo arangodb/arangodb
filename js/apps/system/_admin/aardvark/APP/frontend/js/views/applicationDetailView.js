@@ -492,7 +492,6 @@
             msg: 'This field is required.'
           });
         }
-        console.log(name);
         return window.modalView[methodName](
           'app_config_' + CryptoJS.MD5(name).toString(),
           name,
