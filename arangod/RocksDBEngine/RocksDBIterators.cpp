@@ -208,12 +208,12 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
       if (_forward) {
         while (steps-- > 0) {
           _iterator->Next();
-          if(!checkIter()) { break };
+          if(!checkIter()) { break; }
         }
       } else {
         while (steps-- > 0) {
           _iterator->Prev();
-          if(!checkIter()) { break };
+          if(!checkIter()) { break; }
         }
       }
     }
