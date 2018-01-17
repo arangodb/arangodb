@@ -1279,6 +1279,11 @@ Result RestReplicationHandler::processRestoreUsersBatch(
   TRI_ASSERT(queryRegistry != nullptr);
 
   auto queryResult = query.execute(queryRegistry);
+
+  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+    "Authentication");
+  authentication->authInfo()->outdate();
+  
   return Result{queryResult.code};
 }
 
@@ -1561,6 +1566,17 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
       std::shared_ptr<arangodb::Index> idx;
 
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
+      if (! ServerState::instance()->isCoordinator()) {
+        arangodb::velocypack::Slice value = idxDef.get("type");
+        if (value.isString()) {
+          std::string const typeString = value.copyString();
+          if ((typeString == "primary") ||(typeString == "edge")) {
+            LOG_TOPIC(DEBUG, Logger::FIXME) << "processRestoreIndexes silently ignoring primary or edge index: " <<
+              idxDef.toJson();
+            continue;
+          }
+        }
+      }
 
       res = physical->restoreIndex(&trx, idxDef, idx);
 
