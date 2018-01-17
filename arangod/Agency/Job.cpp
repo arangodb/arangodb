@@ -29,6 +29,28 @@
 
 static std::string const DBServer = "DBServer";
 
+namespace arangodb {
+namespace consensus {
+
+std::string const mapUniqueToShortID = "/Target/MapUniqueToShortID/";
+std::string const pendingPrefix = "/Target/Pending/";
+std::string const failedPrefix = "/Target/Failed/";
+std::string const finishedPrefix = "/Target/Finished/";
+std::string const toDoPrefix = "/Target/ToDo/";
+std::string const cleanedPrefix = "/Target/CleanedServers";
+std::string const failedServersPrefix = "/Target/FailedServers";
+std::string const planColPrefix = "/Plan/Collections/";
+std::string const curColPrefix = "/Current/Collections/";
+std::string const blockedServersPrefix = "/Supervision/DBServers/";
+std::string const blockedShardsPrefix = "/Supervision/Shards/";
+std::string const serverStatePrefix = "/Sync/ServerStates/";
+std::string const planVersion = "/Plan/Version";
+std::string const plannedServers = "/Plan/DBServers";
+std::string const healthPrefix = "/Supervision/Health/";
+
+}  // namespace arangodb::consensus
+}  // namespace arangodb
+
 using namespace arangodb::basics;
 using namespace arangodb::consensus;
 
