@@ -365,9 +365,13 @@ SECTION("test_async_index") {
     CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
   }
 
+  // `catch` doesn't support cuncurrent checks
+  bool resThread0 = false;
+  bool resThread1 = false;
+
   // populate collections asynchronously
   {
-    std::thread thread0([collection0]()->void {
+    std::thread thread0([collection0, &resThread0]()->void {
       irs::utf8_path resource;
       resource/=irs::string_ref(IResearch_test_resource_dir);
       resource/=irs::string_ref("simple_sequential.json");
@@ -375,24 +379,30 @@ SECTION("test_async_index") {
       auto doc = arangodb::velocypack::Parser::fromJson("{ \"seq\": 40, \"same\": \"xyz\", \"duplicated\": \"abcd\" }");
       auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
       auto slice = builder.slice();
-      REQUIRE(slice.isArray());
+      resThread0 = slice.isArray();
+      if (!resThread0) return;
 
       arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(collection0->vocbase()),
         collection0->cid(),
         arangodb::AccessMode::Type::WRITE
       );
-      CHECK((trx.begin().ok()));
-      CHECK((trx.insert(collection0->name(), doc->slice(), arangodb::OperationOptions()).ok()));
+      resThread0 = trx.begin().ok();
+      if (!resThread0) return;
+
+      resThread0 = trx.insert(collection0->name(), doc->slice(), arangodb::OperationOptions()).ok();
+      if (!resThread0) return;
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto res = trx.insert(collection0->name(), itr.value(), arangodb::OperationOptions());
-        CHECK((res.ok()));
+        resThread0 = res.ok();
+        if (!resThread0) return;
       }
 
-      CHECK((trx.commit().ok()));
+      resThread0 = trx.commit().ok();
     });
-    std::thread thread1([collection1]()->void {
+
+    std::thread thread1([collection1, &resThread1]()->void {
       irs::utf8_path resource;
       resource/=irs::string_ref(IResearch_test_resource_dir);
       resource/=irs::string_ref("simple_sequential.json");
@@ -400,27 +410,35 @@ SECTION("test_async_index") {
       auto doc = arangodb::velocypack::Parser::fromJson("{ \"seq\": 50, \"same\": \"xyz\", \"duplicated\": \"abcd\" }");
       auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
       auto slice = builder.slice();
-      REQUIRE(slice.isArray());
+      resThread1 = slice.isArray();
+      if (!resThread1) return;
 
       arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(collection1->vocbase()),
         collection1->cid(),
         arangodb::AccessMode::Type::WRITE
       );
-      CHECK((trx.begin().ok()));
-      CHECK((trx.insert(collection1->name(), doc->slice(), arangodb::OperationOptions()).ok()));
+      resThread1 = trx.begin().ok();
+      if (!resThread1) return;
+
+      resThread1 = trx.insert(collection1->name(), doc->slice(), arangodb::OperationOptions()).ok();
+      if (!resThread1) return;
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto res = trx.insert(collection1->name(), itr.value(), arangodb::OperationOptions());
-        CHECK((res.ok()));
+        resThread1 = res.ok();
+        if (!resThread1) return;
       }
 
-      CHECK((trx.commit().ok()));
+      resThread1 = trx.commit().ok();
     });
 
     thread0.join();
     thread1.join();
   }
+
+  CHECK(resThread0);
+  CHECK(resThread1);
 
   // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
   {
