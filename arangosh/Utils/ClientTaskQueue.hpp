@@ -52,29 +52,31 @@ class ClientTaskQueue {
    * @brief Processes an individual job
    *
    * Each job will be processed by a worker, and many jobs may run in parallel.
-   * Thus any method of this type must be thread-safe.
+   * Thus any method of this type must be thread-safe. A given instance of the
+   * JobData class will only be handled by one worker at a time, so access to
+   * the data need not be synchronized.
    *
    * @param  client  Client to use for any requests
    * @param  jobData Data describing the job
    * @return         The result status of the job
    */
-  typedef std::function<Result(httpclient::SimpleHttpClient& client,
-                               JobData& jobData)>
-      JobProcessor;
+  using JobProcessor = std::function<Result(
+      httpclient::SimpleHttpClient& client, JobData& jobData)>;
 
   /**
    * @brief Handles the result of an individual jobs
    *
    * Each job will be processed by a worker, and many jobs may run in parallel.
-   * Thus, any method of this type must be thread-safe. Can be used to requeue a
-   * failed job, notify another actor that the job is done, etc.
+   * Thus, any method of this type must be thread-safe. A given instance of the
+   * JobData class will only be handled by one worker at a time, so access to
+   * the data need not be synchronized. Can be used to requeue a failed job,
+   * notify another actor that the job is done, etc.
    *
    * @param jobData Data describing the job which was just processed
    * @param result  The result status of the job
    */
-  typedef std::function<void(std::unique_ptr<JobData>&& jobData,
-                             Result const& result)>
-      JobResultHandler;
+  using JobResultHandler = std::function<void(
+      std::unique_ptr<JobData>&& jobData, Result const& result)>;
 
  public:
   ClientTaskQueue(JobProcessor processJob, JobResultHandler handleJobResult);
@@ -91,7 +93,8 @@ class ClientTaskQueue {
    * @param  numWorkers The number of workers to spawn
    * @return            `true` if successful
    */
-  bool spawnWorkers(ClientManager& manager, uint32_t const& numWorkers) noexcept;
+  bool spawnWorkers(ClientManager& manager,
+                    uint32_t const& numWorkers) noexcept;
 
   /**
    * @brief Determines if the job queue is currently empty

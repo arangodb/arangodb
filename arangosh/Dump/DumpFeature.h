@@ -48,8 +48,8 @@ struct DumpFeatureJobData {
   DumpFeatureJobData(DumpFeature&, ManagedDirectory&, DumpFeatureStats&,
                      VPackSlice const&, bool const&, bool const&, bool const&,
                      uint64_t const&, uint64_t const&, uint64_t const&,
-                     uint64_t const&, uint64_t const, std::string const&, std::string const&,
-                     std::string const&) noexcept;
+                     uint64_t const&, uint64_t const, std::string const&,
+                     std::string const&, std::string const&) noexcept;
   DumpFeature& feature;
   ManagedDirectory& directory;
   DumpFeatureStats& stats;
@@ -70,7 +70,7 @@ extern template class ClientTaskQueue<DumpFeatureJobData>;
 
 class DumpFeature : public application_features::ApplicationFeature {
  public:
-  DumpFeature(application_features::ApplicationServer* server, int& exitCode);
+  DumpFeature(application_features::ApplicationServer* server, int& exitCode) noexcept(false);
 
  public:
   // for documentation of virtual methods, see `ApplicationFeature`
@@ -85,7 +85,7 @@ class DumpFeature : public application_features::ApplicationFeature {
    * @brief Returns the feature name (for registration with `ApplicationServer`)
    * @return The name of the feature
    */
-  static std::string featureName();
+  static std::string featureName() noexcept(false);
 
   /**
    * @brief Saves a worker error for later handling and clears queued jobs
@@ -95,8 +95,8 @@ class DumpFeature : public application_features::ApplicationFeature {
 
  private:
   Result runDump(httpclient::SimpleHttpClient& client,
-                 std::string& dbName) noexcept;
-  Result runClusterDump(httpclient::SimpleHttpClient& client) noexcept;
+                 std::string& dbName) noexcept(false);
+  Result runClusterDump(httpclient::SimpleHttpClient& client) noexcept(false);
 
  private:
   int& _exitCode;

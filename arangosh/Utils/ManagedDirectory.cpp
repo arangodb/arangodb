@@ -39,8 +39,14 @@ using namespace arangodb::velocypack;
 namespace {
 /// @brief the filename for the encryption file
 constexpr auto EncryptionFilename = "ENCRYPTION";
+}  // namespace
+
+namespace {
 /// @brief encryption type specification for no encryption
 constexpr auto EncryptionTypeNone = "none";
+}  // namespace
+
+namespace {
 /// @brief size of char buffer to use for file slurping
 constexpr size_t DefaultIOChunkSize = 8192;
 }  // namespace
@@ -63,7 +69,7 @@ inline bool flagNotSet(int value, int flagToCheck) noexcept {
 
 namespace {
 /// @brief Generates a generic I/O error based on the path and flags
-inline Result genericError(std::string const& path, int flags) noexcept {
+inline Result genericError(std::string const& path, int flags) noexcept(false) {
   if (::flagIsSet(flags, O_WRONLY)) {
     return {TRI_ERROR_CANNOT_WRITE_FILE, "error while writing file " + path};
   }
@@ -74,7 +80,7 @@ inline Result genericError(std::string const& path, int flags) noexcept {
 namespace {
 /// @brief Assembles the file path from the directory and filename
 inline std::string filePath(ManagedDirectory const& directory,
-                            std::string const& filename) noexcept {
+                            std::string const& filename) noexcept(false) {
   return FileUtils::buildFilename(directory.path(), filename);
 }
 }  // namespace
@@ -82,7 +88,7 @@ inline std::string filePath(ManagedDirectory const& directory,
 namespace {
 /// @brief Assembles the file path from the directory path and filename
 inline std::string filePath(std::string const& directory,
-                            std::string const& filename) noexcept {
+                            std::string const& filename) noexcept(false) {
   return FileUtils::buildFilename(directory, filename);
 }
 }  // namespace
@@ -98,7 +104,7 @@ inline int openFile(std::string const& path, int flags) noexcept {
 
 namespace {
 /// @brief Closes an open file and sets the status
-inline void closeFile(int& fd, Result& status) noexcept {
+inline void closeFile(int& fd, Result& status) noexcept(false) {
   TRI_ASSERT(fd >= 0);
   status = Result{TRI_TRACKED_CLOSE_FILE(fd)};
   fd = -1;
@@ -108,7 +114,7 @@ inline void closeFile(int& fd, Result& status) noexcept {
 namespace {
 /// @brief determines if a file is writable
 bool isWritable(int fd, int flags, std::string const& path,
-                Result& status) noexcept {
+                Result& status) noexcept(false) {
   if (::flagNotSet(flags, O_WRONLY)) {
     status = {
         TRI_ERROR_CANNOT_WRITE_FILE,
@@ -163,9 +169,9 @@ namespace {
 /// @brief Generates the initial status for the directory
 #ifdef USE_ENTERPRISE
 Result initialStatus(int fd, std::string const& path, int flags,
-                     EncryptionFeature::Context* context) noexcept
+                     EncryptionFeature::Context* context) noexcept(false)
 #else
-Result initialStatus(int fd, std::string const& path, int flags) noexcept
+Result initialStatus(int fd, std::string const& path, int flags) noexcept(false)
 #endif
 {
   if (fd < 0) {
@@ -183,23 +189,23 @@ Result initialStatus(int fd, std::string const& path, int flags) noexcept
 namespace {
 /// @brief Performs a raw (non-encrypted) write
 inline void rawWrite(int fd, char const* data, size_t length, Result& status,
-                     std::string const& path, int flags) noexcept {
- while (length > 0) {
-  ssize_t written = TRI_WRITE(fd, data, length);
-  if (written < 0) {
-    status = ::genericError(path, flags);
-    break;
+                     std::string const& path, int flags) noexcept(false) {
+  while (length > 0) {
+    ssize_t written = TRI_WRITE(fd, data, length);
+    if (written < 0) {
+      status = ::genericError(path, flags);
+      break;
+    }
+    length -= written;
+    data += written;
   }
-  length -= written;
-  data += written;
-}
 }
 }  // namespace
 
 namespace {
 /// @brief Performs a raw (non-decrypted) read
 inline ssize_t rawRead(int fd, char* buffer, size_t length, Result& status,
-                       std::string const& path, int flags) noexcept {
+                       std::string const& path, int flags) noexcept(false) {
   ssize_t bytesRead = TRI_READ(fd, buffer, length);
   if (bytesRead < 0) {
     status = ::genericError(path, flags);
@@ -209,7 +215,8 @@ inline ssize_t rawRead(int fd, char* buffer, size_t length, Result& status,
 }  // namespace
 
 namespace {
-void readEncryptionFile(std::string const& directory, std::string& type) {
+void readEncryptionFile(std::string const& directory,
+                        std::string& type) noexcept(false) {
   type = ::EncryptionTypeNone;
   auto filename = ::filePath(directory, ::EncryptionFilename);
   if (TRI_ExistsFile(filename.c_str())) {
@@ -221,7 +228,7 @@ void readEncryptionFile(std::string const& directory, std::string& type) {
 namespace {
 #ifdef USE_ENTERPRISE
 void writeEncryptionFile(std::string const& directory, std::string& type,
-                         EncryptionFeature* encryptionFeature) {
+                         EncryptionFeature* encryptionFeature) noexcept(false) {
 #else
 void writeEncryptionFile(std::string const& directory, std::string& type) {
 #endif
@@ -237,7 +244,7 @@ void writeEncryptionFile(std::string const& directory, std::string& type) {
 }  // namespace
 
 ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty,
-                                   bool create)
+                                   bool create) noexcept(false)
     :
 #ifdef USE_ENTERPRISE
       _encryptionFeature{application_features::ApplicationServer::getFeature<
@@ -305,18 +312,18 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty,
 #endif
 }
 
-ManagedDirectory::~ManagedDirectory() {}
+ManagedDirectory::~ManagedDirectory() noexcept {}
 
 Result const& ManagedDirectory::status() const noexcept { return _status; }
 
-void ManagedDirectory::resetStatus() noexcept {
+void ManagedDirectory::resetStatus() noexcept(false) {
   _status = {TRI_ERROR_NO_ERROR};
 }
 
 std::string const& ManagedDirectory::path() const noexcept { return _path; }
 
 std::string ManagedDirectory::pathToFile(std::string const& filename) const
-    noexcept {
+    noexcept(false) {
   return ::filePath(*this, filename);
 }
 
@@ -335,7 +342,7 @@ EncryptionFeature const* ManagedDirectory::encryptionFeature() const noexcept {
 #endif
 
 std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(
-    std::string const& filename, int flags) noexcept {
+    std::string const& filename, int flags) noexcept(false) {
   std::unique_ptr<File> file{nullptr};
 
   if (_status.fail()) {  // directory is in a bad state
@@ -356,7 +363,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(
 }
 
 std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
-    std::string const& filename, bool overwrite, int flags) noexcept {
+    std::string const& filename, bool overwrite, int flags) noexcept(false) {
   std::unique_ptr<File> file{nullptr};
 
   if (_status.fail()) {  // directory is in a bad state
@@ -387,7 +394,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
 }
 
 void ManagedDirectory::spitFile(std::string const& filename,
-                                std::string const& content) noexcept {
+                                std::string const& content) noexcept(false) {
   auto file = writableFile(filename, true);
   if (!file) {
     _status = ::genericError(filename, O_WRONLY);
@@ -397,7 +404,8 @@ void ManagedDirectory::spitFile(std::string const& filename,
   file->spit(content);
 }
 
-std::string ManagedDirectory::slurpFile(std::string const& filename) noexcept {
+std::string ManagedDirectory::slurpFile(std::string const& filename) noexcept(
+    false) {
   std::string content;
   auto file = readableFile(filename);
   if (!file || file->status().fail()) {
@@ -425,7 +433,8 @@ VPackBuilder ManagedDirectory::vpackFromJsonFile(
 }
 
 ManagedDirectory::File::File(ManagedDirectory const& directory,
-                             std::string const& filename, int flags)
+                             std::string const& filename,
+                             int flags) noexcept(false)
     : _directory{directory},
       _path{::filePath(_directory, filename)},
       _flags{flags},
@@ -444,9 +453,12 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
 }
 
-ManagedDirectory::File::~File() {
-  if (_fd >= 0) {
-    ::closeFile(_fd, _status);
+ManagedDirectory::File::~File() noexcept {
+  try {
+    if (_fd >= 0) {
+      ::closeFile(_fd, _status);
+    }
+  } catch (...) {
   }
 }
 
@@ -458,7 +470,8 @@ std::string const& ManagedDirectory::File::path() const noexcept {
   return _path;
 }
 
-void ManagedDirectory::File::write(char const* data, size_t length) noexcept {
+void ManagedDirectory::File::write(char const* data,
+                                   size_t length) noexcept(false) {
   if (!::isWritable(_fd, _flags, _path, _status)) {
     return;
   }
@@ -478,7 +491,8 @@ void ManagedDirectory::File::write(char const* data, size_t length) noexcept {
 #endif
 }
 
-ssize_t ManagedDirectory::File::read(char* buffer, size_t length) noexcept {
+ssize_t ManagedDirectory::File::read(char* buffer,
+                                     size_t length) noexcept(false) {
   ssize_t bytesRead = -1;
   if (!::isReadable(_fd, _flags, _path, _status)) {
     return bytesRead;
@@ -500,7 +514,7 @@ ssize_t ManagedDirectory::File::read(char* buffer, size_t length) noexcept {
   return bytesRead;
 }
 
-std::string ManagedDirectory::File::slurp() noexcept {
+std::string ManagedDirectory::File::slurp() noexcept(false) {
   std::string content;
   if (!::isReadable(_fd, _flags, _path, _status)) {
     return content;
@@ -521,7 +535,7 @@ std::string ManagedDirectory::File::slurp() noexcept {
   return content;
 }
 
-void ManagedDirectory::File::spit(std::string const& content) noexcept {
+void ManagedDirectory::File::spit(std::string const& content) noexcept(false) {
   if (!::isWritable(_fd, _flags, _path, _status)) {
     return;
   }
@@ -542,7 +556,7 @@ void ManagedDirectory::File::spit(std::string const& content) noexcept {
   }
 }
 
-Result const& ManagedDirectory::File::close() noexcept {
+Result const& ManagedDirectory::File::close() noexcept(false) {
   if (_fd >= 0) {
     ::closeFile(_fd, _status);
   }

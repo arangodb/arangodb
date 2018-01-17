@@ -57,17 +57,25 @@ using namespace arangodb::rest;
 namespace {
 /// @brief minimum amount of data to fetch from server in a single batch
 constexpr uint64_t MinChunkSize = 1024 * 128;
+}  // namespace
+
+namespace {
 /// @brief maximum amount of data to fetch from server in a single batch
-constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;  // larger value may cause tcp issues
+constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
+// NB: larger value may cause tcp issues (check exact limits)
+}  // namespace
+
+namespace {
 /// @brief generic error for if server returns bad/unexpected json
-const Result ErrorMalformedJsonResponse = {TRI_ERROR_INTERNAL,
-                                     "got malformed JSON response from server"};
+const Result ErrorMalformedJsonResponse = {
+    TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
 }  // namespace
 
 namespace {
 /// @brief check whether HTTP response is valid, complete, and not an error
-Result checkHttpResponse(SimpleHttpClient& client,
-                         std::unique_ptr<SimpleHttpResult>& response) noexcept {
+Result checkHttpResponse(
+    SimpleHttpClient& client,
+    std::unique_ptr<SimpleHttpResult>& response) noexcept(false) {
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
             "got invalid response from server: " + client.getErrorMessage()};
@@ -84,7 +92,7 @@ Result checkHttpResponse(SimpleHttpClient& client,
 
 namespace {
 /// @brief checks that a file pointer is valid and file status is ok
-inline bool fileOk(ManagedDirectory::File* file) {
+inline bool fileOk(ManagedDirectory::File* file) noexcept(false) {
   return (file && file->status().ok());
 }
 }  // namespace
@@ -92,7 +100,7 @@ inline bool fileOk(ManagedDirectory::File* file) {
 namespace {
 /// @brief assuming file pointer is not ok, generate/extract proper error
 inline Result fileError(ManagedDirectory::File* file,
-                        bool isWritable) noexcept {
+                        bool isWritable) noexcept(false) {
   if (!file) {
     if (isWritable) {
       return {TRI_ERROR_CANNOT_WRITE_FILE};
@@ -107,9 +115,9 @@ inline Result fileError(ManagedDirectory::File* file,
 namespace {
 /// @brief start a batch via the replication API
 std::pair<Result, uint64_t> startBatch(SimpleHttpClient& client,
-                                       std::string DBserver) noexcept {
-  std::string const url = "/_api/replication/batch";
-  std::string const body = "{\"ttl\":300}";
+                                       std::string DBserver) noexcept(false) {
+  static std::string const url = "/_api/replication/batch";
+  static std::string const body = "{\"ttl\":300}";
   std::string urlExt;
   if (!DBserver.empty()) {
     urlExt = "?DBserver=" + DBserver;
@@ -142,12 +150,12 @@ std::pair<Result, uint64_t> startBatch(SimpleHttpClient& client,
 namespace {
 /// @brief prolongs a batch to ensure we can complete our dump
 void extendBatch(SimpleHttpClient& client, std::string DBserver,
-                 uint64_t batchId) noexcept {
+                 uint64_t batchId) noexcept(false) {
   TRI_ASSERT(batchId > 0);
 
   std::string const url =
       "/_api/replication/batch/" + StringUtils::itoa(batchId);
-  std::string const body = "{\"ttl\":300}";
+  static std::string const body = "{\"ttl\":300}";
   std::string urlExt;
   if (!DBserver.empty()) {
     urlExt = "?DBserver=" + DBserver;
@@ -162,7 +170,7 @@ void extendBatch(SimpleHttpClient& client, std::string DBserver,
 namespace {
 /// @brief mark our batch finished so resources can be freed on server
 void endBatch(SimpleHttpClient& client, std::string DBserver,
-              uint64_t& batchId) noexcept {
+              uint64_t& batchId) noexcept(false) {
   TRI_ASSERT(batchId > 0);
 
   std::string const url =
@@ -183,8 +191,8 @@ void endBatch(SimpleHttpClient& client, std::string DBserver,
 
 namespace {
 /// @brief execute a WAL flush request
-void flushWal(httpclient::SimpleHttpClient& client) noexcept {
-  std::string const url =
+void flushWal(httpclient::SimpleHttpClient& client) noexcept(false) {
+  static std::string const url =
       "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
 
   std::unique_ptr<SimpleHttpResult> response(
@@ -192,8 +200,8 @@ void flushWal(httpclient::SimpleHttpClient& client) noexcept {
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
     // TODO should we abort early here?
-    std::cerr << "got invalid response from server: " + check.errorMessage()
-              << std::endl;
+    LOG_TOPIC(ERR, Logger::DUMP)
+        << "got invalid response from server: " + check.errorMessage();
   }
 }
 }  // namespace
@@ -336,8 +344,9 @@ Result handleCollectionCluster(httpclient::SimpleHttpClient& client,
     std::string DBserver = it.value[0].copyString();
 
     if (jobData.showProgress) {
-      std::cout << "# Dumping shard '" << shardName << "' from DBserver '"
-                << DBserver << "' ..." << std::endl;
+      LOG_TOPIC(INFO, Logger::DUMP)
+          << "# Dumping shard '" << shardName << "' from DBserver '" << DBserver
+          << "' ...";
     }
 
     // make sure we have at batch on this dbserver
@@ -372,8 +381,8 @@ Result processJob(httpclient::SimpleHttpClient& client,
 
   // found a collection!
   if (jobData.showProgress) {
-    std::cout << "# Dumping collection '" << jobData.name << "'..."
-              << std::endl;
+    LOG_TOPIC(INFO, Logger::DUMP)
+        << "# Dumping collection '" << jobData.name << "'...";
   }
   ++(jobData.stats.totalCollections);
 
@@ -453,7 +462,7 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
                          int& exitCode)
     : ApplicationFeature(server, DumpFeature::featureName()),
       _exitCode{exitCode},
-      _clientManager{},
+      _clientManager{Logger::DUMP},
       _clientTaskQueue{::processJob, ::handleJobResult},
       _directory{nullptr},
       _stats{0, 0, 0},
@@ -484,7 +493,7 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
 #endif
 }
 
-std::string DumpFeature::featureName() { return "Dump"; }
+std::string DumpFeature::featureName() noexcept(false) { return "Dump"; }
 
 void DumpFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -580,7 +589,7 @@ void DumpFeature::validateOptions(
 
 // dump data from server
 Result DumpFeature::runDump(SimpleHttpClient& client,
-                            std::string& dbName) noexcept {
+                            std::string& dbName) noexcept(false) {
   Result result;
   uint64_t batchId;
   std::tie(result, batchId) = ::startBatch(client, "");
@@ -628,7 +637,8 @@ Result DumpFeature::runDump(SimpleHttpClient& client,
   if (tickString == "") {
     return ::ErrorMalformedJsonResponse;
   }
-  std::cout << "Last tick provided by server is: " << tickString << std::endl;
+  LOG_TOPIC(INFO, Logger::DUMP)
+      << "Last tick provided by server is: " << tickString;
 
   // set the local max tick value
   uint64_t maxTick = StringUtils::uint64(tickString);
@@ -730,7 +740,7 @@ Result DumpFeature::runDump(SimpleHttpClient& client,
 }
 
 // dump data from cluster via a coordinator
-Result DumpFeature::runClusterDump(SimpleHttpClient& client) noexcept {
+Result DumpFeature::runClusterDump(SimpleHttpClient& client) noexcept(false) {
   // get the cluster inventory
   std::string const url =
       "/_api/replication/clusterInventory?includeSystem=" +
@@ -915,12 +925,12 @@ void DumpFeature::start() {
   _clientTaskQueue.spawnWorkers(_clientManager, _threadCount);
 
   if (_progress) {
-    std::cout << "Connected to ArangoDB '" << client->endpoint()
-              << "', database: '" << dbName << "', username: '"
-              << client->username() << "'" << std::endl;
+    LOG_TOPIC(INFO, Logger::DUMP)
+        << "Connected to ArangoDB '" << client->endpoint() << "', database: '"
+        << dbName << "', username: '" << client->username() << "'";
 
-    std::cout << "Writing dump to output directory '" << _directory->path()
-              << "'" << std::endl;
+    LOG_TOPIC(INFO, Logger::DUMP)
+        << "Writing dump to output directory '" << _directory->path() << "'";
   }
 
   Result res;
@@ -947,13 +957,14 @@ void DumpFeature::start() {
 
   if (_progress) {
     if (_dumpData) {
-      std::cout << "Processed " << _stats.totalCollections.load()
-                << " collection(s), wrote " << _stats.totalWritten.load()
-                << " byte(s) into datafiles, sent "
-                << _stats.totalBatches.load() << " batch(es)" << std::endl;
+      LOG_TOPIC(INFO, Logger::DUMP)
+          << "Processed " << _stats.totalCollections.load()
+          << " collection(s), wrote " << _stats.totalWritten.load()
+          << " byte(s) into datafiles, sent " << _stats.totalBatches.load()
+          << " batch(es)";
     } else {
-      std::cout << "Processed " << _stats.totalCollections << " collection(s)"
-                << std::endl;
+      LOG_TOPIC(INFO, Logger::DUMP)
+          << "Processed " << _stats.totalCollections << " collection(s)";
     }
   }
 }

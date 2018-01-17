@@ -75,48 +75,58 @@ ClientTaskQueue<JobData>::~ClientTaskQueue() {
 }
 
 template <typename JobData>
-bool ClientTaskQueue<JobData>::spawnWorkers(ClientManager& manager,
-                                            uint32_t const& numWorkers) noexcept {
-  MUTEX_LOCKER(lock, _workersLock);
+bool ClientTaskQueue<JobData>::spawnWorkers(
+    ClientManager& manager, uint32_t const& numWorkers) noexcept {
   uint32_t spawned = 0;
-  for (; spawned < numWorkers; spawned++) {
-    try {
+  try {
+    MUTEX_LOCKER(lock, _workersLock);
+    for (; spawned < numWorkers; spawned++) {
       auto client = manager.getConnectedClient();
       auto worker =
           std::make_unique<ClientWorker<JobData>>(*this, std::move(client));
       _workers.emplace_back(std::move(worker));
       _workers.back()->start();
-    } catch (...) {
-      break;
     }
+  } catch (...) {
   }
   return (numWorkers == spawned);
 }
 
 template <typename JobData>
 bool ClientTaskQueue<JobData>::isQueueEmpty() const noexcept {
-  MUTEX_LOCKER(lock, _jobsLock);
-  return _jobs.empty();
+  bool isEmpty = false;
+  try {
+    MUTEX_LOCKER(lock, _jobsLock);
+    isEmpty = _jobs.empty();
+  } catch (...) {
+  }
+  return isEmpty;
 }
 
 template <typename JobData>
 bool ClientTaskQueue<JobData>::allWorkersBusy() const noexcept {
-  MUTEX_LOCKER(lock, _workersLock);
-  for (auto& worker : _workers) {
-    if (worker->isIdle()) {
-      return false;
+  try {
+    MUTEX_LOCKER(lock, _workersLock);
+    for (auto& worker : _workers) {
+      if (worker->isIdle()) {
+        return false;
+      }
     }
+  } catch (...) {
   }
   return true;
 }
 
 template <typename JobData>
 bool ClientTaskQueue<JobData>::allWorkersIdle() const noexcept {
-  MUTEX_LOCKER(lock, _workersLock);
-  for (auto& worker : _workers) {
-    if (!worker->isIdle()) {
-      return false;
+  try {
+    MUTEX_LOCKER(lock, _workersLock);
+    for (auto& worker : _workers) {
+      if (!worker->isIdle()) {
+        return false;
+      }
     }
+  } catch (...) {
   }
   return true;
 }
@@ -124,8 +134,8 @@ bool ClientTaskQueue<JobData>::allWorkersIdle() const noexcept {
 template <typename JobData>
 bool ClientTaskQueue<JobData>::queueJob(
     std::unique_ptr<JobData>&& job) noexcept {
-  MUTEX_LOCKER(lock, _jobsLock);
   try {
+    MUTEX_LOCKER(lock, _jobsLock);
     _jobs.emplace(std::move(job));
     _jobsCondition.signal();
     return true;
@@ -136,51 +146,67 @@ bool ClientTaskQueue<JobData>::queueJob(
 
 template <typename JobData>
 void ClientTaskQueue<JobData>::clearQueue() noexcept {
-  MUTEX_LOCKER(lock, _jobsLock);
-  while (!_jobs.empty()) {
-    _jobs.pop();
+  try {
+    MUTEX_LOCKER(lock, _jobsLock);
+    while (!_jobs.empty()) {
+      _jobs.pop();
+    }
+  } catch (...) {
   }
 }
 
 template <typename JobData>
 void ClientTaskQueue<JobData>::waitForIdle() noexcept {
-  while (true) {
-    if (isQueueEmpty() && allWorkersIdle()) {
-      break;
-    }
+  try {
+    while (true) {
+      if (isQueueEmpty() && allWorkersIdle()) {
+        break;
+      }
 
-    CONDITION_LOCKER(lock, _workersCondition);
-    lock.wait(std::chrono::milliseconds(500));
+      CONDITION_LOCKER(lock, _workersCondition);
+      lock.wait(std::chrono::milliseconds(500));
+    }
+  } catch (...) {
   }
 }
 
 template <typename JobData>
 std::unique_ptr<JobData> ClientTaskQueue<JobData>::fetchJob() noexcept {
   std::unique_ptr<JobData> job(nullptr);
-  MUTEX_LOCKER(lock, _jobsLock);
 
-  if (_jobs.empty()) {
-    return job;
+  try {
+    MUTEX_LOCKER(lock, _jobsLock);
+    if (_jobs.empty()) {
+      return job;
+    }
+
+    job = std::move(_jobs.front());
+    _jobs.pop();
+  } catch (...) {
   }
 
-  job = std::move(_jobs.front());
-  _jobs.pop();
   return job;
 }
 
 template <typename JobData>
 void ClientTaskQueue<JobData>::waitForWork() noexcept {
-  if (!isQueueEmpty()) {
-    return;
-  }
+  try {
+    if (!isQueueEmpty()) {
+      return;
+    }
 
-  CONDITION_LOCKER(lock, _jobsCondition);
-  lock.wait(std::chrono::milliseconds(500));
+    CONDITION_LOCKER(lock, _jobsCondition);
+    lock.wait(std::chrono::milliseconds(500));
+  } catch (...) {
+  }
 }
 
 template <typename JobData>
 void ClientTaskQueue<JobData>::notifyIdle() noexcept {
-  _workersCondition.signal();
+  try {
+    _workersCondition.signal();
+  } catch (...) {
+  }
 }
 
 template <typename JobData>

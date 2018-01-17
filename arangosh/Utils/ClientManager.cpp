@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClientManager.hpp"
@@ -34,12 +35,105 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 
-ClientManager::ClientManager() {}
+namespace {
+Result getHttpErrorMessage(SimpleHttpResult* result) noexcept {
+  if (!result) {
+    // no result to pull from
+    return {TRI_ERROR_INTERNAL, "no response from server!"};
+  }
+
+  int code = TRI_ERROR_NO_ERROR;
+  // set base message
+  std::string message("got error from server: HTTP " +
+                      StringUtils::itoa(result->getHttpReturnCode()) + " (" +
+                      result->getHttpReturnMessage() + ")");
+
+  // assume vpack body, catch otherwise
+  try {
+    std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
+    VPackSlice const body = parsedBody->slice();
+
+    int serverCode =
+        basics::VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
+    std::string const& serverMessage =
+        basics::VelocyPackHelper::getStringValue(body, "errorMessage", "");
+
+    if (serverCode > 0) {
+      code = serverCode;
+      message.append(": ArangoError " + StringUtils::itoa(serverCode) + ": " +
+                     serverMessage);
+    }
+  } catch (...) {
+    // no need to recover, fallthrough for default error message
+  }
+  return {code, std::move(message)};
+}
+}  // namespace
+
+ClientManager::ClientManager(LogTopic& topic) : _topic{topic} {}
 
 ClientManager::~ClientManager() {}
 
-std::string ClientManager::rewriteLocation(
-    void* data, std::string const& location) noexcept {
+std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
+    bool force, bool verbose) {
+  std::unique_ptr<httpclient::SimpleHttpClient> httpClient(nullptr);
+
+  ClientFeature* client =
+      application_features::ApplicationServer::getFeature<ClientFeature>(
+          "Client");
+  TRI_ASSERT(client);
+
+  try {
+    httpClient = client->createHttpClient();
+  } catch (...) {
+    LOG_TOPIC(FATAL, _topic)
+        << "cannot create server connection, giving up!";
+    FATAL_ERROR_EXIT();
+  }
+
+  // set client parameters
+  std::string dbName = client->databaseName();
+  httpClient->params().setLocationRewriter(static_cast<void*>(client),
+                                           &rewriteLocation);
+  httpClient->params().setUserNamePassword("/", client->username(),
+                                           client->password());
+
+  // now connect by retrieving version
+  std::string const versionString = httpClient->getServerVersion();
+  if (!httpClient->isConnected()) {
+    LOG_TOPIC(ERR, _topic)
+        << "Could not connect to endpoint '" << client->endpoint()
+        << "', database: '" << dbName << "', username: '" << client->username()
+        << "'";
+    LOG_TOPIC(FATAL, _topic)
+        << "Error message: '" << httpClient->getErrorMessage() << "'";
+
+    FATAL_ERROR_EXIT();
+  }
+
+  if (verbose) {
+    // successfully connected
+    LOG_TOPIC(INFO, _topic) << "Server version: " << versionString;
+  }
+
+  // validate server version
+  std::pair<int, int> version =
+      rest::Version::parseVersionString(versionString);
+  if (version.first < 3) {
+    // we can connect to 3.x
+    LOG_TOPIC(ERR, _topic)
+        << "Error: got incompatible server version '" << versionString << "'";
+
+    if (!force) {
+      FATAL_ERROR_EXIT();
+    }
+  }
+
+  return httpClient;
+}
+
+std::string ClientManager::rewriteLocation(void* data,
+                                           std::string const& location) {
   // if it already starts with "/_db/", we are done
   if (location.compare(0, 5, "/_db/") == 0) {
     return location;
@@ -57,97 +151,8 @@ std::string ClientManager::rewriteLocation(
   return "/_db/" + dbname + "/" + location;
 }
 
-namespace {
-Result getHttpErrorMessage(SimpleHttpResult* result) noexcept {
-  if (!result) {
-    return {TRI_ERROR_INTERNAL, "no response from server!"};
-  }
-
-  int code = TRI_ERROR_NO_ERROR;
-  std::string message("got error from server: HTTP " +
-         StringUtils::itoa(result->getHttpReturnCode()) + " (" +
-         result->getHttpReturnMessage() + ")");
-
-  // assume vpack body, catch otherwise
-  try {
-    std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
-    VPackSlice const body = parsedBody->slice();
-
-    int serverCode =
-        basics::VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
-    std::string const& serverMessage =
-        basics::VelocyPackHelper::getStringValue(body, "errorMessage", "");
-
-    if (serverCode > 0) {
-      code = serverCode;
-      message.append(": ArangoError " + StringUtils::itoa(serverCode) + ": " + serverMessage);
-    }
-  } catch (...) {
-    // no need to recover, fallthrough for default error message
-  }
-  return {code, message};
-}
-}
-
-std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
-    bool force, bool verbose) noexcept {
-  std::unique_ptr<httpclient::SimpleHttpClient> httpClient(nullptr);
-
-  ClientFeature* client =
-      application_features::ApplicationServer::getFeature<ClientFeature>(
-          "Client");
-  TRI_ASSERT(client);
-
-  try {
-    httpClient = client->createHttpClient();
-  } catch (...) {
-    LOG_TOPIC(FATAL, Logger::FIXME)
-        << "cannot create server connection, giving up!";
-    FATAL_ERROR_EXIT();
-  }
-
-  // set client parameters
-  std::string dbName = client->databaseName();
-  httpClient->params().setLocationRewriter(static_cast<void*>(client),
-                                           &rewriteLocation);
-  httpClient->params().setUserNamePassword("/", client->username(),
-                                           client->password());
-
-  // now connect by retrieving version
-  std::string const versionString = httpClient->getServerVersion();
-  if (!httpClient->isConnected()) {
-    LOG_TOPIC(ERR, Logger::FIXME)
-        << "Could not connect to endpoint '" << client->endpoint()
-        << "', database: '" << dbName << "', username: '" << client->username()
-        << "'";
-    LOG_TOPIC(FATAL, Logger::FIXME)
-        << "Error message: '" << httpClient->getErrorMessage() << "'";
-
-    FATAL_ERROR_EXIT();
-  }
-
-  if (verbose) {
-    // successfully connected
-    LOG_TOPIC(INFO, Logger::FIXME) << "Server version: " << versionString;
-  }
-
-  // validate server version
-  std::pair<int, int> version =
-      rest::Version::parseVersionString(versionString);
-  if (version.first < 3) {
-    // we can connect to 3.x
-    LOG_TOPIC(ERR, Logger::FIXME)
-        << "Error: got incompatible server version '" << versionString << "'";
-
-    if (!force) {
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  return httpClient;
-}
-
-std::pair<Result, bool> ClientManager::getArangoIsCluster(SimpleHttpClient& client) noexcept {
+std::pair<Result, bool> ClientManager::getArangoIsCluster(
+    SimpleHttpClient& client) {
   Result result{TRI_ERROR_NO_ERROR};
   std::unique_ptr<SimpleHttpResult> response(
       client.request(rest::RequestType::GET, "/_admin/server/role", "", 0));
@@ -171,7 +176,8 @@ std::pair<Result, bool> ClientManager::getArangoIsCluster(SimpleHttpClient& clie
   } else {
     if (response->wasHttpError()) {
       auto result = ::getHttpErrorMessage(response.get());
-      LOG_TOPIC(ERR, Logger::FIXME) << "got error while checking cluster mode: " << result.errorMessage();
+      LOG_TOPIC(ERR, _topic)
+          << "got error while checking cluster mode: " << result.errorMessage();
       client.setErrorMessage(result.errorMessage(), false);
     } else {
       result = {TRI_ERROR_INTERNAL};
@@ -183,8 +189,8 @@ std::pair<Result, bool> ClientManager::getArangoIsCluster(SimpleHttpClient& clie
   return {result, (role == "COORDINATOR")};
 }
 
-std::pair<Result, bool> ClientManager::getArangoIsUsingEngine(SimpleHttpClient& client,
-                                           std::string const& name) noexcept {
+std::pair<Result, bool> ClientManager::getArangoIsUsingEngine(
+    SimpleHttpClient& client, std::string const& name) {
   Result result{TRI_ERROR_NO_ERROR};
   std::unique_ptr<SimpleHttpResult> response(
       client.request(rest::RequestType::GET, "/_api/engine", "", 0));
@@ -195,7 +201,8 @@ std::pair<Result, bool> ClientManager::getArangoIsUsingEngine(SimpleHttpClient& 
 
   std::string engine = "UNDEFINED";
 
-  if (response->getHttpReturnCode() == (int)rest::ResponseCode::OK) {
+  if (response->getHttpReturnCode() ==
+      static_cast<int>(rest::ResponseCode::OK)) {
     try {
       std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
       VPackSlice const body = parsedBody->slice();
@@ -207,7 +214,9 @@ std::pair<Result, bool> ClientManager::getArangoIsUsingEngine(SimpleHttpClient& 
   } else {
     if (response->wasHttpError()) {
       result = ::getHttpErrorMessage(response.get());
-      LOG_TOPIC(ERR, Logger::FIXME) << "got error while checking storage engine: " << result.errorMessage();
+      LOG_TOPIC(ERR, _topic)
+          << "got error while checking storage engine: "
+          << result.errorMessage();
       client.setErrorMessage(result.errorMessage(), false);
     } else {
       result = {TRI_ERROR_INTERNAL};

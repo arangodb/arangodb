@@ -40,9 +40,22 @@ class ManagedDirectory {
  public:
   class File {
    public:
+    /**
+     * @brief Opens or creates a file within the directory
+     *
+     * Should not be called directly. See `ManagedDirectory::readableFile` and
+     * `ManagedDirectory::writableFile`.
+     *
+     * @param directory A reference to the containing directory
+     * @param filename  The name of the file within the directory
+     * @param flags     The flags to pass to the OS to open the file
+     */
     File(ManagedDirectory const& directory, std::string const& filename,
-         int flags);
-    ~File();
+         int flags) noexcept(false);
+    /**
+     * @brief Closes the file if it is still open
+     */
+    ~File() noexcept;
 
    public:
     /**
@@ -62,7 +75,7 @@ class ManagedDirectory {
      * @param  data   Beginning of data to write
      * @param  length Length of data to write
      */
-    void write(char const* data, size_t length) noexcept;
+    void write(char const* data, size_t length) noexcept(false);
 
     /**
      * @brief Reads data from the given file, using decryption if enabled
@@ -70,25 +83,25 @@ class ManagedDirectory {
      * @param  length Maximum amount of data to read (no more than buffer
      *                length)
      */
-    ssize_t read(char* buffer, size_t length) noexcept;
+    ssize_t read(char* buffer, size_t length) noexcept(false);
 
     /**
      * @brief Read file contents into string
      * @return File contents
      */
-    std::string slurp() noexcept;
+    std::string slurp() noexcept(false);
 
     /**
      * @brief Write a string to file
      * @param content String to write
      */
-    void spit(std::string const& content) noexcept;
+    void spit(std::string const& content) noexcept(false);
 
     /**
      * @brief Closes file (now, as opposed to when the object is destroyed)
      * @return Reference to file status
      */
-    Result const& close() noexcept;
+    Result const& close() noexcept(false);
 
    private:
     ManagedDirectory const& _directory;
@@ -113,8 +126,9 @@ class ManagedDirectory {
    * @param requireEmpty If `true`, opening a non-empty directory will fail
    * @param create       If `true` and directory does not exist, create it
    */
-  ManagedDirectory(std::string const& path, bool requireEmpty, bool create);
-  ~ManagedDirectory();
+  ManagedDirectory(std::string const& path, bool requireEmpty,
+                   bool create) noexcept(false);
+  ~ManagedDirectory() noexcept;
 
  public:
   /**
@@ -129,7 +143,7 @@ class ManagedDirectory {
   /**
    * @brief Resets the status to allow for further operation after error
    */
-  void resetStatus() noexcept;
+  void resetStatus() noexcept(false);
 
   /**
    * @brief Returns the path to the directory under management
@@ -142,7 +156,7 @@ class ManagedDirectory {
    * @param  filename File to retrieve path for
    * @return          Fully qualified filename
    */
-  std::string pathToFile(std::string const& filename) const noexcept;
+  std::string pathToFile(std::string const& filename) const noexcept(false);
 
   /**
    * @brief Determines if encryption is enabled on the directory
@@ -152,7 +166,7 @@ class ManagedDirectory {
 
   /**
    * @brief Returns the type of encryption used for the directory
-   * @return The type of encryption used (may be none)
+   * @return The type of encryption used (may be "none")
    */
   std::string const& encryptionType() const noexcept;
 
@@ -171,7 +185,7 @@ class ManagedDirectory {
    * @return          Unique pointer to file, if opened
    */
   std::unique_ptr<File> readableFile(std::string const& filename,
-                                     int flags = 0) noexcept;
+                                     int flags = 0) noexcept(false);
 
   /**
    * @brief Opens a writable file
@@ -181,7 +195,8 @@ class ManagedDirectory {
    * @return           Unique pointer to file, if opened
    */
   std::unique_ptr<File> writableFile(std::string const& filename,
-                                     bool overwrite, int flags = 0) noexcept;
+                                     bool overwrite,
+                                     int flags = 0) noexcept(false);
 
   /**
    * @brief Write a string to file
@@ -189,17 +204,17 @@ class ManagedDirectory {
    * @param content  String to write to file
    */
   void spitFile(std::string const& filename,
-                std::string const& content) noexcept;
+                std::string const& content) noexcept(false);
 
   /**
    * @brief Read file content into string
    * @param  filename File to read from
    * @return          Contents of file as string
    */
-  std::string slurpFile(std::string const& filename) noexcept;
+  std::string slurpFile(std::string const& filename) noexcept(false);
 
   /**
-   * @brief Read file content into `VPackBuilder`
+   * @brief Read file content and parse into `VPackBuilder`
    * @param  filename File to read from
    * @return          Parsed vpack contents of file
    */

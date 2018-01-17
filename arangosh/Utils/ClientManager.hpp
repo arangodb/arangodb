@@ -28,6 +28,7 @@
 #include <string>
 
 namespace arangodb {
+class LogTopic;
 class Result;
 namespace httpclient {
 class SimpleHttpClient;
@@ -39,12 +40,16 @@ class SimpleHttpResult;
  */
 class ClientManager {
  public:
-  ClientManager();
+  /**
+   * @brief Initialize a client manager using a specific log topic for output
+   * @param topic Topic to log output to
+   */
+  ClientManager(LogTopic& topic);
   virtual ~ClientManager();
 
  public:
   /**
-   * @brief Initailizes a client, connects to server, and verifies version
+   * @brief Initializes a client, connects to server, and verifies version
    *
    * If the client fails to connect to the server, or if the version is
    * mismatched, this will result in a fatal error which will terminate the
@@ -56,7 +61,7 @@ class ClientManager {
    * @return         A connected `SimpleHttpClient`
    */
   std::unique_ptr<httpclient::SimpleHttpClient> getConnectedClient(
-      bool force = false, bool verbose = false) noexcept;
+      bool force = false, bool verbose = false);
 
   /**
    * @brief Conditionally prefixes a relative URI with database-specific path
@@ -65,16 +70,7 @@ class ClientManager {
    * @return          Propertly prefixed URI
    */
   static std::string rewriteLocation(void* data,
-                                     std::string const& location) noexcept;
-
-  /**
-   * @brief Extracts error message [and number] from `SimpleHttpResult`
-   * @param  result `SimpleHttpResult` to extract from
-   * @param  err    Reference to set error number
-   * @return        Extracted error message
-   */
-  static std::string getHttpErrorMessage(httpclient::SimpleHttpResult* result,
-                                         int& err) noexcept;
+                                     std::string const& location);
 
   /**
    * @brief Determines whether the ArangoDB instance is part of a cluster
@@ -82,7 +78,7 @@ class ClientManager {
    * @return        status result; `true` if successful and part of a cluster
    */
   std::pair<Result, bool> getArangoIsCluster(
-      httpclient::SimpleHttpClient& client) noexcept;
+      httpclient::SimpleHttpClient& client);
 
   /**
    * Determines whether the ArangoDB instance is using the specified engine
@@ -94,7 +90,10 @@ class ClientManager {
    */
   std::pair<Result, bool> getArangoIsUsingEngine(
       httpclient::SimpleHttpClient& httpClient,
-      std::string const& name) noexcept;
+      std::string const& name);
+
+  private:
+    LogTopic& _topic;
 };
 }  // namespace arangodb
 
