@@ -6,6 +6,8 @@ devel
 * fixed internal issue #1475: when restoring a cluster dump to a single server
   ignore indices of type primary and edge since we mustn't create them here.
 
+* fix internal issue #1439: improve performance of any-iterator for RocksDB
+
 * fixed issue #4308: Crash when getter for error.name throws an error (on Windows)
 
 * UI: fixed an issue where a collection name gets wrongly cached within the
