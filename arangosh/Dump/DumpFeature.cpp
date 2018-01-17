@@ -30,6 +30,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/OpenFilesTracker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -350,7 +351,7 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
 
     // TODO: fix hard-coded headers
     std::string header =
-        response->getHeaderField("x-arango-replication-checkmore", found);
+        response->getHeaderField(StaticStrings::ReplicationHeaderCheckMore, found);
 
     if (found) {
       checkMore = StringUtils::boolean(header);
@@ -358,8 +359,7 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
 
       if (checkMore) {
         // TODO: fix hard-coded headers
-        header = response->getHeaderField("x-arango-replication-lastincluded",
-                                          found);
+        header = response->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded, found);
 
         if (found) {
           uint64_t tick = StringUtils::uint64(header);
@@ -740,7 +740,7 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
 
     // TODO: fix hard-coded headers
     std::string header =
-        response->getHeaderField("x-arango-replication-checkmore", found);
+        response->getHeaderField(StaticStrings::ReplicationHeaderCheckMore, found);
 
     if (found) {
       checkMore = StringUtils::boolean(header);
@@ -748,8 +748,7 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
 
       if (checkMore) {
         // TODO: fix hard-coded headers
-        header = response->getHeaderField("x-arango-replication-lastincluded",
-                                          found);
+        header = response->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded, found);
 
         if (found) {
           uint64_t tick = StringUtils::uint64(header);

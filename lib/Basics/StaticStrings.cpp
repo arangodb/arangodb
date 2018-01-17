@@ -57,6 +57,13 @@ std::string const StaticStrings::SilentString("silent");
 std::string const StaticStrings::WaitForSyncString("waitForSync");
 std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
+  
+// replication headers
+std::string const StaticStrings::ReplicationHeaderCheckMore("x-arango-replication-checkmore");
+std::string const StaticStrings::ReplicationHeaderLastIncluded("x-arango-replication-lastincluded");
+std::string const StaticStrings::ReplicationHeaderLastTick("x-arango-replication-lasttick");
+std::string const StaticStrings::ReplicationHeaderFromPresent("x-arango-replication-frompresent");
+std::string const StaticStrings::ReplicationHeaderActive("x-arango-replication-active");
 
 // database and collection names
 std::string const StaticStrings::SystemDatabase("_system");

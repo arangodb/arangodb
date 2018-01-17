@@ -25,7 +25,7 @@
 #define ARANGOD_REPLICATION_REPLICATION_APPLIER_STATE_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/replication-common.h"
+#include "Replication/common-defines.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
