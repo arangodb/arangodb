@@ -21,13 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "replication-common.h"
+#include "Replication/common-defines.h"
 #include "Basics/tri-strings.h"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate a timestamp string in a target buffer
-////////////////////////////////////////////////////////////////////////////////
+namespace arangodb {
 
+/// @brief generate a timestamp string in a target buffer
 void TRI_GetTimeStampReplication(char* dst, size_t maxLength) {
   struct tm tb;
   time_t tt = time(nullptr);
@@ -36,10 +35,7 @@ void TRI_GetTimeStampReplication(char* dst, size_t maxLength) {
   strftime(dst, maxLength, "%Y-%m-%dT%H:%M:%SZ", &tb);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a timestamp string in a target buffer
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_GetTimeStampReplication(double timeStamp, char* dst,
                                  size_t maxLength) {
   struct tm tb;
@@ -47,18 +43,6 @@ void TRI_GetTimeStampReplication(double timeStamp, char* dst,
   TRI_gmtime(tt, &tb);
 
   strftime(dst, maxLength, "%Y-%m-%dT%H:%M:%SZ", &tb);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determine whether a collection should be included in replication
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExcludeCollectionReplication(char const* name, bool includeSystem) {
-  if (name == nullptr) {
-    // name invalid
-    return true;
-  }
-  return TRI_ExcludeCollectionReplication(std::string(name), includeSystem);
 }
 
 bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSystem) {
@@ -87,4 +71,6 @@ bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSyste
   }
 
   return false;
+}
+
 }
