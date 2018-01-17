@@ -44,6 +44,12 @@ using namespace std::chrono;
 namespace arangodb {
 namespace consensus {
 
+// Instanciations of some declarations in AgencyCommon.h:
+
+std::string const pubApiPrefix("/_api/agency/");
+std::string const privApiPrefix("/_api/agency_priv/");
+std::string const NO_LEADER("");
+
 /// Agent configuration
 Agent::Agent(config_t const& config)
   : Thread("Agent"),
@@ -104,7 +110,7 @@ void Agent::waitForThreadsStop() {
   while (_constituent.isRunning() || _compactor.isRunning() ||
          (_config.supervision() && _supervision.isRunning()) ||
          (_inception != nullptr && _inception->isRunning())) {
-    usleep(100000);
+    std::this_thread::sleep_for(std::chrono::microseconds(100000));
 
     // fail fatally after 5 mins:
     if (++counter >= 10 * 60 * 5) {
@@ -584,7 +590,7 @@ void Agent::sendAppendEntriesRPC() {
 void Agent::resign(term_t otherTerm) {
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Resigning in term "
     << _constituent.term() << " because of peer's term " << otherTerm;
-  _constituent.follow(otherTerm);
+  _constituent.follow(otherTerm, NO_LEADER);
   endPrepareLeadership();
 }
 
@@ -1122,7 +1128,7 @@ void Agent::run() {
       // in the main thread, we do the actual preparations:
 
       if (!prepareLead()) {
-        _constituent.follow(0);  // do not change term
+        _constituent.follow(0);  // do not change _term or _votedFor
       } else {
         // we need to start work as leader
         lead();

@@ -47,6 +47,7 @@ v3.3.3 (XXXX-XX-XX)
 
 * fixed issue #4255: AQL SORT consuming too much memory
 
+* fixed incorrect persistence of RAFT vote and term
 
 v3.3.2 (2018-01-04)
 -------------------
