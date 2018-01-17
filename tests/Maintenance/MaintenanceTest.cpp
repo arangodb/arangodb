@@ -107,7 +107,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   SECTION("In sync") {
 
     std::vector<ActionDescription> actions;
-    
+
     for (auto const& node : localNodes) {
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),

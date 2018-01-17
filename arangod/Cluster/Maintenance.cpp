@@ -71,26 +71,42 @@ VPackBuilder compareRelevantProps (
 }
 
 
-VPackBuilder compareIndexes(VPackSlice const& plan, VPackSlice const& local) {
+VPackBuilder compareIndexes(
+  std::string const& shname, VPackSlice const& plan, VPackSlice const& local,
+  std::unordered_set<std::string>& indis) {
+  
   VPackBuilder builder;
   { VPackArrayBuilder a(&builder);
     for (auto const& pindex : VPackArrayIterator(plan)) {
+
       auto const& pfields = pindex.get("fields").toJson();
       auto const& ptype   = pindex.get("type").copyString();
-      if (pfields == "[\"_key\"]" && ptype == "primary") {
+
+      // Skip unique on _key
+      if (pfields == "[\"_key\"]" && ptype == "primary") { 
         continue;
       }
-      LOG_TOPIC(ERR, arangodb::Logger::MAINTENANCE) << pfields << " " << ptype;
+
+      indis.emplace(shname + "/" + pindex.get("id").copyString());
+      
+      bool found = false;
       for (auto const& lindex : VPackArrayIterator(local)) {
+
         auto const& lfields = lindex.get("fields").toJson();
         auto const& ltype   = lindex.get("type").copyString();
+
+        // Skip unique on _key
         if (lfields == "[\"_key\"]" && ltype == "primary") {
           continue;
         }
-        LOG_TOPIC(WARN, arangodb::Logger::MAINTENANCE) << "#" << lfields << "#" << ltype << "#";
+        
+        // Already have
         if (pfields == lfields && ptype == ltype) {
-          continue;
-        } 
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
         builder.add(pindex);
       }
     }
@@ -105,7 +121,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
   std::vector<ActionDescription>& actions) {
 
-  std::unordered_set<std::string> intersection;
+  std::unordered_set<std::string> colis; // Intersection collections plan&local
+  std::unordered_set<std::string> indis; // Intersection indexes plan&local
   
   arangodb::Result result;
   auto const& pdbs =
@@ -125,13 +142,13 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
         auto const& shards = cprops.get("shards");
         for (auto const& shard : VPackObjectIterator(shards)) {
           auto const& shname = shard.key.copyString();
-          bool leader = true; // Want to understand leadership
+          //bool leader = true; // Want to understand leadership
           for (auto const& db : VPackArrayIterator(shard.value)) {
 
             // We only care for shards, where we find our own ID
             if (db.copyString() == serverId)  {
 
-              intersection.emplace(shname);
+              colis.emplace(shname);
               if (props.isEmpty()) {             // Must not have name or id 
                 props = createProps(pcol.value); // Only once might need often!
               }
@@ -153,8 +170,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
                 if (cprops.hasKey("indexes")) {
                   auto const& pindexes = cprops.get("indexes");
                   auto const& lindexes = lcol.get("indexes");
-                  auto difference = compareIndexes(pindexes, lindexes);
-                  
+                  auto difference = compareIndexes(shname, pindexes, lindexes, indis);
+
                   if (difference.slice().length() != 0) {
                     for (auto const& index :
                            VPackArrayIterator(difference.slice())) {
@@ -178,7 +195,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
             }
             
             // Only first entry is leader
-            leader = false;
+            //leader = false;
           }
         }
       }
@@ -198,21 +215,45 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
         bool drop = false;
         auto const& colname = col.key.copyString();
         std::unordered_set<std::string>::const_iterator it;
-        if (intersection.empty()) {
+
+        if (colis.empty()) {
           drop = true;
         } else {
-          it = std::find(intersection.begin(), intersection.end(), colname);
-          if (it == intersection.end()) {
+          it = std::find(colis.begin(), colis.end(), colname);
+          if (it == colis.end()) {
             drop = true;
           }
         }
+
         if (drop) {
           actions.push_back(
             ActionDescription({{"name", "DropCollection"},
                 {"database", dbname}, {"collection", colname}}));
         } else {
-          intersection.erase(it);
+          colis.erase(it);
+
+          // We only drop indexes, when collection is not being dropped already
+          if (col.value.hasKey("indexes")) {
+            for (auto const& index :
+                   VPackArrayIterator(col.value.get("indexes"))) {
+              if (index.get("fields").toJson() != "[\"_key\"]" &&
+                  index.get("type").copyString() != "primary") {
+                std::string const id = index.get("id").copyString();
+                if (indis.find(id) != indis.end()) {
+                  indis.erase(id);
+                } else {
+                  actions.push_back(
+                    ActionDescription({{"name", "DropIndex"},
+                        {"database", dbname}, {"collection", "colname"},
+                        {"id", id}}));
+                }
+              }
+            }
+          }
+
         }
+        
+        
       }
     } else {
       actions.push_back(
