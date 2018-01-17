@@ -27,7 +27,8 @@
 #include <type_traits>
 
 namespace arangodb {
-class Result final {
+
+class Result {
  public:
   Result() : _errorNumber(TRI_ERROR_NO_ERROR) {}
 
@@ -67,10 +68,13 @@ class Result final {
   }
 
  public:
+  int errorNumber() const { return _errorNumber; }
+  std::string errorMessage() const& { return _errorMessage; }
+  std::string errorMessage() && { return std::move(_errorMessage); }
+
   bool ok()   const { return _errorNumber == TRI_ERROR_NO_ERROR; }
   bool fail() const { return !ok(); }
 
-  int errorNumber() const { return _errorNumber; }
   bool is(int errorNumber) const { return _errorNumber == errorNumber; }
   bool isNot(int errorNumber) const { return !is(errorNumber); }
 
@@ -109,193 +113,74 @@ class Result final {
     return *this;
   }
 
-  // the default implementation is const, but sub-classes might
-  // really do more work to compute.
-
-  std::string errorMessage() const& { return _errorMessage; }
-  std::string errorMessage() && { return std::move(_errorMessage); }
-
  protected:
   int _errorNumber;
   std::string _errorMessage;
+
 };
 
-//a more complex result
-class AnyResult {
-    struct AnyBase {
-      virtual ~AnyBase() = default;
-      virtual const std::type_info& type() const noexcept = 0;
-      virtual AnyBase* clone() const = 0;
-    };
-
-    template <typename T>
-    struct Any : public AnyBase {
-      T _value;
-      Any(const T& value) : _value(value){}
-      Any(const T&& value) : _value(std::move(value)){}
-      Any& operator=(const Any&) = delete;
-
-      virtual const std::type_info& type() const noexcept {
-        return typeid(T);
-      }
-
-      virtual Any* clone() const {
-        return new Any(_value);
-      }
-    };
-
-    template <typename T>
-    friend T* result_cast(AnyResult* res) noexcept;
-
-    std::unique_ptr<AnyBase> _value;
-    int _errorNumber;
-    std::string _errorMessage;
-
- public:
-    // constructors
-    AnyResult(int number = TRI_ERROR_NO_ERROR) noexcept
-      : _value(nullptr)
-      , _errorNumber(number)
-      {}
-
-    AnyResult(AnyResult const& other, int number = TRI_ERROR_NO_ERROR, std::string message = "")
-      : _value(other._value ? other._value->clone() : nullptr)
-      , _errorNumber(number)
-      , _errorMessage(message)
-      {}
-
-
-    template <typename T>
-    AnyResult(T const& value) : _value(new Any<typename std::remove_cv<typename std::decay<T>::type
-                                                                      >::type
-                                              >(value)
-                                      ){}
-
-    template <typename T>
-    AnyResult(T&& value
-             ,typename std::enable_if<(!
-                                       std::is_same<AnyResult&,T>::value ||
-                                       std::is_const<T>::value
-                                     )>::type = 0
-             ) : _value(new Any<typename std::decay<T>::type>(std::move(value))) {}
-
-    AnyResult(AnyResult&& other) noexcept : _value(std::move(other._value)){
-      other._value.reset();
-    }
-
-    // assignment
-    AnyResult& operator=(AnyResult& other) noexcept {
-      AnyResult(std::move(other));
-      return *this;
-    }
-
-    AnyResult& operator=(AnyResult&& other){
-      AnyResult(std::move(other));
-      return *this;
-    }
-
-    // other functions
-    bool empty() const noexcept { return !_value; }
-    void clear() noexcept { _value.reset(nullptr); } //clear the stored value
-    std::type_info const& type() const noexcept {
-      return _value ? _value->type()
-                    : typeid(void);
-    }
-
-    bool ok()   const { return _errorNumber == TRI_ERROR_NO_ERROR; }
-    bool fail() const { return !ok(); }
-
-    int errorNumber() const { return _errorNumber; }
-    bool is(int errorNumber) const { return _errorNumber == errorNumber; }
-    bool isNot(int errorNumber) const { return !is(errorNumber); }
-
-    std::string errorMessage() const& { return _errorMessage; }
-    std::string errorMessage() && { return std::move(_errorMessage); }
-
-    AnyResult& reset(int errorNumber = TRI_ERROR_NO_ERROR) {
-      _errorNumber = errorNumber;
-
-      if (errorNumber != TRI_ERROR_NO_ERROR) {
-        _errorMessage = TRI_errno_string(errorNumber);
-      } else {
-        _errorMessage.clear();
-      }
-      return *this;
-    }
-
-    AnyResult& reset(int errorNumber, std::string const& errorMessage) {
-      _errorNumber = errorNumber;
-      _errorMessage = errorMessage;
-      return *this;
-    }
-
-    AnyResult& reset(int errorNumber, std::string&& errorMessage) noexcept {
-      _errorNumber = errorNumber;
-      _errorMessage = std::move(errorMessage);
-      return *this;
-    }
-
-    AnyResult& reset(AnyResult const& other) {
-      _errorNumber = other._errorNumber;
-      _errorMessage = other._errorMessage;
-      return *this;
-    }
-
-    AnyResult& reset(AnyResult&& other) noexcept {
-      _errorNumber = other._errorNumber;
-      _errorMessage = std::move(other._errorMessage);
-      return *this;
-    }
-};
-
-
-// free functions
-struct bad_result_cast : std::exception {
-  virtual const char* what() const noexcept {
-    return "bad_result_cast: failed conversion using result_cast";
-  }
-};
 
 template <typename T>
-T* result_cast(AnyResult* res) noexcept {
-  return res && res->type() ==  typeid(T)
-         ? &static_cast<AnyResult::Any<typename std::remove_cv<T>::type>*
-                       > (res->_value)->value
-         : nullptr;
-}
+struct TypedResult {
+  //exception to the rule not _ here for mememers to allow easier access
+  using ValueType = T;
+  ValueType value;
+private:
+  bool _valid = false;
+  Result _result;
 
-template<typename T>
-T const * result_cast(AnyResult const * res) noexcept {
-  return result_cast<T>(const_cast<AnyResult*>(res));
-}
+public:
+  TypedResult() = default;
+  TypedResult(ValueType value, int error, std::string message)
+    : _result(error, std::move(message))
+    , value(std::move(value))
+    , _valid(true)
+    { }
 
-template<typename T>
-T result_cast(AnyResult& res) {
-  using refremoved = typename ::std::remove_reference<T>::type;
+  int errorNumber() const { return _result.errorMessage(); }
+  std::string errorMessage() const& { return _result.errorMessage(); }
+  std::string errorMessage() && { return std::move(std::move(_result).errorMessage()); }
 
-  refremoved* rv = result_cast<refremoved>(&res);
+  bool ok()   const { return _result.ok(); }
+  bool fail() const { return !ok(); }
 
-  if(!rv){
-    // we could add type id etc here
-    throw (bad_result_cast());
+  bool is(int errorNumber) const { return _result.errorNumber() == errorNumber; }
+  bool isNot(int errorNumber) const { return !is(errorNumber); }
+
+  template <typename ...Args>
+  TypedResult& reset(Args&&... args) {
+    _result.reset(std::forward<Args>(args)...);
+    return *this;
   }
 
-  // avoid temporary obj - *rv must not be temporary!!!!
-  using restoredType =
-    typename std::conditional<std::is_reference<T>::value
-                             ,T
-                             ,typename std::add_lvalue_reference<T>::type
-                             >::type;
+  // should we mark that the result has been taken similar
+  // to the value?
+  Result getResult() &  { return _result; }
+  Result getResult() && { return std::move(_result); }
+  Result takeResult(){ return std::move(_result); }
 
-  return static_cast<restoredType>(*rv);
+  // check if we have valid result value;
+  bool vaild(){ return _valid; }
+  bool vaild(bool val){ _valid = val; return _valid; }
+
+  T getValue() &  {
+    //TRI_ASSERT(_valid);
+    return value;
+  }
+
+  T getValue() && {
+    //TRI_ASSERT(_valid);
+    this->valid(false);
+    return std::move(value);
+  }
+
+  T takeValue() && {
+    //TRI_ASSERT(_valid);
+    this->valid(false);
+    return std::move(value);
+  }
+
+};
+
 }
-
-template <typename T>
-T result_cast(AnyResult const& res){
-  return result_cast<const typename std::remove_reference<T>::type &
-                    >(const_cast<AnyResult&>(res));
-}
-}
-
-
 #endif
