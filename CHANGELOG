@@ -1,7 +1,9 @@
-v3.2.11 (2018-XX-XX)
+v3.2.11 (2018-01-17)
 --------------------
 
-* UI: fixed a query editor caching and parsing issue
+* UI: fixed a query editor caching and parsing issue for arrays and objects
+
+* Fixed internal issue #1684: Web UI: saving arrays/objects as bind parameters faulty 
 
 * Fixed internal issue #1683: fixes an UI issue where a collection name gets wrongly cached
   within the documents overview of a collection.
@@ -15,10 +17,14 @@ v3.2.11 (2018-XX-XX)
 
 * UI: optimized error messages for invalid query bind parameter
 
+* fixed missing transaction events in RocksDB asynchronous replication
+
 * fixed issue #4255: AQL SORT consuming too much memory
 
 * fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' 
   at 98,7: ArangoError 4: Expecting type String 
+
+* fixed issue #3818: Foxx configuration keys cannot contain spaces (will not save)
 
 * UI: displayed wrong "waitForSync" property for a collection when 
   using RocksDB as storage engine
