@@ -1,6 +1,7 @@
 v3.3.3 (XXXX-XX-XX)
 -------------------
------
+
+* UI: fixed a query editor caching and parsing issue
 
 * Fixed an issue with the index estimates in RocksDB in the case a transaction is aborted.
   Former the index estimates were modified if the transaction commited or not.
