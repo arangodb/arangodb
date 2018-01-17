@@ -1,6 +1,15 @@
 devel
 -----
 
+* fixed issue #4308: Crash when getter for error.name throws an error (on Windows)
+
+* UI: fixed an issue where a collection name gets wrongly cached within the
+  documents overview of a collection.
+
+* UI: fixed a query editor caching and parsing issue
+
+* issue #4222: Permission error preventing AQL query import / export on webui
+
 * Fixed an issue with the index estimates in RocksDB in the case a transaction is aborted.
   Former the index estimates were modified if the transaction commited or not.
   Now they will only be modified if the transaction commited successfully.
