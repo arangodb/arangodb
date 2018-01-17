@@ -1,6 +1,8 @@
 v3.3.3 (XXXX-XX-XX)
 -------------------
 
+* UI: fixed an login issue with ldap authentication enabled
+
 * UI: fixed a query editor caching and parsing issue
 
 * Fixed internal issue #1683: fixes an UI issue where a collection name gets wrongly cached
