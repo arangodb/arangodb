@@ -180,6 +180,17 @@ int IResearchLink::drop() {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
   }
 
+  // if the collection is in the process of being removed then drop it from the view
+  if (_collection->deleted()) {
+    auto result = view->updateLogicalProperties(emptyObjectSlice(), true, false); // revalidate all links
+
+    if (!result.ok()) {
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to force view link revalidation while unloading dropped IResearch link '" << _id << "' for IResearch view '" << view->id() << "'";
+
+      return result.errorNumber();
+    }
+  }
+
   // FIXME TODO remove link via update properties on view
   return view->drop(_collection->cid());
 }
@@ -510,18 +521,11 @@ int IResearchLink::unload() {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
   }
 
+  // this code is used by the MMFilesEngine
   // if the collection is in the process of being removed then drop it from the view
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
   if (col->deleted()) {
-    auto result = view->updateLogicalProperties(emptyObjectSlice(), true, false); // revalidate all links
-
-    if (!result.ok()) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to force view link revalidation while unloading dropped IResearch link '" << _id << "' for IResearch view '" << view->id() << "'";
-
-      return result.errorNumber();
-    }
-
-    auto res = view->drop(col->cid());
+    auto res = drop();
 
     if (TRI_ERROR_NO_ERROR != res) {
       LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to drop collection from view while unloading dropped IResearch link '" << _id << "' for IResearch view '" << view->id() << "'";
