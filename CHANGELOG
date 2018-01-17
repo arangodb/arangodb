@@ -2,6 +2,9 @@ v3.3.3 (XXXX-XX-XX)
 -------------------
 -----
 
+* Fixed internal issue #1683: fixes an UI issue where a collection name gets wrongly cached
+  within the documents overview of a collection.
+
 * Fixed an issue with the index estimates in RocksDB in the case a transaction is aborted.
   Former the index estimates were modified if the transaction commited or not.
   Now they will only be modified if the transaction commited successfully.
