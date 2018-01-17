@@ -28,6 +28,7 @@
 #define VELOCYPACK_BUILDER_H
 
 #include <vector>
+#include <string>
 #include <cstring>
 #include <cstdint>
 #include <algorithm>

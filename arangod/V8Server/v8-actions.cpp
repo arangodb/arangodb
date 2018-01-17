@@ -1608,9 +1608,7 @@ static void JS_DebugClearFailAt(
   TRI_V8_TRY_CATCH_END
 }
 
-void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                          std::string const& startupPath,
-                          std::string const& modules) {
+void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   // debugging functions
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_DEBUG_CLEAR_FAILAT"),

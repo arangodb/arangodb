@@ -3,6 +3,36 @@ devel
 
 * fix internal issue #1439: improve performance of any-iterator for RocksDB
 
+* fixed issue #4308: Crash when getter for error.name throws an error (on Windows)
+
+* UI: fixed an issue where a collection name gets wrongly cached within the
+  documents overview of a collection.
+
+* UI: fixed a query editor caching and parsing issue
+
+* issue #4222: Permission error preventing AQL query import / export on webui
+
+* Fixed an issue with the index estimates in RocksDB in the case a transaction is aborted.
+  Former the index estimates were modified if the transaction commited or not.
+  Now they will only be modified if the transaction commited successfully.
+
+* UI: optimized login view for very small screen sizes
+
+* UI: optimized error messages for invalid query bind parameter
+
+* Truncate in RocksDB will now do intermediate commits every 10.000 documents
+  if truncate fails or the server crashes during this operation all deletes
+  that have been commited so far are persisted.
+
+* make the default value of `--rocksdb.block-cache-shard-bits` use the RocksDB
+  default value. This will mostly mean the default number block cache shard
+  bits is lower than before, allowing each shard to store more data and cause
+  less evictions from block cache
+
+* Updated Swagger UI to version 3.9.0
+
+* issue #1190: added option `--create-database` for arangoimport
+
 * issue #3504: added option `--force-same-database` for arangorestore
 
   with this option set to true, it is possible to make any arangorestore attempt

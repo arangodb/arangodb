@@ -342,6 +342,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
       case TRI_DF_MARKER_VPACK_CREATE_INDEX:
       case TRI_DF_MARKER_VPACK_CREATE_VIEW:
       case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
+      case TRI_DF_MARKER_VPACK_RENAME_VIEW:
       case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
       case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
       case TRI_DF_MARKER_VPACK_DROP_INDEX:
@@ -362,9 +363,9 @@ struct MMFilesWalAccessContext : WalAccessContext {
       }
 
       default: {
-        TRI_ASSERT(false);
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got invalid marker of type "
                                                 << static_cast<int>(type);
+        TRI_ASSERT(false);
         return TRI_ERROR_INTERNAL;
       }
     }
