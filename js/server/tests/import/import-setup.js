@@ -52,6 +52,10 @@
   db._drop("UnitTestsImportIgnore");
   db._drop("UnitTestsImportUniqueConstraints");
   db._drop("UnitTestsImportRemoveAttribute");
+  db._drop("UnitTestsImportRemoveAttribute");
+  try {
+    db._dropDatabase("UnitTestImportCreateDatabase");
+  } catch(err) {}
 
   db._create("UnitTestsImportJson1");
   db._create("UnitTestsImportJson2");
