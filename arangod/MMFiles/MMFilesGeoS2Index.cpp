@@ -369,15 +369,15 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
   params.ascending = opts.ascending;
   geo::Index::parseCondition(node, reference, params);
   
-  // FIXME: Optimize away
-  if (!params.sorted) {
-    TRI_ASSERT(params.filterType != geo::FilterType::NONE);
+  // FIXME: <Optimize away>
+  params.sorted = true;
+  if (params.filterType != geo::FilterType::NONE) {
     TRI_ASSERT(params.filterShape.type() != geo::ShapeContainer::Type::EMPTY);
-    params.sorted = true;
     params.origin = params.filterShape.centroid();
   }
+  // </Optimize away>
+  
   TRI_ASSERT(!opts.sorted || params.origin.isValid());
-
   // params.cover.worstIndexedLevel < _coverParams.worstIndexedLevel
   // is not necessary, > would be missing entries.
   params.cover.worstIndexedLevel = _coverParams.worstIndexedLevel;
