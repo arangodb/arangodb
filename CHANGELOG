@@ -58,6 +58,13 @@ v3.3.3 (XXXX-XX-XX)
 
 * fixed incorrect persistence of RAFT vote and term
 
+
+v3.3.2.3 (2018-01-18)
+---------------------
+
+* UI: fixed a login issue with ldap authentication enabled
+
+
 v3.3.2 (2018-01-04)
 -------------------
 
