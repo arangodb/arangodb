@@ -360,14 +360,17 @@ function containsGeoTestSuite() {
         expected: [
           { "lat": -11, "lng": 25 },
           { "lat": -10, "lng": 24 },
-          //{ "lat": -10, "lng": 25 },
           { "lat": -10, "lng": 26 },
           { "lat": -9, "lng": 25 }
         ]
       });
     },
 
-    testContainsAnnulus1: function () {
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple annulus on sphere (a donut)
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsAnnulus2: function () {
       runQuery({
         string: `FOR x IN @@cc 
                    FILTER GEO_DISTANCE([25, -10], [x.lng, x.lat]) <= 150000 
@@ -378,10 +381,37 @@ function containsGeoTestSuite() {
         },
         expected: [
           { "lat": -11, "lng": 25 },
-          //{ "lat": -10, "lng": 24 },
-          //{ "lat": -10, "lng": 25 },
-          //{ "lat": -10, "lng": 26 },
           { "lat": -9, "lng": 25 }
+        ]
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple annulus on sphere (a donut)
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsPolygon: function () {
+      const polygon = {
+        "type": "Polygon", 
+        "coordinates": [[ [-11.5, 23.5], [-6, 26], [-10.5, 26.1], [-11.5, 23.5] ]]
+      };
+
+      runQuery({
+        string: `FOR x IN @@cc 
+                   FILTER GEO_CONTAINS(@poly, [x.lng, x.lat]) 
+                   SORT x.lat, x.lng RETURN x`,
+        bindVars: {
+          "@cc": locations.name(),
+          "poly": polygon
+        },
+        expected: [
+          { "lat": -11, "lng": 24 },
+          { "lat": -10, "lng": 25 },
+          { "lat": -10, "lng": 26 },
+          { "lat": -8, "lng": 26 },
+          { "lat": -9, "lng": 25 },
+          { "lat": -9, "lng": 26 },
+          { "lat": -7, "lng": 26 }
         ]
       });
     },

@@ -4497,17 +4497,8 @@ static bool isValueOrReference(AstNode const* node) {
   return node->type == NODE_TYPE_VALUE || node->type == NODE_TYPE_REFERENCE;
 }
 
-static bool isValueTypeString(AstNode const* node) {
-  return (node->type == NODE_TYPE_VALUE && node->value.type == VALUE_TYPE_STRING);
-}
-
 static bool isValueTypeCollection(AstNode const* node) {
-  return node->type == NODE_TYPE_COLLECTION || isValueTypeString(node);
-}
-
-static bool isValueTypeNumber(AstNode const* node) {
-  return (node->type == NODE_TYPE_VALUE && (node->value.type == VALUE_TYPE_INT ||
-                                            node->value.type == VALUE_TYPE_DOUBLE));
+  return node->type == NODE_TYPE_COLLECTION || node->isStringValue();
 }
 
 static bool applyFulltextOptimization(EnumerateListNode* elnode,
@@ -4547,9 +4538,9 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   AstNode* attrArg = fargs->getMember(1);
   AstNode* queryArg = fargs->getMember(2);
   AstNode* limitArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
-  if (!isValueTypeCollection(collArg) || !isValueTypeString(attrArg) ||
-      !isValueTypeString(queryArg) || // (...  || queryArg->type == NODE_TYPE_REFERENCE)
-      (limitArg != nullptr && !isValueTypeNumber(limitArg))) {
+  if (!isValueTypeCollection(collArg) || !attrArg->isStringValue() ||
+      !queryArg->isStringValue() || // (...  || queryArg->type == NODE_TYPE_REFERENCE)
+      (limitArg != nullptr && !limitArg->isNumericValue())) {
     return false;
   }
   
@@ -4845,7 +4836,7 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
     return true; // if geoindex field is null everything is valid
   } else if (lhs->type != rhs->type) {
     return false;
-  } else if (lhs->type == NODE_TYPE_ARRAY) { // expect `[doc.lng, doc.lat]`
+  } else if (lhs->isArray()) { // expect `[doc.lng, doc.lat]`
     if (lhs->numMembers() >= 2 && rhs->numMembers() >= 2) {
       return isValidGeoArg(lhs->getMemberUnchecked(0), rhs->getMemberUnchecked(0)) &&
       isValidGeoArg(lhs->getMemberUnchecked(1), rhs->getMemberUnchecked(1));
@@ -4925,8 +4916,8 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
   AstNode const* latArg = fargs->getMemberUnchecked(1);
   AstNode const* lngArg = fargs->getMemberUnchecked(2);
   AstNode const* rangeArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
-  if (!isValueTypeCollection(collArg) || !isValueTypeNumber(latArg) ||
-      !isValueTypeNumber(lngArg)) {
+  if (!isValueTypeCollection(collArg) || !latArg->isNumericValue() ||
+      !lngArg->isNumericValue()) {
     return false;
   }
   
@@ -4950,7 +4941,7 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
     info.ascending = true; // always ascending
     info.distanceCenterLat = latArg;
     info.distanceCenterLng = lngArg;
-    if (rangeArg != nullptr && isValueTypeNumber(rangeArg)) {
+    if (rangeArg != nullptr && rangeArg->isNumericValue()) {
       if (func->name == "NEAR") {
         info.actualLimit = rangeArg->getIntValue();
       } else if (func->name == "WITHIN") {
@@ -5161,8 +5152,22 @@ void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
 // contains all parameters required by the MMFilesGeoIndex
 static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
                                                     GeoIndexInfo const& info) {
-  TRI_ASSERT(info.index);
   Ast* ast = plan->getAst();
+  // shared code to add symbolic `doc.geometry` or `[doc.lng, doc.lat]`
+  auto addLocationArg = [ast, &info] (AstNode* args) {
+    if (info.locationVar) {
+      args->addMember(info.locationVar);
+    } else if (info.latitudeVar && info.longitudeVar) {
+      AstNode* array = ast->createNodeArray(2);
+      array->addMember(info.longitudeVar); // GeoJSON ordering
+      array->addMember(info.latitudeVar);
+      args->addMember(array);
+    } else {TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+  };
+  
+  TRI_ASSERT(info.index);
   auto cond = std::make_unique<Condition>(ast);
   bool hasCenter = info.distanceCenterLat || info.distanceCenter;
   bool hasDistLimit = info.maxDistance || info.minDistance;
@@ -5183,16 +5188,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
       args->addMember(info.distanceCenter);  // center location
     }
     
-    if (info.locationVar) {
-      TRI_ASSERT(info.locationVar);
-      args->addMember(info.locationVar);
-    } else {
-      TRI_ASSERT(info.latitudeVar && info.longitudeVar);
-      AstNode* array = ast->createNodeArray(2);
-      array->addMember(info.longitudeVar); // GeoJSON ordering
-      array->addMember(info.latitudeVar);
-      args->addMember(array);
-    }
+    addLocationArg(args);
     AstNode* func = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("GEO_DISTANCE"), args);
 
     // maxDistance is only null if NEAR or WITHIN
@@ -5218,10 +5214,11 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
   if (info.filterMode != geo::FilterType::NONE) {
     // create GEO_CONTAINS / GEO_INTERSECTS
     TRI_ASSERT(info.filterMask);
-    TRI_ASSERT(info.locationVar);
+    TRI_ASSERT(info.locationVar || info.longitudeVar && info.latitudeVar);
+    
     AstNode* args = ast->createNodeArray(2);
     args->addMember(info.filterMask);
-    args->addMember(info.locationVar);
+    addLocationArg(args);
     if (info.filterMode == geo::FilterType::CONTAINS) {
       cond->andCombine(ast->createNodeFunctionCall("GEO_CONTAINS", args));
     } else if (info.filterMode == geo::FilterType::INTERSECTS) {

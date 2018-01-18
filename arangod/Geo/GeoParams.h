@@ -89,7 +89,7 @@ struct QueryParams {
         cover(queryMaxCoverCells, queryWorstLevel, queryBestLevel) {}
 
   /// This query only needs to support points no polygons etc
-  bool onlyPoints = false;
+  //bool onlyPoints = false;
 
   // ============== Near Query Params =============
 

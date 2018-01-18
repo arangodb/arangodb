@@ -28,8 +28,6 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Geo/AqlUtils.h"
-#include "Geo/GeoJsonParser.h"
 #include "Geo/GeoUtils.h"
 #include "Geo/Near.h"
 #include "Indexes/IndexIterator.h"
@@ -84,7 +82,7 @@ class NearIterator final : public IndexIterator {
     return nextToken(
         [this, &cb](LocalDocumentId const& token) -> bool {
           if (!_collection->readDocument(_trx, token, *_mmdr)) {
-            return false;
+            return false; // skip
           }
           VPackSlice doc(_mmdr->vpack());
           geo::FilterType const ft = _near.filterType();
@@ -92,13 +90,13 @@ class NearIterator final : public IndexIterator {
             geo::ShapeContainer const& filter = _near.filterShape();
             TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
             geo::ShapeContainer test;
-            Result res = geo::GeoJsonParser::parseGeoJson(doc, test);
+            Result res = _index->shape(doc, test);
             TRI_ASSERT(res.ok());  // this should never fail here
             if (res.fail() ||
                 (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
                 (ft == geo::FilterType::INTERSECTS &&
                  !filter.intersects(&test))) {
-              return false;
+              return false; // skip
             }
           }
           cb(token, doc);  // return result
@@ -118,8 +116,7 @@ class NearIterator final : public IndexIterator {
               return false;
             }
             geo::ShapeContainer test;
-            Result res = geo::GeoJsonParser::parseGeoJson(
-                VPackSlice(_mmdr->vpack()), test);
+            Result res = _index->shape(VPackSlice(_mmdr->vpack()), test);
             TRI_ASSERT(res.ok());  // this should never fail here
             if (res.fail() ||
                 (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
@@ -205,43 +202,12 @@ class NearIterator final : public IndexIterator {
 MMFilesGeoS2Index::MMFilesGeoS2Index(TRI_idx_iid_t iid,
                                      LogicalCollection* collection,
                                      VPackSlice const& info)
-    : MMFilesIndex(iid, collection, info), _variant(IndexVariant::NONE) {
+: MMFilesIndex(iid, collection, info), geo::Index(info) {
   TRI_ASSERT(iid != 0);
   _unique = false;
   _sparse = true;
-
-  _coverParams.fromVelocyPack(info);
-  if (_fields.size() == 1) {
-    bool geoJson =
-        basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
-    // geojson means [<longitude>, <latitude>] or
-    // json object {type:"<name>, coordinates:[]}.
-    _variant = geoJson ? IndexVariant::COMBINED_GEOJSON
-                       : IndexVariant::COMBINED_LAT_LON;
-
-    auto& loc = _fields[0];
-    _location.reserve(loc.size());
-    for (auto const& it : loc) {
-      _location.emplace_back(it.name);
-    }
-  } else if (_fields.size() == 2) {
-    _variant = IndexVariant::INDIVIDUAL_LAT_LON;
-    auto& lat = _fields[0];
-    _latitude.reserve(lat.size());
-    for (auto const& it : lat) {
-      _latitude.emplace_back(it.name);
-    }
-    auto& lon = _fields[1];
-    _longitude.reserve(lon.size());
-    for (auto const& it : lon) {
-      _longitude.emplace_back(it.name);
-    }
-  } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "RocksDBGeoS2Index can only be created with one or two fields.");
-  }
-  TRI_ASSERT(_variant != IndexVariant::NONE);
+  geo::Index::initalize(info, _fields); // initalize mixin fields
+  TRI_ASSERT(_variant != geo::Index::Variant::NONE);
 }
 
 size_t MMFilesGeoS2Index::memory() const { return _tree.bytes_used(); }
@@ -249,14 +215,14 @@ size_t MMFilesGeoS2Index::memory() const { return _tree.bytes_used(); }
 /// @brief return a JSON representation of the index
 void MMFilesGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                      bool forPersistence) const {
-  TRI_ASSERT(_variant != IndexVariant::NONE);
+  TRI_ASSERT(_variant != geo::Index::Variant::NONE);
   builder.openObject();
   // Basic index
   // RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   MMFilesIndex::toVelocyPack(builder, withFigures, forPersistence);
   _coverParams.toVelocyPack(builder);
   builder.add("geoJson",
-              VPackValue(_variant == IndexVariant::COMBINED_GEOJSON));
+              VPackValue(_variant == geo::Index::Variant::COMBINED_GEOJSON));
   // geo indexes are always non-unique
   // geo indexes are always sparse.
   builder.add("unique", VPackValue(false));
@@ -266,7 +232,7 @@ void MMFilesGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
 
 /// @brief Test if this index matches the definition
 bool MMFilesGeoS2Index::matchesDefinition(VPackSlice const& info) const {
-  TRI_ASSERT(_variant != IndexVariant::NONE);
+  TRI_ASSERT(_variant != geo::Index::Variant::NONE);
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice typeSlice = info.get("type");
@@ -308,7 +274,7 @@ bool MMFilesGeoS2Index::matchesDefinition(VPackSlice const& info) const {
   if (n == 1) {
     bool geoJson1 =
         basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
-    bool geoJson2 = _variant == IndexVariant::COMBINED_GEOJSON;
+    bool geoJson2 = _variant == geo::Index::Variant::COMBINED_GEOJSON;
     if (geoJson1 != geoJson2) {
       return false;
     }
@@ -332,40 +298,13 @@ bool MMFilesGeoS2Index::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result MMFilesGeoS2Index::parse(VPackSlice const& doc,
-                                std::vector<S2CellId>& cells,
-                                geo::Coordinate& centroid) const {
-  if (_variant == IndexVariant::COMBINED_GEOJSON) {
-    VPackSlice loc = doc.get(_location);
-    if (loc.isArray()) {
-      return geo::GeoUtils::indexCellsLatLng(loc, true, cells, centroid);
-    }
-    S2RegionCoverer coverer;
-    _coverParams.configureS2RegionCoverer(&coverer);
-    return geo::GeoUtils::indexCellsGeoJson(&coverer, loc, cells, centroid);
-  } else if (_variant == IndexVariant::COMBINED_LAT_LON) {
-    VPackSlice loc = doc.get(_location);
-    return geo::GeoUtils::indexCellsLatLng(loc, false, cells, centroid);
-  } else if (_variant == IndexVariant::INDIVIDUAL_LAT_LON) {
-    VPackSlice lon = doc.get(_longitude);
-    VPackSlice lat = doc.get(_latitude);
-    if (!lon.isNumber() || !lat.isNumber()) {
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-    centroid.latitude = lat.getNumericValue<double>();
-    centroid.longitude = lon.getNumericValue<double>();
-    return geo::GeoUtils::indexCells(centroid, cells);
-  }
-  return TRI_ERROR_INTERNAL;
-}
-
 Result MMFilesGeoS2Index::insert(transaction::Methods*,
                                  LocalDocumentId const& documentId,
                                  VPackSlice const& doc, OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
   geo::Coordinate centroid(-1.0, -1.0);
-  Result res = parse(doc, cells, centroid);
+  Result res = geo::Index::indexCells(doc, cells, centroid);
   if (res.fail()) {
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
@@ -392,7 +331,7 @@ Result MMFilesGeoS2Index::remove(transaction::Methods*,
   std::vector<S2CellId> cells;
   geo::Coordinate centroid(-1, -1);
 
-  Result res = parse(doc, cells, centroid);
+  Result res = geo::Index::indexCells(doc, cells, centroid);
   if (res.fail()) {
     TRI_ASSERT(false);  // this should never fail here
     // Invalid, no insert. Index is sparse
@@ -404,7 +343,13 @@ Result MMFilesGeoS2Index::remove(transaction::Methods*,
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
-    _tree.erase(cell);
+    auto it = _tree.lower_bound(cell);
+    while (it != _tree.end() && it->first == cell) {
+      if (it->second.documentId == documentId) {
+        _tree.erase(it);
+      }
+      it++;
+    }
   }
   return IndexResult();
 }
@@ -420,10 +365,9 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
   TRI_ASSERT(node != nullptr);
 
   geo::QueryParams params;
-  params.sorted = true; // opts.sorted;
+  params.sorted = opts.sorted;
   params.ascending = opts.ascending;
-  geo::AqlUtils::parseCondition(node, reference, params);
-  TRI_ASSERT(!opts.sorted || params.origin != geo::Coordinate::Invalid());
+  geo::Index::parseCondition(node, reference, params);
   
   // FIXME: Optimize away
   if (!params.sorted) {
@@ -432,6 +376,7 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
     params.sorted = true;
     params.origin = params.filterShape.centroid();
   }
+  TRI_ASSERT(!opts.sorted || params.origin.isValid());
 
   // params.cover.worstIndexedLevel < _coverParams.worstIndexedLevel
   // is not necessary, > would be missing entries.

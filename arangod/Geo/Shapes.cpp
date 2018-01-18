@@ -135,6 +135,12 @@ void ShapeContainer::reset(S2Region* ptr, Type tt) {
   _data = ptr;
 }
 
+void ShapeContainer::resetCoordinates(double lat, double lon) {
+  delete _data;
+  _type = ShapeContainer::Type::S2_POINT;
+  _data = new S2PointRegion(S2LatLng::FromDegrees(lat, lon).ToPoint());
+}
+
 bool ShapeContainer::isAreaEmpty() const {
   switch (_type) {
     case ShapeContainer::Type::S2_POLYLINE:

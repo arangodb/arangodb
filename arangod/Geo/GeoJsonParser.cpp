@@ -59,6 +59,16 @@ static const std::string GEOJSON_TYPE_GEOMETRY_COLLECTION =
 // This field must also be present.  The value depends on the type.
 static const std::string FIELD_COORDINATES = "coordinates";
 
+
+static inline bool cmpICase(char a, char b) {
+  return std::toupper(a) == std::toupper(b);
+}
+
+static bool icompare(std::string const& s1, std::string const& s2) {
+       return s1.size() == s2.size() &&
+              std::equal(s1.begin(), s1.end(), s2.begin(), cmpICase);
+}
+
 /// @brief parse GeoJSON Type
 GeoJsonParser::GeoJSONType GeoJsonParser::parseGeoJSONType(
     VPackSlice const& geoJSON) {
@@ -67,31 +77,29 @@ GeoJsonParser::GeoJSONType GeoJsonParser::parseGeoJSONType(
   }
 
   VPackSlice type = geoJSON.get("type");
-  VPackSlice coordinates = geoJSON.get("coordinates");
+  //VPackSlice coordinates = geoJSON.get("coordinates");
 
   if (!type.isString()) {
     return GeoJSONType::UNKNOWN;
-  }
-
-  if (!coordinates.isArray()) {
+  } /*else if (!coordinates.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Invalid GeoJSON coordinates format.");
-  }
-
-  const std::string& typeString = type.copyString();
-  if (GEOJSON_TYPE_POINT == typeString) {
+  }*/
+  
+  std::string typeStr = type.copyString();
+  if (icompare(typeStr, GEOJSON_TYPE_POINT)) {
     return GeoJSONType::POINT;
-  } else if (GEOJSON_TYPE_LINESTRING == typeString) {
+  } else if (icompare(typeStr, GEOJSON_TYPE_LINESTRING) ) {
     return GeoJSONType::LINESTRING;
-  } else if (GEOJSON_TYPE_POLYGON == typeString) {
+  } else if (icompare(typeStr, GEOJSON_TYPE_POLYGON)) {
     return GeoJSONType::POLYGON;
-  } else if (GEOJSON_TYPE_MULTI_POINT == typeString) {
+  } else if (icompare(typeStr, GEOJSON_TYPE_MULTI_POINT)) {
     return GeoJSONType::MULTI_POINT;
-  } else if (GEOJSON_TYPE_MULTI_LINESTRING == typeString) {
+  } else if (icompare(typeStr, GEOJSON_TYPE_MULTI_LINESTRING)) {
     return GeoJSONType::MULTI_LINESTRING;
-  } else if (GEOJSON_TYPE_MULTI_POLYGON == typeString) {
+  } else if (icompare(typeStr, GEOJSON_TYPE_MULTI_POLYGON)) {
     return GeoJSONType::MULTI_POLYGON;
-  } else if (GEOJSON_TYPE_GEOMETRY_COLLECTION == typeString) {
+  } else if (icompare(typeStr, GEOJSON_TYPE_GEOMETRY_COLLECTION)) {
     return GeoJSONType::GEOMETRY_COLLECTION;
   }
   return GeoJSONType::UNKNOWN;
@@ -201,8 +209,7 @@ static Result MakeLoop(VPackSlice const& geoJSON, S2Loop& loop) {
 static Result isClosedLoop(std::vector<S2Point> const& vertices) {
   if (vertices.empty()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Empty loop");
-  }
-  if (vertices.front() != vertices.back()) {
+  } else if (vertices.front() != vertices.back()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Loop not closed");
   }
   return TRI_ERROR_NO_ERROR;
@@ -322,12 +329,13 @@ Result GeoJsonParser::parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) {
     if (res.fail()) {
       return res;
     }
-    res = isClosedLoop(vertices);
+    res = isClosedLoop(vertices); // check last vertices are same
     if (res.fail()) {
       return res;
     }
 
     removeAdjacentDuplicates(vertices);  // s2loop doesn't like duplicates
+    vertices.resize(vertices.size() - 1); // remove redundant last vertex
     loops.push_back(std::make_unique<S2Loop>(vertices));
     if (!loops.back()->IsValid()) {  // will check first and last for us
       return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon");
@@ -409,8 +417,8 @@ Result GeoJsonParser::parseMultiLinestring(VPackSlice const& geoJSON,
 /// @brief Parse a polygon for IS_IN_POLYGON
 /// @param loop an array of arrays with 2 elements each,
 /// representing the points of the polygon in the format [lat, lon]
-Result GeoJsonParser::parseLegacyAQLPolygon(VPackSlice const& coords,
-                                            S2Loop& loop) {
+Result GeoJsonParser::parseLoop(VPackSlice const& coords,
+                                S2Loop& loop) {
   if (!coords.isArray()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "coordinates missing");
   }
@@ -420,15 +428,16 @@ Result GeoJsonParser::parseLegacyAQLPolygon(VPackSlice const& coords,
   if (res.fail()) {
     return res;
   }
-  res = isClosedLoop(vertices);
+  res = isClosedLoop(vertices); // check last vertices are same
   if (res.fail()) {
     return res;
   }
 
   removeAdjacentDuplicates(vertices);  // s2loop doesn't like duplicates
+  vertices.resize(vertices.size() - 1); // remove redundant last vertex
   loop.Init(vertices);
   if (!loop.IsValid()) {  // will check first and last for us
-    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon");
+    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid GeoJson loop");
   }
   loop.Normalize();
 

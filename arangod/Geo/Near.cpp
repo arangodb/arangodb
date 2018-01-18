@@ -43,8 +43,9 @@ NearUtils<CMP>::NearUtils(QueryParams&& qp)
     : _params(std::move(qp)),
       _origin(S2LatLng::FromDegrees(qp.origin.latitude,
                                     qp.origin.longitude).ToPoint()),
-      _minBound(qp.minDistanceRad()),
-      _maxBound(qp.maxDistanceRad()) {
+      _minBound(_params.minDistanceRad()),
+      _maxBound(_params.maxDistanceRad()) {
+  TRI_ASSERT(_params.origin.isValid());
   qp.cover.configureS2RegionCoverer(&_coverer);
   reset();
   TRI_ASSERT(_params.sorted);
@@ -65,6 +66,7 @@ NearUtils<CMP>::NearUtils(QueryParams&& qp)
 
 template <typename CMP>
 void NearUtils<CMP>::reset() {
+
   if (!_seen.empty() || !_buffer.empty()) {
     _seen.clear();
     while (!_buffer.empty()) {

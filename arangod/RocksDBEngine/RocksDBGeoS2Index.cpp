@@ -28,9 +28,6 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Geo/AqlUtils.h"
-#include "Geo/GeoJsonParser.h"
-#include "Geo/GeoUtils.h"
 #include "Geo/Near.h"
 #include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
@@ -39,7 +36,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
-#include <geometry/s2regioncoverer.h>
 #include <rocksdb/db.h>
 
 using namespace arangodb;
@@ -102,7 +98,7 @@ class RDBNearIterator final : public IndexIterator {
             geo::ShapeContainer const& filter = _near.filterShape();
             TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
             geo::ShapeContainer test;
-            Result res = geo::GeoJsonParser::parseGeoJson(doc, test);
+            Result res = _index->shape(doc, test);
             TRI_ASSERT(res.ok());  // this should never fail here
             if (res.fail() ||
                 (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
@@ -128,8 +124,7 @@ class RDBNearIterator final : public IndexIterator {
               return false;
             }
             geo::ShapeContainer test;
-            Result res = geo::GeoJsonParser::parseGeoJson(
-                VPackSlice(_mmdr->vpack()), test);
+            Result res = _index->shape(VPackSlice(_mmdr->vpack()), test);
             TRI_ASSERT(res.ok());  // this should never fail here
             if (res.fail() ||
                 (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
@@ -230,54 +225,23 @@ RocksDBGeoS2Index::RocksDBGeoS2Index(TRI_idx_iid_t iid,
                                      LogicalCollection* collection,
                                      VPackSlice const& info)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
-      _variant(IndexVariant::NONE) {
+      geo::Index(info) {
   TRI_ASSERT(iid != 0);
   _unique = false;
   _sparse = true;
-
-  _coverParams.fromVelocyPack(info);
-  if (_fields.size() == 1) {
-    bool geoJson =
-        basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
-    // geojson means [<longitude>, <latitude>] or
-    // json object {type:"<name>, coordinates:[]}.
-    _variant = geoJson ? IndexVariant::COMBINED_GEOJSON
-                       : IndexVariant::COMBINED_LAT_LON;
-
-    auto& loc = _fields[0];
-    _location.reserve(loc.size());
-    for (auto const& it : loc) {
-      _location.emplace_back(it.name);
-    }
-  } else if (_fields.size() == 2) {
-    _variant = IndexVariant::INDIVIDUAL_LAT_LON;
-    auto& lat = _fields[0];
-    _latitude.reserve(lat.size());
-    for (auto const& it : lat) {
-      _latitude.emplace_back(it.name);
-    }
-    auto& lon = _fields[1];
-    _longitude.reserve(lon.size());
-    for (auto const& it : lon) {
-      _longitude.emplace_back(it.name);
-    }
-  } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "RocksDBGeoS2Index can only be created with one or two fields.");
-  }
-  TRI_ASSERT(_variant != IndexVariant::NONE);
+  geo::Index::initalize(info, _fields); // initalize mixin fields
+  TRI_ASSERT(_variant != geo::Index::Variant::NONE);
 }
 
 /// @brief return a JSON representation of the index
 void RocksDBGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                      bool forPersistence) const {
-  TRI_ASSERT(_variant != IndexVariant::NONE);
+  TRI_ASSERT(_variant != geo::Index::Variant::NONE);
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   _coverParams.toVelocyPack(builder);
   builder.add("geoJson",
-              VPackValue(_variant == IndexVariant::COMBINED_GEOJSON));
+              VPackValue(_variant == geo::Index::Variant::COMBINED_GEOJSON));
   // geo indexes are always non-unique
   // geo indexes are always sparse.
   builder.add("unique", VPackValue(false));
@@ -287,7 +251,7 @@ void RocksDBGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
 
 /// @brief Test if this index matches the definition
 bool RocksDBGeoS2Index::matchesDefinition(VPackSlice const& info) const {
-  TRI_ASSERT(_variant != IndexVariant::NONE);
+  TRI_ASSERT(_variant != geo::Index::Variant::NONE);
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice typeSlice = info.get("type");
@@ -329,7 +293,7 @@ bool RocksDBGeoS2Index::matchesDefinition(VPackSlice const& info) const {
   if (n == 1) {
     bool geoJson1 =
         basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
-    bool geoJson2 = _variant == IndexVariant::COMBINED_GEOJSON;
+    bool geoJson2 = _variant == geo::Index::Variant::COMBINED_GEOJSON;
     if (geoJson1 != geoJson2) {
       return false;
     }
@@ -365,10 +329,9 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
   TRI_ASSERT(node != nullptr);
 
   geo::QueryParams params;
-  params.sorted = true; // opts.sorted;
+  params.sorted = opts.sorted;
   params.ascending = opts.ascending;
-  geo::AqlUtils::parseCondition(node, reference, params);
-  TRI_ASSERT(!opts.sorted || params.origin != geo::Coordinate::Invalid());
+  geo::Index::parseCondition(node, reference, params);
 
   // FIXME: Optimize away
   if (!params.sorted) {
@@ -377,6 +340,7 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
     params.sorted = true;
     params.origin = params.filterShape.centroid();
   }
+  TRI_ASSERT(!opts.sorted || params.origin.isValid());
   
   // params.cover.worstIndexedLevel < _coverParams.worstIndexedLevel
   // is not necessary, > would be missing entries.
@@ -394,33 +358,6 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
   }
 }
 
-Result RocksDBGeoS2Index::parse(VPackSlice const& doc,
-                                std::vector<S2CellId>& cells,
-                                geo::Coordinate& centroid) const {
-  if (_variant == IndexVariant::COMBINED_GEOJSON) {
-    VPackSlice loc = doc.get(_location);
-    if (loc.isArray()) {
-      return geo::GeoUtils::indexCellsLatLng(loc, true, cells, centroid);
-    }
-    S2RegionCoverer coverer;
-    _coverParams.configureS2RegionCoverer(&coverer);
-    return geo::GeoUtils::indexCellsGeoJson(&coverer, loc, cells, centroid);
-  } else if (_variant == IndexVariant::COMBINED_LAT_LON) {
-    VPackSlice loc = doc.get(_location);
-    return geo::GeoUtils::indexCellsLatLng(loc, false, cells, centroid);
-  } else if (_variant == IndexVariant::INDIVIDUAL_LAT_LON) {
-    VPackSlice lon = doc.get(_longitude);
-    VPackSlice lat = doc.get(_latitude);
-    if (!lon.isNumber() || !lat.isNumber()) {
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-    centroid.latitude = lat.getNumericValue<double>();
-    centroid.longitude = lon.getNumericValue<double>();
-    return geo::GeoUtils::indexCells(centroid, cells);
-  }
-  return TRI_ERROR_INTERNAL;
-}
-
 /// internal insert function, set batch or trx before calling
 Result RocksDBGeoS2Index::insertInternal(transaction::Methods* trx,
                                          RocksDBMethods* mthd,
@@ -430,7 +367,7 @@ Result RocksDBGeoS2Index::insertInternal(transaction::Methods* trx,
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
   geo::Coordinate centroid(-1.0, -1.0);
-  Result res = parse(doc, cells, centroid);
+  Result res = geo::Index::indexCells(doc, cells, centroid);
   if (res.fail()) {
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
@@ -463,8 +400,7 @@ Result RocksDBGeoS2Index::removeInternal(transaction::Methods* trx,
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
   geo::Coordinate centroid(-1, -1);
-
-  Result res = parse(doc, cells, centroid);
+  Result res = geo::Index::indexCells(doc, cells, centroid);
   if (res.fail()) {
     TRI_ASSERT(false);  // this should never fail here
     // Invalid, no insert. Index is sparse

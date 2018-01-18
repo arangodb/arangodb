@@ -28,7 +28,8 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Geo/AqlUtils.h"
+#include "Geo/GeoParams.h"
+#include "Geo/Index.h"
 #include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/TransactionState.h"
@@ -197,8 +198,8 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
   geo::QueryParams params;
   params.sorted = true;
   params.ascending = true;
-  geo::AqlUtils::parseCondition(node, reference, params);
-  TRI_ASSERT(params.origin != geo::Coordinate::Invalid());
+  geo::Index::parseCondition(node, reference, params);
+  TRI_ASSERT(params.origin.isValid());
   TRI_ASSERT(params.minDistance == 0);
   TRI_ASSERT(params.filterType == geo::FilterType::NONE);
   

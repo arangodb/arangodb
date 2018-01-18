@@ -285,8 +285,8 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/RestStatus.cpp
   GeneralServer/VstCommTask.cpp
-  Geo/AqlUtils.cpp
   Geo/GeoUtils.cpp
+  Geo/Index.cpp
   Geo/GeoJsonParser.cpp
   Geo/GeoParams.cpp
   Geo/Near.cpp

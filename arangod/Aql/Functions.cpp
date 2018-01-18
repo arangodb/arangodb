@@ -2411,9 +2411,7 @@ AqlValue Functions::GeoDistance(arangodb::aql::Query* query,
   AqlValue loc1 = ExtractFunctionParameterValue(parameters, 0);
   AqlValue loc2 = ExtractFunctionParameterValue(parameters, 1);
   
-  
-  Result res(TRI_ERROR_BAD_PARAMETER,
-             "Second arg requires coordinate pair or GeoJSON");
+  Result res(TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON");
   AqlValueMaterializer materializer(trx);
   geo::ShapeContainer shape1, shape2;
   if (loc1.isArray() && loc1.length() >= 2) {
@@ -2426,6 +2424,7 @@ AqlValue Functions::GeoDistance(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintNull());
   }
   
+  res.reset(TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON");
   if (loc2.isArray() && loc2.length() >= 2) {
     res = shape2.parseCoordinates(materializer.slice(loc2, true), /*geoJson*/true);
   } else if (loc1.isObject()) {
@@ -2556,7 +2555,7 @@ AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
   }
   
   S2Loop loop;
-  Result res = geo::GeoJsonParser::parseLegacyAQLPolygon(coords.slice(), loop);
+  Result res = geo::GeoJsonParser::parseLoop(coords.slice(), loop);
   if (res.fail() || !loop.IsValid()) {
     RegisterWarning(query, "IS_IN_POLYGON", res);
     return AqlValue(AqlValueHintNull());

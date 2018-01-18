@@ -74,11 +74,6 @@ class GeoUtils {
   static Result indexCells(geo::Coordinate const& c,
                            std::vector<S2CellId>& cells);
 
-  /// parse geoJson (has to be an area) and generate list of intervals to scan
-  /*static Result scanIntervals(S2RegionCoverer* coverer,
-                              velocypack::Slice const& data,
-                              std::vector<Interval>& sortedIntervals);*/
-
   /// generate intervalls of list of intervals to scan
   static void scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
                             std::vector<geo::Interval>& sortedIntervals);

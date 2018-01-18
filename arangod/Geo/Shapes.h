@@ -49,7 +49,7 @@ struct Coordinate {
       : latitude(c.latitude), longitude(c.longitude) {}
 
   static Coordinate fromLatLng(S2LatLng const&);
-  static inline Coordinate Invalid() { return Coordinate(-1, -1); }
+  static inline Coordinate Invalid() { return Coordinate(91, 181); }
 
  public:
   Coordinate& operator=(Coordinate const& other) {
@@ -66,6 +66,10 @@ struct Coordinate {
     return latitude != other.latitude || longitude != other.longitude;
   }
 
+  bool isValid() const {
+    return std::abs(latitude) <= 90.0 && std::abs(longitude) <= 180.0;
+  }
+  
   std::string toString() const {
     return "(lat: " + std::to_string(latitude) + ", lon: " +
            std::to_string(longitude) + ")";
@@ -106,6 +110,7 @@ class ShapeContainer final {
 
   void reset(std::unique_ptr<S2Region>&& ptr, Type tt);
   void reset(S2Region* ptr, Type tt);
+  void resetCoordinates(double lat, double lon);
 
   Type type() const { return _type; }
   bool isAreaType() const {
