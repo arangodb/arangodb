@@ -62,6 +62,13 @@ class StaticStrings {
   static std::string const SilentString;
   static std::string const WaitForSyncString;
   static std::string const IsSynchronousReplicationString;
+
+  // replication headers
+  static std::string const ReplicationHeaderCheckMore;
+  static std::string const ReplicationHeaderLastIncluded;
+  static std::string const ReplicationHeaderLastTick;
+  static std::string const ReplicationHeaderFromPresent;
+  static std::string const ReplicationHeaderActive;
  
   // database and collection names 
   static std::string const SystemDatabase;
