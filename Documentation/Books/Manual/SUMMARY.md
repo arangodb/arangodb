@@ -280,7 +280,6 @@
     * [Task Management](Appendix/JavaScriptModules/Tasks.md)
   * [Deprecated](Appendix/Deprecated/README.md)
       * [Simple Queries](Appendix/Deprecated/SimpleQueries/README.md)
-        * [Sequential Access](Appendix/Deprecated/SimpleQueries/Access.md)
         * [Pagination](Appendix/Deprecated/SimpleQueries/Pagination.md)
         * [Modification Queries](Appendix/Deprecated/SimpleQueries/ModificationQueries.md)
         * [Geo Queries](Appendix/Deprecated/SimpleQueries/GeoQueries.md)

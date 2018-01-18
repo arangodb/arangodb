@@ -56,5 +56,5 @@ should be used in a query.
 
 Other ArangoDB geographic features are described in: 
 - [AQL Geo functions](../../../AQL/Functions/Geo.html)
-- [Geo indexes](../../Indexing/Geo.md)  
+- [Geo indexes](../../../Indexing/Geo.md)
 
