@@ -99,6 +99,10 @@ the wildcard database access setting for this user kicks in. In case no wildcard
 access was defined the default is *No Access*. This will also
 clear the access levels for all the collections in this database.
 
+Note that for technical reasons this currently only works in single
+server mode. For clusters, use `grantDatabase` and an explicit
+setting for now.
+
 Grant Collection
 ----------------
 
@@ -116,7 +120,11 @@ Revoke Collection
 
 This clears the access level setting to the collection *collection* for the
 user *user*. The system will either fallback to the wildcard collection access
-level or default to *No Access*
+level or default to *No Access*.
+
+Note that for technical reasons this currently only works in single
+server mode. For clusters, use `grantCollection` and an explicit
+setting for now.
 
 Replace
 -------

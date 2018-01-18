@@ -147,6 +147,10 @@ consequence the default database access level is used. If there is no defined
 default database access level, it defaults to *No access*. You need permission
 to the *_system* database in order to execute this REST call.
 
+Note that for technical reasons this currently only works in single
+server mode. For clusters, use the PUT verb and an explicit
+setting for now.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{202}
@@ -267,6 +271,10 @@ database *dbname* of user *user*.  As consequence the default collection
 access level is used. If there is no defined default collection access level,
 it defaults to *No access*.  You need permissions to the *_system* database in
 order to execute this REST call.
+
+Note that for technical reasons this currently only works in single
+server mode. For clusters, use the PUT verb and an explicit
+setting for now.
 
 @RESTRETURNCODES
 
