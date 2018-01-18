@@ -39,7 +39,7 @@ var assertQueryError = helper.assertQueryError;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlGeoTestSuite() {
+function legacyGeoTestSuite() {
   var locations = null;
   var locationsNon = null;
 
@@ -257,14 +257,15 @@ function ahuacatlGeoTestSuite() {
   };
 }
 
-function containsGeoTestSuite() {
+function pointsTestSuite() {
 
+  // Test queries with index usage and without
   function runQuery(query) {
     var result1 = getQueryResults(query.string, query.bindVars || {}, false);
-    //var result2 = getQueryResults(query.string, query.bindVars || {}, false, 
-    //                              { optimizer: { rules: [ "-all"] } });
+    var result2 = getQueryResults(query.string, query.bindVars || {}, false, 
+                                  { optimizer: { rules: [ "-all"] } });
     assertEqual(query.expected, result1, query.string);
-    //assertEqual(query.expected, result2, query.string);
+    assertEqual(query.expected, result2, query.string);
   }
 
   let locations;
@@ -302,7 +303,7 @@ function containsGeoTestSuite() {
 
     testContainsCircle1: function () {
       runQuery({
-        string: "FOR x IN @@cc FILTER GEO_DISTANCE([25, -10], [x.lng, x.lat]) <= 10000 RETURN x",
+        string: "FOR x IN @@cc FILTER DISTANCE(-10, 25, x.lat, x.lng) <= 10000 RETURN x",
         bindVars: {
           "@cc": locations.name(),
         },
@@ -316,7 +317,7 @@ function containsGeoTestSuite() {
 
     testContainsCircle2: function () {
       runQuery({
-        string: "FOR x IN @@cc FILTER GEO_DISTANCE([25, -10], [x.lng, x.lat]) <= 150000 SORT x.lat, x.lng RETURN x",
+        string: "FOR x IN @@cc FILTER DISTANCE(-10, 25, x.lat, x.lng) <= 150000 SORT x.lat, x.lng RETURN x",
         bindVars: {
           "@cc": locations.name(),
         },
@@ -336,6 +337,54 @@ function containsGeoTestSuite() {
 
     testContainsCircle3: function () {
       runQuery({
+        string: "FOR x IN @@cc FILTER DISTANCE(-90, -90, x.lat, x.lng) <= 10000 SORT x.lat, x.lng RETURN x",
+        bindVars: {
+          "@cc": locations.name(),
+        },
+        expected: []
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple circle on sphere
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsCircle4: function () {
+      runQuery({
+        string: "FOR x IN @@cc FILTER GEO_DISTANCE([25, -10], [x.lng, x.lat]) <= 10000 RETURN x",
+        bindVars: {
+          "@cc": locations.name(),
+        },
+        expected: [{ "lat": -10, "lng": 25 }]
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple circle on sphere
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsCircle5: function () {
+      runQuery({
+        string: "FOR x IN @@cc FILTER GEO_DISTANCE([25, -10], [x.lng, x.lat]) <= 150000 SORT x.lat, x.lng RETURN x",
+        bindVars: {
+          "@cc": locations.name(),
+        },
+        expected: [
+          { "lat": -11, "lng": 25 },
+          { "lat": -10, "lng": 24 },
+          { "lat": -10, "lng": 25 },
+          { "lat": -10, "lng": 26 },
+          { "lat": -9, "lng": 25 }
+        ]
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple circle on sphere
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsCircle6: function () {
+      runQuery({
         string: "FOR x IN @@cc FILTER GEO_DISTANCE([-90, -90], [x.lng, x.lat]) <= 10000 SORT x.lat, x.lng RETURN x",
         bindVars: {
           "@cc": locations.name(),
@@ -349,6 +398,48 @@ function containsGeoTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testContainsAnnulus1: function () {
+      runQuery({
+        string: `FOR x IN @@cc 
+                   FILTER DISTANCE(-10, 25, x.lat, x.lng) <= 150000 
+                   FILTER DISTANCE(-10, 25, x.lat, x.lng) > 108500 
+                   SORT x.lat, x.lng RETURN x`,
+        bindVars: {
+          "@cc": locations.name(),
+        },
+        expected: [
+          { "lat": -11, "lng": 25 },
+          { "lat": -10, "lng": 24 },
+          { "lat": -10, "lng": 26 },
+          { "lat": -9, "lng": 25 }
+        ]
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple annulus on sphere (a donut)
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsAnnulus2: function () {
+      runQuery({
+        string: `FOR x IN @@cc 
+                   FILTER DISTANCE(-10, 25, x.lat, x.lng) <= 150000 
+                   FILTER DISTANCE(-10, 25, x.lat, x.lng) > 109545 
+                   SORT x.lat, x.lng RETURN x`,
+        bindVars: {
+          "@cc": locations.name(),
+        },
+        expected: [
+          { "lat": -11, "lng": 25 },
+          { "lat": -9, "lng": 25 }
+        ]
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple annulus on sphere (a donut)
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsAnnulus3: function () {
       runQuery({
         string: `FOR x IN @@cc 
                    FILTER GEO_DISTANCE([25, -10], [x.lng, x.lat]) <= 150000 
@@ -370,7 +461,7 @@ function containsGeoTestSuite() {
     /// @brief test simple annulus on sphere (a donut)
     ////////////////////////////////////////////////////////////////////////////////
 
-    testContainsAnnulus2: function () {
+    testContainsAnnulus4: function () {
       runQuery({
         string: `FOR x IN @@cc 
                    FILTER GEO_DISTANCE([25, -10], [x.lng, x.lat]) <= 150000 
@@ -416,6 +507,36 @@ function containsGeoTestSuite() {
       });
     },
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple annulus on sphere (a donut)
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsPolygon: function () {
+      const polygon = {
+        "type": "Polygon", 
+        "coordinates": [[ [-11.5, 23.5], [-6, 26], [-10.5, 26.1], [-11.5, 23.5] ]]
+      };
+
+      runQuery({
+        string: `FOR x IN @@cc 
+                   FILTER GEO_INTERSECTS(@poly, [x.lng, x.lat]) 
+                   SORT x.lat, x.lng RETURN x`,
+        bindVars: {
+          "@cc": locations.name(),
+          "poly": polygon
+        },
+        expected: [
+          { "lat": 24, "lng": -11 },
+          { "lat": 25, "lng": -10 },
+          { "lat": 25, "lng": -9 },
+          { "lat": 26, "lng": -10 },
+          { "lat": 26, "lng": -9 },
+          { "lat": 26, "lng": -8 },
+          { "lat": 26, "lng": -7 }
+        ]
+      });
+    },
+
   };
 }
 
@@ -423,8 +544,8 @@ function containsGeoTestSuite() {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(ahuacatlGeoTestSuite);
-jsunity.run(containsGeoTestSuite);
+jsunity.run(legacyGeoTestSuite);
+jsunity.run(pointsTestSuite);
 
 return jsunity.done();
 

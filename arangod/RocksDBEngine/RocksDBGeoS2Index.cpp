@@ -339,7 +339,7 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
     TRI_ASSERT(params.filterShape.type() != geo::ShapeContainer::Type::EMPTY);
     params.origin = params.filterShape.centroid();
   }
-  // </Optimize away>
+  //        </Optimize away>
   
   TRI_ASSERT(!opts.sorted || params.origin.isValid());
   // params.cover.worstIndexedLevel < _coverParams.worstIndexedLevel

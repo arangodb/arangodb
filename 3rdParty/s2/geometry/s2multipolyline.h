@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2017-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ class S2MultiPolyline : public S2Region {
   
   int num_lines() const { return lines_.size(); }
   S2Polyline const& line(int k) const {
-    assert(k >= 0);
+    assert(k >= 0 && k < lines_.size());
     //DCHECK_LT(k, lines_.size());
     return lines_[k];
   }

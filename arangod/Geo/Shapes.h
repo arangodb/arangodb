@@ -80,8 +80,9 @@ struct Coordinate {
   double longitude;  // in degrees
 };
 
-/// Thin wrapper around S2Region combined with
-/// a type and helper methods for all special cases
+/// Thin wrapper around S2Region objects combined with
+/// a type and helper methods to do intersect and contains
+/// checks between all supported region types
 class ShapeContainer final {
   ShapeContainer(ShapeContainer const&) = delete;
 

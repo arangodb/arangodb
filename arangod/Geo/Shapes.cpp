@@ -25,11 +25,14 @@
 #include "Basics/voc-errors.h"
 #include "Geo/GeoJsonParser.h"
 #include "Geo/GeoParams.h"
+#include "Logger/Logger.h"
 
 #include <geometry/s2.h>
 #include <geometry/s2cap.h>
 #include <geometry/s2cell.h>
 #include <geometry/s2latlngrect.h>
+#include <geometry/s2multipointregion.h>
+#include <geometry/s2multipolyline.h>
 #include <geometry/s2pointregion.h>
 #include <geometry/s2polygon.h>
 #include <geometry/s2region.h>
@@ -417,6 +420,7 @@ bool ShapeContainer::contains(S2Polygon const* poly) const {
       break;
   }
 }
+
 bool ShapeContainer::contains(ShapeContainer const* cc) const {
   switch (cc->_type) {
     case ShapeContainer::Type::S2_POINT: {
@@ -435,14 +439,33 @@ bool ShapeContainer::contains(ShapeContainer const* cc) const {
     case ShapeContainer::Type::S2_POLYGON: {
       return contains(static_cast<S2Polygon const*>(cc->_data));
     }
-
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-      break;
+      
+    case ShapeContainer::Type::S2_MULTIPOINT: {
+      auto pts = static_cast<S2MultiPointRegion const*>(cc->_data);
+      for (int k = 0; k < pts->num_points(); k++) {
+        if (_data->VirtualContainsPoint(pts->point(k))) {
+          return true;
+        }
+      }
+      return false;
+    }
+      
+    case ShapeContainer::Type::S2_MULTIPOLYLINE: {
+      auto lines = static_cast<S2MultiPolyline const*>(cc->_data);
+      for (int k = 0; k < lines->num_lines(); k++) {
+        if (this->contains(&(lines->line(k)))) {
+          return true;
+        }
+      }
+      return false;
+    }
+      
+    case ShapeContainer::Type::EMPTY:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid container");
   }
 }
 
-bool ShapeContainer::intersects(Coordinate const* cc) const {
+bool ShapeContainer::intersects(geo::Coordinate const* cc) const {
   return contains(cc);  // same
 }
 
@@ -481,6 +504,7 @@ bool ShapeContainer::intersects(S2Polyline const* otherLine) const {
       break;
   }
 }
+
 bool ShapeContainer::intersects(S2Polygon const* otherPoly) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT: {
@@ -506,6 +530,7 @@ bool ShapeContainer::intersects(S2Polygon const* otherPoly) const {
     }
 
     case ShapeContainer::Type::S2_POLYLINE: {
+      LOG_TOPIC(INFO, Logger::FIXME) << "intersection with polyline is not well defined";
       return false;  // numerically not well defined
     }
 
@@ -519,10 +544,12 @@ bool ShapeContainer::intersects(S2Polygon const* otherPoly) const {
       break;
   }
 }
+
 bool ShapeContainer::intersects(ShapeContainer const* cc) const {
   switch (cc->_type) {
     case ShapeContainer::Type::S2_POINT: {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      S2Point const& p = static_cast<S2PointRegion*>(cc->_data)->point();
+      return _data->VirtualContainsPoint(p); // same
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -539,8 +566,28 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
       return intersects(static_cast<S2Polygon const*>(cc->_data));
     }
 
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    case ShapeContainer::Type::S2_MULTIPOINT: {
+      auto pts = static_cast<S2MultiPointRegion const*>(cc->_data);
+      for (int k = 0; k < pts->num_points(); k++) {
+        if (_data->VirtualContainsPoint(pts->point(k))) {
+          return true;
+        }
+      }
+      return false;
+    }
+      
+    case ShapeContainer::Type::S2_MULTIPOLYLINE: {
+      auto lines = static_cast<S2MultiPolyline const*>(cc->_data);
+      for (int k = 0; k < lines->num_lines(); k++) {
+        if (this->intersects(&(lines->line(k)))) {
+          return true;
+        }
+      }
+      return false;
+    }
+      
+    case ShapeContainer::Type::EMPTY:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid container");
       break;
   }
 }
