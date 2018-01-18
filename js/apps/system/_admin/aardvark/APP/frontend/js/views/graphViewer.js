@@ -1714,6 +1714,48 @@
               success: function (data) {
                 self.graphConfig = data.toJSON().graphs[combinedName];
                 continueFunction();
+              },
+              error: function (data) {
+                self.graphConfig = {};
+                continueFunction();
+              }
+            });
+          } else {
+            continueFunction();
+          }
+        },
+        error: function () {
+          var combinedName = frontendConfig.db + '_' + self.name;
+          self.graphConfig = {};
+
+          // init settings view
+          if (self.graphSettingsView) {
+            self.graphSettingsView.remove();
+          }
+          self.graphSettingsView = new window.GraphSettingsView({
+            name: self.name,
+            userConfig: self.userConfig,
+            saveCallback: self.render
+          });
+
+          var continueFunction = function () {
+            self.graphSettingsView.render();
+
+            if (callback) {
+              callback(self.graphConfig);
+            }
+          };
+
+          if (self.graphConfig === undefined) {
+            self.graphSettingsView.setDefaults(true, true);
+            self.userConfig.fetch({
+              success: function (data) {
+                self.graphConfig = data.toJSON().graphs[combinedName];
+                continueFunction();
+              },
+              error: function (data) {
+                self.graphConfig = {};
+                continueFunction();
               }
             });
           } else {

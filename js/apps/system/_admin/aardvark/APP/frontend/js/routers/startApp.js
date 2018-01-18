@@ -7,7 +7,7 @@
   if (!window.hasOwnProperty('TEST_BUILD')) {
     $(document).ajaxSend(function (event, jqxhr, settings) {
       var currentJwt = window.arangoHelper.getCurrentJwt();
-      if (currentJwt && !settings.url.match(/permissions/)) {
+      if (currentJwt) {
         jqxhr.setRequestHeader('Authorization', 'bearer ' + currentJwt);
       }
     });
