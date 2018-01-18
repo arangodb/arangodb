@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 #include <type_traits>
 #include <iostream>
+#include <cstdint>
 
 namespace arangodb {
 
@@ -123,7 +124,7 @@ class Result {
 
 template <typename T>
 struct TypedResult {
-  //exception to the rule not _ here for mememers to allow easier access
+  //exception to the rule: "value instead of _value" to allow easier access to members
   using ValueType = T;
   ValueType value;
 private:
@@ -133,8 +134,9 @@ private:
 public:
   TypedResult() = default;
 
-  template <bool x = std::is_lvalue_reference<T>::value
-                     || ( !std::is_lvalue_reference<T>::value && !std::is_move_constructible<T>::value)
+  template <bool x = std::is_lvalue_reference<T>::value ||
+                     ( !std::is_move_constructible<T>::value &&
+                       !std::is_move_assignable<T>::value )
            ,typename std::enable_if<x>::type* = nullptr
            >
   TypedResult(ValueType value
@@ -145,7 +147,7 @@ public:
     , _valid(true)
     ,_result(error, std::move(message))
     {
-      std::cerr << "copy";
+      std::cerr << "copy" << std::endl;
     } 
 
   template <int x = !std::is_lvalue_reference<T>::value
@@ -160,9 +162,25 @@ public:
     , _valid(true)
     ,_result(error, std::move(message))
     {
-      std::cerr << "move";
+      std::cerr << "move" << std::endl;
     }
-  
+
+  template <std::uint32_t x = !std::is_lvalue_reference<T>::value &&
+                              !std::is_move_constructible<T>::value &&
+                               std::is_move_assignable<T>::value
+           ,typename std::enable_if<x>::type* = nullptr
+           >
+  TypedResult(ValueType&& value
+             ,int error = TRI_ERROR_NO_ERROR
+             ,std::string message = ""
+             )
+    : _valid(true)
+    ,_result(error, std::move(message))
+    {
+      value = std::move(value);
+      std::cerr << "move assign" << std::endl;
+    }
+
   int errorNumber() const { return _result.errorMessage(); }
   std::string errorMessage() const& { return _result.errorMessage(); }
   std::string errorMessage() && { return std::move(std::move(_result).errorMessage()); }
@@ -198,11 +216,33 @@ public:
     return std::move(value);
   }
 
-  T takeValue() && {
+  T takeValue() {
     this->valid(false);
     return std::move(value);
   }
 };
+
+//inline void foo() {
+//  int  integer = 43;
+//  int& integer_lvalue_ref = integer;
+//  int const&  integer_lvalue_cref = integer;
+//  TypedResult<int>  int_result(integer);
+//  TypedResult<int&> lvalue_ref_int_result(integer_lvalue_ref);
+//  TypedResult<int const&> lvalue_cref_int_result(integer_lvalue_cref);
+//  TypedResult<int>  rvalue_int_result(std::move(integer_lvalue_ref));
+//
+//  std::string str = "arangodb rocks";
+//  TypedResult<std::string> string_result{str};
+//  TypedResult<std::string> string_move_result{std::move(str)};
+//
+//  struct no_move {
+//    int member = 4;
+//    no_move() = default;
+//    no_move(no_move&&) = delete;
+//    no_move& operator=(no_move&&) = default;
+//  };
+//  TypedResult<no_move>  d(no_move{});
+//}
 
 }
 #endif
