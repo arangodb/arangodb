@@ -34,6 +34,9 @@
 
     checkLockedCollections: function () {
       var callbackF = function (error, lockedCollections) {
+        if (error) {
+          console.log(error);
+        }
         var self = this;
         this.collection.each(function (model) {
           model.set('locked', false);
