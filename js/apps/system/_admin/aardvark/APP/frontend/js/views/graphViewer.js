@@ -656,9 +656,9 @@
       };
 
       if (self.graphConfig === undefined || self.graphConfig === null) {
-        self.userConfig.fetch({
-          success: function (data) {
-            var combinedName = frontendConfig.db + '_' + self.name;
+        var rfunction = function (data, error) {
+          var combinedName = frontendConfig.db + '_' + self.name;
+          if (!error) {
             try {
               self.graphConfig = data.toJSON().graphs[combinedName];
               self.getGraphSettings(continueFetchGraph);
@@ -685,6 +685,17 @@
               // continue without config
               self.getGraphSettings(continueFetchGraph);
             }
+          } else {
+            self.getGraphSettings(continueFetchGraph, error);
+          }
+        };
+
+        self.userConfig.fetch({
+          success: function (data) {
+            rfunction();
+          },
+          error: function (data) {
+            rfunction(data, true);
           }
         });
       } else {
@@ -1682,11 +1693,18 @@
       }
     },
 
-    getGraphSettings: function (callback) {
+    getGraphSettings: function (callback, error) {
       var self = this;
+      var rFunction = function (data, error) {
+        var continueFunction = function () {
+          self.graphSettingsView.render();
 
-      this.userConfig.fetch({
-        success: function (data) {
+          if (callback) {
+            callback(self.graphConfig);
+          }
+        };
+
+        if (!error) {
           var combinedName = frontendConfig.db + '_' + self.name;
           self.graphConfig = data.toJSON().graphs[combinedName];
 
@@ -1700,14 +1718,6 @@
             saveCallback: self.render
           });
 
-          var continueFunction = function () {
-            self.graphSettingsView.render();
-
-            if (callback) {
-              callback(self.graphConfig);
-            }
-          };
-
           if (self.graphConfig === undefined) {
             self.graphSettingsView.setDefaults(true, true);
             self.userConfig.fetch({
@@ -1719,6 +1729,40 @@
           } else {
             continueFunction();
           }
+        } else {
+          self.graphConfig = {
+            layout: 'force',
+            renderer: 'canvas',
+            depth: '2',
+            limit: '250',
+            nodeColor: '#2ecc71',
+            nodeColorAttribute: '',
+            nodeColorByCollection: 'true',
+            edgeColor: '#cccccc',
+            edgeColorAttribute: '',
+            edgeColorByCollection: 'false',
+            nodeLabel: '_key',
+            edgeLabel: '',
+            edgeType: 'arrow',
+            nodeSize: '',
+            nodeSizeByEdges: 'true',
+            edgeEditable: 'true',
+            nodeLabelByCollection: 'false',
+            edgeLabelByCollection: 'false',
+            nodeStart: '',
+            barnesHutOptimize: true
+          };
+          $('#settingsMenu').parent().remove();
+          callback(self.graphConfig);
+        }
+      };
+
+      this.userConfig.fetch({
+        success: function (data) {
+          rFunction(data);
+        },
+        error: function (data) {
+          rFunction(data, true);
         }
       });
     },
