@@ -96,7 +96,7 @@ Ignore any limit with count:
     ~ db.five.save({ name : "three" });
     ~ db.five.save({ name : "four" });
     ~ db.five.save({ name : "five" });
-    db.five().limit(2).count();
+    db.five.all().limit(2).count();
     ~ db._drop("five")
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock cursorCountUnLimited

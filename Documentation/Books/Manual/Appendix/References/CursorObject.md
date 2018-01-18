@@ -42,7 +42,7 @@ documents. In this case the next document can be accessed using the
     ~ db.five.save({ name : "three" });
     ~ db.five.save({ name : "four" });
     ~ db.five.save({ name : "five" });
-      let a = db._query("FOR x IN five RETURN x");
+      var a = db._query("FOR x IN five RETURN x");
       while (a.hasNext()) print(a.next());
     ~ db._drop("five")
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -124,8 +124,11 @@ lead to the same result:
     ~ db.users.save({ name: "Helmut" });
     ~ db.users.save({ name: "Angela" });
       result = db.users.all().toArray();
-      q = db.users._query("FOR x IN five RETURN x");
-      q.execute(); result = [ ]; while (q.hasNext()) { result.push(q.next()); }
+    | var q = db._query("FOR x IN users RETURN x");
+    | result = [ ];
+    | while (q.hasNext()) {
+    |   result.push(q.next());
+      }
     ~ db._drop("users")
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock executeQueryNoBatchSize
