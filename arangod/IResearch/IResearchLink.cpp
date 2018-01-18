@@ -311,6 +311,15 @@ Result IResearchLink::insert(
 }
 
 bool IResearchLink::isPersistent() const {
+  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+
+  // FIXME TODO remove once MMFilesEngine will fillIndex(...) during recovery
+  // currently the index is created but fill is deffered untill the end of recovery
+  // at the end of recovery only non-persistent indexes are filled
+  if (engine && engine->inRecovery()) {
+    return false;
+  }
+
   return true; // records persisted into the iResearch view
 }
 
