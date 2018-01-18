@@ -1072,17 +1072,6 @@
           '</tr>'
         );
         counter++;
-        _.each($('#arangoBindParamTable input'), function (element) {
-          if ($(element).attr('name') === key) {
-            if (val instanceof Array) {
-              $(element).val(JSON.stringify(val)).addClass('arraytype');
-            } else if (typeof val === 'object') {
-              $(element).val(JSON.stringify(val)).addClass(typeof val + 'type');
-            } else {
-              $(element).val(val).addClass(typeof val + 'type');
-            }
-          }
-        });
       });
       if (counter === 0) {
         $('#arangoBindParamTable tbody').append(

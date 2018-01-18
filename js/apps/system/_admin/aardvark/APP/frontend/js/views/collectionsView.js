@@ -33,57 +33,56 @@
     },
 
     checkLockedCollections: function () {
-      var callback = function (error, lockedCollections) {
-        var self = this;
+      var callbackF = function (error, lockedCollections) {
         if (error) {
-          console.log('Could not check locked collections');
-        } else {
-          this.collection.each(function (model) {
-            model.set('locked', false);
-          });
-
-          _.each(lockedCollections, function (locked) {
-            var model = self.collection.findWhere({
-              id: locked.collection
-            });
-            model.set('locked', true);
-            model.set('lockType', locked.type);
-            model.set('desc', locked.desc);
-          });
-
-          this.collection.each(function (model) {
-            if (!model.get('locked')) {
-              $('#collection_' + model.get('name')).find('.corneredBadge').removeClass('loaded unloaded');
-              $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('status'));
-              $('#collection_' + model.get('name') + ' .corneredBadge').addClass(model.get('status'));
-            }
-
-            if (model.get('locked') || model.get('status') === 'loading') {
-              $('#collection_' + model.get('name')).addClass('locked');
-              if (model.get('locked')) {
-                $('#collection_' + model.get('name')).find('.corneredBadge').removeClass('loaded unloaded');
-                $('#collection_' + model.get('name')).find('.corneredBadge').addClass('inProgress');
-                $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('desc'));
-              } else {
-                $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('status'));
-              }
-            } else {
-              $('#collection_' + model.get('name')).removeClass('locked');
-              $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('status'));
-              if ($('#collection_' + model.get('name') + ' .corneredBadge').hasClass('inProgress')) {
-                $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('status'));
-                $('#collection_' + model.get('name') + ' .corneredBadge').removeClass('inProgress');
-                $('#collection_' + model.get('name') + ' .corneredBadge').addClass('loaded');
-              }
-              if (model.get('status') === 'unloaded') {
-                $('#collection_' + model.get('name') + ' .icon_arangodb_info').addClass('disabled');
-              }
-            }
-          });
+          console.log(error);
         }
+        var self = this;
+        this.collection.each(function (model) {
+          model.set('locked', false);
+        });
+
+        _.each(lockedCollections, function (locked) {
+          var model = self.collection.findWhere({
+            id: locked.collection
+          });
+          model.set('locked', true);
+          model.set('lockType', locked.type);
+          model.set('desc', locked.desc);
+        });
+
+        this.collection.each(function (model) {
+          if (!model.get('locked')) {
+            $('#collection_' + model.get('name')).find('.corneredBadge').removeClass('loaded unloaded');
+            $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('status'));
+            $('#collection_' + model.get('name') + ' .corneredBadge').addClass(model.get('status'));
+          }
+
+          if (model.get('locked') || model.get('status') === 'loading') {
+            $('#collection_' + model.get('name')).addClass('locked');
+            if (model.get('locked')) {
+              $('#collection_' + model.get('name')).find('.corneredBadge').removeClass('loaded unloaded');
+              $('#collection_' + model.get('name')).find('.corneredBadge').addClass('inProgress');
+              $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('desc'));
+            } else {
+              $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('status'));
+            }
+          } else {
+            $('#collection_' + model.get('name')).removeClass('locked');
+            $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('status'));
+            if ($('#collection_' + model.get('name') + ' .corneredBadge').hasClass('inProgress')) {
+              $('#collection_' + model.get('name') + ' .corneredBadge').text(model.get('status'));
+              $('#collection_' + model.get('name') + ' .corneredBadge').removeClass('inProgress');
+              $('#collection_' + model.get('name') + ' .corneredBadge').addClass('loaded');
+            }
+            if (model.get('status') === 'unloaded') {
+              $('#collection_' + model.get('name') + ' .icon_arangodb_info').addClass('disabled');
+            }
+          }
+        });
       }.bind(this);
 
-      window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index', callback);
+      window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index', callbackF);
     },
 
     initialize: function () {

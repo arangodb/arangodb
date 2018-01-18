@@ -1,3 +1,9 @@
+v3.3.2.1 (2018-01-18)
+---------------------
+
+* UI: fixed a login issue with ldap authentication enabled
+
+
 v3.3.2 (2018-01-04)
 -------------------
 

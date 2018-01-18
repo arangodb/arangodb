@@ -162,13 +162,10 @@
     submitCreateDatabase: function () {
       var self = this; // userPassword,
       var dbname = $('#newDatabaseName').val();
-      var userName = $('#newUser').val();
 
       var options = {
         name: dbname,
-        users: [{
-          username: userName
-        }]
+        users: []
       };
 
       this.collection.create(options, {
@@ -339,6 +336,7 @@
         });
       });
 
+      /*
       tableContent.push(
         window.modalView.createSelectEntry(
           'newUser',
@@ -353,6 +351,8 @@
           users
         )
       );
+      */
+
       buttons.push(
         window.modalView.createSuccessButton(
           'Create',
