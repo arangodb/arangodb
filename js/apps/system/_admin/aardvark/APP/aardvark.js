@@ -276,6 +276,36 @@ authRouter.post('/job', function (req, res) {
   Create a new job id entry in a specific system database with a given id.
 `);
 
+authRouter.post('/permissions', function (req, res) {
+  const body = req.body;
+
+  Object.keys(body.dbs).forEach(function (key, db) {
+    if (db.permission === 'undefined') {
+      users.revokeDatabase(body.dbs[key].user, body.dbs[key].db);
+    } else {
+      users.grantDatabase(body.dbs[key].user, body.dbs[key].db, body.dbs[key].permission);
+    }
+  });
+
+  Object.keys(body.collections).forEach(function (key, col) {
+    if (col.permission === 'undefined') {
+      users.revokeCollection(body.collections[key].user, body.collections[key].db, body.collections[key].collection);
+    } else {
+      users.grantCollection(body.collections[key].user, body.collections[key].db, body.collections[key].collection, body.collections[key].permission);
+    }
+  });
+
+  res.json(true);
+})
+.body(joi.object({
+  dbs: joi.object().required(),
+  collections: joi.object().required()
+}).required())
+.summary('Apply user permissions.')
+.description(dd`
+  This route supplies multiple user permission changes.
+`);
+
 authRouter.delete('/job', function (req, res) {
   db._frontend.removeByExample({model: 'job'}, false);
   res.json(true);

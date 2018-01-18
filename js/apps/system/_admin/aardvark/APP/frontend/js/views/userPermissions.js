@@ -22,9 +22,15 @@
       return this;
     },
 
+    permissions: {
+      dbs: {},
+      collections: {}
+    },
+
     events: {
       'click #userPermissionView .dbCheckbox': 'setDBPermission',
       'click #userPermissionView .collCheckbox': 'setCollPermission',
+      'click #savePermissionsAndLogout': 'savePermissionsAndLogout',
       'click .db-row': 'toggleAccordion'
     },
 
@@ -34,6 +40,25 @@
       this.collection.fetch({
         success: function () {
           self.continueRender(open, error);
+        }
+      });
+    },
+
+    savePermissionsAndLogout: function () {
+      var self = this;
+
+      $.ajax({
+        type: 'POST',
+        url: arangoHelper.databaseUrl('/_admin/aardvark/permissions'),
+        contentType: 'application/json',
+        data: JSON.stringify(
+          self.permissions
+        ),
+        success: function () {
+          window.App.userCollection.logout();
+        },
+        error: function () {
+          arangoHelper.arangoError('Permissions', 'Could not update user permissions');
         }
       });
     },
@@ -97,7 +122,14 @@
       } else {
         value = 'undefined';
       }
-      this.sendCollPermission(this.currentUser.get('user'), db, collection, value);
+
+      this.permissions.collections[collection] = {
+        user: this.currentUser.get('user'),
+        db: db,
+        collection: collection,
+        permission: value
+      };
+      // this.sendCollPermission(this.currentUser.get('user'), db, collection, value);
     },
 
     setDBPermission: function (e) {
@@ -129,15 +161,24 @@
           )
         );
         buttons.push(
-          window.modalView.createSuccessButton('Ok', this.sendDBPermission.bind(this, this.currentUser.get('user'), db, value))
+          window.modalView.createSuccessButton('Ok', this.storeDBPermission.bind(this, this.currentUser.get('user'), db, value))
         );
         buttons.push(
           window.modalView.createCloseButton('Cancel', this.rollbackInputButton.bind(this, db))
         );
         window.modalView.show('modalTable.ejs', 'Change _system Database Permission', buttons, tableContent);
       } else {
-        this.sendDBPermission(this.currentUser.get('user'), db, value);
+        this.storeDBPermission(this.currentUser.get('user'), db, value);
       }
+    },
+
+    storeDBPermission: function (user, db, value) {
+      this.permissions.dbs[db] = {
+        user: this.currentUser.get('user'),
+        db: db,
+        permission: value
+      };
+      window.modalView.hide();
     },
 
     rollbackInputButton: function (name, error) {

@@ -250,6 +250,8 @@
         } else {
           message = message + $('#databaseInputName').val();
         }
+      } else {
+        message = message + $('#loginDatabase').val();
       }
       $('#goToDatabase').html(message);
     },
