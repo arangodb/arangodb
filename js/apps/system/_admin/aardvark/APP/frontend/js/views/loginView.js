@@ -70,7 +70,7 @@
             $('#loginDatabase').hide();
             $('.fa-database').hide();
             $('#loginDatabase').after(
-              '<input id="databaseInputName" class="databaseInput"" placeholder="_system" value="_system"></input>'
+              '<input id="databaseInputName" class="databaseInput login-input" placeholder="_system" value="_system"></input>'
             );
           }
 
@@ -252,6 +252,9 @@
         }
       } else {
         message = message + $('#loginDatabase').val();
+        window.setTimeout(function () {
+          $('#goToDatabase').focus();
+        }, 150);
       }
       $('#goToDatabase').html(message);
     },

@@ -301,7 +301,7 @@
       $(this.el).html(this.template.render({
         permissions: permissions
       }));
-      $('.pure-table-body').height(window.innerHeight - 200);
+      $('.pure-table-body').height(window.innerHeight - 200 - 40);
       if (open) {
         $('#' + open).click();
       }

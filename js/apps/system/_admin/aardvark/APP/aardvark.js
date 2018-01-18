@@ -92,7 +92,8 @@ router.use(authRouter);
 
 authRouter.use((req, res, next) => {
   if (internal.authenticationEnabled()) {
-    if (!req.authorized) {
+    // /_db/_system/_admin/aardvark/permissions
+    if (!req.authorized && !req.path.match(/permissions/)) {
       res.throw('unauthorized');
     }
   }
@@ -278,17 +279,24 @@ authRouter.post('/job', function (req, res) {
 
 authRouter.post('/permissions', function (req, res) {
   const body = req.body;
+  var changes = {};
 
+  // then check use default permission sets - databases
   Object.keys(body.dbs).forEach(function (key, db) {
-    if (db.permission === 'undefined') {
-      users.revokeDatabase(body.dbs[key].user, body.dbs[key].db);
+    if (body.dbs[key].permission === 'undefined') {
+      var user = internal.db._users.firstExample({user: body.dbs[key].user});
+      delete user.databases[body.dbs[key].db];
+      internal.db._users.update(user._key, user, {mergeObjects: false});
+      users.reload();
+      // users.revokeDatabase(body.dbs[key].user, body.dbs[key].db);
     } else {
       users.grantDatabase(body.dbs[key].user, body.dbs[key].db, body.dbs[key].permission);
     }
   });
 
+  // then check use default permission sets - collections
   Object.keys(body.collections).forEach(function (key, col) {
-    if (col.permission === 'undefined') {
+    if (body.collections[key].permission === 'undefined') {
       users.revokeCollection(body.collections[key].user, body.collections[key].db, body.collections[key].collection);
     } else {
       users.grantCollection(body.collections[key].user, body.collections[key].db, body.collections[key].collection, body.collections[key].permission);
