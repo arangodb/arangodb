@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include <type_traits>
+#include <iostream>
 
 namespace arangodb {
 
@@ -131,12 +132,37 @@ private:
 
 public:
   TypedResult() = default;
-  TypedResult(ValueType value, int error, std::string message)
-    : _result(error, std::move(message))
-    , value(std::move(value))
-    , _valid(true)
-    { }
 
+  template <bool x = std::is_lvalue_reference<T>::value
+                     || ( !std::is_lvalue_reference<T>::value && !std::is_move_constructible<T>::value)
+           ,typename std::enable_if<x>::type* = nullptr
+           >
+  TypedResult(ValueType value
+             ,int error = TRI_ERROR_NO_ERROR
+             ,std::string message = ""
+             )
+    : value(value)
+    , _valid(true)
+    ,_result(error, std::move(message))
+    {
+      std::cerr << "copy";
+    } 
+
+  template <int x = !std::is_lvalue_reference<T>::value
+                    && std::is_move_constructible<T>::value
+           ,typename std::enable_if<x>::type* = nullptr
+           >
+  TypedResult(ValueType value
+             ,int error = TRI_ERROR_NO_ERROR
+             ,std::string message = ""
+             )
+    : value(std::move(value))
+    , _valid(true)
+    ,_result(error, std::move(message))
+    {
+      std::cerr << "move";
+    }
+  
   int errorNumber() const { return _result.errorMessage(); }
   std::string errorMessage() const& { return _result.errorMessage(); }
   std::string errorMessage() && { return std::move(std::move(_result).errorMessage()); }
@@ -155,7 +181,7 @@ public:
 
   // should we mark that the result has been taken similar
   // to the value?
-  Result getResult() &  { return _result; }
+  Result getResult() const &  { return _result; }
   Result getResult() && { return std::move(_result); }
   Result takeResult(){ return std::move(_result); }
 
@@ -163,23 +189,19 @@ public:
   bool vaild(){ return _valid; }
   bool vaild(bool val){ _valid = val; return _valid; }
 
-  T getValue() &  {
-    //TRI_ASSERT(_valid);
+  T getValue() const &  {
     return value;
   }
 
   T getValue() && {
-    //TRI_ASSERT(_valid);
     this->valid(false);
     return std::move(value);
   }
 
   T takeValue() && {
-    //TRI_ASSERT(_valid);
     this->valid(false);
     return std::move(value);
   }
-
 };
 
 }
