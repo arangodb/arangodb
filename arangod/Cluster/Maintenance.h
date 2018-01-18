@@ -35,6 +35,8 @@ class LogicalCollection;
 
 namespace maintenance {
 
+using Transactions = std::vector<std::pair<VPackBuilder,VPackBuilder>>;
+
 arangodb::Result diffPlanLocalForDatabases(
   VPackSlice const&, std::vector<std::string> const&,
   std::vector<std::string>&, std::vector<std::string>&);
@@ -47,6 +49,10 @@ arangodb::Result diffPlanLocal(
 
 arangodb::Result executePlan (
   VPackSlice const&, VPackSlice const&, VPackSlice const&, std::string const&);
+
+arangodb::Result diffLocalCurrent (
+  VPackSlice const& local, VPackSlice const& current,
+  std::string const& serverId, Transactions& report);
 
 arangodb::Result synchroniseShards (
   VPackSlice const&, VPackSlice const&, VPackSlice const&);

@@ -1,28 +1,25 @@
 R"=(
 {
   "_system": {
-    "s1010002": {
-      "id": "4",
-      "name": "s1010002",
+    "s10002": {
+      "id": "1010001",
+      "name": "s10002",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 1048576,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s1010002/0",
+          "id": "s10002/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -30,28 +27,25 @@ R"=(
         }
       ]
     },
-    "s1010004": {
-      "id": "5",
-      "name": "s1010004",
+    "s10004": {
+      "id": "1010005",
+      "name": "s10004",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 4194304,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
-        "lastValue": 4097101
+        "lastValue": 4010340
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s1010004/0",
+          "id": "s10004/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -62,7 +56,7 @@ R"=(
           "fields": [
             "user"
           ],
-          "id": "s1010004/1010005",
+          "id": "s10004/10005",
           "selectivityEstimate": 1,
           "sparse": true,
           "type": "hash",
@@ -70,28 +64,25 @@ R"=(
         }
       ]
     },
-    "s1010007": {
-      "id": "6",
-      "name": "s1010007",
+    "s10007": {
+      "id": "1010006",
+      "name": "s10007",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 1048576,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s1010007/0",
+          "id": "s10007/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -99,28 +90,25 @@ R"=(
         }
       ]
     },
-    "s1010009": {
-      "id": "7",
-      "name": "s1010009",
+    "s10009": {
+      "id": "1010007",
+      "name": "s10009",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 4194304,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s1010009/0",
+          "id": "s10009/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -128,28 +116,25 @@ R"=(
         }
       ]
     },
-    "s1010011": {
-      "id": "8",
-      "name": "s1010011",
+    "s10011": {
+      "id": "1010008",
+      "name": "s10011",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 4194304,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
-        "lastValue": 1010014
+        "lastValue": 10014
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s1010011/0",
+          "id": "s10011/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -157,28 +142,25 @@ R"=(
         }
       ]
     },
-    "s1010016": {
-      "id": "9",
-      "name": "s1010016",
+    "s10016": {
+      "id": "1010009",
+      "name": "s10016",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 1048576,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s1010016/0",
+          "id": "s10016/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -186,28 +168,25 @@ R"=(
         }
       ]
     },
-    "s1010018": {
-      "id": "10",
-      "name": "s1010018",
+    "s10018": {
+      "id": "1010010",
+      "name": "s10018",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 1048576,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s1010018/0",
+          "id": "s10018/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -215,28 +194,25 @@ R"=(
         }
       ]
     },
-    "s1010020": {
-      "id": "11",
-      "name": "s1010020",
+    "s10020": {
+      "id": "1010011",
+      "name": "s10020",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 1048576,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s1010020/0",
+          "id": "s10020/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -244,28 +220,25 @@ R"=(
         }
       ]
     },
-    "s1010022": {
-      "id": "12",
-      "name": "s1010022",
+    "s10022": {
+      "id": "1010012",
+      "name": "s10022",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 2097152,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s1010022/0",
+          "id": "s10022/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -278,7 +251,8 @@ R"=(
             "status",
             "delayUntil"
           ],
-          "id": "s1010022/1010023",
+          "id": "s10022/10023",
+          "selectivityEstimate": 1,
           "sparse": false,
           "type": "skiplist",
           "unique": true
@@ -290,35 +264,33 @@ R"=(
             "queue",
             "delayUntil"
           ],
-          "id": "s1010022/1010024",
+          "id": "s10022/10024",
+          "selectivityEstimate": 1,
           "sparse": false,
           "type": "skiplist",
           "unique": true
         }
       ]
     },
-    "s1010026": {
-      "id": "13",
-      "name": "s1010026",
+    "s10026": {
+      "id": "1010013",
+      "name": "s10026",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 2097152,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s1010026/0",
+          "id": "s10026/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -329,7 +301,7 @@ R"=(
           "fields": [
             "mount"
           ],
-          "id": "s1010026/1010027",
+          "id": "s10026/10027",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "hash",
@@ -337,28 +309,25 @@ R"=(
         }
       ]
     },
-    "s1010029": {
-      "id": "14",
-      "name": "s1010029",
+    "s10029": {
+      "id": "1010014",
+      "name": "s10029",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 2097152,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s1010029/0",
+          "id": "s10029/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -366,28 +335,25 @@ R"=(
         }
       ]
     },
-    "s1010032": {
-      "id": "15",
-      "name": "s1010032",
+    "s10032": {
+      "id": "1010015",
+      "name": "s10032",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 8388608,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
-        "lastValue": 4097413
+        "lastValue": 5010488
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s1010032/0",
+          "id": "s10032/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -398,35 +364,33 @@ R"=(
           "fields": [
             "time"
           ],
-          "id": "s1010032/1010033",
+          "id": "s10032/10033",
+          "selectivityEstimate": 0.975103734439834,
           "sparse": false,
           "type": "skiplist",
           "unique": false
         }
       ]
     },
-    "s1010035": {
-      "id": "16",
-      "name": "s1010035",
+    "s10035": {
+      "id": "1010016",
+      "name": "s10035",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 8388608,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
-        "lastValue": 4097414
+        "lastValue": 5010489
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s1010035/0",
+          "id": "s10035/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -437,35 +401,33 @@ R"=(
           "fields": [
             "time"
           ],
-          "id": "s1010035/1010036",
+          "id": "s10035/10036",
+          "selectivityEstimate": 0.975,
           "sparse": false,
           "type": "skiplist",
           "unique": false
         }
       ]
     },
-    "s1010038": {
-      "id": "17",
-      "name": "s1010038",
+    "s10038": {
+      "id": "1010017",
+      "name": "s10038",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 8388608,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
-        "lastValue": 4097312
+        "lastValue": 5010369
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s1010038/0",
+          "id": "s10038/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -476,157 +438,113 @@ R"=(
           "fields": [
             "time"
           ],
-          "id": "s1010038/1010039",
+          "id": "s10038/10039",
+          "selectivityEstimate": 1,
           "sparse": false,
           "type": "skiplist",
           "unique": false
         }
       ]
     },
-    "s4026974": {
-      "id": "20",
-      "name": "s4026974",
+    "s4010414": {
+      "id": "1010041",
+      "name": "s4010414",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 33554432,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4026974/0",
+          "id": "s4010414/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
           "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "bar"
-          ],
-          "id": "s4026974/4027011",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "hash",
-          "unique": false
         }
       ]
     },
-    "s4026975": {
-      "id": "18",
-      "name": "s4026975",
+    "s4010415": {
+      "id": "1010039",
+      "name": "s4010415",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 33554432,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4026975/0",
+          "id": "s4010415/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
           "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "bar"
-          ],
-          "id": "s4026975/4027011",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "hash",
-          "unique": false
         }
       ]
     },
-    "s4026976": {
-      "id": "19",
-      "name": "s4026976",
+    "s4010416": {
+      "id": "1010040",
+      "name": "s4010416",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 33554432,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4026976/0",
+          "id": "s4010416/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
           "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "bar"
-          ],
-          "id": "s4026976/4027011",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "hash",
-          "unique": false
         }
       ]
     }
   },
   "testdb": {
-    "s4097108": {
-      "id": "30",
-      "name": "s4097108",
+    "s4010374": {
+      "id": "1010027",
+      "name": "s4010374",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 1048576,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4097108/0",
+          "id": "s4010374/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -634,28 +552,25 @@ R"=(
         }
       ]
     },
-    "s4097110": {
-      "id": "31",
-      "name": "s4097110",
+    "s4010376": {
+      "id": "1010028",
+      "name": "s4010376",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 1048576,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4097110/0",
+          "id": "s4010376/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -663,28 +578,25 @@ R"=(
         }
       ]
     },
-    "s4097112": {
-      "id": "32",
-      "name": "s4097112",
+    "s4010378": {
+      "id": "1010029",
+      "name": "s4010378",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 4194304,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
-        "lastValue": 4097115
+        "lastValue": 4010381
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4097112/0",
+          "id": "s4010378/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -692,28 +604,25 @@ R"=(
         }
       ]
     },
-    "s4097117": {
-      "id": "33",
-      "name": "s4097117",
+    "s4010383": {
+      "id": "1010030",
+      "name": "s4010383",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 1048576,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4097117/0",
+          "id": "s4010383/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -721,57 +630,25 @@ R"=(
         }
       ]
     },
-    "s4097119": {
-      "id": "34",
-      "name": "s4097119",
+    "s4010385": {
+      "id": "1010031",
+      "name": "s4010385",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 1048576,
       "isSystem": false,
-      "isVolatile": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 4097211
-      },
-      "indexBuckets": 8,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s4097119/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s4097123": {
-      "id": "35",
-      "name": "s4097123",
-      "type": 2,
-      "status": 3,
-      "doCompact": true,
-      "journalSize": 1048576,
-      "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4097123/0",
+          "id": "s4010385/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -779,28 +656,51 @@ R"=(
         }
       ]
     },
-    "s4097125": {
-      "id": "36",
-      "name": "s4097125",
+    "s4010387": {
+      "id": "1010032",
+      "name": "s4010387",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 2097152,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4097125/0",
+          "id": "s4010387/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s4010389": {
+      "id": "1010033",
+      "name": "s4010389",
+      "type": 2,
+      "status": 3,
+      "isSystem": false,
+      "waitForSync": false,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 0
+      },
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s4010389/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -813,7 +713,8 @@ R"=(
             "status",
             "delayUntil"
           ],
-          "id": "s4097125/4097126",
+          "id": "s4010389/4010390",
+          "selectivityEstimate": 1,
           "sparse": false,
           "type": "skiplist",
           "unique": true
@@ -825,35 +726,33 @@ R"=(
             "queue",
             "delayUntil"
           ],
-          "id": "s4097125/4097127",
+          "id": "s4010389/4010391",
+          "selectivityEstimate": 1,
           "sparse": false,
           "type": "skiplist",
           "unique": true
         }
       ]
     },
-    "s4097129": {
-      "id": "37",
-      "name": "s4097129",
+    "s4010393": {
+      "id": "1010034",
+      "name": "s4010393",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 2097152,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4097129/0",
+          "id": "s4010393/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -864,7 +763,7 @@ R"=(
           "fields": [
             "mount"
           ],
-          "id": "s4097129/4097130",
+          "id": "s4010393/4010396",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "hash",
@@ -872,28 +771,25 @@ R"=(
         }
       ]
     },
-    "s4097132": {
-      "id": "38",
-      "name": "s4097132",
+    "s4010398": {
+      "id": "1010035",
+      "name": "s4010398",
       "type": 2,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 2097152,
       "isSystem": false,
-      "isVolatile": false,
       "waitForSync": false,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4097132/0",
+          "id": "s4010398/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -901,82 +797,113 @@ R"=(
         }
       ]
     },
-    "s4097158": {
-      "id": "40",
-      "name": "s4097158",
-      "type": 2,
+    "s4010406": {
+      "id": "1010036",
+      "name": "s4010406",
+      "type": 3,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 33554432,
       "isSystem": false,
-      "isVolatile": false,
-      "waitForSync": false,
+      "waitForSync": true,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4097158/0",
+          "id": "s4010406/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
           "unique": true
         },
         {
-          "deduplicate": true,
           "fields": [
-            "bar"
+            "_from",
+            "_to"
           ],
-          "id": "s4097158/4097210",
+          "id": "s4010406/2",
           "selectivityEstimate": 1,
-          "sparse": true,
-          "type": "hash",
+          "sparse": false,
+          "type": "edge",
           "unique": false
         }
       ]
     },
-    "s4097159": {
-      "id": "39",
-      "name": "s4097159",
-      "type": 2,
+    "s4010407": {
+      "id": "1010037",
+      "name": "s4010407",
+      "type": 3,
       "status": 3,
-      "doCompact": true,
-      "journalSize": 33554432,
       "isSystem": false,
-      "isVolatile": false,
-      "waitForSync": false,
+      "waitForSync": true,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "indexBuckets": 8,
+      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4097159/0",
+          "id": "s4010407/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
           "unique": true
         },
         {
-          "deduplicate": true,
           "fields": [
-            "bar"
+            "_from",
+            "_to"
           ],
-          "id": "s4097159/4097210",
+          "id": "s4010407/2",
           "selectivityEstimate": 1,
-          "sparse": true,
-          "type": "hash",
+          "sparse": false,
+          "type": "edge",
+          "unique": false
+        }
+      ]
+    },
+    "s4010408": {
+      "id": "1010038",
+      "name": "s4010408",
+      "type": 3,
+      "status": 3,
+      "isSystem": false,
+      "waitForSync": true,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 0
+      },
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s4010408/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "fields": [
+            "_from",
+            "_to"
+          ],
+          "id": "s4010408/2",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "edge",
           "unique": false
         }
       ]

@@ -40,6 +40,18 @@ using namespace arangodb::maintenance;
 
 static std::vector<std::string> cmp {
   "journalSize", "waitForSync", "doCompact", "indexBuckets"};
+static std::string const currentCollections("/arango/Current/Collections");
+static std::string const planCollections("/arango/Plan/Collections");
+static std::string const PRIMARY("primary");
+static std::string const KEY("_key");
+static std::string const FIELDS("fields");
+static std::string const TYPE("type");
+static std::string const INDEXES("indexes");
+static std::string const SHARDS("shards");
+static std::string const DATABASE("database");
+static std::string const COLLECTION("collection");
+static std::string const NAME("name");
+static std::string const ID("id");
 
 VPackBuilder createProps(VPackSlice const& s) {
   VPackBuilder builder;
@@ -47,7 +59,7 @@ VPackBuilder createProps(VPackSlice const& s) {
   { VPackObjectBuilder b(&builder);
     for (auto const& attr : VPackObjectIterator(s)) {
       std::string const key = attr.key.copyString();
-      if (key == "id" || key == "name") {
+      if (key == ID || key == NAME) {
         continue;
       }
       builder.add(key, attr.value);
@@ -79,24 +91,30 @@ VPackBuilder compareIndexes(
   { VPackArrayBuilder a(&builder);
     for (auto const& pindex : VPackArrayIterator(plan)) {
 
-      auto const& pfields = pindex.get("fields").toJson();
-      auto const& ptype   = pindex.get("type").copyString();
+      std::vector<std::string> pfields;
+      for (auto const& pfield : VPackArrayIterator(pindex.get(FIELDS))) {
+        pfields.push_back(pfield.copyString());
+      }
+      auto const& ptype   = pindex.get(TYPE).copyString();
 
       // Skip unique on _key
-      if (pfields == "[\"_key\"]" && ptype == "primary") { 
+      if (pfields.size() == 1 && pfields.front() == KEY && ptype == PRIMARY) { 
         continue;
       }
 
-      indis.emplace(shname + "/" + pindex.get("id").copyString());
+      indis.emplace(shname + "/" + pindex.get(ID).copyString());
       
       bool found = false;
       for (auto const& lindex : VPackArrayIterator(local)) {
 
-        auto const& lfields = lindex.get("fields").toJson();
-        auto const& ltype   = lindex.get("type").copyString();
+        std::vector<std::string> lfields;
+        for (auto const& lfield : VPackArrayIterator(lindex.get(FIELDS))) {
+          lfields.push_back(lfield.copyString());
+        }
+        auto const& ltype   = lindex.get(TYPE).copyString();
 
         // Skip unique on _key
-        if (lfields == "[\"_key\"]" && ltype == "primary") {
+        if (lfields.size() == 1 && lfields.front() == KEY && ptype == PRIMARY) { 
           continue;
         }
         
@@ -139,7 +157,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
         auto const& cname = pcol.key.copyString();
         auto const& cprops = pcol.value;
         VPackBuilder props;
-        auto const& shards = cprops.get("shards");
+        auto const& shards = cprops.get(SHARDS);
         for (auto const& shard : VPackObjectIterator(shards)) {
           auto const& shname = shard.key.copyString();
           //bool leader = true; // Want to understand leadership
@@ -162,33 +180,36 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
                 if (properties.slice() != VPackSlice::emptyObjectSlice()) {
                   actions.push_back(
                     ActionDescription(
-                      {{"name", "AlterCollection"}, {"collection", shname}},
+                      {{NAME, "AlterCollection"}, {COLLECTION, shname}},
                       properties));
                 }
                 
                 // Indexes
-                if (cprops.hasKey("indexes")) {
-                  auto const& pindexes = cprops.get("indexes");
-                  auto const& lindexes = lcol.get("indexes");
-                  auto difference = compareIndexes(shname, pindexes, lindexes, indis);
+                if (cprops.hasKey(INDEXES)) {
+                  auto const& pindexes = cprops.get(INDEXES);
+                  auto const& lindexes = lcol.get(INDEXES);
+                  auto difference =
+                    compareIndexes(shname, pindexes, lindexes, indis);
 
                   if (difference.slice().length() != 0) {
                     for (auto const& index :
                            VPackArrayIterator(difference.slice())) {
+
                       actions.push_back(
-                        ActionDescription({{"name", "EnsureIndex"},
-                            {"collection", shname}, {"database", dbname},
-                            {"type", index.get("type").copyString()},
-                            {"fields", index.get("fields").toJson()}},
+                        ActionDescription({{NAME, "EnsureIndex"},
+                            {COLLECTION, shname}, {DATABASE, dbname},
+                            {TYPE, index.get(TYPE).copyString()},
+                            {FIELDS, index.get(FIELDS).toJson()}},
                             VPackBuilder(index)));
+
                     }
                   }
                 }
               } else {                   // Create the sucker!
                 actions.push_back(
                   ActionDescription(
-                    {{"name", "CreateCollection"}, {"collection", shname},
-                     {"database", dbname}}, props));
+                    {{NAME, "CreateCollection"}, {COLLECTION, shname},
+                     {DATABASE, dbname}}, props));
               }
 
             }
@@ -200,7 +221,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
       }
     } else {
       actions.push_back(
-        ActionDescription({{"name", "CreateDatabase"}, {"database", dbname}}));
+        ActionDescription({{NAME, "CreateDatabase"}, {DATABASE, dbname}}));
     }
   }
   
@@ -226,25 +247,24 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
 
         if (drop) {
           actions.push_back(
-            ActionDescription({{"name", "DropCollection"},
-                {"database", dbname}, {"collection", colname}}));
+            ActionDescription({{NAME, "DropCollection"},
+                {DATABASE, dbname}, {COLLECTION, colname}}));
         } else {
           colis.erase(it);
 
           // We only drop indexes, when collection is not being dropped already
-          if (col.value.hasKey("indexes")) {
+          if (col.value.hasKey(INDEXES)) {
             for (auto const& index :
-                   VPackArrayIterator(col.value.get("indexes"))) {
-              if (index.get("fields").toJson() != "[\"_key\"]" &&
-                  index.get("type").copyString() != "primary") {
-                std::string const id = index.get("id").copyString();
+                   VPackArrayIterator(col.value.get(INDEXES))) {
+              if (index.get(FIELDS).toJson() != KEY &&
+                  index.get(TYPE).copyString() != PRIMARY) {
+                std::string const id = index.get(ID).copyString();
                 if (indis.find(id) != indis.end()) {
                   indis.erase(id);
                 } else {
                   actions.push_back(
-                    ActionDescription({{"name", "DropIndex"},
-                        {"database", dbname}, {"collection", colname},
-                        {"id", id}}));
+                    ActionDescription({{NAME, "DropIndex"},
+                        {DATABASE, dbname}, {COLLECTION, colname}, {ID, id}}));
                 }
               }
             }
@@ -254,7 +274,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
       }
     } else {
       actions.push_back(
-        ActionDescription({{"name", "DropDatabase"}, {"database", dbname}}));
+        ActionDescription({{NAME, "DropDatabase"}, {DATABASE, dbname}}));
     }
   }
   
@@ -271,10 +291,10 @@ arangodb::Result arangodb::maintenance::executePlan (
   ActionRegistry* registry = ActionRegistry::instance();
 
   // build difference between plan and local
-  std::vector<std::string> toCreate, toDrop;
   std::vector<ActionDescription> actions;
   diffPlanLocal(plan, local, serverId, actions);
 
+  // enact all
   for (auto const& action : actions) {
     registry->dispatch(action);
   }
@@ -282,6 +302,52 @@ arangodb::Result arangodb::maintenance::executePlan (
   return result;
   
 }
+
+/// @brief add new database to current
+void addDatabaseToTransactions(
+  std::string const& name, Transactions& transactions) {
+
+  // [ {"dbPath":{}}, {"dbPath":{"oldEmpty":true}} ]
+  
+  std::string dbPath = currentCollections + "/" + name;
+  VPackBuilder operation; // create database in current
+  { VPackObjectBuilder b(&operation);
+    operation.add(dbPath, VPackSlice::emptyObjectSlice()); }
+  VPackBuilder precondition;
+  { VPackObjectBuilder b(&precondition);
+    precondition.add(VPackValue(dbPath));
+    { VPackObjectBuilder bb(&precondition);
+      precondition.add("oldEmpty", VPackValue(true)); }}
+  transactions.push_back({operation, precondition});
+  
+}
+  
+/// @brief report local to current
+arangodb::Result arangodb::maintenance::diffLocalCurrent (
+  VPackSlice const& local, VPackSlice const& current,
+  std::string const& serverId, Transactions& transactions) {
+
+  arangodb::Result result;
+  auto const& cdbs = current.get(
+    std::vector<std::string>({"arango", "Current", "Collections"}));
+
+  // Iterate over local databases
+  for (auto const& ldbo : VPackObjectIterator(local)) {
+    std::string dbname = ldbo.key.copyString();
+    VPackSlice ldb = ldbo.value;
+
+    // Current has this database
+    if (cdbs.hasKey(dbname)) {
+
+    } else {
+      // Create new database in current
+      addDatabaseToTransactions(dbname, transactions);
+    }
+  }
+  
+  return result;
+}
+
 
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne (

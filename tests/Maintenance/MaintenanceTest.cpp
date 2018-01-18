@@ -99,30 +99,66 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   auto plan = createNode(planStr);
   auto current = createNode(currentStr);
 
-//  std::vector<Node> localNodes {
-//    createNode(dbs2Str),  createNode(dbs1Str),  createNode(dbs3Str)};
-
+  std::vector<std::string> dbsIds;
+  for (auto const& dbs : plan("arango/Plan/DBServers").children()) {
+    dbsIds.push_back(dbs.first);
+  }
+  
   std::map<std::string, Node> localNodes {
-    {"PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c", createNode(dbs1Str)},
-    {"PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7", createNode(dbs2Str)},
-    {"PRMR-2d087658-79b9-4106-a84e-030309651d4b", createNode(dbs3Str)}};
+    {dbsIds[1], createNode(dbs1Str)}, {dbsIds[2], createNode(dbs2Str)},
+                                      {dbsIds[0], createNode(dbs3Str)}};
   
   // Plan and local in sync
-  SECTION("In sync") {
-
+  SECTION("In sync should have 0 effects") {
+    
     std::vector<ActionDescription> actions;
-
+    
     for (auto const& node : localNodes) {
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, actions);
+      
       REQUIRE(actions.size() == 0);
     }
 
   }
 
   // Local additionally has db2 ================================================
-  SECTION("Local databases one more") {
+  SECTION("Local databases one more empty database should be dropped") {
+
+    std::vector<ActionDescription> actions;
+    localNodes.begin()->second("db2") =
+      arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+    
+    arangodb::maintenance::diffPlanLocal(
+      plan.toBuilder().slice(), localNodes.begin()->second.toBuilder().slice(),
+      localNodes.begin()->first, actions);
+
+    REQUIRE(actions.size() == 1);
+    REQUIRE(actions.front().name() == "DropDatabase");
+    REQUIRE(actions.front().get("database") == "db2");
+
+  }
+
+  // Local additionally has db2 ================================================
+  SECTION("Local databases one more non empty database should be dropped") {
+
+    std::vector<ActionDescription> actions;
+    localNodes.begin()->second("db2/col") =
+      arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+    
+    arangodb::maintenance::diffPlanLocal(
+      plan.toBuilder().slice(), localNodes.begin()->second.toBuilder().slice(),
+      localNodes.begin()->first, actions);
+
+    REQUIRE(actions.size() == 1);
+    REQUIRE(actions.front().name() == "DropDatabase");
+    REQUIRE(actions.front().get("database") == "db2");
+
+  }
+
+  // Local additionally has db2 ================================================
+  SECTION("Local databases one more empty database should be dropped") {
 
     std::vector<ActionDescription> actions;
     localNodes.begin()->second("db2") =
@@ -139,23 +175,6 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   }
 
 
-  // Plan also now has db2 =====================================================
-  SECTION("Again in sync with empty database db2") {
-
-    std::vector<ActionDescription> actions;
-    localNodes.begin()->second("db2") =
-      arangodb::basics::VelocyPackHelper::EmptyObjectValue();
-    plan("/arango/Plan/Collections/db2") =
-      arangodb::basics::VelocyPackHelper::EmptyObjectValue();
-    
-    arangodb::maintenance::diffPlanLocal(
-      plan.toBuilder().slice(), localNodes.begin()->second.toBuilder().slice(),
-      localNodes.begin()->first, actions);
-
-    REQUIRE(actions.size() == 0);
-
-  }
-
   // Plan also now has db3 =====================================================
   SECTION("Add one more collection to plan") {
 
@@ -164,7 +183,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     char const* shards =
       R"=({"s1016002":["PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
          "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"]})=";
-    
+
     std::vector<ActionDescription> actions;
     plan("/arango/Plan/Collections/db2/1016001") =
       plan("/arango/Plan/Collections/_system/1010001");
@@ -184,7 +203,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     }
     
   }
-  
+
   // Plan also now has db3 =====================================================
   SECTION("Add one more collection to plan") {
 
@@ -213,7 +232,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     }
     
   }
-  
+
   // Plan also now has db3 =====================================================
   SECTION("Add one collection to local") {
 
@@ -365,6 +384,23 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     }
     
   }
+
+  SECTION("Diffing local and current") {
+
+    for (auto const& node : localNodes) {
+      arangodb::maintenance::Transactions report;
+      arangodb::maintenance::diffLocalCurrent(
+        node.second.toBuilder().slice(), current.toBuilder().slice(), node.first,
+        report);
+      for (auto const& tp : report) {
+        std::cout
+          << "[ " << tp.first.toJson() << ", " << tp.second.toJson() << " ]"
+          << std::endl;
+      }
+    }
+    
+  }
+
 
 } 
 

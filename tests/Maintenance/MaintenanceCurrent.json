@@ -1,461 +1,1190 @@
 R"=(
-  {
-    "arango": {
-      "Current": {
-        "Databases": {
-          "_system": {
-            "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7": {
-              "errorMessage": "",
-              "error": false,
-              "id": "1",
-              "name": "_system",
-              "errorNum": 0
-            },
-            "PRMR-2d087658-79b9-4106-a84e-030309651d4b": {
-              "errorMessage": "",
-              "error": false,
-              "id": "1",
-              "name": "_system",
-              "errorNum": 0
-            },
-            "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c": {
-              "errorMessage": "",
-              "error": false,
-              "id": "1",
-              "name": "_system",
-              "errorNum": 0
-            }
+{
+  "arango": {
+    "Current": {
+      "Databases": {
+        "_system": {
+          "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf": {
+            "errorMessage": "",
+            "error": false,
+            "id": "1",
+            "name": "_system",
+            "errorNum": 0
+          },
+          "PRMR-dcd6966d-a6ac-412a-8b6b-02386f61e51c": {
+            "errorMessage": "",
+            "error": false,
+            "id": "1",
+            "name": "_system",
+            "errorNum": 0
+          },
+          "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb": {
+            "errorMessage": "",
+            "error": false,
+            "id": "1",
+            "name": "_system",
+            "errorNum": 0
           }
         },
-        "Collections": {
-          "_system": {
-            "1010010": {
-              "s1010011": {
-                "error": false,
-                "errorMessage": "",
-                "errorNum": 0,
-                "servers": [
-                  "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-                  "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
-                ],
-                "indexes": [
-                  {
-                    "fields": [
-                      "_key"
-                    ],
-                    "id": "0",
-                    "sparse": false,
-                    "type": "primary",
-                    "unique": true
-                  }
-                ]
-              }
-            },
-            "1010008": {
-              "s1010009": {
-                "error": false,
-                "errorMessage": "",
-                "errorNum": 0,
-                "servers": [
-                  "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-                  "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
-                ],
-                "indexes": [
-                  {
-                    "fields": [
-                      "_key"
-                    ],
-                    "id": "0",
-                    "sparse": false,
-                    "type": "primary",
-                    "unique": true
-                  }
-                ]
-              }
-            },
-            "1010015": {
-              "s1010016": {
-                "error": false,
-                "errorMessage": "",
-                "errorNum": 0,
-                "servers": [
-                  "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-                  "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
-                ],
-                "indexes": [
-                  {
-                    "fields": [
-                      "_key"
-                    ],
-                    "id": "0",
-                    "sparse": false,
-                    "type": "primary",
-                    "unique": true
-                  }
-                ]
-              }
-            },
-            "1010006": {
-              "s1010007": {
-                "error": false,
-                "errorMessage": "",
-                "errorNum": 0,
-                "servers": [
-                  "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-                  "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
-                ],
-                "indexes": [
-                  {
-                    "fields": [
-                      "_key"
-                    ],
-                    "id": "0",
-                    "sparse": false,
-                    "type": "primary",
-                    "unique": true
-                  }
-                ]
-              }
-            },
-            "1010017": {
-              "s1010018": {
-                "error": false,
-                "errorMessage": "",
-                "errorNum": 0,
-                "servers": [
-                  "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-                  "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
-                ],
-                "indexes": [
-                  {
-                    "fields": [
-                      "_key"
-                    ],
-                    "id": "0",
-                    "sparse": false,
-                    "type": "primary",
-                    "unique": true
-                  }
-                ]
-              }
-            },
-            "1010034": {
-              "s1010035": {
-                "error": false,
-                "errorMessage": "",
-                "errorNum": 0,
-                "servers": [
-                  "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-                  "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
-                ],
-                "indexes": [
-                  {
-                    "fields": [
-                      "_key"
-                    ],
-                    "id": "0",
-                    "sparse": false,
-                    "type": "primary",
-                    "unique": true
-                  },
-                  {
-                    "deduplicate": true,
-                    "fields": [
-                      "time"
-                    ],
-                    "id": "1010036",
-                    "sparse": false,
-                    "type": "skiplist",
-                    "unique": false
-                  }
-                ]
-              }
-            },
-            "1010001": {
-              "s1010002": {
-                "error": false,
-                "errorMessage": "",
-                "errorNum": 0,
-                "servers": [
-                  "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-                  "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
-                ],
-                "indexes": [
-                  {
-                    "fields": [
-                      "_key"
-                    ],
-                    "id": "0",
-                    "sparse": false,
-                    "type": "primary",
-                    "unique": true
-                  }
-                ]
-              }
-            },
-            "1010028": {
-              "s1010029": {
-                "error": false,
-                "errorMessage": "",
-                "errorNum": 0,
-                "servers": [
-                  "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-                  "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
-                ],
-                "indexes": [
-                  {
-                    "fields": [
-                      "_key"
-                    ],
-                    "id": "0",
-                    "sparse": false,
-                    "type": "primary",
-                    "unique": true
-                  }
-                ]
-              }
-            },
-            "1010037": {
-              "s1010038": {
-                "error": false,
-                "errorMessage": "",
-                "errorNum": 0,
-                "servers": [
-                  "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-                  "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
-                ],
-                "indexes": [
-                  {
-                    "fields": [
-                      "_key"
-                    ],
-                    "id": "0",
-                    "sparse": false,
-                    "type": "primary",
-                    "unique": true
-                  },
-                  {
-                    "deduplicate": true,
-                    "fields": [
-                      "time"
-                    ],
-                    "id": "1010039",
-                    "sparse": false,
-                    "type": "skiplist",
-                    "unique": false
-                  }
-                ]
-              }
-            },
-            "1010025": {
-              "s1010026": {
-                "error": false,
-                "errorMessage": "",
-                "errorNum": 0,
-                "servers": [
-                  "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-                  "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
-                ],
-                "indexes": [
-                  {
-                    "fields": [
-                      "_key"
-                    ],
-                    "id": "0",
-                    "sparse": false,
-                    "type": "primary",
-                    "unique": true
-                  },
-                  {
-                    "deduplicate": true,
-                    "fields": [
-                      "mount"
-                    ],
-                    "id": "1010027",
-                    "sparse": false,
-                    "type": "hash",
-                    "unique": true
-                  }
-                ]
-              }
-            },
-            "1010021": {
-              "s1010022": {
-                "error": false,
-                "errorMessage": "",
-                "errorNum": 0,
-                "servers": [
-                  "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-                  "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
-                ],
-                "indexes": [
-                  {
-                    "fields": [
-                      "_key"
-                    ],
-                    "id": "0",
-                    "sparse": false,
-                    "type": "primary",
-                    "unique": true
-                  },
-                  {
-                    "deduplicate": true,
-                    "fields": [
-                      "queue",
-                      "status",
-                      "delayUntil"
-                    ],
-                    "id": "1010023",
-                    "sparse": false,
-                    "type": "skiplist",
-                    "unique": true
-                  },
-                  {
-                    "deduplicate": true,
-                    "fields": [
-                      "status",
-                      "queue",
-                      "delayUntil"
-                    ],
-                    "id": "1010024",
-                    "sparse": false,
-                    "type": "skiplist",
-                    "unique": true
-                  }
-                ]
-              }
-            },
-            "1010019": {
-              "s1010020": {
-                "error": false,
-                "errorMessage": "",
-                "errorNum": 0,
-                "servers": [
-                  "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-                  "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
-                ],
-                "indexes": [
-                  {
-                    "fields": [
-                      "_key"
-                    ],
-                    "id": "0",
-                    "sparse": false,
-                    "type": "primary",
-                    "unique": true
-                  }
-                ]
-              }
-            },
-            "1010003": {
-              "s1010004": {
-                "error": false,
-                "errorMessage": "",
-                "errorNum": 0,
-                "servers": [
-                  "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-                  "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
-                ],
-                "indexes": [
-                  {
-                    "fields": [
-                      "_key"
-                    ],
-                    "id": "0",
-                    "sparse": false,
-                    "type": "primary",
-                    "unique": true
-                  },
-                  {
-                    "deduplicate": true,
-                    "fields": [
-                      "user"
-                    ],
-                    "id": "1010005",
-                    "sparse": true,
-                    "type": "hash",
-                    "unique": true
-                  }
-                ]
-              }
-            },
-            "1010031": {
-              "s1010032": {
-                "error": false,
-                "errorMessage": "",
-                "errorNum": 0,
-                "servers": [
-                  "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-                  "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"
-                ],
-                "indexes": [
-                  {
-                    "fields": [
-                      "_key"
-                    ],
-                    "id": "0",
-                    "sparse": false,
-                    "type": "primary",
-                    "unique": true
-                  },
-                  {
-                    "deduplicate": true,
-                    "fields": [
-                      "time"
-                    ],
-                    "id": "1010033",
-                    "sparse": false,
-                    "type": "skiplist",
-                    "unique": false
-                  }
-                ]
-              }
-            }
+        "testdb": {
+          "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb": {
+            "errorMessage": "",
+            "error": false,
+            "id": "4038642",
+            "name": "testdb",
+            "errorNum": 0
+          },
+          "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf": {
+            "errorMessage": "",
+            "error": false,
+            "id": "4053760",
+            "name": "testdb",
+            "errorNum": 0
+          },
+          "PRMR-dcd6966d-a6ac-412a-8b6b-02386f61e51c": {
+            "errorMessage": "",
+            "error": false,
+            "id": "4017426",
+            "name": "testdb",
+            "errorNum": 0
           }
-        },
-        "DBServers": {
-          "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7": "none",
-          "PRMR-2d087658-79b9-4106-a84e-030309651d4b": "none",
-          "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c": "none"
-        },
-        "Singles": {},
-        "Lock": "UNLOCKED",
-        "Version": 39,
-        "Coordinators": {
-          "CRDN-09f8a6b2-f71b-4b5b-9513-860f26dc6ce0": "none",
-          "CRDN-755ffe10-8d93-40f3-be64-4dfb8d6fcab3": "none"
-        },
-        "Foxxmaster": "CRDN-09f8a6b2-f71b-4b5b-9513-860f26dc6ce0",
-        "ServersRegistered": {
-          "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c": {
-            "endpoint": "tcp://[::1]:8629",
-            "host": "8451eeb92b2142d898aeaf647961a914"
-          },
-          "Version": 1,
-          "PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7": {
-            "endpoint": "tcp://[::1]:8630",
-            "host": "8451eeb92b2142d898aeaf647961a914"
-          },
-          "CRDN-09f8a6b2-f71b-4b5b-9513-860f26dc6ce0": {
-            "endpoint": "tcp://[::1]:8531",
-            "host": "8451eeb92b2142d898aeaf647961a914"
-          },
-          "CRDN-755ffe10-8d93-40f3-be64-4dfb8d6fcab3": {
-            "endpoint": "tcp://[::1]:8530",
-            "host": "8451eeb92b2142d898aeaf647961a914"
-          },
-          "PRMR-2d087658-79b9-4106-a84e-030309651d4b": {
-            "endpoint": "tcp://[::1]:8631",
-            "host": "8451eeb92b2142d898aeaf647961a914"
-          }
-        },
-        "ShardsCopied": {},
-        "FoxxmasterQueueupdate": false,
-        "NewServers": {},
-        "AsyncReplication": {
-          "Leader": ""
         }
+      },
+      "Collections": {
+        "foo": {
+          "4010353": {
+            "s4010354": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010348": {
+            "s4010349": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010355": {
+            "s4010356": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010344": {
+            "s4010345": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010368": {
+            "s4010369": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010365": {
+            "s4010366": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                {
+                  "deduplicate": true,
+                  "fields": [
+                    "mount"
+                  ],
+                  "id": "4010367",
+                  "sparse": false,
+                  "type": "hash",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010359": {
+            "s4010360": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                {
+                  "deduplicate": true,
+                  "fields": [
+                    "queue",
+                    "status",
+                    "delayUntil"
+                  ],
+                  "id": "4010363",
+                  "sparse": false,
+                  "type": "skiplist",
+                  "unique": true
+                },
+                {
+                  "deduplicate": true,
+                  "fields": [
+                    "status",
+                    "queue",
+                    "delayUntil"
+                  ],
+                  "id": "4010364",
+                  "sparse": false,
+                  "type": "skiplist",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010346": {
+            "s4010347": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010357": {
+            "s4010358": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          }
+        },
+        "testdb": {
+          "4010386": {
+            "s4010387": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010384": {
+            "s4010385": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010382": {
+            "s4010383": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010377": {
+            "s4010378": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010405": {
+            "s4010406": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-dcd6966d-a6ac-412a-8b6b-02386f61e51c",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                {
+                  "fields": [
+                    "_from",
+                    "_to"
+                  ],
+                  "id": "2",
+                  "sparse": false,
+                  "type": "edge",
+                  "unique": false
+                }
+              ]
+            },
+            "s4010407": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb",
+                "PRMR-dcd6966d-a6ac-412a-8b6b-02386f61e51c",
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                {
+                  "fields": [
+                    "_from",
+                    "_to"
+                  ],
+                  "id": "2",
+                  "sparse": false,
+                  "type": "edge",
+                  "unique": false
+                }
+              ]
+            },
+            "s4010408": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-dcd6966d-a6ac-412a-8b6b-02386f61e51c",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb",
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                {
+                  "fields": [
+                    "_from",
+                    "_to"
+                  ],
+                  "id": "2",
+                  "sparse": false,
+                  "type": "edge",
+                  "unique": false
+                }
+              ]
+            }
+          },
+          "4010397": {
+            "s4010398": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010392": {
+            "s4010393": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                {
+                  "deduplicate": true,
+                  "fields": [
+                    "mount"
+                  ],
+                  "id": "4010396",
+                  "sparse": false,
+                  "type": "hash",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010373": {
+            "s4010374": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010388": {
+            "s4010389": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                {
+                  "deduplicate": true,
+                  "fields": [
+                    "queue",
+                    "status",
+                    "delayUntil"
+                  ],
+                  "id": "4010390",
+                  "sparse": false,
+                  "type": "skiplist",
+                  "unique": true
+                },
+                {
+                  "deduplicate": true,
+                  "fields": [
+                    "status",
+                    "queue",
+                    "delayUntil"
+                  ],
+                  "id": "4010391",
+                  "sparse": false,
+                  "type": "skiplist",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010375": {
+            "s4010376": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          }
+        },
+        "_system": {
+          "10001": {
+            "s10002": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "10010": {
+            "s10011": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010413": {
+            "s4010415": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb",
+                "PRMR-dcd6966d-a6ac-412a-8b6b-02386f61e51c",
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            },
+            "s4010414": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-dcd6966d-a6ac-412a-8b6b-02386f61e51c",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            },
+            "s4010416": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-dcd6966d-a6ac-412a-8b6b-02386f61e51c",
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010020": {
+            "s4010021": {
+              "errorMessage": "",
+              "error": false,
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                {
+                  "fields": [
+                    "_from",
+                    "_to"
+                  ],
+                  "id": "2",
+                  "sparse": false,
+                  "type": "edge",
+                  "unique": false
+                }
+              ]
+            }
+          },
+          "10008": {
+            "s10009": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "10028": {
+            "s10029": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "10034": {
+            "s10035": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                {
+                  "deduplicate": true,
+                  "fields": [
+                    "time"
+                  ],
+                  "id": "10036",
+                  "sparse": false,
+                  "type": "skiplist",
+                  "unique": false
+                }
+              ]
+            }
+          },
+          "10021": {
+            "s10022": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                {
+                  "deduplicate": true,
+                  "fields": [
+                    "queue",
+                    "status",
+                    "delayUntil"
+                  ],
+                  "id": "10023",
+                  "sparse": false,
+                  "type": "skiplist",
+                  "unique": true
+                },
+                {
+                  "deduplicate": true,
+                  "fields": [
+                    "status",
+                    "queue",
+                    "delayUntil"
+                  ],
+                  "id": "10024",
+                  "sparse": false,
+                  "type": "skiplist",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "10015": {
+            "s10016": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "10003": {
+            "s10004": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                {
+                  "deduplicate": true,
+                  "fields": [
+                    "user"
+                  ],
+                  "id": "10005",
+                  "sparse": true,
+                  "type": "hash",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "10025": {
+            "s10026": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                {
+                  "deduplicate": true,
+                  "fields": [
+                    "mount"
+                  ],
+                  "id": "10027",
+                  "sparse": false,
+                  "type": "hash",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "10017": {
+            "s10018": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "10006": {
+            "s10007": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "10019": {
+            "s10020": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010014": {
+            "s4010015": {
+              "errorMessage": "",
+              "error": false,
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "4010018": {
+            "s4010019": {
+              "errorMessage": "",
+              "error": false,
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                }
+              ]
+            }
+          },
+          "10031": {
+            "s10032": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                {
+                  "deduplicate": true,
+                  "fields": [
+                    "time"
+                  ],
+                  "id": "10033",
+                  "sparse": false,
+                  "type": "skiplist",
+                  "unique": false
+                }
+              ]
+            }
+          },
+          "10037": {
+            "s10038": {
+              "error": false,
+              "errorMessage": "",
+              "errorNum": 0,
+              "servers": [
+                "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf",
+                "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb"
+              ],
+              "indexes": [
+                {
+                  "fields": [
+                    "_key"
+                  ],
+                  "id": "0",
+                  "sparse": false,
+                  "type": "primary",
+                  "unique": true
+                },
+                {
+                  "deduplicate": true,
+                  "fields": [
+                    "time"
+                  ],
+                  "id": "10039",
+                  "sparse": false,
+                  "type": "skiplist",
+                  "unique": false
+                }
+              ]
+            }
+          }
+        }
+      },
+      "DBServers": {
+        "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb": "none",
+        "PRMR-dcd6966d-a6ac-412a-8b6b-02386f61e51c": "none",
+        "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf": "none"
+      },
+      "Singles": {},
+      "Lock": "UNLOCKED",
+      "Version": 121,
+      "Coordinators": {
+        "CRDN-c9604658-a995-40a8-a61b-26934c11a7a8": "none",
+        "CRDN-dae2cc28-e8b1-4d3f-a536-3a115d305dc1": "none",
+        "CRDN-adf54a10-a7d4-40ee-97ca-e7a8976011e9": "none"
+      },
+      "Foxxmaster": "CRDN-adf54a10-a7d4-40ee-97ca-e7a8976011e9",
+      "ServersRegistered": {
+        "Version": 1,
+        "CRDN-dae2cc28-e8b1-4d3f-a536-3a115d305dc1": {
+          "endpoint": "tcp://[::1]:8530",
+          "host": "8451eeb92b2142d898aeaf647961a914"
+        },
+        "PRMR-d95d4d29-5462-42c7-ad49-f3891fdb1fbb": {
+          "endpoint": "tcp://[::1]:8629",
+          "host": "8451eeb92b2142d898aeaf647961a914"
+        },
+        "CRDN-c9604658-a995-40a8-a61b-26934c11a7a8": {
+          "endpoint": "tcp://[::1]:8531",
+          "host": "8451eeb92b2142d898aeaf647961a914"
+        },
+        "PRMR-f3bb33c6-3de2-4a6f-8f02-498ffcabafdf": {
+          "endpoint": "tcp://[::1]:8630",
+          "host": "8451eeb92b2142d898aeaf647961a914"
+        },
+        "PRMR-dcd6966d-a6ac-412a-8b6b-02386f61e51c": {
+          "endpoint": "tcp://[::1]:8631",
+          "host": "8451eeb92b2142d898aeaf647961a914"
+        },
+        "CRDN-adf54a10-a7d4-40ee-97ca-e7a8976011e9": {
+          "endpoint": "tcp://[::1]:8532",
+          "host": "8451eeb92b2142d898aeaf647961a914"
+        }
+      },
+      "ShardsCopied": {},
+      "FoxxmasterQueueupdate": false,
+      "NewServers": {},
+      "AsyncReplication": {
+        "Leader": ""
       }
     }
   }
+}
 )="
