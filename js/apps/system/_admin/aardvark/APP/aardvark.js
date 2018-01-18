@@ -93,7 +93,7 @@ router.use(authRouter);
 authRouter.use((req, res, next) => {
   if (internal.authenticationEnabled()) {
     // /_db/_system/_admin/aardvark/permissions
-    if (!req.authorized && !req.path.match(/permissions/)) {
+    if (!req.authorized) {
       res.throw('unauthorized');
     }
   }
@@ -279,16 +279,17 @@ authRouter.post('/job', function (req, res) {
 
 authRouter.post('/permissions', function (req, res) {
   const body = req.body;
-  var changes = {};
 
   // then check use default permission sets - databases
   Object.keys(body.dbs).forEach(function (key, db) {
     if (body.dbs[key].permission === 'undefined') {
+      /*
       var user = internal.db._users.firstExample({user: body.dbs[key].user});
       delete user.databases[body.dbs[key].db];
       internal.db._users.update(user._key, user, {mergeObjects: false});
       users.reload();
-      // users.revokeDatabase(body.dbs[key].user, body.dbs[key].db);
+      */
+      users.revokeDatabase(body.dbs[key].user, body.dbs[key].db);
     } else {
       users.grantDatabase(body.dbs[key].user, body.dbs[key].db, body.dbs[key].permission);
     }
