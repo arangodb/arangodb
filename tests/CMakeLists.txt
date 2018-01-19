@@ -166,3 +166,18 @@ if (USE_IRESEARCH)
     )
   endforeach()
 endif()
+
+# test classes that are independet of the arangod library
+add_executable(standalonetests
+  standalone_main.cpp
+  Basics/ResultTest.cpp
+)
+
+target_include_directories(standalonetests PRIVATE
+  ${INCLUDE_DIRECTORIES}
+)
+
+target_include_directories(standalonetests SYSTEM PRIVATE
+  ${CMAKE_SOURCE_DIR}/3rdParty/catch
+  ${CMAKE_SOURCE_DIR}/3rdParty/fakeit
+)
