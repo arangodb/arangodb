@@ -162,7 +162,7 @@ inline bool canHandleValue(
     case VPackValueType::SmallInt:
       return true;
     case VPackValueType::String:
-      return !context._tokenizers.empty();
+      return !context._analyzers.empty();
     case VPackValueType::Binary:
     case VPackValueType::BCD:
     case VPackValueType::Custom:
@@ -267,7 +267,7 @@ inline Filter getFilter(
 
   return valueAcceptors[
     4 * value.isArray()
-      + 2 * meta._nestListValues
+      + 2 * meta._trackListPositions
       + meta._includeAllFields
    ];
 }

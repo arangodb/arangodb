@@ -324,7 +324,7 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
         "\"testCollection0\": { \"includeAllFields\": true, \"nestListValues\": true },"
-        "\"testCollection1\": { \"includeAllFields\": true, \"tokenizers\": [ \"test_analyzer\", \"identity\" ] }"
+        "\"testCollection1\": { \"includeAllFields\": true, \"analyzers\": [ \"test_analyzer\", \"identity\" ] }"
       "}}"
     );
     CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
