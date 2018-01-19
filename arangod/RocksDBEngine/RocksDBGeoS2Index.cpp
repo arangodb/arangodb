@@ -401,8 +401,7 @@ Result RocksDBGeoS2Index::removeInternal(transaction::Methods* trx,
   std::vector<S2CellId> cells;
   geo::Coordinate centroid(-1, -1);
   Result res = geo::Index::indexCells(doc, cells, centroid);
-  if (res.fail()) {
-    TRI_ASSERT(false);  // this should never fail here
+  if (res.fail()) { // might occur if insert is rolled back
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }

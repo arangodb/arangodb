@@ -212,7 +212,7 @@ void NearUtils<CMP>::reportFound(LocalDocumentId lid,
     _buffer.emplace(lid, rad);
   } else {  // deduplication
     // this can happen but probably shouldn't if we have just points
-    LOG_TOPIC(ERR, Logger::FIXME) << "[Duplicate] " << lid;
+    //LOG_TOPIC(ERR, Logger::FIXME) << "[Duplicate] " << lid;
     TRI_ASSERT(it->second == rad);  // should never change
   }
 }

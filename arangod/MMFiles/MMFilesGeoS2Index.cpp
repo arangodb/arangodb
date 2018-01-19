@@ -94,8 +94,7 @@ class NearIterator final : public IndexIterator {
             TRI_ASSERT(res.ok());  // this should never fail here
             if (res.fail() ||
                 (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                (ft == geo::FilterType::INTERSECTS &&
-                 !filter.intersects(&test))) {
+                (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
               return false; // skip
             }
           }
@@ -313,10 +312,6 @@ Result MMFilesGeoS2Index::insert(transaction::Methods*,
              std::abs(centroid.longitude) <= 180.0);
   IndexValue value(documentId, std::move(centroid));
 
-  // RocksDBValue val = RocksDBValue::S2Value(centroid);
-  // RocksDBKeyLeaser key(trx);
-  // FIXME: can we rely on the region coverer to return
-  // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
     _tree.insert(std::make_pair(cell, value));
   }
@@ -332,16 +327,13 @@ Result MMFilesGeoS2Index::remove(transaction::Methods*,
   geo::Coordinate centroid(-1, -1);
 
   Result res = geo::Index::indexCells(doc, cells, centroid);
-  if (res.fail()) {
-    TRI_ASSERT(false);  // this should never fail here
+  if (res.fail()) { // might occur if insert is rolled back
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
   TRI_ASSERT(!cells.empty() && std::abs(centroid.latitude) <= 90.0 &&
              std::abs(centroid.longitude) <= 180.0);
 
-  // FIXME: can we rely on the region coverer to return
-  // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
     auto it = _tree.lower_bound(cell);
     while (it != _tree.end() && it->first == cell) {

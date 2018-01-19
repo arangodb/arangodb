@@ -2412,23 +2412,24 @@ AqlValue Functions::GeoDistance(arangodb::aql::Query* query,
   AqlValue loc2 = ExtractFunctionParameterValue(parameters, 1);
   
   Result res(TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON");
-  AqlValueMaterializer materializer(trx);
+  AqlValueMaterializer mat1(trx);
   geo::ShapeContainer shape1, shape2;
   if (loc1.isArray() && loc1.length() >= 2) {
-    res = shape1.parseCoordinates(materializer.slice(loc1, true), /*geoJson*/true);
+    res = shape1.parseCoordinates(mat1.slice(loc1, true), /*geoJson*/true);
   } else if (loc1.isObject()) {
-    res = geo::GeoJsonParser::parseGeoJson(materializer.slice(loc1, true), shape1);
+    res = geo::GeoJsonParser::parseGeoJson(mat1.slice(loc1, true), shape1);
   }
   if (res.fail()) {
     Functions::RegisterWarning(query, "GEO_DISTANCE", res);
     return AqlValue(AqlValueHintNull());
   }
   
+  AqlValueMaterializer mat2(trx);
   res.reset(TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON");
   if (loc2.isArray() && loc2.length() >= 2) {
-    res = shape2.parseCoordinates(materializer.slice(loc2, true), /*geoJson*/true);
-  } else if (loc1.isObject()) {
-    res = geo::GeoJsonParser::parseGeoJson(materializer.slice(loc2, true), shape2);
+    res = shape2.parseCoordinates(mat2.slice(loc2, true), /*geoJson*/true);
+  } else if (loc2.isObject()) {
+    res = geo::GeoJsonParser::parseGeoJson(mat2.slice(loc2, true), shape2);
   }
   if (res.fail()) {
     Functions::RegisterWarning(query, "GEO_DISTANCE", res);
@@ -2436,31 +2437,6 @@ AqlValue Functions::GeoDistance(arangodb::aql::Query* query,
   }
   
   return NumberValue(trx, shape1.distanceFromCentroid(shape2.centroid()), true);
-}
-
-static AqlValue GeoContainsIntersect(arangodb::aql::Query* query,
-                                     transaction::Methods* trx,
-                                     char const* func,
-                                     geo::ShapeContainer const& outer,
-                                     AqlValue const& toTest,
-                                     bool contains) {
-  Result res(TRI_ERROR_BAD_PARAMETER, "Second arg requires coordinate pair or GeoJSON");
-  AqlValueMaterializer materializer(trx);
-  VPackSlice doc = materializer.slice(toTest, true);
-  geo::ShapeContainer testShape;
-  if (toTest.isArray() && toTest.length() >= 2) {
-    res = testShape.parseCoordinates(doc, /*geoJson*/true);
-  } else if (toTest.isObject()) {
-    res = geo::GeoJsonParser::parseGeoJson(doc, testShape);
-  }
-  
-  if (res.fail()) {
-    Functions::RegisterWarning(query, func, res);
-    return AqlValue(AqlValueHintNull());
-  }
-  
-  bool ret = contains ? outer.contains(&testShape) : outer.intersects(&testShape);
-  return AqlValue(AqlValueHintBool(ret));
 }
 
 static AqlValue GeoContainsIntersect(arangodb::aql::Query* query,
@@ -2473,24 +2449,37 @@ static AqlValue GeoContainsIntersect(arangodb::aql::Query* query,
   
   if (!p1.isObject()) {
     Functions::RegisterWarning(query, func, Result(
-      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "Expecting valid GeoJSON object"));
+      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "Expecting GeoJSON object"));
     return AqlValue(AqlValueHintNull());
   }
   
-  AqlValueMaterializer materializer(trx);
-  geo::ShapeContainer outer;
-  Result res = geo::GeoJsonParser::parseGeoJson(materializer.slice(p1, true), outer);
+  AqlValueMaterializer mat1(trx);
+  geo::ShapeContainer outer, inner;
+  Result res = geo::GeoJsonParser::parseGeoJson(mat1.slice(p1, true), outer);
   if (res.fail()) {
     Functions::RegisterWarning(query, func, res);
     return AqlValue(AqlValueHintNull());
   }
   if (contains && !outer.isAreaType()) {
     Functions::RegisterWarning(query, func, Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                    "Only polygons, circle and rect are supported as filter geometry"));
+                    "Only Polygon and MultiPolygon types are valid as first argument"));
     return AqlValue(AqlValueHintNull());
   }
   
-  return GeoContainsIntersect(query, trx, func, outer, p2, contains);
+  AqlValueMaterializer mat2(trx);
+  res.reset(TRI_ERROR_BAD_PARAMETER, "Second arg requires coordinate pair or GeoJSON");
+  if (p2.isArray() && p2.length() >= 2) {
+    res = inner.parseCoordinates(mat2.slice(p2, true), /*geoJson*/true);
+  } else if (p2.isObject()) {
+    res = geo::GeoJsonParser::parseGeoJson(mat2.slice(p2, true), inner);
+  }
+  if (res.fail()) {
+    Functions::RegisterWarning(query, func, res);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  bool result = contains ? outer.contains(&inner) : outer.intersects(&inner);
+  return AqlValue(AqlValueHintBool(result));
 }
 
 /// @brief function GEO_CONTAINS

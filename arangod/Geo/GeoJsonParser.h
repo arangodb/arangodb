@@ -43,7 +43,8 @@ namespace geo {
 
 class ShapeContainer;
 
-// should try to comply with https://tools.ietf.org/html/rfc7946
+/// Simple GeoJson parser should be more or less forgiving
+/// and complies with most of https://tools.ietf.org/html/rfc7946
 class GeoJsonParser {
  private:
   GeoJsonParser() {}
@@ -62,25 +63,26 @@ class GeoJsonParser {
 
   static GeoJSONType parseGeoJSONType(velocypack::Slice const& geoJSON);
 
-  /// @brief Convenience function to build a region from a geoJson type.
+  /// @brief Convenience function to build a region from a GeoJson type.
   static Result parseGeoJson(velocypack::Slice const& geoJSON,
                              ShapeContainer& region);
 
   /// @brief Expects an GeoJson point or an array [lon, lat]
   static Result parsePoint(velocypack::Slice const& geoJSON, S2LatLng& latLng);
 
-  /// @brief parse geoJson polygon or array of loops. Each loop consists of
+  /// @brief parse GeoJson polygon or array of loops. Each loop consists of
   /// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...]
   static Result parsePolygon(velocypack::Slice const& geoJSON, S2Polygon& poly);
 
   static Result parseLinestring(velocypack::Slice const& geoJSON,
                                 S2Polyline& ll);
-  /// @brief parse geoJson multi linestring
+  /// @brief parse GeoJson multi linestring
   static Result parseMultiLinestring(velocypack::Slice const& geoJSON,
                                      std::vector<S2Polyline>& ll);
 
   // ============= Helpers ============
 
+  /// Parses lat/lng arrays and {coordinates:[[lng, lat], ...]}
   static Result parsePoints(velocypack::Slice const& geoJSON, bool geoJson,
                             std::vector<S2Point>& vertices);
 

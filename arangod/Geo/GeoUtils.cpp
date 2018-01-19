@@ -31,6 +31,7 @@
 #include <geometry/s2cap.h>
 #include <geometry/s2loop.h>
 #include <geometry/s2polygon.h>
+#include <geometry/s2polyline.h>
 #include <geometry/s2regioncoverer.h>
 
 #include <string>
@@ -39,6 +40,7 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
+// TODO implement all this via a ShapeContainer ?
 Result GeoUtils::indexCellsGeoJson(S2RegionCoverer* coverer,
                                    VPackSlice const& data,
                                    std::vector<S2CellId>& cells,
@@ -46,52 +48,79 @@ Result GeoUtils::indexCellsGeoJson(S2RegionCoverer* coverer,
   if (!data.isObject()) {  // actual geojson
     return TRI_ERROR_BAD_PARAMETER;
   }
-
+  
+  S2LatLng latLng;
+  Result res(TRI_ERROR_NOT_IMPLEMENTED, "GeoJSON type is not supported");
   GeoJsonParser::GeoJSONType t = GeoJsonParser::parseGeoJSONType(data);
   switch (t) {
     case GeoJsonParser::GeoJSONType::POINT: {
-      S2LatLng ll;
-      Result res = GeoJsonParser::parsePoint(data, ll);
+      res = GeoJsonParser::parsePoint(data, latLng);
       if (res.ok()) {
-        cells.push_back(S2CellId::FromLatLng(ll));
-        centroid.latitude = ll.lat().degrees();
-        centroid.longitude = ll.lng().degrees();
+        cells.push_back(S2CellId::FromLatLng(latLng));
       }
-      return res;
+      break;
     }
 
     case GeoJsonParser::GeoJSONType::LINESTRING: {
       S2Polyline line;
-      Result res = GeoJsonParser::parseLinestring(data, line);
+      res = GeoJsonParser::parseLinestring(data, line);
       if (res.ok()) {
         coverer->GetCovering(line, &cells);
-        S2LatLng ll(line.GetCentroid());
-        centroid.latitude = ll.lat().degrees();
-        centroid.longitude = ll.lng().degrees();
+        latLng = S2LatLng(line.GetCentroid());
       }
-      return res;
+      break;
     }
 
     case GeoJsonParser::GeoJSONType::POLYGON: {
       S2Polygon poly;
-      Result res = GeoJsonParser::parsePolygon(data, poly);
+      res = GeoJsonParser::parsePolygon(data, poly);
       if (res.ok()) {
         coverer->GetCovering(poly, &cells);
-        S2LatLng ll(poly.GetCentroid());
-        centroid.latitude = ll.lat().degrees();
-        centroid.longitude = ll.lng().degrees();
+        latLng = S2LatLng(poly.GetCentroid());
       }
-      return res;
+      break;
     }
-    case GeoJsonParser::GeoJSONType::MULTI_POINT:
-    case GeoJsonParser::GeoJSONType::MULTI_LINESTRING:
+      
+    case GeoJsonParser::GeoJSONType::MULTI_POINT:{
+      std::vector<S2Point> vertices;
+      res = GeoJsonParser::parsePoints(data, true, vertices);
+      if (res.ok()) {
+        S2Point center(0,0,0);
+        for (S2Point const& v : vertices) {
+          cells.emplace_back(S2CellId::FromPoint(v));
+          center += v;
+        }
+        center /= vertices.size();
+        latLng = S2LatLng(center);
+      }
+      break;
+    }
+      
+    case GeoJsonParser::GeoJSONType::MULTI_LINESTRING: {
+      std::vector<S2Polyline> lines;
+      res = GeoJsonParser::parseMultiLinestring(data, lines);
+      if (res.ok()) {
+        S2Point center(0,0,0);
+        for (S2Polyline const& line : lines) {
+          coverer->GetCovering(line, &cells);
+          center += line.GetCentroid();
+        }
+        center /= lines.size();
+        latLng = S2LatLng(center);
+      }
+      break;
+    }
+      
     case GeoJsonParser::GeoJSONType::MULTI_POLYGON:
     case GeoJsonParser::GeoJSONType::GEOMETRY_COLLECTION:
-    case GeoJsonParser::GeoJSONType::UNKNOWN: {
-      return TRI_ERROR_NOT_IMPLEMENTED;  // TODO
-    }
+    case GeoJsonParser::GeoJSONType::UNKNOWN:
+      break;
   }
-  return TRI_ERROR_NOT_IMPLEMENTED;
+  if (res.ok()) {
+    centroid.latitude = latLng.lat().degrees();
+    centroid.longitude = latLng.lng().degrees();
+  }
+  return res;
 }
 
 Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,

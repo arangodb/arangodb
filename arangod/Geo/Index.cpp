@@ -70,9 +70,8 @@ void geo::Index::initalize(VPackSlice const& info,
       _longitude.emplace_back(it.name);
     }
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-                                   TRI_ERROR_BAD_PARAMETER,
-                                   "RocksDBGeoS2Index can only be created with one or two fields.");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "s2index can only be created with one or two fields.");
   }
 }
 
@@ -82,18 +81,18 @@ Result geo::Index::indexCells(VPackSlice const& doc,
   if (_variant == geo::Index::Variant::COMBINED_GEOJSON) {
     VPackSlice loc = doc.get(_location);
     if (loc.isArray()) {
-      return geo::GeoUtils::indexCellsLatLng(loc, true, cells, centroid);
+      return GeoUtils::indexCellsLatLng(loc, /*geojson*/true, cells, centroid);
     }
     S2RegionCoverer coverer;
     _coverParams.configureS2RegionCoverer(&coverer);
     return geo::GeoUtils::indexCellsGeoJson(&coverer, loc, cells, centroid);
   } else if (_variant == geo::Index::Variant::COMBINED_LAT_LON) {
     VPackSlice loc = doc.get(_location);
-    return geo::GeoUtils::indexCellsLatLng(loc, false, cells, centroid);
+    return GeoUtils::indexCellsLatLng(loc, /*geojson*/false, cells, centroid);
   } else if (_variant == geo::Index::Variant::INDIVIDUAL_LAT_LON) {
-    VPackSlice lon = doc.get(_longitude);
     VPackSlice lat = doc.get(_latitude);
-    if (!lon.isNumber() || !lat.isNumber()) {
+    VPackSlice lon = doc.get(_longitude);
+    if (!lat.isNumber() || !lon.isNumber()) {
       return TRI_ERROR_BAD_PARAMETER;
     }
     centroid.latitude = lat.getNumericValue<double>();
