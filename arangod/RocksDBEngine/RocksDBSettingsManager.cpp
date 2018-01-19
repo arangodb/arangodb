@@ -453,12 +453,11 @@ void RocksDBSettingsManager::readIndexEstimates() {
               estimateSerialisation)) {
         auto it = _estimators.emplace(
             objectId,
-            std::make_pair(
-                lastSeqNumber,
                 std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
-                    estimateSerialisation)));
+                    lastSeqNumber,
+                    estimateSerialisation));
         if (it.second) {
-          auto estimator = it.first->second.second.get();
+          auto estimator = it.first->second.get();
           LOG_TOPIC(TRACE, Logger::ENGINES)
             << "found index estimator for objectId '" << objectId
             << "' last synced at " << lastSeqNumber
@@ -500,19 +499,17 @@ void RocksDBSettingsManager::readKeyGenerators() {
   }
 }
 
-std::pair<std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>, uint64_t>
+std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>
 RocksDBSettingsManager::stealIndexEstimator(uint64_t objectId) {
   std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> res(nullptr);
-  uint64_t seq = 0;
   auto it = _estimators.find(objectId);
   if (it != _estimators.end()) {
     // We swap out the stored estimate in order to move it to the caller
-    res.swap(it->second.second);
-    seq = it->second.first;
+    res.swap(it->second);
     // Drop the now empty estimator
     _estimators.erase(objectId);
   }
-  return std::make_pair(std::move(res), seq);
+  return std::move(res);
 }
 
 uint64_t RocksDBSettingsManager::stealKeyGenerator(uint64_t objectId) {

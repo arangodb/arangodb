@@ -78,7 +78,7 @@ class RocksDBSettingsManager {
 
   /// Thread-Safe load a counter
   CounterAdjustment loadCounter(uint64_t objectId) const;
-  
+
   /// collections / views / indexes can call this method to update
   /// their total counts. Thread-Safe needs the snapshot so we know
   /// the sequence number used
@@ -99,10 +99,10 @@ class RocksDBSettingsManager {
 
   // Steal the index estimator that the recovery has built up to inject it into
   // an index.
-  // NOTE: If this returns nullptr the recovery was not ably to find any
+  // NOTE: If this returns nullptr the recovery was not able to find any
   // estimator
   // for this index.
-  std::pair<std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>, uint64_t>
+  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>
   stealIndexEstimator(uint64_t indexObjectId);
 
   // Steal the key genenerator state that recovery has detected.
@@ -169,8 +169,7 @@ class RocksDBSettingsManager {
   //////////////////////////////////////////////////////////////////////////////
   std::unordered_map<
       uint64_t,
-      std::pair<uint64_t,
-                std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>
+      std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>
       _estimators;
 
   //////////////////////////////////////////////////////////////////////////////

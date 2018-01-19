@@ -219,8 +219,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
           info, "deduplicate", true)),
       _useExpansion(false),
       _allowPartialIndex(true),
-      _estimator(nullptr),
-      _estimatorSerializedSeq(0) {
+      _estimator(nullptr) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::vpack());
 
   if (!_unique && !ServerState::instance()->isCoordinator()) {
@@ -1017,7 +1016,7 @@ bool RocksDBVPackIndex::supportsFilterCondition(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
-  
+
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
@@ -1082,7 +1081,7 @@ bool RocksDBVPackIndex::supportsFilterCondition(
   if (values == 0) {
     values = 1;
   }
-  
+
   if (attributesCoveredByEquality == _fields.size() && unique()) {
     // index is unique and condition covers all attributes by equality
     if (itemsInIndex == 0) {
@@ -1090,7 +1089,7 @@ bool RocksDBVPackIndex::supportsFilterCondition(
       estimatedCost = 0.0;
       return true;
     }
-  
+
     estimatedItems = values;
     estimatedCost = static_cast<double>(estimatedItems * values);
     // cost is already low... now slightly prioritize unique indexes
@@ -1536,9 +1535,8 @@ void RocksDBVPackIndex::serializeEstimate(std::string& output, uint64_t seq) con
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (!_unique) {
     TRI_ASSERT(_estimator != nullptr);
-    _estimator->serialize(output);
+    _estimator->serialize(output, seq);
   }
-  _estimatorSerializedSeq = seq;
 }
 
 bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
@@ -1551,14 +1549,13 @@ bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
 
   TRI_ASSERT(mgr != nullptr);
   auto tmp = mgr->stealIndexEstimator(_objectId);
-  if (tmp.first == nullptr) {
+  if (tmp == nullptr) {
     // We expected to receive a stored index estimate, however we got none.
     // We use the freshly created estimator but have to recompute it.
     return false;
   }
-  _estimator.swap(tmp.first);
+  _estimator.swap(tmp);
   TRI_ASSERT(_estimator != nullptr);
-  _estimatorSerializedSeq = tmp.second;
   return true;
 }
 
@@ -1582,22 +1579,6 @@ void RocksDBVPackIndex::recalculateEstimates() {
                             bounds.columnFamily());
 }
 
-std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t>
-RocksDBVPackIndex::estimator() const {
-  return std::make_pair(_estimator.get(), _estimatorSerializedSeq);
-}
-
-void RocksDBVPackIndex::applyCommitedEstimates(
-    std::vector<uint64_t> const& inserts,
-    std::vector<uint64_t> const& removes) {
-  if (_estimator != nullptr) {
-    // If we have an estimator apply the changes to it.
-    for (auto const& hash : inserts) {
-      _estimator->insert(hash);
-    }
-
-    for (auto const& hash : removes) {
-      _estimator->remove(hash);
-    }
-  }
+RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {
+  return _estimator.get();
 }

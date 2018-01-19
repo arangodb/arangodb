@@ -88,7 +88,9 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief add an operation for a transaction collection
   void addOperation(TRI_voc_document_operation_e operationType,
                     uint64_t operationSize, TRI_voc_rid_t revisionId);
-  void commitCounts();
+  void prepareCommit(uint64_t trxId, uint64_t preCommitSeq);
+  void abortCommit(uint64_t trxId);
+  void commitCounts(uint64_t trxId, uint64_t commitSeq);
 
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx commited
@@ -97,8 +99,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief Every index can track hashes removed from this index
   ///        Used to update the estimate after the trx commited
   void trackIndexRemove(uint64_t idxObjectId, uint64_t hash);
-
-
 
  private:
   /// @brief request a lock for a collection
@@ -124,7 +124,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
   std::unordered_map<uint64_t,
-                     std::pair<std::vector<uint64_t>, std::vector<uint64_t>>>
+                     std::pair<std::shared_ptr<std::vector<uint64_t>>, std::shared_ptr<std::vector<uint64_t>>>>
       _trackedIndexOperations;
 
 };

@@ -876,10 +876,10 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                           TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
   res = insertDocument(trx, documentId, newSlice, options);
-  
+
   if (res.ok()) {
     trackWaitForSync(trx, options);
-    mdr.setManaged(newSlice.begin(), documentId); 
+    mdr.setManaged(newSlice.begin(), documentId);
 
     // report document and key size
     RocksDBOperationResult result = state->addOperation(
@@ -1077,7 +1077,7 @@ Result RocksDBCollection::replace(
 
   RocksDBOperationResult opResult = updateDocument(
       trx, oldDocumentId, oldDoc, documentId, newDoc, options);
-  
+
   if (opResult.ok()) {
     trackWaitForSync(trx, options);
 
@@ -1159,7 +1159,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   state->prepareOperation(_logicalCollection->cid(), documentId.id(),
                           StringRef(key),TRI_VOC_DOCUMENT_OPERATION_REMOVE);
   res = removeDocument(trx, oldDocumentId, oldDoc, options);
-  
+
   if (res.ok()) {
     trackWaitForSync(trx, options);
 
@@ -1351,7 +1351,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
   if (!res.ok()) {
     it->reset();
     batch.Clear();
-  
+
     ManagedDocumentResult mmdr;
 
     arangodb::Result res2;  // do not overwrite original error
@@ -1876,8 +1876,6 @@ arangodb::Result RocksDBCollection::serializeIndexEstimates(
     output.clear();
     RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
     TRI_ASSERT(cindex != nullptr);
-    rocksutils::uint64ToPersistent(
-        output, latestSeq);
     cindex->serializeEstimate(output, latestSeq);
     if (output.size() > sizeof(uint64_t)) {
       RocksDBKey key;

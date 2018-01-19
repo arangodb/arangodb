@@ -212,13 +212,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
   }
 
-  std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> findEstimator(
+  RocksDBCuckooIndexEstimator<uint64_t>* findEstimator(
       uint64_t objectId) {
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     Index* index = engine->mapObjectToIndex(objectId);
     if (index == nullptr) {
-      return std::make_pair(nullptr, 0);
+      return nullptr;
     }
     return static_cast<RocksDBIndex*>(index)->estimator();
   }
@@ -307,13 +307,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       if (hash != 0) {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto est = findEstimator(objectId);
-        if (est.first != nullptr && est.second < currentSeqNum) {
+        if (est != nullptr && est->commitSeq() < currentSeqNum) {
           /*LOG_TOPIC(TRACE, Logger::ENGINES)
             << "recovery adding hash'" << hash
             << "' to estimator for index with objectId'" << objectId << "'";*/
 
           // We track estimates for this index
-          est.first->insert(hash);
+          est->insert(hash);
         } /*else {
           if (est.first == nullptr) {
             LOG_TOPIC(TRACE, Logger::ENGINES)
@@ -363,13 +363,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       if (hash != 0) {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto est = findEstimator(objectId);
-        if (est.first != nullptr && est.second < currentSeqNum) {
+        if (est != nullptr && est->commitSeq() < currentSeqNum) {
           /*LOG_TOPIC(TRACE, Logger::ENGINES)
             << "recovery removing hash'" << hash
             << "' from estimator for index with objectId'" << objectId << "'";*/
-            
+
           // We track estimates for this index
-          est.first->remove(hash);
+          est->remove(hash);
         } /*else {
           if (est.first == nullptr) {
             LOG_TOPIC(TRACE, Logger::ENGINES)

@@ -408,8 +408,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                    !ServerState::instance()->isCoordinator() /*useCache*/),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
-      _estimator(nullptr),
-      _estimatorSerializedSeq(0) {
+      _estimator(nullptr) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::edge());
 
   if (!ServerState::instance()->isCoordinator()) {
@@ -508,9 +507,8 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
   }
 }
 
-std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t>
-RocksDBEdgeIndex::estimator() const {
-  return std::make_pair(_estimator.get(), _estimatorSerializedSeq);
+RocksDBCuckooIndexEstimator<uint64_t>* RocksDBEdgeIndex::estimator() {
+  return _estimator.get();
 }
 
 void RocksDBEdgeIndex::batchInsert(
@@ -957,8 +955,7 @@ void RocksDBEdgeIndex::handleValNode(
 void RocksDBEdgeIndex::serializeEstimate(std::string& output,
                                          uint64_t seq) const {
   TRI_ASSERT(_estimator != nullptr);
-  _estimator->serialize(output);
-  _estimatorSerializedSeq = seq;
+  _estimator->serialize(output, seq);
 }
 
 bool RocksDBEdgeIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
@@ -969,14 +966,13 @@ bool RocksDBEdgeIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
 
   TRI_ASSERT(mgr != nullptr);
   auto tmp = mgr->stealIndexEstimator(_objectId);
-  if (tmp.first == nullptr) {
+  if (tmp == nullptr) {
     // We expected to receive a stored index estimate, however we got none.
     // We use the freshly created estimator but have to recompute it.
     return false;
   }
-  _estimator.swap(tmp.first);
+  _estimator.swap(tmp);
   TRI_ASSERT(_estimator != nullptr);
-  _estimatorSerializedSeq = tmp.second;
   return true;
 }
 
@@ -997,20 +993,5 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     uint64_t hash = RocksDBEdgeIndex::HashForKey(it->key());
     _estimator->insert(hash);
-  }
-}
-
-void RocksDBEdgeIndex::applyCommitedEstimates(
-    std::vector<uint64_t> const& inserts,
-    std::vector<uint64_t> const& removes) {
-  if (_estimator != nullptr) {
-    // If we have an estimator apply the changes to it.
-    for (auto const& hash : inserts) {
-      _estimator->insert(hash);
-    }
-
-    for (auto const& hash : removes) {
-      _estimator->remove(hash);
-    }
   }
 }

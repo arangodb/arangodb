@@ -91,27 +91,29 @@ SECTION("test_serialize_deserialize") {
   for (auto it : toInsert) {
     est.insert(it);
   }
+  uint64_t seq = 42;
 
-  est.serialize(serialization);
+  est.serialize(serialization, seq);
 
   // Test that the serialization first reports the correct length
-  uint64_t length = serialization.size();
-  
-  // We read starting from the second char. The first char is reserved for the type
-  uint64_t persLength = rocksutils::uint64FromPersistent(serialization.data() + 1);
+  uint64_t length = serialization.size() - 8; // don't count the seq
+
+  // We read starting from the 10th char. The first 8 are reserved for the seq, and the ninth char is reserved for the type
+  uint64_t persLength = rocksutils::uint64FromPersistent(serialization.data() + 9);
   CHECK(persLength == length);
 
   // We first have an uint64_t representing the length.
   // This has to be extracted BEFORE initialisation.
-  StringRef ref(serialization.data(), persLength);
+  StringRef ref(serialization.data() + 8, persLength);
 
-  RocksDBCuckooIndexEstimator<uint64_t> copy(ref);
+  RocksDBCuckooIndexEstimator<uint64_t> copy(seq, ref);
 
   // After serialisation => deserialisation
   // both estimates have to be identical
   CHECK(est.nrUsed() == copy.nrUsed());
   CHECK(est.nrCuckood() == copy.nrCuckood());
   CHECK(est.computeEstimate() == copy.computeEstimate());
+  CHECK(seq == copy.commitSeq());
 
   // Now let us remove the same elements in both
   bool coin = false;

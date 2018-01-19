@@ -217,7 +217,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
   if (AccessMode::isWriteOrExclusive(_accessType) && !isLocked()) {
     // r/w lock the collection
     int res = doLock(_accessType, nestingLevel);
-  
+
     if (res == TRI_ERROR_LOCKED) {
       // TRI_ERROR_LOCKED is not an error, but it indicates that the lock operation has actually acquired the lock
       // (and that the lock has not been held before)
@@ -226,7 +226,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       return res;
     }
   }
-    
+
   if (doSetup) {
     RocksDBCollection* rc =
         static_cast<RocksDBCollection*>(_collection->getPhysical());
@@ -285,8 +285,8 @@ void RocksDBTransactionCollection::addOperation(
   _operationSize += operationSize;
 }
 
-void RocksDBTransactionCollection::commitCounts() {
-  // Update the index estimates.
+void RocksDBTransactionCollection::prepareCommit(uint64_t trxId,
+                                                 uint64_t preCommitSeq) {
   TRI_ASSERT(_collection != nullptr);
   for (auto const& pair : _trackedIndexOperations) {
     auto idx = _collection->lookupIndex(pair.first);
@@ -295,7 +295,47 @@ void RocksDBTransactionCollection::commitCounts() {
       continue;
     }
     auto ridx = static_cast<RocksDBIndex*>(idx.get());
-    ridx->applyCommitedEstimates(pair.second.first, pair.second.second);
+    auto estimator = ridx->estimator();
+    if (estimator) {
+      estimator->placeBlocker(trxId, preCommitSeq);
+    }
+  }
+}
+
+void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
+  TRI_ASSERT(_collection != nullptr);
+  for (auto const& pair : _trackedIndexOperations) {
+    auto idx = _collection->lookupIndex(pair.first);
+    if (idx == nullptr) {
+      TRI_ASSERT(false); // Index reported estimates, but does not exist
+      continue;
+    }
+    auto ridx = static_cast<RocksDBIndex*>(idx.get());
+    auto estimator = ridx->estimator();
+    if (estimator) {
+      estimator->removeBlocker(trxId);
+    }
+  }
+}
+
+void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
+                                                uint64_t commitSeq) {
+  // Update the index estimates.
+  TRI_ASSERT(_collection != nullptr);
+  if (commitSeq > 0) {
+    for (auto const& pair : _trackedIndexOperations) {
+      auto idx = _collection->lookupIndex(pair.first);
+      if (idx == nullptr) {
+        TRI_ASSERT(false); // Index reported estimates, but does not exist
+        continue;
+      }
+      auto ridx = static_cast<RocksDBIndex*>(idx.get());
+      auto estimator = ridx->estimator();
+      if (estimator) {
+        estimator->bufferUpdates(commitSeq, pair.second.first, pair.second.second);
+        estimator->removeBlocker(trxId);
+      }
+    }
   }
 
   _initialNumberDocuments = _numInserts - _numRemoves;
@@ -308,14 +348,16 @@ void RocksDBTransactionCollection::commitCounts() {
 
 void RocksDBTransactionCollection::trackIndexInsert(uint64_t idxObjectId,
                                                     uint64_t hash) {
+  // TODO allocate vector
   // First list is Inserts
-  _trackedIndexOperations[idxObjectId].first.emplace_back(hash);
+  _trackedIndexOperations[idxObjectId].first->emplace_back(hash);
 }
 
 void RocksDBTransactionCollection::trackIndexRemove(uint64_t idxObjectId,
                                                     uint64_t hash) {
+  // TODO allocate vector
   // Second list is Removes
-  _trackedIndexOperations[idxObjectId].second.emplace_back(hash);
+  _trackedIndexOperations[idxObjectId].second->emplace_back(hash);
 }
 
 /// @brief lock a collection
@@ -375,8 +417,8 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type,
     _lockType = type;
     // not an error, but we use TRI_ERROR_LOCKED to indicate that we actually acquired the lock ourselves
     return TRI_ERROR_LOCKED;
-  } 
-  
+  }
+
   if (res == TRI_ERROR_LOCK_TIMEOUT && timeout >= 0.1) {
     LOG_TOPIC(WARN, Logger::QUERIES)
         << "timed out after " << timeout << " s waiting for "

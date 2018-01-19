@@ -180,7 +180,8 @@ class RocksDBCuckooIndexEstimator {
     initializeDefault();
   }
 
-  RocksDBCuckooIndexEstimator(arangodb::StringRef const serialized)
+  RocksDBCuckooIndexEstimator(uint64_t commitSeq,
+                              arangodb::StringRef const serialized)
       : _randState(0x2636283625154737ULL),
         _slotSize(sizeof(uint16_t)),     // Sort out offsets and alignments
         _counterSize(sizeof(uint32_t)),  // Sort out offsets and alignments
@@ -198,7 +199,8 @@ class RocksDBCuckooIndexEstimator {
         _nrUsed(0),
         _nrCuckood(0),
         _nrTotal(0),
-        _maxRounds(16) {
+        _maxRounds(16),
+        _committedSeq(commitSeq) {
     switch (serialized.front()) {
       case SerializeFormat::NOCOMPRESSION: {
         deserializeUncompressed(serialized);
@@ -225,11 +227,12 @@ class RocksDBCuckooIndexEstimator {
   RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator&&) =
       delete;
 
-  void serialize(std::string& serialized) const {
+  void serialize(std::string& serialized, uint64_t seq) const {
     // This format is always hard coded and the serialisation has to support
     // older formats
     // for backwards compatibility
-    // We always have to start with the type and then the length
+    // We always have to start with the commit seq, type and then the length
+    rocksutils::uint64ToPersistent(serialized, commitSeq(seq));
     serialized += SerializeFormat::NOCOMPRESSION;
 
     uint64_t serialLength =
@@ -246,7 +249,7 @@ class RocksDBCuckooIndexEstimator {
     {
       // Sorry we need a consistent state, so we have to read-lock from here
       // on...
-      READ_LOCKER(locker, _bucketLock);
+      READ_LOCKER(locker, _lock);
       // Add all member variables
       rocksutils::uint64ToPersistent(serialized, _size);
       rocksutils::uint64ToPersistent(serialized, _nrUsed);
@@ -276,7 +279,7 @@ class RocksDBCuckooIndexEstimator {
   }
 
   void clear() {
-    WRITE_LOCKER(locker, _bucketLock);
+    WRITE_LOCKER(locker, _lock);
     // Reset Stats
     _nrTotal = 0;
     _nrCuckood = 0;
@@ -294,7 +297,7 @@ class RocksDBCuckooIndexEstimator {
   }
 
   double computeEstimate() {
-    READ_LOCKER(locker, _bucketLock);
+    READ_LOCKER(locker, _lock);
     if (_nrTotal == 0) {
       // If we do not have any documents we have a rather constant estimate.
       return 1;
@@ -325,7 +328,7 @@ class RocksDBCuckooIndexEstimator {
     uint64_t pos2 = hashToPos(hash2);
     bool found = false;
     {
-      READ_LOCKER(guard, _bucketLock);
+      READ_LOCKER(guard, _lock);
       findSlotNoCuckoo(pos1, pos2, fingerprint, found);
     }
     return found;
@@ -350,7 +353,7 @@ class RocksDBCuckooIndexEstimator {
     uint64_t pos2 = hashToPos(hash2);
 
     {
-      WRITE_LOCKER(guard, _bucketLock);
+      WRITE_LOCKER(guard, _lock);
       Slot slot = findSlotCuckoo(pos1, pos2, fingerprint);
       if (slot.isEmpty()) {
         // Free slot insert ourself.
@@ -380,7 +383,7 @@ class RocksDBCuckooIndexEstimator {
 
     bool found = false;
     {
-      WRITE_LOCKER(guard, _bucketLock);
+      WRITE_LOCKER(guard, _lock);
       _nrTotal--;
       Slot slot = findSlotNoCuckoo(pos1, pos2, fingerprint, found);
       if (found) {
@@ -408,6 +411,39 @@ class RocksDBCuckooIndexEstimator {
 
   // not thread safe. called only during tests
   uint64_t nrCuckood() const { return _nrCuckood; }
+
+  void placeBlocker(uint64_t trxId, uint64_t seq) {
+    // TODO
+  }
+
+  void removeBlocker(uint64_t trxId) {
+    // TODO
+  }
+
+  void bufferUpdates(uint64_t seq,
+                     std::shared_ptr<std::vector<uint64_t>> inserts,
+                     std::shared_ptr<std::vector<uint64_t>> removals) {
+    // TODO
+  }
+
+  void applyUpdates() {
+    // TODO
+  }
+
+  uint64_t commitSeq() const {
+    READ_LOCKER(locker, _lock);
+    return _committedSeq;
+  }
+
+  uint64_t commitSeq(uint64_t current) const {
+    WRITE_LOCKER(locker, _lock);
+    // if we have a blocker with a lower value than current, return it
+    // TODO
+
+    // otherwise update current and return it
+    _committedSeq = std::max(_committedSeq, current);
+    return _committedSeq;
+  }
 
  private:  // methods
   uint64_t memoryUsage() const {
@@ -738,11 +774,13 @@ class RocksDBCuckooIndexEstimator {
   uint64_t _nrTotal;    // number of elements included in total
   unsigned _maxRounds;  // maximum number of cuckoo rounds on insertion
 
+  uint64_t mutable _committedSeq;
+
   HashKey _hasherKey;        // Instance to compute the first hash function
   Fingerprint _fingerprint;  // Instance to compute a fingerprint of a key
   HashShort _hasherShort;    // Instance to compute the second hash function
 
-  arangodb::basics::ReadWriteLock mutable _bucketLock;
+  arangodb::basics::ReadWriteLock mutable _lock;
 };
 
 }  // namespace arangodb

@@ -125,6 +125,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   double selectivityEstimateLocal(
       arangodb::StringRef const* = nullptr) const override;
 
+  RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
+
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
   void batchInsert(
@@ -173,11 +175,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
 
-  virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const override;
-
-  virtual void applyCommitedEstimates(std::vector<uint64_t> const& inserts,
-                                      std::vector<uint64_t> const& removes) override;
-
  private:
   /// @brief create the iterator
   IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,
@@ -204,7 +201,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.
   std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> _estimator;
-  mutable uint64_t _estimatorSerializedSeq;
 };
 }  // namespace arangodb
 

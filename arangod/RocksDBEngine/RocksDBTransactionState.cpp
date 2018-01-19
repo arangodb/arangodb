@@ -250,11 +250,32 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
     }
 
+    rocksdb::SequenceNumber preCommitSeq = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+    for (auto& trxCollection : _collections) {
+      RocksDBTransactionCollection* collection =
+      static_cast<RocksDBTransactionCollection*>(trxCollection);
+      collection->prepareCommit(id(), preCommitSeq);
+    }
+    bool committed = false;
+    auto cleanupCollectionTransactions = [this, &committed]() -> void {
+      if (!committed) {
+        for (auto& trxCollection : _collections) {
+          RocksDBTransactionCollection* collection =
+          static_cast<RocksDBTransactionCollection*>(trxCollection);
+          collection->abortCommit(id());
+        }
+      }
+    };
+    TRI_DEFER(cleanupCollectionTransactions());
+
     ++_numCommits;
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
     rocksdb::SequenceNumber latestSeq = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
 
     if (result.ok()) {
+      LOG_TOPIC(TRACE, Logger::ENGINES)
+        << "intermediate commit for transaction " << id()
+        << " succeeded at tick " << latestSeq;
       for (auto& trxCollection : _collections) {
         RocksDBTransactionCollection* collection =
         static_cast<RocksDBTransactionCollection*>(trxCollection);
@@ -273,7 +294,8 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         }
         // we need this in case of an intermediate commit. The number of
         // initial documents is adjusted and numInserts / removes is set to 0
-        collection->commitCounts();
+        collection->commitCounts(id(), latestSeq);
+        committed = true;
       }
     }
   } else {
@@ -281,7 +303,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       RocksDBTransactionCollection* collection =
           static_cast<RocksDBTransactionCollection*>(trxCollection);
       // We get here if we have filled indexes. So let us commit counts
-      collection->commitCounts();
+      collection->commitCounts(id(), 0);
     }
     // don't write anything if the transaction is empty
     result = rocksutils::convertStatus(_rocksTransaction->Rollback());
@@ -402,7 +424,7 @@ void RocksDBTransactionState::prepareOperation(
       }
     }
   }
-  
+
   // we need to log the remove log entry, if we don't have the single
   // optimization
   if (!singleOp && (
