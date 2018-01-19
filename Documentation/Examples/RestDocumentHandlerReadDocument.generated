@@ -1,13 +1,13 @@
-shell> curl --dump - http://localhost:8529/_api/document/products/10739
+shell> curl --dump - http://localhost:8529/_api/document/products/10734
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_WON9jMW---"</span>
+etag: <span class="hljs-string">"_WO7mxuG---"</span>
 
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10739"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10739"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WON9jMW---"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10734"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10734"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WO7mxuG---"</span>, 
   <span class="hljs-string">"hello"</span> : <span class="hljs-string">"world"</span> 
 }
