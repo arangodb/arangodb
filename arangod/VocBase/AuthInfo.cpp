@@ -478,8 +478,10 @@ static Result UpdateUser(VPackSlice const& user) {
 
   Result res = trx.begin();
   if (res.ok()) {
+    OperationOptions options;
+    options.mergeObjects = false;
     OperationResult result =
-        trx.update(TRI_COL_NAME_USERS, user, OperationOptions());
+        trx.update(TRI_COL_NAME_USERS, user, options);
     res = trx.finish(result.result);
   }
   return res;
