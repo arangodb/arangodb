@@ -1989,6 +1989,32 @@ static void JS_GetShardDistribution(v8::FunctionCallbackInfo<v8::Value> const& a
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Collect the distribution of shards of a specific collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetCollectionShardDistribution(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  ONLY_IN_CLUSTER
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("GetCollectionShardDistribution(<collectionName>)");
+  }
+
+  std::string const colName = TRI_ObjectToString(args[0]);
+
+  v8::HandleScope scope(isolate);
+  auto vocbase = GetContextVocBase(isolate);
+
+  auto reporter = cluster::ShardDistributionReporter::instance();
+
+  VPackBuilder result;
+  reporter->getCollectionDistributionForDatabase(vocbase->name(), colName, result);
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a global cluster context
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2199,4 +2225,8 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_CLUSTER_SHARD_DISTRIBUTION"),
       JS_GetShardDistribution);
+
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_CLUSTER_COLLETION_SHARD_DISTRIBUTION"),
+      JS_GetCollectionShardDistribution);
 }

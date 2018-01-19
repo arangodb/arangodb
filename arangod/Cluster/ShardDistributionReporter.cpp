@@ -210,7 +210,8 @@ static void ReportOffSync(
     LogicalCollection const* col, ShardMap const* shardIds,
     std::unordered_map<ShardID, SyncCountInfo>& counters,
     std::unordered_map<ServerID, std::string> const& aliases,
-    VPackBuilder& result) {
+    VPackBuilder& result,
+    bool progress) {
   TRI_ASSERT(result.isOpenObject());
 
   result.add(VPackValue(col->name()));
@@ -224,11 +225,16 @@ static void ReportOffSync(
     for (auto const& s : *shardIds) {
       TRI_ASSERT(counters.find(s.first) != counters.end());
       auto const& c = counters[s.first];
+
       if (c.insync) {
         ReportShardNoProgress(s.first, s.second, aliases, result);
       } else {
-        ReportShardProgress(s.first, s.second, aliases, c.total,
-                              c.current, result);
+        if (progress) {
+          ReportShardProgress(s.first, s.second, aliases, c.total,
+                                c.current, result);
+        } else {
+          ReportShardNoProgress(s.first, s.second, aliases, result);
+        }
       }
     }
     result.close();
@@ -270,25 +276,13 @@ ShardDistributionReporter::instance() {
   return _theInstance;
 }
 
-void ShardDistributionReporter::getDistributionForDatabase(
-    std::string const& dbName, VPackBuilder& result) {
-
-  double endtime = TRI_microtime() + 2.0; // We add two seconds
-
-  result.openObject();
-
-  auto aliases = _ci->getServerAliases();
-  auto cols = _ci->getCollections(dbName);
-
-  std::queue<std::shared_ptr<LogicalCollection>> todoSyncStateCheck;
-  for (auto col : cols) {
-    auto allShards = col->shardIds();
-    if (testAllShardsInSync(dbName, col.get(), allShards.get())) {
-      ReportInSync(col.get(), allShards.get(), aliases, result);
-    } else {
-      todoSyncStateCheck.push(col);
-    }
-  }
+void ShardDistributionReporter::helperDistributionForDatabase(
+    std::string const& dbName,
+    VPackBuilder& result,
+    std::queue<std::shared_ptr<LogicalCollection>>& todoSyncStateCheck,
+    double endtime,
+    std::unordered_map<std::string, std::string>& aliases,
+    bool progress) {
 
   if (!todoSyncStateCheck.empty()) {
     CoordTransactionID coordId = TRI_NewTickServer();
@@ -425,10 +419,59 @@ void ShardDistributionReporter::getDistributionForDatabase(
         }
       }
 
-      ReportOffSync(col.get(), allShards.get(), counters, aliases, result);
+      ReportOffSync(col.get(), allShards.get(), counters, aliases, result, progress);
       todoSyncStateCheck.pop();
     }
   }
+}
+
+void ShardDistributionReporter::getCollectionDistributionForDatabase(
+    std::string const& dbName, std::string const& colName, VPackBuilder& result) {
+
+  double endtime = TRI_microtime() + 2.0; // We add two seconds
+
+  result.openObject();
+
+  auto aliases = _ci->getServerAliases();
+  auto col = _ci->getCollection(dbName, colName);
+
+  std::queue<std::shared_ptr<LogicalCollection>> todoSyncStateCheck;
+
+  auto allShards = col->shardIds();
+  if (testAllShardsInSync(dbName, col.get(), allShards.get())) {
+    ReportInSync(col.get(), allShards.get(), aliases, result);
+  } else {
+    todoSyncStateCheck.push(col);
+  }
+
+  const bool progress = true;
+  helperDistributionForDatabase(dbName, result, todoSyncStateCheck, endtime, aliases, progress);
+  result.close();
+}
+
+void ShardDistributionReporter::getDistributionForDatabase(
+    std::string const& dbName, VPackBuilder& result) {
+
+  double endtime = TRI_microtime() + 2.0; // We add two seconds
+
+  result.openObject();
+
+  auto aliases = _ci->getServerAliases();
+  auto cols = _ci->getCollections(dbName);
+
+  std::queue<std::shared_ptr<LogicalCollection>> todoSyncStateCheck;
+
+  for (auto col : cols) {
+    auto allShards = col->shardIds();
+    if (testAllShardsInSync(dbName, col.get(), allShards.get())) {
+      ReportInSync(col.get(), allShards.get(), aliases, result);
+    } else {
+      todoSyncStateCheck.push(col);
+    }
+  }
+
+  const bool progress = false;
+  helperDistributionForDatabase(dbName, result, todoSyncStateCheck, endtime, aliases, progress);
   result.close();
 }
 

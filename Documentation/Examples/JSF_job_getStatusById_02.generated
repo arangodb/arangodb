@@ -2,10 +2,10 @@ shell> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_adm
 
 HTTP/1.1 202 Accepted
 x-content-type-options: nosniff
-x-arango-async-id: 151393908804481
+x-arango-async-id: 151619052030943
 content-type: text/plain; charset=utf-8
 
-shell> curl --dump - http://localhost:8529/_api/job/151393908804481
+shell> curl --dump - http://localhost:8529/_api/job/151619052030943
 
 HTTP/1.1 204 No Content
 content-type: text/plain; charset=utf-8

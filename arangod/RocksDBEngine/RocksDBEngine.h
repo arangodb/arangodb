@@ -48,7 +48,6 @@ class RocksDBVPackComparator;
 class RocksDBCounterManager;
 class RocksDBReplicationManager;
 class RocksDBLogValue;
-class RocksDBThrottle;
 class TransactionCollection;
 class TransactionState;
 
@@ -298,11 +297,6 @@ class RocksDBEngine final : public StorageEngine {
 
   // number of seconds to wait before an obsolete WAL file is actually pruned
   double _pruneWaitTime;
-
-  // code to pace ingest rate of writes to reduce chances of compactions getting
-  //  too far behind and blocking incoming writes
-  std::shared_ptr<RocksDBThrottle> _listener;
-
 };
 }  // namespace arangodb
 #endif

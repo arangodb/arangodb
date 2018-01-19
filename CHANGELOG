@@ -1,34 +1,47 @@
-v3.2.11 (XXXX-XX-XX)
+v3.2.11 (2018-01-17)
 --------------------
 
 * Fixed an issue with the index estimates in RocksDB in the case a transaction is aborted.
   Former the index estimates were modified if the transaction commited or not.
   Now they will only be modified if the transaction commited successfully.
 
-* UI: optimized login view for very small screen sizes
-
-* UI: optimized error messages for invalid query bind parameter
-
 * Truncate in RocksDB will now do intermediate commits every 10.000 documents
   if truncate fails or the server crashes during this operation all deletes
   that have been commited so far are persisted.
+  
+* fixed issue #4308: Crash when getter for error.name throws an error (on Windows)
 
-* make the default value of `--rocksdb.block-cache-shard-bits` use the RocksDB
-  default value. This will mostly mean the default number block cache shard
-  bits is lower than before, allowing each shard to store more data and cause
-  less evictions from block cache
+* UI: fixed a query editor caching and parsing issue for arrays and objects
+
+* Fixed internal issue #1684: Web UI: saving arrays/objects as bind parameters faulty 
+
+* Fixed internal issue #1683: fixes an UI issue where a collection name gets wrongly cached
+  within the documents overview of a collection.
+
+* issue #4222: Permission error preventing AQL query import / export on webui
+
+* UI: optimized login view for very small screen sizes
+
+* UI: Shard distribution view now has an accordion view instead of displaying
+  all shards of all collections at once.
 
 * UI: optimized error messages for invalid query bind parameter
 
+* fixed missing transaction events in RocksDB asynchronous replication
+
 * fixed issue #4255: AQL SORT consuming too much memory
 
-* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' 
-  at 98,7: ArangoError 4: Expecting type String 
+* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js'
+  at 98,7: ArangoError 4: Expecting type String
+
+* fixed issue #3818: Foxx configuration keys cannot contain spaces (will not save)
 
 * UI: displayed wrong "waitForSync" property for a collection when 
   using RocksDB as storage engine
 
 * prevent binding to the same combination of IP and port on Windows
+
+* fixed incorrect persistence of RAFT vote and term
 
 
 v3.2.10 (2017-12-22)
@@ -36,20 +49,20 @@ v3.2.10 (2017-12-22)
 
 * replication: more robust initial sync
 
-* fixed a bug in the RocksDB engine that would prevent recalculated 
+* fixed a bug in the RocksDB engine that would prevent recalculated
   collection counts to be actually stored
 
 * fixed issue #4095: Inconsistent query execution plan
 
 * fixed issue #4056: Executing empty query causes crash
 
-* fixed issue #4045: Out of memory in `arangorestore` when no access 
+* fixed issue #4045: Out of memory in `arangorestore` when no access
   rights to dump files
 
-* fixed issue #3031: New Graph: Edge definitions with edges in 
+* fixed issue #3031: New Graph: Edge definitions with edges in
   fromCollections and toCollections
 
-* fixed issue #2668: UI: when following wrong link from edge to vertex in 
+* fixed issue #2668: UI: when following wrong link from edge to vertex in
   nonexisting collection misleading error is printed
 
 * UI: improved the behavior during collection creation in a cluster environment
@@ -58,7 +71,7 @@ v3.2.10 (2017-12-22)
   first 1000 documents instead of calling any(). The implementation of
   any is known to scale bad on huge collections with rocksdb.
 
-* fixed snapshots becoming potentially invalid after intermediate commits in 
+* fixed snapshots becoming potentially invalid after intermediate commits in
   the RocksDB engine
 
 * backport agency inquire API changes
@@ -72,22 +85,22 @@ v3.2.10 (2017-12-22)
 
 * fixed issue #3640: limit in subquery
 
-* UI: edge collections were wrongly added to from and to vertices select 
+* UI: edge collections were wrongly added to from and to vertices select
   box during graph creation
 
-* fixed issue #3741: fix terminal color output in Windows 
+* fixed issue #3741: fix terminal color output in Windows
 
 * fixed issue #3917: traversals with high maximal depth take extremely long
   in planning phase.
 
-* fix equality comparison for MMFiles documents in AQL functions UNIQUE 
+* fix equality comparison for MMFiles documents in AQL functions UNIQUE
   and UNION_DISTINCT
 
 
 v3.2.9 (2017-12-04)
 -------------------
 
-* under certain conditions, replication could stop. Now fixed by adding an 
+* under certain conditions, replication could stop. Now fixed by adding an
   equality check for requireFromPresent tick value
 
 * fixed locking for replication context info in RocksDB engine
@@ -140,7 +153,7 @@ v3.2.8 (2017-11-18)
 v3.2.7 (2017-11-13)
 -------------------
 
-* Cluster customers, which have upgraded from 3.1 to 3.2 need to upgrade 
+* Cluster customers, which have upgraded from 3.1 to 3.2 need to upgrade
   to 3.2.7. The cluster supervision is otherwise not operational.
 
 * Fixed issue #3597: AQL with path filters returns unexpected results
@@ -171,24 +184,24 @@ v3.2.7 (2017-11-13)
 
 * only users with read/write rights on the "_system" database can now execute
   "_admin/shutdown" as well as modify properties of the write-ahead log (WAL)
- 
-* increase default maximum number of V8 contexts to at least 16 if not explicitly 
-  configured otherwise. 
-  the procedure for determining the actual maximum value of V8 contexts is unchanged 
+
+* increase default maximum number of V8 contexts to at least 16 if not explicitly
+  configured otherwise.
+  the procedure for determining the actual maximum value of V8 contexts is unchanged
   apart from the value `16` and works as follows:
   - if explicitly set, the value of the configuration option `--javascript.v8-contexts`
     is used as the maximum number of V8 contexts
   - when the option is not set, the maximum number of V8 contexts is determined
-    by the configuration option `--server.threads` if that option is set. if 
+    by the configuration option `--server.threads` if that option is set. if
     `--server.threads` is not set, then the maximum number of V8 contexts is the
     server's reported hardware concurrency (number of processors visible
-    to the arangod process). if that would result in a maximum value of less than 16 
+    to the arangod process). if that would result in a maximum value of less than 16
     in any of these two cases, then the maximum value will be increased to 16.
 
-* fixed issue #3447: ArangoError 1202: AQL: NotFound: (while executing) when 
+* fixed issue #3447: ArangoError 1202: AQL: NotFound: (while executing) when
   updating collection
 
-* potential fix for issue #3581: Unexpected "rocksdb unique constraint 
+* potential fix for issue #3581: Unexpected "rocksdb unique constraint
   violated" with unique hash index
 
 * fixed geo index optimizer rule for geo indexes with a single (array of coordinates)
@@ -202,14 +215,14 @@ v3.2.7 (2017-11-13)
 
 * several fixes for agency restart and shutdown
 
-* the cluster-internal representation of planned collection objects is now more 
+* the cluster-internal representation of planned collection objects is now more
   lightweight than before, using less memory and not allocating any cache for indexes
   etc.
 
 * fixed issue #3403: How to kill long running AQL queries with the browser console's
   AQL (display issue)
 
-* fixed issue #3549: server reading ENGINE config file fails on common standard 
+* fixed issue #3549: server reading ENGINE config file fails on common standard
   newline character
 
 * UI: fixed error notifications for collection modifications
@@ -220,18 +233,18 @@ v3.2.7 (2017-11-13)
     order to prevent too frequent "could not truncate collection" errors
 
   * after a truncate operation, collections in MMFiles still used disk space.
-    to reclaim disk space used by truncated collection, the truncate actions 
+    to reclaim disk space used by truncated collection, the truncate actions
     in the web interface and from the ArangoShell now issue an extra WAL flush
     command (in cluster mode, this command is also propagated to all servers).
-    the WAL flush allows all servers to write out any pending operations into the 
-    datafiles of the truncated collection. afterwards, a final journal rotate 
-    command is sent, which enables the compaction to entirely remove all datafiles 
+    the WAL flush allows all servers to write out any pending operations into the
+    datafiles of the truncated collection. afterwards, a final journal rotate
+    command is sent, which enables the compaction to entirely remove all datafiles
     and journals for the truncated collection, so that all disk space can be
     reclaimed
 
   * for MMFiles a special method will be called after a truncate operation so that
     all indexes of the collection can free most of their memory. previously some
-    indexes (hash and skiplist indexes) partially kept already allocated memory 
+    indexes (hash and skiplist indexes) partially kept already allocated memory
     in order to avoid future memory allocations
 
   * after a truncate operation in the RocksDB engine, an additional compaction
@@ -245,7 +258,7 @@ v3.2.7 (2017-11-13)
 * enable JEMalloc background threads for purging and returning unused memory
   back to the operating system (Linux only)
 
-  JEMalloc will create its background threads on demand. The number of background 
+  JEMalloc will create its background threads on demand. The number of background
   threads is capped by the number of CPUs or active arenas. The background threads run
   periodically and purge unused memory pages, allowing memory to be returned to the
   operating system.
@@ -256,7 +269,7 @@ v3.2.7 (2017-11-13)
 
 * upgraded bundled V8 engine to bugfix version v5.7.492.77
 
-  this upgrade fixes a memory leak in upstream V8 described in 
+  this upgrade fixes a memory leak in upstream V8 described in
   https://bugs.chromium.org/p/v8/issues/detail?id=5945 that will result in memory
   chunks only getting uncommitted but not unmapped
 
@@ -271,7 +284,7 @@ v3.2.6 (2017-10-26)
 * fixed a permission problem that prevented collection contents to be displayed
   in the web interface
 
-* removed posix_fadvise call from RocksDB's PosixSequentialFile::Read(). This is 
+* removed posix_fadvise call from RocksDB's PosixSequentialFile::Read(). This is
   consistent with Facebook PR 2573 (#3505)
 
   this fix should improve the performance of the replication with the RocksDB
@@ -308,12 +321,12 @@ v3.2.5 (2017-10-16)
   operations have at least one extra context. This requirement was not enforced
   anymore.
 
-* fixed issue #3395: AQL: cannot instantiate CollectBlock with undetermined 
+* fixed issue #3395: AQL: cannot instantiate CollectBlock with undetermined
   aggregation method
 
 * UI: fixed wrong user attribute name validation, issue #3228
 
-* fix potential overflow in CRC marker check when a corrupted CRC marker 
+* fix potential overflow in CRC marker check when a corrupted CRC marker
   is found at the very beginning of an MMFiles datafile
 
 * UI: fixed unresponsive events in cluster shards view
