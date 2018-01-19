@@ -40,7 +40,7 @@ NS_ROOT
   template <typename T, std::size_t N>
   CONSTEXPR std::size_t countof(T const (&)[N]) noexcept { return N; }
   NS_END // detail
-  #define IRESEARCH_COUNTOF(x) iresearch::detail::countof(x)
+  #define IRESEARCH_COUNTOF(x) ::iresearch::detail::countof(x)
 #elif _MSC_VER // Visual C++ fallback
   #define IRESEARCH_COUNTOF(x) _countof(x)
 #elif __cplusplus >= 199711L && \
