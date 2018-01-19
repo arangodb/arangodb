@@ -451,12 +451,19 @@ void RocksDBSettingsManager::readIndexEstimates() {
     try {
       if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(
               estimateSerialisation)) {
-        _estimators.emplace(
+        auto it = _estimators.emplace(
             objectId,
             std::make_pair(
                 lastSeqNumber,
                 std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
                     estimateSerialisation)));
+        if (it.second) {
+          auto estimator = it.first->second.second.get();
+          LOG_TOPIC(TRACE, Logger::ENGINES)
+            << "found index estimator for objectId '" << objectId
+            << "' last synced at " << lastSeqNumber
+            << " with estimate " << estimator->computeEstimate();
+        }
       }
     } catch (...) {
       // Nothing to do, if the estimator fails to create we let it be recreated.
@@ -547,6 +554,10 @@ void RocksDBSettingsManager::readCounterValues() {
     auto const& it =
         _counters.emplace(objectId, CMValue(VPackSlice(iter->value().data())));
     _syncedSeqNums[objectId] = it.first->second._sequenceNum;
+    LOG_TOPIC(TRACE, Logger::ENGINES)
+      << "found count marker for objectId '" << objectId
+      << "' last synced at " << it.first->first
+      << " with count " << it.first->second._count;
 
     iter->Next();
   }

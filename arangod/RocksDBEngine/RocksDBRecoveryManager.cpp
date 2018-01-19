@@ -255,7 +255,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           if (tick > _maxTick && (_maxTick == 0 || tick - _maxTick < 2048)) {
             storeMaxTick(tick);
           }
-        } 
+        }
         // else we got a non-numeric key. simply ignore it
       }
     } else if (column_family_id ==
@@ -308,9 +308,24 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto est = findEstimator(objectId);
         if (est.first != nullptr && est.second < currentSeqNum) {
+          /*LOG_TOPIC(TRACE, Logger::ENGINES)
+            << "recovery adding hash'" << hash
+            << "' to estimator for index with objectId'" << objectId << "'";*/
+
           // We track estimates for this index
           est.first->insert(hash);
-        }
+        } /*else {
+          if (est.first == nullptr) {
+            LOG_TOPIC(TRACE, Logger::ENGINES)
+              << "not tracking estimator for index with objectId' "
+              << objectId << "', estimator not found";
+          } else {
+            LOG_TOPIC(TRACE, Logger::ENGINES)
+              << "not tracking estimator for index with objectId' "
+              << objectId << "' (synced at " << est.second << " >= "
+              << currentSeqNum << ")";
+          }
+        }*/
       }
     }
 
@@ -349,9 +364,24 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto est = findEstimator(objectId);
         if (est.first != nullptr && est.second < currentSeqNum) {
+          /*LOG_TOPIC(TRACE, Logger::ENGINES)
+            << "recovery removing hash'" << hash
+            << "' from estimator for index with objectId'" << objectId << "'";*/
+            
           // We track estimates for this index
           est.first->remove(hash);
-        }
+        } /*else {
+          if (est.first == nullptr) {
+            LOG_TOPIC(TRACE, Logger::ENGINES)
+              << "not tracking estimator for index with objectId' "
+              << objectId << "', estimator not found";
+          } else {
+            LOG_TOPIC(TRACE, Logger::ENGINES)
+              << "not tracking estimator for index with objectId' "
+              << objectId << "' (synced at " << est.second << " >= "
+              << currentSeqNum << ")";
+          }
+        }*/
       }
     }
 
