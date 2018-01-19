@@ -330,8 +330,12 @@ class RocksDBEngine final : public StorageEngine {
   // number of seconds to wait before an obsolete WAL file is actually pruned
   double _pruneWaitTime;
 
+  // use write-throttling
+  bool _useThrottle;
+
   // code to pace ingest rate of writes to reduce chances of compactions getting
-  //  too far behind and blocking incoming writes
+  // too far behind and blocking incoming writes
+  // (will only be set if _useThrottle is true)
   std::shared_ptr<RocksDBThrottle> _listener;
 
 };

@@ -1,6 +1,10 @@
 v3.3.3 (XXXX-XX-XX)
 -------------------
 
+* added option `--rocksdb.throttle` to control whether write-throttling is enabled
+  Write-throttling is turned on by default, to reduce chances of compactions getting
+  too far behind and blocking incoming writes.
+
 * fixed issue #4308: Crash when getter for error.name throws an error (on Windows)
 
 * UI: fixed a query editor caching and parsing issue
