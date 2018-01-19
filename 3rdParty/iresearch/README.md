@@ -61,7 +61,6 @@ For type `T` to be `IndexedField`, the following conditions have to be satisfied
 |Expression|Requires|Effects|
 |----|----|----|
 |`m.name()`|The output type must be convertible to `iresearch::string_ref`|A value uses as a key name.|
-|`m.boost()`|The output type must be convertible to `float_t`|A value uses as a boost factor for a document.|
 |`m.get_tokens()`|The output type must be convertible to `iresearch::token_stream*`|A token stream uses for populating in invert procedure. If value is `nullptr` field is treated as non-indexed.|
 |`m.features()`|The output type must be convertible to `const iresearch::flags&`|A set of features requested for evaluation during indexing. E.g. it may contain request of processing positions and frequencies. Later the evaluated information can be used during querying.|
 

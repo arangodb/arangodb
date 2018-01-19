@@ -73,8 +73,6 @@ class IRESEARCH_API field_data : util::noncopyable {
   // returns number of terms in a field within a document
   size_t size() const { return len_; }
 
-  float_t boost() const { return boost_; }
-
   const field_meta& meta() const { return meta_; }
 
   data_output& norms(columnstore_writer& writer);
@@ -84,7 +82,7 @@ class IRESEARCH_API field_data : util::noncopyable {
     return !type_limits<type_t::doc_id_t>::valid(last_doc_);
   }
 
-  bool invert(token_stream& tokens, const flags& features, float_t boost, doc_id_t id);
+  bool invert(token_stream& tokens, const flags& features, doc_id_t id);
 
  private:
   friend class detail::term_iterator;
@@ -117,7 +115,6 @@ class IRESEARCH_API field_data : util::noncopyable {
   uint32_t last_start_offs_;
   uint32_t max_term_freq_; // maximum number of terms in a field across all indexed documents 
   uint32_t unq_term_cnt_;
-  float_t boost_;
 };
 
 struct flush_state;

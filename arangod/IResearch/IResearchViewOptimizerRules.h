@@ -30,7 +30,7 @@ namespace arangodb {
 
 namespace aql {
 class Optimizer;
-class OptimizerRule;
+struct OptimizerRule;
 class ExecutionPlan;
 } // aql
 

@@ -59,9 +59,9 @@ IRESEARCH_API timer_stat_t& get_stat(const std::string& key);
 // Note: MSVC sometimes initializes the static variable and sometimes leaves it as *(nullptr)
 //       therefore for MSVC before use, check if the static variable has been initialized
 #define REGISTER_TIMER__(timer_name, line) \
-  static auto& timer_state ## _ ## line = iresearch::timer_utils::get_stat(timer_name); \
-  iresearch::timer_utils::scoped_timer timer_stat ## _ ## line( \
-    MSVC_ONLY(&timer_state ## _ ## line == nullptr ? iresearch::timer_utils::get_stat(timer_name) :) \
+  static auto& timer_state ## _ ## line = ::iresearch::timer_utils::get_stat(timer_name); \
+  ::iresearch::timer_utils::scoped_timer timer_stat ## _ ## line( \
+    MSVC_ONLY(&timer_state ## _ ## line == nullptr ? ::iresearch::timer_utils::get_stat(timer_name) :) \
     timer_state ## _ ## line \
   );
 #define REGISTER_TIMER_EXPANDER__(timer_name, line) REGISTER_TIMER__(timer_name, line)

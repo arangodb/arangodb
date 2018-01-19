@@ -26,6 +26,10 @@
 
 #include "StorageEngineMock.h"
 
+#if USE_ENTERPRISE
+  #include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -133,7 +137,7 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
-REGISTER_ANALYZER_TEXT(TestDelimAnalyzer, TestDelimAnalyzer::make);
+REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -170,6 +174,10 @@ struct IResearchQuerySetup {
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+
+    #if USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+    #endif
 
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -238,7 +246,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
 
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"iresearch\" \
+    \"type\": \"arangosearch\" \
   }");
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");

@@ -24,16 +24,6 @@
 #ifndef IRESEARCH_INDEX_TESTS_H
 #define IRESEARCH_INDEX_TESTS_H
 
-#if defined(_MSC_VER)
-  #pragma warning(disable: 4229)
-#endif
-
-  #include <unicode/uclean.h> // for u_cleanup
-
-#if defined(_MSC_VER)
-  #pragma warning(default: 4229)
-#endif
-
 #include "tests_shared.hpp"
 #include "assert_format.hpp"
 #include "analysis/analyzers.hpp"
@@ -44,7 +34,6 @@
 #include "doc_generator.hpp"
 #include "utils/locale_utils.hpp"
 #include "utils/timer_utils.hpp"
-#include "document/field.hpp"
 
 NS_ROOT
 
@@ -164,8 +153,6 @@ class index_test_base : public virtual test_base {
   virtual void TearDown() {
     test_base::TearDown();
     iresearch::timer_utils::init_stats(); // disable profile state tracking
-
-    u_cleanup(); // release/free all memory used by ICU
   }
 
   void write_segment(
@@ -178,7 +165,7 @@ class index_test_base : public virtual test_base {
 
     while ((src = gen.next())) {
       segment.add(src->indexed.begin(), src->indexed.end());
-      ASSERT_TRUE(writer.insert([src](irs::index_writer::document& doc)->bool {
+      ASSERT_TRUE(writer.insert([src](irs::segment_writer::document& doc)->bool {
         doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
         doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
         return false;
@@ -246,7 +233,7 @@ class text_field : public tests::field_base {
  public:
   text_field(
       const irs::string_ref& name, bool payload = false
-  ): token_stream_(irs::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":[]}")) {
+  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"ignored_words\":[]}")) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
          throw irs::illegal_state();
@@ -258,7 +245,7 @@ class text_field : public tests::field_base {
 
   text_field(
       const irs::string_ref& name, const T& value, bool payload = false
-  ): token_stream_(irs::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":[]}")),
+  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"ignored_words\":[]}")),
      value_(value) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
@@ -335,6 +322,35 @@ class string_field : public tests::field_base {
   irs::flags features_;
   mutable irs::string_token_stream stream_;
   std::string value_;
+}; // string_field
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class string_ref field
+/// @brief field which uses simple analyzer without tokenization
+//////////////////////////////////////////////////////////////////////////////
+class string_ref_field : public tests::field_base {
+ public:
+  string_ref_field(
+    const irs::string_ref& name,
+    const irs::flags& extra_features = irs::flags::empty_instance()
+  );
+  string_ref_field(
+    const irs::string_ref& name,
+    const irs::string_ref& value,
+    const irs::flags& extra_features = irs::flags::empty_instance()
+  );
+
+  void value(const irs::string_ref& str);
+  irs::string_ref value() const { return value_; }
+
+  virtual const irs::flags& features() const override;
+  virtual irs::token_stream& get_tokens() const override;
+  virtual bool write(irs::data_output& out) const override;
+
+ private:
+  irs::flags features_;
+  mutable irs::string_token_stream stream_;
+  irs::string_ref value_;
 }; // string_field
 
 //////////////////////////////////////////////////////////////////////////////

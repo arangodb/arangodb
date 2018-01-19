@@ -382,10 +382,12 @@ filter::prepared::ptr boolean_filter::prepare(
   // determine incl/excl parts
   std::vector<const filter*> incl;
   std::vector<const filter*> excl;
+
   group_filters(incl, excl);
+  optimize(incl, excl, boost);
 
   all all_docs;
-  if (incl.empty() & !excl.empty()) {
+  if (incl.empty() && !excl.empty()) {
     // single negative query case
     incl.push_back(&all_docs);
   }
@@ -393,7 +395,7 @@ filter::prepared::ptr boolean_filter::prepare(
   if (incl.empty()) {
     // empty query
     return prepared::empty();
-  } else if (1 == incl.size() && excl.empty()) {
+  } if (1 == incl.size() && excl.empty()) {
     // single node case
     return incl[0]->prepare(rdr, ord, this->boost()*boost, ctx);
   }
@@ -427,7 +429,7 @@ void boolean_filter::group_filters(
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                              And 
+// --SECTION--                                                              And
 // ----------------------------------------------------------------------------
 
 DEFINE_FILTER_TYPE(And);
@@ -435,6 +437,38 @@ DEFINE_FACTORY_DEFAULT(And);
 
 And::And() NOEXCEPT
   : boolean_filter(And::type()) {
+}
+
+void And::optimize(
+    std::vector<const filter*>& incl,
+    std::vector<const filter*>& /*excl*/,
+    irs::boost::boost_t& boost) const {
+  if (incl.empty()) {
+    // nothing to do
+    return;
+  }
+
+  // find `all` filters
+  auto it = std::remove_if(
+    incl.begin(), incl.end(),
+    [](const irs::filter* filter) {
+      return irs::all::type() == filter->type();
+  });
+
+  if (it == incl.begin()) {
+    // all iterators are of type `all`, preserve one
+    ++it;
+  }
+
+  // accumulate boost
+  boost *= std::accumulate(
+    it, incl.end(), irs::boost::no_boost(),
+    [](irs::boost::boost_t boost, const irs::filter* filter) {
+      return filter->boost() * boost;
+  });
+
+  // remove found `all` filters
+  incl.erase(it, incl.end());
 }
 
 filter::prepared::ptr And::prepare(
