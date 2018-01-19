@@ -33,6 +33,29 @@
 using namespace arangodb;
 using namespace std;
 
+
+TypedResult<int> function_a(int i){
+  return TypedResult<int>(i);
+}
+
+Result function_b(){
+    auto rv = function_a(42); // create one result and try modify / reuse
+                              // it to make copy elision happen
+
+    if(rv.ok()) {
+      CHECK(rv.value == 42); // do something with the value
+    } else {
+      rv.reset(rv.errorNumber(), "error in function_b: " + rv.errorMessage());
+    }
+
+    if(false){
+      rv.reset(23, std::string("the result is not valid because some other condition did not hold"));
+    }
+
+    return rv.takeResult(); //still move the result forward
+}
+
+
 TEST_CASE("ResultTest", "[string]") {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,6 +95,8 @@ SECTION("test_ResultTest1") {
   TypedResult<std::string> string_move_result{std::move(str)};
 
   TypedResult<no_move>  no_move_result(no_move{});
+
+  function_b();
 
 }
 

@@ -189,7 +189,7 @@ public:
   //TODO add more constructors
 
   // forward to result's functions
-  int errorNumber() const { return _result.errorMessage(); }
+  int errorNumber() const { return _result.errorNumber(); }
   std::string errorMessage() const& { return _result.errorMessage(); }
   std::string errorMessage() && { return std::move(std::move(_result).errorMessage()); }
 
@@ -198,6 +198,8 @@ public:
   bool is(int errorNumber) const { return _result.errorNumber() == errorNumber; }
   bool isNot(int errorNumber) const { return !is(errorNumber); }
 
+  // this function does not modify the value - it behaves exactly as it
+  // does for the standalone result
   template <typename ...Args>
   TypedResult& reset(Args&&... args) {
     _result.reset(std::forward<Args>(args)...);
@@ -208,8 +210,6 @@ public:
   Result  copyResult() const &  { return _result; }
   Result  takeResult() { return std::move(_result); }
   Result& getResult() const &  { return _result; }
-  Result  getResult() && { return std::move(_result); } // result gets moved out if
-                                                       // TypedResult is expiring
 
   // check if we have valid result value - this is not mandatory
   // it allows us to use values instead of pointers if an optional result is required
