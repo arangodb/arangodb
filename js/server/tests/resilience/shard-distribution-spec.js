@@ -82,11 +82,12 @@ describe('Shard distribution', function () {
         let serverCount = 0;
         let serverIds = Object.keys(health.Health);
         for (let i = 0; i < serverIds.length; ++i) {
-          if (serverIds[i].slice(0, 4) === "PRMR") {
+          if (serverIds[i].slice(0, 4) === "PRMR" &&
+              health.Health[serverIds[i]].Status === "GOOD") {
             serverCount += 1;
           }
         }
-        console.log("Found health records:", serverCount, serverIds, count);
+        console.log("Found health records:", serverCount, health.Health, count);
         if (serverCount >= dbServerCount) {
           break;
         }
