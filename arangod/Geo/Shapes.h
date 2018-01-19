@@ -39,7 +39,8 @@ class S2Polygon;
 
 namespace arangodb {
 namespace geo {
-
+struct QueryParams;
+  
 /// coordinate point on the sphere in DEGREES
 struct Coordinate {
  public:
@@ -79,6 +80,14 @@ struct Coordinate {
   double latitude;   // in degrees
   double longitude;  // in degrees
 };
+  
+/// Circle on a sphere
+/*struct Cap {
+  Cap(geo::Coordinate cc, double r) : center(cc), radius(r) {}
+public:
+  Coordinate center;
+  double radius; // in rad
+};*/
 
 /// Thin wrapper around S2Region objects combined with
 /// a type and helper methods to do intersect and contains
@@ -99,7 +108,7 @@ class ShapeContainer final {
   };
 
   ShapeContainer() : _data(nullptr), _type(Type::EMPTY) {}
-  ShapeContainer(ShapeContainer&& other);
+  ShapeContainer(ShapeContainer&& other) noexcept;
   /*ShapeContainer(std::unique_ptr<S2Region>&& ptr, Type tt)
       : _data(ptr.release()), _type(tt) {}
   ShapeContainer(S2Region* ptr, Type tt) : _data(ptr), _type(tt) {}*/
@@ -109,24 +118,25 @@ class ShapeContainer final {
   /// Parses a coordinate pair
   Result parseCoordinates(velocypack::Slice const& json, bool geoJson);
 
-  void reset(std::unique_ptr<S2Region>&& ptr, Type tt);
-  void reset(S2Region* ptr, Type tt);
-  void resetCoordinates(double lat, double lon);
+  void reset(std::unique_ptr<S2Region>&& ptr, Type tt) noexcept;
+  void reset(S2Region* ptr, Type tt) noexcept;
+  void resetCoordinates(double lat, double lon) noexcept;
 
   Type type() const { return _type; }
-  bool isAreaType() const {
+  bool isAreaType() const noexcept {
     return _type == Type::S2_POLYGON || _type == Type::S2_CAP ||
            _type == Type::S2_LATLNGRECT;
   }
 
   /// @brief is an empty shape (can be expensive)
-  bool isAreaEmpty() const;
+  bool isAreaEmpty() const noexcept;
   /// @brief centroid of this shape
-  geo::Coordinate centroid() const;
+  geo::Coordinate centroid() const noexcept;
   /// @brief distance from center in meters
-  double distanceFromCentroid(geo::Coordinate const&);
-  bool mayIntersect(S2CellId) const;
-  double capBoundRadius() const;
+  double distanceFrom(geo::Coordinate const&) const noexcept;
+  bool mayIntersect(S2CellId) const noexcept ;
+  
+  void updateBounds(QueryParams& qp) const noexcept;
 
   bool contains(Coordinate const*) const;
   // bool contains(S2LatLngRect const&) const;

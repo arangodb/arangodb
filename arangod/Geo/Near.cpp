@@ -150,7 +150,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
       lookup.GetDifference(&coverUnion, &_scannedCells);
 
       TRI_ASSERT(cover.empty());  // swap should empty this
-      if (_params.filterType != geo::FilterType::NONE) {
+      if (!isFilterNone()) {
         TRI_ASSERT(_params.filterShape.type() != ShapeContainer::Type::EMPTY);
         for (S2CellId cellId : lookup.cell_ids()) {
           if (_params.filterShape.mayIntersect(cellId)) {
@@ -193,18 +193,24 @@ void NearUtils<CMP>::reportFound(LocalDocumentId lid,
   << " distance: " << (rad * kEarthRadiusInMeters);//*/
 
   // cheap rejections based on distance to target
-  if ((isAcending() && rad < _innerBound) ||
-      (isDescending() && rad > _outerBound) || rad > _maxBound ||
-      rad < _minBound) {
-    return;
+  if (!isFilterIntersects()) {
+    if ((isAcending() && rad < _innerBound) ||
+        (isDescending() && rad > _outerBound) || rad > _maxBound ||
+        rad < _minBound) {
+      /*LOG_TOPIC(ERR, Logger::FIXME) << "Rejecting doc with center " << center.toString();
+      LOG_TOPIC(ERR, Logger::FIXME) << "Dist: " << (rad * kEarthRadiusInMeters);//*/
+      return;
+    }
   }
-
+  
   _statsFoundLastInterval++;  // we have to estimate scan bounds
   auto const& it = _seen.find(lid);
   if (it == _seen.end()) {
     _seen.emplace(lid, rad);
 
-    if (_params.filterType != FilterType::NONE) {  // expensive rejection
+    // possibly expensive point rejection, but saves parsing of document
+    if (isFilterContains()) {
+      TRI_ASSERT(_params.filterShape.type() != ShapeContainer::Type::EMPTY);
       if (!_params.filterShape.contains(&center)) {
         return;
       }

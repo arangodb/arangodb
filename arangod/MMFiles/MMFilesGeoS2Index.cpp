@@ -308,6 +308,7 @@ Result MMFilesGeoS2Index::insert(transaction::Methods*,
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
+  //LOG_TOPIC(ERR, Logger::FIXME) << "Inserting #cells " << cells.size() << " doc: " << doc.toJson() << " center: " << centroid.toString();
   TRI_ASSERT(!cells.empty() && std::abs(centroid.latitude) <= 90.0 &&
              std::abs(centroid.longitude) <= 180.0);
   IndexValue value(documentId, std::move(centroid));
@@ -331,6 +332,7 @@ Result MMFilesGeoS2Index::remove(transaction::Methods*,
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
+  //LOG_TOPIC(ERR, Logger::FIXME) << "Removing #cells " << cells.size() << " doc: " << doc.toJson();
   TRI_ASSERT(!cells.empty() && std::abs(centroid.latitude) <= 90.0 &&
              std::abs(centroid.longitude) <= 180.0);
 
@@ -365,7 +367,7 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
   params.sorted = true;
   if (params.filterType != geo::FilterType::NONE) {
     TRI_ASSERT(params.filterShape.type() != geo::ShapeContainer::Type::EMPTY);
-    params.origin = params.filterShape.centroid();
+    params.filterShape.updateBounds(params);
   }
   //        </Optimize away>
   

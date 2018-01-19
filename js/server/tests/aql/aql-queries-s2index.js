@@ -502,7 +502,8 @@ function pointsTestSuite() {
           { "lat": 26, "lng": -10 },
           { "lat": 26, "lng": -9 },
           { "lat": 26, "lng": -8 },
-          { "lat": 26, "lng": -7 }
+          { "lat": 26, "lng": -7 },
+          { "lat": 26, "lng": -6 }
         ]
       });
     },
@@ -532,7 +533,8 @@ function pointsTestSuite() {
           { "lat": 26, "lng": -10 },
           { "lat": 26, "lng": -9 },
           { "lat": 26, "lng": -8 },
-          { "lat": 26, "lng": -7 }
+          { "lat": 26, "lng": -7 },
+          { "lat": 26, "lng": -6 }
         ]
       });
     },
@@ -555,9 +557,9 @@ function geoJsonTestSuite() {
       { optimizer: { rules: ["-all"] } });
     let expected = query.expected.slice().sort();
     /*
-      result1.forEach(k => internal.print("Res: ", locations.document(k)));
-      expected.forEach(k => internal.print("Exp: ", locations.document(k)));
-    */
+    result1.forEach(k => internal.print("Res: ", locations.document(k)));
+    expected.forEach(k => internal.print("Exp: ", locations.document(k)));//*/
+    
     assertEqual(expected, result1.sort(), query.string);
     assertEqual(expected, result2.sort(), query.string);
   }
@@ -576,11 +578,14 @@ function geoJsonTestSuite() {
     /*{ "type": "MultiPolygon", "coordinates": [ [[[40, 40], [20, 45], [45, 30], [40, 40]]],  
       [[[20, 35], [10, 30], [10, 10], [30, 5], [45, 20], [20, 35]],  [[30, 20], [20, 15], [20, 25], [30, 20]]]] }*/
       { "type": "Polygon",  "coordinates": [ [[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]], [[20, 30], [35, 35], [30, 20], [20, 30]]]},
-      { "type": "LineString", "coordinates": [[30, 10], [10, 30], [40, 40]] },
+      { "type": "LineString", "coordinates": [[25,10],[10,30],[25,40]] },
       { "type": "MultiLineString", "coordinates": [ [[10, 10], [20, 20], [10, 40]], [[40, 40], [30, 30], [40, 20], [30, 10]]] },
       { "type": "MultiPoint",  "coordinates": [ [10, 40], [40, 30], [20, 20], [30, 10] ] }
   ];
   let emeaKeys = [];
+  let rectEmea1 = {"type":"Polygon","coordinates":[[[2,4],[26,4],[26,49],[2,49],[2,4]]]};
+
+  let rectEmea3 = {"type":"Polygon","coordinates":[[[35,42],[49,42],[49,50],[35,50],[35,42]]]};
 
   return {
 
@@ -649,184 +654,79 @@ function geoJsonTestSuite() {
       });
     },
 
-    /*
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test simple circle on sphere
     ////////////////////////////////////////////////////////////////////////////////
 
-    testContainsCircle5: function () {
+    testContainsCircle4: function () {
       runQuery({
-        string: "FOR x IN @@cc FILTER GEO_DISTANCE([25, -10], [x.lng, x.lat]) <= 150000 SORT x.lat, x.lng RETURN x",
+        string: "FOR x IN @@cc FILTER GEO_DISTANCE([101, 0], x.geometry) <= 100000 RETURN x._key",
         bindVars: {
           "@cc": locations.name(),
         },
-        expected: [
-          { "lat": -11, "lng": 25 },
-          { "lat": -10, "lng": 24 },
-          { "lat": -10, "lng": 25 },
-          { "lat": -10, "lng": 26 },
-          { "lat": -9, "lng": 25 }
-        ]
+        expected: indonesiaKeys.slice(0, 1)
       });
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple circle on sphere
+    /// @brief test simple rectangle contains
     ////////////////////////////////////////////////////////////////////////////////
 
-    testContainsCircle6: function () {
+    testContainsPolygon1: function () {
       runQuery({
-        string: "FOR x IN @@cc FILTER GEO_DISTANCE([-90, -90], [x.lng, x.lat]) <= 10000 SORT x.lat, x.lng RETURN x",
+        string: "FOR x IN @@cc FILTER GEO_CONTAINS(@poly, x.geometry) RETURN x._key",
         bindVars: {
           "@cc": locations.name(),
+          "poly": rectEmea1
         },
-        expected: []
+        expected: [emeaKeys[1]]
       });
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple annulus on sphere (a donut)
+    /// @brief test simple rectangle contains
     ////////////////////////////////////////////////////////////////////////////////
 
-    testContainsAnnulus1: function () {
+    /*testContainsPolygon2: function () {
       runQuery({
-        string: `FOR x IN @@cc 
-                   FILTER DISTANCE(-10, 25, x.lat, x.lng) <= 150000 
-                   FILTER DISTANCE(-10, 25, x.lat, x.lng) > 108500 
-                   SORT x.lat, x.lng RETURN x`,
+        string: "FOR x IN @@cc FILTER GEO_CONTAINS(@poly, x.geometry) RETURN x._key",
         bindVars: {
           "@cc": locations.name(),
+          "poly": rectEmea1
         },
-        expected: [
-          { "lat": -11, "lng": 25 },
-          { "lat": -10, "lng": 24 },
-          { "lat": -10, "lng": 26 },
-          { "lat": -9, "lng": 25 }
-        ]
+        expected: [emeaKeys[1]]
+      });
+    },*/
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple rectangle contains
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsPolygon1: function () {
+      runQuery({
+        string: "FOR x IN @@cc FILTER GEO_INTERSECTS(@poly, x.geometry) RETURN x._key",
+        bindVars: {
+          "@cc": locations.name(),
+          "poly": rectEmea1
+        },
+        expected: emeaKeys
       });
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple annulus on sphere (a donut)
+    /// @brief test simple rectangle contains
     ////////////////////////////////////////////////////////////////////////////////
 
-    testContainsAnnulus2: function () {
+    testIntersectsPolygon3: function () {
       runQuery({
-        string: `FOR x IN @@cc 
-                   FILTER DISTANCE(-10, 25, x.lat, x.lng) <= 150000 
-                   FILTER DISTANCE(-10, 25, x.lat, x.lng) > 109545 
-                   SORT x.lat, x.lng RETURN x`,
+        string: "FOR x IN @@cc FILTER GEO_INTERSECTS(@poly, x.geometry) RETURN x._key",
         bindVars: {
           "@cc": locations.name(),
+          "poly": rectEmea3
         },
-        expected: [
-          { "lat": -11, "lng": 25 },
-          { "lat": -9, "lng": 25 }
-        ]
+        expected: emeaKeys.slice(0,1)
       });
     },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple annulus on sphere (a donut)
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testContainsAnnulus3: function () {
-      runQuery({
-        string: `FOR x IN @@cc 
-                   FILTER GEO_DISTANCE([25, -10], [x.lng, x.lat]) <= 150000 
-                   FILTER GEO_DISTANCE([25, -10], [x.lng, x.lat]) > 108500 
-                   SORT x.lat, x.lng RETURN x`,
-        bindVars: {
-          "@cc": locations.name(),
-        },
-        expected: [
-          { "lat": -11, "lng": 25 },
-          { "lat": -10, "lng": 24 },
-          { "lat": -10, "lng": 26 },
-          { "lat": -9, "lng": 25 }
-        ]
-      });
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple annulus on sphere (a donut)
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testContainsAnnulus4: function () {
-      runQuery({
-        string: `FOR x IN @@cc 
-                   FILTER GEO_DISTANCE([25, -10], [x.lng, x.lat]) <= 150000 
-                   FILTER GEO_DISTANCE([25, -10], [x.lng, x.lat]) > 109545 
-                   SORT x.lat, x.lng RETURN x`,
-        bindVars: {
-          "@cc": locations.name(),
-        },
-        expected: [
-          { "lat": -11, "lng": 25 },
-          { "lat": -9, "lng": 25 }
-        ]
-      });
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple annulus on sphere (a donut)
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testContainsPolygon: function () {
-      const polygon = {
-        "type": "Polygon",
-        "coordinates": [[[-11.5, 23.5], [-6, 26], [-10.5, 26.1], [-11.5, 23.5]]]
-      };
-
-      runQuery({
-        string: `FOR x IN @@cc 
-                   FILTER GEO_CONTAINS(@poly, [x.lng, x.lat]) 
-                   SORT x.lat, x.lng RETURN x`,
-        bindVars: {
-          "@cc": locations.name(),
-          "poly": polygon
-        },
-        expected: [
-          { "lat": 24, "lng": -11 },
-          { "lat": 25, "lng": -10 },
-          { "lat": 25, "lng": -9 },
-          { "lat": 26, "lng": -10 },
-          { "lat": 26, "lng": -9 },
-          { "lat": 26, "lng": -8 },
-          { "lat": 26, "lng": -7 }
-        ]
-      });
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple annulus on sphere (a donut)
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testIntersectsPolygon: function () {
-      const polygon = {
-        "type": "Polygon",
-        "coordinates": [[[-11.5, 23.5], [-6, 26], [-10.5, 26.1], [-11.5, 23.5]]]
-      };
-
-      runQuery({
-        string: `FOR x IN @@cc 
-                   FILTER GEO_INTERSECTS(@poly, [x.lng, x.lat]) 
-                   SORT x.lat, x.lng RETURN x`,
-        bindVars: {
-          "@cc": locations.name(),
-          "poly": polygon
-        },
-        expected: [
-          { "lat": 24, "lng": -11 },
-          { "lat": 25, "lng": -10 },
-          { "lat": 25, "lng": -9 },
-          { "lat": 26, "lng": -10 },
-          { "lat": 26, "lng": -9 },
-          { "lat": 26, "lng": -8 },
-          { "lat": 26, "lng": -7 }
-        ]
-      });
-    }, */
 
   };
 }
@@ -835,8 +735,8 @@ function geoJsonTestSuite() {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-//jsunity.run(legacyGeoTestSuite);
-//jsunity.run(pointsTestSuite);
+jsunity.run(legacyGeoTestSuite);
+jsunity.run(pointsTestSuite);
 jsunity.run(geoJsonTestSuite);
 
 return jsunity.done();

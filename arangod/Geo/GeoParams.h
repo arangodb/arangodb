@@ -123,12 +123,12 @@ struct QueryParams {
 
  public:
   /// minimum distance
-  double minDistanceRad() const;
+  double minDistanceRad() const noexcept;
 
   /// depending on @{filter} and @{region} uses maxDistance or
   /// maxDistance / kEarthRadius or a bounding circle around
   /// the area in region
-  double maxDistanceRad() const;
+  double maxDistanceRad() const noexcept;
 
   /// some defaults for queries
   static constexpr int queryWorstLevel = 2;

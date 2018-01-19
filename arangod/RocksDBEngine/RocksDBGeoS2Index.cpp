@@ -337,7 +337,7 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
   params.sorted = true;
   if (params.filterType != geo::FilterType::NONE) {
     TRI_ASSERT(params.filterShape.type() != geo::ShapeContainer::Type::EMPTY);
-    params.origin = params.filterShape.centroid();
+    params.filterShape.updateBounds(params);
   }
   //        </Optimize away>
   

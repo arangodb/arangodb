@@ -2436,7 +2436,7 @@ AqlValue Functions::GeoDistance(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintNull());
   }
   
-  return NumberValue(trx, shape1.distanceFromCentroid(shape2.centroid()), true);
+  return NumberValue(trx, shape1.distanceFrom(shape2.centroid()), true);
 }
 
 static AqlValue GeoContainsIntersect(arangodb::aql::Query* query,
