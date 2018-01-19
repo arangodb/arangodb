@@ -361,7 +361,7 @@ class MMFilesEngine final : public StorageEngine {
 
   /// @brief transfer markers into a collection
   int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
-                      MMFilesOperationsType const&);
+                      MMFilesOperationsType const&, uint64_t& numBytesTransferred);
 
   std::string viewDirectory(TRI_voc_tick_t databaseId,
                             TRI_voc_cid_t viewId) const;
@@ -378,7 +378,8 @@ class MMFilesEngine final : public StorageEngine {
   /// @brief transfer markers into a collection, worker function
   int transferMarkersWorker(LogicalCollection* collection,
                             MMFilesCollectorCache*,
-                            MMFilesOperationsType const&);
+                            MMFilesOperationsType const&,
+                            uint64_t& numBytesTransferred);
 
   /// @brief sync the active journal of a collection
   int syncJournalCollection(LogicalCollection* collection);
