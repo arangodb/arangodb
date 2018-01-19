@@ -3,6 +3,10 @@ devel
 
 * fix internal issue #1439: improve performance of any-iterator for RocksDB
 
+* added option `--rocksdb.throttle` to control whether write-throttling is enabled
+  Write-throttling is turned on by default, to reduce chances of compactions getting
+  too far behind and blocking incoming writes.
+
 * fixed issue #4308: Crash when getter for error.name throws an error (on Windows)
 
 * UI: fixed an issue where a collection name gets wrongly cached within the
