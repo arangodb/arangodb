@@ -540,12 +540,6 @@ Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
   return IndexResult(TRI_ERROR_NO_ERROR, this);
 }
 
-void RocksDBGeoIndex::truncate(transaction::Methods* trx) {
-  TRI_ASSERT(_geoIndex != nullptr);
-  RocksDBIndex::truncate(trx);
-  GeoIndex_reset(_geoIndex, RocksDBTransactionState::toMethods(trx));
-}
-
 /// @brief looks up all points within a given radius
 GeoCoordinates* RocksDBGeoIndex::withinQuery(transaction::Methods* trx,
                                              double lat, double lon,

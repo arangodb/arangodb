@@ -83,11 +83,6 @@ class RocksDBTransactionState final : public TransactionState {
   uint64_t numInserts() const { return _numInserts; }
   uint64_t numUpdates() const { return _numUpdates; }
   uint64_t numRemoves() const { return _numRemoves; }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  uint64_t numIntermediateCommits() const {
-    return _numIntermediateCommits;
-  };
-#endif
 
   /// @brief reset previous log state after a rollback to safepoint
   void resetLogState() { _lastUsedCollection = 0; }
@@ -141,6 +136,19 @@ class RocksDBTransactionState final : public TransactionState {
   RocksDBKey* leaseRocksDBKey();
   /// @brief return a temporary RocksDBKey object
   void returnRocksDBKey(RocksDBKey* key);
+  /// @brief Trigger an intermediate commit.
+  /// Handle with care if failing after this commit it will only
+  /// be rolled back until this point of time.
+  /// Not thread safe
+  void triggerIntermediateCommit();
+
+  /// @brief Every index can track hashes inserted into this index
+  ///        Used to update the estimate after the trx commited
+  void trackIndexInsert(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
+
+  /// @brief Every index can track hashes removed from this index
+  ///        Used to update the estimate after the trx commited
+  void trackIndexRemove(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
 
  private:
   /// @brief create a new rocksdb transaction
@@ -179,7 +187,6 @@ class RocksDBTransactionState final : public TransactionState {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// store the number of log entries in WAL
   uint64_t _numLogdata = 0;
-  uint64_t _numIntermediateCommits = 0;
 #endif
   SmallVector<RocksDBKey*, 32>::allocator_type::arena_type _arena;
   SmallVector<RocksDBKey*, 32> _keys;
