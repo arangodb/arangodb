@@ -226,12 +226,12 @@ function iResearchFeatureAqlTestSuite () {
 
       var meta = { links: {
         "TestCollection0": {},
-        "TestCollection1": { includeAllFields: true, trackListPositions: true, tokenizers: [ "text_en"] },
+        "TestCollection1": { analyzers: [ "text_en"], includeAllFields: true, trackListPositions: true },
         "TestCollection2": { fields: {
           "b": { fields: { "b1": {} } },
           "c": { includeAllFields: true },
           "d": { trackListPositions: true },
-          "e": { tokenizers: [ "text_de"] }
+          "e": { analyzers: [ "text_de"] }
         } }
       } };
       view.properties(meta, true); // partial update
@@ -246,10 +246,10 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(false, properties.links.TestCollection0.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection0.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection0.trackListPositions);
-      assertTrue(Array === properties.links.TestCollection0.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection0.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection0.tokenizers[0].constructor);
-      assertEqual("identity", properties.links.TestCollection0.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection0.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection0.analyzers.length);
+      assertTrue(String === properties.links.TestCollection0.analyzers[0].constructor);
+      assertEqual("identity", properties.links.TestCollection0.analyzers[0]);
 
 
       assertTrue(Object === properties.links.TestCollection1.constructor);
@@ -259,10 +259,10 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(true, properties.links.TestCollection1.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection1.trackListPositions);
-      assertTrue(Array === properties.links.TestCollection1.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection1.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection1.tokenizers[0].constructor);
-      assertEqual("text_en", properties.links.TestCollection1.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection1.analyzers.length);
+      assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
+      assertEqual("text_en", properties.links.TestCollection1.analyzers[0]);
 
 
       assertTrue(Object === properties.links.TestCollection2.constructor);
@@ -279,19 +279,19 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(Boolean === properties.links.TestCollection2.fields.d.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection2.fields.d.trackListPositions);
 
-      assertTrue(Array === properties.links.TestCollection2.fields.e.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection2.fields.e.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection2.fields.e.tokenizers[0].constructor);
-      assertEqual("text_de", properties.links.TestCollection2.fields.e.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection2.fields.e.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection2.fields.e.analyzers.length);
+      assertTrue(String === properties.links.TestCollection2.fields.e.analyzers[0].constructor);
+      assertEqual("text_de", properties.links.TestCollection2.fields.e.analyzers[0]);
 
       assertTrue(Boolean === properties.links.TestCollection2.includeAllFields.constructor);
       assertEqual(false, properties.links.TestCollection2.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection2.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection2.trackListPositions);
-      assertTrue(Array === properties.links.TestCollection2.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection2.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection2.tokenizers[0].constructor);
-      assertEqual("identity", properties.links.TestCollection2.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection2.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection2.analyzers.length);
+      assertTrue(String === properties.links.TestCollection2.analyzers[0].constructor);
+      assertEqual("identity", properties.links.TestCollection2.analyzers[0]);
 
       meta = { links: { "TestCollection0": null, "TestCollection2": {} } };
       view.properties(meta, true); // partial update
@@ -306,10 +306,10 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(true, properties.links.TestCollection1.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection1.trackListPositions);
-      assertTrue(Array === properties.links.TestCollection1.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection1.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection1.tokenizers[0].constructor);
-      assertEqual("text_en", properties.links.TestCollection1.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection1.analyzers.length);
+      assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
+      assertEqual("text_en", properties.links.TestCollection1.analyzers[0]);
 
 
       assertTrue(Object === properties.links.TestCollection2.constructor);
@@ -319,10 +319,10 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(false, properties.links.TestCollection2.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection2.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection2.trackListPositions);
-      assertTrue(Array === properties.links.TestCollection2.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection2.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection2.tokenizers[0].constructor);
-      assertEqual("identity", properties.links.TestCollection2.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection2.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection2.analyzers.length);
+      assertTrue(String === properties.links.TestCollection2.analyzers[0].constructor);
+      assertEqual("identity", properties.links.TestCollection2.analyzers[0]);
 
       meta = { links: { "TestCollection0": { includeAllFields: true }, "TestCollection1": {} } };
       view.properties(meta, false); // full update
@@ -337,10 +337,10 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(true, properties.links.TestCollection0.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection0.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection0.trackListPositions);
-      assertTrue(Array === properties.links.TestCollection0.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection0.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection0.tokenizers[0].constructor);
-      assertEqual("identity", properties.links.TestCollection0.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection0.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection0.analyzers.length);
+      assertTrue(String === properties.links.TestCollection0.analyzers[0].constructor);
+      assertEqual("identity", properties.links.TestCollection0.analyzers[0]);
 
 
       assertTrue(Object === properties.links.TestCollection1.constructor);
@@ -350,10 +350,10 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(false, properties.links.TestCollection1.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection1.trackListPositions);
-      assertTrue(Array === properties.links.TestCollection1.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection1.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection1.tokenizers[0].constructor);
-      assertEqual("identity", properties.links.TestCollection1.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection1.analyzers.length);
+      assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
+      assertEqual("identity", properties.links.TestCollection1.analyzers[0]);
     },
 
     testViewCreate: function() {

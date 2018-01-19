@@ -67,20 +67,20 @@ namespace ListValuation {
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchLinkMeta {
   struct Mask {
+    bool _analyzers;
     bool _fields;
     bool _includeAllFields;
-    bool _nestListValues;
-    bool _tokenizers;
+    bool _trackListPositions;
     explicit Mask(bool mask = false) noexcept;
   };
 
+  typedef std::vector<IResearchAnalyzerFeature::AnalyzerPool::ptr> Analyzers;
   typedef UnorderedRefKeyMap<char, UniqueHeapInstance<IResearchLinkMeta>> Fields;
-  typedef std::vector<IResearchAnalyzerFeature::AnalyzerPool::ptr> Tokenizers;
 
+  Analyzers _analyzers; // analyzers to apply to every field
   Fields _fields; // explicit list of fields to be indexed with optional overrides
   bool _includeAllFields; // include all fields or only fields listed in '_fields'
-  bool _nestListValues; // append relative offset in list to attribute name (as opposed to without offset)
-  Tokenizers _tokenizers; // tokenizers to apply to every field
+  bool _trackListPositions; // append relative offset in list to attribute name (as opposed to without offset)
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy assignment operator !!!
   // NOTE: if adding fields don't forget to modify the move assignment operator !!!

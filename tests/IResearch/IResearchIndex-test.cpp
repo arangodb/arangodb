@@ -253,12 +253,12 @@ SECTION("test_analyzer") {
   {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \
       \"testCollection0\": { \"fields\": { \
-        \"X\": { \"tokenizers\": [ \"test_A\", \"test_B\" ] }, \
-        \"Y\": { \"tokenizers\": [ \"test_B\" ] } \
+        \"X\": { \"analyzers\": [ \"test_A\", \"test_B\" ] }, \
+        \"Y\": { \"analyzers\": [ \"test_B\" ] } \
       } }, \
       \"testCollection1\": { \"fields\": { \
-        \"X\": { \"tokenizers\": [ \"test_A\" ] }, \
-        \"Y\": { \"tokenizers\": [ \"test_A\" ] } \
+        \"X\": { \"analyzers\": [ \"test_A\" ] }, \
+        \"Y\": { \"analyzers\": [ \"test_A\" ] } \
       } } \
     } }");
 
@@ -353,12 +353,12 @@ SECTION("test_async_index") {
   {
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \
       \"testCollection0\": { \"fields\": { \
-        \"same\": { \"tokenizers\": [ \"test_A\", \"test_B\" ] }, \
-        \"duplicated\": { \"tokenizers\": [ \"test_B\" ] } \
+        \"same\": { \"analyzers\": [ \"test_A\", \"test_B\" ] }, \
+        \"duplicated\": { \"analyzers\": [ \"test_B\" ] } \
       } }, \
       \"testCollection1\": { \"fields\": { \
-        \"same\": { \"tokenizers\": [ \"test_A\" ] }, \
-        \"duplicated\": { \"tokenizers\": [ \"test_A\" ] } \
+        \"same\": { \"analyzers\": [ \"test_A\" ] }, \
+        \"duplicated\": { \"analyzers\": [ \"test_A\" ] } \
       } } \
     } }");
 
