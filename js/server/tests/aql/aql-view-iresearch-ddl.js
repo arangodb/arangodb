@@ -93,22 +93,22 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(Object === properties.commit.consolidate.constructor);
       assertEqual(4, Object.keys(properties.commit.consolidate).length);
       assertTrue(Object === properties.commit.consolidate.bytes.constructor);
-      assertEqual(10, properties.commit.consolidate.bytes.intervalStep);
+      assertEqual(300, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
       assertTrue(Object === properties.commit.consolidate.bytes_accum.constructor);
-      assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
       assertTrue(Object === properties.commit.consolidate.count.constructor);
-      assertEqual(10, properties.commit.consolidate.count.intervalStep);
+      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertTrue(Object === properties.commit.consolidate.fill.constructor);
-      assertEqual(10, properties.commit.consolidate.fill.intervalStep);
+      assertEqual(300, properties.commit.consolidate.fill.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.fill.threshold.toFixed(6));
 
       meta = { commit: {
         commitIntervalMsec: 10000,
         consolidate: {
-          bytes: { intervalStep: 20, threshold: 0.5 },
+          bytes: { segmentThreshold: 20, threshold: 0.5 },
           bytes_accum: {},
           count: {}
         }
@@ -122,18 +122,18 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(Object === properties.commit.consolidate.constructor);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
       assertTrue(Object === properties.commit.consolidate.bytes.constructor);
-      assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
       assertTrue(Object === properties.commit.consolidate.bytes_accum.constructor);
-      assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
       assertTrue(Object === properties.commit.consolidate.count.constructor);
-      assertEqual(10, properties.commit.consolidate.count.intervalStep);
+      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
 
       meta = { commit: {
         cleanupIntervalStep: 20,
-        consolidate: { count: { intervalStep: 30, threshold: 0.75 } }
+        consolidate: { count: { segmentThreshold: 30, threshold: 0.75 } }
       } };
       view.properties(meta, false); // full update
       properties = view.properties();
@@ -144,7 +144,7 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(Object === properties.commit.consolidate.constructor);
       assertEqual(1, Object.keys(properties.commit.consolidate).length);
       assertTrue(Object === properties.commit.consolidate.count.constructor);
-      assertEqual(30, properties.commit.consolidate.count.intervalStep);
+      assertEqual(30, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.75).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
 
 
@@ -465,7 +465,7 @@ function iResearchFeatureAqlTestSuite () {
         commit: {
           commitIntervalMsec: 10000,
           consolidate: {
-            bytes: { intervalStep: 20, threshold: 0.5 },
+            bytes: { segmentThreshold: 20, threshold: 0.5 },
             bytes_accum: {},
             count: {}
           }
@@ -484,11 +484,11 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10000, properties.commit.commitIntervalMsec);
       assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.count.intervalStep);
+      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("TestPath", properties.dataPath);
       assertEqual("de_DE.UTF-8", properties.locale);
@@ -518,7 +518,7 @@ function iResearchFeatureAqlTestSuite () {
         commit: {
           commitIntervalMsec: 10000,
           consolidate: {
-            bytes: { intervalStep: 20, threshold: 0.5 },
+            bytes: { segmentThreshold: 20, threshold: 0.5 },
             bytes_accum: {},
             count: {}
           }
@@ -541,11 +541,11 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10000, properties.commit.commitIntervalMsec);
       assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.count.intervalStep);
+      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("TestPath", properties.dataPath);
       assertEqual("de_DE.UTF-8", properties.locale);
@@ -575,7 +575,7 @@ function iResearchFeatureAqlTestSuite () {
         commit: {
           commitIntervalMsec: 10000,
           consolidate: {
-            bytes: { intervalStep: 20, threshold: 0.5 },
+            bytes: { segmentThreshold: 20, threshold: 0.5 },
             bytes_accum: {},
             count: {}
           }
@@ -598,11 +598,11 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10000, properties.commit.commitIntervalMsec);
       assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.count.intervalStep);
+      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("TestPath", properties.dataPath);
       assertEqual("de_DE.UTF-8", properties.locale);
@@ -635,7 +635,7 @@ function iResearchFeatureAqlTestSuite () {
         commit: {
           commitIntervalMsec: 10000,
           consolidate: {
-            bytes: { intervalStep: 20, threshold: 0.5 },
+            bytes: { segmentThreshold: 20, threshold: 0.5 },
             bytes_accum: {},
             count: {}
           }
@@ -658,11 +658,11 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10000, properties.commit.commitIntervalMsec);
       assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.count.intervalStep);
+      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("TestPath", properties.dataPath);
       assertEqual("de_DE.UTF-8", properties.locale);
