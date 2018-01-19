@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2017-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Dan Larkin-York
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_BASICS_RESULT_H
@@ -32,10 +34,11 @@ namespace arangodb {
 
 class Result {
  public:
-  Result() : _errorNumber(TRI_ERROR_NO_ERROR) {}
+  Result() noexcept(std::is_nothrow_default_constructible<std::string>::value)
+    : _errorNumber(TRI_ERROR_NO_ERROR) {}
 
   Result(int errorNumber)
-      : _errorNumber(errorNumber){
+    : _errorNumber(errorNumber){
     if (errorNumber != TRI_ERROR_NO_ERROR) {
       _errorMessage = TRI_errno_string(errorNumber);
     }
@@ -132,7 +135,9 @@ private:
   Result _result;
 
 public:
-  TypedResult() = default;
+  TypedResult() noexcept(std::is_nothrow_default_constructible<std::string>::value &&
+                         std::is_nothrow_default_constructible<T>::value
+                        )= default;
 
   template <bool x = std::is_lvalue_reference<T>::value ||
                      ( !std::is_move_constructible<T>::value &&
@@ -148,7 +153,7 @@ public:
     ,_result(error, std::move(message))
     {
       std::cerr << "copy" << std::endl;
-    } 
+    }
 
   template <int x = !std::is_lvalue_reference<T>::value
                     && std::is_move_constructible<T>::value
@@ -181,13 +186,15 @@ public:
       std::cerr << "move assign" << std::endl;
     }
 
+  //TODO add more constructors
+
+  // forward to result's functions
   int errorNumber() const { return _result.errorMessage(); }
   std::string errorMessage() const& { return _result.errorMessage(); }
   std::string errorMessage() && { return std::move(std::move(_result).errorMessage()); }
 
   bool ok()   const { return _result.ok(); }
   bool fail() const { return !ok(); }
-
   bool is(int errorNumber) const { return _result.errorNumber() == errorNumber; }
   bool isNot(int errorNumber) const { return !is(errorNumber); }
 
@@ -197,52 +204,19 @@ public:
     return *this;
   }
 
-  // should we mark that the result has been taken similar
-  // to the value?
-  Result getResult() const &  { return _result; }
-  Result getResult() && { return std::move(_result); }
-  Result takeResult(){ return std::move(_result); }
+  // some functions to retrieve the internal result
+  Result  copyResult() const &  { return _result; }
+  Result  takeResult() { return std::move(_result); }
+  Result& getResult() const &  { return _result; }
+  Result  getResult() && { return std::move(_result); } // result gets moved out if
+                                                       // TypedResult is expiring
 
-  // check if we have valid result value;
+  // check if we have valid result value - this is not mandatory
+  // it allows us to use values instead of pointers if an optional result is required
   bool vaild(){ return _valid; }
   bool vaild(bool val){ _valid = val; return _valid; }
 
-  T getValue() const &  {
-    return value;
-  }
-
-  T getValue() && {
-    this->valid(false);
-    return std::move(value);
-  }
-
-  T takeValue() {
-    this->valid(false);
-    return std::move(value);
-  }
 };
-
-//inline void foo() {
-//  int  integer = 43;
-//  int& integer_lvalue_ref = integer;
-//  int const&  integer_lvalue_cref = integer;
-//  TypedResult<int>  int_result(integer);
-//  TypedResult<int&> lvalue_ref_int_result(integer_lvalue_ref);
-//  TypedResult<int const&> lvalue_cref_int_result(integer_lvalue_cref);
-//  TypedResult<int>  rvalue_int_result(std::move(integer_lvalue_ref));
-//
-//  std::string str = "arangodb rocks";
-//  TypedResult<std::string> string_result{str};
-//  TypedResult<std::string> string_move_result{std::move(str)};
-//
-//  struct no_move {
-//    int member = 4;
-//    no_move() = default;
-//    no_move(no_move&&) = delete;
-//    no_move& operator=(no_move&&) = default;
-//  };
-//  TypedResult<no_move>  d(no_move{});
-//}
 
 }
 #endif
