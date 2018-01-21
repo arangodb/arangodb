@@ -31,6 +31,11 @@
 #include "utils/locale_utils.hpp"
 
 #include "Aql/AqlFunctionFeature.h"
+
+#if USE_ENTERPRISE
+  #include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchLinkMeta.h"
@@ -69,7 +74,7 @@ private:
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(EmptyTokenizer, "empty");
-REGISTER_ANALYZER_TEXT(EmptyTokenizer, EmptyTokenizer::make);
+REGISTER_ANALYZER_JSON(EmptyTokenizer, EmptyTokenizer::make);
 
 NS_END
 
@@ -101,6 +106,10 @@ struct IResearchLinkMetaSetup {
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+
+    #if USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+    #endif
 
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -162,7 +171,6 @@ TEST_CASE("IResearchLinkMetaTest", "[iresearch][iresearch-linkmeta]") {
 SECTION("test_defaults") {
   arangodb::iresearch::IResearchLinkMeta meta;
 
-  CHECK(1. == meta._boost);
   CHECK(true == meta._fields.empty());
   CHECK(false == meta._includeAllFields);
   CHECK(false == meta._nestListValues);
@@ -183,7 +191,6 @@ SECTION("test_inheritDefaults") {
 
   analyzers.start();
 
-  defaults._boost = 3.14f;
   defaults._fields["abc"] = std::move(arangodb::iresearch::IResearchLinkMeta());
   defaults._includeAllFields = true;
   defaults._nestListValues = true;
@@ -193,7 +200,6 @@ SECTION("test_inheritDefaults") {
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
   CHECK(true == meta.init(json->slice(), tmpString, defaults));
-  CHECK(3.14f == meta._boost);
   CHECK(1U == meta._fields.size());
 
   for (auto& field: meta._fields) {
@@ -205,7 +211,6 @@ SECTION("test_inheritDefaults") {
       CHECK(1U == expectedOverrides.erase(fieldOverride.key()));
 
       if ("xyz" == fieldOverride.key()) {
-        CHECK(1.f == actual._boost);
         CHECK(true == actual._fields.empty());
         CHECK(false == actual._includeAllFields);
         CHECK(false == actual._nestListValues);
@@ -236,7 +241,6 @@ SECTION("test_readDefaults") {
   std::string tmpString;
 
   CHECK(true == meta.init(json->slice(), tmpString));
-  CHECK(1.f == meta._boost);
   CHECK(true == meta._fields.empty());
   CHECK(false == meta._includeAllFields);
   CHECK(false == meta._nestListValues);
@@ -257,15 +261,14 @@ SECTION("test_readCustomizedValues") {
 
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"boost\": 10, \
       \"fields\": { \
         \"a\": {}, \
         \"b\": {}, \
         \"c\": { \
           \"fields\": { \
-            \"default\": { \"boost\": 1, \"fields\": {}, \"includeAllFields\": false, \"trackListPositions\": false, \"tokenizers\": [ \"identity\" ] }, \
-            \"all\": { \"boost\": 11, \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"trackListPositions\": true, \"tokenizers\": [ \"empty\" ] }, \
-            \"some\": { \"boost\": 12, \"trackListPositions\": true }, \
+            \"default\": { \"fields\": {}, \"includeAllFields\": false, \"trackListPositions\": false, \"tokenizers\": [ \"identity\" ] }, \
+            \"all\": { \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"trackListPositions\": true, \"tokenizers\": [ \"empty\" ] }, \
+            \"some\": { \"trackListPositions\": true }, \
             \"none\": {} \
           } \
         } \
@@ -275,7 +278,6 @@ SECTION("test_readCustomizedValues") {
       \"tokenizers\": [ \"empty\", \"identity\" ] \
     }");
     CHECK(true == meta.init(json->slice(), tmpString));
-    CHECK(10.f == meta._boost);
     CHECK(3U == meta._fields.size());
 
     for (auto& field: meta._fields) {
@@ -287,7 +289,6 @@ SECTION("test_readCustomizedValues") {
         CHECK(1U == expectedOverrides.erase(fieldOverride.key()));
 
         if ("default" == fieldOverride.key()) {
-          CHECK(1.f == actual._boost);
           CHECK(true == actual._fields.empty());
           CHECK(false == actual._includeAllFields);
           CHECK(false == actual._nestListValues);
@@ -297,7 +298,6 @@ SECTION("test_readCustomizedValues") {
           CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*(actual._tokenizers.begin()))->features())); // FIXME remove increment, term_attribute
           CHECK(false == !actual._tokenizers.begin()->get());
         } else if ("all" == fieldOverride.key()) {
-          CHECK(11. == actual._boost);
           CHECK(2U == actual._fields.size());
           CHECK(true == (actual._fields.find("d") != actual._fields.end()));
           CHECK(true == (actual._fields.find("e") != actual._fields.end()));
@@ -309,7 +309,6 @@ SECTION("test_readCustomizedValues") {
           CHECK((irs::flags({TestAttribute::type()}) == (*(actual._tokenizers.begin()))->features()));
           CHECK(false == !actual._tokenizers.begin()->get());
         } else if ("some" == fieldOverride.key()) {
-          CHECK(12. == actual._boost);
           CHECK(true == actual._fields.empty()); // not inherited
           CHECK(true == actual._includeAllFields); // inherited
           CHECK(true == actual._nestListValues);
@@ -325,7 +324,6 @@ SECTION("test_readCustomizedValues") {
           CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*itr)->features())); // FIXME remove increment, term_attribute
           CHECK(false == !itr->get());
         } else if ("none" == fieldOverride.key()) {
-          CHECK(10. == actual._boost); // inherited
           CHECK(true == actual._fields.empty()); // not inherited
           CHECK(true == actual._includeAllFields); // inherited
           CHECK(true == actual._nestListValues); // inherited
@@ -369,9 +367,7 @@ SECTION("test_writeDefaults") {
 
   auto slice = builder.slice();
 
-  CHECK((5U == slice.length()));
-  tmpSlice = slice.get("boost");
-  CHECK((true == tmpSlice.isNumber() && 1. == tmpSlice.getDouble()));
+  CHECK((4U == slice.length()));
   tmpSlice = slice.get("fields");
   CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
   tmpSlice = slice.get("includeAllFields");
@@ -395,7 +391,6 @@ SECTION("test_writeCustomizedValues") {
   analyzers.emplace("identity", "identity", "");
   analyzers.emplace("empty", "empty", "en");
 
-  meta._boost = 10.;
   meta._includeAllFields = true;
   meta._nestListValues = true;
   meta._tokenizers.clear();
@@ -417,7 +412,6 @@ SECTION("test_writeCustomizedValues") {
   auto& overrideSome = *(meta._fields["c"]->_fields["some"]);
   auto& overrideNone = *(meta._fields["c"]->_fields["none"]);
 
-  overrideAll._boost = 11.;
   overrideAll._fields.clear(); // do not inherit fields to match jSon inheritance
   overrideAll._fields["x"] = std::move(arangodb::iresearch::IResearchLinkMeta());
   overrideAll._fields["y"] = std::move(arangodb::iresearch::IResearchLinkMeta());
@@ -425,7 +419,6 @@ SECTION("test_writeCustomizedValues") {
   overrideAll._nestListValues = false;
   overrideAll._tokenizers.clear();
   overrideAll._tokenizers.emplace_back(analyzers.ensure("empty"));
-  overrideSome._boost = 12;
   overrideSome._fields.clear(); // do not inherit fields to match jSon inheritance
   overrideSome._nestListValues = false;
   overrideNone._fields.clear(); // do not inherit fields to match jSon inheritance
@@ -440,9 +433,7 @@ SECTION("test_writeCustomizedValues") {
 
   auto slice = builder.slice();
 
-  CHECK((5U == slice.length()));
-  tmpSlice = slice.get("boost");
-  CHECK((true == tmpSlice.isNumber() && 10. == tmpSlice.getDouble()));
+  CHECK((4U == slice.length()));
   tmpSlice = slice.get("fields");
   CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
 
@@ -465,9 +456,7 @@ SECTION("test_writeCustomizedValues") {
       CHECK(1U == expectedOverrides.erase(fieldOverride.copyString()));
 
       if ("default" == fieldOverride.copyString()) {
-        CHECK((4U == sliceOverride.length()));
-        tmpSlice = sliceOverride.get("boost");
-        CHECK((true == tmpSlice.isNumber() && 1. == tmpSlice.getDouble()));
+        CHECK((3U == sliceOverride.length()));
         tmpSlice = sliceOverride.get("includeAllFields");
         CHECK(true == (false == tmpSlice.getBool()));
         tmpSlice = sliceOverride.get("trackListPositions");
@@ -482,9 +471,7 @@ SECTION("test_writeCustomizedValues") {
         ));
       } else if ("all" == fieldOverride.copyString()) {
         std::unordered_set<std::string> expectedFields = { "x", "y" };
-        CHECK((5U == sliceOverride.length()));
-        tmpSlice = sliceOverride.get("boost");
-        CHECK((true == tmpSlice.isNumber() && 11. == tmpSlice.getDouble()));
+        CHECK((4U == sliceOverride.length()));
         tmpSlice = sliceOverride.get("fields");
         CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
         for (arangodb::velocypack::ObjectIterator overrideFieldItr(tmpSlice); overrideFieldItr.valid(); ++overrideFieldItr) {
@@ -504,9 +491,7 @@ SECTION("test_writeCustomizedValues") {
           std::string("empty") == tmpSlice.at(0).copyString()
         ));
       } else if ("some" == fieldOverride.copyString()) {
-        CHECK(2U == sliceOverride.length());
-        tmpSlice = sliceOverride.get("boost");
-        CHECK((true == tmpSlice.isNumber() && 12. == tmpSlice.getDouble()));
+        CHECK(1U == sliceOverride.length());
         tmpSlice = sliceOverride.get("trackListPositions");
         CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
       } else if ("none" == fieldOverride.copyString()) {
@@ -538,14 +523,12 @@ SECTION("test_readMaskAll") {
   std::string tmpString;
 
   auto json = arangodb::velocypack::Parser::fromJson("{ \
-    \"boost\": 10, \
     \"fields\": { \"a\": {} }, \
     \"includeAllFields\": true, \
     \"trackListPositions\": true, \
     \"tokenizers\": [] \
   }");
   CHECK(true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
-  CHECK(true == mask._boost);
   CHECK(true == mask._fields);
   CHECK(true == mask._includeAllFields);
   CHECK(true == mask._nestListValues);
@@ -559,7 +542,6 @@ SECTION("test_readMaskNone") {
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
   CHECK(true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
-  CHECK(false == mask._boost);
   CHECK(false == mask._fields);
   CHECK(false == mask._includeAllFields);
   CHECK(false == mask._nestListValues);
@@ -575,8 +557,7 @@ SECTION("test_writeMaskAll") {
 
   auto slice = builder.slice();
 
-  CHECK((5U == slice.length()));
-  CHECK(true == slice.hasKey("boost"));
+  CHECK((4U == slice.length()));
   CHECK(true == slice.hasKey("fields"));
   CHECK(true == slice.hasKey("includeAllFields"));
   CHECK(true == slice.hasKey("trackListPositions"));

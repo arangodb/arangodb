@@ -27,6 +27,11 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+
+#ifdef USE_IRESEARCH
+  #include "IResearch/IResearchFeature.h"
+#endif
+
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBGeoIndex.h"
@@ -405,7 +410,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     return std::make_shared<RocksDBFulltextIndex>(iid, col, info);
   }
 #ifdef USE_IRESEARCH
-  if (typeString == "iresearch") {
+  if (arangodb::iresearch::IResearchFeature::type() == typeString) {
     return arangodb::iresearch::IResearchRocksDBLink::make(iid, col, info);
   }
 #endif
@@ -436,3 +441,7 @@ std::vector<std::string> RocksDBIndexFactory::supportedIndexes() const {
   return std::vector<std::string>{"primary",    "edge", "hash",    "skiplist",
                                   "persistent", "geo", "s2index", "fulltext"};
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

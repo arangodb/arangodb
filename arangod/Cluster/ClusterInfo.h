@@ -322,6 +322,15 @@ class ClusterInfo {
       DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief ask about a view
+  /// If it is not found in the cache, the cache is reloaded once. The second
+  /// argument can be a collection ID or a view name (both cluster-wide).
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<LogicalView> getView(
+      DatabaseID const& vocbase, CollectionID const& view
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about current collections from the agency
   /// Usually one does not have to call this directly. Note that this is
   /// necessarily complicated, since here we have to consider information

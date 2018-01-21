@@ -313,8 +313,8 @@ SECTION("test_readCustomizedValues") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \
         \"collections\": [ 42 ], \
         \"commit\": { \"commitIntervalMsec\": 456, \"cleanupIntervalStep\": 654, \"commitTimeoutMsec\": 789, \"consolidate\": { \"bytes\": { \"intervalStep\": 1001, \"threshold\": 0.11 }, \"bytes_accum\": { \"intervalStep\": 1501, \"threshold\": 0.151 }, \"count\": { \"intervalStep\": 2001 }, \"fill\": {} } }, \
-        \"locale\": \"ru_RU.KOI8-R\", \
         \"dataPath\": \"somepath\", \
+        \"locale\": \"ru_RU.KOI8-R\", \
         \"threadsMaxIdle\": 8, \
         \"threadsMaxTotal\": 16 \
     }");
@@ -459,8 +459,8 @@ SECTION("test_writeCustomizedValues") {
   meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::BYTES_ACCUM, 151, .151f);
   meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::COUNT, 201, .21f);
   meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::FILL, 301, .31f);
-  meta._locale = iresearch::locale_utils::locale("en_UK.UTF-8");
   meta._dataPath = "somepath";
+  meta._locale = iresearch::locale_utils::locale("en_UK.UTF-8");
   meta._threadsMaxIdle = 8;
   meta._threadsMaxTotal = 16;
 

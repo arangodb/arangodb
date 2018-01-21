@@ -29,6 +29,11 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+
+#ifdef USE_IRESEARCH
+  #include "IResearch/IResearchFeature.h"
+#endif
+
 #include "MMFiles/MMFilesEdgeIndex.h"
 #include "MMFiles/MMFilesFulltextIndex.h"
 #include "MMFiles/MMFilesGeoIndex.h"
@@ -445,7 +450,7 @@ std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
     return std::make_shared<MMFilesFulltextIndex>(iid, col, info);
   }
 #ifdef USE_IRESEARCH
-  if (typeString == "iresearch") {
+  if (arangodb::iresearch::IResearchFeature::type() == typeString) {
     return arangodb::iresearch::IResearchMMFilesLink::make(iid, col, info);
   }
 #endif
@@ -471,3 +476,7 @@ std::vector<std::string> MMFilesIndexFactory::supportedIndexes() const {
   return std::vector<std::string>{ "primary", "edge", "hash", "skiplist", "persistent",
                                   "geo", "s2index", "fulltext" };
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

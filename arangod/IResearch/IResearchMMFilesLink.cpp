@@ -70,9 +70,9 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
 }
 
 /*static*/ IResearchMMFilesLink::ptr IResearchMMFilesLink::make(
-  TRI_idx_iid_t iid,
-  arangodb::LogicalCollection* collection,
-  arangodb::velocypack::Slice const& definition
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection* collection,
+    arangodb::velocypack::Slice const& definition
 ) noexcept {
   try {
     PTR_NAMED(IResearchMMFilesLink, ptr, iid, collection);

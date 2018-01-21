@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "doc_generator.hpp"
+#include "analysis/analyzers.hpp"
 #include "index/field_data.hpp"
 #include "utils/block_pool.hpp"
 #include "analysis/token_streams.hpp"
@@ -121,15 +122,13 @@ document::document(document&& rhs) NOEXCEPT
 
 field_base::field_base(field_base&& rhs) NOEXCEPT
   : features_(std::move(rhs.features_)),
-    name_(std::move(rhs.name_)),
-    boost_(rhs.boost_) {
+    name_(std::move(rhs.name_)) {
 }
 
 field_base& field_base::operator=(field_base&& rhs) NOEXCEPT {
   if (this != &rhs) {
     features_ = std::move(features_);
     name_ = std::move(rhs.name_);
-    boost_ = rhs.boost_;
   }
 
   return *this;
@@ -309,6 +308,43 @@ void delim_doc_generator::reset() {
   ifs_.clear();
   ifs_.seekg(ifs_.beg);
   doc_->reset();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                  csv_doc_generator implementation
+// -----------------------------------------------------------------------------
+
+csv_doc_generator::csv_doc_generator(
+    const irs::utf8_path& file, doc_template& doc
+): doc_(doc),
+   ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
+   stream_(irs::analysis::analyzers::get("delimited", irs::text_format::text, ",")) {
+  doc_.init();
+  doc_.reset();
+}
+
+const tests::document* csv_doc_generator::next() {
+  if (!getline(ifs_, line_) || !stream_) {
+    return nullptr;
+  }
+
+  auto& term = stream_->attributes().get<irs::term_attribute>();
+
+  if (!term || !stream_->reset(line_)) {
+    return nullptr;
+  }
+
+  for (size_t i = 0; stream_->next(); ++i) {
+    doc_.value(i, irs::ref_cast<char>(term->value()));
+  }
+
+  return &doc_;
+}
+
+void csv_doc_generator::reset() {
+  ifs_.clear();
+  ifs_.seekg(ifs_.beg);
+  doc_.reset();
 }
 
 //////////////////////////////////////////////////////////////////////////////

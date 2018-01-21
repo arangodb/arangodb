@@ -37,7 +37,7 @@ using namespace arangodb::iresearch;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-namespace {
+NS_LOCAL
 
 std::vector<arangodb::iresearch::IResearchSort> buildSort(
     ExecutionPlan const& plan,
@@ -64,7 +64,7 @@ std::vector<arangodb::iresearch::IResearchSort> buildSort(
         node = node->getMember(0);
       }
 
-      if (NODE_TYPE_REFERENCE == node->type) {
+      if (node && NODE_TYPE_REFERENCE == node->type) {
         var = reinterpret_cast<Variable const*>(node->getData());
       }
     } else {
@@ -310,16 +310,17 @@ bool IResearchViewConditionFinder::handleFilterCondition(
   return true;
 }
 
-}
+NS_END // NS_LOCAL
 
-namespace arangodb {
-namespace iresearch {
+NS_BEGIN(arangodb)
+NS_BEGIN(iresearch)
 
 /// @brief move filters and sort conditions into views
 void handleViewsRule(
-    Optimizer* opt,
-    std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const* rule) {
+    arangodb::aql::Optimizer* opt,
+    std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+    arangodb::aql::OptimizerRule const* rule
+) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   std::unordered_map<size_t, ExecutionNode*> changes;
@@ -455,5 +456,9 @@ void handleViewsRule(
   opt->addPlan(std::move(plan), rule, !changes.empty());
 }
 
-} // iresearch
-} // arangodb
+NS_END // iresearch
+NS_END // arangodb
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

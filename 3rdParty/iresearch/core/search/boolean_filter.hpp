@@ -74,6 +74,13 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
   boolean_filter(const type_id& type) NOEXCEPT;
   virtual bool equals(const filter& rhs) const override;
 
+  virtual void optimize(
+      std::vector<const filter*>& /*incl*/,
+      std::vector<const filter*>& /*excl*/,
+      irs::boost::boost_t& /*boost*/) const {
+    // noop
+  }
+
   virtual filter::prepared::ptr prepare(
     const std::vector<const filter*>& incl,
     const std::vector<const filter*>& excl,
@@ -107,6 +114,12 @@ class IRESEARCH_API And: public boolean_filter {
   using filter::prepare;
 
  protected:
+  virtual void optimize(
+    std::vector<const filter*>& incl,
+    std::vector<const filter*>& excl,
+    irs::boost::boost_t& boost
+  ) const override;
+
   virtual filter::prepared::ptr prepare(
     const std::vector<const filter*>& incl,
     const std::vector<const filter*>& excl,

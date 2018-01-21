@@ -6,6 +6,8 @@
 
 include(ExternalProject)
 
+remove_definitions("-DUSE_ENTERPRISE=1")
+
 ################################################################################
 ## V8 and ICU
 ################################################################################
@@ -195,6 +197,31 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/s2)
 ################################################################################
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
+
+################################################################################
+## JEMALLOC
+################################################################################
+
+if (USE_JEMALLOC)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
+  include_directories("${JEMALLOC_HOME}/include")
+  link_directories("${JEMALLOC_HOME}/lib")
+  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB})
+endif ()
+
+################################################################################
+## BOOST
+################################################################################
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
+set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
+
+################################################################################
+## ROCKSDB
+################################################################################
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
+include_directories(${ROCKSDB_INCLUDE_DIR})
 
 ################################################################################
 ## LINK_DIRECTORIES

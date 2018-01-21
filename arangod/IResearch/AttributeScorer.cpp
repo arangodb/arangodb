@@ -59,7 +59,7 @@ class Prepared: public irs::sort::prepared_base<Score> {
  public:
   DECLARE_FACTORY(Prepared);
 
-  Prepared(
+  explicit Prepared(
     size_t const (&order)[arangodb::iresearch::AttributeScorer::ValueType::eLast]
   );
 
