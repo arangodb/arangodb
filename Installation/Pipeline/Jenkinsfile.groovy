@@ -759,95 +759,119 @@ def setBuildsAndTests() {
 // -----------------------------------------------------------------------------
 
 def stashBuild(os, edition, maintainer) {
-    lock("stashing-${branchLabel}-${os}-${edition}-${maintainer}") {
-        if (os == 'linux' || os == 'mac') {
-            def name = "build.tar.gz"
+    try {
+        lock("stashing-${branchLabel}-${os}-${edition}-${maintainer}") {
+            if (os == 'linux' || os == 'mac') {
+                def name = "build.tar.gz"
 
-            sh "rm -f ${name}"
-            sh "GZIP=-1 tar cpzf ${name} build"
-            sh "scp ${name} ${jenkinsCache}/build-${branchLabel}-${os}-${edition}-${maintainer}.tar.gz"
-            sh "rm -f ${name}"
-        }
-        else if (os == 'windows') {
-            def name = "build.zip"
+                sh "rm -f ${name}"
+                sh "GZIP=-1 tar cpzf ${name} build"
+                sh "scp ${name} ${jenkinsCache}/build-${branchLabel}-${os}-${edition}-${maintainer}.tar.gz"
+                sh "rm -f ${name}"
+            }
+            else if (os == 'windows') {
+                def name = "build.zip"
 
-            bat "del /F /Q ${name}"
-            powershell "7z a ${name} -r -bd -mx=1 build"
-            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${name} ${jenkinsCache}/build-${branchLabel}-${os}-${edition}-${maintainer}.zip"
-            bat "del /F /Q ${name}"
+                bat "del /F /Q ${name}"
+                powershell "7z a ${name} -r -bd -mx=1 build"
+                powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${name} ${jenkinsCache}/build-${branchLabel}-${os}-${edition}-${maintainer}.zip"
+                bat "del /F /Q ${name}"
+            }
         }
+    }
+    catch (exc) {
+        def msg = exc.toString()
+        error("failed to stash build to ${jenkinsCache}: ${msg}")
     }
 }
 
 def unstashBuild(os, edition, maintainer) {
-    lock("stashing-${branchLabel}-${os}-${edition}-${maintainer}") {
-        try {
-            if (os == "windows") {
-                def name = "build.zip"
+    try {
+        lock("stashing-${branchLabel}-${os}-${edition}-${maintainer}") {
+            try {
+                if (os == "windows") {
+                    def name = "build.zip"
 
-                powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${jenkinsCache}/build-${branchLabel}-${os}-${edition}-${maintainer}.zip ${name}"
-                powershell "Expand-Archive -Path ${name} -Force -DestinationPath ."
-                bat "del /F /Q ${name}"
+                    powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${jenkinsCache}/build-${branchLabel}-${os}-${edition}-${maintainer}.zip ${name}"
+                    powershell "Expand-Archive -Path ${name} -Force -DestinationPath ."
+                    bat "del /F /Q ${name}"
+                }
+                else {
+                    def name = "build.tar.gz"
+
+                    sh "scp ${jenkinsCache}/build-${branchLabel}-${os}-${edition}-${maintainer}.tar.gz ${name}"
+                    sh "tar xpzf ${name}"
+                    sh "rm -f ${name}"
+                }
             }
-            else {
-                def name = "build.tar.gz"
-
-                sh "scp ${jenkinsCache}/build-${branchLabel}-${os}-${edition}-${maintainer}.tar.gz ${name}"
-                sh "tar xpzf ${name}"
-                sh "rm -f ${name}"
+            catch (exc) {
             }
         }
-        catch (exc) {
-        }
+    }
+    catch (exc) {
+        def msg = exc.toString()
+        error("failed to unstash build to ${jenkinsCache}: ${msg}")
     }
 }
 
 def stashBinaries(os, edition, maintainer) {
-    def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
+    try {
+        def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
 
-    if (runResilience) {
-       paths << "resilience"
+        if (runResilience) {
+           paths << "resilience"
+        }
+
+        if (edition == "enterprise") {
+           paths << "enterprise/js"
+        }
+
+        if (os == "windows") {
+            paths << "build/bin/RelWithDebInfo"
+            paths << "build/tests/RelWithDebInfo"
+
+            // so frustrating...compress-archive is built in but it simply won't include the relative path to
+            // the archive :(
+            // powershell "Compress-Archive -Force -Path (Get-ChildItem -Recurse -Path " + paths.join(',') + ") -DestinationPath stash.zip -Confirm -CompressionLevel Fastest"
+            // install 7z portable (https://chocolatey.org/packages/7zip.portable)
+
+            powershell "7z a stash.zip -r -bd -mx=1 " + paths.join(" ")
+
+            // this is a super mega mess...scp will run as the system user and not as jenkins when run as a server
+            // I couldn't figure out how to properly get it running for hours...so last resort was to install putty
+
+            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk stash.zip ${jenkinsCache}/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip"
+        }
+        else {
+            paths << "build/bin/"
+            paths << "build/tests/"
+
+            sh "GZIP=-1 tar cpzf stash.tar.gz " + paths.join(" ")
+            sh "scp stash.tar.gz ${jenkinsCache}/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz"
+        }
     }
-
-    if (edition == "enterprise") {
-       paths << "enterprise/js"
-    }
-
-    if (os == "windows") {
-        paths << "build/bin/RelWithDebInfo"
-        paths << "build/tests/RelWithDebInfo"
-
-        // so frustrating...compress-archive is built in but it simply won't include the relative path to
-        // the archive :(
-        // powershell "Compress-Archive -Force -Path (Get-ChildItem -Recurse -Path " + paths.join(',') + ") -DestinationPath stash.zip -Confirm -CompressionLevel Fastest"
-        // install 7z portable (https://chocolatey.org/packages/7zip.portable)
-
-        powershell "7z a stash.zip -r -bd -mx=1 " + paths.join(" ")
-
-        // this is a super mega mess...scp will run as the system user and not as jenkins when run as a server
-        // I couldn't figure out how to properly get it running for hours...so last resort was to install putty
-
-        powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk stash.zip ${jenkinsCache}/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip"
-    }
-    else {
-        paths << "build/bin/"
-        paths << "build/tests/"
-
-        sh "GZIP=-1 tar cpzf stash.tar.gz " + paths.join(" ")
-        sh "scp stash.tar.gz ${jenkinsCache}/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz"
+    catch (exc) {
+        def msg = exc.toString()
+        error("failed to unstash binaries to ${jenkinsCache}: ${msg}")
     }
 }
 
 def unstashBinaries(os, edition, maintainer) {
-    if (os == "windows") {
-        powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${jenkinsCache}/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip stash.zip"
-        powershell "Expand-Archive -Path stash.zip -Force -DestinationPath ."
-        powershell "copy build\\tests\\RelWithDebInfo\\* build\\bin"
-        powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
+    try {
+        if (os == "windows") {
+            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${jenkinsCache}/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip stash.zip"
+            powershell "Expand-Archive -Path stash.zip -Force -DestinationPath ."
+            powershell "copy build\\tests\\RelWithDebInfo\\* build\\bin"
+            powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
+        }
+        else {
+            sh "scp ${jenkinsCache}/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz stash.tar.gz"
+            sh "tar xpzf stash.tar.gz"
+        }
     }
-    else {
-        sh "scp ${jenkinsCache}/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz stash.tar.gz"
-        sh "tar xpzf stash.tar.gz"
+    catch (exc) {
+        def msg = exc.toString()
+        error("failed to unstash binaries to ${jenkinsCache}: ${msg}")
     }
 }
 
@@ -1592,7 +1616,13 @@ def runOperatingSystems(osList) {
     parallel branches
 }
 
+def getGitBranchName() {
+    return scm.branches[0].name
+}
+
 timestamps {
+    echo "########## " + getGitBranchName()
+
     try {
         node("linux") {
             echo sh(returnStdout: true, script: 'env')
