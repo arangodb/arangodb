@@ -1434,6 +1434,7 @@ def buildEdition(os, edition, maintainer) {
     finally {
         if (os == "linux") {
             stashBuild(os, edition, maintainer)
+            sh "rm -f build/location"
         }
 
         archiveArtifacts allowEmptyArchive: true,
