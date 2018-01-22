@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, fail */
+/*global assertEqual, assertTrue, assertMatch, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for client/server side transaction invocation
@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var internal = require("internal");
 var ERRORS = arangodb.errors;
+var ArangoError = require("@arangodb").ArangoError;
 var cluster;
 var isOnServer = (typeof ArangoClusterComm === "object");
 if (isOnServer) {
@@ -63,6 +64,25 @@ function TransactionsInvocationsSuite () {
 
     tearDown : function () {
       internal.wait(0);
+    },
+
+    testErrorHandling : function () {
+      try {
+        db._executeTransaction({
+          collections: {},
+          action: function() {
+            var err = new Error('test');
+            Object.defineProperty(err, 'name', {
+                get: function() { throw new Error('Error in getter'); }
+            });
+            throw err;
+          }
+        });
+        fail();
+      } catch (err) {
+        assertTrue(err instanceof ArangoError);
+        assertMatch(/test/, err.errorMessage);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
