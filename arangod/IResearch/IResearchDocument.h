@@ -218,7 +218,8 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   bool setRegularAttribute(IResearchLinkMeta const& context);
 
   void resetAnalyzers(IResearchLinkMeta const& context) {
-    auto const& analyzers = context._tokenizers;
+    auto const& analyzers = context._analyzers;
+
     _begin = analyzers.data();
     _end = _begin + analyzers.size();
   }

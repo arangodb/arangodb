@@ -54,7 +54,7 @@ NS_LOCAL
 static std::string const ANALYZER_COLLECTION_NAME("_iresearch_analyzers");
 static size_t const DEFAULT_POOL_SIZE = 8; // arbitrary value
 static std::string const FEATURE_NAME("IResearchAnalyzer");
-static irs::string_ref const IDENTITY_TOKENIZER_NAME("identity");
+static irs::string_ref const IDENTITY_ANALYZER_NAME("identity");
 
 struct IdentityValue : irs::term_attribute {
   void value(irs::bytes_ref const& data) noexcept {
@@ -62,12 +62,12 @@ struct IdentityValue : irs::term_attribute {
   }
 };
 
-class IdentityTokenizer: public irs::analysis::analyzer {
+class IdentityAnalyzer: public irs::analysis::analyzer {
  public:
   DECLARE_ANALYZER_TYPE();
   DECLARE_FACTORY_DEFAULT(irs::string_ref const& args); // args ignored
 
-  IdentityTokenizer();
+  IdentityAnalyzer();
   virtual irs::attribute_view const& attributes() const NOEXCEPT override;
   virtual bool next() override;
   virtual bool reset(irs::string_ref const& data) override;
@@ -80,25 +80,28 @@ class IdentityTokenizer: public irs::analysis::analyzer {
   bool _empty;
 };
 
-DEFINE_ANALYZER_TYPE_NAMED(IdentityTokenizer, IDENTITY_TOKENIZER_NAME);
-REGISTER_ANALYZER_JSON(IdentityTokenizer, IdentityTokenizer::make);
+DEFINE_ANALYZER_TYPE_NAMED(IdentityAnalyzer, IDENTITY_ANALYZER_NAME);
+REGISTER_ANALYZER_JSON(IdentityAnalyzer, IdentityAnalyzer::make);
 
-/*static*/ irs::analysis::analyzer::ptr IdentityTokenizer::make(irs::string_ref const& args) {
-  PTR_NAMED(IdentityTokenizer, ptr);
+/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make(
+    irs::string_ref const& args
+) {
+  UNUSED(args);
+  PTR_NAMED(IdentityAnalyzer, ptr);
   return ptr;
 }
 
-IdentityTokenizer::IdentityTokenizer()
-  : irs::analysis::analyzer(IdentityTokenizer::type()), _empty(true) {
+IdentityAnalyzer::IdentityAnalyzer()
+  : irs::analysis::analyzer(IdentityAnalyzer::type()), _empty(true) {
   _attrs.emplace(_term);
   _attrs.emplace(_inc);
 }
 
-irs::attribute_view const& IdentityTokenizer::attributes() const NOEXCEPT {
+irs::attribute_view const& IdentityAnalyzer::attributes() const NOEXCEPT {
   return _attrs;
 }
 
-bool IdentityTokenizer::next() {
+bool IdentityAnalyzer::next() {
   auto empty = _empty;
 
   _term.value(irs::ref_cast<irs::byte_type>(_value));
@@ -108,7 +111,7 @@ bool IdentityTokenizer::next() {
   return !empty;
 }
 
-bool IdentityTokenizer::reset(irs::string_ref const& data) {
+bool IdentityAnalyzer::reset(irs::string_ref const& data) {
   _empty = false;
   _value = data;
 
@@ -630,7 +633,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
         PTR_NAMED(AnalyzerPool, pool, name);
 
         if (!pool
-            || !pool->init(IdentityTokenizer::type().name(), irs::string_ref::nil, extraFeatures)) {
+            || !pool->init(IdentityAnalyzer::type().name(), irs::string_ref::nil, extraFeatures)) {
           LOG_TOPIC(WARN, IResearchFeature::IRESEARCH) << "failure creating an IResearch static analyzer instance for name '" << name << "'";
           throw irs::illegal_state(); // this should never happen, treat as an assertion failure
         }
