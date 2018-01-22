@@ -323,7 +323,7 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
   // Update the index estimates.
   TRI_ASSERT(_collection != nullptr);
   if (commitSeq > 0) {
-    for (auto const& pair : _trackedIndexOperations) {
+    for (auto& pair : _trackedIndexOperations) {
       auto idx = _collection->lookupIndex(pair.first);
       if (idx == nullptr) {
         TRI_ASSERT(false); // Index reported estimates, but does not exist
@@ -332,7 +332,8 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
       auto ridx = static_cast<RocksDBIndex*>(idx.get());
       auto estimator = ridx->estimator();
       if (estimator) {
-        estimator->bufferUpdates(commitSeq, pair.second.first, pair.second.second);
+        estimator->bufferUpdates(commitSeq, std::move(pair.second.first),
+                                            std::move(pair.second.second));
         estimator->removeBlocker(trxId);
       }
     }
@@ -350,14 +351,14 @@ void RocksDBTransactionCollection::trackIndexInsert(uint64_t idxObjectId,
                                                     uint64_t hash) {
   // TODO allocate vector
   // First list is Inserts
-  _trackedIndexOperations[idxObjectId].first->emplace_back(hash);
+  _trackedIndexOperations[idxObjectId].first.emplace_back(hash);
 }
 
 void RocksDBTransactionCollection::trackIndexRemove(uint64_t idxObjectId,
                                                     uint64_t hash) {
   // TODO allocate vector
   // Second list is Removes
-  _trackedIndexOperations[idxObjectId].second->emplace_back(hash);
+  _trackedIndexOperations[idxObjectId].second.emplace_back(hash);
 }
 
 /// @brief lock a collection

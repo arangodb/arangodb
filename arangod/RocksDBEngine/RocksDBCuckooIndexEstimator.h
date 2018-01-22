@@ -25,6 +25,7 @@
 #define ARANGOD_ROCKSDB_ROCKSDB_INDEX_ESTIMATOR_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
@@ -180,7 +181,7 @@ class RocksDBCuckooIndexEstimator {
     initializeDefault();
   }
 
-  RocksDBCuckooIndexEstimator(uint64_t commitSeq,
+  RocksDBCuckooIndexEstimator(rocksdb::SequenceNumber commitSeq,
                               arangodb::StringRef const serialized)
       : _randState(0x2636283625154737ULL),
         _slotSize(sizeof(uint16_t)),     // Sort out offsets and alignments
@@ -227,29 +228,36 @@ class RocksDBCuckooIndexEstimator {
   RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator&&) =
       delete;
 
-  void serialize(std::string& serialized, uint64_t seq) const {
+  /// @brief serialize estimator
+  rocksdb::SequenceNumber serialize(std::string& serialized,
+                                    rocksdb::SequenceNumber inputSeq) {
     // This format is always hard coded and the serialisation has to support
     // older formats
     // for backwards compatibility
     // We always have to start with the commit seq, type and then the length
-    rocksutils::uint64ToPersistent(serialized, commitSeq(seq));
-    serialized += SerializeFormat::NOCOMPRESSION;
+    auto outputSeq = commitSeq(inputSeq);
+    rocksutils::uint64ToPersistent(serialized, outputSeq);
 
-    uint64_t serialLength =
-        (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
-         sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
-         sizeof(_niceSize) + sizeof(_logSize) +
-         (_size * _slotSize * SlotsPerBucket)) +
-        (_size * _counterSize * SlotsPerBucket);
-
-    serialized.reserve(sizeof(uint64_t) + serialLength);
-    // We always prepend the length, so parsing is easier
-    rocksutils::uint64ToPersistent(serialized, serialLength);
+    // must apply updates first to be valid
+    applyUpdates(outputSeq);
 
     {
-      // Sorry we need a consistent state, so we have to read-lock from here
-      // on...
+      // Sorry we need a consistent state, so we have to read-lock
       READ_LOCKER(locker, _lock);
+
+      serialized += SerializeFormat::NOCOMPRESSION;
+
+      uint64_t serialLength =
+          (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
+           sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
+           sizeof(_niceSize) + sizeof(_logSize) +
+           (_size * _slotSize * SlotsPerBucket)) +
+          (_size * _counterSize * SlotsPerBucket);
+
+      serialized.reserve(sizeof(uint64_t) + serialLength);
+      // We always prepend the length, so parsing is easier
+      rocksutils::uint64ToPersistent(serialized, serialLength);
+
       // Add all member variables
       rocksutils::uint64ToPersistent(serialized, _size);
       rocksutils::uint64ToPersistent(serialized, _nrUsed);
@@ -276,6 +284,8 @@ class RocksDBCuckooIndexEstimator {
             serialized, *(reinterpret_cast<uint32_t*>(_counters + i)));
       }
     }
+
+    return outputSeq;
   }
 
   void clear() {
@@ -412,40 +422,133 @@ class RocksDBCuckooIndexEstimator {
   // not thread safe. called only during tests
   uint64_t nrCuckood() const { return _nrCuckood; }
 
-  void placeBlocker(uint64_t trxId, uint64_t seq) {
-    // TODO
+  Result placeBlocker(uint64_t trxId, rocksdb::SequenceNumber seq) {
+    Result res = basics::catchToResult([&]() -> Result {
+      TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
+      TRI_ASSERT(_blockersBySeq.end() ==
+                 _blockersBySeq.find(std::make_pair(seq, trxId)));
+      Result res;
+      WRITE_LOCKER(locker, _lock);
+      auto insert = _blockers.emplace(trxId, seq);
+      auto crosslist = _blockersBySeq.emplace(seq, trxId);
+      if (!insert.second || !crosslist.second) {
+        return {TRI_ERROR_INTERNAL};
+      }
+      return {TRI_ERROR_NO_ERROR};
+    });
+    return res;
   }
 
   void removeBlocker(uint64_t trxId) {
-    // TODO
+    WRITE_LOCKER(locker, _lock);
+    auto it = _blockers.find(trxId);
+    if (_blockers.end() != it) {
+      auto cross = _blockersBySeq.find(std::make_pair(it->second, it->first));
+      TRI_ASSERT(_blockersBySeq.end() != cross);
+      if (_blockersBySeq.end() != cross) {
+        _blockersBySeq.erase(cross);
+      }
+      _blockers.erase(it);
+    }
   }
 
-  void bufferUpdates(uint64_t seq,
-                     std::shared_ptr<std::vector<uint64_t>> inserts,
-                     std::shared_ptr<std::vector<uint64_t>> removals) {
-    // TODO
+  Result bufferUpdates(rocksdb::SequenceNumber seq, std::vector<Key>&& inserts,
+                       std::vector<Key>&& removals) {
+    Result res = basics::catchVoidToResult([&]() -> void {
+      WRITE_LOCKER(locker, _lock);
+      _insertBuffers.emplace(seq, std::move(inserts));
+      _removalBuffers.emplace(seq, std::move(removals));
+    });
+    return res;
   }
 
-  void applyUpdates() {
-    // TODO
-  }
-
-  uint64_t commitSeq() const {
+  /// @brief Just fetches most recently set commit seq
+  rocksdb::SequenceNumber commitSeq() const {
     READ_LOCKER(locker, _lock);
     return _committedSeq;
   }
 
-  uint64_t commitSeq(uint64_t current) const {
+ private:  // methods
+  /// @brief call with output from commitSeq(current), and before serialize
+  Result applyUpdates(rocksdb::SequenceNumber commitSeq) {
+    Result res = basics::catchVoidToResult([&]() -> void {
+      std::vector<Key> inserts;
+      std::vector<Key> removals;
+      while (true) {
+        // find out if we have buffers to apply
+        {
+          WRITE_LOCKER(locker, _lock);
+
+          // check for inserts
+          if (!_insertBuffers.empty()) {
+            auto it = _insertBuffers.begin();
+            if (it->first < commitSeq) {
+              inserts = std::move(it->second);
+              _insertBuffers.erase(it);
+            }
+          }
+
+          // check for removals
+          if (!_removalBuffers.empty()) {
+            auto it = _removalBuffers.begin();
+            if (it->first < commitSeq) {
+              removals = std::move(it->second);
+              _removalBuffers.erase(it);
+            }
+          }
+        }
+
+        // no inserts or removals left to apply, drop out of loop
+        if (inserts.empty() && removals.empty()) {
+          break;
+        }
+
+        if (!inserts.empty()) {
+          // apply inserts
+          for (auto const& key : inserts) {
+            insert(key);
+          }
+          inserts.clear();
+        }
+
+        if (!removals.empty()) {
+          // apply removals
+          for (auto const& key : removals) {
+            remove(key);
+          }
+          removals.clear();
+        }
+      }
+    });
+    return res;
+  }
+
+  /// @brief updates and returns the largest safe seq to consider committed
+  rocksdb::SequenceNumber commitSeq(rocksdb::SequenceNumber current) const {
     WRITE_LOCKER(locker, _lock);
-    // if we have a blocker with a lower value than current, return it
-    // TODO
+    auto minSeq = current;
+
+    // if we have a blocker with a lower value than current, compare it
+    if (!_blockersBySeq.empty()) {
+      auto it = _blockersBySeq.begin();
+      minSeq = std::min(minSeq, it->first);
+    }
+
+    // if we have an unapplied batch of updates with a lower value compare it
+    if (!_insertBuffers.empty()) {
+      auto it = _insertBuffers.begin();
+      minSeq = std::min(minSeq, it->first);
+    }
+    if (!_removalBuffers.empty()) {
+      auto it = _removalBuffers.begin();
+      minSeq = std::min(minSeq, it->first);
+    }
 
     // otherwise update current and return it
-    _committedSeq = std::max(_committedSeq, current);
+    _committedSeq = std::max(_committedSeq, minSeq);
     return _committedSeq;
   }
 
- private:  // methods
   uint64_t memoryUsage() const {
     return sizeof(RocksDBCuckooIndexEstimator) + _slotAllocSize +
            _counterAllocSize;
@@ -774,14 +877,19 @@ class RocksDBCuckooIndexEstimator {
   uint64_t _nrTotal;    // number of elements included in total
   unsigned _maxRounds;  // maximum number of cuckoo rounds on insertion
 
-  uint64_t mutable _committedSeq;
+  rocksdb::SequenceNumber mutable _committedSeq;
+
+  std::map<uint64_t, rocksdb::SequenceNumber> _blockers;
+  std::set<std::pair<rocksdb::SequenceNumber, uint64_t>> _blockersBySeq;
+  std::map<rocksdb::SequenceNumber, std::vector<Key>> _insertBuffers;
+  std::map<rocksdb::SequenceNumber, std::vector<Key>> _removalBuffers;
 
   HashKey _hasherKey;        // Instance to compute the first hash function
   Fingerprint _fingerprint;  // Instance to compute a fingerprint of a key
   HashShort _hasherShort;    // Instance to compute the second hash function
 
   arangodb::basics::ReadWriteLock mutable _lock;
-};
+};  // namespace arangodb
 
 }  // namespace arangodb
 

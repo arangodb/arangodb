@@ -272,13 +272,14 @@ Result RocksDBSettingsManager::writeSettings(rocksdb::Transaction* rtrx,
   return Result();
 }
 
-Result RocksDBSettingsManager::writeIndexEstimatorAndKeyGenerator(
+std::pair<Result, rocksdb::SequenceNumber> RocksDBSettingsManager::writeIndexEstimatorAndKeyGenerator(
     rocksdb::Transaction* rtrx, VPackBuilder& b,
-    std::pair<uint64_t, CMValue> const& pair) {
+    std::pair<uint64_t, CMValue> const& pair, rocksdb::SequenceNumber baseSeq) {
+  auto returnSeq = baseSeq;
   auto dbColPair = rocksutils::mapObjectToCollection(pair.first);
   if (dbColPair.second == 0 && dbColPair.first == 0) {
     // collection with this objectID not known.Skip.
-    return Result();
+    return std::make_pair(Result(), returnSeq);
   }
   auto dbfeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
   TRI_ASSERT(dbfeature != nullptr);
@@ -289,7 +290,7 @@ Result RocksDBSettingsManager::writeIndexEstimatorAndKeyGenerator(
     // However let's just skip in production. Not allowed to crash.
     // If we cannot find this infos during recovery we can either recompute
     // or start fresh.
-    return Result();
+    return std::make_pair(Result(), returnSeq);
   }
   TRI_DEFER(vocbase->release());
 
@@ -300,26 +301,28 @@ Result RocksDBSettingsManager::writeIndexEstimatorAndKeyGenerator(
     // However let's just skip in production. Not allowed to crash.
     // If we cannot find this infos during recovery we can either recompute
     // or start fresh.
-    return Result();
+    return std::make_pair(Result(), returnSeq);
   }
   auto rocksCollection =
       static_cast<RocksDBCollection*>(collection->getPhysical());
   TRI_ASSERT(rocksCollection != nullptr);
-  Result res = rocksCollection->serializeIndexEstimates(rtrx);
-  if (!res.ok()) {
+  auto serializeResult = rocksCollection->serializeIndexEstimates(rtrx, baseSeq);
+  if (!serializeResult.first.ok()) {
     LOG_TOPIC(WARN, Logger::ENGINES)
-        << "writing index estimates failed: " << res.errorMessage();
-    return res;
+        << "writing index estimates failed: "
+        << serializeResult.first.errorMessage();
+    return std::make_pair(serializeResult.first, returnSeq);
   }
+  returnSeq = std::min(returnSeq, serializeResult.second);
 
-  res = rocksCollection->serializeKeyGenerator(rtrx);
+  Result res = rocksCollection->serializeKeyGenerator(rtrx);
   if (!res.ok()) {
     LOG_TOPIC(WARN, Logger::ENGINES)
         << "writing key generators failed: " << res.errorMessage();
-    return res;
+    return std::make_pair(res, returnSeq);
   }
 
-  return Result();
+  return std::make_pair(Result(), returnSeq);
 }
 
 /// Thread-Safe force sync
@@ -349,10 +352,12 @@ Result RocksDBSettingsManager::sync(bool force) {
       return res;
     }
 
-    res = writeIndexEstimatorAndKeyGenerator(rtrx.get(), b, pair);
-    if (res.fail()) {
-      return res;
+    auto writeResult = writeIndexEstimatorAndKeyGenerator(rtrx.get(), b, pair,
+                                                          seqNumber);
+    if (writeResult.first.fail()) {
+      return writeResult.first;
     }
+    seqNumber = std::min(seqNumber, writeResult.second);
   }
 
   Result res = writeSettings(rtrx.get(), b, seqNumber);

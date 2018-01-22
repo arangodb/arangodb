@@ -148,9 +148,9 @@ class RocksDBSettingsManager {
                            std::pair<uint64_t, CMValue> const& pair);
   Result writeSettings(rocksdb::Transaction* rtrx, VPackBuilder& b,
                        uint64_t seqNumber);
-  Result writeIndexEstimatorAndKeyGenerator(
+  std::pair<Result, rocksdb::SequenceNumber> writeIndexEstimatorAndKeyGenerator(
       rocksdb::Transaction* rtrx, VPackBuilder& b,
-      std::pair<uint64_t, CMValue> const& pair);
+      std::pair<uint64_t, CMValue> const& pair, rocksdb::SequenceNumber seq);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief counter values

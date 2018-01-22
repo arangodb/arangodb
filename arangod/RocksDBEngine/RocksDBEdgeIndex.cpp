@@ -952,10 +952,10 @@ void RocksDBEdgeIndex::handleValNode(
   }
 }
 
-void RocksDBEdgeIndex::serializeEstimate(std::string& output,
-                                         uint64_t seq) const {
+rocksdb::SequenceNumber RocksDBEdgeIndex::serializeEstimate(
+    std::string& output, rocksdb::SequenceNumber seq) const {
   TRI_ASSERT(_estimator != nullptr);
-  _estimator->serialize(output, seq);
+  return _estimator->serialize(output, seq);
 }
 
 bool RocksDBEdgeIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {

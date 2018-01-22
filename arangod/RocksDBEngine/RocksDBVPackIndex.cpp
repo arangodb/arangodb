@@ -1531,12 +1531,13 @@ bool RocksDBVPackIndex::isDuplicateOperator(
   return duplicate;
 }
 
-void RocksDBVPackIndex::serializeEstimate(std::string& output, uint64_t seq) const {
+rocksdb::SequenceNumber RocksDBVPackIndex::serializeEstimate(std::string& output, rocksdb::SequenceNumber seq) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (!_unique) {
     TRI_ASSERT(_estimator != nullptr);
-    _estimator->serialize(output, seq);
+    return _estimator->serialize(output, seq);
   }
+  return seq;
 }
 
 bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {

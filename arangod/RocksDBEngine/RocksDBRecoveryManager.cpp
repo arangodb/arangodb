@@ -129,8 +129,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       : currentSeqNum(0), _seqStart(seqs) {}
 
   Result shutdownWBReader() {
-    Result rv;
-    try {
+    Result rv = basics::catchVoidToResult([&]() -> void {
       // update ticks after parsing wal
       LOG_TOPIC(TRACE, Logger::ENGINES) << "max tick found in WAL: " << _maxTick
                                         << ", last HLC value: " << _maxHLC;
@@ -161,7 +160,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           collection->keyGenerator()->track(k.data(), k.size());
         }
       }
-    } CATCH_TO_RESULT(rv,TRI_ERROR_INTERNAL);
+    });
     return rv;
   }
 
@@ -416,10 +415,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
 /// parse the WAL with the above handler parser class
 Result RocksDBRecoveryManager::parseRocksWAL() {
-  Result rv;
   std::unique_ptr<WBReader> handler;
 
-  try {
+  Result res = basics::catchToResult([&]() -> Result {
+    Result rv;
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     for (auto helper : engine->recoveryHelpers()) {
@@ -470,17 +469,18 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
         }
       }
     }
-  } CATCH_TO_RESULT(rv,TRI_ERROR_INTERNAL);
+    return rv;
+  });
 
   auto shutdownRv = handler->shutdownWBReader();
 
-  if(rv.ok()) {
-    rv = std::move(shutdownRv);
+  if(res.ok()) {
+    res = std::move(shutdownRv);
   } else {
     if(shutdownRv.fail()){
-      rv.reset(rv.errorNumber(), rv.errorMessage() + " - " + shutdownRv.errorMessage());
+      res.reset(res.errorNumber(), res.errorMessage() + " - " + shutdownRv.errorMessage());
     }
   }
 
-  return rv;
+  return res;
 }

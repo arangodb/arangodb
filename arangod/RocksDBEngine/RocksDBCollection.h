@@ -193,7 +193,8 @@ class RocksDBCollection final : public PhysicalCollection {
 
   bool hasGeoIndex() { return _hasGeoIndex; }
 
-  Result serializeIndexEstimates(rocksdb::Transaction*) const;
+  std::pair<Result, rocksdb::SequenceNumber> serializeIndexEstimates(
+    rocksdb::Transaction*, rocksdb::SequenceNumber) const;
   void deserializeIndexEstimates(arangodb::RocksDBSettingsManager* mgr);
 
   void recalculateIndexEstimates();

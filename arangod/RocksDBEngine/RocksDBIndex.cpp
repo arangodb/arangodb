@@ -180,8 +180,10 @@ void RocksDBIndex::destroyCache() {
   TRI_ASSERT(_cacheEnabled);
 }
 
-void RocksDBIndex::serializeEstimate(std::string&, uint64_t) const {
+rocksdb::SequenceNumber RocksDBIndex::serializeEstimate(
+    std::string&, rocksdb::SequenceNumber seq) const {
   // All indexes that do not have an estimator do not serialize anything.
+  return seq;
 }
 
 bool RocksDBIndex::deserializeEstimate(RocksDBSettingsManager*) {

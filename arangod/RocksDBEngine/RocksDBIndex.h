@@ -112,7 +112,8 @@ class RocksDBIndex : public Index {
   void createCache();
   void destroyCache();
 
-  virtual void serializeEstimate(std::string& output, uint64_t seq) const;
+  virtual rocksdb::SequenceNumber serializeEstimate(
+      std::string& output, rocksdb::SequenceNumber seq) const;
 
   virtual bool deserializeEstimate(RocksDBSettingsManager* mgr);
 

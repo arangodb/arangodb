@@ -1863,20 +1863,20 @@ void RocksDBCollection::estimateSize(velocypack::Builder& builder) {
   builder.close();
 }
 
-arangodb::Result RocksDBCollection::serializeIndexEstimates(
-    rocksdb::Transaction* rtrx) const {
+std::pair<arangodb::Result, rocksdb::SequenceNumber>
+RocksDBCollection::serializeIndexEstimates(
+    rocksdb::Transaction* rtrx, rocksdb::SequenceNumber inputSeq) const {
+  auto outputSeq = inputSeq;
   if (!_needToPersistIndexEstimates) {
-    return {TRI_ERROR_NO_ERROR};
+    return std::make_pair(Result{TRI_ERROR_NO_ERROR}, outputSeq);
   }
   _needToPersistIndexEstimates = false;
   std::string output;
-  rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
-  uint64_t latestSeq = static_cast<uint64_t>(tdb->GetLatestSequenceNumber());
   for (auto index : getIndexes()) {
     output.clear();
     RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
     TRI_ASSERT(cindex != nullptr);
-    cindex->serializeEstimate(output, latestSeq);
+    auto outputSeq = cindex->serializeEstimate(output, inputSeq);
     if (output.size() > sizeof(uint64_t)) {
       RocksDBKey key;
       key.constructIndexEstimateValue(cindex->objectId());
@@ -1887,11 +1887,11 @@ arangodb::Result RocksDBCollection::serializeIndexEstimates(
       if (!s.ok()) {
         LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed";
         rtrx->Rollback();
-        return rocksutils::convertStatus(s);
+        return std::make_pair(rocksutils::convertStatus(s), outputSeq);
       }
     }
   }
-  return Result();
+  return std::make_pair(Result(), outputSeq);
 }
 
 void RocksDBCollection::deserializeIndexEstimates(RocksDBSettingsManager* mgr) {

@@ -124,7 +124,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
   std::unordered_map<uint64_t,
-                     std::pair<std::shared_ptr<std::vector<uint64_t>>, std::shared_ptr<std::vector<uint64_t>>>>
+                     std::pair<std::vector<uint64_t>, std::vector<uint64_t>>>
       _trackedIndexOperations;
 
 };
