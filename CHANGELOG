@@ -1,3 +1,10 @@
+v3.2.12 (2018-XX-XX)
+--------------------
+
+* fix internal issue #81: quotation marks disappeared when switching table/json
+  editor in the query editor ui
+
+
 v3.2.11 (2018-01-17)
 --------------------
 
