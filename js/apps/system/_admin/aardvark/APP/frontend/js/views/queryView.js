@@ -1073,17 +1073,6 @@
           '</tr>'
         );
         counter++;
-        /* _.each($('#arangoBindParamTable input'), function (element) {
-          if ($(element).attr('name') === key) {
-            if (val instanceof Array) {
-              $(element).val(JSON.stringify(val)).addClass('arraytype');
-            } else if (typeof val === 'object') {
-              $(element).val('' + JSON.stringify(val) + '').addClass(typeof val + 'type');
-            } else {
-              $(element).val(val).addClass(typeof val + 'type');
-            }
-          }
-        });*/
       });
       if (counter === 0) {
         $('#arangoBindParamTable tbody').append(
@@ -1119,8 +1108,23 @@
               $(element).val(JSON.stringify(val)).addClass('arraytype');
             } else if (typeof val === 'object') {
               $(element).val(JSON.stringify(val)).addClass(typeof val + 'type');
-            } else {
+            } else if (typeof val === 'number') {
               $(element).val(val).addClass(typeof val + 'type');
+            } else {
+              var isNumber = false;
+              // check if a potential string value is a number
+              try {
+                if (typeof JSON.parse(val) === 'number') {
+                  isNumber = true;
+                }
+              } catch (ignore) {
+              }
+
+              if (!isNumber) {
+                $(element).val(val).addClass(typeof val + 'type');
+              } else {
+                $(element).val('"' + val + '"').addClass(typeof val + 'type');
+              }
             }
           }
         });
