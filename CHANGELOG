@@ -1,6 +1,9 @@
 devel
 -----
 
+* fix internal issue #81: quotation marks disappeared when switching table/json
+  editor in the query editor ui
+
 * fix internal issue #1439: improve performance of any-iterator for RocksDB
 
 * added option `--rocksdb.throttle` to control whether write-throttling is enabled
