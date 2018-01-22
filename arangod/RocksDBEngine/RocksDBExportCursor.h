@@ -61,7 +61,6 @@ class RocksDBExportCursor final : public Cursor {
   CollectionExport::Restrictions _restrictions;
   std::string const _name;
   std::unique_ptr<SingleCollectionTransaction> _trx;
-  ManagedDocumentResult _mdr;
   std::unique_ptr<IndexIterator> _iter;
   size_t _size;
 };
