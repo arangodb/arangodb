@@ -41,11 +41,16 @@ const tu = require('@arangodb/test-utils');
 
 function resilience (options) {
   let testCases = tu.scanTestPath('js/server/tests/resilience');
+
   options.cluster = true;
   options.propagateInstanceInfo = true;
+
   if (options.dbServers < 5) {
     options.dbServers = 5;
   }
+
+  testCases = tu.splitBuckets(options, testCases);
+
   return tu.performTests(options, testCases, 'resilience', tu.runThere);
 }
 

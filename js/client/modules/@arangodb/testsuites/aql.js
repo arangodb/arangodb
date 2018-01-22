@@ -45,8 +45,11 @@ const tu = require('@arangodb/test-utils');
 
 function shellClient (options) {
   let testCases = tu.scanTestPath('js/common/tests/shell');
+
   testCases = testCases.concat(tu.scanTestPath('js/client/tests/http'));
   testCases = testCases.concat(tu.scanTestPath('js/client/tests/shell'));
+
+  testCases = tu.splitBuckets(options, testCases);
 
   return tu.performTests(options, testCases, 'shell_client', tu.runInArangosh);
 }
@@ -59,7 +62,10 @@ function shellServer (options) {
   options.propagateInstanceInfo = true;
 
   let testCases = tu.scanTestPath('js/common/tests/shell');
+
   testCases = testCases.concat(tu.scanTestPath('js/server/tests/shell'));
+
+  testCases = tu.splitBuckets(options, testCases);
 
   return tu.performTests(options, testCases, 'shell_server', tu.runThere);
 }
@@ -70,6 +76,8 @@ function shellServer (options) {
 
 function shellServerOnly (options) {
   let testCases = tu.scanTestPath('js/server/tests/shell');
+
+  testCases = tu.splitBuckets(options, testCases);
 
   return tu.performTests(options, testCases, 'shell_server_only', tu.runThere);
 }

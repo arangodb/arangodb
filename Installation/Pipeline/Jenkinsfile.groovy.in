@@ -14,17 +14,17 @@ node("master") {
 
 properties([
     parameters([
+        booleanParam(
+            defaultValue: false,
+            description: 'clean build directories',
+            name: 'CleanBuild'
+        ),
         choice(
             defaultValue: 'Auto',
             choices: 'Auto\nQuick Test\nPR Test\nNightly Test\nNone\nCustomized',
             description: 'Type of build/test configuration\n' +
                          'The values below are only relevant for type "Customized"',
             name: 'Type'
-        ),
-        booleanParam(
-            defaultValue: false,
-            description: 'clean build directories',
-            name: 'CleanBuild'
         ),
         booleanParam(
             defaultValue: false,
@@ -79,7 +79,7 @@ properties([
     ])
 ])
 
-buildType = params.Type;
+buildType = params.Type
 cleanBuild = params.CleanBuild
 restrictions = [:]
 
@@ -115,14 +115,20 @@ resultsDuration = [:]
 // --SECTION--                                             CONSTANTS AND HELPERS
 // -----------------------------------------------------------------------------
 
-// github proxy repository
-arangodbRepo = 'http://c1:8088/github.com/arangodb/arangodb'
+// github proxy
+githubHost = 'github-proxy.arangodb.biz'
+
+// jenkins cache
+jenkinsCache = 'jenkins@c1.arangodb.biz:/vol/cache'
+
+// Github proxy repository
+arangodbRepo = "http://${githubHost}:8088/github.com/arangodb/arangodb"
 
 // github repository for enterprise version
-enterpriseRepo = 'http://c1:8088/github.com/arangodb/enterprise'
+enterpriseRepo = "http://${githubHost}:8088/github.com/arangodb/enterprise"
 
 // github repository for the resilience tests
-resilienceRepo = 'http://c1:8088/github.com/arangodb/resilience-tests'
+resilienceRepo = "http://${githubHost}:8088/github.com/arangodb/resilience-tests"
 
 // Jenkins credentials for enterprise repositiory
 credentials = '8d893d23-6714-4f35-a239-c847c798e080'
@@ -133,7 +139,7 @@ mainBranch = "unknown"
 if ("@ARANGODB_VERSION_REVISION@" == "devel") {
     mainBranch = "devel"
 }
-else { 
+else {
     mainBranch = "@ARANGODB_VERSION_MAJOR@.@ARANGODB_VERSION_MINOR@"
 }
 
@@ -154,13 +160,13 @@ if (env.BRANCH_NAME =~ /^PR-/) {
 branchLabel = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
 
 buildJenkins = [
-    "linux": "linux && build",
+    "linux": "linux && build && arangodb",
     "mac" : "mac",
     "windows": "windows"
 ]
 
 testJenkins = [
-    "linux": "linux && tests",
+    "linux": "linux && tests && arangodb",
     "mac" : "mac",
     "windows": "windows"
 ]
@@ -393,51 +399,57 @@ def logExceptionStage(os, logFile, link, exc) {
 }
 
 def generateResult() {
-    def html = "<html><body><table>\n"
-    html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Total Time</th><th>Message</th></tr>\n"
+    node("master") {
+        lock("generate-result") {
+	    def html = "<html><body><table>\n"
+	    html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Total Time</th><th>Message</th></tr>\n"
 
-    for (key in resultsKeys.sort()) {
-        def start = resultsStart[key] ?: ""
-        def stop = resultsStop[key] ?: ""
-        def msg = resultsStatus[key] ?: ""
-        def link = resultsLink[key] ?: ""
+	    for (key in resultsKeys.sort()) {
+		def start = resultsStart[key] ?: ""
+		def stop = resultsStop[key] ?: ""
+		def msg = resultsStatus[key] ?: ""
+		def link = resultsLink[key] ?: ""
 
-        if (start != "" && stop == "") {
-            stop = new Date()
+		if (start != "" && stop == "") {
+		    stop = new Date()
+		}
+
+		def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
+		def startf = start == "" ? "-" : start.format('yyyy/MM/dd HH:mm:ss')
+		def stopf = stop == "" ? "-" : stop.format('yyyy/MM/dd HH:mm:ss')
+		def color = 'bgcolor="#FFA0A0"'
+
+		def la = ""
+		def lb = ""
+
+		if (link != "") {
+		    la = "<a href=\"$link\">"
+		    lb = "</a>"
+		}
+
+		if (msg == "finished") {
+		    color = 'bgcolor="#A0FFA0"'
+		}
+		else if (msg == "started") {
+		    color = 'bgcolor="#A0A0FF"'
+		    la = ""
+		    lb = ""
+		}
+
+		def total = resultsDuration[key] ?: ""
+
+		html += "<tr ${color}><td>${la}${key}${lb}</td><td>${startf}</td><td>${stopf}</td>"
+                html += "<td align=\"right\">${diff}</td><td align=\"right\">${total}</td>"
+		html += "<td align=\"right\">${msg}</td></tr>\n"
+	    }
+
+	    html += "</table></body></html>\n"
+
+	    fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
+
+	    archiveArtifacts(allowEmptyArchive: true, artifacts: "results.html")
         }
-
-        def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
-        def startf = start == "" ? "-" : start.format('yyyy/MM/dd HH:mm:ss')
-        def stopf = stop == "" ? "-" : stop.format('yyyy/MM/dd HH:mm:ss')
-        def color = 'bgcolor="#FFA0A0"'
-
-        def la = ""
-        def lb = ""
-
-        if (link != "") {
-            la = "<a href=\"$link\">"
-            lb = "</a>"
-        }
-
-        if (msg == "finished") {
-            color = 'bgcolor="#A0FFA0"'
-        }
-        else if (msg == "started") {
-            color = 'bgcolor="#A0A0FF"'
-            la = ""
-            lb = ""
-        }
-
-        def total = resultsDuration[key] ?: ""
-
-        html += "<tr ${color}><td>${la}${key}${lb}</td><td>${startf}</td><td>${stopf}</td><td align=\"right\">${diff}</td><td align=\"right\">${total}</td><td align=\"right\">${msg}</td></tr>\n"
     }
-
-    html += "</table></body></html>\n"
-
-    fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
-
-    archiveArtifacts(allowEmptyArchive: true, artifacts: "results.html")
 }
 
 def setBuildStatus(String message, String state, String commitSha) {
@@ -457,7 +469,7 @@ def setBuildStatus(String message, String state, String commitSha) {
 // -----------------------------------------------------------------------------
 
 def checkoutCommunity(os) {
-    if (cleanBuild || os == "windows") {
+    if (cleanBuild) {
         deleteDirDocker(os)
     }
 
@@ -626,7 +638,7 @@ def setBuildsAndTests() {
         runTests = params.RunTests
         runResilience = params.RunResilience
 
-        if (!useLinux && !userMac && !useWindows && !useDocker){
+        if (!useLinux && !useMac && !useWindows && !useDocker){
             throw("No build type selected for custom build!")
         }
 
@@ -634,11 +646,11 @@ def setBuildsAndTests() {
     else if (buildType == "Quick Test") {
         restrictions = [
             // OS EDITION MAINTAINER
-            "build-windows-community-user" : true,
+            // "build-windows-community-user" : true,
             "build-linux-enterprise-maintainer" : true,
 
             // OS EDITION MAINTAINER MODE ENGINE
-            "test-linux-enterprise-maintainer-cluster-mmfiles" : true,
+            "test-linux-enterprise-maintainer-cluster-rocksdb" : true,
         ]
     }
     else if (buildType == "PR Test") {
@@ -747,95 +759,119 @@ def setBuildsAndTests() {
 // -----------------------------------------------------------------------------
 
 def stashBuild(os, edition, maintainer) {
-    lock("stashing-${branchLabel}-${os}-${edition}-${maintainer}") {
-        if (os == 'linux' || os == 'mac') {
-            def name = "build.tar.gz"
+    try {
+        lock("stashing-${branchLabel}-${os}-${edition}-${maintainer}") {
+            if (os == 'linux' || os == 'mac') {
+                def name = "build.tar.gz"
 
-            sh "rm -f ${name}"
-            sh "GZIP=-1 tar cpzf ${name} build"
-            sh "scp ${name} c1:/vol/cache/build-${branchLabel}-${os}-${edition}-${maintainer}.tar.gz"
-            sh "rm -f ${name}"
-        }
-        else if (os == 'windows') {
-            def name = "build.zip"
+                sh "rm -f ${name}"
+                sh "GZIP=-1 tar cpzf ${name} build"
+                sh "scp ${name} ${jenkinsCache}/build-${branchLabel}-${os}-${edition}-${maintainer}.tar.gz"
+                sh "rm -f ${name}"
+            }
+            else if (os == 'windows') {
+                def name = "build.zip"
 
-            bat "del /F /Q ${name}"
-            powershell "7z a ${name} -r -bd -mx=1 build"
-            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${name} jenkins@c1:/vol/cache/build-${branchLabel}-${os}-${edition}-${maintainer}.zip"
-            bat "del /F /Q ${name}"
+                bat "del /F /Q ${name}"
+                powershell "7z a ${name} -r -bd -mx=1 build"
+                powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${name} ${jenkinsCache}/build-${branchLabel}-${os}-${edition}-${maintainer}.zip"
+                bat "del /F /Q ${name}"
+            }
         }
+    }
+    catch (exc) {
+        def msg = exc.toString()
+        error("failed to stash build to ${jenkinsCache}: ${msg}")
     }
 }
 
 def unstashBuild(os, edition, maintainer) {
-    lock("stashing-${branchLabel}-${os}-${edition}-${maintainer}") {
-        try {
-            if (os == "windows") {
-                def name = "build.zip"
+    try {
+        lock("stashing-${branchLabel}-${os}-${edition}-${maintainer}") {
+            try {
+                if (os == "windows") {
+                    def name = "build.zip"
 
-                powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/build-${branchLabel}-${os}-${edition}-${maintainer}.zip ${name}"
-                powershell "Expand-Archive -Path ${name} -Force -DestinationPath ."
-                bat "del /F /Q ${name}"
+                    powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${jenkinsCache}/build-${branchLabel}-${os}-${edition}-${maintainer}.zip ${name}"
+                    powershell "Expand-Archive -Path ${name} -Force -DestinationPath ."
+                    bat "del /F /Q ${name}"
+                }
+                else {
+                    def name = "build.tar.gz"
+
+                    sh "scp ${jenkinsCache}/build-${branchLabel}-${os}-${edition}-${maintainer}.tar.gz ${name}"
+                    sh "tar xpzf ${name}"
+                    sh "rm -f ${name}"
+                }
             }
-            else {
-                def name = "build.tar.gz"
-
-                sh "scp c1:/vol/cache/build-${branchLabel}-${os}-${edition}-${maintainer}.tar.gz ${name}"
-                sh "tar xpzf ${name}"
-                sh "rm -f ${name}"
+            catch (exc) {
             }
         }
-        catch (exc) {
-        }
+    }
+    catch (exc) {
+        def msg = exc.toString()
+        error("failed to unstash build to ${jenkinsCache}: ${msg}")
     }
 }
 
 def stashBinaries(os, edition, maintainer) {
-    def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
+    try {
+        def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
 
-    if (runResilience) {
-       paths << "resilience"
+        if (runResilience) {
+           paths << "resilience"
+        }
+
+        if (edition == "enterprise") {
+           paths << "enterprise/js"
+        }
+
+        if (os == "windows") {
+            paths << "build/bin/RelWithDebInfo"
+            paths << "build/tests/RelWithDebInfo"
+
+            // so frustrating...compress-archive is built in but it simply won't include the relative path to
+            // the archive :(
+            // powershell "Compress-Archive -Force -Path (Get-ChildItem -Recurse -Path " + paths.join(',') + ") -DestinationPath stash.zip -Confirm -CompressionLevel Fastest"
+            // install 7z portable (https://chocolatey.org/packages/7zip.portable)
+
+            powershell "7z a stash.zip -r -bd -mx=1 " + paths.join(" ")
+
+            // this is a super mega mess...scp will run as the system user and not as jenkins when run as a server
+            // I couldn't figure out how to properly get it running for hours...so last resort was to install putty
+
+            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk stash.zip ${jenkinsCache}/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip"
+        }
+        else {
+            paths << "build/bin/"
+            paths << "build/tests/"
+
+            sh "GZIP=-1 tar cpzf stash.tar.gz " + paths.join(" ")
+            sh "scp stash.tar.gz ${jenkinsCache}/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz"
+        }
     }
-
-    if (edition == "enterprise") {
-       paths << "enterprise/js"
-    }
-
-    if (os == "windows") {
-        paths << "build/bin/RelWithDebInfo"
-        paths << "build/tests/RelWithDebInfo"
-
-        // so frustrating...compress-archive is built in but it simply won't include the relative path to
-        // the archive :(
-        // powershell "Compress-Archive -Force -Path (Get-ChildItem -Recurse -Path " + paths.join(',') + ") -DestinationPath stash.zip -Confirm -CompressionLevel Fastest"
-        // install 7z portable (https://chocolatey.org/packages/7zip.portable)
-
-        powershell "7z a stash.zip -r -bd -mx=1 " + paths.join(" ")
-
-        // this is a super mega mess...scp will run as the system user and not as jenkins when run as a server
-        // I couldn't figure out how to properly get it running for hours...so last resort was to install putty
-
-        powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk stash.zip jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip"
-    }
-    else {
-        paths << "build/bin/"
-        paths << "build/tests/"
-
-        sh "GZIP=-1 tar cpzf stash.tar.gz " + paths.join(" ")
-        sh "scp stash.tar.gz c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz"
+    catch (exc) {
+        def msg = exc.toString()
+        error("failed to unstash binaries to ${jenkinsCache}: ${msg}")
     }
 }
 
 def unstashBinaries(os, edition, maintainer) {
-    if (os == "windows") {
-        powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip stash.zip"
-        powershell "Expand-Archive -Path stash.zip -Force -DestinationPath ."
-        powershell "copy build\\tests\\RelWithDebInfo\\* build\\bin"
-        powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
+    try {
+        if (os == "windows") {
+            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${jenkinsCache}/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip stash.zip"
+            powershell "Expand-Archive -Path stash.zip -Force -DestinationPath ."
+            powershell "copy build\\tests\\RelWithDebInfo\\* build\\bin"
+            powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
+        }
+        else {
+            sh "scp ${jenkinsCache}/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz stash.tar.gz"
+            sh "tar xpzf stash.tar.gz"
+        }
     }
-    else {
-        sh "scp c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz stash.tar.gz"
-        sh "tar xpzf stash.tar.gz"
+    catch (exc) {
+        def msg = exc.toString()
+        error("failed to unstash binaries to ${jenkinsCache}: ${msg}")
     }
 }
 
@@ -889,13 +925,25 @@ def getTests(os, edition, maintainer, mode, engine) {
         ["dump_authentication", "dump_authentication" , ""],
         ["endpoints", "endpoints", ""],
         ["server_http", "server_http", ""],
-        ["shell_client", "shell_client", ""],
-        ["shell_server", "shell_server", ""],
-        ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0"],
-        ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1"],
-        ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2"],
-        ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3"],
         ["upgrade", "upgrade" , ""],
+
+        ["shell_client_1", "shell_client", "--testBuckets 4/0"],
+        ["shell_client_2", "shell_client", "--testBuckets 4/1"],
+        ["shell_client_3", "shell_client", "--testBuckets 4/2"],
+        ["shell_client_4", "shell_client", "--testBuckets 4/3"],
+
+        ["shell_server_1", "shell_server", "--testBuckets 4/0"],
+        ["shell_server_2", "shell_server", "--testBuckets 4/1"],
+        ["shell_server_3", "shell_server", "--testBuckets 4/2"],
+        ["shell_server_4", "shell_server", "--testBuckets 4/3"],
+
+        ["shell_server_aql_1", "shell_server_aql", "--testBuckets 6/0"],
+        ["shell_server_aql_2", "shell_server_aql", "--testBuckets 6/1"],
+        ["shell_server_aql_3", "shell_server_aql", "--testBuckets 6/2"],
+        ["shell_server_aql_4", "shell_server_aql", "--testBuckets 6/3"],
+        ["shell_server_aql_5", "shell_server_aql", "--testBuckets 6/4"],
+        ["shell_server_aql_6", "shell_server_aql", "--testBuckets 6/5"],
+
         rspecify(os, "http_server"),
         rspecify(os, "ssl_server")
     ]
@@ -1145,12 +1193,12 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
 
         if (testCheck(os, edition, maintainer, mode, engine)) {
             try {
-                node("linux") { logStartStage(null, name, null) }
+                logStartStage(null, name, null)
                 executeTests(os, edition, maintainer, mode, engine, stageName)
-                node("linux") { logStopStage(null, name) }
+                logStopStage(null, name)
             }
             catch (exc) {
-                node("linux") { logExceptionStage(null, name, null, exc) }
+                logExceptionStage(null, name, null, exc)
                 throw exc
             }
         }
@@ -1171,12 +1219,12 @@ def testStepParallel(os, edition, maintainer, modeList) {
 
     if (branches) {
         try {
-            node("linux") { logStartStage(null, name, null) }
+            logStartStage(null, name, null)
             parallel branches
-            node("linux") { logStopStage(null, name) }
+            logStopStage(null, name)
         }
         catch (exc) {
-            node("linux") { logExceptionStage(null, name, null, exc) }
+            logExceptionStage(null, name, null, exc)
             throw exc
         }
     }
@@ -1305,12 +1353,12 @@ def testResilienceParallel(os, edition, maintainer) {
 
     if (branches) {
         try {
-            node("linux") { logStartStage(null, name, null) }
+            logStartStage(null, name, null)
             parallel branches
-            node("linux") { logStopStage(null, name) }
+            logStopStage(null, name)
         }
         catch (exc) {
-            node("linux") { logExceptionStage(null, name, null, exc) }
+            logExceptionStage(null, name, null, exc)
             throw exc
         }
     }
@@ -1351,11 +1399,12 @@ def buildEdition(os, edition, maintainer) {
             }
         }
         else if (os == 'windows') {
-            logFile = "..\\" + logFile
             extra = "-DUSE_CATCH_TESTS=ON -DUSE_FAILURE_TESTS=ON -DDEBUG_SYNC_REPLICATION=ON"
+
             if( edition == "enterprise"){
                 extra += " -DUSE_ENTERPRISE=ON"
             }
+
             if( maintainer == "maintainer"){
                 extra += " -DUSE_MAINTAINER_MODE=ON"
             }
@@ -1363,7 +1412,7 @@ def buildEdition(os, edition, maintainer) {
             powershell "Remove-Item -Force -Recurse ${arch} -ErrorAction SilentlyContinue"
             powershell "New-Item -Force -ItemType Directory ${arch} -ErrorAction SilentlyContinue"
             powershell "New-Item -ItemType Directory -Force -Path build"
-            powershell "cd build; ..\\configure\\${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
+            powershell "cd build; ..\\configure\\${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ..\\${logFile}"
         }
 
         logStopStage(os, logFile)
@@ -1385,6 +1434,7 @@ def buildEdition(os, edition, maintainer) {
     finally {
         if (os == "linux") {
             stashBuild(os, edition, maintainer)
+            sh "rm -f build/location"
         }
 
         archiveArtifacts allowEmptyArchive: true,
@@ -1481,7 +1531,7 @@ def runEdition(os, edition, maintainer, stageName) {
             def name = "${os}-${edition}-${maintainer}"
 
             try {
-                node("linux") { logStartStage(null, name, null) }
+                logStartStage(null, name, null)
 
                 node(buildJenkins[os]) {
                     stage(stageName) {
@@ -1533,10 +1583,10 @@ def runEdition(os, edition, maintainer, stageName) {
                 testStepParallel(os, edition, maintainer, ['cluster', 'singleserver'])
                 testResilienceParallel(os, edition, maintainer)
 
-                node("linux") { logStopStage(null, name) }
+                logStopStage(null, name)
             }
             catch (exc) {
-                node("linux") { logExceptionStage(null, name, null, exc) }
+                logExceptionStage(null, name, null, exc)
                 throw exc
             }
         }
@@ -1567,7 +1617,13 @@ def runOperatingSystems(osList) {
     parallel branches
 }
 
+def getGitBranchName() {
+    return scm.branches[0].name
+}
+
 timestamps {
+    echo "########## " + getGitBranchName()
+
     try {
         node("linux") {
             echo sh(returnStdout: true, script: 'env')
@@ -1584,8 +1640,6 @@ timestamps {
         runOperatingSystems(['linux', 'mac', 'windows'])
     }
     finally {
-        node("linux") {
-            generateResult()
-        }
+        generateResult()
     }
 }
