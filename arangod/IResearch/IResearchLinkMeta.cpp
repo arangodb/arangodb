@@ -39,9 +39,9 @@
 
 NS_LOCAL
 
-bool equalTokenizers(
-  arangodb::iresearch::IResearchLinkMeta::Tokenizers const& lhs,
-  arangodb::iresearch::IResearchLinkMeta::Tokenizers const& rhs
+bool equalAnalyzers(
+  arangodb::iresearch::IResearchLinkMeta::Analyzers const& lhs,
+  arangodb::iresearch::IResearchLinkMeta::Analyzers const& rhs
 ) noexcept {
   if (lhs.size() != rhs.size()) {
     return false;
@@ -72,21 +72,21 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 IResearchLinkMeta::Mask::Mask(bool mask /*= false*/) noexcept
-  : _fields(mask),
+  : _analyzers(mask),
+    _fields(mask),
     _includeAllFields(mask),
-    _nestListValues(mask),
-    _tokenizers(mask) {
+    _trackListPositions(mask) {
 }
 
 IResearchLinkMeta::IResearchLinkMeta()
   : //_fields(<empty>), // no fields to index by default
     _includeAllFields(false), // true to match all encountered fields, false match only fields in '_fields'
-    _nestListValues(false) { // treat '_nestListValues' as SQL-IN
+    _trackListPositions(false) { // treat '_trackListPositions' as SQL-IN
   auto analyzer = IResearchAnalyzerFeature::identity();
 
   // identity-only tokenization
   if (analyzer) {
-    _tokenizers.emplace_back(analyzer);
+    _analyzers.emplace_back(analyzer);
   }
 }
 
@@ -100,10 +100,10 @@ IResearchLinkMeta::IResearchLinkMeta(IResearchLinkMeta&& other) noexcept {
 
 IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta&& other) noexcept {
   if (this != &other) {
+    _analyzers = std::move(other._analyzers);
     _fields = std::move(other._fields);
     _includeAllFields = std::move(other._includeAllFields);
-    _nestListValues = std::move(other._nestListValues);
-    _tokenizers = std::move(other._tokenizers);
+    _trackListPositions = std::move(other._trackListPositions);
   }
 
   return *this;
@@ -111,10 +111,10 @@ IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta&& other) noexc
 
 IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta const& other) {
   if (this != &other) {
+    _analyzers = other._analyzers;
     _fields = other._fields;
     _includeAllFields = other._includeAllFields;
-    _nestListValues = other._nestListValues;
-    _tokenizers = other._tokenizers;
+    _trackListPositions = other._trackListPositions;
   }
 
   return *this;
@@ -123,6 +123,10 @@ IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta const& other) 
 bool IResearchLinkMeta::operator==(
   IResearchLinkMeta const& other
 ) const noexcept {
+  if (!equalAnalyzers(_analyzers, other._analyzers)) {
+    return false; // values do not match
+  }
+
   if (_fields.size() != other._fields.size()) {
     return false; // values do not match
   }
@@ -141,11 +145,7 @@ bool IResearchLinkMeta::operator==(
     return false; // values do not match
   }
 
-  if (_nestListValues != other._nestListValues) {
-    return false; // values do not match
-  }
-
-  if (!equalTokenizers(_tokenizers, other._tokenizers)) {
+  if (_trackListPositions != other._trackListPositions) {
     return false; // values do not match
   }
 
@@ -181,6 +181,50 @@ bool IResearchLinkMeta::init(
   }
 
   {
+    // optional string list
+    static const std::string fieldName("analyzers");
+
+    mask->_analyzers = slice.hasKey(fieldName);
+
+    if (!mask->_analyzers) {
+      _analyzers = defaults._analyzers;
+    } else {
+      auto* analyzers = getFeature<IResearchAnalyzerFeature>();
+      auto field = slice.get(fieldName);
+
+      if (!analyzers || !field.isArray()) {
+        errorField = fieldName;
+
+        return false;
+      }
+
+      _analyzers.clear(); // reset to match read values exactly
+
+      for (arangodb::velocypack::ArrayIterator itr(field); itr.valid(); ++itr) {
+        auto key = *itr;
+
+        if (!key.isString()) {
+          errorField = fieldName + "=>[" + arangodb::basics::StringUtils::itoa(itr.index()) + "]";
+
+          return false;
+        }
+
+        auto name = getStringRef(key);
+        auto analyzer = analyzers->ensure(name);
+
+        if (!analyzer) {
+          errorField = fieldName + "=>" + std::string(name);
+
+          return false;
+        }
+
+        // inserting two identical values for name is a poor-man's boost multiplier
+        _analyzers.emplace_back(analyzer);
+      }
+    }
+  }
+
+  {
     // optional bool
     static const std::string fieldName("includeAllFields");
 
@@ -205,10 +249,10 @@ bool IResearchLinkMeta::init(
     // optional bool
     static const std::string fieldName("trackListPositions");
 
-    mask->_nestListValues = slice.hasKey(fieldName);
+    mask->_trackListPositions = slice.hasKey(fieldName);
 
-    if (!mask->_nestListValues) {
-      _nestListValues = defaults._nestListValues;
+    if (!mask->_trackListPositions) {
+      _trackListPositions = defaults._trackListPositions;
     } else {
       auto field = slice.get(fieldName);
 
@@ -218,51 +262,7 @@ bool IResearchLinkMeta::init(
         return false;
       }
 
-      _nestListValues = field.getBool();
-    }
-  }
-
-  {
-    // optional string list
-    static const std::string fieldName("tokenizers");
-
-    mask->_tokenizers = slice.hasKey(fieldName);
-
-    if (!mask->_tokenizers) {
-      _tokenizers = defaults._tokenizers;
-    } else {
-      auto* analyzers = getFeature<IResearchAnalyzerFeature>();
-      auto field = slice.get(fieldName);
-
-      if (!analyzers || !field.isArray()) {
-        errorField = fieldName;
-
-        return false;
-      }
-
-      _tokenizers.clear(); // reset to match read values exactly
-
-      for (arangodb::velocypack::ArrayIterator itr(field); itr.valid(); ++itr) {
-        auto key = *itr;
-
-        if (!key.isString()) {
-          errorField = fieldName + "=>[" + arangodb::basics::StringUtils::itoa(itr.index()) + "]";
-
-          return false;
-        }
-
-        auto name = getStringRef(key);
-        auto analyzer = analyzers->ensure(name);
-
-        if (!analyzer) {
-          errorField = fieldName + "=>" + std::string(name);
-
-          return false;
-        }
-
-        // inserting two identical values for name is a poor-man's boost multiplier
-        _tokenizers.emplace_back(analyzer);
-      }
+      _trackListPositions = field.getBool();
     }
   }
 
@@ -333,6 +333,22 @@ bool IResearchLinkMeta::json(
     return false;
   }
 
+  if ((!ignoreEqual || !equalAnalyzers(_analyzers, ignoreEqual->_analyzers))
+      && (!mask || mask->_analyzers)) {
+    arangodb::velocypack::Builder analyzersBuilder;
+
+    analyzersBuilder.openArray();
+
+    for (auto& entry: _analyzers) {
+      if (entry) { // skip null analyzers
+        analyzersBuilder.add(arangodb::velocypack::Value(entry->name()));
+      }
+    }
+
+    analyzersBuilder.close();
+    builder.add("analyzers", analyzersBuilder.slice());
+  }
+
   if (!mask || mask->_fields) { // fields are not inherited from parent
     arangodb::velocypack::Builder fieldsBuilder;
 
@@ -363,23 +379,8 @@ bool IResearchLinkMeta::json(
     builder.add("includeAllFields", arangodb::velocypack::Value(_includeAllFields));
   }
 
-  if ((!ignoreEqual || _nestListValues != ignoreEqual->_nestListValues) && (!mask || mask->_nestListValues)) {
-    builder.add("trackListPositions", arangodb::velocypack::Value(_nestListValues));
-  }
-
-  if ((!ignoreEqual || !equalTokenizers(_tokenizers, ignoreEqual->_tokenizers)) && (!mask || mask->_tokenizers)) {
-    arangodb::velocypack::Builder tokenizersBuilder;
-
-    tokenizersBuilder.openArray();
-
-    for (auto& entry: _tokenizers) {
-      if (entry) { // skip null tokenizers
-        tokenizersBuilder.add(arangodb::velocypack::Value(entry->name()));
-      }
-    }
-
-    tokenizersBuilder.close();
-    builder.add("tokenizers", tokenizersBuilder.slice());
+  if ((!ignoreEqual || _trackListPositions != ignoreEqual->_trackListPositions) && (!mask || mask->_trackListPositions)) {
+    builder.add("trackListPositions", arangodb::velocypack::Value(_trackListPositions));
   }
 
   return true;
@@ -396,14 +397,13 @@ bool IResearchLinkMeta::json(
 size_t IResearchLinkMeta::memory() const {
   auto size = sizeof(IResearchLinkMeta);
 
+  size += _analyzers.size() * sizeof(decltype(_analyzers)::value_type);
   size += _fields.size() * sizeof(decltype(_fields)::value_type);
 
   for (auto& entry: _fields) {
     size += entry.key().size();
     size += entry.value()->memory();
   }
-
-  size += _tokenizers.size() * sizeof(decltype(_tokenizers)::value_type);
 
   return size;
 }

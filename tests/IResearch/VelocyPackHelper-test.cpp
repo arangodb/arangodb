@@ -394,7 +394,7 @@ SECTION("test_complex_object") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
-    \"tokenizers\": {}, \
+    \"analyzers\": {}, \
     \"boost\": \"10\", \
     \"depth\": \"20\", \
     \"fields\": { \"fieldA\" : { \"name\" : \"a\" }, \"fieldB\" : { \"name\" : \"b\" } }, \
@@ -413,7 +413,7 @@ SECTION("test_complex_object") {
     "keys{1}[1]=2",
     "keys{1}[2]=3",
     "keys{1}[3]=4",
-    "tokenizers{2}=",
+    "analyzers{2}=",
     "boost{3}=10",
     "depth{4}=20",
     "fields{5}.fieldA{0}.name{0}=a",
