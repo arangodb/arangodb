@@ -29,6 +29,10 @@
 
 namespace arangodb {
 class RestStatisticsHandler : public arangodb::RestVocbaseBaseHandler {
+
+  static uint32_t const statistics_interval = 10;
+  static uint32_t const statistics_history_interval = 15 * 60;
+
  public:
   RestStatisticsHandler(GeneralRequest*, GeneralResponse*);
 

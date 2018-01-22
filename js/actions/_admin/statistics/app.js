@@ -35,6 +35,8 @@ var actions = require('@arangodb/actions');
 var STATISTICS_INTERVAL = require('@arangodb/statistics').STATISTICS_INTERVAL;
 var STATISTICS_HISTORY_INTERVAL = require('@arangodb/statistics').STATISTICS_HISTORY_INTERVAL;
 
+var print = require("internal").print;
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief percentChange
 // //////////////////////////////////////////////////////////////////////////////
@@ -409,6 +411,11 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
+    print("################################################");
+    print(req);
+    print("################################################");
+    print(req.params);
+    print("################################################");
     var start = req.parameters.start;
     var dbServer = req.parameters.DBserver;
 
@@ -439,6 +446,11 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
+    print("################################################");
+    print(req);
+    print("################################################");
+    print(req.params);
+    print("################################################");
     var filter = req.params('filter');
     var dbServer = req.params('DBserver');
 
