@@ -1,6 +1,9 @@
 v3.3.3 (XXXX-XX-XX)
 -------------------
 
+* fix internal issue #81: quotation marks disappeared when switching table/json
+  editor in the query editor ui
+
 * added option `--rocksdb.throttle` to control whether write-throttling is enabled
   Write-throttling is turned on by default, to reduce chances of compactions getting
   too far behind and blocking incoming writes.
