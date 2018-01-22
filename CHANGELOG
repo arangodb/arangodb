@@ -1,3 +1,12 @@
+v3.2.12 (XXXX-XX-XX)
+--------------------
+
+* make the default value of `--rocksdb.block-cache-shard-bits` use the RocksDB
+  default value. This will mostly mean the default number block cache shard
+  bits is lower than before, allowing each shard to store more data and cause
+  less evictions from block cache
+
+
 v3.2.11 (2018-01-17)
 --------------------
 
