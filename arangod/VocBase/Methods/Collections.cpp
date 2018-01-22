@@ -281,7 +281,7 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
     auto ctx = transaction::V8Context::CreateWhenRequired(coll->vocbase(), true);
     trx.reset(new SingleCollectionTransaction(ctx, coll->cid(),
                                               AccessMode::Type::READ));
-    trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+    
     Result res = trx->begin();
     // These are only relevant for cluster
     ignoreKeys.insert({"distributeShardsLike", "isSmart", "numberOfShards",
