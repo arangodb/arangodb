@@ -131,7 +131,7 @@ protected:
       docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
       irs::order order;
 
-      order.add(true, irs::scorers::get("bm25", irs::string_ref::nil));
+      order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil));
       check_query(irs::all(), order, docs, rdr);
     }
 
@@ -140,7 +140,7 @@ protected:
       docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
       irs::order order;
 
-      order.add(true, irs::scorers::get("tfidf", irs::string_ref::nil));
+      order.add(true, irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::nil));
       check_query(irs::all(), order, docs, rdr);
     }
   }
@@ -188,3 +188,7 @@ TEST_F( fs_all_filter_test_case, all ) {
   all_sequential();
   all_order();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

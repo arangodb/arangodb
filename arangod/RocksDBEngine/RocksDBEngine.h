@@ -359,11 +359,14 @@ class RocksDBEngine final : public StorageEngine {
 
   // do not release walfiles containing writes later than this
   TRI_voc_tick_t _releasedTick;
+  
+  // use write-throttling
+  bool _useThrottle;
 
   // code to pace ingest rate of writes to reduce chances of compactions getting
-  //  too far behind and blocking incoming writes
+  // too far behind and blocking incoming writes
+  // (will only be set if _useThrottle is true)
   std::shared_ptr<RocksDBThrottle> _listener;
-
 };
 }  // namespace arangodb
 #endif

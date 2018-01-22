@@ -172,17 +172,32 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual([ "a", "quick", "brown", "fox", "jumps" ], result[0]);
       }
 
-      // text_ru
+      // text_ru (codepoints)
       {
         let result = AQL_EXECUTE(
-          "RETURN TOKENS('a quick brown fox jumps', 'text_ru')",
+          "RETURN TOKENS('ArangoDB - \u044D\u0442\u043E \u043C\u043D\u043E\u0433\u043E\u043C\u043E\u0434\u0435\u043B\u044C\u043D\u0430\u044F \u0431\u0430\u0437\u0430 \u0434\u0430\u043D\u043D\u044B\u0445', 'text_ru')",
           null,
           { }
         ).json;
         assertEqual(1, result.length);
         assertTrue(Array === result[0].constructor);
         assertEqual(5, result[0].length);
-        assertEqual([ "a", "quick", "brown", "fox", "jumps" ], result[0]);
+        assertEqual([ "arangodb", "\u044D\u0442", "\u043C\u043D\u043E\u0433\u043E\u043C\u043E\u0434\u0435\u043B\u044C\u043D", "\u0431\u0430\u0437", "\u0434\u0430\u043D" ], result[0]);
+        assertEqual([ "arangodb", "эт", "многомодельн", "баз", "дан" ], result[0]);
+      }
+
+      // text_ru (unicode)
+      {
+        let result = AQL_EXECUTE(
+          "RETURN TOKENS('ArangoDB - это многомодельная база данных', 'text_ru')",
+          null,
+          { }
+        ).json;
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(5, result[0].length);
+        assertEqual([ "arangodb", "\u044D\u0442", "\u043C\u043D\u043E\u0433\u043E\u043C\u043E\u0434\u0435\u043B\u044C\u043D", "\u0431\u0430\u0437", "\u0434\u0430\u043D" ], result[0]);
+        assertEqual([ "arangodb", "эт", "многомодельн", "баз", "дан" ], result[0]);
       }
 
       // text_sv

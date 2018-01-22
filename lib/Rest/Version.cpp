@@ -44,6 +44,10 @@
 #include <rocksdb/convenience.h>
 #include <rocksdb/version.h>
 
+#ifdef USE_IRESEARCH
+#include "3rdParty/iresearch/core/utils/version_defines.hpp"
+#endif
+
 using namespace arangodb::rest;
 
 std::map<std::string, std::string> Version::Values;
@@ -183,6 +187,10 @@ void Version::initialize() {
 #else
   Values["fd-client-event-handler"] = "select";
 #endif
+
+#ifdef USE_IRESEARCH
+  Values["iresearch-version"] = getIResearchVersion();
+#endif
   
   for (auto& it : Values) {
     arangodb::basics::StringUtils::trimInPlace(it.second);
@@ -290,6 +298,15 @@ std::string Version::getICUVersion() {
 
   return icuVersionString;
 }
+
+#ifdef USE_IRESEARCH
+
+/// @brief get IResearch version
+std::string Version::getIResearchVersion() {
+  return IResearch_version;
+}
+
+#endif
 
 /// @brief get compiler
 std::string Version::getCompiler() {

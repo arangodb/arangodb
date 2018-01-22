@@ -34,7 +34,7 @@ function runSetup () {
   var v;
 
   db._dropView('UnitTestsRecovery');
-  v = db._createView('UnitTestsRecovery', 'iresearch', {});
+  v = db._createView('UnitTestsRecovery', 'arangosearch', {});
   db._dropView('UnitTestsRecovery');
 
   internal.debugSegfault('crashing server');

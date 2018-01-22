@@ -52,6 +52,16 @@ class LogicalView {
   LogicalView(TRI_vocbase_t*, velocypack::Slice const&);
   ~LogicalView();
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief invoke visitor on all collections that a view will return
+  /// @return visitation was successful
+  //////////////////////////////////////////////////////////////////////////////
+  bool visitCollections(
+      std::function<bool(TRI_voc_cid_t)> const& visitor
+  ) const {
+    return _implementation && _implementation->visitCollections(visitor);
+  }
+
  protected:  // If you need a copy outside the class, use clone below.
   explicit LogicalView(LogicalView const&);
 

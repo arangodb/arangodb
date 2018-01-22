@@ -126,8 +126,16 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
 
     {
       SCOPED_LOCK_NAMED(mutex, lock);
-      std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
-      ASSERT_EQ(std::cv_status::timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume thread blocks in 1000ms
+      std::atomic<bool> emplace(false);
+      std::thread thread([&cond, &mutex, &pool, &emplace]()->void{ auto obj = pool.emplace(2); emplace = true; SCOPED_LOCK(mutex); cond.notify_all(); });
+
+      auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
+
+      // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
+      MSVC2015_OPTIMIZED_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+      MSVC2017_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+
+      ASSERT_EQ(std::cv_status::timeout, result);
       // ^^^ expecting timeout because pool should block indefinitely
       obj.reset();
       lock.unlock();
@@ -180,13 +188,19 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
     std::condition_variable cond;
     std::mutex mutex;
     SCOPED_LOCK_NAMED(mutex, lock);
-    std::thread thread([&cond, &mutex, &pool]()->void {
+    std::atomic<bool> visit(false);
+    std::thread thread([&cond, &mutex, &pool, &visit]()->void {
       auto visitor = [](test_sobject& obj)->bool { return true; };
       pool.visit(visitor, false);
+      visit = true;
       SCOPED_LOCK(mutex);
       cond.notify_all();
     });
     auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
+
+    // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
+    MSVC2015_OPTIMIZED_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+    MSVC2017_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
 
     obj.reset();
 
@@ -195,7 +209,8 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
     }
 
     thread.join();
-    ASSERT_NE(std::cv_status::no_timeout, result); // check only after joining with thread to avoid early exit
+    ASSERT_EQ(std::cv_status::timeout, result); // check only after joining with thread to avoid early exit
+    // ^^^ expecting timeout because pool should block indefinitely
   }
 }
 
@@ -209,8 +224,16 @@ TEST_F(object_pool_tests, bounded_uobject_pool) {
 
     {
       SCOPED_LOCK_NAMED(mutex, lock);
-      std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
-      ASSERT_EQ(std::cv_status::timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume thread blocks in 1000ms
+      std::atomic<bool> emplace(false);
+      std::thread thread([&cond, &mutex, &pool, &emplace]()->void{ auto obj = pool.emplace(2); emplace = true; SCOPED_LOCK(mutex); cond.notify_all(); });
+
+      auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
+
+      // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
+      MSVC2015_OPTIMIZED_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+      MSVC2017_ONLY(while(!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+
+      ASSERT_EQ(std::cv_status::timeout, result);
       // ^^^ expecting timeout because pool should block indefinitely
       obj.reset();
       obj.reset();
@@ -264,13 +287,20 @@ TEST_F(object_pool_tests, bounded_uobject_pool) {
     std::condition_variable cond;
     std::mutex mutex;
     SCOPED_LOCK_NAMED(mutex, lock);
-    std::thread thread([&cond, &mutex, &pool]()->void {
+    std::atomic<bool> visit(false);
+    std::thread thread([&cond, &mutex, &pool, &visit]()->void {
       auto visitor = [](test_uobject& obj)->bool { return true; };
       pool.visit(visitor, false);
+      visit = true;
       SCOPED_LOCK(mutex);
       cond.notify_all();
     });
     auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
+
+    // MSVC 2015/2017 optimized code seems to sporadically notify condition variables without explicit request
+    MSVC2015_OPTIMIZED_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+    MSVC2017_ONLY(while(!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+
     obj.reset();
 
     if (lock) {
@@ -278,7 +308,8 @@ TEST_F(object_pool_tests, bounded_uobject_pool) {
     }
 
     thread.join();
-    ASSERT_NE(std::cv_status::no_timeout, result);
+    ASSERT_EQ(std::cv_status::timeout, result);
+    // ^^^ expecting timeout because pool should block indefinitely
   }
 }
 

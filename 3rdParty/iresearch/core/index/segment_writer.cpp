@@ -63,8 +63,7 @@ bool segment_writer::remove(doc_id_t doc_id) {
 bool segment_writer::index(
     const hashed_string_ref& name,
     token_stream& tokens,
-    const flags& features,
-    float_t boost) {
+    const flags& features) {
   REGISTER_TIMER_DETAILED();
 
   const doc_id_t doc_id = docs_cached();
@@ -73,7 +72,7 @@ bool segment_writer::index(
 
   // invert only if new field features are a subset of slot features
   if ((slot.empty() || features.is_subset_of(slot_features)) &&
-      slot.invert(tokens, slot.empty() ? features : slot_features, boost, doc_id)) {
+      slot.invert(tokens, slot.empty() ? features : slot_features, doc_id)) {
     if (features.check<norm>()) {
       norm_fields_.insert(&slot);
     }
@@ -112,7 +111,7 @@ void segment_writer::finish() {
   // write document normalization factors (for each field marked for normalization))
   float_t value;
   for (auto* field : norm_fields_) {
-    value = field->boost() / float_t(std::sqrt(double_t(field->size())));
+    value = 1.f / float_t(std::sqrt(double_t(field->size())));
     if (value != norm::DEFAULT()) {
       auto& stream = field->norms(*col_writer_);
       write_zvfloat(stream, value);

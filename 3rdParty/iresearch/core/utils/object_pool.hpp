@@ -297,9 +297,9 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
     }
   }
 
-  // MSVC 2017.3 and 2017.4 incorectly decrement counter if this function is inlined during optimization
+  // MSVC 2017.3, 2017.4 and 2017.5 incorectly decrement counter if this function is inlined during optimization
   // MSVC 2017.2 and below TODO test for both debug and release
-  MSVC2017_OPTIMIZED_WORKAROUND(__declspec(noinline))
+  MSVC2017_345_OPTIMIZED_WORKAROUND(__declspec(noinline))
   bool lock(slot_t& slot) const {
     if (!slot.used.test_and_set()) {
       --free_count_;
@@ -310,9 +310,9 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
     return false;
   }
 
-  // MSVC 2017.3 and 2017.4 incorectly increment counter if this function is inlined during optimization
+  // MSVC 2017.3, 2017.4 and 2017.5 incorectly increment counter if this function is inlined during optimization
   // MSVC 2017.2 and below TODO test for both debug and release
-  MSVC2017_OPTIMIZED_WORKAROUND(__declspec(noinline))
+  MSVC2017_345_OPTIMIZED_WORKAROUND(__declspec(noinline))
   void unlock(slot_t& slot) const {
     slot.used.clear();
     SCOPED_LOCK(mutex_);

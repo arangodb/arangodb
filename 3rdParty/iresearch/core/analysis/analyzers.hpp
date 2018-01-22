@@ -77,7 +77,9 @@ class IRESEARCH_API analyzers {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether an analyzer with the specified name is registered
   ////////////////////////////////////////////////////////////////////////////////
-  static bool exists(const string_ref& name);
+  static bool exists(
+    const string_ref& name, const irs::text_format::type_id& args_format
+  );
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find an analyzer by name, or nullptr if not found
@@ -85,7 +87,11 @@ class IRESEARCH_API analyzers {
   ///        requires use of DECLARE_FACTORY_DEFAULT() in class definition
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   ////////////////////////////////////////////////////////////////////////////////
-  static analyzer::ptr get(const string_ref& name, const string_ref& args);
+  static analyzer::ptr get(
+    const string_ref& name,
+    const irs::text_format::type_id& args_format,
+    const string_ref& args
+  );
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known scorers in lib
@@ -102,7 +108,9 @@ class IRESEARCH_API analyzers {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief visit all loaded analyzers, terminate early if visitor returns false
   ////////////////////////////////////////////////////////////////////////////////
-  static bool visit(const std::function<bool(const string_ref&)>& visitor);
+  static bool visit(
+    const std::function<bool(const string_ref&, const irs::text_format::type_id&)>& visitor
+  );
 
  private:
   analyzers() = delete;

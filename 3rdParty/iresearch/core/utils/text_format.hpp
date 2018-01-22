@@ -47,6 +47,11 @@ class type_id: public irs::type_id, private util::noncopyable {
 // --SECTION--                                            common textual formats
 // -----------------------------------------------------------------------------
 
+#if !defined(_MSC_VER)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class CSV format type https://en.wikipedia.org/wiki/Comma-separated_values
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,6 +75,10 @@ static const auto& text = text_t();
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API const type_id& xml_t();
 static const auto& xml = xml_t();
+
+#if !defined(_MSC_VER)
+  #pragma GCC diagnostic pop
+#endif
 
 NS_END // text_format
 NS_END // ROOT

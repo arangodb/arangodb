@@ -32,16 +32,43 @@
 
 NS_LOCAL
 
+struct entry_key_t {
+  const irs::text_format::type_id& args_format_;
+  const irs::string_ref name_;
+  entry_key_t(
+      const irs::string_ref& name, const irs::text_format::type_id& args_format
+  ): args_format_(args_format), name_(name) {}
+  bool operator==(const entry_key_t& other) const NOEXCEPT {
+    return &args_format_ == &other.args_format_ && name_ == other.name_;
+  }
+};
+
+NS_END
+
+NS_BEGIN(std)
+
+template<>
+struct hash<entry_key_t> {
+  size_t operator()(const entry_key_t& value) const {
+    return std::hash<irs::string_ref>()(value.name_);
+  }
+}; // hash
+
+NS_END // std
+
+NS_LOCAL
+
 const std::string FILENAME_PREFIX("libscorer-");
 
 class scorer_register:
-  public irs::generic_register<irs::string_ref, irs::sort::ptr(*)(const irs::string_ref& args), scorer_register> {
+  public irs::tagged_generic_register<entry_key_t, irs::sort::ptr(*)(const irs::string_ref& args), irs::string_ref, scorer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
-    std::string filename(FILENAME_PREFIX.size() + key.size(), 0);
+    auto& name = key.name_;
+    std::string filename(FILENAME_PREFIX.size() + name.size(), 0);
 
     std::memcpy(&filename[0], FILENAME_PREFIX.c_str(), FILENAME_PREFIX.size());
-    std::memcpy(&filename[0] + FILENAME_PREFIX.size(), key.c_str(), key.size());
+    std::memcpy(&filename[0] + FILENAME_PREFIX.size(), name.c_str(), name.size());
 
     return filename;
   }
@@ -51,23 +78,28 @@ NS_END
 
 NS_ROOT
 
-/*static*/ bool scorers::exists(const string_ref& name) {
-  return scorer_register::instance().get(name);
+/*static*/ bool scorers::exists(
+    const string_ref& name,
+    const irs::text_format::type_id& args_format
+) {
+  return scorer_register::instance().get(entry_key_t(name, args_format));
 }
 
 /*static*/ sort::ptr scorers::get(
     const string_ref& name,
+    const irs::text_format::type_id& args_format,
     const string_ref& args
 ) {
-  auto* factory = scorer_register::instance().get(name);
+  auto* factory =
+    scorer_register::instance().get(entry_key_t(name, args_format));
 
   return factory ? factory(args) : nullptr;
 }
 
 /*static*/ void scorers::init() {
   #ifndef IRESEARCH_DLL
-    REGISTER_SCORER_JSON(irs::bm25_sort, irs::bm25_sort::make); // match bm25.cpp
-    REGISTER_SCORER_JSON(irs::tfidf_sort, irs::tfidf_sort::make); // match tfidf.cpp
+    irs::bm25_sort::init();
+    irs::tfidf_sort::init();
   #endif
 }
 
@@ -76,9 +108,13 @@ NS_ROOT
 }
 
 /*static*/ bool scorers::visit(
-  const std::function<bool(const string_ref&)>& visitor
+  const std::function<bool(const string_ref&, const irs::text_format::type_id&)>& visitor
 ) {
-  return scorer_register::instance().visit(visitor);
+  scorer_register::visitor_t wrapper = [&visitor](const entry_key_t& key)->bool {
+    return visitor(key.name_, key.args_format_);
+  };
+
+  return scorer_register::instance().visit(wrapper);
 }
 
 // -----------------------------------------------------------------------------
@@ -91,16 +127,37 @@ scorer_registrar::scorer_registrar(
     sort::ptr(*factory)(const irs::string_ref& args),
     const char* source /*= nullptr*/
 ) {
-  auto entry = scorer_register::instance().set(type.name(), factory);
+  irs::string_ref source_ref(source);
+  auto entry = scorer_register::instance().set(
+    entry_key_t(type.name(), args_format),
+    factory,
+    source_ref.null() ? nullptr : &source_ref
+  );
 
   registered_ = entry.second;
 
   if (!registered_ && factory != entry.first) {
-    if (source) {
+    auto* registered_source =
+      scorer_register::instance().tag(entry_key_t(type.name(), args_format));
+
+    if (source && registered_source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering scorer, ignoring: type '%s' from %s, previously from %s",
+        type.name().c_str(),
+        source,
+        registered_source->c_str()
+      );
+    } else if (source) {
       IR_FRMT_WARN(
         "type name collision detected while registering scorer, ignoring: type '%s' from %s",
         type.name().c_str(),
         source
+      );
+    } else if (registered_source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering scorer, ignoring: type '%s', previously from %s",
+        type.name().c_str(),
+        registered_source->c_str()
       );
     } else {
       IR_FRMT_WARN(

@@ -26,6 +26,10 @@
 
 #include "StorageEngineMock.h"
 
+#if USE_ENTERPRISE
+  #include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -115,6 +119,9 @@ struct custom_sort: public irs::sort {
     class scorer: public irs::sort::scorer_base<irs::doc_id_t> {
      public:
       virtual void score(irs::byte_type* score_buf) override {
+        UNUSED(filter_node_attrs_);
+        UNUSED(segment_reader_);
+        UNUSED(term_reader_);
         CHECK(score_buf);
         auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
 
@@ -253,6 +260,10 @@ struct TestSetup {
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
 
+    #if USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+    #endif
+
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
     }
@@ -358,7 +369,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     for (auto doc : arangodb::velocypack::ArrayIterator(testDataRoot)) {
       storedField.str = arangodb::iresearch::getStringRef(doc.get("name"));
-      writer->insert([&storedField](irs::index_writer::document& doc) {
+      writer->insert([&storedField](irs::segment_writer::document& doc)->bool {
         doc.insert(irs::action::store, storedField);
         return false; // break the loop
       });
@@ -375,7 +386,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \
       \"name\": \"testView\", \
-      \"type\": \"iresearch\" \
+      \"type\": \"arangosearch\" \
     }");
 
     // add view

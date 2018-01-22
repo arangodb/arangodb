@@ -67,19 +67,17 @@ namespace ListValuation {
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchLinkMeta {
   struct Mask {
-    bool _boost;
     bool _fields;
     bool _includeAllFields;
     bool _nestListValues;
     bool _tokenizers;
-    Mask(bool mask = false) noexcept;
+    explicit Mask(bool mask = false) noexcept;
   };
 
   typedef UnorderedRefKeyMap<char, UniqueHeapInstance<IResearchLinkMeta>> Fields;
   typedef std::vector<IResearchAnalyzerFeature::AnalyzerPool::ptr> Tokenizers;
 
-  float_t _boost;
-  Fields _fields;
+  Fields _fields; // explicit list of fields to be indexed with optional overrides
   bool _includeAllFields; // include all fields or only fields listed in '_fields'
   bool _nestListValues; // append relative offset in list to attribute name (as opposed to without offset)
   Tokenizers _tokenizers; // tokenizers to apply to every field

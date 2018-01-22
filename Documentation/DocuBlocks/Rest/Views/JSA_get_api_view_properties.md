@@ -27,7 +27,7 @@ Using an identifier:
 
 @EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesIdentifier}
     var viewName = "products";
-    var viewType = "iresearch";
+    var viewType = "arangosearch";
     var viewProperties = { locale : "c" };
     db._dropView(viewName);
     var view = db._createView(viewName, viewType, viewProperties);
@@ -45,7 +45,7 @@ Using a name:
 
 @EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesName}
     var viewName = "products";
-    var viewType = "iresearch";
+    var viewType = "arangosearch";
     var viewProperties = { locale : "c" };
     db._dropView(viewName);
     var view = db._createView(viewName, viewType, viewProperties);
