@@ -304,7 +304,7 @@ V8Task::callbackFunction() {
     if (!_user.empty()) { // not superuser
       std::string const& dbname = _dbGuard->database()->name();
       execContext.reset(ExecContext::create(_user, dbname));
-      allowContinue = execContext->canUseDatabase(dbname, AuthLevel::RW);
+      allowContinue = execContext->canUseDatabase(dbname, auth::Level::RW);
       allowContinue = allowContinue && ServerState::writeOpsEnabled();
     }
     ExecContextScope scope(_user.empty() ?
@@ -540,7 +540,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != AuthLevel::RW) {
+    if (exec->databaseAuthLevel() != auth::Level::RW) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "registerTask() needs db RW permissions");
     } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
@@ -691,7 +691,7 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != AuthLevel::RW) {
+    if (exec->databaseAuthLevel() != auth::Level::RW) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "registerTask() needs db RW permissions");
     } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
@@ -755,7 +755,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string runAsUser;
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != AuthLevel::RW) {
+    if (exec->databaseAuthLevel() != auth::Level::RW) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "createQueue() needs db RW permissions");
     }
@@ -814,7 +814,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   doc(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
   
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
+  if (exec != nullptr && exec->databaseAuthLevel() != auth::Level::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "deleteQueue() needs db RW permissions");
   }

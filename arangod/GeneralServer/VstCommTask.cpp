@@ -270,11 +270,11 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
     LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
   }
   
-  if (_authentication->isActive()) { // will just fail if method is NONE
-    AuthResult result = _authentication->authInfo()->checkAuthentication(authType, authString);
-    _authorized = result._authorized;
+  if (_auth->isActive()) { // will just fail if method is NONE
+    auto entry = _auth->tokenCache()->checkAuthentication(authType, authString);
+    _authorized = entry.authorized();
     if (_authorized) {
-      _authenticatedUser = std::move(result._username);
+      _authenticatedUser = std::move(entry.username());
     }
   } else {
     _authorized = true;
@@ -389,6 +389,10 @@ bool VstCommTask::processRead(double startTime) {
           _connectionInfo, std::move(message), chunkHeader._messageID));
       request->setAuthorized(_authorized);
       request->setUser(_authenticatedUser);
+      if (_authorized) {
+        // if we don't call checkAuthentication we need to refresh
+        _auth->userManager()->refreshUser(_authenticatedUser);
+      }
       bool res = GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
       if (!res || request->requestContext() == nullptr) {
         handleSimpleError(rest::ResponseCode::NOT_FOUND, *request,

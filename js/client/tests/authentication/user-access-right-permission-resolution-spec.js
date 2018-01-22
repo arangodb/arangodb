@@ -41,12 +41,22 @@ const cols = ['*', colName];
 const userSet = new Set();
 const internal = require('internal');
 
+let conv = function(x) {
+  if (x === 'rw') return 2;
+  if (x === 'ro') return 1;
+  if (x === 'none') return 0;
+  return -1;
+};
+
 const createUsers = () => {
   db._useDatabase('_system');
   for (const db of dbs) {
     for (const dbLevel of rightLevels) {
       for (const col of cols) {
         for (const colLevel of rightLevels) {
+          if (db === '*' && col !== '*') {
+            continue;
+          }
           const name = `user_${db}_${dbLevel}_${col}_${colLevel}`;
           userSet.add({
             name,
@@ -56,7 +66,8 @@ const createUsers = () => {
             },
             col: {
               name: col,
-              permission: colLevel
+              permission: (conv(dbLevel) > conv(colLevel) ? dbLevel : colLevel)
+              //permission: colLevel
             }
           });
         }
@@ -99,12 +110,39 @@ describe('User Rights Management', () => {
         });
         it('on database', () => {
           const permission = users.permission(user.name, '_system');
-          expect(permission).to.equal(user.db.permission, 
-            "Expected different permission for _system");
+          expect(permission).to.equal(user.db.permission,
+            'Expected different permission for _system');
         });
         it('on collection', () => {
           const permission = users.permission(user.name, '_system', colName);
           expect(permission).to.equal(user.col.permission);
+        });
+        it('on collection after revoking database level permission', () => {
+          users.revokeCollection(user.name, '_system', colName);
+          users.reload();
+          const permission = users.permission(user.name, user.db.name, colName);
+
+          let result = users.permissionFull(user.name);
+          let collPerm;
+          if (user.db.name !== '*') {
+            collPerm = result[user.db.name].collections['*'];
+          } else {
+            // this is checking collections permission level on database '*' which is not possible
+            collPerm = permission;
+          }
+
+          expect(permission).to.equal(collPerm);
+        });
+        it('on database after revoking database level permission', () => {
+          users.revokeDatabase(user.name, user.db.name);
+          users.reload();
+
+          let result = users.permissionFull(user.name);
+          const dbPerm = result['*'].permission;
+          const permission = users.permission(user.name, user.db.name);
+
+          expect(permission).to.equal(dbPerm,
+            'Expected different permission for _system');
         });
       });
     }

@@ -411,7 +411,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     TRI_ASSERT(_currentDbId != 0 && _currentCid != 0);
     TRI_ASSERT(!_removeDocumentKey.empty());
 
-    uint64_t revId = RocksDBKey::revisionId(RocksDBEntryType::Document, key);
+    uint64_t rid = RocksDBKey::revisionId(RocksDBEntryType::Document, key);
     _builder.openObject();
     _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
     _builder.add("type", VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_REMOVE)));
@@ -425,7 +425,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
     _builder.add("data", VPackValue(VPackValueType::Object));
     _builder.add(StaticStrings::KeyString, VPackValue(_removeDocumentKey));
-    _builder.add(StaticStrings::RevString, VPackValue(std::to_string(revId)));
+    _builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rid)));
     _builder.close();
     _builder.close();
     _removeDocumentKey.clear();

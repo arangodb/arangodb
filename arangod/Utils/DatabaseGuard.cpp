@@ -25,13 +25,12 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 
 using namespace arangodb;
 
 /// @brief create the guard, using a database id
 DatabaseGuard::DatabaseGuard(TRI_voc_tick_t id) : _vocbase(nullptr) {
-  auto databaseFeature = FeatureCacheFeature::instance()->databaseFeature();
+  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
   _vocbase = databaseFeature->useDatabase(id);
 
   if (_vocbase == nullptr) {
@@ -43,7 +42,7 @@ DatabaseGuard::DatabaseGuard(TRI_voc_tick_t id) : _vocbase(nullptr) {
 
 /// @brief create the guard, using a database name
 DatabaseGuard::DatabaseGuard(std::string const& name) : _vocbase(nullptr) {
-  auto databaseFeature = FeatureCacheFeature::instance()->databaseFeature();
+  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
   _vocbase = databaseFeature->useDatabase(name);
 
   if (_vocbase == nullptr) {

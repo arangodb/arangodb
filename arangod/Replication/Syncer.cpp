@@ -875,8 +875,7 @@ Result Syncer::handleStateResponse(VPackSlice const& slice) {
 
 void Syncer::reloadUsers() {
   auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
-  authentication->authInfo()->outdate();
-  authentication->authInfo()->reloadAllUsers();
+  authentication->userManager()->outdate();
 }
   
 bool Syncer::hasFailed(SimpleHttpResult* response) const {

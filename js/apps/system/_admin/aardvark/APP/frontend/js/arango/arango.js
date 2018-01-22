@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Blob, window, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, localStorage */
+/* global Blob, window, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage */
 
 (function () {
   'use strict';
@@ -83,16 +83,16 @@
     },
 
     getCurrentJwt: function () {
-      return localStorage.getItem('jwt');
+      return sessionStorage.getItem('jwt');
     },
 
     getCurrentJwtUsername: function () {
-      return localStorage.getItem('jwtUser');
+      return sessionStorage.getItem('jwtUser');
     },
 
     setCurrentJwt: function (jwt, username) {
-      localStorage.setItem('jwt', jwt);
-      localStorage.setItem('jwtUser', username);
+      sessionStorage.setItem('jwt', jwt);
+      sessionStorage.setItem('jwtUser', username);
     },
 
     checkJwt: function () {
@@ -986,6 +986,9 @@
       var dlType;
       if (type === 'csv') {
         dlType = 'text/csv; charset=utf-8';
+      }
+      if (type === 'json') {
+        dlType = 'application/json; charset=utf-8';
       }
 
       if (dlType) {

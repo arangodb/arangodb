@@ -41,7 +41,7 @@ class VocbaseContext final : public arangodb::ExecContext {
   VocbaseContext(VocbaseContext const&) = delete;
   VocbaseContext& operator=(VocbaseContext const&) = delete;
   VocbaseContext(GeneralRequest*, TRI_vocbase_t*, bool isSuper,
-                 AuthLevel systemLevel, AuthLevel dbLevel);
+                 auth::Level systemLevel, auth::Level dbLevel);
 
  public:
   static double ServerSessionTtl;

@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var arango = require("@arangodb").arango;
+var helper = require('@arangodb/user-helper');
 var db = require("internal").db;
 var users = require("@arangodb/users");
 var request = require('@arangodb/request');
@@ -134,6 +135,25 @@ function AuthSuite () {
       catch (err1) {
         isBroken = false;
       }
+    },
+
+    testPasswordChange : function () {
+      users.save("hackers@arangodb.com", "");
+      users.grantDatabase('hackers@arangodb.com', db._name());
+      users.grantCollection('hackers@arangodb.com', db._name(), "*");
+      users.reload();
+
+      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+      // this will issue a request using the new user
+      assertTrue(db._collections().length > 0);
+
+      arango.reconnect(arango.getEndpoint(), db._name(), "root", "");
+      users.replace("hackers@arangodb.com", "foo"); // replace deletes grants
+      users.grantDatabase('hackers@arangodb.com', db._name());
+      users.grantCollection('hackers@arangodb.com', db._name(), "*");
+
+      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foo");
+      assertTrue(db._collections().length > 0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -384,6 +404,11 @@ function AuthSuite () {
     },
     
     testViaJS: function() {
+      print ("LDAP is", helper.isLdapEnabledExternal() ? "enabled" : "disabled");
+      if (helper.isLdapEnabledExternal()) {
+        return;
+      }
+
       var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600}, 'HS256');
 
       var res = request.get({
@@ -436,7 +461,11 @@ function AuthSuite () {
     },
     
     testExpOptional: function() {
-      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodb" }, 'HS256');
+      if (helper.isLdapEnabledExternal()) {
+        return;
+      }
+      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", 
+                                             "iss": "arangodb" }, 'HS256');
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",

@@ -934,9 +934,10 @@ Result RestReplicationHandler::processRestoreCollection(
   ExecContext const* exe = ExecContext::CURRENT;
   if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
       ServerState::instance()->isSingleServer()) {
-    AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
-    auth->authInfo()->updateUser(exe->user(), [&](AuthUserEntry& entry) {
-      entry.grantCollection(_vocbase->name(), col->name(), AuthLevel::RW);
+    AuthenticationFeature *af = AuthenticationFeature::instance();
+    af->userManager()->updateUser(exe->user(), [&](auth::User& entry) {
+      entry.grantCollection(_vocbase->name(), col->name(), auth::Level::RW);
+      return TRI_ERROR_NO_ERROR;
     });
   }
 
@@ -1084,11 +1085,12 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     
     ExecContext const* exe = ExecContext::CURRENT;
     if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
-      AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
-      auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
-                     [&](AuthUserEntry& entry) {
-                       entry.grantCollection(dbName, col->name(), AuthLevel::RW);
-                     });
+      AuthenticationFeature *af = AuthenticationFeature::instance();
+      af->userManager()->updateUser(ExecContext::CURRENT->user(),
+                   [&](auth::User& entry) {
+                     entry.grantCollection(dbName, col->name(), auth::Level::RW);
+                     return TRI_ERROR_NO_ERROR;
+                   });
     }
   } catch (basics::Exception const& ex) {
     // Error, report it.
@@ -2518,7 +2520,7 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
 //////////////////////////////////////////////////////////////////////////////
 void RestReplicationHandler::grantTemporaryRights() {
   if (ExecContext::CURRENT != nullptr) {
-    if (ExecContext::CURRENT->canUseDatabase(_vocbase->name(), AuthLevel::RW) ) {
+    if (ExecContext::CURRENT->canUseDatabase(_vocbase->name(), auth::Level::RW) ) {
       // If you have administrative access on this database,
       // we grant you everything for restore.
       ExecContext::CURRENT = nullptr;

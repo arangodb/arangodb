@@ -64,7 +64,7 @@ const switchUser = (user, dbname) => {
 switchUser('root', '_system');
 helper.removeAllUsers();
 
-describe.skip('User Rights Management', () => {
+describe('User Rights Management', () => {
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 

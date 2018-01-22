@@ -45,7 +45,6 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1922,15 +1921,15 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
     VPackSlice storeSlice = paramBuilder.slice().get("store");
     bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
     for (std::string const& ec : paramVertices) {
-      bool canWrite = exec->canUseCollection(ec, AuthLevel::RW);
-      bool canRead = exec->canUseCollection(ec, AuthLevel::RO);
+      bool canWrite = exec->canUseCollection(ec, auth::Level::RW);
+      bool canRead = exec->canUseCollection(ec, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
       }
     }
     for (std::string const& ec : paramEdges) {
-      bool canWrite = exec->canUseCollection(ec, AuthLevel::RW);
-      bool canRead = exec->canUseCollection(ec, AuthLevel::RO);
+      bool canWrite = exec->canUseCollection(ec, auth::Level::RW);
+      bool canRead = exec->canUseCollection(ec, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
       }
@@ -2566,7 +2565,7 @@ static void JS_CollectionVocbase(
 
   // check authentication after ensuring the collection exists
   if (ExecContext::CURRENT != nullptr &&
-      !ExecContext::CURRENT->canUseCollection(collection->name(), AuthLevel::RO)) {
+      !ExecContext::CURRENT->canUseCollection(collection->name(), auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    std::string("No access to collection '") + name + "'");
   }
@@ -2635,7 +2634,7 @@ static void JS_CollectionsVocbase(
 
     if (ExecContext::CURRENT != nullptr &&
         !ExecContext::CURRENT->canUseCollection(vocbase->name(),
-                                                collection->name(), AuthLevel::RO)) {
+                                                collection->name(), auth::Level::RO)) {
       continue;
     }
 

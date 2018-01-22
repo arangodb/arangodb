@@ -99,7 +99,7 @@
 <script>
 window.onload = function() {
   var url = window.location.href.replace("index.html", "swagger.json").replace(/#.*/, "");
-  var jwt = localStorage.getItem("jwt");
+  var jwt = sessionStorage.getItem("jwt");
   
   // Build a system
   const ui = SwaggerUIBundle({

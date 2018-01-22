@@ -504,7 +504,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
         marker->add("tid", VPackValue(std::to_string(_currentTrxId)));
         VPackObjectBuilder data(&_builder, "data", true);
         data->add(StaticStrings::KeyString, VPackValue(_removeDocumentKey));
-        data->add(StaticStrings::RevString, VPackValue(std::to_string(rid)));
+        data->add(StaticStrings::RevString, VPackValue(TRI_RidToString(rid)));
       }
       _callback(loadVocbase(_currentDbId), _builder.slice());
       _responseSize += _builder.size();

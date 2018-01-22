@@ -25,7 +25,6 @@
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -324,15 +323,15 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
     }
     std::string const colName = _resolver->getCollectionNameCluster(cid);
     
-    AuthLevel level = exec->collectionAuthLevel(_vocbase->name(), colName);
+    auth::Level level = exec->collectionAuthLevel(_vocbase->name(), colName);
     
-    if (level == AuthLevel::NONE) {
+    if (level == auth::Level::NONE) {
       LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
-      << " has collection AuthLevel::NONE";
+      << " has collection auth::Level::NONE";
       return TRI_ERROR_FORBIDDEN;
     }
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
-    if (level == AuthLevel::RO && collectionWillWrite) {
+    if (level == auth::Level::RO && collectionWillWrite) {
       LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
       << " has no write right for collection " << colName;
       return TRI_ERROR_ARANGO_READ_ONLY;

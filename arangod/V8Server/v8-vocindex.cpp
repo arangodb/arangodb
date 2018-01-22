@@ -33,7 +33,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -210,7 +209,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   if (ExecContext::CURRENT != nullptr &&
-      !ExecContext::CURRENT->canUseDatabase(vocbase->name(), AuthLevel::RW)) {
+      !ExecContext::CURRENT->canUseDatabase(vocbase->name(), auth::Level::RW)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 

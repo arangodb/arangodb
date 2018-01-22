@@ -36,6 +36,7 @@ const users = require('@arangodb/users');
 const helper = require('@arangodb/user-helper');
 const namePrefix = helper.namePrefix;
 const rightLevels = helper.rightLevels;
+const errors = require('@arangodb').errors;
 
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
@@ -51,9 +52,6 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const switchUser = (user) => {
-  arango.reconnect(arango.getEndpoint(), '_system', user, '');
-};
 helper.removeAllUsers();
 
 describe('User Rights Management', () => {
@@ -64,7 +62,7 @@ describe('User Rights Management', () => {
     for (let name of userSet) {
       let canUse = false;
       try {
-        switchUser(name);
+        helper.switchUser(name);
         canUse = true;
       } catch (e) {
         canUse = false;
@@ -73,21 +71,21 @@ describe('User Rights Management', () => {
       if (canUse) {
         describe(`user ${name}`, () => {
           before(() => {
-            switchUser(name);
+            helper.switchUser(name);
           });
 
           describe('administrate on server level', () => {
             const rootTestUser = (switchBack = true) => {
-              switchUser('root');
+              helper.switchUser('root');
               try {
                 const u = users.document(testUser);
                 if (switchBack) {
-                  switchUser(name);
+                  helper.switchUser(name);
                 }
                 return u !== undefined;
               } catch (e) {
                 if (switchBack) {
-                  switchUser(name);
+                  helper.switchUser(name);
                 }
                 return false;
               }
@@ -97,14 +95,14 @@ describe('User Rights Management', () => {
               if (rootTestUser(false)) {
                 users.remove(testUser);
               }
-              switchUser(name);
+              helper.switchUser(name);
             };
 
             const rootCreateUser = () => {
               if (!rootTestUser(false)) {
                 users.save(testUser, '', true);
               }
-              switchUser(name);
+              helper.switchUser(name);
             };
 
             beforeEach(() => {
@@ -122,12 +120,14 @@ describe('User Rights Management', () => {
                 // User needs rw on _system
                 users.grantDatabase(testUser, '_system', 'rw');
               } else {
+                let didGrant = false;
                 try {
                   users.grantDatabase(testUser, '_system', 'rw');
-                  expect(false).to.equal(true, `${name} was able to update a user with insufficient rights.`);
+                  didGrant = true;
                 } catch (e) {
-                  //print(e);
+                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                 }
+                expect(didGrant).to.equal(false, `${name} was able to update a user with insufficient rights.`);
               }
             });
           });

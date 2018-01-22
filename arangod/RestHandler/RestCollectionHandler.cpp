@@ -83,7 +83,7 @@ void RestCollectionHandler::handleCommandGet() {
     methods::Collections::enumerate(_vocbase, [&](LogicalCollection* coll) {
       ExecContext const* exec = ExecContext::CURRENT;
       bool canUse = exec == nullptr ||
-                    exec->canUseCollection(coll->name(), AuthLevel::RO);
+                    exec->canUseCollection(coll->name(), auth::Level::RO);
       if (canUse && (!excludeSystem || !coll->isSystem())) {
         collectionRepresentation(builder, coll,
                                  /*showProperties*/ false,

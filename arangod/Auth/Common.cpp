@@ -20,44 +20,42 @@
 /// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Authentication.h"
+#include "Auth/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
 
-static AuthLevel _convertToAuthLevel(arangodb::StringRef ref) {
+static_assert(auth::Level::NONE < auth::Level::RO, "none < ro");
+static_assert(auth::Level::RO < auth::Level::RW, "none < ro");
+
+static auth::Level _convertToAuthLevel(arangodb::StringRef ref) {
   if (ref.compare("rw") == 0) {
-    return AuthLevel::RW;
+    return auth::Level::RW;
   } else if (ref.compare("ro") == 0) {
-    return AuthLevel::RO;
+    return auth::Level::RO;
   } else if (ref.compare("none") == 0 || ref.empty()) {
-    return AuthLevel::NONE;
+    return auth::Level::NONE;
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "expecting access type 'rw', 'ro' or 'none'");
 }
 
-AuthLevel arangodb::convertToAuthLevel(velocypack::Slice grants) {
+auth::Level arangodb::auth::convertToAuthLevel(velocypack::Slice grants) {
   return _convertToAuthLevel(StringRef(grants));
 }
 
-AuthLevel arangodb::convertToAuthLevel(std::string const& grants) {
+auth::Level arangodb::auth::convertToAuthLevel(std::string const& grants) {
   return _convertToAuthLevel(StringRef(grants));
 }
 
-std::string arangodb::convertFromAuthLevel(AuthLevel lvl) {
-  if (lvl == AuthLevel::RW) {
+std::string arangodb::auth::convertFromAuthLevel(auth::Level lvl) {
+  if (lvl == auth::Level::RW) {
     return "rw";
-  } else if (lvl == AuthLevel::RO) {
+  } else if (lvl == auth::Level::RO) {
     return "ro";
   } else {
     return "none";
   }
-}
-
-AuthenticationResult DefaultAuthenticationHandler::authenticate(
-    std::string const& username, std::string const& password) {
-  return AuthenticationResult(TRI_ERROR_USER_NOT_FOUND, AuthSource::COLLECTION);
 }

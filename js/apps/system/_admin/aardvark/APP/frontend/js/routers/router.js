@@ -268,7 +268,9 @@
 
         window.checkVersion();
 
-        this.userConfig = new window.UserConfig();
+        this.userConfig = new window.UserConfig({
+          ldapEnabled: frontendConfig.ldapEnabled
+        });
         this.userConfig.fetch();
 
         this.documentsView = new window.DocumentsView({
