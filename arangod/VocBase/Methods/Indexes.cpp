@@ -140,12 +140,9 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     tmp.close();
 
   } else {
-    // add locks for consistency
-
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(collection->vocbase()),
         collection->cid(), AccessMode::Type::READ);
-    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
     Result res = trx.begin();
     if (!res.ok()) {
