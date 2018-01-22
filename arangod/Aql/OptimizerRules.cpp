@@ -4855,8 +4855,18 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
 
 static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
                               bool legacy, GeoIndexInfo& info) {
+  if (funcNode->type == NODE_TYPE_REFERENCE) {
+    // FOR x IN cc LET d = DISTANCE(...) FILTER d > 10 RETURN x
+    Variable const* var = static_cast<Variable const*>(funcNode->getData());
+    TRI_ASSERT(var != nullptr);
+    ExecutionNode* setter = plan->getVarSetBy(var->id);
+    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+      return false;
+    }
+    funcNode = static_cast<CalculationNode*>(setter)->expression()->node();
+  }
   // get the ast node of the expression
-  if (funcNode ->type != NODE_TYPE_FCALL || funcNode->numMembers() != 1) {
+  if (!funcNode || funcNode ->type != NODE_TYPE_FCALL || funcNode->numMembers() != 1) {
     return false;
   }
   AstNode* fargs = funcNode->getMemberUnchecked(0);
@@ -5021,16 +5031,14 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
 bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndexInfo& info) {
   // checks @first `smaller` @second
   auto eval = [&](AstNode const* first, AstNode const* second, bool lessequal) -> bool{
-    if (first->type == NODE_TYPE_FCALL && isValueOrReference(second) &&
-        info.maxDistance == nullptr &&
+    if (isValueOrReference(second) && info.maxDistance == nullptr &&
         checkDistanceFunc(plan, first, /*legacy*/true, info)) {
       TRI_ASSERT(info.index);
       info.maxDistance = second;
       info.maxInclusive = lessequal;
       info.nodesToRemove.insert(node);
       return true;
-    } else if (second->type == NODE_TYPE_FCALL && isValueOrReference(first) &&
-               info.minDistance == nullptr &&
+    } else if (isValueOrReference(first) && info.minDistance == nullptr &&
                checkDistanceFunc(plan, second, /*legacy*/false, info)) {
       info.minDistance = first;
       info.minInclusive = lessequal;
