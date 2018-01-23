@@ -1253,6 +1253,7 @@ void StorageEngineMock::waitForSyncTimeout(double timeout) {
 
 arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) {
   TRI_ASSERT(false);
+  return arangodb::Result();
 }
 
 void StorageEngineMock::waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) {

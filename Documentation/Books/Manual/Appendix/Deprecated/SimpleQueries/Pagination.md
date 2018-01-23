@@ -86,3 +86,34 @@ will not be supported in future versions of ArangoDB.
     @endDocuBlock querySkip
 
 
+Ignore any limit with count:
+
+    @startDocuBlockInline cursorCountUnLimited
+    @EXAMPLE_ARANGOSH_OUTPUT{cursorCountUnLimited}
+    ~ db._create("five");
+    ~ db.five.save({ name : "one" });
+    ~ db.five.save({ name : "two" });
+    ~ db.five.save({ name : "three" });
+    ~ db.five.save({ name : "four" });
+    ~ db.five.save({ name : "five" });
+    db.five.all().limit(2).count();
+    ~ db._drop("five")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock cursorCountUnLimited
+
+Counting any limit or skip:
+
+    @startDocuBlockInline cursorCountLimit
+    @EXAMPLE_ARANGOSH_OUTPUT{cursorCountLimit}
+    ~ db._create("five");
+    ~ db.five.save({ name : "one" });
+    ~ db.five.save({ name : "two" });
+    ~ db.five.save({ name : "three" });
+    ~ db.five.save({ name : "four" });
+    ~ db.five.save({ name : "five" });
+    db.five.all().limit(2).count(true);
+    ~ db._drop("five")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock cursorCountLimit
+
+

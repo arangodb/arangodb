@@ -2092,6 +2092,19 @@ arangodb::Result IResearchView::updateProperties(
     _meta._collections = std::move(collections);
   }
 
+  // ...........................................................................
+  // if an exception occurs below then it would only affect collection linking
+  // consistency and an update retry would most likely happen
+  // always re-validate '_collections' because may have had externally triggered
+  // collection/link drops
+  // ...........................................................................
+  {
+    SCOPED_LOCK(mutex); // '_meta' can be asynchronously read
+    collections.insert(_meta._collections.begin(), _meta._collections.end());
+    validateLinks(collections, *vocbase, *this); // remove invalid cids (no such collection or no such link)
+    _meta._collections = std::move(collections);
+  }
+
   // FIXME TODO to ensure valid recovery remove the original datapath only if the entire, but under lock to prevent double rename
 
   return res;
