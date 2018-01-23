@@ -36,7 +36,6 @@
 #include "Rest/HttpRequest.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Utils/Events.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -854,10 +853,10 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
       if (authMethod != AuthenticationMethod::NONE) {
         request->setAuthenticationMethod(authMethod);
         if (_authentication->isActive()) {
-          AuthResult result = _authentication->authInfo()->
+          auto entry = _authentication->tokenCache()->
             checkAuthentication(authMethod, auth);
-          request->setAuthorized(result._authorized);
-          request->setUser(std::move(result._username));
+          request->setAuthorized(entry._authorized);
+          request->setUser(std::move(entry._username));
         } else {
           request->setAuthorized(true);
         }

@@ -30,9 +30,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Ssl/SslInterface.h"
-#include "VocBase/AuthInfo.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -47,9 +45,6 @@ bool RestAuthHandler::isDirect() const { return false; }
 
 std::string RestAuthHandler::generateJwt(std::string const& username,
                                          std::string const& password) {
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
-  TRI_ASSERT(authentication != nullptr);
-
   std::chrono::seconds exp =
       std::chrono::duration_cast<std::chrono::seconds>(
           std::chrono::system_clock::now().time_since_epoch()) +
@@ -61,7 +56,9 @@ std::string RestAuthHandler::generateJwt(std::string const& username,
     bodyBuilder.add("iss", VPackValue("arangodb"));
     bodyBuilder.add("exp", VPackValue(exp.count()));
   }
-  return authentication->authInfo()->generateJwt(bodyBuilder);
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
+  return af->tokenCache()->generateJwt(bodyBuilder.slice());
 }
 
 RestStatus RestAuthHandler::execute() {
@@ -94,11 +91,9 @@ RestStatus RestAuthHandler::execute() {
   _username = usernameSlice.copyString();
   std::string const password = passwordSlice.copyString();
   
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
-  AuthResult auth =
-    authentication->authInfo()->checkPassword(_username, password);
-
-  if (auth._authorized) {
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
+  if (af->userManager()->checkPassword(_username, password)) {
     VPackBuilder resultBuilder;
     {
       VPackObjectBuilder b(&resultBuilder);

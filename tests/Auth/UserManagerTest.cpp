@@ -29,10 +29,11 @@
 #include "fakeit.hpp"
 
 #include "Aql/QueryRegistry.h"
+#include "Auth/Handler.h"
+#include "Auth/User.h"
+#include "Auth/UserManager.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
-#include "VocBase/AuthInfo.h"
-#include "VocBase/AuthUserEntry.h"
 
 using namespace fakeit;
 using namespace arangodb;
@@ -42,16 +43,16 @@ namespace arangodb {
 namespace tests {
 namespace auth_info_test {
 
-class TestAuthenticationHandler: public AuthenticationHandler {
+class TestAuthenticationHandler: public auth::Handler {
  public:
   TestAuthenticationHandler() {}
-  AuthenticationResult authenticate(std::string const& username,
+  auth::HandlerResult authenticate(std::string const& username,
                                     std::string const& password) {
     
-    std::unordered_map<std::string, AuthLevel> permissions {};
+    std::unordered_map<std::string, auth::Level> permissions {};
     std::unordered_set<std::string> roles {};
-    AuthSource source = AuthSource::COLLECTION;
-    AuthenticationResult result(permissions, roles, source);
+    auth::Source source = auth::Source::COLLECTION;
+    auth::HandlerResult result(permissions, roles, source);
     return result;
   }
   virtual ~TestAuthenticationHandler() {}
@@ -69,7 +70,7 @@ class TestDatabaseFeature: public DatabaseFeature {
 };
 
 
-TEST_CASE("🥑🔐 AuthInfo", "[authentication]") {
+TEST_CASE("🥑🔐 UserManager", "[authentication]") {
   auto authHandler = std::make_unique<TestAuthenticationHandler>();
   TestQueryRegistry queryRegistry;
 
@@ -80,79 +81,79 @@ TEST_CASE("🥑🔐 AuthInfo", "[authentication]") {
   DatabaseFeature &databaseFeature = databaseFeatureMock.get();
   DatabaseFeature::DATABASE = &databaseFeature;
 
-  AuthInfo authInfo(std::move(authHandler));
-  authInfo.setQueryRegistry(&queryRegistry);
+  auth::UserManager um(std::move(authHandler));
+  um.setQueryRegistry(&queryRegistry);
   
   SECTION("An unknown user will have no access") {
-    AuthUserEntryMap userEntryMap;
-    authInfo.setAuthInfo(userEntryMap);
-    AuthLevel authLevel = authInfo.canUseDatabase("test", "test");
-    REQUIRE(authLevel == AuthLevel::NONE);
+    auth::UserMap userEntryMap;
+    um.setAuthInfo(userEntryMap);
+    auth::Level authLevel = um.canUseDatabase("test", "test");
+    REQUIRE(authLevel == auth::Level::NONE);
   }
 
   SECTION("Granting RW access on database * will grant access to all databases") {
-    AuthUserEntryMap userEntryMap;
-    auto testUser = AuthUserEntry::newUser("test", "test", AuthSource::COLLECTION);
-    testUser.grantDatabase("*", AuthLevel::RW);
+    auth::UserMap userEntryMap;
+    auto testUser = auth::User::newUser("test", "test", auth::Source::COLLECTION);
+    testUser.grantDatabase("*", auth::Level::RW);
     userEntryMap.emplace("test", testUser);
 
-    authInfo.setAuthInfo(userEntryMap);
-    AuthLevel authLevel = authInfo.canUseDatabase("test", "test");
-    REQUIRE(authLevel == AuthLevel::RW);
+    um.setAuthInfo(userEntryMap);
+    auth::Level authLevel = um.canUseDatabase("test", "test");
+    REQUIRE(authLevel == auth::Level::RW);
   }
 
   SECTION("Setting ServerState to readonly will make all users effective RO users") {
-    AuthUserEntryMap userEntryMap;
-    auto testUser = AuthUserEntry::newUser("test", "test", AuthSource::COLLECTION);
-    testUser.grantDatabase("*", AuthLevel::RW);
+    auth::UserMap userEntryMap;
+    auto testUser = auth::User::newUser("test", "test", auth::Source::COLLECTION);
+    testUser.grantDatabase("*", auth::Level::RW);
     userEntryMap.emplace("test", testUser);
 
     state->setServerMode(ServerState::Mode::READ_ONLY);
 
-    authInfo.setAuthInfo(userEntryMap);
-    AuthLevel authLevel = authInfo.canUseDatabase("test", "test");
-    REQUIRE(authLevel == AuthLevel::RO);
+    um.setAuthInfo(userEntryMap);
+    auth::Level authLevel = um.canUseDatabase("test", "test");
+    REQUIRE(authLevel == auth::Level::RO);
   }
 
   SECTION("In readonly mode the configured access level will still be accessible") {
-    AuthUserEntryMap userEntryMap;
-    auto testUser = AuthUserEntry::newUser("test", "test", AuthSource::COLLECTION);
-    testUser.grantDatabase("*", AuthLevel::RW);
+    auth::UserMap userEntryMap;
+    auto testUser = auth::User::newUser("test", "test", auth::Source::COLLECTION);
+    testUser.grantDatabase("*", auth::Level::RW);
     userEntryMap.emplace("test", testUser);
 
     state->setServerMode(ServerState::Mode::READ_ONLY);
 
-    authInfo.setAuthInfo(userEntryMap);
-    AuthLevel authLevel = authInfo.configuredDatabaseAuthLevel("test", "test");
-    REQUIRE(authLevel == AuthLevel::RW);
+    um.setAuthInfo(userEntryMap);
+    auth::Level authLevel = um.configuredDatabaseAuthLevel("test", "test");
+    REQUIRE(authLevel == auth::Level::RW);
   }
 
   SECTION("Setting ServerState to readonly will make all users effective RO users (collection level)") {
-    AuthUserEntryMap userEntryMap;
-    auto testUser = AuthUserEntry::newUser("test", "test", AuthSource::COLLECTION);
-    testUser.grantDatabase("*", AuthLevel::RW);
-    testUser.grantCollection("test", "test", AuthLevel::RW);
+    auth::UserMap userEntryMap;
+    auto testUser = auth::User::newUser("test", "test", auth::Source::COLLECTION);
+    testUser.grantDatabase("*", auth::Level::RW);
+    testUser.grantCollection("test", "test", auth::Level::RW);
     userEntryMap.emplace("test", testUser);
 
     state->setServerMode(ServerState::Mode::READ_ONLY);
 
-    authInfo.setAuthInfo(userEntryMap);
-    AuthLevel authLevel = authInfo.canUseCollection("test", "test", "test");
-    REQUIRE(authLevel == AuthLevel::RO);
+    um.setAuthInfo(userEntryMap);
+    auth::Level authLevel = um.canUseCollection("test", "test", "test");
+    REQUIRE(authLevel == auth::Level::RO);
   }
 
   SECTION("In readonly mode the configured access level will still be accessible (collection level)") {
-    AuthUserEntryMap userEntryMap;
-    auto testUser = AuthUserEntry::newUser("test", "test", AuthSource::COLLECTION);
-    testUser.grantDatabase("*", AuthLevel::RW);
-    testUser.grantCollection("test", "test", AuthLevel::RW);
+    auth::UserMap userEntryMap;
+    auto testUser = auth::User::newUser("test", "test", auth::Source::COLLECTION);
+    testUser.grantDatabase("*", auth::Level::RW);
+    testUser.grantCollection("test", "test", auth::Level::RW);
     userEntryMap.emplace("test", testUser);
 
     state->setServerMode(ServerState::Mode::READ_ONLY);
 
-    authInfo.setAuthInfo(userEntryMap);
-    AuthLevel authLevel = authInfo.configuredCollectionAuthLevel("test", "test", "test");
-    REQUIRE(authLevel == AuthLevel::RW);
+    um.setAuthInfo(userEntryMap);
+    auth::Level authLevel = um.configuredCollectionAuthLevel("test", "test", "test");
+    REQUIRE(authLevel == auth::Level::RW);
   }
 
   state->setServerMode(ServerState::Mode::DEFAULT);

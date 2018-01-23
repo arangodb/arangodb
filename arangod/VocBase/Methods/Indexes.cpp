@@ -48,7 +48,6 @@
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8Server/v8-collection.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -318,11 +317,11 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
   // can read indexes with RO on db and collection. Modifications require RW/RW
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    AuthLevel lvl = exec->databaseAuthLevel();
-    bool canModify = exec->canUseCollection(collection->name(), AuthLevel::RW);
-    bool canRead = exec->canUseCollection(collection->name(), AuthLevel::RO);
-    if ((create && (lvl != AuthLevel::RW || !canModify)) ||
-        (lvl == AuthLevel::NONE || !canRead)) {
+    auth::Level lvl = exec->databaseAuthLevel();
+    bool canModify = exec->canUseCollection(collection->name(), auth::Level::RW);
+    bool canRead = exec->canUseCollection(collection->name(), auth::Level::RO);
+    if ((create && (lvl != auth::Level::RW || !canModify)) ||
+        (lvl == auth::Level::NONE || !canRead)) {
       return TRI_ERROR_FORBIDDEN;
     }
     if (create && !exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
@@ -510,8 +509,8 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
 arangodb::Result Indexes::drop(LogicalCollection const* collection,
                                VPackSlice const& indexArg) {
   if (ExecContext::CURRENT != nullptr) {
-    if (ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW ||
-        !ExecContext::CURRENT->canUseCollection(collection->name(), AuthLevel::RW)) {
+    if (ExecContext::CURRENT->databaseAuthLevel() != auth::Level::RW ||
+        !ExecContext::CURRENT->canUseCollection(collection->name(), auth::Level::RW)) {
       return TRI_ERROR_FORBIDDEN;
     }
   }

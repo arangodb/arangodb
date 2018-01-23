@@ -475,9 +475,8 @@ static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("RELOAD_AUTH()");
   }
   
-  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-    "Authentication");
-  authentication->authInfo()->outdate();
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  af->userManager()->outdate();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -1808,7 +1807,7 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr && exec->systemAuthLevel() != AuthLevel::RW) {
+  if (exec != nullptr && exec->systemAuthLevel() != auth::Level::RW) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 

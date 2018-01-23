@@ -354,7 +354,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
 
   VocbaseContext* vc = static_cast<VocbaseContext*>(request->requestContext());
   TRI_ASSERT(vc != nullptr);
-  if (vc->databaseAuthLevel() == AuthLevel::NONE &&
+  if (vc->databaseAuthLevel() == auth::Level::NONE &&
       !StringUtils::isPrefix(path, ApiUser)) {
     events::NotAuthorized(request);
     result = rest::ResponseCode::UNAUTHORIZED;

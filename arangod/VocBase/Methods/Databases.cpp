@@ -31,7 +31,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -78,12 +77,13 @@ std::vector<std::string> Databases::list(std::string const& user) {
   } else {
     // slow path for user case
     if (ServerState::instance()->isCoordinator()) {
-      auto auth = FeatureCacheFeature::instance()->authenticationFeature();
+      
+      AuthenticationFeature* af = AuthenticationFeature::instance();
       std::vector<std::string> names;
       std::vector<std::string> dbs = databaseFeature->getDatabaseNamesCoordinator();
       for (std::string const& db : dbs) {
-        if (!auth->isActive() ||
-            auth->authInfo()->canUseDatabase(user, db) != AuthLevel::NONE) {
+        if (!af->isActive() ||
+            af->userManager()->canUseDatabase(user, db) != auth::Level::NONE) {
           names.push_back(db);
         }
       }
@@ -139,7 +139,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 arangodb::Result Databases::create(std::string const& dbName,
                                    VPackSlice const& inUsers,
                                    VPackSlice const& inOptions) {
-  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
+  AuthenticationFeature* af = AuthenticationFeature::instance();
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if (!exec->isAdminUser()) {
@@ -261,10 +261,10 @@ arangodb::Result Databases::create(std::string const& dbName,
     // we need to add the permissions before running the upgrade script
     if (ExecContext::CURRENT != nullptr) {
       // ignore errors here Result r =
-      auth->authInfo()->updateUser(
-          ExecContext::CURRENT->user(), [&](AuthUserEntry& entry) {
-            entry.grantDatabase(dbName, AuthLevel::RW);
-            entry.grantCollection(dbName, "*", AuthLevel::RW);
+      af->userManager()->updateUser(
+          ExecContext::CURRENT->user(), [&](auth::User& entry) {
+            entry.grantDatabase(dbName, auth::Level::RW);
+            entry.grantCollection(dbName, "*", auth::Level::RW);
           });
     }
 
@@ -314,10 +314,10 @@ arangodb::Result Databases::create(std::string const& dbName,
     if (ServerState::instance()->isSingleServer() &&
         ExecContext::CURRENT != nullptr) {
       // ignore errors here Result r =
-      auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
-                                   [&](AuthUserEntry& entry) {
-                                     entry.grantDatabase(dbName, AuthLevel::RW);
-                                     entry.grantCollection(dbName, "*", AuthLevel::RW);
+      af->userManager()->updateUser(ExecContext::CURRENT->user(),
+                                   [&](auth::User& entry) {
+                                     entry.grantDatabase(dbName, auth::Level::RW);
+                                     entry.grantCollection(dbName, "*", auth::Level::RW);
                                    });
     }
 
@@ -382,7 +382,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   TRI_ASSERT(systemVocbase->isSystem());
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    if (exec->systemAuthLevel() != AuthLevel::RW) {
+    if (exec->systemAuthLevel() != auth::Level::RW) {
       return TRI_ERROR_FORBIDDEN;
     } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
@@ -458,10 +458,10 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   }
 
   Result res;
-  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
+  AuthenticationFeature* af = AuthenticationFeature::instance();
   if (ServerState::instance()->isCoordinator() ||
       !ServerState::instance()->isRunningInCluster()) {
-    res = auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
+    res = af->userManager()->enumerateUsers([&](auth::User& entry) {
       entry.removeDatabase(dbName);
     });
   }

@@ -1602,8 +1602,9 @@ AgencyCommResult AgencyComm::send(
       << "': " << body;
 
   arangodb::httpclient::SimpleHttpClientParams params(timeout, false);
-  TRI_ASSERT(AuthenticationFeature::INSTANCE != nullptr);
-  params.setJwt(AuthenticationFeature::INSTANCE->jwtToken());
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
+  params.setJwt(af->tokenCache()->jwtToken());
   params.keepConnectionOnDestruction(true);
   arangodb::httpclient::SimpleHttpClient client(connection, params);
 

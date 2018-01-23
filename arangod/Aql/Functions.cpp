@@ -1816,7 +1816,7 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
     auto& collection = colls[i];
 
     if (auth->isActive() && ExecContext::CURRENT != nullptr &&
-    !ExecContext::CURRENT->canUseCollection(vocbase->name(), collection->name(), AuthLevel::RO)) {
+    !ExecContext::CURRENT->canUseCollection(vocbase->name(), collection->name(), auth::Level::RO)) {
       continue;
     }
 

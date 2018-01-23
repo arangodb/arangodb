@@ -261,12 +261,11 @@ void GeneralServerFeature::start() {
 
   // populate the authentication cache. otherwise no one can access the new
   // database
-  auto authentication =
-      FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication = AuthenticationFeature::instance();
   TRI_ASSERT(authentication != nullptr);
   if (authentication->isActive()) {
-    authentication->authInfo()->outdate();
-    authentication->authInfo()->reloadAllUsers();
+    authentication->userManager()->outdate();
+    authentication->userManager()->reloadAllUsers();
   }
 }
 

@@ -14,6 +14,7 @@ add_executable(
   Agency/MoveShardTest.cpp
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
+  Auth/UserManagerTest.cpp
   Basics/icu-helper.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
@@ -62,7 +63,6 @@ add_executable(
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TypeConversionTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
-  VocBase/AuthInfoTest.cpp
   main.cpp
 )
 
