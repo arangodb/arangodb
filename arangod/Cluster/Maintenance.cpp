@@ -29,7 +29,9 @@
 #include "Cluster/Maintenance.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
@@ -50,6 +52,7 @@ static std::string const INDEXES("indexes");
 static std::string const SHARDS("shards");
 static std::string const DATABASE("database");
 static std::string const COLLECTION("collection");
+static std::string const EDGE("edge");
 static std::string const NAME("name");
 static std::string const ID("id");
 
@@ -91,35 +94,26 @@ VPackBuilder compareIndexes(
   { VPackArrayBuilder a(&builder);
     for (auto const& pindex : VPackArrayIterator(plan)) {
 
-      std::vector<std::string> pfields;
-      for (auto const& pfield : VPackArrayIterator(pindex.get(FIELDS))) {
-        pfields.push_back(pfield.copyString());
-      }
-      auto const& ptype   = pindex.get(TYPE).copyString();
-
       // Skip unique on _key
-      if (pfields.size() == 1 && pfields.front() == KEY && ptype == PRIMARY) { 
+      auto const& ptype   = pindex.get(TYPE).copyString();
+      if (ptype == PRIMARY || ptype == EDGE) { 
         continue;
       }
-
+      auto const& pfields = pindex.get(FIELDS);
       indis.emplace(shname + "/" + pindex.get(ID).copyString());
       
       bool found = false;
       for (auto const& lindex : VPackArrayIterator(local)) {
 
-        std::vector<std::string> lfields;
-        for (auto const& lfield : VPackArrayIterator(lindex.get(FIELDS))) {
-          lfields.push_back(lfield.copyString());
-        }
+        // Skip unique and edge indexes
         auto const& ltype   = lindex.get(TYPE).copyString();
-
-        // Skip unique on _key
-        if (lfields.size() == 1 && lfields.front() == KEY && ptype == PRIMARY) { 
+        if (ltype == PRIMARY || ltype == EDGE) { 
           continue;
         }
-        
+        auto const& lfields = lindex.get(FIELDS);
+
         // Already have
-        if (pfields == lfields && ptype == ltype) {
+        if (VPackNormalizedCompare::equals(pfields, lfields) && ptype == ltype) { 
           found = true;
           break;
         }
@@ -256,8 +250,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
           if (col.value.hasKey(INDEXES)) {
             for (auto const& index :
                    VPackArrayIterator(col.value.get(INDEXES))) {
-              if (index.get(FIELDS).toJson() != KEY &&
-                  index.get(TYPE).copyString() != PRIMARY) {
+              auto const& type = index.get(TYPE).copyString();
+              if (type != PRIMARY && type != EDGE) {
                 std::string const id = index.get(ID).copyString();
                 if (indis.find(id) != indis.end()) {
                   indis.erase(id);
