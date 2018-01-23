@@ -1,7 +1,7 @@
 Sequential Access and Cursors
 =============================
 
-If a query returns a cursor, then you can use *hasNext* and *next* to
+If a query returns a cursor (for example by calling `db._query(...)`), then you can use *hasNext* and *next* to
 iterate over the result set or *toArray* to convert it to an array.
 
 If the number of query results is expected to be big, it is possible to 
@@ -42,7 +42,7 @@ documents. In this case the next document can be accessed using the
     ~ db.five.save({ name : "three" });
     ~ db.five.save({ name : "four" });
     ~ db.five.save({ name : "five" });
-      var a = db.five.all();
+      var a = db._query("FOR x IN five RETURN x");
       while (a.hasNext()) print(a.next());
     ~ db._drop("five")
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -74,7 +74,7 @@ exhausted cursor, then *undefined* is returned.
     ~ db.five.save({ name : "three" });
     ~ db.five.save({ name : "four" });
     ~ db.five.save({ name : "five" });
-      db.five.all().next();
+      db._query("FOR x IN five RETURN x").next();
     ~ db._drop("five")
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock cursorNext
@@ -124,7 +124,11 @@ lead to the same result:
     ~ db.users.save({ name: "Helmut" });
     ~ db.users.save({ name: "Angela" });
       result = db.users.all().toArray();
-      q = db.users.all(); q.execute(); result = [ ]; while (q.hasNext()) { result.push(q.next()); }
+    | var q = db._query("FOR x IN users RETURN x");
+    | result = [ ];
+    | while (q.hasNext()) {
+    |   result.push(q.next());
+      }
     ~ db._drop("users")
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock executeQueryNoBatchSize
@@ -170,7 +174,7 @@ returns that number. The *count* operator ignores any limits and returns
 the total number of documents found.
 
 **Note**: Not all simple queries support counting. In this case *null* is
-returned.
+returned (Simple queries are deprecated).
 
 `cursor.count(true)`
 
@@ -180,40 +184,6 @@ skiped using the *skip* operator, the *count* operator with argument
 applying *limit* and *skip*.
 
 **Note**: Not all simple queries support counting. In this case *null* is
-returned.
-
-
-**Examples**
-
-
-Ignore any limit:
-
-    @startDocuBlockInline cursorCountUnLimited
-    @EXAMPLE_ARANGOSH_OUTPUT{cursorCountUnLimited}
-    ~ db._create("five");
-    ~ db.five.save({ name : "one" });
-    ~ db.five.save({ name : "two" });
-    ~ db.five.save({ name : "three" });
-    ~ db.five.save({ name : "four" });
-    ~ db.five.save({ name : "five" });
-      db.five.all().limit(2).count();
-    ~ db._drop("five")
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock cursorCountUnLimited
-
-Counting any limit or skip:
-
-    @startDocuBlockInline cursorCountLimit
-    @EXAMPLE_ARANGOSH_OUTPUT{cursorCountLimit}
-    ~ db._create("five");
-    ~ db.five.save({ name : "one" });
-    ~ db.five.save({ name : "two" });
-    ~ db.five.save({ name : "three" });
-    ~ db.five.save({ name : "four" });
-    ~ db.five.save({ name : "five" });
-      db.five.all().limit(2).count(true);
-    ~ db._drop("five")
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock cursorCountLimit
+returned (Simple queries are deprecated)..
 
 
