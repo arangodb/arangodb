@@ -91,9 +91,8 @@ function recoverySuite () {
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
 
-// uncomment when rocksdb recovery will be fixed
-//      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsRecoveryView FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length", null, { }).json;
-//      assertEqual(result[0], 10000);
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsRecoveryView FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length", null, { }).json;
+      assertEqual(result[0], 10000);
 
       // validate state
       var properties = v.properties();

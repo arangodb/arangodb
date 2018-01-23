@@ -28,6 +28,7 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
@@ -256,96 +257,104 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
       dropCollectionFromAllViews(*_dbFeature, dbId, collectionId);
     } break;
     case RocksDBLogType::IndexCreate: {
-//      auto const indexSlice = RocksDBLogValue::indexSlice(blob);
-//
-//      if (!indexSlice.isObject()) {
-//        LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
-//            << "cannot recover index for collection: invalid marker";
-//        return;
-//      }
-//
-//      // ensure null terminated string
-//      auto const indexTypeStr = indexTypeSlice.copyString();
-//      auto const indexType = arangodb::Index::type(indexTypeStr.c_str());
-//
-//      if (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK != indexType) {
-//        // skip non iresearch link indexes
-//        return;
-//      }
-//
-//
-//      TRI_voc_tick_t const dbId = RocksDBLogValue::databaseId(blob);
-//      TRI_voc_cid_t const collectionId = RocksDBLogValue::collectionId(blob);
-//
-//      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
-//
-//      if (!vocbase) {
-//        // if the underlying database is gone, we can go on
-//        LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
-//            << "cannot create index for collection " << collectionId
-//            << " in database " << databaseId << ": "
-//            << TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-//        return;
-//      }
-//
-//      auto* col = vocbase->lookupCollection(collectionId);
-//
-//      if (!col) {
-//        // if the underlying collection gone, we can go on
-//        LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
-//            << "cannot create index for collection " << collectionId
-//            << " in database " << databaseId << ": "
-//            << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-//        return;
-//      }
-//
-//      TRI_idx_iid_t indexId = numericValue<TRI_idx_iid_t>(payloadSlice, "id");
-//
-//        if (state->isDropped(databaseId, collectionId)) {
-//          return true;
-//        }
-//
-//        LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
-//            << "found create index marker. databaseId: " << databaseId
-//            << ", collectionId: " << collectionId;
-//
-//
-//
-//        auto physical = static_cast<MMFilesCollection*>(col->getPhysical());
-//        TRI_ASSERT(physical != nullptr);
-//        MMFilesPersistentIndexFeature::dropIndex(databaseId, collectionId,
-//                                                 indexId);
-//
-//        std::string const indexName("index-" + std::to_string(indexId) +
-//                                    ".json");
-//        std::string const filename(arangodb::basics::FileUtils::buildFilename(
-//            physical->path(), indexName));
-//
-//        bool const forceSync = state->willBeDropped(databaseId, collectionId);
-//        bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-//            filename, payloadSlice, forceSync);
-//
-//        if (!ok) {
-//          LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
-//              << "cannot create index " << indexId << ", collection "
-//              << collectionId << " in database " << databaseId;
-//          ++state->errorCount;
-//          return state->canContinue();
-//        } else {
-//          auto ctx = transaction::StandaloneContext::Create(vocbase);
-//          arangodb::SingleCollectionTransaction trx(ctx, collectionId,
-//                                                    AccessMode::Type::WRITE);
-//          std::shared_ptr<arangodb::Index> unused;
-//          int res = physical->restoreIndex(&trx, payloadSlice, unused);
-//
-//          if (res != TRI_ERROR_NO_ERROR) {
-//            LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
-//                << "cannot create index " << indexId << ", collection "
-//                << collectionId << " in database " << databaseId;
-//            ++state->errorCount;
-//            return state->canContinue();
-//          }
-//        }
+      auto const indexSlice = RocksDBLogValue::indexSlice(blob);
+
+      if (!indexSlice.isObject()) {
+        LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+            << "cannot recover index for collection: invalid marker";
+        return;
+      }
+
+      // ensure null terminated string
+      auto const indexTypeSlice = indexSlice.get("type");
+      auto const indexTypeStr = indexTypeSlice.copyString();
+      auto const indexType = arangodb::Index::type(indexTypeStr.c_str());
+
+      if (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK != indexType) {
+        // skip non iresearch link indexes
+        return;
+      }
+
+      TRI_voc_tick_t const dbId = RocksDBLogValue::databaseId(blob);
+      TRI_voc_cid_t const cid = RocksDBLogValue::collectionId(blob);
+      TRI_vocbase_t* vocbase = _dbFeature->useDatabase(dbId);
+
+      if (!vocbase) {
+        // if the underlying database is gone, we can go on
+        LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "cannot create index for collection " << cid
+            << " in database " << dbId << ": "
+            << TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+        return;
+      }
+
+      auto const idSlice = indexSlice.get("id");
+
+      TRI_idx_iid_t iid;
+
+      if (idSlice.isString()) {
+        iid = static_cast<TRI_idx_iid_t>(std::stoull(idSlice.copyString()));
+      } else if (idSlice.isNumber()) {
+        iid = idSlice.getNumber<TRI_idx_iid_t>();
+      } else {
+        LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+           << "invalid value for attribute 'id', expected `String` or `Number`, got '"
+           << idSlice.typeName() << "'";
+        return;
+      }
+
+      auto* col = vocbase->lookupCollection(cid);
+
+      if (!col) {
+        // if the underlying collection gone, we can go on
+        LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "cannot create index for collection " << cid
+            << " in database " << dbId << ": "
+            << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+        return;
+      }
+
+      auto* link = lookupLink(*_dbFeature, dbId, cid, iid);
+
+      if (!link) {
+        LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "Collection '" << cid
+            << "' in database '" << dbId
+            << "' does not contain index of type 'IResearchLink' with id '" << iid << "'";
+        return;
+      }
+
+      // FIXME add non-const view() getter
+      auto* view = const_cast<IResearchView*>(link->view());
+
+      if (!view) {
+        LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "Collection '" << cid
+            << "' in database '" << dbId
+            << "' has orphaned link id '" << iid << "'";
+        return;
+      }
+
+      LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+          << "found create index marker. databaseId: " << dbId
+          << ", collectionId: " << cid;
+
+      // re-insert link into the view
+      auto const strCid = std::to_string(cid);
+
+      arangodb::velocypack::Builder linksBuilder;
+      linksBuilder.openObject();
+      linksBuilder.add(
+        strCid,
+        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
+      ); // drop link
+      linksBuilder.add(
+        strCid,
+        indexSlice
+      ); // add link
+      linksBuilder.close();
+
+      view->updateProperties(linksBuilder.slice(), true, false);
     } break;
     case RocksDBLogType::IndexDrop: {
       const TRI_voc_tick_t dbId = RocksDBLogValue::databaseId(blob);
@@ -355,13 +364,22 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
 
       if (!link) {
         LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
-            << "Collection '" << cid << "' does not contain index of type 'IResearchLink'"
-            << "', index id '" << iid << "'";
+            << "Collection '" << cid
+            << "' in database '" << dbId
+            << "' does not contain index of type 'IResearchLink' with id '" << iid << "'";
         return;
       }
 
       // FIXME add non-const view() getter
       auto* view = const_cast<IResearchView*>(link->view());
+
+      if (!view) {
+        LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "Collection '" << cid
+            << "' in database '" << dbId
+            << "' has orphaned link id '" << iid << "'";
+        return;
+      }
 
       // remove link
       arangodb::velocypack::Builder linksBuilder;
