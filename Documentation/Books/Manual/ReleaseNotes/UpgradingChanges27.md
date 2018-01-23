@@ -229,7 +229,7 @@ ArangoDB 2.7.
 
 ### Runtime endpoints manipulation API
 
-The following HTTP REST API methods for runtime manipulation of server endpoints have been
+The following HTTP RESTful API methods for runtime manipulation of server endpoints have been
 removed in ArangoDB 2.7:
 
 * POST `/_api/endpoint`: to dynamically add an endpoint while the server was running

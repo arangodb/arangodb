@@ -29,8 +29,8 @@ AQL
   An error stating the above is included.
 
 
-REST API
---------
+RESTful API
+-----------
 
 * Removed undocumented internal HTTP API:
   * PUT /_api/edges
@@ -41,7 +41,7 @@ REST API
   `If-Match` and `If-None-Match` headers from returning HTTP status code 400 (bad request)
   to returning HTTP status code 412 (precondition failed).
 
-* the REST API for fetching the list of currently running AQL queries and the REST API
+* the RESTful API for fetching the list of currently running AQL queries and the RESTful API
   for fetching the list of slow AQL queries now return an extra *bindVars* attribute which
   contains the bind parameters used by the queries.
 
@@ -49,15 +49,15 @@ REST API
   * GET /_api/query/current
   * GET /_api/query/slow
 
-* The REST API for retrieving indexes (GET /_api/index) now returns the *deduplicate*
+* The RESTful API for retrieving indexes (GET /_api/index) now returns the *deduplicate*
   attribute for each index
 
-* The REST API for creating indexes (POST /_api/index) now accepts the optional *deduplicate*
+* The RESTful API for creating indexes (POST /_api/index) now accepts the optional *deduplicate*
   attribute
 
-* The REST API for executing a server-side transaction (POST /_api/transaction) now accepts the optional attributes: `maxTransactionSize`, `intermediateCommitCount`, `intermediateCommitSize`
+* The RESTful API for executing a server-side transaction (POST /_api/transaction) now accepts the optional attributes: `maxTransactionSize`, `intermediateCommitCount`, `intermediateCommitSize`
 
-* The REST API for creating a cursor (POST /_api/cursor) now accepts the optional attributes: `failOnWarning`, `maxTransactionSize`, `maxWarningCount`, `intermediateCommitCount`, `satelliteSyncWait`, `intermediateCommitSize`. `skipInaccessibleCollections`
+* The RESTful API for creating a cursor (POST /_api/cursor) now accepts the optional attributes: `failOnWarning`, `maxTransactionSize`, `maxWarningCount`, `intermediateCommitCount`, `satelliteSyncWait`, `intermediateCommitSize`. `skipInaccessibleCollections`
 
 JavaScript API
 --------------
@@ -136,9 +136,9 @@ Command-line options changed
 Users Management
 ----------------------
 
-* It is no longer supported to access the `_users` collecction in any way directly, except through the official `@arangodb/users` module or the `_apit/users` REST API.
+* It is no longer supported to access the `_users` collecction in any way directly, except through the official `@arangodb/users` module or the `_apit/users` RESTful API.
 
-* The access to the `_users` collection from outside of the arangod server process is now forbidden (Through drivers, arangosh or the REST API). Foxx services are still be able to access the `_users` collection for now, but this might change in future minor releases.
+* The access to the `_users` collection from outside of the arangod server process is now forbidden (Through drivers, arangosh or the RESTful API). Foxx services are still be able to access the `_users` collection for now, but this might change in future minor releases.
 
 * The internal format of the documents in the `_users` collection has changed from previous versions
 

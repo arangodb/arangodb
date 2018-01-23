@@ -1,7 +1,7 @@
 Handling Edges
 ==============
 
-Examples will explain the REST API for [manipulating edges](../../Manual/Graphs/GeneralGraphs/Functions.html)
+Examples will explain the RESTful API for [manipulating edges](../../Manual/Graphs/GeneralGraphs/Functions.html)
 of the [graph module](../../Manual/Graphs/index.html) on the [knows graph](../../Manual/Graphs/index.html#the-knowsgraph):
 
 ![Social Example Graph](../../Manual/Graphs/knows_graph.png)

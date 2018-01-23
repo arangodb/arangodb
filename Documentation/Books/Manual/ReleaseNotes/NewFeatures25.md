@@ -122,7 +122,7 @@ Indexes of type `primary`, `edge` and `hash` now provide selectivity estimates. 
 will be used by the AQL query optimizer when deciding about index usage. Using selectivity
 estimates can lead to faster query execution when more selective indexes are used.
 
-The selectivity estimates are also returned by the `GET /_api/index` REST API method
+The selectivity estimates are also returned by the `GET /_api/index` RESTful API method
 in a sub-attribute `selectivityEstimate` for each index that supports it. This
 attribute will be omitted for indexes that do not provide selectivity estimates.
 If provided, the selectivity estimate will be a numeric value between 0 and 1.

@@ -84,7 +84,7 @@ exclude from the initial synchronization and the continuous replication using th
 The above example will in general include system collections, but will exclude the
 specified three collections from continuous replication.
 
-The HTTP REST API methods for fetching the replication inventory and for dumping 
+The HTTP RESTful API methods for fetching the replication inventory and for dumping 
 collections also support the `includeSystem` control flag via a URL parameter of
 the same name.
 
@@ -124,7 +124,7 @@ merged on an update operation or overwritten. The default has been, and still is
 to merge. Not specifying the parameter will lead to a merge, as it has been the
 behavior in ArangoDB ever since.
 
-This affects the HTTP REST API method PATCH `/_api/document/collection/key`. Its
+This affects the HTTP RESTful API method PATCH `/_api/document/collection/key`. Its
 optional URL parameter `mergeArrays` for the option has been renamed to `mergeObjects`. 
 
 The AQL `UPDATE` statement is also affected, as its option `mergeArrays` has also
@@ -166,7 +166,7 @@ of ArangoDB. Both functions have been unified to `_relation()`.
 The modules `org/arangodb/graph` and `org/arangodb/graph-blueprint` are deprecated. 
 Please use module `org/arangodb/general-graph` instead.
 
-The HTTP REST API `_api/graph` and all its methods are deprecated. Please use 
+The HTTP RESTful API `_api/graph` and all its methods are deprecated. Please use 
 the general graph API `_api/gharial` instead.
 
 
@@ -180,7 +180,7 @@ The following replication-related JavaScript methods became obsolete in ArangoDB
 * `require("org/arangodb/replication").logger.stop()`
 * `require("org/arangodb/replication").logger.properties()`
 
-The REST API methods for these functions have also been removed in ArangoDB 2.4:  
+The RESTful API methods for these functions have also been removed in ArangoDB 2.4:  
 
 * HTTP PUT `/_api/replication/logger-start` 
 * HTTP PUT `/_api/replication/logger-stop` 

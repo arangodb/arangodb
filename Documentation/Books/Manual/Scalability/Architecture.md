@@ -169,7 +169,7 @@ This allows to scale down an ArangoDB cluster without service interruption,
 loss of fault tolerance or data loss. Furthermore, one can re-balance the
 distribution of the shards, either manually or automatically.
 
-All these operations can be triggered via a REST/JSON API or via the
+All these operations can be triggered via a RESTful/JSON API or via the
 graphical web UI. All fail-over operations are completely handled within
 the ArangoDB cluster.
 
@@ -238,7 +238,7 @@ The advantage of this approach is that we can not only implement the
 initial deployment, but also the later management of automatic 
 replacement of failed instances and the scaling of the ArangoDB cluster
 (triggered manually or even automatically). Since all manipulations are
-either via the graphical web UI or via JSON/REST calls, one can even
+either via the graphical web UI or via JSON/RESTful calls, one can even
 implement auto-scaling very easily.
 
 A DC/OS cluster is a very natural environment to deploy microservice

@@ -22,7 +22,7 @@ The documentation is organized in four handbooks:
 
 Features are illustrated with interactive usage examples; you can cut'n'paste them
 into [arangosh](Administration/Arangosh/README.md) to try them out. The HTTP
-[REST-API](../HTTP/index.html) for driver developers is demonstrated with cut'n'paste
+[RESTful-API](../HTTP/index.html) for driver developers is demonstrated with cut'n'paste
 recepies intended to be used with the [cURL](http://curl.haxx.se). Drivers may provide
 their own examples based on these .js based examples to improve understandeability
 for their respective users, i.e. for the [java driver](https://github.com/arangodb/arangodb-java-driver#learn-more)

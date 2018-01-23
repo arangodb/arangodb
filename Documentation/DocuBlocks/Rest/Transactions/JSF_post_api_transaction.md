@@ -20,7 +20,7 @@ form of stringified JavaScript code. The code will be executed on server
 side, with late binding. It is thus critical that the code specified in
 *action* properly sets up all the variables it needs.
 If the code specified in *action* ends with a return statement, the
-value returned will also be returned by the REST API in the *result*
+value returned will also be returned by the RESTful API in the *result*
 attribute if the transaction committed successfully.
 
 @RESTBODYPARAM{waitForSync,boolean,optional,boolean}

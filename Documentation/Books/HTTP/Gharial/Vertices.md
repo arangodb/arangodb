@@ -1,7 +1,7 @@
 Handling Vertices
 =================
 
-Examples will explain the REST API to the [graph module](../../Manual/Graphs/index.html)
+Examples will explain the RESTful API to the [graph module](../../Manual/Graphs/index.html)
 on the [social graph](../../Manual/Graphs/index.html#the-social-graph):
 
 ![Social Example Graph](../../Manual/Graphs/social_graph.png)

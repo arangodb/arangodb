@@ -58,7 +58,7 @@ This will asked for a root password and sets this password.
 
 ### Web interface
 
-The server itself (*arangod*) speaks HTTP / REST, but you can use the
+The server itself (*arangod*) speaks HTTP / RESTful, but you can use the
 graphical web interface to keep it simple. There's also
 [arangosh](../Administration/Arangosh/README.md), a synchronous shell
 for interaction with the server. If you're a developer, you might

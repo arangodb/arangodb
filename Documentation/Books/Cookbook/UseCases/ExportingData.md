@@ -277,7 +277,7 @@ In this script only the `_key` and `name` attributes are extracted. In the print
 
 ### Using the API without PHP
 
-The export API REST interface can be used with any client that can speak HTTP like curl. With the following command you can fetch the documents from the `users` collection:
+The export API RESTful interface can be used with any client that can speak HTTP like curl. With the following command you can fetch the documents from the `users` collection:
 
 ```bash
 curl

@@ -177,7 +177,7 @@ arangosh> stmt = db._createStatement("FOR i IN mycollection REMOVE i IN mycollec
 ### Changed return values in HTTP method `POST /_api/cursor`
 
 The previously mentioned change also leads to the statistics being returned in the
-HTTP REST API method `POST /_api/cursor`. Previously, the return value contained
+HTTP RESTful API method `POST /_api/cursor`. Previously, the return value contained
 an optional `extra` attribute that was filled only for data-modification queries and in 
 some other cases as follows:
 
@@ -232,7 +232,7 @@ In ArangoDB 2.3, the full execution plan for an AQL query is returned alongside 
 applied optimizer rules, optimization warnings etc. It is also possible to have the 
 optimizer return all execution plans. This required a new data structure.
 
-Client programs that use `ArangoStatement.explain()` or the HTTP REST API method
+Client programs that use `ArangoStatement.explain()` or the HTTP RESTful API method
 `POST /_api/explain` may need to be adjusted to use the new return format.
 
 
@@ -312,7 +312,7 @@ warnings will eventually disappear.
 
 ### Other removed features
 
-The HTTP REST API method at `POST /_admin/modules/flush` has been removed. 
+The HTTP RESTful API method at `POST /_admin/modules/flush` has been removed. 
 
 
 Known issues

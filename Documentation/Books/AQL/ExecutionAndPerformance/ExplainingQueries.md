@@ -9,7 +9,7 @@ An explain will throw an error if the given query is syntactically invalid. Othe
 return the execution plan and some information about what optimizations could be applied to
 the query. The query will not be executed.
 
-Explaining a query can be achieved by calling the [HTTP REST API](../../HTTP/AqlQuery/index.html).
+Explaining a query can be achieved by calling the [HTTP RESTful API](../../HTTP/AqlQuery/index.html).
 A query can also be explained from the ArangoShell using `ArangoStatement`'s `explain` method.
 
 By default, the query optimizer will return what it considers to be the *optimal plan*. The

@@ -135,8 +135,7 @@ said ArangoSearch view defining the link parameters as per the section
 To simplify query syntax ArangoSearch provides a concept of 
 [named analyzers](IResearch/Analyzers.md) which
 are merely aliases for type+configuration of IResearch analyzers. Management of
-named analyzers is exposed via both REST, GUI and JavaScript APIs, e.g.
-
+named analyzers is exposed via the RESTful API, GUI and JavaScript APIs, e.g.
 
 ### View definition/modification
 

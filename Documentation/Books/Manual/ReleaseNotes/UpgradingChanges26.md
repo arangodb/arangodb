@@ -215,14 +215,14 @@ returned by the function instead of the previous array value.
 A batchSize value `0` is now disallowed when calling the cursor API via HTTP 
 `POST /_api/cursor`.
 
-The HTTP REST API `POST /_api/cursor` does not accept a `batchSize` parameter value of 
+The HTTP RESTful API `POST /_api/cursor` does not accept a `batchSize` parameter value of 
 `0` any longer. A batch size of 0 never made much sense, but previous versions of ArangoDB
 did not check for this value. Now creating a cursor using a `batchSize` value 0 will
 result in an HTTP 400 error response.
 
 ### Document URLs returned
 
-The REST API method GET `/_api/document?collection=...` (that method will return partial URLs 
+The RESTful API method GET `/_api/document?collection=...` (that method will return partial URLs 
 to all documents in the collection) will now properly prefix document address URLs with the 
 current database name.
 
@@ -256,7 +256,7 @@ The following simple query functions are now deprecated:
 * collection.range 
 * collection.closedRange 
 
-This also lead to the following REST API methods being deprecated from now on:
+This also lead to the following RESTful API methods being deprecated from now on:
 
 * PUT /_api/simple/near
 * PUT /_api/simple/within
@@ -280,7 +280,7 @@ which are more flexible because they can be combined with other operations:
       LIMIT @skip, @limit 
       RETURN doc`
   
-The above simple query functions and REST API methods may be removed in future versions 
+The above simple query functions and RESTful API methods may be removed in future versions 
 of ArangoDB.
 
 Using negative values for `SimpleQuery.skip()` is also deprecated. 
