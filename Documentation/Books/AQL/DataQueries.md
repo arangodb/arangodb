@@ -299,8 +299,8 @@ collection into the same query. It is however possible to modify different colle
 by using multiple data-modification operations for different collections in the
 same query.
 In case you have a query with several places that need to remove documents from the
-same collection, it is recommended to these documents in an array and have the 
-documents from that array removed using a single `REMOVE` operation.
+same collection, it is recommended to collect these documents or their keys in an array 
+and have the documents from that array removed using a single `REMOVE` operation.
 
 Data-modification operations can optionally be followed by `LET` operations to 
 perform further calculations and a `RETURN` operation to return data.
