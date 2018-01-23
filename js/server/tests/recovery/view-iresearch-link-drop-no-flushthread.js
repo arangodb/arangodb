@@ -39,7 +39,7 @@ function runSetup () {
   var c = db._create('UnitTestsRecoveryDummy');
 
   db._dropView('UnitTestsRecovery1');
-  var v = db._createView('UnitTestsRecovery1', 'iresearch', {});
+  var v = db._createView('UnitTestsRecovery1', 'arangosearch', {});
 
   // setup link
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };

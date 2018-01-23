@@ -63,6 +63,7 @@ set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
 
 if (USE_ENTERPRISE)
+  add_definitions("-DUSE_ENTERPRISE=1")
   add_subdirectory(enterprise)
 endif ()
 
@@ -77,7 +78,9 @@ endif ()
 
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "3")
-set(ARANGODB_VERSION_REVISION   "devel")
+if (NOT DEFINED ARANGODB_VERSION_REVISION)
+  set(ARANGODB_VERSION_REVISION   "devel")
+endif()
 set(ARANGODB_PACKAGE_REVISION   "1")
 # version for the windows rc file needs to be numeric:
 if (ARANGODB_VERSION_REVISION GREATER -1)
@@ -613,13 +616,7 @@ endfunction()
 # ------------------------------------------------------------------------------
 
 if (USE_JEMALLOC)
-  add_subdirectory(3rdParty/jemalloc)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
-
-  include_directories("${JEMALLOC_HOME}/include")
-  link_directories("${JEMALLOC_HOME}/lib")
-
-  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB})
 
   if (LINUX OR DARWIN)
     add_definitions("-DARANGODB_MMAP_JEMALLOC=1")
@@ -770,7 +767,7 @@ endif()
 # IResearch
 # ------------------------------------------------------------------------------
 
-option(USE_IRESEARCH OFF)
+option(USE_IRESEARCH "enable ArangoSearch views" ON)
 
 if(USE_IRESEARCH)
   add_definitions("-DUSE_IRESEARCH=1")
@@ -794,14 +791,11 @@ endif()
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/boost)
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
-
-add_subdirectory(3rdParty/rocksdb)
 
 add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
 include_directories(${ROCKSDB_INCLUDE_DIR})

@@ -20,6 +20,8 @@ endif()
 ### compile options
 ################################################################################
 
+option(USE_TESTS "Build tests" OFF)
+option(USE_IQL "Build IQL" ON)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 
 if (USE_VALGRIND)
@@ -49,6 +51,9 @@ endif()
 if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
   set(GCOV_LIBRARY gcov)
 endif()
+
+# set sanitizers
+find_package(Sanitizers)
 
 #find BFD
 find_package(BFD
@@ -126,144 +131,164 @@ mark_as_advanced(
 
 add_definitions(-DUNICODE -D_UNICODE)
 
+# set test resource directory
+set(IResearch_test_resource_dir
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/resources
+)
+
+# generate tests_config.hpp here instead of inside 'tests' to make available externally
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/tests/tests_config.hpp.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/tests/tests_config.hpp"
+)
+
+# need iql for tests
+if (USE_TESTS AND NOT USE_IQL)
+  set(USE_IQL ON CACHE BOOL "Use IQL" FORCE)
+endif()
+
 add_subdirectory(core)
 add_subdirectory(external)
-add_subdirectory(tests)
 add_subdirectory(utils)
 
-# setup code coverage
-if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
-  include(CodeCoverage)
-  
-  # exclude directories from coverage report
-  SET(LCOV_EXCLUDE "external/*;boost/*")
+if (USE_TESTS)
+  add_subdirectory(tests)
 
-  setup_target_for_coverage(
-    ${IResearch_TARGET_NAME}-coverage 
-    $<TARGET_FILE:${IResearchTests_TARGET_NAME}-static>
-    coverage
-    "--ires_output"
-  )
-  add_dependencies(${IResearch_TARGET_NAME}-coverage
-    ${IResearchTests_TARGET_NAME}
-  )
+  # setup code coverage
+  if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
+    include(CodeCoverage)
 
-  if (PYTHON_EXECUTABLE AND GCOVR_PATH)   
     # exclude directories from coverage report
-    SET(GCOVR_EXTRA_ARGS "-e;${PROJECT_SOURCE_DIR}/external/")
+    SET(LCOV_EXCLUDE "external/*;boost/*")
 
-    setup_target_for_coverage_cobertura(
-      ${IResearch_TARGET_NAME}-coverage-cobertura
+    setup_target_for_coverage(
+      ${IResearch_TARGET_NAME}-coverage 
       $<TARGET_FILE:${IResearchTests_TARGET_NAME}-static>
       coverage
       "--ires_output"
     )
-    add_dependencies(${IResearch_TARGET_NAME}-coverage-cobertura
+    add_dependencies(${IResearch_TARGET_NAME}-coverage
       ${IResearchTests_TARGET_NAME}
     )
+
+    if (PYTHON_EXECUTABLE AND GCOVR_PATH)   
+      # exclude directories from coverage report
+      SET(GCOVR_EXTRA_ARGS "-e;${PROJECT_SOURCE_DIR}/external/")
+
+      setup_target_for_coverage_cobertura(
+        ${IResearch_TARGET_NAME}-coverage-cobertura
+        $<TARGET_FILE:${IResearchTests_TARGET_NAME}-static>
+        coverage
+        "--ires_output"
+      )
+      add_dependencies(${IResearch_TARGET_NAME}-coverage-cobertura
+        ${IResearchTests_TARGET_NAME}
+      )
+    endif()
   endif()
-endif()
 
-# testing
-enable_testing()
-add_test(
-  iresearch-tests
-  ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX}
-)
+  # testing
+  enable_testing()
+  add_test(
+    iresearch-tests
+    ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX}
+  )
 
-# testing auto build not working
-# due to the following bug in cmake
-# http://public.kitware.com/Bug/view.php?id=8774
-# here is the workaround:
-add_custom_target(iresearch-check
-  COMMAND ${CMAKE_CTEST_COMMAND} 
-  DEPENDS iresearch-tests
-)
+  # testing auto build not working
+  # due to the following bug in cmake
+  # http://public.kitware.com/Bug/view.php?id=8774
+  # here is the workaround:
+  add_custom_target(iresearch-check
+    COMMAND ${CMAKE_CTEST_COMMAND} 
+    DEPENDS iresearch-tests
+  )
 
-# setup target for memory allocation profiling
-add_custom_target(iresearch-tests-malloc
-  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-  COMMAND ms_print --x=500 --y=100 massif.out > massif.log
-  DEPENDS iresearch-tests
-)
+  # setup target for memory allocation profiling
+  add_custom_target(iresearch-tests-malloc
+    COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    COMMAND ms_print --x=500 --y=100 massif.out > massif.log
+    DEPENDS iresearch-tests
+  )
 
-# setup target for memory allocation profiling
-add_custom_target(iresearch-tests-malloc-s
-  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-  COMMAND ms_print --x=500 --y=100 massif.out > massif.log
-  DEPENDS iresearch-tests
-)
+  # setup target for memory allocation profiling
+  add_custom_target(iresearch-tests-malloc-s
+    COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    COMMAND ms_print --x=500 --y=100 massif.out > massif.log
+    DEPENDS iresearch-tests
+  )
 
-# setup target for memory allocation profiling
-add_custom_target(iresearch-tests-malloc-fast
-  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-  COMMAND ms_print --x=500 --y=100 massif.out > massif.log
-  DEPENDS iresearch-tests
-)
+  # setup target for memory allocation profiling
+  add_custom_target(iresearch-tests-malloc-fast
+    COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    COMMAND ms_print --x=500 --y=100 massif.out > massif.log
+    DEPENDS iresearch-tests
+  )
 
-# setup target for memory allocation profiling
-add_custom_target(iresearch-tests-malloc-s-fast
-  COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-  COMMAND ms_print --x=500 --y=100 massif.out > massif.log
-  DEPENDS iresearch-tests
-)
+  # setup target for memory allocation profiling
+  add_custom_target(iresearch-tests-malloc-s-fast
+    COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    COMMAND ms_print --x=500 --y=100 massif.out > massif.log
+    DEPENDS iresearch-tests
+  )
 
-# setup target for memory leak detection
-add_custom_target(iresearch-tests-memleak
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-  DEPENDS iresearch-tests
-)
+  # setup target for memory leak detection
+  add_custom_target(iresearch-tests-memleak
+    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    DEPENDS iresearch-tests
+  )
 
-# setup target for memory leak detection
-add_custom_target(iresearch-tests-memleak-s
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-  DEPENDS iresearch-tests-static
-)
+  # setup target for memory leak detection
+  add_custom_target(iresearch-tests-memleak-s
+    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    DEPENDS iresearch-tests-static
+  )
 
-# setup target for memory leak detection
-add_custom_target(iresearch-tests-memleak-fast
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-  DEPENDS iresearch-tests
-)
+  # setup target for memory leak detection
+  add_custom_target(iresearch-tests-memleak-fast
+    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    DEPENDS iresearch-tests
+  )
 
-# setup target for memory leak detection
-add_custom_target(iresearch-tests-memleak-s-fast
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-  DEPENDS iresearch-tests-static
-)
+  # setup target for memory leak detection
+  add_custom_target(iresearch-tests-memleak-s-fast
+    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    DEPENDS iresearch-tests-static
+  )
 
-# setup target for memory leak detection
-add_custom_target(iresearch-tests-memleak-shallow
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-  DEPENDS iresearch-tests
-)
+  # setup target for memory leak detection
+  add_custom_target(iresearch-tests-memleak-shallow
+    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    DEPENDS iresearch-tests
+  )
 
-# setup target for memory leak detection
-add_custom_target(iresearch-tests-memleak-s-shallow
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-  DEPENDS iresearch-tests-static
-)
+  # setup target for memory leak detection
+  add_custom_target(iresearch-tests-memleak-s-shallow
+    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    DEPENDS iresearch-tests-static
+  )
 
-# setup target for memory leak detection
-add_custom_target(iresearch-tests-memleak-shallow-fast
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-  DEPENDS iresearch-tests
-)
+  # setup target for memory leak detection
+  add_custom_target(iresearch-tests-memleak-shallow-fast
+    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    DEPENDS iresearch-tests
+  )
 
-# setup target for memory leak detection
-add_custom_target(iresearch-tests-memleak-s-shallow-fast
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-  DEPENDS iresearch-tests-static
-)
+  # setup target for memory leak detection
+  add_custom_target(iresearch-tests-memleak-s-shallow-fast
+    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    DEPENDS iresearch-tests-static
+  )
 
-# setup target for thread race detection
-add_custom_target(iresearch-tests-threadrace
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*_mt --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-  DEPENDS iresearch-tests
-)
+  # setup target for thread race detection
+  add_custom_target(iresearch-tests-threadrace
+    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*_mt --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    DEPENDS iresearch-tests
+  )
 
-# setup target for thread race detection
-add_custom_target(iresearch-tests-threadrace-s
-  COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*_mt --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-  DEPENDS iresearch-tests-static
-)
+  # setup target for thread race detection
+  add_custom_target(iresearch-tests-threadrace-s
+    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*_mt --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    DEPENDS iresearch-tests-static
+  )
+
+endif() # USE_TESTS

@@ -82,6 +82,7 @@ class bitvector final {
     auto last_word = bitset::word(other.size() - 1); // -1 for bit offset
 
     for (size_t i = 0; i < last_word; ++i) {
+      assert(i < set_.words() && i < other.set_.words());
       *(data + i) &= *(other.data() + i);
     }
 
@@ -89,13 +90,15 @@ class bitvector final {
     auto last_word_bits = other.size() % bits_required<word_t>();
     const auto mask = (word_t(1) << last_word_bits) - 1; // set all bits that are not part of 'other.size()'
 
+    assert(last_word < set_.words() && last_word < other.set_.words());
     *(data + last_word) &= (*(other.data() + last_word) & mask);
+    std::memset(data + last_word + 1, 0, (set_.words() - last_word - 1) * sizeof(word_t)); // unset tail words
 
     return *this;
   }
 
   bitvector& operator|=(const bitvector& other) {
-    if (this == &other) {
+    if (this == &other || !other.size()) {
       return *this; // nothing to do
     }
 
@@ -103,8 +106,10 @@ class bitvector final {
     size_ = std::max(size_, other.size_);
 
     auto* data = const_cast<word_t*>(begin());
+    auto last_word = bitset::word(other.size() - 1); // -1 for bit offset
 
-    for (size_t i = 0, count = other.set_.words(); i < count; ++i) {
+    for (size_t i = 0; i <= last_word; ++i) {
+      assert(i < set_.words() && i < other.set_.words());
       *(data + i) |= *(other.data() + i);
     }
 
@@ -123,6 +128,7 @@ class bitvector final {
     auto last_word = bitset::word(other.size() - 1); // -1 for bit offset
 
     for (size_t i = 0; i < last_word; ++i) {
+      assert(i < set_.words() && i < other.set_.words());
       *(data + i) ^= *(other.data() + i);
     }
 
@@ -135,6 +141,7 @@ class bitvector final {
       mask = ~(mask << last_word_bits); // unset all bits that are not part of 'other.size()'
     }
 
+    assert(last_word < set_.words() && last_word < other.set_.words());
     *(data + last_word) ^= (*(other.data() + last_word) & mask);
 
     return *this;
@@ -151,6 +158,7 @@ class bitvector final {
     auto last_word = bitset::word(other.size() - 1); // -1 for bit offset
 
     for (size_t i = 0; i < last_word; ++i) {
+      assert(i < set_.words() && i < other.set_.words());
       *(data + i) &= ~(*(other.data() + i));
     }
 
@@ -163,6 +171,7 @@ class bitvector final {
       mask = ~(mask << last_word_bits); // unset all bits that are not part of 'other.size()'
     }
 
+    assert(last_word < set_.words() && last_word < other.set_.words());
     *(data + last_word) &= ~(*(other.data() + last_word) & mask);
 
     return *this;
@@ -276,7 +285,9 @@ class bitvector final {
       set_ = std::move(set);
     }
 
-    size_ = bits_required<word_t>() - math::math_traits<word_t>::clz(*(begin() + set_.words() - 1));
+    size_ = (set_.words() * bits_required<word_t>())
+          - math::math_traits<word_t>::clz(*(begin() + set_.words() - 1))
+          ;
   }
 
   void set(size_t i) { reset(i, true); }

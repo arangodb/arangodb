@@ -27,6 +27,7 @@
 #include <memory>
 #include <unordered_map>
 
+#include "utils/async_utils.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/map_utils.hpp"
 #include "utils/memory.hpp"
@@ -40,6 +41,25 @@ NS_END
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief an asynchronously accessible cookie/flag denoting value with a
+///        read-write mutex to lock value from modification for the duration of
+///        the held lock
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+class AsyncValue {
+  typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
+ public:
+  T get() const { return _value.load(); }
+  ReadMutex mutex() const { return ReadMutex(_mutex); } // prevent modification
+
+ protected:
+  mutable irs::async_utils::read_write_mutex _mutex; // read-lock to prevent value modification
+  std::atomic<T> _value;
+
+  explicit AsyncValue(T value): _value(value) {}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a wrapper around a type, placing the value on the heap to allow
@@ -186,7 +206,8 @@ class UnorderedRefKeyMap:
     friend UnorderedRefKeyMap;
     typename MapType::const_iterator _itr;
 
-    ConstIterator(typename MapType::const_iterator const& itr): _itr(itr) {}
+    explicit ConstIterator(typename MapType::const_iterator const& itr)
+      : _itr(itr) {}
   };
 
   class Iterator {
@@ -214,7 +235,7 @@ class UnorderedRefKeyMap:
     friend UnorderedRefKeyMap;
     typename MapType::iterator _itr;
 
-    Iterator(typename MapType::iterator const& itr): _itr(itr) {}
+    explicit Iterator(typename MapType::iterator const& itr): _itr(itr) {}
   };
 
   UnorderedRefKeyMap() {}
