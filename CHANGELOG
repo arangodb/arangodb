@@ -1,8 +1,13 @@
-v3.2.12 (2018-XX-XX)
+v3.2.12 (XXXX-XX-XX)
 --------------------
 
 * fix internal issue #81: quotation marks disappeared when switching table/json
   editor in the query editor ui
+
+* make the default value of `--rocksdb.block-cache-shard-bits` use the RocksDB
+  default value. This will mostly mean the default number block cache shard
+  bits is lower than before, allowing each shard to store more data and cause
+  less evictions from block cache
 
 
 v3.2.11 (2018-01-17)
