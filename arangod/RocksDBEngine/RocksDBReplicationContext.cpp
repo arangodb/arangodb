@@ -134,7 +134,7 @@ int RocksDBReplicationContext::bindCollection(
     // we are getting into trouble during the dumping of "_users"
     // this workaround avoids the auth check in addCollectionAtRuntime
     ExecContext const* old = ExecContext::CURRENT;
-    if (old != nullptr && old->systemAuthLevel() == AuthLevel::RW) {
+    if (old != nullptr && old->systemAuthLevel() == auth::Level::RW) {
       ExecContext::CURRENT = nullptr;
     }
     TRI_DEFER(ExecContext::CURRENT = old);

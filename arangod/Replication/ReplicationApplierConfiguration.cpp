@@ -201,10 +201,10 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
     } else {
       auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
       if (cluster->isEnabled()) {
-        auto af = AuthenticationFeature::INSTANCE;
+        auto af = AuthenticationFeature::instance();
         if (af != nullptr) {
           // nullptr happens only during controlled shutdown
-          configuration._jwt = af->jwtToken();
+          configuration._jwt = af->tokenCache()->jwtToken();
         }
       }
     }

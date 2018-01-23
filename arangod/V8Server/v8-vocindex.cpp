@@ -210,7 +210,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
   
   if (ExecContext::CURRENT != nullptr &&
-      !ExecContext::CURRENT->canUseDatabase(vocbase->name(), AuthLevel::RW)) {
+      !ExecContext::CURRENT->canUseDatabase(vocbase->name(), auth::Level::RW)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 

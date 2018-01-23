@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,36 +18,38 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Simon Grätzer
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_AUTH_USER_H
-#define ARANGOD_VOC_BASE_AUTH_USER_H 1
+#ifndef ARANGOD_AUTHENTICATION_USER_H
+#define ARANGOD_AUTHENTICATION_USER_H 1
 
 #include "Basics/Common.h"
-#include "Utils/Authentication.h"
+#include "Auth/Common.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-
-// This class represents a 'user' entry. It contains structures to
-// store the access levels for databases and collections.  The user
-// object must be serialized via `toVPackBuilder()` and written to the
-// _users collection after modifying it.
-
-class AuthUserEntry {
-  friend class AuthInfo;
+namespace auth {
+  
+/// @brief Represents a 'user' entry.
+/// It contains structures to store the access
+/// levels for databases and collections.  The user
+/// object must be serialized via `toVPackBuilder()` and
+/// written to the _users collection after modifying it.
+class User {
+  friend class UserManager;
 
  public:
-  static AuthUserEntry newUser(std::string const& user, std::string const& pass,
-                               AuthSource source);
-  static AuthUserEntry fromDocument(velocypack::Slice const&);
+  static User newUser(std::string const& user, std::string const& pass,
+                               auth::Source source);
+  static User fromDocument(velocypack::Slice const&);
 
  private:
-  static void fromDocumentRoles(AuthUserEntry&, velocypack::Slice const&);
-  static void fromDocumentDatabases(AuthUserEntry&,
+  static void fromDocumentRoles(auth::User&, velocypack::Slice const&);
+  static void fromDocumentDatabases(auth::User&,
                                     velocypack::Slice const& databases,
                                     velocypack::Slice const& user);
 
@@ -58,7 +60,7 @@ class AuthUserEntry {
   std::string const& passwordSalt() const { return _passwordSalt; }
   std::string const& passwordHash() const { return _passwordHash; }
   bool isActive() const { return _active; }
-  AuthSource source() const { return _source; }
+  auth::Source source() const { return _source; }
 
   bool checkPassword(std::string const& password) const;
   void updatePassword(std::string const& password);
@@ -72,7 +74,7 @@ class AuthUserEntry {
 
   // grant specific access rights for db. The default "*" is also a
   // valid database name
-  void grantDatabase(std::string const& dbname, AuthLevel level);
+  void grantDatabase(std::string const& dbname, auth::Level level);
 
   // Removes the entry.
   void removeDatabase(std::string const& dbname);
@@ -81,19 +83,19 @@ class AuthUserEntry {
   // collection.  The combination of "*"/"*" is automatically used for
   // the root
   void grantCollection(std::string const& dbname, std::string const& collection,
-                       AuthLevel level);
+                       auth::Level level);
 
   void removeCollection(std::string const& dbname,
                         std::string const& collection);
 
   // Resolve the access level for this database. Might fall back to
   // the special '*' entry if the specific database is not found
-  AuthLevel databaseAuthLevel(std::string const& dbname) const;
+  auth::Level databaseAuthLevel(std::string const& dbname) const;
 
   // Resolve rights for the specified collection. Falls back to the
   // special '*' entry if either the database or collection is not
   // found.
-  AuthLevel collectionAuthLevel(std::string const& dbname,
+  auth::Level collectionAuthLevel(std::string const& dbname,
                                 std::string const& collectionName) const;
 
   bool hasSpecificDatabase(std::string const& dbname) const;
@@ -101,29 +103,29 @@ class AuthUserEntry {
                              std::string const& collectionName) const;
 
  private:
-  AuthUserEntry() {}
+  User() {}
 
   struct DBAuthContext {
-    DBAuthContext(AuthLevel dbLvl,
-                  std::unordered_map<std::string, AuthLevel> const& coll)
+    DBAuthContext(auth::Level dbLvl,
+                  std::unordered_map<std::string, auth::Level> const& coll)
         : _databaseAuthLevel(dbLvl), _collectionAccess(coll) {}
 
-    DBAuthContext(AuthLevel dbLvl,
-                  std::unordered_map<std::string, AuthLevel>&& coll)
+    DBAuthContext(auth::Level dbLvl,
+                  std::unordered_map<std::string, auth::Level>&& coll)
         : _databaseAuthLevel(dbLvl), _collectionAccess(std::move(coll)) {}
 
-    AuthLevel collectionAuthLevel(std::string const& collectionName,
+    auth::Level collectionAuthLevel(std::string const& collectionName,
                                   bool& notFound) const;
 
    public:
-    AuthLevel _databaseAuthLevel;
-    std::unordered_map<std::string, AuthLevel> _collectionAccess;
+    auth::Level _databaseAuthLevel;
+    std::unordered_map<std::string, auth::Level> _collectionAccess;
   };
 
  private:
   std::string _key;
   bool _active = true;
-  AuthSource _source = AuthSource::COLLECTION;
+  auth::Source _source = auth::Source::COLLECTION;
 
   std::string _username;
   std::string _passwordMethod;
@@ -132,6 +134,7 @@ class AuthUserEntry {
   std::unordered_map<std::string, DBAuthContext> _dbAccess;
   std::unordered_set<std::string> _roles;
 };
-}
+} // auth
+} // arangodb
 
 #endif

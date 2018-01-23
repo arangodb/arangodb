@@ -268,10 +268,11 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
   }
   
   if (_authentication->isActive()) { // will just fail if method is NONE
-    AuthResult result = _authentication->authInfo()->checkAuthentication(authType, authString);
-    _authorized = result._authorized;
+    auto entry = _authentication->tokenCache()->
+      checkAuthentication(authType, authString);
+    _authorized = entry._authorized;
     if (_authorized) {
-      _authenticatedUser = std::move(result._username);
+      _authenticatedUser = std::move(entry._username);
     }
   } else {
     _authorized = true;

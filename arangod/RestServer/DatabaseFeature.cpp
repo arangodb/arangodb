@@ -56,7 +56,6 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -878,8 +877,8 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
       }
 
       if (authentication->isActive()) {
-        auto level = authentication->authInfo()->canUseDatabase(username, vocbase->name());
-        if (level == AuthLevel::NONE) {
+        auto level = authentication->userManager()->canUseDatabase(username, vocbase->name());
+        if (level == auth::Level::NONE) {
           continue;
         }
       }

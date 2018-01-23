@@ -21,12 +21,12 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AuthInfo.h"
+#include "UserManager.h"
 
 #include "Agency/AgencyComm.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
-
+#include "Auth/Handler.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadUnlocker.h"
 #include "Basics/VelocyPackHelper.h"
@@ -56,43 +56,18 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-AuthInfo::AuthInfo(std::unique_ptr<AuthenticationHandler>&& handler)
+auth::UserManager::UserManager(std::unique_ptr<auth::Handler>&& handler)
     : _outdated(true),
-      _authJwtCache(16384),
-      _jwtSecret(""),
       _queryRegistry(nullptr),
-      _authenticationHandler(handler.release()) {}
+      _authHandler(handler.release()) {}
 
-AuthInfo::~AuthInfo() {
-  // properly clear structs while using the appropriate locks
-  {
-    WRITE_LOCKER(readLocker, _authInfoLock);
-    _authInfo.clear();
-    _authBasicCache.clear();
-  }
+auth::UserManager::~UserManager() {}
 
-  {
-    WRITE_LOCKER(writeLocker, _authJwtLock);
-    _authJwtCache.clear();
-  }
-}
-
-void AuthInfo::setJwtSecret(std::string const& jwtSecret) {
-  WRITE_LOCKER(writeLocker, _authJwtLock);
-  _jwtSecret = jwtSecret;
-  _authJwtCache.clear();
-}
-
-std::string AuthInfo::jwtSecret() {
-  READ_LOCKER(writeLocker, _authJwtLock);
-  return _jwtSecret;
-}
 
 // private, must be called with _authInfoLock in write mode
-bool AuthInfo::parseUsers(VPackSlice const& slice) {
+bool auth::UserManager::parseUsers(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
   TRI_ASSERT(_authInfo.empty());
-  TRI_ASSERT(_authBasicCache.empty());
 
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     VPackSlice s = authSlice.resolveExternal();
@@ -105,12 +80,12 @@ bool AuthInfo::parseUsers(VPackSlice const& slice) {
       continue;
     }
 
-    AuthUserEntry auth = AuthUserEntry::fromDocument(s);
+     auth::User user = auth::User::fromDocument(s);
 
     // we also need to insert inactive users into the cache here
     // otherwise all following update/replace/remove operations on the
     // user will fail
-    _authInfo.emplace(auth.username(), std::move(auth));
+    _authInfo.emplace(user.username(), std::move(user));
   }
 
   return true;
@@ -227,7 +202,7 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
 
 // private, will acquire _authInfoLock in write-mode and release it.
 // will also aquire _loadFromDBLock and release it
-void AuthInfo::loadFromDB() {
+void auth::UserManager::loadFromDB() {
   TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
 
@@ -251,15 +226,14 @@ void AuthInfo::loadFromDB() {
   }
 
   WRITE_LOCKER(writeLocker, _authInfoLock);
+  AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
+  _authInfo.clear();
 
   try {
     std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
-    _authInfo.clear();
-    _authBasicCache.clear();
-
+    
     if (builder) {
       VPackSlice usersSlice = builder->slice();
-
       if (usersSlice.length() != 0) {
         parseUsers(usersSlice);
       }
@@ -278,7 +252,7 @@ void AuthInfo::loadFromDB() {
 }
 
 // only call from the boostrap feature, must be sure to be the only one
-void AuthInfo::createRootUser() {
+void auth::UserManager::createRootUser() {
   loadFromDB();
 
   MUTEX_LOCKER(locker, _loadFromDBLock);
@@ -300,13 +274,13 @@ void AuthInfo::createRootUser() {
 
     TRI_ASSERT(initDatabaseFeature != nullptr);
 
-    AuthUserEntry entry = AuthUserEntry::newUser(
-        "root", initDatabaseFeature->defaultPassword(), AuthSource::COLLECTION);
-    entry.setActive(true);
-    entry.grantDatabase(StaticStrings::SystemDatabase, AuthLevel::RW);
-    entry.grantDatabase("*", AuthLevel::RW);
-    entry.grantCollection("*", "*", AuthLevel::RW);
-    storeUserInternal(entry, false);
+    auth::User user = auth::User::newUser(
+        "root", initDatabaseFeature->defaultPassword(), auth::Source::COLLECTION);
+    user.setActive(true);
+    user.grantDatabase(StaticStrings::SystemDatabase, auth::Level::RW);
+    user.grantDatabase("*", auth::Level::RW);
+    user.grantCollection("*", "*", auth::Level::RW);
+    storeUserInternal(user, false);
   } catch (...) {
     // No action
   }
@@ -314,7 +288,7 @@ void AuthInfo::createRootUser() {
 
 // private, must be called with _authInfoLock in write mode
 // this method can only be called by users with access to the _system collection
-Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
+Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replace) {
   VPackBuilder data = entry.toVPackBuilder();
   bool hasKey = data.slice().hasKey(StaticStrings::KeyString);
   TRI_ASSERT((replace && hasKey) || (!replace && !hasKey));
@@ -348,8 +322,8 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
         userDoc = userDoc.resolveExternal();
       }
 
-      AuthUserEntry created = AuthUserEntry::fromDocument(userDoc);
-
+      // parse user including document _key
+      auth::User created = auth::User::fromDocument(userDoc);
       TRI_ASSERT(!created.key().empty());
       TRI_ASSERT(created.username() == entry.username());
       TRI_ASSERT(created.isActive() == entry.isActive());
@@ -360,7 +334,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
         // insertion should always succeed, but...
         _authInfo.erase(entry.username());
         _authInfo.emplace(entry.username(),
-                          AuthUserEntry::fromDocument(userDoc));
+                          auth::User::fromDocument(userDoc));
       }
     }
   }
@@ -371,7 +345,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
 // -- SECTION --                                                          public
 // -----------------------------------------------------------------------------
 
-VPackBuilder AuthInfo::allUsers() {
+VPackBuilder auth::UserManager::allUsers() {
   // will query db directly, no need for _authInfoLock
   std::shared_ptr<VPackBuilder> users;
   {
@@ -390,7 +364,7 @@ VPackBuilder AuthInfo::allUsers() {
 }
 
 /// Trigger eventual reload, user facing API call
-void AuthInfo::reloadAllUsers() {
+void auth::UserManager::reloadAllUsers() {
   if (!ServerState::instance()->isCoordinator()) {
     // will reload users on next suitable query
     return;
@@ -416,7 +390,7 @@ void AuthInfo::reloadAllUsers() {
       << "Sync/UserVersion could not be updated";
 }
 
-Result AuthInfo::storeUser(bool replace, std::string const& user,
+Result auth::UserManager::storeUser(bool replace, std::string const& user,
                            std::string const& pass, bool active) {
   if (user.empty()) {
     return TRI_ERROR_USER_INVALID_NAME;
@@ -438,13 +412,12 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
   if (replace) {
     auto const& oldEntry = it->second;
     oldKey = oldEntry.key();
-    if (oldEntry.source() == AuthSource::LDAP) {
+    if (oldEntry.source() == auth::Source::LDAP) {
       return TRI_ERROR_USER_EXTERNAL;
     }
   }
 
-  AuthUserEntry entry =
-      AuthUserEntry::newUser(user, pass, AuthSource::COLLECTION);
+  auth::User entry = auth::User::newUser(user, pass, auth::Source::COLLECTION);
   entry.setActive(active);
 
   if (replace) {
@@ -487,8 +460,8 @@ static Result UpdateUser(VPackSlice const& user) {
   return res;
 }
 
-Result AuthInfo::enumerateUsers(
-    std::function<void(AuthUserEntry&)> const& func) {
+Result auth::UserManager::enumerateUsers(
+    std::function<void(auth::User&)> const& func) {
   loadFromDB();
   // we require a consistent view on the user object
   {
@@ -496,7 +469,7 @@ Result AuthInfo::enumerateUsers(
     for (auto& it : _authInfo) {
       auto const& entry = it.second;
 
-      if (entry.source() == AuthSource::LDAP) {
+      if (entry.source() == auth::Source::LDAP) {
         continue;
       }
 
@@ -513,7 +486,7 @@ Result AuthInfo::enumerateUsers(
 
     // must also clear the basic cache here because the secret may be
     // invalid now if the password was changed
-    _authBasicCache.clear();
+    AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
   }
 
   // we need to reload data after the next callback
@@ -521,8 +494,8 @@ Result AuthInfo::enumerateUsers(
   return TRI_ERROR_NO_ERROR;
 }
 
-Result AuthInfo::updateUser(std::string const& user,
-                            std::function<void(AuthUserEntry&)> const& func) {
+Result auth::UserManager::updateUser(std::string const& user,
+                                     UserCallback const& func) {
   if (user.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
@@ -540,7 +513,7 @@ Result AuthInfo::updateUser(std::string const& user,
 
     auto& oldEntry = it->second;
 
-    if (oldEntry.source() == AuthSource::LDAP) {
+    if (oldEntry.source() == auth::Source::LDAP) {
       return TRI_ERROR_USER_EXTERNAL;
     }
 
@@ -552,8 +525,7 @@ Result AuthInfo::updateUser(std::string const& user,
 
     // must also clear the basic cache here because the secret may be
     // invalid now if the password was changed
-
-    _authBasicCache.clear();
+    AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
   }
 
   // we need to reload data after the next callback
@@ -561,9 +533,8 @@ Result AuthInfo::updateUser(std::string const& user,
   return r;
 }
 
-Result AuthInfo::accessUser(
-    std::string const& user,
-    std::function<void(AuthUserEntry const&)> const& func) {
+Result auth::UserManager::accessUser(std::string const& user,
+                                     ConstUserCallback const& func) {
   loadFromDB();
   READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(user);
@@ -574,7 +545,7 @@ Result AuthInfo::accessUser(
   return TRI_ERROR_USER_NOT_FOUND;
 }
 
-VPackBuilder AuthInfo::serializeUser(std::string const& user) {
+VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
   loadFromDB();
   // will query db directly, no need for _authInfoLock
   VPackBuilder doc = QueryUser(_queryRegistry, user);
@@ -585,7 +556,7 @@ VPackBuilder AuthInfo::serializeUser(std::string const& user) {
   return result;
 }
 
-static Result RemoveUserInternal(AuthUserEntry const& entry) {
+static Result RemoveUserInternal(auth::User const& entry) {
   TRI_ASSERT(!entry.key().empty());
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
@@ -620,7 +591,7 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
   return res;
 }
 
-Result AuthInfo::removeUser(std::string const& user) {
+Result auth::UserManager::removeUser(std::string const& user) {
   if (user.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
@@ -642,7 +613,7 @@ Result AuthInfo::removeUser(std::string const& user) {
 
     auto const& oldEntry = it->second;
 
-    if (oldEntry.source() == AuthSource::LDAP) {
+    if (oldEntry.source() == auth::Source::LDAP) {
       return TRI_ERROR_USER_EXTERNAL;
     }
 
@@ -651,7 +622,7 @@ Result AuthInfo::removeUser(std::string const& user) {
     if (res.ok()) {
       _authInfo.erase(it);
       // must also clear the basic cache here because the secret is invalid now
-      _authBasicCache.clear();
+      AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
     }
   }
 
@@ -659,7 +630,7 @@ Result AuthInfo::removeUser(std::string const& user) {
   return res;
 }
 
-Result AuthInfo::removeAllUsers() {
+Result auth::UserManager::removeAllUsers() {
   loadFromDB();
 
   Result res;
@@ -671,7 +642,7 @@ Result AuthInfo::removeAllUsers() {
     for (auto const& pair : _authInfo) {
       auto const& oldEntry = pair.second;
 
-      if (oldEntry.source() == AuthSource::LDAP) {
+      if (oldEntry.source() == auth::Source::LDAP) {
         continue;
       }
 
@@ -685,7 +656,7 @@ Result AuthInfo::removeAllUsers() {
     // do not get into race conditions with loadFromDB
     {
       _authInfo.clear();
-      _authBasicCache.clear();
+      AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
       _outdated = true;
     }
   }
@@ -694,14 +665,14 @@ Result AuthInfo::removeAllUsers() {
   return res;
 }
 
-VPackBuilder AuthInfo::getConfigData(std::string const& username) {
+VPackBuilder auth::UserManager::getConfigData(std::string const& username) {
   loadFromDB();
   VPackBuilder bb = QueryUser(_queryRegistry, username);
 
   return bb.isEmpty() ? bb : VPackBuilder(bb.slice().get("configData"));
 }
 
-Result AuthInfo::setConfigData(std::string const& user,
+Result auth::UserManager::setConfigData(std::string const& user,
                                velocypack::Slice const& data) {
   loadFromDB();
 
@@ -715,7 +686,7 @@ Result AuthInfo::setConfigData(std::string const& user,
 
   auto const& oldEntry = it->second;
 
-  if (oldEntry.source() == AuthSource::LDAP) {
+  if (oldEntry.source() == auth::Source::LDAP) {
     return TRI_ERROR_USER_EXTERNAL;
   }
 
@@ -730,13 +701,13 @@ Result AuthInfo::setConfigData(std::string const& user,
   return UpdateUser(partial.slice());
 }
 
-VPackBuilder AuthInfo::getUserData(std::string const& username) {
+VPackBuilder auth::UserManager::getUserData(std::string const& username) {
   loadFromDB();
   VPackBuilder bb = QueryUser(_queryRegistry, username);
   return bb.isEmpty() ? bb : VPackBuilder(bb.slice().get("userData"));
 }
 
-Result AuthInfo::setUserData(std::string const& user,
+Result auth::UserManager::setUserData(std::string const& user,
                              velocypack::Slice const& data) {
   loadFromDB();
 
@@ -750,7 +721,7 @@ Result AuthInfo::setUserData(std::string const& user,
 
   auto const& oldEntry = it->second;
 
-  if (oldEntry.source() == AuthSource::LDAP) {
+  if (oldEntry.source() == auth::Source::LDAP) {
     return TRI_ERROR_USER_EXTERNAL;
   }
 
@@ -765,11 +736,11 @@ Result AuthInfo::setUserData(std::string const& user,
   return UpdateUser(partial.slice());
 }
 
-AuthResult AuthInfo::checkPassword(std::string const& username,
+bool auth::UserManager::checkPassword(std::string const& username,
                                    std::string const& password) {
-  AuthResult result(username);
+  //AuthResult result(username);
   if (username.empty() || StringUtils::isPrefix(username, ":role:")) {
-    return result;
+    return false;
   }
 
   loadFromDB();
@@ -777,31 +748,29 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   READ_LOCKER(readLocker, _authInfoLock);
 
   auto it = _authInfo.find(username);
-  auto feature = AuthenticationFeature::INSTANCE;
+  AuthenticationFeature* af = AuthenticationFeature::instance();
 
+  // using local users might be forbidden
   if (it != _authInfo.end() &&
-      (it->second.source() == AuthSource::COLLECTION) && feature != nullptr &&
-      !feature->localAuthentication()) {
-    return result;
+      (it->second.source() == auth::Source::COLLECTION) && af != nullptr &&
+      !af->localAuthentication()) {
+    return false;
   }
-
-  if (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP)) {
-    TRI_ASSERT(_authenticationHandler);
-    AuthenticationResult authResult =
-        _authenticationHandler->authenticate(username, password);
+  // handle LDAP based authentication
+  if (it == _authInfo.end() || (it->second.source() == auth::Source::LDAP)) {
+    TRI_ASSERT(_authHandler != nullptr);
+    auth::HandlerResult authResult = _authHandler->authenticate(username, password);
 
     if (!authResult.ok()) {
-      return result;
+      return false;
     }
 
     // user authed, add to _authInfo and _users
-    if (authResult.source() == AuthSource::LDAP) {
-      AuthUserEntry entry =
-          AuthUserEntry::newUser(username, password, AuthSource::LDAP);
-      entry.setRoles(authResult.roles());
-
+    if (authResult.source() == auth::Source::LDAP) {
+      auth::User user = auth::User::newUser(username, password, auth::Source::LDAP);
+      user.setRoles(authResult.roles());
       for (auto const& al : authResult.permissions()) {
-        entry.grantDatabase(al.first, al.second);
+        user.grantDatabase(al.first, al.second);
       }
 
       // upgrade read-lock to a write-lock
@@ -811,56 +780,51 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
       it = _authInfo.find(username);
 
       if (it != _authInfo.end()) {
-        it->second = entry;
+        it->second = user;
       } else {
-        auto r = _authInfo.emplace(username, entry);
-
-        if (!r.second) {
-          return result;
+        auto r = _authInfo.emplace(username, user);
+        if (!r.second) { // insertion failed ?
+          return false;
         }
-
         it = r.first;
       }
 
-      AuthUserEntry const& auth = it->second;
-
+      auth::User const& auth = it->second;
       if (auth.isActive()) {
-        result._authorized = auth.checkPassword(password);
+        return auth.checkPassword(password);
       }
-
-      return result;
+      return false; // inactive user
     }
   }
 
   if (it != _authInfo.end()) {
-    AuthUserEntry const& auth = it->second;
-
+    auth::User const& auth = it->second;
     if (auth.isActive()) {
-      result._authorized = auth.checkPassword(password);
+      return auth.checkPassword(password);
     }
   }
 
-  return result;
+  return false;
 }
 
 // worker function for configuredDatabaseAuthLevel
 // must only be called with the read-lock on _authInfoLock being held
-AuthLevel AuthInfo::configuredDatabaseAuthLevelInternal(std::string const& username,
+auth::Level auth::UserManager::configuredDatabaseAuthLevelInternal(std::string const& username,
                                                         std::string const& dbname,
                                                         size_t depth) const {
   auto it = _authInfo.find(username);
 
   if (it == _authInfo.end()) {
-    return AuthLevel::NONE;
+    return auth::Level::NONE;
   }
 
   auto const& entry = it->second;
-  AuthLevel level = entry.databaseAuthLevel(dbname);
+  auth::Level level = entry.databaseAuthLevel(dbname);
 
 #ifdef USE_ENTERPRISE
   // check all roles and use the highest permission from them
   for (auto const& role : entry.roles()) {
-    if (level == AuthLevel::RW) {
+    if (level == auth::Level::RW) {
       // we already have highest permission
       break;
     }
@@ -868,9 +832,9 @@ AuthLevel AuthInfo::configuredDatabaseAuthLevelInternal(std::string const& usern
     // recurse into function, but only one level deep.
     // this allows us to avoid endless recursion without major overhead
     if (depth == 0) {
-      AuthLevel roleLevel = configuredDatabaseAuthLevelInternal(role, dbname, depth + 1);
+      auth::Level roleLevel = configuredDatabaseAuthLevelInternal(role, dbname, depth + 1);
 
-      if (level == AuthLevel::NONE) {
+      if (level == auth::Level::NONE) {
         // use the permission of the role we just found
         level = roleLevel;
       }
@@ -880,29 +844,29 @@ AuthLevel AuthInfo::configuredDatabaseAuthLevelInternal(std::string const& usern
   return level;
 }
 
-AuthLevel AuthInfo::configuredDatabaseAuthLevel(std::string const& username,
-                                                std::string const& dbname) {
+auth::Level auth::UserManager::configuredDatabaseAuthLevel(std::string const& username,
+                                                         std::string const& dbname) {
   loadFromDB();
   READ_LOCKER(guard, _authInfoLock);
   return configuredDatabaseAuthLevelInternal(username, dbname, 0);
 }
 
-AuthLevel AuthInfo::canUseDatabase(std::string const& username,
-                                   std::string const& dbname) {
-  AuthLevel level = configuredDatabaseAuthLevel(username, dbname);
-  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
-  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
-    return AuthLevel::RO;
+auth::Level auth::UserManager::canUseDatabase(std::string const& username,
+                                            std::string const& dbname) {
+  auth::Level level = configuredDatabaseAuthLevel(username, dbname);
+  static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
+  if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
+    return auth::Level::RO;
   }
   return level;
 }
 
-AuthLevel AuthInfo::canUseDatabaseNoLock(std::string const& username,
+auth::Level auth::UserManager::canUseDatabaseNoLock(std::string const& username,
                                          std::string const& dbname) {
-  AuthLevel level = configuredDatabaseAuthLevelInternal(username, dbname, 0);
-  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
-  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
-    return AuthLevel::RO;
+  auth::Level level = configuredDatabaseAuthLevelInternal(username, dbname, 0);
+  static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
+  if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
+    return auth::Level::RO;
   }
   return level;
 }
@@ -911,7 +875,7 @@ AuthLevel AuthInfo::canUseDatabaseNoLock(std::string const& username,
 // internal method called by configuredCollectionAuthLevel
 // asserts that collection name is non-empty and already translated
 // from collection id to name
-AuthLevel AuthInfo::configuredCollectionAuthLevelInternal(std::string const& username,
+auth::Level auth::UserManager::configuredCollectionAuthLevelInternal(std::string const& username,
                                                           std::string const& dbname,
                                                           std::string const& coll,
                                                           size_t depth) const {
@@ -921,15 +885,15 @@ AuthLevel AuthInfo::configuredCollectionAuthLevelInternal(std::string const& use
 
   auto it = _authInfo.find(username);
   if (it == _authInfo.end()) {
-    return AuthLevel::NONE;
+    return auth::Level::NONE;
   }
 
   auto const& entry = it->second;
-  AuthLevel level = entry.collectionAuthLevel(dbname, coll);
+  auth::Level level = entry.collectionAuthLevel(dbname, coll);
 
 #ifdef USE_ENTERPRISE
   for (auto const& role : entry.roles()) {
-    if (level == AuthLevel::RW) {
+    if (level == auth::Level::RW) {
       // we already have highest permission
       return level;
     }
@@ -937,9 +901,9 @@ AuthLevel AuthInfo::configuredCollectionAuthLevelInternal(std::string const& use
     // recurse into function, but only one level deep.
     // this allows us to avoid endless recursion without major overhead
     if (depth == 0) {
-      AuthLevel roleLevel = configuredCollectionAuthLevelInternal(role, dbname, coll, depth + 1);
+      auth::Level roleLevel = configuredCollectionAuthLevelInternal(role, dbname, coll, depth + 1);
 
-      if (level == AuthLevel::NONE) {
+      if (level == auth::Level::NONE) {
         // use the permission of the role we just found
         level = roleLevel;
       }
@@ -949,12 +913,12 @@ AuthLevel AuthInfo::configuredCollectionAuthLevelInternal(std::string const& use
   return level;
 }
 
-AuthLevel AuthInfo::configuredCollectionAuthLevel(std::string const& username,
+auth::Level auth::UserManager::configuredCollectionAuthLevel(std::string const& username,
                                                   std::string const& dbname,
                                                   std::string coll) {
   if (coll.empty()) {
     // no collection name given
-    return AuthLevel::NONE;
+    return auth::Level::NONE;
   }
   if (coll[0] >= '0' && coll[0] <= '9') {
     coll = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
@@ -966,31 +930,31 @@ AuthLevel AuthInfo::configuredCollectionAuthLevel(std::string const& username,
   return configuredCollectionAuthLevelInternal(username, dbname, coll, 0);
 }
 
-AuthLevel AuthInfo::canUseCollection(std::string const& username,
+auth::Level auth::UserManager::canUseCollection(std::string const& username,
                                      std::string const& dbname,
                                      std::string const& coll) {
   if (coll.empty()) {
     // no collection name given
-    return AuthLevel::NONE;
+    return auth::Level::NONE;
   }
 
-  AuthLevel level = configuredCollectionAuthLevel(username, dbname, coll);
-  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
-  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
-    return AuthLevel::RO;
+  auth::Level level = configuredCollectionAuthLevel(username, dbname, coll);
+  static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
+  if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
+    return auth::Level::RO;
   }
   return level;
 }
 
-AuthLevel AuthInfo::canUseCollectionNoLock(std::string const& username,
+auth::Level auth::UserManager::canUseCollectionNoLock(std::string const& username,
                                            std::string const& dbname,
                                            std::string const& coll) {
   if (coll.empty()) {
     // no collection name given
-    return AuthLevel::NONE;
+    return auth::Level::NONE;
   }
 
-  AuthLevel level;
+  auth::Level level;
   if (coll[0] >= '0' && coll[0] <= '9') {
     std::string tmpColl = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
     level = configuredCollectionAuthLevelInternal(username, dbname, tmpColl, 0);
@@ -998,324 +962,15 @@ AuthLevel AuthInfo::canUseCollectionNoLock(std::string const& username,
     level = configuredCollectionAuthLevelInternal(username, dbname, coll, 0);
   }
 
-  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
-  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
-    return AuthLevel::RO;
+  static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
+  if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
+    return auth::Level::RO;
   }
   return level;
 }
 
-
-
-// public called from HttpCommTask.cpp and VstCommTask.cpp
-// should only lock if required, otherwise we will serialize all
-// requests whether we need to or not
-AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
-                                         std::string const& secret) {
-  switch (authType) {
-    case AuthenticationMethod::BASIC:
-      return checkAuthenticationBasic(secret);
-
-    case AuthenticationMethod::JWT:
-      return checkAuthenticationJWT(secret);
-
-    default:
-      return AuthResult();
-  }
-}
-
-// private
-AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
-  auto role = ServerState::instance()->getRole();
-  if (role != ServerState::ROLE_SINGLE &&
-      role != ServerState::ROLE_COORDINATOR) {
-    return AuthResult();
-  }
-
-  {
-    READ_LOCKER(guard, _authInfoLock);
-    auto const& it = _authBasicCache.find(secret);
-
-    if (it != _authBasicCache.end() && !it->second.expired()) {
-      return it->second;
-    }
-  }
-
-  std::string const up = StringUtils::decodeBase64(secret);
-  std::string::size_type n = up.find(':', 0);
-
-  if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
-        << "invalid authentication data found, cannot extract "
-           "username/password";
-    return AuthResult();
-  }
-
-  std::string username = up.substr(0, n);
-  std::string password = up.substr(n + 1);
-
-  AuthResult result = checkPassword(username, password);
-  double timeout = AuthenticationFeature::INSTANCE->authenticationTimeout();
-
-  if (0 < timeout) {
-    result.setExpiry(TRI_microtime() + timeout);
-  }
-
-  {
-    WRITE_LOCKER(guard, _authInfoLock);
-
-    if (result._authorized) {
-      if (!_authBasicCache.emplace(secret, result).second) {
-        // insertion did not work - probably another thread did insert the
-        // same data right now
-        // erase it and re-insert our version
-        _authBasicCache.erase(secret);
-        _authBasicCache.emplace(secret, result);
-      }
-    } else {
-      _authBasicCache.erase(secret);
-    }
-  }
-
-  return result;
-}
-
-AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
-  try {
-    // note that we need the write lock here because it is an LRU
-    // cache. reading from it will move the read entry to the start of
-    // the cache's linked list. so acquiring just a read-lock is
-    // insufficient!!
-    WRITE_LOCKER(writeLocker, _authJwtLock);
-    // intentionally copy the entry from the cache
-    AuthJwtResult result = _authJwtCache.get(jwt);
-
-    if (result._expires) {
-      std::chrono::system_clock::time_point now =
-          std::chrono::system_clock::now();
-
-      if (now >= result._expireTime) {
-        try {
-          _authJwtCache.remove(jwt);
-        } catch (std::range_error const&) {
-        }
-        return AuthResult();
-      }
-    }
-    return (AuthResult)result;
-  } catch (std::range_error const&) {
-    // mop: not found
-  }
-
-  std::vector<std::string> const parts = StringUtils::split(jwt, '.');
-
-  if (parts.size() != 3) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Secret contains "
-                                              << parts.size() << " parts";
-    return AuthResult();
-  }
-
-  std::string const& header = parts[0];
-  std::string const& body = parts[1];
-  std::string const& signature = parts[2];
-
-  if (!validateJwtHeader(header)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
-        << "Couldn't validate jwt header " << header;
-    return AuthResult();
-  }
-
-  AuthJwtResult result = validateJwtBody(body);
-  if (!result._authorized) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
-        << "Couldn't validate jwt body " << body;
-    return AuthResult();
-  }
-
-  std::string const message = header + "." + body;
-
-  if (!validateJwtHMAC256Signature(message, signature)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
-        << "Couldn't validate jwt signature " << signature << " " << _jwtSecret;
-    return AuthResult();
-  }
-
-  WRITE_LOCKER(writeLocker, _authJwtLock);
-  _authJwtCache.put(jwt, result);
-  return (AuthResult)result;
-}
-
-std::shared_ptr<VPackBuilder> AuthInfo::parseJson(std::string const& str,
-                                                  std::string const& hint) {
-  std::shared_ptr<VPackBuilder> result;
-  VPackParser parser;
-  try {
-    parser.parse(str);
-    result = parser.steal();
-  } catch (std::bad_alloc const&) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Out of memory parsing " << hint
-                                            << "!";
-  } catch (VPackException const& ex) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Couldn't parse " << hint
-                                              << ": " << ex.what();
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Got unknown exception trying to parse " << hint;
-  }
-
-  return result;
-}
-
-bool AuthInfo::validateJwtHeader(std::string const& header) {
-  std::shared_ptr<VPackBuilder> headerBuilder =
-      parseJson(StringUtils::decodeBase64(header), "jwt header");
-  if (headerBuilder.get() == nullptr) {
-    return false;
-  }
-
-  VPackSlice const headerSlice = headerBuilder->slice();
-  if (!headerSlice.isObject()) {
-    return false;
-  }
-
-  VPackSlice const algSlice = headerSlice.get("alg");
-  VPackSlice const typSlice = headerSlice.get("typ");
-
-  if (!algSlice.isString()) {
-    return false;
-  }
-
-  if (!typSlice.isString()) {
-    return false;
-  }
-
-  if (algSlice.copyString() != "HS256") {
-    return false;
-  }
-
-  std::string typ = typSlice.copyString();
-  if (typ != "JWT") {
-    return false;
-  }
-
-  return true;
-}
-
-AuthJwtResult AuthInfo::validateJwtBody(std::string const& body) {
-  std::shared_ptr<VPackBuilder> bodyBuilder =
-      parseJson(StringUtils::decodeBase64(body), "jwt body");
-  AuthJwtResult authResult;
-  if (bodyBuilder.get() == nullptr) {
-    return authResult;
-  }
-
-  VPackSlice const bodySlice = bodyBuilder->slice();
-  if (!bodySlice.isObject()) {
-    return authResult;
-  }
-
-  VPackSlice const issSlice = bodySlice.get("iss");
-  if (!issSlice.isString()) {
-    return authResult;
-  }
-
-  if (issSlice.copyString() != "arangodb") {
-    return authResult;
-  }
-
-  if (bodySlice.hasKey("preferred_username")) {
-    VPackSlice const usernameSlice = bodySlice.get("preferred_username");
-    if (!usernameSlice.isString()) {
-      return authResult;
-    }
-    authResult._username = usernameSlice.copyString();
-  } else if (bodySlice.hasKey("server_id")) {
-    // mop: hmm...nothing to do here :D
-    // authResult._username = "root";
-  } else {
-    return authResult;
-  }
-
-  // mop: optional exp (cluster currently uses non expiring jwts)
-  if (bodySlice.hasKey("exp")) {
-    VPackSlice const expSlice = bodySlice.get("exp");
-
-    if (!expSlice.isNumber()) {
-      return authResult;
-    }
-
-    std::chrono::system_clock::time_point expires(
-        std::chrono::seconds(expSlice.getNumber<uint64_t>()));
-    std::chrono::system_clock::time_point now =
-        std::chrono::system_clock::now();
-
-    if (now >= expires) {
-      return authResult;
-    }
-    authResult._expires = true;
-    authResult._expireTime = expires;
-  }
-
-  authResult._authorized = true;
-  return authResult;
-}
-
-bool AuthInfo::validateJwtHMAC256Signature(std::string const& message,
-                                           std::string const& signature) {
-  std::string decodedSignature = StringUtils::decodeBase64U(signature);
-
-  return verifyHMAC(_jwtSecret.c_str(), _jwtSecret.length(), message.c_str(),
-                    message.length(), decodedSignature.c_str(),
-                    decodedSignature.length(),
-                    SslInterface::Algorithm::ALGORITHM_SHA256);
-}
-
-std::string AuthInfo::generateRawJwt(VPackBuilder const& bodyBuilder) {
-  VPackBuilder headerBuilder;
-  {
-    VPackObjectBuilder h(&headerBuilder);
-    headerBuilder.add("alg", VPackValue("HS256"));
-    headerBuilder.add("typ", VPackValue("JWT"));
-  }
-
-  std::string fullMessage(StringUtils::encodeBase64(headerBuilder.toJson()) +
-                          "." +
-                          StringUtils::encodeBase64(bodyBuilder.toJson()));
-
-  std::string signature =
-      sslHMAC(_jwtSecret.c_str(), _jwtSecret.length(), fullMessage.c_str(),
-              fullMessage.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
-
-  return fullMessage + "." + StringUtils::encodeBase64U(signature);
-}
-
-std::string AuthInfo::generateJwt(VPackBuilder const& payload) {
-  if (!payload.slice().isObject()) {
-    std::string error = "Need an object to generate a JWT. Got: ";
-    error += payload.slice().typeName();
-    throw std::runtime_error(error);
-  }
-  bool hasIss = payload.slice().hasKey("iss");
-  bool hasIat = payload.slice().hasKey("iat");
-  VPackBuilder bodyBuilder;
-  if (hasIss && hasIat) {
-    bodyBuilder = payload;
-  } else {
-    VPackObjectBuilder p(&bodyBuilder);
-    if (!hasIss) {
-      bodyBuilder.add("iss", VPackValue("arangodb"));
-    }
-    if (!hasIat) {
-      bodyBuilder.add("iat", VPackValue(TRI_microtime() / 1000));
-    }
-    for (auto const& obj : VPackObjectIterator(payload.slice())) {
-      bodyBuilder.add(obj.key.copyString(), obj.value);
-    }
-  }
-  return generateRawJwt(bodyBuilder);
-}
-
-void AuthInfo::setAuthInfo(AuthUserEntryMap const& newMap) {
+/// Only used for testing
+void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   WRITE_LOCKER(writeLocker, _authInfoLock);
   _authInfo = newMap;
   _outdated = false;

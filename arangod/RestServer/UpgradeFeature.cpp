@@ -103,18 +103,17 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void UpgradeFeature::start() {
-  auto init =
-      ApplicationServer::getFeature<InitDatabaseFeature>("InitDatabase");
-  AuthInfo *ai = AuthenticationFeature::INSTANCE->authInfo();
-
+  auto init = ApplicationServer::getFeature<InitDatabaseFeature>("InitDatabase");
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  
   // upgrade the database
   if (_upgradeCheck) {
     upgradeDatabase();
 
     if (!init->restoreAdmin() && !init->defaultPassword().empty() &&
         ServerState::instance()->isSingleServerOrCoordinator()) {
-      ai->updateUser("root", [&](AuthUserEntry& entry) {
-        entry.updatePassword(init->defaultPassword());
+      um->updateUser("root", [&](auth::User& user) {
+        user.updatePassword(init->defaultPassword());
       });
     }
   }
@@ -123,7 +122,7 @@ void UpgradeFeature::start() {
   if (init->restoreAdmin() &&
       ServerState::instance()->isSingleServerOrCoordinator()) {
     
-    Result res = ai->removeAllUsers();
+    Result res = um->removeAllUsers();
     if (res.fail()) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to clear users: "
                                               << res.errorMessage();
@@ -131,9 +130,9 @@ void UpgradeFeature::start() {
       return;
     }
 
-    res = ai->storeUser(true, "root", init->defaultPassword(), true);
+    res = um->storeUser(true, "root", init->defaultPassword(), true);
     if (res.fail() && res.errorNumber() == TRI_ERROR_USER_NOT_FOUND) {
-      res = ai->storeUser(false, "root", init->defaultPassword(), true);
+      res = um->storeUser(false, "root", init->defaultPassword(), true);
     }
 
     if (res.fail()) {
