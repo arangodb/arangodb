@@ -33,8 +33,6 @@
 const expect = require('chai').expect;
 const users = require('@arangodb/users');
 const db = require('@arangodb').db;
-const request = require('@arangodb/request');
-const arango = require('@arangodb').arango;
 
 const colName = 'PermissionsTestCollection';
 const rightLevels = ['rw', 'ro', 'none'];
@@ -65,10 +63,6 @@ const createUsers = () => {
       }
     }
   }
-};
-
-const baseUrl = () => {
-  return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
 };
 
 const createUser = (user) => {
@@ -114,18 +108,13 @@ describe('User Rights Management', () => {
         });
         it('on collection after revoking database level permission', () => {
           users.revokeCollection(user.name, '_system', colName);
+          users.reload();
           const permission = users.permission(user.name, user.db.name, colName);
 
-          const res = request(baseUrl() + '/_api/user/' + user.name + '/database?full=true');
-          expect(res).to.be.an.instanceof(request.Response);
-          expect(res).to.have.property('statusCode', 200);
-          expect(res.body).to.be.an('string');
-          const obj = JSON.parse(res.body);
-          expect(obj).to.have.property('result');
-
+          let result = users.permissionFull(user.name);
           let collPerm;
           if (user.db.name !== '*') {
-            collPerm = obj.result[user.db.name].collections['*'];
+            collPerm = result[user.db.name].collections['*'];
           } else {
             // this is checking collections permission level on database '*' which is not possible
             collPerm = permission;
@@ -137,13 +126,8 @@ describe('User Rights Management', () => {
           users.revokeDatabase(user.name, user.db.name);
           users.reload();
 
-          const res = request(baseUrl() + '/_api/user/' + user.name + '/database?full=true');
-          expect(res).to.be.an.instanceof(request.Response);
-          expect(res).to.have.property('statusCode', 200);
-          expect(res.body).to.be.an('string');
-          const obj = JSON.parse(res.body);
-          expect(obj).to.have.property('result');
-          const dbPerm = obj.result['*'].permission;
+          let result = users.permissionFull(user.name);
+          const dbPerm = result['*'].permission;
           const permission = users.permission(user.name, user.db.name);
 
           expect(permission).to.equal(dbPerm,
