@@ -135,7 +135,7 @@ describe('User Rights Management', () => {
         });
         it('on database after revoking database level permission', () => {
           users.revokeDatabase(user.name, user.db.name);
-          const permission = users.permission(user.name, user.db.name);
+          users.reload();
 
           const res = request(baseUrl() + '/_api/user/' + user.name + '/database?full=true');
           expect(res).to.be.an.instanceof(request.Response);
@@ -144,6 +144,7 @@ describe('User Rights Management', () => {
           const obj = JSON.parse(res.body);
           expect(obj).to.have.property('result');
           const dbPerm = obj.result['*'].permission;
+          const permission = users.permission(user.name, user.db.name);
 
           expect(permission).to.equal(dbPerm,
             'Expected different permission for _system');
