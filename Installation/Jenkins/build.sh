@@ -147,7 +147,7 @@ MAKE=make
 PACKAGE_MAKE=make
 MAKE_PARAMS=()
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF -DUSE_IRESEARCH=On")
+CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF -DUSE_IRESEARCH=On -DUSE_CATCH_TESTS=ON")
 INSTALL_PREFIX="/"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
@@ -949,9 +949,7 @@ if test -n "${TARGET_DIR}";  then
                             ${SED} 's/\r//' | \
                             ${SED} -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"
                   )
-            DLLS=$(find "${SSLDIR}" -name \*.dll |grep -i release)
             # shellcheck disable=SC2086
-            cp ${DLLS} "bin/${BUILD_CONFIG}"
             cp "bin/${BUILD_CONFIG}/"* bin/
             cp "tests/${BUILD_CONFIG}/"*exe bin/
         fi
