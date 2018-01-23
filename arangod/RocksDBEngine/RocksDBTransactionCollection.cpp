@@ -173,7 +173,8 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
 
   if (_collection == nullptr) {
     // open the collection
-    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
+    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
+        !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
       // use and usage-lock
       TRI_vocbase_col_status_e status;
       LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
@@ -320,8 +321,6 @@ void RocksDBTransactionCollection::trackIndexRemove(uint64_t idxObjectId,
 /// returns any other error code otherwise
 int RocksDBTransactionCollection::doLock(AccessMode::Type type,
                                          int nestingLevel) {
-  TRI_ASSERT(!_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK));
-
   if (!AccessMode::isWriteOrExclusive(type)) {
     _lockType = type;
     return TRI_ERROR_NO_ERROR;
@@ -388,8 +387,6 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type,
 /// @brief unlock a collection
 int RocksDBTransactionCollection::doUnlock(AccessMode::Type type,
                                            int nestingLevel) {
-  TRI_ASSERT(!_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK));
-
   if (!AccessMode::isWriteOrExclusive(type) ||
       !AccessMode::isWriteOrExclusive(_lockType)) {
     _lockType = AccessMode::Type::NONE;

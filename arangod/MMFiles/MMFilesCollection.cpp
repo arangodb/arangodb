@@ -2757,7 +2757,7 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
                                   options, documentId, builder->slice());
 
       if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res.errorNumber());
+        THROW_ARANGO_EXCEPTION(res);
       }
     }
 
@@ -3775,7 +3775,7 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
     if (res.fail()) {
       insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
                              Index::OperationMode::rollback);
-      THROW_ARANGO_EXCEPTION(res.errorNumber());
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     res = deletePrimaryIndex(trx, oldDocumentId, oldDoc, options);
@@ -3783,7 +3783,7 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
     if (res.fail()) {
       insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
                              Index::OperationMode::rollback);
-      THROW_ARANGO_EXCEPTION(res.errorNumber());
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     operation.indexed();
