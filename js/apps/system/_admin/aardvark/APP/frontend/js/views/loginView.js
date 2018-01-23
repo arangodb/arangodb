@@ -70,7 +70,7 @@
             $('#loginDatabase').hide();
             $('.fa-database').hide();
             $('#loginDatabase').after(
-              '<input id="databaseInputName" class="databaseInput"" placeholder="_system" value="_system"></input>'
+              '<input id="databaseInputName" class="databaseInput login-input" placeholder="_system" value="_system"></input>'
             );
           }
 
@@ -223,7 +223,7 @@
           $('#loginDatabase').hide();
           $('.fa-database').hide();
           $('#loginDatabase').after(
-            '<input id="databaseInputName" class="databaseInput"" placeholder="_system" value="_system"></input>'
+            '<input id="databaseInputName" class="databaseInput login-input" placeholder="_system" value="_system"></input>'
           );
         }
 
