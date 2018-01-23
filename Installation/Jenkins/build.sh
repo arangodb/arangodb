@@ -147,7 +147,7 @@ MAKE=make
 PACKAGE_MAKE=make
 MAKE_PARAMS=()
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF -DUSE_IRESEARCH=On -DUSE_CATCH_TESTS=ON")
+CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF -DUSE_IRESEARCH=On")
 INSTALL_PREFIX="/"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
@@ -719,7 +719,7 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
         if ! test -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"; then
             rm -f "${FN}"
             curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" || \
-                ${SRC}/Installation/Jenkins/curl_time_machine.sh "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" "${FN}"
+                "${SRC}/Installation/Jenkins/curl_time_machine.sh" "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" "${FN}"
             if ! test -s "${FN}" ; then
                 echo "failed to download syncer binary - aborting!"
                 exit 1
@@ -837,7 +837,7 @@ if [ -n "$CPACK" ] && [ -n "${TARGET_DIR}" ] && [ -z "${MSVC}" ];  then
 fi
 
 mkdir -p "${DST}/lib/Basics/"
-cat "${SOURCE_DIR}/lib/Basics/build-date.h.in" | sed "s;@ARANGODB_BUILD_DATE@;$(date "+%Y-%m-%d %H:%M:%S");" >"${DST}/lib/Basics/build-date.h"
+sed "s;@ARANGODB_BUILD_DATE@;$(date "+%Y-%m-%d %H:%M:%S");" "${SOURCE_DIR}/lib/Basics/build-date.h.in" > "${DST}/lib/Basics/build-date.h"
 TRIES=0;
 set +e
 while /bin/true; do
@@ -945,13 +945,7 @@ if test -n "${TARGET_DIR}";  then
         fi
 
         if test "${isCygwin}" == 1; then
-            SSLDIR=$(grep FIND_PACKAGE_MESSAGE_DETAILS_OpenSSL CMakeCache.txt | \
-                            ${SED} 's/\r//' | \
-                            ${SED} -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"
-                  )
-            # shellcheck disable=SC2086
             cp "bin/${BUILD_CONFIG}/"* bin/
-            cp "tests/${BUILD_CONFIG}/"*exe bin/
         fi
         tar -u -f "${TARFILE_TMP}" \
             bin etc tests
