@@ -40,6 +40,8 @@
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "StorageEngine/TransactionState.h"
+#include "StorageEngine/TransactionCollection.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -142,16 +144,16 @@ IResearchViewBlockBase::IResearchViewBlockBase(
 
 int IResearchViewBlockBase::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-  const int res = ExecutionBlock::initializeCursor(items, pos);
+    const int res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
 
-  _hasMore = true; // has more data initially
+    _hasMore = true; // has more data initially
+  DEBUG_END_BLOCK();
 
   return TRI_ERROR_NO_ERROR;
-  DEBUG_END_BLOCK();
 }
 
 void IResearchViewBlockBase::reset() {
@@ -220,11 +222,10 @@ bool IResearchViewBlockBase::readDocument(
     return false; // not a valid document reference
   }
 
-  static const std::string unknown("<unknown>");
+  TRI_ASSERT(_trx->state());
 
-  _trx->addCollectionAtRuntime(docPk.cid(), unknown);
-
-  auto* collection = _trx->documentCollection(docPk.cid());
+  // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
+  auto* collection = _trx->state()->collection(docPk.cid(), arangodb::AccessMode::Type::READ);
 
   if (!collection) {
     LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
@@ -234,7 +235,9 @@ bool IResearchViewBlockBase::readDocument(
     return false; // not a valid collection reference
   }
 
-  return collection->readDocument(
+  TRI_ASSERT(collection->collection());
+
+  return collection->collection()->readDocument(
     _trx, arangodb::LocalDocumentId(docPk.rid()), _mmdr
   );
 }
@@ -415,11 +418,10 @@ bool IResearchViewBlock::next(
     size_t& pos,
     size_t limit) {
   TRI_ASSERT(_filter);
-  bool done;
   auto const numSorts = getViewNode(*this).sortCondition().size();
 
   for (size_t count = _reader.size(); _readerOffset < count; ) {
-    done = false;
+    bool done = false;
 
     if (!_itr) {
       resetIterator();
@@ -479,12 +481,10 @@ bool IResearchViewBlock::next(
 
 size_t IResearchViewBlock::skip(size_t limit) {
   TRI_ASSERT(_filter);
-
   size_t skipped{};
-  bool done;
 
   for (size_t count = _reader.size(); _readerOffset < count;) {
-    done = false;
+    bool done = false;
 
     if (!_itr) {
       resetIterator();
@@ -525,10 +525,9 @@ bool IResearchViewUnorderedBlock::next(
     size_t& pos,
     size_t limit) {
   TRI_ASSERT(_filter);
-  bool done;
 
   for (size_t count = _reader.size(); _readerOffset < count; ) {
-    done = false;
+    bool done = false;
 
     if (!_itr) {
       auto& segmentReader = _reader[_readerOffset];
@@ -577,12 +576,10 @@ bool IResearchViewUnorderedBlock::next(
 
 size_t IResearchViewUnorderedBlock::skip(size_t limit) {
   TRI_ASSERT(_filter);
-
   size_t skipped{};
-  bool done;
 
   for (size_t count = _reader.size(); _readerOffset < count;) {
-    done = false;
+    bool done = false;
 
     if (!_itr) {
       auto& segmentReader = _reader[_readerOffset];

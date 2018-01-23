@@ -30,10 +30,13 @@ NS_LOCAL
 
 // MSVC < v14.0 (Visual Studio >2015) does not support explicit initializer for arrays: error C2536
 // GCC < v4.9 does not initialize the union array member with the specified value (initializes with {0,0})
-#if (defined(__APPLE__) \
-    || defined(_MSC_VER) && (_MSC_VER >= 1900)) \
-    || (defined (__GNUC__) && (__GNUC__ >= 5)) \
-    || (defined (__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ >= 9))
+// CLANG (at least 4.0.1) does not support constexpr reinterpret cast
+// for versions @see https://github.com/thp/psmoveapi/blob/master/external/glm/glm/simd/platform.h
+#if defined(__APPLE__) \
+    || (defined(__clang__) && (__clang_major__ > 4)) \
+    || (defined(_MSC_VER) && (_MSC_VER >= 1900)) \
+    || (defined(__GNUC__) && (__GNUC__ >= 5)) \
+    || (defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ >= 9))
   union big_endian_check {
     char raw[2]{ '\0', '\xff' };
     uint16_t num; // big endian: num < 0x100
@@ -46,10 +49,12 @@ NS_END
 NS_ROOT
 NS_BEGIN(numeric_utils)
 
-#if (defined(__APPLE__) \
-    || defined(_MSC_VER) && (_MSC_VER >= 1900)) \
-    || (defined (__GNUC__) && (__GNUC__ >= 5)) \
-    || (defined (__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ >= 9))
+
+#if defined(__APPLE__) \
+    || (defined(__clang__) && (__clang_major__ > 4)) \
+    || (defined(_MSC_VER) && (_MSC_VER >= 1900)) \
+    || (defined(__GNUC__) && (__GNUC__ >= 5)) \
+    || (defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ >= 9))
   inline CONSTEXPR bool is_big_endian() { return big_endian_check(); }
 #else
   inline CONSTEXPR bool is_big_endian() { return *(uint16_t*)"\0\xff" < 0x100; }

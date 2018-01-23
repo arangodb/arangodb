@@ -58,6 +58,12 @@ class LoggerView final : public ViewImplementation {
   arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice,
                                     bool partialUpdate, bool doSync) override;
 
+  virtual bool visitCollections(
+    std::function<bool(TRI_voc_cid_t)> const&
+  ) const {
+    return true; // no collections associated with the logger view
+  }
+
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&, bool) const override;
 

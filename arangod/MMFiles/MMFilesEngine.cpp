@@ -1687,7 +1687,7 @@ MMFilesEngineCollectionFiles MMFilesEngine::scanCollectionDirectory(
     std::vector<std::string> parts = StringUtils::split(file, '.');
 
     if (parts.size() < 2 || parts.size() > 3 || parts[0].empty()) {
-      LOG_TOPIC(DEBUG, Logger::DATAFILES)
+      LOG_TOPIC(TRACE, Logger::DATAFILES)
           << "ignoring file '" << file
           << "' because it does not look like a datafile";
       continue;
@@ -1700,7 +1700,7 @@ MMFilesEngineCollectionFiles MMFilesEngine::scanCollectionDirectory(
     std::vector<std::string> next = StringUtils::split(parts[0], "-");
 
     if (next.size() < 2) {
-      LOG_TOPIC(DEBUG, Logger::DATAFILES)
+      LOG_TOPIC(TRACE, Logger::DATAFILES)
           << "ignoring file '" << file
           << "' because it does not look like a datafile";
       continue;
@@ -1715,7 +1715,7 @@ MMFilesEngineCollectionFiles MMFilesEngine::scanCollectionDirectory(
       if (isDead == "dead") {
         FileUtils::remove(filename);
       } else {
-        LOG_TOPIC(DEBUG, Logger::DATAFILES)
+        LOG_TOPIC(TRACE, Logger::DATAFILES)
             << "ignoring file '" << file
             << "' because it does not look like a datafile";
       }
@@ -2861,7 +2861,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
     std::vector<std::string> parts = StringUtils::split(file, '.');
 
     if (parts.size() < 2 || parts.size() > 3 || parts[0].empty()) {
-      LOG_TOPIC(DEBUG, Logger::DATAFILES)
+      LOG_TOPIC(TRACE, Logger::DATAFILES)
           << "ignoring file '" << file
           << "' because it does not look like a datafile";
       continue;
@@ -2873,7 +2873,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
     std::vector<std::string> next = StringUtils::split(parts[0], "-");
 
     if (next.size() < 2) {
-      LOG_TOPIC(DEBUG, Logger::DATAFILES)
+      LOG_TOPIC(TRACE, Logger::DATAFILES)
           << "ignoring file '" << file
           << "' because it does not look like a datafile";
       continue;
@@ -2895,7 +2895,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
             << "', which is probably a left-over. deleting it";
         FileUtils::remove(filename);
       } else {
-        LOG_TOPIC(DEBUG, Logger::DATAFILES)
+        LOG_TOPIC(TRACE, Logger::DATAFILES)
             << "ignoring file '" << file
             << "' because it does not look like a datafile";
       }
@@ -3119,8 +3119,11 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
 /// the collection must have been prepared to call this function
 int MMFilesEngine::transferMarkers(LogicalCollection* collection,
                                    MMFilesCollectorCache* cache,
-                                   MMFilesOperationsType const& operations) {
-  int res = transferMarkersWorker(collection, cache, operations);
+                                   MMFilesOperationsType const& operations,
+                                   uint64_t& numBytesTransferred) {
+  numBytesTransferred = 0;
+
+  int res = transferMarkersWorker(collection, cache, operations, numBytesTransferred);
 
   TRI_IF_FAILURE("transferMarkersCrash") {
     // intentionally kill the server
@@ -3163,7 +3166,10 @@ void MMFilesEngine::addRestHandlers(rest::RestHandlerFactory* handlerFactory) {
 /// the collection must have been prepared to call this function
 int MMFilesEngine::transferMarkersWorker(
     LogicalCollection* collection, MMFilesCollectorCache* cache,
-    MMFilesOperationsType const& operations) {
+    MMFilesOperationsType const& operations,
+    uint64_t& numBytesTransferred) {
+  TRI_ASSERT(numBytesTransferred == 0);
+
   // used only for crash / recovery tests
   int numMarkers = 0;
 
@@ -3202,6 +3208,8 @@ int MMFilesEngine::transferMarkersWorker(
       if (dst == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
       }
+
+      numBytesTransferred += size;
 
       auto& dfi = cache->getDfi(cache->lastFid);
       dfi.numberUncollected++;

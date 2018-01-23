@@ -79,7 +79,7 @@
 #
 * [Views](Views/README.md)
 #
-  * [IResearch](Views/IResearch.md)
+  * [ArangoSearch](Views/IResearch.md)
     * [Analyzers](Views/IResearch/Analyzers.md)
 
 * [Foxx Microservices](Foxx/README.md)

@@ -579,6 +579,7 @@ irs::doc_id_t compute_doc_ids(
   const irs::sub_reader& reader,
   irs::doc_id_t next_id
 ) NOEXCEPT {
+  REGISTER_TIMER_DETAILED();
   // assume not a lot of space wasted if type_limits<type_t::doc_id_t>::min() > 0
   try {
     doc_id_map.resize(reader.docs_count() + irs::type_limits<irs::type_t::doc_id_t>::min(), MASKED_DOC_ID);
@@ -608,6 +609,7 @@ bool compute_field_meta(
     field_meta_map_t& field_meta_map,
     irs::flags& fields_features,
     const irs::sub_reader& reader) {
+  REGISTER_TIMER_DETAILED();
   for (auto it = reader.fields(); it->next();) {
     const auto& field_meta = it->value().meta();
     auto field_meta_map_itr = field_meta_map.emplace(field_meta.name, &field_meta);
@@ -852,7 +854,7 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
   //...........................................................................
   // write merged segment data
   //...........................................................................
-
+  REGISTER_TIMER_DETAILED();
   tracking_directory track_dir(dir_); // track writer created files
   columnstore cs(track_dir, meta);
 

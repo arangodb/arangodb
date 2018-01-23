@@ -58,7 +58,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
       arangodb::aql::ExecutionPlan* plan,
       size_t id,
       TRI_vocbase_t* vocbase,
-      std::shared_ptr<arangodb::LogicalView> view,
+      const std::shared_ptr<arangodb::LogicalView>& view,
       arangodb::aql::Variable const* outVariable,
       arangodb::aql::AstNode* filterCondition,
       std::vector<IResearchSort>&& sortCondition)

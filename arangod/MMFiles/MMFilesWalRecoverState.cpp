@@ -1106,9 +1106,11 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             // set the sync properties to false temporarily
             bool oldSync = state->databaseFeature->forceSyncProperties();
             state->databaseFeature->forceSyncProperties(false);
+            // restore the old behavior afterwards
+            TRI_DEFER(state->databaseFeature->forceSyncProperties(oldSync));
+
             collection =
                 vocbase->createCollection(b2.slice());
-            state->databaseFeature->forceSyncProperties(oldSync);
           } else {
             // collection will be kept
             collection =
@@ -1202,8 +1204,10 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             // set the sync properties to false temporarily
             bool oldSync = state->databaseFeature->forceSyncProperties();
             state->databaseFeature->forceSyncProperties(false);
+            // restore the old behavior afterwards
+            TRI_DEFER(state->databaseFeature->forceSyncProperties(oldSync));
+
             view = vocbase->createView(payloadSlice, viewId);
-            state->databaseFeature->forceSyncProperties(oldSync);
           } else {
             // view will be kept
             view = vocbase->createView(payloadSlice, viewId);

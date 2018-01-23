@@ -71,9 +71,8 @@ struct ExpressionExecutionContext : irs::attribute {
 
   ExpressionExecutionContext() = default;
 
-  ExpressionExecutionContext(
-      arangodb::transaction::Methods& trx
-  ) : trx(&trx) {
+  explicit ExpressionExecutionContext(arangodb::transaction::Methods& trx)
+    : trx(&trx) {
   }
 
   ExpressionExecutionContext(
@@ -151,4 +150,3 @@ NS_END // iresearch
 NS_END // arangodb
 
 #endif // ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_FILTER
-

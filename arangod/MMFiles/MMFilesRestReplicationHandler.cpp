@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesRestReplicationHandler.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollectionKeys.h"
@@ -418,14 +419,14 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   _response->setContentType(rest::ContentType::DUMP);
 
   // set headers
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                          checkMore ? "true" : "false");
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                          StringUtils::itoa(dump._lastFoundTick));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick,
                          StringUtils::itoa(state.lastCommittedTick));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderActive, "true");
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                          dump._fromTickIncluded ? "true" : "false");
 
   if (length > 0) {
@@ -521,10 +522,10 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
 
   _response->setContentType(rest::ContentType::DUMP);
 
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                          dump._fromTickIncluded ? "true" : "false");
 
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick,
                          StringUtils::itoa(dump._lastFoundTick));
 
   if (length > 0) {
@@ -1031,10 +1032,10 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   response->setContentType(rest::ContentType::DUMP);
 
   // set headers
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                          (dump._hasMore ? "true" : "false"));
 
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                          StringUtils::itoa(dump._lastFoundTick));
 
   // transfer ownership of the buffer contents

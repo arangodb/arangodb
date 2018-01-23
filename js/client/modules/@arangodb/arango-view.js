@@ -178,19 +178,22 @@ ArangoView.prototype.type = function () {
 // / @brief gets or sets the properties of a view
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoView.prototype.properties = function (properties) {
+ArangoView.prototype.properties = function (properties, partialUpdate) {
   var requestResult;
+
   if (properties === undefined) {
     requestResult = this._database._connection.GET(this._baseurl('properties'));
-
-    arangosh.checkRequestResult(requestResult);
+  } else if (partialUpdate === undefined || partialUpdate === true) {
+    requestResult = this._database._connection.PATCH(
+      this._baseurl('properties'), JSON.stringify(properties)
+    );
   } else {
-    var body = properties;
-    requestResult = this._database._connection.PATCH(this._baseurl('properties'),
-      JSON.stringify(body));
-
-    arangosh.checkRequestResult(requestResult);
+    requestResult = this._database._connection.PUT(
+      this._baseurl('properties'), JSON.stringify(properties)
+    );
   }
+
+  arangosh.checkRequestResult(requestResult);
 
   return requestResult;
 };

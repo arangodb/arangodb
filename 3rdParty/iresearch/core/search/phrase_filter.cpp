@@ -201,6 +201,12 @@ filter::prepared::ptr by_phrase::prepare(
     return filter::prepared::empty();
   }
 
+  if (1 == phrase_.size()) {
+    // similar to `term_query`
+    const irs::bytes_ref term = phrase_.begin()->second;
+    return term_query::make(rdr, ord, boost*this->boost(), fld_, term);
+  }
+
   // per segment phrase states 
   phrase_query::states_t phrase_states(rdr.size());
 
@@ -295,7 +301,7 @@ filter::prepared::ptr by_phrase::prepare(
   // apply boost
   irs::boost::apply(q->attributes(), this->boost() * boost);
 
-  return MSVC2013_MOVE_WORKAROUND(q);
+  return IMPLICIT_MOVE_WORKAROUND(q);
 }
 
 NS_END // ROOT
