@@ -147,7 +147,7 @@ MAKE=make
 PACKAGE_MAKE=make
 MAKE_PARAMS=()
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF")
+CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF -DUSE_IRESEARCH=On")
 INSTALL_PREFIX="/"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
@@ -412,6 +412,10 @@ while [ $# -gt 0 ];  do
             shift
             RETRY_N_TIMES=$1
             shift
+            ;;
+        --forceVersionNightly)
+            shift
+            CONFIGURE_OPTIONS+=(-DARANGODB_VERSION_REVISION=nightly)
             ;;
         *)
             echo "Unknown option: $1"

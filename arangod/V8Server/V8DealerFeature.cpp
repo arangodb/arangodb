@@ -1253,7 +1253,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       TRI_InitV8UserStructures(isolate, localContext);
       TRI_InitV8Buffer(isolate, localContext);
       TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
-      TRI_InitV8DebugUtils(isolate, localContext, _startupDirectory, modules);
+      TRI_InitV8DebugUtils(isolate, localContext);
       TRI_InitV8Shell(isolate, localContext);
 
       {

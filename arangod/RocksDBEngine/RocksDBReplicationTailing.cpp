@@ -25,11 +25,15 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Logger/Logger.h"
+#include "Replication/common-defines.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
-#include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
@@ -201,7 +205,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       }
       case RocksDBLogType::ViewCreate:
       case RocksDBLogType::ViewDrop:
-      case RocksDBLogType::ViewChange: {
+      case RocksDBLogType::ViewChange:
+      case RocksDBLogType::ViewRename: {
         resetTransientState(); // finish ongoing trx
         // TODO
         break;

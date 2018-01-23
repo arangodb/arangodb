@@ -27,7 +27,7 @@
 #include "search/scorers.hpp"
 #include "search/score.hpp"
 #include "store/memory_directory.hpp"
-#include "store/fs_directory.hpp"
+#include "store/mmap_directory.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/misc.hpp"
@@ -86,6 +86,12 @@ const irs::string_ref IRESEARCH_STORE_FORMAT("1_0");
 ////////////////////////////////////////////////////////////////////////////////
 const std::string LINKS_FIELD("links");
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the string representing the view type
+////////////////////////////////////////////////////////////////////////////////
+static const std::string& VIEW_TYPE = arangodb::iresearch::IResearchFeature::type();
+
+typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +177,7 @@ arangodb::Result createPersistedDataDirectory(
     TRI_voc_cid_t viewId
 ) noexcept {
   try {
-    auto directory = irs::directory::make<irs::fs_directory>(dstDataPath);
+    auto directory = irs::directory::make<irs::mmap_directory>(dstDataPath);
 
     if (!directory) {
       return arangodb::Result(
@@ -277,34 +283,41 @@ arangodb::iresearch::IResearchLink* findFirstMatchingLink(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register a callback to be called after recovery to persist properties
+/// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::Result persistProperties(
-    arangodb::PhysicalView& view,
-    std::shared_ptr<arangodb::iresearch::AsyncValid> const& valid
-) {
-  auto* feature = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
+inline void insertDocument(
+    irs::segment_writer::document& doc,
+    arangodb::iresearch::FieldIterator& body,
+    TRI_voc_cid_t cid,
+    TRI_voc_rid_t rid) {
+  using namespace arangodb::iresearch;
 
-  if (!feature) {
-    return view.persistProperties(); // database cannot be in recovery if there is no Database feature
+  // reuse the 'Field' instance stored
+  // inside the 'FieldIterator' after
+  auto& field = const_cast<Field&>(*body);
+
+  // User fields
+  while (body.valid()) {
+    doc.insert(irs::action::index_store, field);
+    ++body;
   }
 
-  return feature->registerPostRecoveryCallback([&view, valid]()->arangodb::Result {
-    arangodb::iresearch::ReadMutex mutex(valid->_mutex);
-    SCOPED_LOCK(mutex); // ensure view does not get deallocated before call back finishes
+  // System fields
+  // Indexed: CID
+  Field::setCidValue(field, cid, Field::init_stream_t());
+  doc.insert(irs::action::index, field);
 
-    if (!valid->_valid) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "Invalid call to post-recovery callback of iResearch view";
+  // Indexed: RID
+  Field::setRidValue(field, rid);
+  doc.insert(irs::action::index, field);
 
-      return arangodb::Result(); // view no longer in recovery state
-    }
-
-    return view.persistProperties();
-  });
+  // Stored: CID + RID
+  DocumentPrimaryKey const primaryKey(cid, rid);
+  doc.insert(irs::action::store, primaryKey);
 }
 
 arangodb::Result updateLinks(
+    std::unordered_set<TRI_voc_cid_t>& modified,
     TRI_vocbase_t& vocbase,
     arangodb::iresearch::IResearchView& view,
     arangodb::velocypack::Slice const& links
@@ -323,7 +336,7 @@ arangodb::Result updateLinks(
       arangodb::iresearch::IResearchLink const* _link = nullptr;
       size_t _linkDefinitionsOffset;
       bool _valid = true;
-      State(size_t collectionsToLockOffset)
+      explicit State(size_t collectionsToLockOffset)
         : State(collectionsToLockOffset, std::numeric_limits<size_t>::max()) {}
       State(size_t collectionsToLockOffset, size_t linkDefinitionsOffset)
         : _collectionsToLockOffset(collectionsToLockOffset), _linkDefinitionsOffset(linkDefinitionsOffset) {}
@@ -415,6 +428,7 @@ arangodb::Result updateLinks(
 
     {
       std::unordered_set<TRI_voc_cid_t> collectionsToRemove; // track removal for potential reindex
+      std::unordered_set<TRI_voc_cid_t> collectionsToUpdate; // track reindex requests
 
       // resolve corresponding collection and link
       for (auto itr = linkModifications.begin(); itr != linkModifications.end();) {
@@ -424,6 +438,12 @@ arangodb::Result updateLinks(
         state._collection = const_cast<arangodb::LogicalCollection*>(resolver->getCollectionStruct(collectionName));
 
         if (!state._collection) {
+          // remove modification state if removal of non-existant link on non-existant collection
+          if (state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
+            itr = linkModifications.erase(itr);
+            continue;
+          }
+
           return arangodb::Result(
             TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
             std::string("failed to get collection while updating iResearch view '") + std::to_string(view.id()) + "' collection '" + collectionName + "'"
@@ -440,9 +460,22 @@ arangodb::Result updateLinks(
           continue;
         }
 
-        if (state._link
+        if (state._link // links currently exists
             && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
-          collectionsToRemove.emplace(state._collection->cid());
+          auto cid = state._collection->cid();
+
+          // remove duplicate removal requests (e.g. by name + by CID)
+          if (collectionsToRemove.find(cid) != collectionsToRemove.end()) { // removal previously requested
+            itr = linkModifications.erase(itr);
+            continue;
+          }
+
+          collectionsToRemove.emplace(cid);
+        }
+
+        if (state._link // links currently exists
+            && state._linkDefinitionsOffset < linkDefinitions.size()) { // link update request
+          collectionsToUpdate.emplace(state._collection->cid());
         }
 
         ++itr;
@@ -451,6 +484,14 @@ arangodb::Result updateLinks(
       // remove modification state if no change on existing link and reindex not requested
       for (auto itr = linkModifications.begin(); itr != linkModifications.end();) {
         auto& state = *itr;
+
+        // remove modification if removal request with an update request also present
+        if (state._link // links currently exists
+            && state._linkDefinitionsOffset >= linkDefinitions.size() // link removal request
+            && collectionsToUpdate.find(state._collection->cid()) != collectionsToUpdate.end()) { // also has a reindex request
+          itr = linkModifications.erase(itr);
+          continue;
+        }
 
         // remove modification state if no change on existing link or
         if (state._link // links currently exists
@@ -467,8 +508,8 @@ arangodb::Result updateLinks(
 
     // execute removals
     for (auto& state: linkModifications) {
-      if (state._link
-          && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
+      if (state._link) { // link removal or recreate request
+        modified.emplace(state._collection->cid());
         state._valid = state._collection->dropIndex(state._link->id());
       }
     }
@@ -479,11 +520,8 @@ arangodb::Result updateLinks(
         bool isNew = false;
         auto linkPtr = state._collection->createIndex(&trx, linkDefinitions[state._linkDefinitionsOffset].first.slice(), isNew);
 
-        // TODO FIXME find a better way to retrieve an iResearch Link
-        // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
-        auto* ptr = dynamic_cast<arangodb::iresearch::IResearchLink*>(linkPtr.get());
-
-        state._valid = ptr && isNew;
+        modified.emplace(state._collection->cid());
+        state._valid = linkPtr && isNew;
       }
     }
 
@@ -523,36 +561,24 @@ arangodb::Result updateLinks(
   }
 }
 
-// inserts ArangoDB document into IResearch index
-inline void insertDocument(
-    irs::index_writer::document& doc,
-    arangodb::iresearch::FieldIterator& body,
-    TRI_voc_cid_t cid,
-    TRI_voc_rid_t rid) {
-  using namespace arangodb::iresearch;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove all cids from 'collections' that do not actually exist in
+///        'vocbase' for the specified 'view'
+////////////////////////////////////////////////////////////////////////////////
+void validateLinks(
+    std::unordered_set<TRI_voc_cid_t>& collections,
+    TRI_vocbase_t& vocbase,
+    arangodb::iresearch::IResearchView const& view
+) {
+  for (auto itr = collections.begin(), end = collections.end(); itr != end;) {
+    auto* collection = vocbase.lookupCollection(*itr);
 
-  // reuse the 'Field' instance stored
-  // inside the 'FieldIterator' after
-  auto& field = const_cast<Field&>(*body);
-
-  // User fields
-  while (body.valid()) {
-    doc.insert(irs::action::index_store, field);
-    ++body;
+    if (!collection || !findFirstMatchingLink(*collection, view)) {
+      itr = collections.erase(itr);
+    } else {
+      ++itr;
+    }
   }
-
-  // System fields
-  // Indexed: CID
-  Field::setCidValue(field, cid, Field::init_stream_t());
-  doc.insert(irs::action::index, field);
-
-  // Indexed: RID
-  Field::setRidValue(field, rid);
-  doc.insert(irs::action::index, field);
-
-  // Stored: CID + RID
-  DocumentPrimaryKey const primaryKey(cid, rid);
-  doc.insert(irs::action::store, primaryKey);
 }
 
 NS_END
@@ -670,7 +696,7 @@ IResearchView::MemoryStore::MemoryStore() {
 
 IResearchView::SyncState::PolicyState::PolicyState(
     size_t intervalStep,
-    std::shared_ptr<irs::index_writer::consolidation_policy_t> policy
+    const std::shared_ptr<irs::index_writer::consolidation_policy_t>& policy
 ): _intervalCount(0), _intervalStep(intervalStep), _policy(policy) {
 }
 
@@ -711,57 +737,57 @@ IResearchView::IResearchView(
 ) : ViewImplementation(view, info),
     FlushTransaction(toString(*this)),
    _asyncMetaRevision(1),
+   _asyncSelf(irs::memory::make_unique<AsyncSelf>(this)),
    _asyncTerminate(false),
    _memoryNode(&_memoryNodes[0]), // set current memory node (arbitrarily 0)
    _toFlush(&_memoryNodes[1]), // set flush-pending memory node (not same as _memoryNode)
    _threadPool(0, 0), // 0 == create pool with no threads, i.e. not running anything
-   _inRecovery(false),
-   _valid(irs::memory::make_unique<AsyncValid>(true)) {
-
+   _inRecovery(false) {
   // set up in-recovery insertion hooks
   auto* feature = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
 
   if (feature) {
-    auto valid = _valid; // create copy for lambda
+    auto view = _asyncSelf; // create copy for lambda
 
-    feature->registerPostRecoveryCallback([this, valid]()->arangodb::Result {
-      arangodb::iresearch::ReadMutex mutex(valid->_mutex);
-      SCOPED_LOCK(mutex); // ensure view does not get deallocated before call back finishes
+    feature->registerPostRecoveryCallback([view]()->arangodb::Result {
+      auto viewMutex = view->mutex();
+      SCOPED_LOCK(viewMutex); // ensure view does not get deallocated before call back finishes
+      auto* viewPtr = view->get();
 
-      if (!valid->_valid) {
+      if (!viewPtr) {
         LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
           << "Invalid call to post-recovery callback of iResearch view";
 
         return arangodb::Result(); // view no longer in recovery state
       }
 
-      verifyKnownCollections();
+      viewPtr->verifyKnownCollections();
 
-      if (_storePersisted) {
+      if (viewPtr->_storePersisted) {
         LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
-          << "starting persisted-sync sync for iResearch view '" << id() << "'";
+          << "starting persisted-sync sync for iResearch view '" << viewPtr->id() << "'";
 
         try {
-          _storePersisted.sync();
+          viewPtr->_storePersisted.sync();
         } catch (std::exception const& e) {
           LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
-            << "caught exception while committing persisted store for iResearch view '" << id()
+            << "caught exception while committing persisted store for iResearch view '" << viewPtr->id()
             << "': " << e.what();
 
           return arangodb::Result(TRI_ERROR_INTERNAL, e.what());
         } catch (...) {
           LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
-            << "caught exception while committing persisted store for iResearch view '" << id() << "'";
+            << "caught exception while committing persisted store for iResearch view '" << viewPtr->id() << "'";
 
           return arangodb::Result(TRI_ERROR_INTERNAL);
         }
 
         LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
-          << "finished persisted-sync sync for iResearch view '" << id() << "'";
+          << "finished persisted-sync sync for iResearch view '" << viewPtr->id() << "'";
       }
 
-      _threadPool.max_threads(_meta._threadsMaxTotal); // start pool
-      _inRecovery = false;
+      viewPtr->_threadPool.max_threads(viewPtr->_meta._threadsMaxTotal); // start pool
+      viewPtr->_inRecovery = false;
 
       return arangodb::Result();
     });
@@ -801,7 +827,7 @@ IResearchView::IResearchView(
           << "failed to finish commit while processing transaction callback for iResearch view '" << id() << "'";
       } else if (trx->state()->options().waitForSync && !sync()) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-          << "failed to sync while processing transaction callback for iResearch view '" << id() << "'";
+          << "failed to sync while processing transaction callback for IResearch view '" << id() << "'";
       }
 
       return;
@@ -825,7 +851,7 @@ IResearchView::IResearchView(
         _commitIntervalMsecRemainder(std::numeric_limits<size_t>::max()),
         _commitTimeoutMsec(0) {
       }
-      State(IResearchViewMeta::CommitMeta const& meta)
+      explicit State(IResearchViewMeta::CommitMeta const& meta)
         : SyncState(meta),
           _asyncMetaRevision(0), // '0' differs from IResearchView constructor above
           _commitIntervalMsecRemainder(std::numeric_limits<size_t>::max()),
@@ -834,7 +860,7 @@ IResearchView::IResearchView(
     };
 
     State state;
-    arangodb::iresearch::ReadMutex mutex(_mutex); // '_meta' can be asynchronously modified
+    ReadMutex mutex(_mutex); // '_meta' can be asynchronously modified
 
     for(;;) {
       // sleep until timeout
@@ -891,9 +917,9 @@ IResearchView::IResearchView(
 
 IResearchView::~IResearchView() {
   {
-    WriteMutex mutex(_valid->_mutex);
-    SCOPED_LOCK(mutex);
-    _valid->_valid = false; // the view is being deallocated, its use is not longer valid
+    WriteMutex mutex(_asyncSelf->_mutex);
+    SCOPED_LOCK(mutex); // wait for all the view users to finish
+    _asyncSelf->_value.store(nullptr); // the view is being deallocated, its use is not longer valid
   }
 
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
@@ -908,18 +934,9 @@ IResearchView::~IResearchView() {
 
   _flushCallback.reset(); // unregister flush callback from flush thread
 
-  std::vector<sptr> viewPointers;
-
   {
     WriteMutex mutex(_mutex); // '_meta' can be asynchronously read
     SCOPED_LOCK(mutex);
-
-    // unregister all registred links from view and retain a copy so that can call destructor outside of lock
-    for (auto& entry: _registeredLinks) {
-      if (entry.second) {
-        viewPointers.emplace_back(entry.second->updateView(nullptr));
-      }
-    }
 
     if (_storePersisted) {
       _storePersisted._writer->commit();
@@ -931,33 +948,12 @@ IResearchView::~IResearchView() {
   }
 }
 
-bool IResearchView::appendKnownCollections(
-    std::unordered_set<TRI_voc_cid_t>& set
-) const {
-  CompoundReader reader(_mutex); // will aquire read-lock since members can be asynchronously updated
-
-  reader.add(_memoryNode->_store._reader);
-  SCOPED_LOCK(_toFlush->_readMutex);
-  reader.add(_toFlush->_store._reader);
-
-  if (_storePersisted) {
-    reader.add(_storePersisted._reader);
-  }
-
-  set.insert(_meta._collections.begin(), _meta._collections.end());
-
-  if (arangodb::iresearch::appendKnownCollections(set, reader)) {
-    return true;
-  }
-
-  LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
-    << "failed to collect CIDs for IResearch view '" << id() << "'";
-
-  return false;
+IResearchView::MemoryStore& IResearchView::activeMemoryStore() const {
+  return _memoryNode->_store;
 }
 
 bool IResearchView::cleanup(size_t maxMsec /*= 0*/) {
-  arangodb::iresearch::ReadMutex mutex(_mutex);
+  ReadMutex mutex(_mutex);
   auto thresholdSec = TRI_microtime() + maxMsec/1000.0;
 
   try {
@@ -1006,13 +1002,15 @@ bool IResearchView::cleanup(size_t maxMsec /*= 0*/) {
 }
 
 void IResearchView::drop() {
+  std::unordered_set<TRI_voc_cid_t> collections;
+
   // drop all known links
   if (_logicalView && _logicalView->vocbase()) {
     arangodb::velocypack::Builder builder;
 
     {
       ReadMutex mutex(_mutex);
-      SCOPED_LOCK(mutex); // '_meta' can be asynchronously updated
+      SCOPED_LOCK(mutex); // '_meta' and '_trackedCids' can be asynchronously updated
 
       builder.openObject();
 
@@ -1023,7 +1021,7 @@ void IResearchView::drop() {
       builder.close();
     }
 
-    if (!updateLinks(*(_logicalView->vocbase()), *this, builder.slice()).ok()) {
+    if (!updateLinks(collections, *(_logicalView->vocbase()), *this, builder.slice()).ok()) {
       throw std::runtime_error(std::string("failed to remove links while removing iResearch view '") + std::to_string(id()) + "'");
     }
   }
@@ -1040,8 +1038,14 @@ void IResearchView::drop() {
   WriteMutex mutex(_mutex); // members can be asynchronously updated
   SCOPED_LOCK(mutex);
 
+  collections.insert(_meta._collections.begin(), _meta._collections.end());
+
+  if (_logicalView->vocbase()) {
+    validateLinks(collections, *(_logicalView->vocbase()), *this);
+  }
+
   // ArangoDB global consistency check, no known dangling links
-  if (!_meta._collections.empty() || !_registeredLinks.empty()) {
+  if (!collections.empty()) {
     throw std::runtime_error(std::string("links still present while removing iResearch view '") + std::to_string(id()) + "'");
   }
 
@@ -1083,33 +1087,9 @@ void IResearchView::drop() {
 }
 
 int IResearchView::drop(TRI_voc_cid_t cid) {
-  if (!_logicalView || !_logicalView->getPhysical()) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "failed to find meta-store while dropping collection from iResearch view '" << id()
-      << "' cid '" << cid << "'";
-
-    return TRI_ERROR_INTERNAL;
-  }
-
-  auto& metaStore = *(_logicalView->getPhysical());
   std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
-  WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
+  ReadMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
-  bool meta_updated = _meta._collections.erase(cid); // will no longer be fully indexed
-  mutex.unlock(true); // downgrade to a read-lock
-
-  // no need to persist properties if thy were not modified (optimization)
-  if (meta_updated) {
-    auto res = persistProperties(metaStore, _valid); // persist '_meta' definition
-
-    if (!res.ok()) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-        << "failed to persist view definition while dropping collection from iResearch view '" << id()
-        << "' cid '" << cid << "'";
-
-      return res.errorNumber();
-    }
-  }
 
   // ...........................................................................
   // if an exception occurs below than a drop retry would most likely happen
@@ -1263,7 +1243,7 @@ void IResearchView::getPropertiesVPack(
 
   _meta.json(builder);
 
-  if (!_logicalView || forPersistence) {
+  if (!_logicalView || !_logicalView->vocbase() || forPersistence) {
     return; // nothing more to output (persistent configuration does not need links)
   }
 
@@ -1271,12 +1251,10 @@ void IResearchView::getPropertiesVPack(
 
   // add CIDs of known collections to list
   for (auto& entry: _meta._collections) {
-    collections.emplace_back(arangodb::basics::StringUtils::itoa(entry));
-  }
-
-  // add CIDs of registered collections to list
-  for (auto& entry: _registeredLinks) {
-    collections.emplace_back(std::to_string(entry.first));
+    // skip collections missing from vocbase or UserTransaction constructor will throw an exception
+    if (nullptr != _logicalView->vocbase()->lookupCollection(entry)) {
+      collections.emplace_back(std::to_string(entry));
+    }
   }
 
   arangodb::velocypack::Builder linksBuilder;
@@ -1393,7 +1371,7 @@ int IResearchView::insert(
     return TRI_ERROR_NO_ERROR; // nothing to index
   }
 
-  auto insert = [&body, cid, documentId](irs::index_writer::document& doc)->bool {
+  auto insert = [&body, cid, documentId](irs::segment_writer::document& doc)->bool {
     insertDocument(doc, body, cid, documentId.id());
 
     return false; // break the loop
@@ -1469,7 +1447,7 @@ int IResearchView::insert(
     return TRI_ERROR_NO_ERROR; // nothing to index
   }
 
-  auto insert = [&meta, &begin, &end, &body, cid, &rid](irs::index_writer::document& doc)->bool {
+  auto insert = [&meta, &begin, &end, &body, cid, &rid](irs::segment_writer::document& doc)->bool {
     insertDocument(doc, body, cid, rid);
 
     // find next valid document
@@ -1507,107 +1485,6 @@ int IResearchView::insert(
   return TRI_ERROR_NO_ERROR;
 }
 
-iresearch::CompoundReader IResearchView::snapshot(transaction::Methods &trx) {
-  iresearch::CompoundReader compoundReader(_mutex); // will aquire read-lock since members can be asynchronously updated
-
-  try {
-    compoundReader.add(_memoryNode->_store._reader);
-    SCOPED_LOCK(_toFlush->_readMutex);
-    compoundReader.add(_toFlush->_store._reader);
-
-    if (_storePersisted) {
-      compoundReader.add(_storePersisted._reader);
-    }
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "caught exception while collecting readers for querying iResearch view '" << id()
-      << "': " << e.what();
-    IR_EXCEPTION();
-    throw;
-  } catch (...) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "caught exception while collecting readers for querying iResearch view '" << id() << "'";
-    IR_EXCEPTION();
-    throw;
-  }
-
-  // add CIDs of known collections to transaction
-  for (auto& entry: _meta._collections) {
-    trx.addCollectionAtRuntime(arangodb::basics::StringUtils::itoa(entry));
-  }
-
-  // add CIDs of registered collections to transaction
-  for (auto& entry: _registeredLinks) {
-    trx.addCollectionAtRuntime(std::to_string(entry.first));
-  }
-
-  return compoundReader;
-}
-
-size_t IResearchView::linkCount() const noexcept {
-  ReadMutex mutex(_mutex); // '_links' can be asynchronously updated
-  SCOPED_LOCK(mutex);
-
-  return _meta._collections.size();
-}
-
-bool IResearchView::linkRegister(IResearchLink& link) {
-  if (!link.collection()) {
-    return false; // do not register empty pointers
-  }
-
-  if (!_logicalView || !_logicalView->getPhysical()) {
-    return false; // cannot persist view
-  }
-
-  auto cid = link.collection()->cid();
-
-  WriteMutex mutex(_mutex); // '_links' can be asynchronously updated
-  SCOPED_LOCK(mutex);
-
-  // do not allow duplicate registration
-  if (!_registeredLinks.emplace(cid, &link).second) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "duplicate iResearch link registration detected for iResearch view '" << id()
-      <<"' cid '" << link.collection()->cid() << "' iid '" << link.id() << "'";
-
-    return false;
-  }
-
-  auto unregistrar = [cid](IResearchView* ptr)->void {
-    if (ptr) {
-      WriteMutex mutex(ptr->_mutex); // '_registredLinks' can be asynchronously updated
-      SCOPED_LOCK(mutex);
-      ptr->_registeredLinks.erase(cid);
-    }
-  };
-
-  if (!_meta._collections.emplace(cid).second) {
-    // first time an IResearchLink object was seen for the specified cid
-    // e.g. this happends during startup when links initially register with the view
-    link.updateView(sptr(this, std::move(unregistrar))); // will not deadlock since checked for duplicate cid above
-
-    return true;
-  }
-
-  auto& metaStore = *(_logicalView->getPhysical());
-  auto res = persistProperties(metaStore, _valid); // persist '_meta' definition
-
-  if (res.ok()) {
-    link.updateView(sptr(this, std::move(unregistrar)), true); // will not deadlock since checked for duplicate cid above
-
-    return true;
-  }
-
-  LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-    << "failed to persist iResearch view definition during new iResearch link registration for iResearch view '" << id()
-    << "' cid '" << link.collection()->cid() << "' iid '" << link.id() << "'";
-  _meta._collections.erase(cid); // revert state
-  _registeredLinks.erase(cid); // revert state
-
-  return false;
-}
-
 /*static*/ IResearchView::ptr IResearchView::make(
   arangodb::LogicalView* view,
   arangodb::velocypack::Slice const& info,
@@ -1633,7 +1510,6 @@ size_t IResearchView::memory() const {
   SCOPED_LOCK(mutex);
   size_t size = sizeof(IResearchView);
 
-  size += sizeof(decltype(_registeredLinks)::value_type) * _registeredLinks.size();
   size += _meta.memory();
 
   for (auto& tidEntry: _storeByTid) {
@@ -1681,7 +1557,7 @@ void IResearchView::open() {
 
     if (format && appendAbsolutePersistedDataPath(absoluteDataPath, *this, _meta)) {
       _storePersisted._directory =
-        irs::directory::make<irs::fs_directory>(absoluteDataPath);
+        irs::directory::make<irs::mmap_directory>(absoluteDataPath);
 
       if (_storePersisted._directory) {
         // create writer before reader to ensure data directory is present
@@ -1703,6 +1579,7 @@ void IResearchView::open() {
 
           if (_storePersisted._reader) {
             registerFlushCallback();
+
             return; // success
           }
 
@@ -1792,8 +1669,35 @@ int IResearchView::remove(
   return TRI_ERROR_INTERNAL;
 }
 
-IResearchView::MemoryStore& IResearchView::activeMemoryStore() const {
-  return _memoryNode->_store;
+iresearch::CompoundReader IResearchView::snapshot() {
+  iresearch::CompoundReader compoundReader(_mutex); // will aquire read-lock since members can be asynchronously updated
+
+  try {
+    compoundReader.add(_memoryNode->_store._reader);
+    SCOPED_LOCK(_toFlush->_readMutex);
+    compoundReader.add(_toFlush->_store._reader);
+
+    if (_storePersisted) {
+      compoundReader.add(_storePersisted._reader);
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while collecting readers for querying iResearch view '" << id()
+      << "': " << e.what();
+    IR_EXCEPTION();
+    throw;
+  } catch (...) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while collecting readers for querying iResearch view '" << id() << "'";
+    IR_EXCEPTION();
+    throw;
+  }
+
+  return compoundReader;
+}
+
+IResearchView::AsyncSelf::ptr IResearchView::self() const {
+  return _asyncSelf;
 }
 
 bool IResearchView::sync(size_t maxMsec /*= 0*/) {
@@ -1934,9 +1838,18 @@ bool IResearchView::sync(SyncState& state, size_t maxMsec /*= 0*/) {
 }
 
 /*static*/ std::string const& IResearchView::type() noexcept {
-  static const std::string  type = "iresearch";
+  return VIEW_TYPE;
+}
 
-  return type;
+arangodb::Result IResearchView::updateLogicalProperties(
+  arangodb::velocypack::Slice const& slice,
+  bool partialUpdate,
+  bool doSync
+) {
+  return _logicalView
+    ? _logicalView->updateProperties(slice, partialUpdate, doSync)
+    : arangodb::Result(TRI_ERROR_ARANGO_VIEW_NOT_FOUND)
+    ;
 }
 
 arangodb::Result IResearchView::updateProperties(
@@ -1944,10 +1857,10 @@ arangodb::Result IResearchView::updateProperties(
   bool partialUpdate,
   bool doSync
 ) {
-  if (!_logicalView || !_logicalView->getPhysical()) {
+  if (!_logicalView) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("failed to find meta-store while updating iResearch view '") + std::to_string(id()) + "'"
+      std::string("failed to find logical view while updating IResearch view '") + std::to_string(id()) + "'"
     );
   }
 
@@ -1960,7 +1873,6 @@ arangodb::Result IResearchView::updateProperties(
     );
   }
 
-  auto& metaStore = *(_logicalView->getPhysical());
   std::string error;
   IResearchViewMeta meta;
   IResearchViewMeta::Mask mask;
@@ -1983,6 +1895,70 @@ arangodb::Result IResearchView::updateProperties(
 
     if (!meta.init(slice, error, *_logicalView, initialMeta, &mask)) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::move(error));
+    }
+
+    // FIXME TODO remove once View::updateProperties(...) will be fixed to write
+    // the update delta into the WAL marker instead of the full persisted state
+    // below is a very dangerous hack as it allows multiple links from the same
+    // collection to point to the same view, thus breaking view data consistency
+    {
+      auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+
+      if (engine && engine->inRecovery()) {
+        arangodb::velocypack::Builder linksBuilder;
+
+        linksBuilder.openObject();
+
+        // remove links no longer present in incming update
+        for (auto& cid: _meta._collections) {
+          if (meta._collections.find(cid) == meta._collections.end()) {
+            linksBuilder.add(
+              std::to_string(cid),
+              arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
+            );
+          }
+        }
+
+        for (auto& cid: meta._collections) {
+          auto* collection = vocbase->lookupCollection(cid);
+
+          if (collection) {
+            _meta._collections.emplace(cid);
+
+            for (auto& index: collection->getIndexes()) {
+              if (index && arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()) {
+                auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+
+                if (link && link->_defaultId == id() && !link->_view->get()) {
+                  arangodb::velocypack::Builder linkBuilder;
+                  bool valid;
+
+                  linkBuilder.openObject();
+                  valid = link->json(linkBuilder, true);
+                  linkBuilder.close();
+
+                  linksBuilder.add(
+                    std::to_string(cid),
+                    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
+                  );
+
+                  if (valid) {
+                    linksBuilder.add(std::to_string(cid), linkBuilder.slice());
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        std::unordered_set<TRI_voc_cid_t> collections;
+
+        linksBuilder.close();
+        updateLinks(collections, *vocbase, *this, linksBuilder.slice());
+        collections.insert(_meta._collections.begin(), _meta._collections.end());
+        validateLinks(collections, *vocbase, *this); // remove invalid cids (no such collection or no such link)
+        _meta._collections = std::move(collections);
+      }
     }
 
     // reset non-updatable values to match current meta
@@ -2050,20 +2026,7 @@ arangodb::Result IResearchView::updateProperties(
       }
     }
 
-    IResearchViewMeta metaBackup;
-
-    metaBackup = std::move(_meta);
     _meta = std::move(meta);
-
-    res = persistProperties(metaStore, _valid); // persist '_meta' definition (so that on failure can revert meta)
-
-    if (!res.ok()) {
-      _meta = std::move(metaBackup); // revert to original meta
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-        << "failed to persist view definition while updating iResearch view '" << id() << "'";
-
-      return res;
-    }
 
     if (mask._dataPath) {
       _storePersisted = std::move(storePersisted);
@@ -2087,12 +2050,14 @@ arangodb::Result IResearchView::updateProperties(
     }
   }
 
+  std::unordered_set<TRI_voc_cid_t> collections;
+
   // update links if requested (on a best-effort basis)
   // indexing of collections is done in different threads so no locks can be held and rollback is not possible
   // as a result it's also possible for links to be simultaneously modified via a different callflow (e.g. from collections)
   if (slice.hasKey(LINKS_FIELD)) {
     if (partialUpdate) {
-      res = updateLinks(*vocbase, *this, slice.get(LINKS_FIELD));
+      res = updateLinks(collections, *vocbase, *this, slice.get(LINKS_FIELD));
     } else {
       arangodb::velocypack::Builder builder;
 
@@ -2107,9 +2072,24 @@ arangodb::Result IResearchView::updateProperties(
       }
 
       builder.close();
-      res = updateLinks(*vocbase, *this, builder.slice());
+      res = updateLinks(collections, *vocbase, *this, builder.slice());
     }
   }
+
+  // ...........................................................................
+  // if an exception occurs below then it would only affect collection linking
+  // consistency and an update retry would most likely happen
+  // always re-validate '_collections' because may have had externally triggered
+  // collection/link drops
+  // ...........................................................................
+  {
+    SCOPED_LOCK(mutex); // '_meta' can be asynchronously read
+    collections.insert(_meta._collections.begin(), _meta._collections.end());
+    validateLinks(collections, *vocbase, *this); // remove invalid cids (no such collection or no such link)
+    _meta._collections = std::move(collections);
+  }
+
+  // FIXME TODO to ensure valid recovery remove the original datapath only if the entire, but under lock to prevent double rename
 
   return res;
 }
@@ -2146,6 +2126,21 @@ void IResearchView::registerFlushCallback() {
   _flushCallback.reset(this); // mark for future unregistration
 }
 
+bool IResearchView::visitCollections(
+    std::function<bool(TRI_voc_cid_t)> const& visitor
+) const {
+  ReadMutex mutex(_mutex);
+  SCOPED_LOCK(mutex);
+
+  for (auto& cid: _meta._collections) {
+    if (!visitor(cid)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 void IResearchView::FlushCallbackUnregisterer::operator()(IResearchView* view) const noexcept {
   arangodb::FlushFeature* flush = nullptr;
 
@@ -2161,26 +2156,34 @@ void IResearchView::FlushCallbackUnregisterer::operator()(IResearchView* view) c
 }
 
 void IResearchView::verifyKnownCollections() {
-  std::unordered_set<TRI_voc_cid_t> ids;
-  bool success = appendKnownCollections(ids);
-  if (success) {
-    for (auto cid : ids) {
-      auto collection = _logicalView->vocbase()->lookupCollection(cid);
-      if (!collection) {
-        // collection no longer exists, drop it and move on
+  std::unordered_set<TRI_voc_cid_t> cids;
+
+  if (!appendKnownCollections(cids, snapshot())) {
+    LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+      << "failed to collect collection IDs for IResearch view '" << id() << "'";
+
+    return;
+  }
+
+  for (auto cid : cids) {
+    auto collection = _logicalView->vocbase()->lookupCollection(cid);
+
+    if (!collection) {
+      // collection no longer exists, drop it and move on
+      LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "collection '" << cid
+        << "' no longer exists! removing from IResearch view '"
+        << _logicalView->id() << "'";
+      drop(cid);
+    } else {
+      // see if the link still exists, otherwise drop and move on
+      auto link = findFirstMatchingLink(*collection, *this);
+      if (!link) {
         LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
-          << "collection " << cid << " no longer exists! removing from view "
-          << _logicalView->id();
+          << "collection '" << cid
+          << "' no longer linked! removing from IResearch view '"
+          << _logicalView->id() << "'";
         drop(cid);
-      } else {
-        // see if the link still exists, otherwise drop and move on
-        auto link = findFirstMatchingLink(*collection, *this);
-        if (!link) {
-          LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
-            << "collection " << cid << " no longer linked! removing from view "
-            << _logicalView->id();
-          drop(cid);
-        }
       }
     }
   }

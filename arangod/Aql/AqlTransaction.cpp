@@ -99,6 +99,8 @@ Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
   */
   if (col != nullptr) {
     cid = col->cid();
+  } else {
+    cid = resolver()->getCollectionId(collection->getName());
   }
 
   Result res =
@@ -125,3 +127,7 @@ LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
 /// order via an HTTP call. This method is used to implement that HTTP action.
 
 int AqlTransaction::lockCollections() { return state()->lockCollections(); }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

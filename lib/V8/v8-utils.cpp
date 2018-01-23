@@ -2681,7 +2681,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "invalid <content> buffer value");
     }
 
-    std::ofstream file;
+    std::fstream file;
 
     file.open(*name, std::ios::out | std::ios::binary);
 
@@ -2689,6 +2689,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
       file.write(data, size);
       if (flush) {
         file.flush();
+        file.sync();
       }
       file.close();
       TRI_V8_RETURN_TRUE();
@@ -2700,7 +2701,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("<content> must be a string");
     }
 
-    std::ofstream file;
+    std::fstream file;
 
     file.open(*name, std::ios::out | std::ios::binary);
 
@@ -2708,6 +2709,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
       file << *content;
       if (flush) {
         file.flush();
+        file.sync();
       }
       file.close();
       TRI_V8_RETURN_TRUE();
@@ -4557,9 +4559,7 @@ void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-extern void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                          std::string const& startupPath,
-                          std::string const& modules);
+extern void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
 void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                      std::string const& startupPath,
@@ -4816,5 +4816,5 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate, "SYS_PLATFORM"),
                                TRI_V8_ASCII_STRING(isolate, TRI_PLATFORM));
 
-  TRI_InitV8Env(isolate, context, startupPath, modules);
+  TRI_InitV8Env(isolate, context);
 }

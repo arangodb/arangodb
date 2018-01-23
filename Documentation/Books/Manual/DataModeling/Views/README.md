@@ -39,5 +39,5 @@ method and is documented in detail in
 
 ### View Types
 
-The currently supported view implementation is: **iresearch** as described in
-[IResearch View](../Views/IResearch.md).
+The currently supported view implementation is: **arangosearch** as described in
+[ArangoSearch View](../Views/IResearch.md).
