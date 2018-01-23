@@ -54,9 +54,7 @@ function iResearchAqlTestSuite () {
           "UnitTestsCollection": { 
             includeAllFields: true,
             fields: {
-              text: {
-                tokenizers: [ "text_en" ]
-              }
+              text: { analyzers: [ "text_en" ] }
             }
           }
         }

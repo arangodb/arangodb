@@ -66,14 +66,14 @@ struct TestAttribute: public irs::attribute {
 
 DEFINE_ATTRIBUTE_TYPE(TestAttribute);
 
-class EmptyTokenizer: public irs::analysis::analyzer {
+class EmptyAnalyzer: public irs::analysis::analyzer {
  public:
   DECLARE_ANALYZER_TYPE();
-  EmptyTokenizer(): irs::analysis::analyzer(EmptyTokenizer::type()) {
+  EmptyAnalyzer(): irs::analysis::analyzer(EmptyAnalyzer::type()) {
     _attrs.emplace(_attr);
   }
   virtual irs::attribute_view const& attributes() const NOEXCEPT override { return _attrs; }
-  static ptr make(irs::string_ref const&) { PTR_NAMED(EmptyTokenizer, ptr); return ptr; }
+  static ptr make(irs::string_ref const&) { PTR_NAMED(EmptyAnalyzer, ptr); return ptr; }
   virtual bool next() override { return false; }
   virtual bool reset(irs::string_ref const& data) override { return true; }
 
@@ -82,21 +82,21 @@ class EmptyTokenizer: public irs::analysis::analyzer {
   TestAttribute _attr;
 };
 
-DEFINE_ANALYZER_TYPE_NAMED(EmptyTokenizer, "iresearch-document-empty");
-REGISTER_ANALYZER_JSON(EmptyTokenizer, EmptyTokenizer::make);
+DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "iresearch-document-empty");
+REGISTER_ANALYZER_JSON(EmptyAnalyzer, EmptyAnalyzer::make);
 
-class InvalidTokenizer: public irs::analysis::analyzer {
+class InvalidAnalyzer: public irs::analysis::analyzer {
  public:
   static bool returnNullFromMake;
 
   DECLARE_ANALYZER_TYPE();
-  InvalidTokenizer(): irs::analysis::analyzer(InvalidTokenizer::type()) {
+  InvalidAnalyzer(): irs::analysis::analyzer(InvalidAnalyzer::type()) {
     _attrs.emplace(_attr);
   }
   virtual irs::attribute_view const& attributes() const NOEXCEPT override { return _attrs; }
   static ptr make(irs::string_ref const&) {
     if (!returnNullFromMake) {
-      PTR_NAMED(InvalidTokenizer, ptr);
+      PTR_NAMED(InvalidAnalyzer, ptr);
       returnNullFromMake = true;
       return ptr;
     }
@@ -110,10 +110,10 @@ class InvalidTokenizer: public irs::analysis::analyzer {
   TestAttribute _attr;
 };
 
-bool InvalidTokenizer::returnNullFromMake = false;
+bool InvalidAnalyzer::returnNullFromMake = false;
 
-DEFINE_ANALYZER_TYPE_NAMED(InvalidTokenizer, "iresearch-document-invalid");
-REGISTER_ANALYZER_JSON(InvalidTokenizer, InvalidTokenizer::make);
+DEFINE_ANALYZER_TYPE_NAMED(InvalidAnalyzer, "iresearch-document-invalid");
+REGISTER_ANALYZER_JSON(InvalidAnalyzer, InvalidAnalyzer::make);
 
 std::string mangleBool(std::string name) {
   arangodb::iresearch::kludge::mangleBool(name);
@@ -196,7 +196,7 @@ struct IResearchDocumentSetup {
     auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
     // ensure that there will be no exception on 'emplace'
-    InvalidTokenizer::returnNullFromMake = false;
+    InvalidAnalyzer::returnNullFromMake = false;
 
     analyzers->emplace("iresearch-document-empty", "iresearch-document-empty", "en"); // cache analyzer
     analyzers->emplace("iresearch-document-invalid", "iresearch-document-invalid", "en"); // cache analyzer
@@ -348,7 +348,7 @@ SECTION("FieldIterator_traverse_complex_object_custom_nested_delimiter") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
-    \"tokenizers\": [], \
+    \"analyzers\": [], \
     \"boost\": \"10\", \
     \"depth\": \"20\", \
     \"fields\": { \"fieldA\" : { \"name\" : \"a\" }, \"fieldB\" : { \"name\" : \"b\" } }, \
@@ -417,7 +417,7 @@ SECTION("FieldIterator_traverse_complex_object_all_fields") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
-    \"tokenizers\": [], \
+    \"analyzers\": [], \
     \"boost\": \"10\", \
     \"depth\": \"20\", \
     \"fields\": { \"fieldA\" : { \"name\" : \"a\" }, \"fieldB\" : { \"name\" : \"b\" } }, \
@@ -486,7 +486,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
-    \"tokenizers\": [], \
+    \"analyzers\": [], \
     \"boost\": \"10\", \
     \"depth\": \"20\", \
     \"fields\": { \"fieldA\" : { \"name\" : \"a\" }, \"fieldB\" : { \"name\" : \"b\" } }, \
@@ -535,7 +535,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields") {
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._includeAllFields = true; // include all fields
-  linkMeta._nestListValues = true; // allow indexes in field names
+  linkMeta._trackListPositions = true; // allow indexes in field names
 
   // default analyzer
   auto const expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
@@ -561,7 +561,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
-    \"tokenizers\": [], \
+    \"analyzers\": [], \
     \"boost\": \"10\", \
     \"depth\": \"20\", \
     \"fields\": { \"fieldA\" : { \"name\" : \"a\" }, \"fieldB\" : { \"name\" : \"b\" } }, \
@@ -578,7 +578,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
     \"includeAllFields\" : false, \
     \"trackListPositions\" : true, \
     \"fields\" : { \"boost\" : { } }, \
-    \"tokenizers\": [ \"identity\" ] \
+    \"analyzers\": [ \"identity\" ] \
   }");
 
   auto const slice = json->slice();
@@ -611,7 +611,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
-    \"tokenizers\": [], \
+    \"analyzers\": [], \
     \"boost\": \"10\", \
     \"depth\": \"20\", \
     \"fields\": { \"fieldA\" : { \"name\" : \"a\" }, \"fieldB\" : { \"name\" : \"b\" } }, \
@@ -628,18 +628,18 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._includeAllFields = false; // ignore all fields
-  linkMeta._nestListValues = true; // allow indexes in field names
+  linkMeta._trackListPositions = true; // allow indexes in field names
 
   arangodb::iresearch::FieldIterator it(slice, linkMeta);
   CHECK(!it.valid());
   CHECK(it == arangodb::iresearch::FieldIterator::END);
 }
 
-SECTION("FieldIterator_traverse_complex_object_ordered_empty_tokenizers") {
+SECTION("FieldIterator_traverse_complex_object_ordered_empty_analyzers") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
-    \"tokenizers\": [], \
+    \"analyzers\": [], \
     \"boost\": \"10\", \
     \"depth\": \"20\", \
     \"fields\": { \"fieldA\" : { \"name\" : \"a\" }, \"fieldB\" : { \"name\" : \"b\" } }, \
@@ -655,7 +655,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_empty_tokenizers") {
   auto const slice = json->slice();
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
-  linkMeta._tokenizers.clear(); // clear all tokenizers
+  linkMeta._analyzers.clear(); // clear all analyzers
   linkMeta._includeAllFields = true; // include all fields
 
   arangodb::iresearch::FieldIterator it(slice, linkMeta);
@@ -683,13 +683,13 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   auto const slice = json->slice();
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
-  linkMeta._tokenizers.emplace_back(analyzers->get("iresearch-document-empty")); // add tokenizer
+  linkMeta._analyzers.emplace_back(analyzers->get("iresearch-document-empty")); // add analyzer
   linkMeta._includeAllFields = true; // include all fields
 
   arangodb::iresearch::FieldIterator it(slice, linkMeta);
   CHECK(it != arangodb::iresearch::FieldIterator::END);
 
-  // stringValue (with IdentityTokenizer)
+  // stringValue (with IdentityAnalyzer)
   {
     auto& field = *it;
     CHECK(mangleStringIdentity("stringValue") == field.name());
@@ -706,12 +706,12 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   REQUIRE(it.valid());
   REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-  // stringValue (with EmptyTokenizer)
+  // stringValue (with EmptyAnalyzer)
   {
     auto& field = *it;
     CHECK(mangleString("stringValue", "iresearch-document-empty") == field.name());
     auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", irs::text_format::json, "en");
-    auto& analyzer = dynamic_cast<EmptyTokenizer&>(field.get_tokens());
+    auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
     CHECK(&expected_analyzer->type() == &analyzer.type());
     CHECK(expected_analyzer->attributes().features() == field.features());
   }
@@ -872,7 +872,7 @@ SECTION("FieldIterator_reset") {
   ++it;
   REQUIRE(it.valid());
 
-  // depth (with IdentityTokenizer)
+  // depth (with IdentityAnalyzer)
   {
     auto& value = *it;
     CHECK(mangleStringIdentity("depth") == value.name());
@@ -911,7 +911,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields_custom_list_of
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
-    \"tokenizers\": [], \
+    \"analyzers\": [], \
     \"boost\": \"10\", \
     \"depth\": \"20\", \
     \"fields\": { \"fieldA\" : { \"name\" : \"a\" }, \"fieldB\" : { \"name\" : \"b\" } }, \
@@ -960,7 +960,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields_custom_list_of
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._includeAllFields = true; // include all fields
-  linkMeta._nestListValues = true; // allow indexes in field names
+  linkMeta._trackListPositions = true; // allow indexes in field names
 
   arangodb::iresearch::FieldIterator it(slice, linkMeta);
   CHECK(it != arangodb::iresearch::FieldIterator::END);
@@ -989,7 +989,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
-    \"tokenizers\": [], \
+    \"analyzers\": [], \
     \"boost\": \"10\", \
     \"depth\": 20, \
     \"fields\": { \"fieldA\" : { \"name\" : \"a\" }, \"fieldB\" : { \"name\" : \"b\" } }, \
@@ -1008,8 +1008,8 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     \"includeAllFields\" : true, \
     \"trackListPositions\" : true, \
     \"fields\" : { \
-       \"boost\" : { \"tokenizers\": [ \"identity\" ] }, \
-       \"keys\" : { \"trackListPositions\" : false, \"tokenizers\": [ \"identity\" ] }, \
+       \"boost\" : { \"analyzers\": [ \"identity\" ] }, \
+       \"keys\" : { \"trackListPositions\" : false, \"analyzers\": [ \"identity\" ] }, \
        \"depth\" : { \"trackListPositions\" : true }, \
        \"fields\" : { \"includeAllFields\" : false, \"fields\" : { \"fieldA\" : { \"includeAllFields\" : true } } }, \
        \"listValuation\" : { \"includeAllFields\" : false }, \
@@ -1017,7 +1017,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
          \"fields\" : { \"subarr\" : { \"trackListPositions\" : false }, \"subobj\": { \"includeAllFields\" : false }, \"id\" : { } } \
        } \
      }, \
-    \"tokenizers\": [ \"identity\", \"iresearch-document-empty\" ] \
+    \"analyzers\": [ \"identity\", \"iresearch-document-empty\" ] \
   }");
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
@@ -1029,7 +1029,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   REQUIRE(it.valid());
   REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-  // nested.foo (with IdentityTokenizer)
+  // nested.foo (with IdentityAnalyzer)
   {
     auto& value = *it;
     CHECK(mangleStringIdentity("nested.foo") == value.name());
@@ -1046,11 +1046,11 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   REQUIRE(it.valid());
   REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-  // nested.foo (with EmptyTokenizer)
+  // nested.foo (with EmptyAnalyzer)
   {
     auto& value = *it;
     CHECK(mangleString("nested.foo", "iresearch-document-empty") == value.name());
-    auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
+    auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
     CHECK(!analyzer.next());
   }
 
@@ -1104,7 +1104,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   REQUIRE(it.valid());
   REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-  // fields.fieldA (with IdenitytTokenizer)
+  // fields.fieldA (with IdenityAnalyzer)
   {
     auto& value = *it;
     CHECK(mangleStringIdentity("fields.fieldA.name") == value.name());
@@ -1121,11 +1121,11 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   REQUIRE(it.valid());
   REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-  // fields.fieldA (with EmptyTokenizer)
+  // fields.fieldA (with EmptyAnalyzer)
   {
     auto& value = *it;
     CHECK(mangleString("fields.fieldA.name", "iresearch-document-empty") == value.name());
-    auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
+    auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
     CHECK(!analyzer.next());
   }
 
@@ -1133,7 +1133,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   REQUIRE(it.valid());
   REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-  // listValuation (with IdenitytTokenizer)
+  // listValuation (with IdenityAnalyzer)
   {
     auto& value = *it;
     CHECK(mangleStringIdentity("listValuation") == value.name());
@@ -1150,11 +1150,11 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   REQUIRE(it.valid());
   REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-  // listValuation (with EmptyTokenizer)
+  // listValuation (with EmptyAnalyzer)
   {
     auto& value = *it;
     CHECK(mangleString("listValuation", "iresearch-document-empty") == value.name());
-    auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
+    auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
     CHECK(!analyzer.next());
   }
 
@@ -1189,7 +1189,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     REQUIRE(it.valid());
     REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-    // IdentityTokenizer
+    // IdentityAnalyzer
     {
       auto& value = *it;
       CHECK(mangleStringIdentity("array[0].subarr") == value.name());
@@ -1206,11 +1206,11 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     REQUIRE(it.valid());
     REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-    // EmptyTokenizer
+    // EmptyAnalyzer
     {
       auto& value = *it;
       CHECK(mangleString("array[0].subarr", "iresearch-document-empty") == value.name());
-      auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
+      auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
       CHECK(!analyzer.next());
     }
   }
@@ -1221,7 +1221,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     REQUIRE(it.valid());
     REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-    // IdentityTokenizer
+    // IdentityAnalyzer
     {
       auto& value = *it;
       CHECK(mangleStringIdentity("array[1].subarr") == value.name());
@@ -1238,11 +1238,11 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     REQUIRE(it.valid());
     REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-    // EmptyTokenizer
+    // EmptyAnalyzer
     {
       auto& value = *it;
       CHECK(mangleString("array[1].subarr", "iresearch-document-empty") == value.name());
-      auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
+      auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
       CHECK(!analyzer.next());
     }
   }
@@ -1251,7 +1251,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   REQUIRE(it.valid());
   REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-  // array[1].id (IdentityTokenizer)
+  // array[1].id (IdentityAnalyzer)
   {
     auto& value = *it;
     CHECK(mangleStringIdentity("array[1].id") == value.name());
@@ -1268,11 +1268,11 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   REQUIRE(it.valid());
   REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-  // array[1].id (EmptyTokenizer)
+  // array[1].id (EmptyAnalyzer)
   {
     auto& value = *it;
     CHECK(mangleString("array[1].id", "iresearch-document-empty") == value.name());
-    auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
+    auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
     CHECK(!analyzer.next());
   }
 
@@ -1280,7 +1280,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   REQUIRE(it.valid());
   REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-  // array[2].id (IdentityTokenizer)
+  // array[2].id (IdentityAnalyzer)
   {
     auto& value = *it;
     CHECK(mangleNumeric("array[2].id") == value.name());
@@ -1294,7 +1294,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     REQUIRE(it.valid());
     REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-    // IdentityTokenizer
+    // IdentityAnalyzer
     {
       auto& value = *it;
       CHECK(mangleStringIdentity("array[2].subarr") == value.name());
@@ -1311,11 +1311,11 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     REQUIRE(it.valid());
     REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-    // EmptyTokenizer
+    // EmptyAnalyzer
     {
       auto& value = *it;
       CHECK(mangleString("array[2].subarr", "iresearch-document-empty") == value.name());
-      auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
+      auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
       CHECK(!analyzer.next());
     }
   }
@@ -1325,7 +1325,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   CHECK(it == arangodb::iresearch::FieldIterator::END);
 }
 
-SECTION("FieldIterator_nullptr_tokenizer") {
+SECTION("FieldIterator_nullptr_analyzer") {
   arangodb::iresearch::IResearchAnalyzerFeature analyzers(nullptr);
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"stringValue\": \"string\" \
@@ -1335,34 +1335,34 @@ SECTION("FieldIterator_nullptr_tokenizer") {
   // register analizers with feature
   {
     // ensure that there will be no exception on 'start'
-    InvalidTokenizer::returnNullFromMake = false;
+    InvalidAnalyzer::returnNullFromMake = false;
 
     analyzers.start();
     analyzers.erase("empty");
     analyzers.erase("invalid");
 
     // ensure that there will be no exception on 'emplace'
-    InvalidTokenizer::returnNullFromMake = false;
+    InvalidAnalyzer::returnNullFromMake = false;
 
     analyzers.emplace("empty", "iresearch-document-empty", "en");
     analyzers.emplace("invalid", "iresearch-document-invalid", "en");
   }
 
-  // last tokenizer invalid
+  // last analyzer invalid
   {
     arangodb::iresearch::IResearchLinkMeta linkMeta;
-    linkMeta._tokenizers.emplace_back(analyzers.get("empty")); // add tokenizer
-    linkMeta._tokenizers.emplace_back(analyzers.get("invalid")); // add tokenizer
+    linkMeta._analyzers.emplace_back(analyzers.get("empty")); // add analyzer
+    linkMeta._analyzers.emplace_back(analyzers.get("invalid")); // add analyzer
     linkMeta._includeAllFields = true; // include all fields
 
-    // acquire tokenizer, another one should be created
-    auto tokenizer = linkMeta._tokenizers.back()->get(); // cached instance should have been acquired
+    // acquire analyzer, another one should be created
+    auto analyzer = linkMeta._analyzers.back()->get(); // cached instance should have been acquired
 
     arangodb::iresearch::FieldIterator it(slice, linkMeta);
     REQUIRE(it.valid());
     REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-    // stringValue (with IdentityTokenizer)
+    // stringValue (with IdentityAnalyzer)
     {
       auto& field = *it;
       CHECK(mangleStringIdentity("stringValue") == field.name());
@@ -1379,12 +1379,12 @@ SECTION("FieldIterator_nullptr_tokenizer") {
     REQUIRE(it.valid());
     REQUIRE(arangodb::iresearch::FieldIterator::END != it);
 
-    // stringValue (with EmptyTokenizer)
+    // stringValue (with EmptyAnalyzer)
     {
       auto& field = *it;
       CHECK(mangleString("stringValue", "empty") == field.name());
       auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", irs::text_format::json, "en");
-      auto& analyzer = dynamic_cast<EmptyTokenizer&>(field.get_tokens());
+      auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
       CHECK(&expected_analyzer->type() == &analyzer.type());
       CHECK(expected_analyzer->attributes().features()== field.features());
     }
@@ -1393,30 +1393,30 @@ SECTION("FieldIterator_nullptr_tokenizer") {
     REQUIRE(!it.valid());
     REQUIRE(arangodb::iresearch::FieldIterator::END == it);
 
-    tokenizer->reset(irs::string_ref::nil); // ensure that acquired 'tokenizer' will not be optimized out
+    analyzer->reset(irs::string_ref::nil); // ensure that acquired 'analyzer' will not be optimized out
   }
 
-  // first tokenizer is invalid
+  // first analyzer is invalid
   {
     arangodb::iresearch::IResearchLinkMeta linkMeta;
-    linkMeta._tokenizers.clear();
-    linkMeta._tokenizers.emplace_back(analyzers.get("invalid")); // add tokenizer
-    linkMeta._tokenizers.emplace_back(analyzers.get("empty")); // add tokenizer
+    linkMeta._analyzers.clear();
+    linkMeta._analyzers.emplace_back(analyzers.get("invalid")); // add analyzer
+    linkMeta._analyzers.emplace_back(analyzers.get("empty")); // add analyzer
     linkMeta._includeAllFields = true; // include all fields
 
-    // acquire tokenizer, another one should be created
-    auto tokenizer = linkMeta._tokenizers.front()->get(); // cached instance should have been aquired
+    // acquire analyzer, another one should be created
+    auto analyzer = linkMeta._analyzers.front()->get(); // cached instance should have been aquired
 
     arangodb::iresearch::FieldIterator it(slice, linkMeta);
     REQUIRE(it.valid());
     REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
-    // stringValue (with EmptyTokenizer)
+    // stringValue (with EmptyAnalyzer)
     {
       auto& field = *it;
       CHECK(mangleString("stringValue", "empty") == field.name());
       auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", irs::text_format::json, "en");
-      auto& analyzer = dynamic_cast<EmptyTokenizer&>(field.get_tokens());
+      auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
       CHECK(&expected_analyzer->type() == &analyzer.type());
       CHECK(expected_analyzer->attributes().features() == field.features());
     }
@@ -1425,7 +1425,7 @@ SECTION("FieldIterator_nullptr_tokenizer") {
     REQUIRE(!it.valid());
     REQUIRE(arangodb::iresearch::FieldIterator::END == it);
 
-    tokenizer->reset(irs::string_ref::nil); // ensure that acquired 'tokenizer' will not be optimized out
+    analyzer->reset(irs::string_ref::nil); // ensure that acquired 'analyzer' will not be optimized out
   }
 }
 
