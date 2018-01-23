@@ -324,37 +324,12 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
         return;
       }
 
-      // FIXME add non-const view() getter
-      auto* view = const_cast<IResearchView*>(link->view());
-
-      if (!view) {
-        LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
-            << "Collection '" << cid
-            << "' in database '" << dbId
-            << "' has orphaned link id '" << iid << "'";
-        return;
-      }
-
       LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
           << "found create index marker. databaseId: " << dbId
           << ", collectionId: " << cid;
 
-      // re-insert link into the view
-      auto const strCid = std::to_string(cid);
-
-      arangodb::velocypack::Builder linksBuilder;
-      linksBuilder.openObject();
-      linksBuilder.add(
-        strCid,
-        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
-      ); // drop link
-      linksBuilder.add(
-        strCid,
-        indexSlice
-      ); // add link
-      linksBuilder.close();
-
-      view->updateProperties(linksBuilder.slice(), true, false);
+      // re-insert link
+      link->recover(indexSlice);
     } break;
     case RocksDBLogType::IndexDrop: {
       const TRI_voc_tick_t dbId = RocksDBLogValue::databaseId(blob);
@@ -370,28 +345,8 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
         return;
       }
 
-      // FIXME add non-const view() getter
-      auto* view = const_cast<IResearchView*>(link->view());
-
-      if (!view) {
-        LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
-            << "Collection '" << cid
-            << "' in database '" << dbId
-            << "' has orphaned link id '" << iid << "'";
-        return;
-      }
-
       // remove link
-      arangodb::velocypack::Builder linksBuilder;
-      linksBuilder.openObject();
-      linksBuilder.add(
-        std::to_string(cid),
-        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
-      );
-      linksBuilder.close();
-
-      view->updateProperties(linksBuilder.slice(), true, false);
-
+      link->recover(arangodb::velocypack::Slice::nullSlice());
     } break;
     default: {
       // shut up the compiler

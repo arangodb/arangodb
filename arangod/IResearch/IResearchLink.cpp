@@ -496,6 +496,36 @@ Result IResearchLink::remove(
   return true;
 }
 
+arangodb::Result IResearchLink::recover(arangodb::velocypack::Slice const newDefinition) {
+  if (!_collection) {
+    return {TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND}; // current link isn't associated with the collection
+  }
+
+  auto const strCid = _collection->cid_as_string();
+
+  auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
+  SCOPED_LOCK(viewMutex);
+  auto* view = _view->get();
+
+  if (!view) {
+    return {TRI_ERROR_ARANGO_VIEW_NOT_FOUND}; // slice has identifier but the current object does not
+  }
+
+  // re-insert link into the view
+  arangodb::velocypack::Builder linksBuilder;
+  linksBuilder.openObject();
+  linksBuilder.add(
+    strCid,
+    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
+  ); // drop link
+  if (newDefinition.isObject()) {
+    linksBuilder.add(strCid, newDefinition);
+  } // add link
+  linksBuilder.close();
+
+  return view->updateProperties(linksBuilder.slice(), true, false);
+}
+
 Index::IndexType IResearchLink::type() const {
   // TODO: don't use enum
   return Index::TRI_IDX_TYPE_IRESEARCH_LINK;
