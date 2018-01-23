@@ -36,7 +36,7 @@ Using an identifier:
 
 @EXAMPLE_ARANGOSH_RUN{RestViewDeleteViewIdentifier}
     var viewName = "testView";
-    var viewType = "iresearch";
+    var viewType = "arangosearch";
 
     var view = db._createView(viewName, viewType);
     var url = "/_api/view/"+ view._id;
@@ -53,7 +53,7 @@ Using a name:
 
 @EXAMPLE_ARANGOSH_RUN{RestViewDeleteViewName}
     var viewName = "testView";
-    var viewType = "iresearch";
+    var viewType = "arangosearch";
 
     var view = db._createView(viewName, viewType);
     var url = "/_api/view/testView";

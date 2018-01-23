@@ -74,47 +74,6 @@ enum OPEN_MODE {
   OM_CREATE_APPEND
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @enum Action
-/// @brief defines how the inserting field should be processed
-//////////////////////////////////////////////////////////////////////////////
-NS_BEGIN(action)
-
-////////////////////////////////////////////////////////////////////////////
-/// @brief Field should be indexed only
-/// @note Field must satisfy 'Field' concept
-////////////////////////////////////////////////////////////////////////////
-struct index_t{};
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
-  static const index_t index = index_t();
-#else
-  CONSTEXPR const index_t index = index_t();
-#endif
-
-////////////////////////////////////////////////////////////////////////////
-/// @brief Field should be indexed and stored
-/// @note Field must satisfy 'Field' and 'Attribute' concepts
-////////////////////////////////////////////////////////////////////////////
-struct index_store_t{};
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
-  static const index_store_t index_store = index_store_t();
-#else
-  CONSTEXPR const index_store_t index_store = index_store_t();
-#endif
-
-////////////////////////////////////////////////////////////////////////////
-/// @brief Field should be stored only
-/// @note Field must satisfy 'Attribute' concept
-////////////////////////////////////////////////////////////////////////////
-struct store_t{};
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
-  static const store_t store = store_t();
-#else
-  CONSTEXPR const store_t store = store_t();
-#endif
-
-NS_END // action
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class index_writer 
 /// @brief The object is using for indexing data. Only one writer can write to
@@ -123,85 +82,6 @@ NS_END // action
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API index_writer : util::noncopyable {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @class document
-  /// @brief Facade for the insertion logic
-  //////////////////////////////////////////////////////////////////////////////
-  class document : private util::noncopyable {
-   public:
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief constructor
-    ////////////////////////////////////////////////////////////////////////////
-    explicit document(segment_writer& writer) NOEXCEPT: writer_(writer) {}
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief destructor
-    ////////////////////////////////////////////////////////////////////////////
-    ~document() = default;
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @return current state of the objecta
-    /// @note that in case if object is in ivalid state all further operations
-    ///       will not take any effect
-    ////////////////////////////////////////////////////////////////////////////
-    bool valid() const NOEXCEPT { return writer_.valid(); }
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief inserts the specified field into the document according to the
-    ///        specified ACTION
-    /// @note 'Field' type type must satisfy the Field concept
-    /// @param field attribute to be inserted
-    /// @return true, if field was successfully insterted
-    ////////////////////////////////////////////////////////////////////////////
-    template<typename Field>
-    bool insert(action::index_t, Field& field) const {
-      return writer_.index(field);
-    }
-
-    template<typename Field>
-    bool insert(action::index_store_t, Field& field) const {
-      return writer_.index_and_store(field);
-    }
-
-    template<typename Field>
-    bool insert(action::store_t, Field& field) const {
-      return writer_.store(field);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief inserts the specified field (denoted by the pointer) into the
-    ///        document according to the specified ACTION
-    /// @note 'Field' type type must satisfy the Field concept
-    /// @note pointer must not be nullptr
-    /// @param field attribute to be inserted
-    /// @return true, if field was successfully insterted
-    ////////////////////////////////////////////////////////////////////////////
-    template<typename Action, typename Field>
-    bool insert(Action action, Field* field) const {
-      assert(field);
-      return insert(action, *field);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief inserts the specified range of fields, denoted by the [begin;end)
-    ///        into the document according to the specified ACTION
-    /// @note 'Iterator' underline value type must satisfy the Field concept
-    /// @param begin the beginning of the fields range
-    /// @param end the end of the fields range
-    /// @return true, if the range was successfully insterted
-    ////////////////////////////////////////////////////////////////////////////
-    template<typename Action, typename Iterator>
-    bool insert(Action action, Iterator begin, Iterator end) const {
-      for (; valid() && begin != end; ++begin) {
-        insert(action, *begin);
-      }
-      return valid();
-    }
-
-   private:
-    segment_writer& writer_;
-  }; // document
-
   DECLARE_SPTR(index_writer);
 
   static const size_t THREAD_COUNT = 8;
@@ -255,10 +135,9 @@ class IRESEARCH_API index_writer : util::noncopyable {
   bool insert(Func func) {
     auto ctx = get_flush_context(); // retain lock until end of insert(...)
     auto writer = get_segment_context(*ctx);
-
-    document doc(*writer);
-
+    segment_writer::document doc(*writer);
     bool has_next = true;
+
     do {
       writer->begin(make_update_context(*ctx));
       try {
@@ -621,7 +500,7 @@ class IRESEARCH_API index_writer : util::noncopyable {
 
   template<typename Func>
   bool update(flush_context& ctx, segment_writer& writer, Func func) {
-    document doc(writer);
+    segment_writer::document doc(writer);
 
     try {
       func(doc);

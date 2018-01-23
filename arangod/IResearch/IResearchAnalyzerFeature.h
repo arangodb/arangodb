@@ -76,10 +76,9 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     irs::string_ref _key; // the key of the persisted configuration for this pool, null == not persisted
     std::string _name; // ArangoDB alias for an IResearch analyzer configuration
     irs::string_ref _properties; // IResearch analyzer configuration
-    uint64_t _refCount; // number of references held to this pool across reboots
     irs::string_ref _type; // IResearch analyzer name
 
-    AnalyzerPool(irs::string_ref const& name);
+    explicit AnalyzerPool(irs::string_ref const& name);
     bool init(
       irs::string_ref const& type,
       irs::string_ref const& properties,
@@ -88,7 +87,9 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     void setKey(irs::string_ref const& type);
   };
 
-  IResearchAnalyzerFeature(application_features::ApplicationServer* server);
+  explicit IResearchAnalyzerFeature(
+    application_features::ApplicationServer* server
+  );
 
   std::pair<AnalyzerPool::ptr, bool> emplace(
     irs::string_ref const& name,
@@ -96,13 +97,11 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     irs::string_ref const& properties
   ) noexcept;
   AnalyzerPool::ptr ensure(irs::string_ref const& name); // before start() returns pool placeholder, during start() all placeholders are initialized, after start() returns same as get(...)
-  size_t erase(irs::string_ref const& name, bool force = false) noexcept;
+  size_t erase(irs::string_ref const& name) noexcept;
   AnalyzerPool::ptr get(irs::string_ref const& name) const noexcept;
   static AnalyzerPool::ptr identity() noexcept; // the identity analyzer
   static std::string const& name() noexcept;
   void prepare() override;
-  bool release(irs::string_ref const& name); // release a persistent registration for a specific pool
-  bool reserve(irs::string_ref const& name); // register a persistent user for a specific pool
   void start() override;
   void stop() override;
   bool visit(std::function<bool(irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)> const& visitor);
@@ -126,12 +125,6 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
   static Analyzers const& getStaticAnalyzers();
   bool loadConfiguration();
   bool storeConfiguration(AnalyzerPool& pool);
-  bool updateConfiguration(AnalyzerPool& pool, int64_t delta);
-  bool updateConfiguration(
-    arangodb::transaction::Methods& trx,
-    AnalyzerPool& pool,
-    int64_t delta
-  );
 };
 
 NS_END // iresearch

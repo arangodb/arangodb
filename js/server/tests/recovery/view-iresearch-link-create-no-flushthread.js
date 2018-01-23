@@ -39,7 +39,7 @@ function runSetup () {
   var c = db._create('UnitTestsRecoveryDummy');
 
   db._dropView('UnitTestsRecoveryEmpty');
-  db._createView('UnitTestsRecoveryEmpty', 'iresearch', {});
+  db._createView('UnitTestsRecoveryEmpty', 'arangosearch', {});
 
   internal.wal.flush(true, true);
   internal.debugSetFailAt("FlushThreadDisableAll");
@@ -47,10 +47,10 @@ function runSetup () {
 
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   db._dropView('UnitTestsRecoveryFail');
-  db._createView('UnitTestsRecoveryFail', 'iresearch', meta);
+  db._createView('UnitTestsRecoveryFail', 'arangosearch', meta);
 
   db._dropView('UnitTestsRecoveryWithLink');
-  db._createView('UnitTestsRecoveryWithLink', 'iresearch', {});
+  db._createView('UnitTestsRecoveryWithLink', 'arangosearch', {});
   // store link
   db._view('UnitTestsRecoveryWithLink').properties(meta);
 
@@ -78,19 +78,19 @@ function recoverySuite () {
     testIResearchLinkCreateNoFlushThread: function () {
       var v = db._view('UnitTestsRecoveryEmpty');
       assertEqual(v.name(), 'UnitTestsRecoveryEmpty');
-      assertEqual(v.type(), 'iresearch');
+      assertEqual(v.type(), 'arangosearch');
       assertEqual(v.properties().links, {});
 
       v = db._view('UnitTestsRecoveryFail');
       assertEqual(v.name(), 'UnitTestsRecoveryFail');
-      assertEqual(v.type(), 'iresearch');
+      assertEqual(v.type(), 'arangosearch');
       var p = v.properties().links;
       assertEqual(v.properties().links, {});
 
       var meta = { links : { "UnitTestsRecoveryDummy" : { includeAllFields : true } } };
       v = db._view('UnitTestsRecoveryWithLink');
       assertEqual(v.name(), 'UnitTestsRecoveryWithLink');
-      assertEqual(v.type(), 'iresearch');
+      assertEqual(v.type(), 'arangosearch');
       p = v.properties().links;
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);

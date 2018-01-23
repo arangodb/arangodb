@@ -22,6 +22,10 @@
   * [Architecture](Scalability/Architecture.md)
   * [Data models](Scalability/DataModels.md)
   * [Limitations](Scalability/Limitations.md)
+  * [Datacenter to datacenter replication](Scalability/DC2DC/README.md)
+    * [Introduction](Scalability/DC2DC/Introduction.md)
+    * [Applicability](Scalability/DC2DC/Applicability.md)
+    * [Requirements](Scalability/DC2DC/Requirements.md)
 #
 * [Data models & modeling](DataModeling/README.md)
 # * [Collections](FirstSteps/CollectionsAndDocuments.md) #TODO
@@ -75,7 +79,7 @@
 #
 * [Views](Views/README.md)
 #
-  * [IResearch](Views/IResearch.md)
+  * [ArangoSearch](Views/IResearch.md)
     * [Analyzers](Views/IResearch/Analyzers.md)
 
 * [Foxx Microservices](Foxx/README.md)
@@ -134,14 +138,20 @@
 #
 * [Deployment](Deployment/README.md)
   * [Single instance](Deployment/Single.md)
-  * [Cluster: Mesos, DC/OS](Deployment/Mesos.md)
-  * [Cluster: Generic & Docker](Deployment/ArangoDBStarter.md)
+  * [Cluster](Deployment/Cluster/README.md)  
+    * [Cluster: Mesos, DC/OS](Deployment/Mesos.md)
+    * [Cluster: Generic & Docker](Deployment/ArangoDBStarter.md)
+    * [Advanced Topics](Deployment/Advanced.md)
+        * [Standalone Agency](Deployment/Agency.md)
+        * [Cluster: Local test setups](Deployment/Local.md)
+        * [Cluster: Processes](Deployment/Distributed.md)
+        * [Cluster: Docker](Deployment/Docker.md)
   * [Multiple Datacenters](Deployment/DC2DC.md)
-  * [Advanced Topics](Deployment/Advanced.md)
-    * [Standalone Agency](Deployment/Agency.md)
-    * [Cluster: Local test setups](Deployment/Local.md)
-    * [Cluster: Processes](Deployment/Distributed.md)
-    * [Cluster: Docker](Deployment/Docker.md)
+    * [Cluster](Deployment/DC2DC/Cluster.md)
+    * [Kafka & Zookeeper](Deployment/DC2DC/KafkaZookeeper.md)
+    * [ArangoSync Master](Deployment/DC2DC/ArangoSyncMaster.md)
+    * [ArangoSync Workers](Deployment/DC2DC/ArangoSyncWorkers.md)
+    * [Prometheus & Grafana](Deployment/DC2DC/PrometheusGrafana.md)  
 #
 * [Administration](Administration/README.md)
   * [Web Interface](Administration/WebInterface/README.md)
@@ -194,6 +204,7 @@
       * [Implementation](Administration/Replication/Synchronous/Implementation.md)
       * [Configuration](Administration/Replication/Synchronous/Configuration.md)
     * [Satellite Collections](Administration/Replication/Synchronous/Satellites.md)
+  * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
   * [Sharding](Administration/Sharding/README.md)
 #    * [Authentication](Administration/Sharding/Authentication.md)
 #    * [Firewall setup](Administration/Sharding/FirewallSetup.md)
@@ -214,6 +225,13 @@
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
   * [Datafile Debugger](Troubleshooting/DatafileDebugger.md)
   * [Arangobench](Troubleshooting/Arangobench.md)
+  * [Datacenter to datacenter replication](Troubleshooting/DC2DC/README.md)
+#
+* [Monitoring](Monitoring/README.md)
+  * [Datacenter to datacenter replication](Monitoring/DC2DC/README.md)
+#
+* [Security](Security/README.md)
+  * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 #
 * [Architecture](Architecture/README.md)
   * [Write-ahead log](Architecture/WriteAheadLog.md)

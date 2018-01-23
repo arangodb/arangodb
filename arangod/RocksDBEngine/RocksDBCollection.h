@@ -138,11 +138,11 @@ class RocksDBCollection final : public PhysicalCollection {
 
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& token,
-                    ManagedDocumentResult& result) override;
+                    ManagedDocumentResult& result) const override;
 
   bool readDocumentWithCallback(
       transaction::Methods* trx, LocalDocumentId const& token,
-      IndexIterator::DocumentCallback const& cb) override;
+      IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const newSlice,
@@ -264,7 +264,7 @@ class RocksDBCollection final : public PhysicalCollection {
   void destroyCache() const;
 
   /// is this collection using a cache
-  inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
+  inline bool useCache() const noexcept { return (_cacheEnabled && _cachePresent); }
 
   void blackListKey(char const* data, std::size_t len) const;
 
@@ -273,7 +273,6 @@ class RocksDBCollection final : public PhysicalCollection {
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<TRI_voc_rid_t> _revisionId;
   mutable std::atomic<bool> _needToPersistIndexEstimates;
-  uint64_t _indexesSerializedSeq;
 
   /// upgrade write locks to exclusive locks if this flag is set
   bool _hasGeoIndex;

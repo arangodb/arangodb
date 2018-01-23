@@ -867,7 +867,7 @@ class format_test_case_base : public index_test_base {
   }
 
   void columns_read_write_writer_reuse() {
-    struct csv_doc_template : delim_doc_generator::doc_template {
+    struct csv_doc_template: public csv_doc_generator::doc_template {
       virtual void init() {
         clear();
         reserve(2);
@@ -875,7 +875,7 @@ class format_test_case_base : public index_test_base {
         insert(std::make_shared<tests::templates::string_field>("name"));
       }
 
-      virtual void value(size_t idx, const std::string& value) {
+      virtual void value(size_t idx, const irs::string_ref& value) {
         auto& field = indexed.get<tests::templates::string_field>(idx);
         field.value(value);
       }
@@ -883,7 +883,7 @@ class format_test_case_base : public index_test_base {
       virtual void reset() {}
     } doc_template; // two_columns_doc_template 
 
-    tests::delim_doc_generator gen(resource("simple_two_column.csv"), doc_template, ',');
+    tests::csv_doc_generator gen(resource("simple_two_column.csv"), doc_template);
 
     iresearch::segment_meta seg_1("_1", nullptr);
     iresearch::segment_meta seg_2("_2", nullptr);

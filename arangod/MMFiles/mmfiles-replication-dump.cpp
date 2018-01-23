@@ -59,14 +59,22 @@ static void Append(MMFilesReplicationDumpContext* dump, char const* value) {
   }
 }
 
+static void Append(MMFilesReplicationDumpContext* dump, std::string const& value) {
+  int res = TRI_AppendString2StringBuffer(dump->_buffer, value.c_str(), value.size());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
+
 /// @brief translate a (local) collection id into a collection name
-static char const* NameFromCid(MMFilesReplicationDumpContext* dump,
-                               TRI_voc_cid_t cid) {
+static std::string const& nameFromCid(MMFilesReplicationDumpContext* dump,
+                                      TRI_voc_cid_t cid) {
   auto it = dump->_collectionNames.find(cid);
 
   if (it != dump->_collectionNames.end()) {
     // collection name is in cache already
-    return (*it).second.c_str();
+    return (*it).second;
   }
 
   // collection name not in cache yet
@@ -76,15 +84,15 @@ static char const* NameFromCid(MMFilesReplicationDumpContext* dump,
     // insert into cache
     try {
       dump->_collectionNames.emplace(cid, std::move(name));
+      // and look it up again
+      return nameFromCid(dump, cid);
     } catch (...) {
-      return nullptr;
+      // fall through to returning empty string
     }
 
-    // and look it up again
-    return NameFromCid(dump, cid);
   }
 
-  return nullptr;
+  return StaticStrings::Empty;
 }
 
 /// @brief stringify a raw marker from a logfile for a log dump or logger
@@ -128,9 +136,9 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump,
         Append(dump, collectionId);
         Append(dump, "\"");
         // also include collection name
-        char const* cname = NameFromCid(dump, collectionId);
+        std::string const& cname = nameFromCid(dump, collectionId);
 
-        if (cname != nullptr) {
+        if (!cname.empty()) {
           Append(dump, ",\"cname\":\"");
           Append(dump, cname);
           Append(dump, "\"");
@@ -229,8 +237,8 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
       if (collectionId > 0) {
         builder.add("cid", VPackValue(collectionId));
         // also include collection name
-        char const* cname = NameFromCid(dump, collectionId);
-        if (cname != nullptr) {
+        std::string const& cname = nameFromCid(dump, collectionId);
+        if (!cname.empty()) {
           builder.add("cname", VPackValue(cname));
         }
       }
@@ -321,9 +329,9 @@ static bool MustReplicateWalMarker(
   TRI_voc_cid_t cid = collectionId;
 
   if (cid != 0) {
-    char const* name = NameFromCid(dump, cid);
+    std::string const& name = nameFromCid(dump, cid);
 
-    if (name != nullptr &&
+    if (!name.empty() &&
         TRI_ExcludeCollectionReplication(name, dump->_includeSystem)) {
       return false;
     }

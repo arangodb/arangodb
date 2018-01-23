@@ -18,6 +18,7 @@
 
     allowUpload: false,
     renderComplete: false,
+    loadedCachedQuery: false,
 
     customQueries: [],
     cachedQueries: {},
@@ -1072,17 +1073,17 @@
           '</tr>'
         );
         counter++;
-        _.each($('#arangoBindParamTable input'), function (element) {
+        /* _.each($('#arangoBindParamTable input'), function (element) {
           if ($(element).attr('name') === key) {
             if (val instanceof Array) {
               $(element).val(JSON.stringify(val)).addClass('arraytype');
             } else if (typeof val === 'object') {
-              $(element).val(JSON.stringify(val)).addClass(typeof val + 'type');
+              $(element).val('' + JSON.stringify(val) + '').addClass(typeof val + 'type');
             } else {
               $(element).val(val).addClass(typeof val + 'type');
             }
           }
-        });
+        });*/
       });
       if (counter === 0) {
         $('#arangoBindParamTable tbody').append(
@@ -1091,6 +1092,8 @@
           '<td></td>' +
           '</tr>'
         );
+      } else {
+        this.fillBindParamTable(this.bindParamTableObj);
       }
 
       // check if existing entry already has a stored value
@@ -1102,16 +1105,9 @@
       } catch (ignore) {
       }
 
-      if (query) {
-        var attributeName;
-        _.each($('#arangoBindParamTable input'), function (elem) {
-          attributeName = $(elem).attr('name');
-          _.each(query.parameter, function (qVal, qKey) {
-            if (qKey === attributeName) {
-              $(elem).val(qVal);
-            }
-          });
-        });
+      if (query && this.loadedCachedQuery === false) {
+        this.loadedCachedQuery = true;
+        this.fillBindParamTable(query.parameter);
       }
     },
 
@@ -1119,7 +1115,13 @@
       _.each(object, function (val, key) {
         _.each($('#arangoBindParamTable input'), function (element) {
           if ($(element).attr('name') === key) {
-            $(element).val(val);
+            if (val instanceof Array) {
+              $(element).val(JSON.stringify(val)).addClass('arraytype');
+            } else if (typeof val === 'object') {
+              $(element).val(JSON.stringify(val)).addClass(typeof val + 'type');
+            } else {
+              $(element).val(val).addClass(typeof val + 'type');
+            }
           }
         });
       });
@@ -1556,10 +1558,26 @@
 
     verifyQueryAndParams: function () {
       var quit = false;
+      var self = this;
 
       if (this.aqlEditor.getValue().length === 0) {
         arangoHelper.arangoError('Query', 'Your query is empty');
         quit = true;
+      }
+
+      // if query bind parameter editor is visible
+      if ($('#bindParamAceEditor').is(':visible')) {
+        try {
+          // check if parameters are parseable
+          JSON.parse(self.bindParamAceEditor.getValue());
+        } catch (e) {
+          arangoHelper.arangoError('Bind Parameter', 'Could not parse bind parameter');
+          quit = true;
+        }
+      }
+
+      if (quit === true) {
+        return quit;
       }
 
       var keys = [];

@@ -648,9 +648,9 @@ int MMFilesCollection::sealDatafile(MMFilesDatafile* datafile,
   int res = datafile->seal();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to seal journal '"
-                                            << datafile->getName()
-                                            << "': " << TRI_errno_string(res);
+    LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "failed to seal journal '"
+                                                << datafile->getName()
+                                                << "': " << TRI_errno_string(res);
     return res;
   }
 
@@ -663,10 +663,10 @@ int MMFilesCollection::sealDatafile(MMFilesDatafile* datafile,
     res = datafile->rename(filename);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "closed file '"
-                                                << datafile->getName() << "'";
+      LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closed file '"
+                                                    << datafile->getName() << "'";
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
           << "failed to rename datafile '" << datafile->getName() << "' to '"
           << filename << "': " << TRI_errno_string(res);
     }
@@ -1020,11 +1020,11 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
   TRI_ASSERT(datafile != nullptr);
 
   if (isCompactor) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "created new compactor '"
-                                              << datafile->getName() << "'";
+    LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "created new compactor '"
+                                                  << datafile->getName() << "'";
   } else {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "created new journal '"
-                                              << datafile->getName() << "'";
+    LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "created new journal '"
+                                                  << datafile->getName() << "'";
   }
 
   // create a collection header, still in the temporary file
@@ -1037,7 +1037,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
         << "cannot create collection header in file '" << datafile->getName()
         << "': " << TRI_errno_string(res);
 
@@ -1063,7 +1063,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
 
   if (res != TRI_ERROR_NO_ERROR) {
     int res = datafile->_lastError;
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
         << "cannot create collection header in file '" << datafile->getName()
         << "': " << TRI_last_error();
 
@@ -1088,7 +1088,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
     int res = datafile->rename(filename);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
           << "failed to rename journal '" << datafile->getName() << "' to '"
           << filename << "': " << TRI_errno_string(res);
 
@@ -1099,9 +1099,9 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "renamed journal from '"
-                                              << datafile->getName() << "' to '"
-                                              << filename << "'";
+    LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "renamed journal from '"
+                                                  << datafile->getName() << "' to '"
+                                                  << filename << "'";
   }
 
   return datafile.release();
@@ -1334,7 +1334,7 @@ MMFilesCollection::datafilesInRange(TRI_voc_tick_t dataMin,
     DatafileDescription entry = {datafile, datafile->_dataMin,
                                  datafile->_dataMax, datafile->_tickMax,
                                  isJournal};
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES)
         << "checking datafile " << datafile->fid() << " with data range "
         << datafile->_dataMin << " - " << datafile->_dataMax
         << ", tick max: " << datafile->_tickMax;
@@ -1376,7 +1376,7 @@ bool MMFilesCollection::applyForTickRange(
     TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
     std::function<bool(TRI_voc_tick_t foundTick,
                        MMFilesMarker const* marker)> const& callback) {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+  LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES)
       << "getting datafiles in data range " << dataMin << " - " << dataMax;
 
   std::vector<DatafileDescription> datafiles =
@@ -1977,7 +1977,7 @@ Result MMFilesCollection::read(transaction::Methods* trx, StringRef const& key,
 
 bool MMFilesCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
-                                     ManagedDocumentResult& result) {
+                                     ManagedDocumentResult& result) const {
   uint8_t const* vpack = lookupDocumentVPack(documentId);
   if (vpack != nullptr) {
     result.setUnmanaged(vpack, documentId);
@@ -1988,7 +1988,7 @@ bool MMFilesCollection::readDocument(transaction::Methods* trx,
 
 bool MMFilesCollection::readDocumentWithCallback(transaction::Methods* trx,
                                                  LocalDocumentId const& documentId,
-                                                 IndexIterator::DocumentCallback const& cb) {
+                                                 IndexIterator::DocumentCallback const& cb) const {
   uint8_t const* vpack = lookupDocumentVPack(documentId);
   if (vpack != nullptr) {
     cb(documentId, VPackSlice(vpack));
@@ -1999,7 +1999,7 @@ bool MMFilesCollection::readDocumentWithCallback(transaction::Methods* trx,
 
 size_t MMFilesCollection::readDocumentWithCallback(transaction::Methods* trx,
                                                    std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds,
-                                                   IndexIterator::DocumentCallback const& cb) {
+                                                   IndexIterator::DocumentCallback const& cb){
   size_t count = 0;
   batchLookupRevisionVPack(documentIds);
   for (auto const& it : documentIds) {

@@ -128,7 +128,14 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
 }
 
 void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
-  irs::scorers::visit([&functions](const irs::string_ref& name)->bool {
+  irs::scorers::visit([&functions](
+     irs::string_ref const& name, irs::text_format::type_id const& args_format
+  )->bool {
+    // ArangoDB, for API consistency, only supports scorers configurable via jSON
+    if (irs::text_format::json != args_format) {
+      return true;
+    }
+
     std::string upperName = name;
 
     // AQL function external names are always in upper case
@@ -156,7 +163,7 @@ void registerRecoveryHelper() {
   }
 }
 
-std::string const FEATURE_NAME("IResearch");
+std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch", arangodb::LogLevel::INFO);
 
 NS_END
@@ -164,11 +171,7 @@ NS_END
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-/* static */ arangodb::LogTopic IResearchFeature::IRESEARCH("iresearch", LogLevel::INFO);
-
-/* static */ std::string const& IResearchFeature::name() {
-  return FEATURE_NAME;
-}
+/*static*/ arangodb::LogTopic IResearchFeature::IRESEARCH(IResearchFeature::type(), LogLevel::INFO);
 
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
   : ApplicationFeature(server, IResearchFeature::name()),
@@ -200,6 +203,10 @@ void IResearchFeature::collectOptions(
 ) {
   _running = false;
   ApplicationFeature::collectOptions(options);
+}
+
+/*static*/ std::string const& IResearchFeature::name() {
+  return FEATURE_NAME;
 }
 
 void IResearchFeature::prepare() {
@@ -243,6 +250,12 @@ void IResearchFeature::start() {
 void IResearchFeature::stop() {
   _running = false;
   ApplicationFeature::stop();
+}
+
+/*static*/ std::string const& IResearchFeature::type() {
+  static const std::string value("arangosearch");
+
+  return value;
 }
 
 void IResearchFeature::unprepare() {

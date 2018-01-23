@@ -28,8 +28,10 @@
 #include "Basics/StaticStrings.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationOptions.h"
 #include "velocypack/Iterator.h"
 #include "VocBase/KeyGenerator.h"
@@ -547,7 +549,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
 
   if (type == "edge") {
     index = EdgeIndexMock::make(++lastId, _logicalCollection, info);
-  } else if (type == "iresearch") {
+  } else if (arangodb::iresearch::IResearchFeature::type() == type) {
     index = arangodb::iresearch::IResearchMMFilesLink::make(++lastId, _logicalCollection, info);
   }
 
@@ -761,7 +763,7 @@ arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*, a
   return TRI_ERROR_INTERNAL;
 }
 
-bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) {
+bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) const {
   before();
 
   if (token.id() > documents.size()) {
@@ -779,7 +781,7 @@ bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx, a
   return true;
 }
 
-bool PhysicalCollectionMock::readDocumentWithCallback(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::IndexIterator::DocumentCallback const& cb) {
+bool PhysicalCollectionMock::readDocumentWithCallback(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::IndexIterator::DocumentCallback const& cb) const {
   before();
 
   if (token.id() > documents.size()) {
@@ -1251,6 +1253,7 @@ void StorageEngineMock::waitForSyncTimeout(double timeout) {
 
 arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) {
   TRI_ASSERT(false);
+  return arangodb::Result();
 }
 
 void StorageEngineMock::waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) {
@@ -1342,11 +1345,18 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
   unuseCollections(_nestingLevel);
+  trx->registerCallback([](arangodb::transaction::Methods* trx)->void {
+    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+    static_cast<TransactionStateMock*>(trx->state())->_id = 0;
+  });
   return arangodb::Result();
 }
 
 arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
+  static std::atomic<TRI_voc_tid_t> lastId(0);
+
   ++beginTransactionCount;
+  _id = ++lastId; // ensure each transaction state has a unique ID
   useCollections(_nestingLevel);
   updateStatus(arangodb::transaction::Status::RUNNING);
   return arangodb::Result();
@@ -1356,6 +1366,10 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   unuseCollections(_nestingLevel);
+  trx->registerCallback([](arangodb::transaction::Methods* trx)->void {
+    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+    static_cast<TransactionStateMock*>(trx->state())->_id = 0;
+  });
   return arangodb::Result();
 }
 

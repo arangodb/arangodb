@@ -74,10 +74,20 @@ if (USE_IRESEARCH)
     IResearch/AqlHelper.cpp IResearch/AqlHelper.h
   )
 
+  target_compile_definitions(${LIB_ARANGO_IRESEARCH}
+    PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>"
+  )
+
   target_include_directories(${LIB_ARANGO_IRESEARCH}
     PUBLIC ${Boost_INCLUDE_DIR} # for boost/lockfree/queue.hpp from WorkMonitor.h
     PUBLIC ${IRESEARCH_INCLUDE}
   )
+
+  if (USE_ENTERPRISE)
+    target_include_directories(${LIB_ARANGO_IRESEARCH}
+      PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}"
+    )
+  endif()
 
   if(MSVC)
     set(IRESEARCH_TARGET_DEPENDENCY iresearch-static-scrt) # use static + staticCRT to match ArangoDB
@@ -349,6 +359,7 @@ SET(ARANGOD_SOURCES
   Replication/ReplicationFeature.cpp
   Replication/Syncer.cpp
   Replication/TailingSyncer.cpp
+  Replication/common-defines.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
@@ -481,7 +492,6 @@ SET(ARANGOD_SOURCES
   VocBase/LogicalCollection.cpp
   VocBase/LogicalView.cpp
   VocBase/ManagedDocumentResult.cpp
-  VocBase/replication-common.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
@@ -521,6 +531,7 @@ if (USE_ENTERPRISE)
     target_link_libraries(arangoserver
       ldap
       lber
+      ${OPENSSL_LIBRARIES}
     )
   endif()
 endif()

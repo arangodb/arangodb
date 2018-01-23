@@ -1,4 +1,4 @@
-# Bringing the power of IResearch to ArangoDB via ArangoSearch
+# Bringing the power of IResearch to ArangoDB
 
 ## What is ArangoSearch
 
@@ -20,7 +20,7 @@ In plain terms this means a user can for example:
 
 ### The IResearch Library
 
-is a cross-platform open source indexing and searching engine written in C++,
+A cross-platform open source indexing and searching engine written in C++,
 optimized for speed and memory footprint, with source available from:
 https://github.com/iresearch-toolkit/iresearch
 
@@ -36,9 +36,9 @@ the behaviour of the engine.
 
 ### Scorers:
 
-ArangoSearch accesses the IResearch scorers directly by their internal names.
-The name (in upper-case) of the scorer is the function name to be used in the 
-['SORT' section](../../../AQL/Views/IResearch/IResearch.html#arangosearch-sort).
+ArangoDB accesses the IResearch scorers directly by their internal names. The
+name (in upper-case) of the scorer is the function name to be used in the
+['SORT' section](../../AQL/Views/IResearch.html#arangosearch-sort).
 Function arguments, (excluding the first argument), are serialized as a
 string representation of a JSON array and passed directly to the corresponding
 scorer. The first argument to any scorer function is the reference to the 
@@ -110,8 +110,8 @@ The matching documents themselves are returned as-is from their corresponding co
 ### Links to ArangoDB collections
 
 A concept of an ArangoDB collection 'link' is introduced to allow specifying
-which ArangoDB collections a given ArangoSearch View should query for documents and
-how these documents should be queried.
+which ArangoDB collections a given ArangoSearch View should query for documents
+and how these documents should be queried.
 
 An ArangoSearch Link is a uni-directional connection from an ArangoDB collection
 to an ArangoSearch view describing how data coming from the said collection should
@@ -147,7 +147,7 @@ directives.
 During view creation the following directives apply:
 * id: (optional) the desired view identifier
 * name: (required) the view name
-* type: (required) the value "iresearch" <!-- TODO "arangosearch" -->
+* type: \<required\> the value "arangosearch"
   any of the directives from the section [View properties](#view-properties-modifiable)
 
 During view modification the following directives apply:
@@ -230,7 +230,7 @@ During view modification the following directives apply:
       * threshold: (optional; default: `0.85`)
         consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`
 
-* dataPath: (optional; default: <ArangoDB database path>/iresearch-<view-id>) <!--- TODO: arangosearch? -->
+* dataPath: <optional> (default: \<ArangoDB database path\>/arangosearch-\<view-id\>)
   the filesystem path where to store persisted view metadata
 
 * locale: (optional; default: `C`)
@@ -253,9 +253,14 @@ During view modification the following directives apply:
 ### View properties (unmodifiable)
 
 * collections:
-  an internally tracked array of collection identifiers which are known to have
-  links to the current collection
-  among other things used for adding collections during a view query transaction
+  an internally tracked list of collection identifiers which were explicitly
+  added to the current view by the user via view 'link' property modification
+  the list may have no-longer valid identifiers if the user did not explicitly
+  drop the link for the said collection identifier from the current view
+  invalid collection identifiers are removed during view property modification
+  among other things used for acquiring collection locks in transactions (i.e.
+  during a view query no documents will be returned for collections not in this
+  list) and generating view properties 'links' list
 
 ### Link properties
 

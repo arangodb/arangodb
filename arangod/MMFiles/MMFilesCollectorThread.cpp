@@ -820,7 +820,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
 int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
-  LOG_TOPIC(TRACE, Logger::COLLECTOR) << "collecting logfile " << logfile->id();
+  LOG_TOPIC(DEBUG, Logger::COLLECTOR) << "collecting wal logfile " << logfile->id();
 
   MMFilesDatafile* df = logfile->df();
 
@@ -992,7 +992,7 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
     return TRI_ERROR_NO_ERROR;
   }
 
-  LOG_TOPIC(TRACE, Logger::COLLECTOR) << "collector transferring markers for '"
+  LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector transferring markers for '"
              << collection->name()
              << "', totalOperationsCount: " << totalOperationsCount;
 
@@ -1002,10 +1002,14 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = TRI_ERROR_INTERNAL;
 
+  uint64_t numBytesTransferred = 0;
   try {
     auto en = static_cast<MMFilesEngine*>(engine);
-    res = en->transferMarkers(collection, cache.get(), operations);
-
+    res = en->transferMarkers(collection, cache.get(), operations, numBytesTransferred);
+  
+    LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector transferred markers for '"
+             << collection->name() << ", number of bytes transferred: " << numBytesTransferred;
+    
     if (res == TRI_ERROR_NO_ERROR && !cache->operations->empty()) {
       queueOperations(logfile, cache);
     }

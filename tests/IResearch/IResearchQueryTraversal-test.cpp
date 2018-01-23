@@ -26,6 +26,10 @@
 
 #include "StorageEngineMock.h"
 
+#if USE_ENTERPRISE
+  #include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -133,7 +137,7 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
-REGISTER_ANALYZER_TEXT(TestDelimAnalyzer, TestDelimAnalyzer::make);
+REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -170,6 +174,10 @@ struct IResearchQuerySetup {
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+
+    #if USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+    #endif
 
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -251,6 +259,7 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Parser::fromJson("{ \"_id\": \"testCollection0/3\", \"_key\": \"3\", \"seq\": -3, \"value\": 3.14 }"),
       arangodb::velocypack::Parser::fromJson("{ \"_id\": \"testCollection0/4\", \"_key\": \"4\", \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
       arangodb::velocypack::Parser::fromJson("{ \"_id\": \"testCollection0/5\", \"_key\": \"5\", \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
+      arangodb::velocypack::Parser::fromJson("{ \"_id\": \"testCollection0/6\", \"_key\": \"6\", \"seq\": 0, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
     };
 
     arangodb::OperationOptions options;
@@ -261,45 +270,6 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));
-
-    for (auto& entry: docs) {
-      auto res = trx.insert(collection->name(), entry->slice(), options);
-      CHECK((res.ok()));
-      insertedDocs.emplace_back(res.slice().get("new"));
-    }
-
-    CHECK((trx.commit().ok()));
-  }
-
-  // create edge collection
-  {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"edges\", \"type\": 3 }");
-    auto* collection = vocbase.createCollection(createJson->slice());
-    REQUIRE((nullptr != collection));
-
-    arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      collection->cid(),
-      arangodb::AccessMode::Type::WRITE
-    );
-    CHECK((trx.begin().ok()));
-
-    auto createIndexJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
-    bool created = false;
-    auto index = collection->createIndex(&trx, createIndexJson->slice(), created);
-    CHECK(index);
-    CHECK(created);
-
-    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
-      arangodb::velocypack::Parser::fromJson("{ \"_from\": \"testCollection0/0\", \"_to\": \"testCollection0/1\" }"),
-      arangodb::velocypack::Parser::fromJson("{ \"_from\": \"testCollection0/0\", \"_to\": \"testCollection0/2\" }"),
-      arangodb::velocypack::Parser::fromJson("{ \"_from\": \"testCollection0/0\", \"_to\": \"testCollection0/3\" }"),
-      arangodb::velocypack::Parser::fromJson("{ \"_from\": \"testCollection0/0\", \"_to\": \"testCollection0/4\" }"),
-      arangodb::velocypack::Parser::fromJson("{ \"_from\": \"testCollection0/0\", \"_to\": \"testCollection0/5\" }"),
-    };
-
-    arangodb::OperationOptions options;
-    options.returnNew = true;
 
     for (auto& entry: docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
@@ -342,9 +312,49 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
     CHECK((trx.commit().ok()));
   }
 
+  // create edge collection
+  {
+    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"edges\", \"type\": 3 }");
+    auto* collection = vocbase.createCollection(createJson->slice());
+    REQUIRE((nullptr != collection));
+
+    arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      collection->cid(),
+      arangodb::AccessMode::Type::WRITE
+    );
+    CHECK((trx.begin().ok()));
+
+    auto createIndexJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
+    bool created = false;
+    auto index = collection->createIndex(&trx, createIndexJson->slice(), created);
+    CHECK(index);
+    CHECK(created);
+
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
+      arangodb::velocypack::Parser::fromJson("{ \"_from\": \"testCollection0/0\", \"_to\": \"testCollection0/1\" }"),
+      arangodb::velocypack::Parser::fromJson("{ \"_from\": \"testCollection0/0\", \"_to\": \"testCollection0/2\" }"),
+      arangodb::velocypack::Parser::fromJson("{ \"_from\": \"testCollection0/0\", \"_to\": \"testCollection0/3\" }"),
+      arangodb::velocypack::Parser::fromJson("{ \"_from\": \"testCollection0/0\", \"_to\": \"testCollection0/4\" }"),
+      arangodb::velocypack::Parser::fromJson("{ \"_from\": \"testCollection0/0\", \"_to\": \"testCollection0/5\" }"),
+      arangodb::velocypack::Parser::fromJson("{ \"_from\": \"testCollection0/6\", \"_to\": \"testCollection0/0\" }"),
+    };
+
+    arangodb::OperationOptions options;
+    options.returnNew = true;
+
+    for (auto& entry: docs) {
+      auto res = trx.insert(collection->name(), entry->slice(), options);
+      CHECK((res.ok()));
+      insertedDocs.emplace_back(res.slice().get("new"));
+    }
+
+    CHECK((trx.commit().ok()));
+  }
+
   // create view
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\" }");
+    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
     REQUIRE((false == !logicalView));
 
@@ -359,8 +369,42 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
       "}}"
     );
     CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
-    CHECK((2 == impl->linkCount()));
+    std::set<TRI_voc_cid_t> cids;
+    impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
+    CHECK((2 == cids.size()));
     impl->sync();
+  }
+
+  // shortest path traversal
+  {
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      insertedDocs[6].slice(),
+      insertedDocs[7].slice(),
+      insertedDocs[5].slice(),
+      insertedDocs[0].slice(),
+    };
+
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR v, e IN OUTBOUND SHORTEST_PATH 'testCollection0/6' TO 'testCollection0/5' edges FOR d IN VIEW testView FILTER d.seq == v.seq SORT TFIDF(d) DESC, d.seq DESC, d._id RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(slice);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next()) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      ++expectedDoc;
+    }
+    CHECK(!resultIt.valid());
+    CHECK(expectedDoc == expectedDocs.end());
   }
 
   // simple traversal
@@ -375,7 +419,7 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
 
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR v, e, p IN 1..2 ANY 'testCollection0/0' edges FOR d IN VIEW testView FILTER d.seq == v.seq SORT TFIDF(d) DESC, d.seq DESC RETURN v"
+      "FOR v, e, p IN 1..2 OUTBOUND 'testCollection0/0' edges FOR d IN VIEW testView FILTER d.seq == v.seq SORT TFIDF(d) DESC, d.seq DESC RETURN v"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();

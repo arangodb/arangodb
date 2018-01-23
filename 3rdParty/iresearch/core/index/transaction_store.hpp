@@ -167,15 +167,21 @@ class IRESEARCH_API transaction_store: private util::noncopyable {
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief remove all unused entries in internal data structures
+  ////////////////////////////////////////////////////////////////////////////
+  void cleanup();
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief remove all unused entries in internal data structures
   /// @note  in-progress transactions will not be able to commit succesfully
   ////////////////////////////////////////////////////////////////////////////
   void clear();
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief export all completed transactions into the specified writer
-  /// @return if export was successful, upon failure state is not modified
+  /// @brief export all completed transactions into the reader
+  /// @note in-progress transaction commit() will fail
+  /// @return reader with the flushed state or false on flush failure
   ////////////////////////////////////////////////////////////////////////////
-  bool flush(index_writer& writer);
+  store_reader flush();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create an index reader over already commited documents in the store
@@ -289,7 +295,7 @@ class IRESEARCH_API transaction_store: private util::noncopyable {
   field_meta_pool_t field_meta_pool_;
   std::unordered_map<hashed_string_ref, terms_t> fields_;
   size_t generation_; // current commit generation
-  std::mutex commit_flush_mutex_; // prevent concurent commits and flushes to ensure obtained reader matches internal state
+  std::mutex generation_mutex_; // prevent generation modification during writer commit with removals/updates and flush (used before aquiring write lock on mutex_)
   mutable async_utils::read_write_mutex mutex_; // mutex for 'columns_', 'fields_', 'generation_', 'visible_docs_'
   reusable_t reusable_;
   bitvector used_column_ids_; // true == column id is in use by some column
@@ -658,10 +664,9 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const flags&>(field.features());
-    const auto boost = static_cast<float_t>(field.boost());
     auto start = out.file_pointer();
 
-    if (index(out, state, name, features, doc, tokens, boost)) {
+    if (index(out, state, name, features, doc, tokens)) {
       return true;
     }
 
@@ -686,12 +691,11 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const flags&>(field.features());
-    const auto boost = static_cast<float_t>(field.boost());
     auto start = out.file_pointer();
 
     if (field.write(out)
         && store(out, state, name, doc, start)
-        && index(out, state, name, features, doc, tokens, boost)) {
+        && index(out, state, name, features, doc, tokens)) {
       return true;
     }
 
@@ -732,8 +736,7 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
     const hashed_string_ref& field_name,
     const flags& field_features,
     transaction_store::document_t& doc,
-    token_stream& tokens,
-    float_t boost
+    token_stream& tokens
   );
 
   bool store(

@@ -90,7 +90,9 @@ be inhomogeneous.
 
 Please note that by default, _arangoimport_ will import data into the specified
 collection in the default database (*_system*). To specify a different database,
-use the *--server.database* option when invoking _arangoimport_.
+use the *--server.database* option when invoking _arangoimport_. If you want to 
+import into a nonexistent database you need to pass *--create-database true*.
+Note *--create-database* defaults to *false*
 
 The tool also supports parallel imports, with multiple threads. Using multiple
 threads may provide a speedup, especially when using the RocksDB storage engine.

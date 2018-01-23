@@ -6,6 +6,8 @@
 
 include(ExternalProject)
 
+remove_definitions("-DUSE_ENTERPRISE=1")
+
 ################################################################################
 ## V8 and ICU
 ################################################################################
@@ -139,6 +141,7 @@ if (USE_IRESEARCH)
   set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
   set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
   set(UNWIND_ROOT "invalid")
+  set(USE_IQL OFF CACHE BOOL "Use IQL" FORCE) # skip IQL
 
   set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
   find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
@@ -187,6 +190,31 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0)
 ################################################################################
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
+
+################################################################################
+## JEMALLOC
+################################################################################
+
+if (USE_JEMALLOC)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
+  include_directories("${JEMALLOC_HOME}/include")
+  link_directories("${JEMALLOC_HOME}/lib")
+  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB})
+endif ()
+
+################################################################################
+## BOOST
+################################################################################
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
+set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
+
+################################################################################
+## ROCKSDB
+################################################################################
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
+include_directories(${ROCKSDB_INCLUDE_DIR})
 
 ################################################################################
 ## LINK_DIRECTORIES
