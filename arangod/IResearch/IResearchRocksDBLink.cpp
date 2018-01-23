@@ -128,24 +128,6 @@ void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
   builder.close();
 }
 
-void IResearchRocksDBLink::writeRocksWalMarker() {
-  RocksDBLogValue logValue = RocksDBLogValue::IResearchLinkDrop(
-      Index::_collection->vocbase()->id(),
-      Index::_collection->cid(),
-      view() ? view()->id() : 0, // 0 == invalid TRI_voc_cid_t according to transaction::Methods
-      Index::_iid);
-
-  rocksdb::WriteBatch batch;
-  rocksdb::WriteOptions wo;  // TODO: check which options would make sense
-  auto db = rocksutils::globalRocksDB();
-
-  batch.PutLogData(logValue.slice());
-  auto status = rocksutils::convertStatus(db->Write(wo, &batch));
-  if (!status.ok()) {
-    THROW_ARANGO_EXCEPTION(status.errorNumber());
-  }
-}
-
 NS_END      // iresearch
 NS_END  // arangodb
 

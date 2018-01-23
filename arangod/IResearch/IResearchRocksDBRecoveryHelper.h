@@ -62,15 +62,6 @@ class IResearchRocksDBRecoveryHelper : public RocksDBRecoveryHelper {
   virtual void LogData(const rocksdb::Slice& blob) override;
 
  private:
-  std::pair<TRI_vocbase_t*, LogicalCollection*> lookupDatabaseAndCollection(
-      uint64_t objectId) const;
-  std::vector<IResearchLink*> lookupLinks(LogicalCollection* coll) const;
-  void dropCollectionFromAllViews(TRI_voc_tick_t dbId,
-                                  TRI_voc_cid_t collectionId);
-  void dropCollectionFromView(TRI_voc_tick_t dbId, TRI_voc_cid_t collectionId,
-                              TRI_voc_cid_t viewId);
-
- private:
   DatabaseFeature* _dbFeature;
   RocksDBEngine* _engine;
   uint32_t _documentCF;

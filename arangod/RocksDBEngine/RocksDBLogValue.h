@@ -68,11 +68,6 @@ class RocksDBLogValue {
   static RocksDBLogValue ViewChange(TRI_voc_tick_t, TRI_voc_cid_t);
   static RocksDBLogValue ViewRename(TRI_voc_tick_t, TRI_voc_cid_t);
 
-#ifdef USE_IRESEARCH
-  static RocksDBLogValue IResearchLinkDrop(TRI_voc_tick_t, TRI_voc_cid_t,
-                                           TRI_voc_cid_t, TRI_idx_iid_t);
-#endif
-
   static RocksDBLogValue BeginTransaction(TRI_voc_tick_t vocbaseId,
                                           TRI_voc_tid_t trxId);
   static RocksDBLogValue DocumentOpsPrologue(TRI_voc_cid_t cid);
