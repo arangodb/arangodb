@@ -58,7 +58,18 @@ void RocksDBBackgroundThread::run() {
 
     try {
       if (!isStopping()) {
-        _engine->settingsManager()->sync(false);
+        double start = TRI_microtime();
+        Result res = _engine->settingsManager()->sync(false);
+        if (res.fail()) {
+          LOG_TOPIC(WARN, Logger::ENGINES)
+            << "background settings sync failed: " << res.errorMessage();
+        }
+
+        double end = TRI_microtime();
+        if ((end - start) > 0.5) {
+          LOG_TOPIC(WARN, Logger::ENGINES)
+            << "slow background settings sync: " << (end - start) << "sec";
+        }
       }
 
       bool force = isStopping();

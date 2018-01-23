@@ -170,7 +170,9 @@ class RocksDBCuckooIndexEstimator {
         _nrUsed(0),
         _nrCuckood(0),
         _nrTotal(0),
-        _maxRounds(16) {
+        _maxRounds(16),
+        _committedSeq(0),
+        _needToPersist(true) {
     // Inflate size so that we have some padding to avoid failure
     size *= 2;
     size = (size >= 1024) ? size : 1024;  // want 256 buckets minimum
@@ -201,7 +203,8 @@ class RocksDBCuckooIndexEstimator {
         _nrCuckood(0),
         _nrTotal(0),
         _maxRounds(16),
-        _committedSeq(commitSeq) {
+        _committedSeq(commitSeq),
+        _needToPersist(false) {
     switch (serialized.front()) {
       case SerializeFormat::NOCOMPRESSION: {
         deserializeUncompressed(serialized);
@@ -235,7 +238,7 @@ class RocksDBCuckooIndexEstimator {
     // older formats
     // for backwards compatibility
     // We always have to start with the commit seq, type and then the length
-    auto outputSeq = commitSeq(inputSeq);
+    auto outputSeq = committableSeq(inputSeq);
     rocksutils::uint64ToPersistent(serialized, outputSeq);
 
     // must apply updates first to be valid
@@ -283,11 +286,16 @@ class RocksDBCuckooIndexEstimator {
         rocksutils::uint32ToPersistent(
             serialized, *(reinterpret_cast<uint32_t*>(_counters + i)));
       }
+
+      bool havePendingUpdates = !_blockers.empty() || !_insertBuffers.empty() ||
+                                !_removalBuffers.empty();
+      _needToPersist.store(havePendingUpdates);
     }
 
     return outputSeq;
   }
 
+  /// @brief only call directly during startup/recovery; otherwise buffer
   void clear() {
     WRITE_LOCKER(locker, _lock);
     // Reset Stats
@@ -304,6 +312,8 @@ class RocksDBCuckooIndexEstimator {
         f.reset();
       }
     }
+
+    _needToPersist.store(true);
   }
 
   double computeEstimate() {
@@ -344,6 +354,7 @@ class RocksDBCuckooIndexEstimator {
     return found;
   }
 
+  /// @brief only call directly during startup/recovery; otherwise buffer
   bool insert(Key const& k) {
     // insert the key k
     //
@@ -374,10 +385,12 @@ class RocksDBCuckooIndexEstimator {
         slot.increase();
       }
       _nrTotal++;
+      _needToPersist.store(true);
     }
     return true;
   }
 
+  /// @brief only call directly during startup/recovery; otherwise buffer
   bool remove(Key const& k) {
     // remove one element with key k, if one is in the table. Return true if
     // a key was removed and false otherwise.
@@ -402,6 +415,7 @@ class RocksDBCuckooIndexEstimator {
           slot.reset();
           _nrUsed--;
         }
+        _needToPersist.store(true);
         return true;
       }
       // If we get here we assume that the element was once inserted, but
@@ -422,6 +436,11 @@ class RocksDBCuckooIndexEstimator {
   // not thread safe. called only during tests
   uint64_t nrCuckood() const { return _nrCuckood; }
 
+  bool needToPersist() const {
+    READ_LOCKER(locker, _lock);
+    return _needToPersist.load();
+  }
+
   Result placeBlocker(uint64_t trxId, rocksdb::SequenceNumber seq) {
     Result res = basics::catchToResult([&]() -> Result {
       TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
@@ -434,6 +453,7 @@ class RocksDBCuckooIndexEstimator {
       if (!insert.second || !crosslist.second) {
         return {TRI_ERROR_INTERNAL};
       }
+      _needToPersist.store(true);
       return {TRI_ERROR_NO_ERROR};
     });
     return res;
@@ -469,7 +489,7 @@ class RocksDBCuckooIndexEstimator {
   }
 
  private:  // methods
-  /// @brief call with output from commitSeq(current), and before serialize
+  /// @brief call with output from committableSeq(current), and before serialize
   Result applyUpdates(rocksdb::SequenceNumber commitSeq) {
     Result res = basics::catchVoidToResult([&]() -> void {
       std::vector<Key> inserts;
@@ -482,7 +502,7 @@ class RocksDBCuckooIndexEstimator {
           // check for inserts
           if (!_insertBuffers.empty()) {
             auto it = _insertBuffers.begin();
-            if (it->first < commitSeq) {
+            if (it->first <= commitSeq) {
               inserts = std::move(it->second);
               _insertBuffers.erase(it);
             }
@@ -491,7 +511,7 @@ class RocksDBCuckooIndexEstimator {
           // check for removals
           if (!_removalBuffers.empty()) {
             auto it = _removalBuffers.begin();
-            if (it->first < commitSeq) {
+            if (it->first <= commitSeq) {
               removals = std::move(it->second);
               _removalBuffers.erase(it);
             }
@@ -524,7 +544,7 @@ class RocksDBCuckooIndexEstimator {
   }
 
   /// @brief updates and returns the largest safe seq to consider committed
-  rocksdb::SequenceNumber commitSeq(rocksdb::SequenceNumber current) const {
+  rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber current) const {
     WRITE_LOCKER(locker, _lock);
     auto minSeq = current;
 
@@ -535,14 +555,14 @@ class RocksDBCuckooIndexEstimator {
     }
 
     // if we have an unapplied batch of updates with a lower value compare it
-    if (!_insertBuffers.empty()) {
+    /*if (!_insertBuffers.empty()) {
       auto it = _insertBuffers.begin();
       minSeq = std::min(minSeq, it->first);
     }
     if (!_removalBuffers.empty()) {
       auto it = _removalBuffers.begin();
       minSeq = std::min(minSeq, it->first);
-    }
+    }*/
 
     // otherwise update current and return it
     _committedSeq = std::max(_committedSeq, minSeq);
@@ -878,6 +898,7 @@ class RocksDBCuckooIndexEstimator {
   unsigned _maxRounds;  // maximum number of cuckoo rounds on insertion
 
   rocksdb::SequenceNumber mutable _committedSeq;
+  std::atomic<bool> _needToPersist;
 
   std::map<uint64_t, rocksdb::SequenceNumber> _blockers;
   std::set<std::pair<rocksdb::SequenceNumber, uint64_t>> _blockersBySeq;

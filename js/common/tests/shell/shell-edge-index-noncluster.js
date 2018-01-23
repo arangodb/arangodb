@@ -314,6 +314,7 @@ function EdgeIndexSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testIndexSelectivityEmpty: function () {
+      internal.waitForSettingsSync(); // make sure estimates are consistent
       var edgeIndex = edge.getIndexes()[1];
       assertTrue(edgeIndex.hasOwnProperty('selectivityEstimate'));
       assertEqual(1, edgeIndex.selectivityEstimate);
@@ -325,6 +326,7 @@ function EdgeIndexSuite () {
 
     testIndexSelectivityOneDoc: function () {
       edge.save(v1, v2, { });
+      internal.waitForSettingsSync(); // make sure estimates are consistent
       var edgeIndex = edge.getIndexes()[1];
       assertTrue(edgeIndex.hasOwnProperty('selectivityEstimate'));
       assertEqual(1, edgeIndex.selectivityEstimate);
@@ -339,11 +341,12 @@ function EdgeIndexSuite () {
 
       for (i = 0; i < 1000; ++i) {
         edge.save(v1, v2, { });
-        edgeIndex = edge.getIndexes()[1];
-        expectedSelectivity = 1 / (i + 1);
-        // allow for some floating-point deviations
-        assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
       }
+      internal.waitForSettingsSync(); // make sure estimates are consistent
+      edgeIndex = edge.getIndexes()[1];
+      expectedSelectivity = 1 / 1000;
+      // allow for some floating-point deviations
+      assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
 
       var n = edge.count();
       assertEqual(1000, n);
@@ -352,13 +355,13 @@ function EdgeIndexSuite () {
         var doc = edge.any();
         assertNotNull(doc);
         edge.remove(doc._key);
-
-        edgeIndex = edge.getIndexes()[1];
-        c = 1000 - (i + 1);
-        expectedSelectivity = (c === 0 ? 1 : 1 / c);
-        // allow for some floating-point deviations
-        assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
       }
+
+      internal.waitForSettingsSync(); // make sure estimates are consistent
+      edgeIndex = edge.getIndexes()[1];
+      expectedSelectivity = 1.0;
+      // allow for some floating-point deviations
+      assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -368,9 +371,10 @@ function EdgeIndexSuite () {
     testIndexSelectivityUniqueDocs: function () {
       for (var i = 0; i < 1000; ++i) {
         edge.save(vn + '/from' + i, vn + '/to' + i, { });
-        var edgeIndex = edge.getIndexes()[1];
-        assertTrue(1, edgeIndex.selectivityEstimate);
       }
+      internal.waitForSettingsSync(); // make sure estimates are consistent
+      var edgeIndex = edge.getIndexes()[1];
+      assertTrue(1, edgeIndex.selectivityEstimate);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -380,10 +384,11 @@ function EdgeIndexSuite () {
     testIndexSelectivityUniqueDocsFrom: function () {
       for (var i = 0; i < 1000; ++i) {
         edge.save(vn + '/from' + i, vn + '/1', { });
-        var edgeIndex = edge.getIndexes()[1];
-        var expectedSelectivity = (1 + (1 / (i + 1))) * 0.5;
-        assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
       }
+      internal.waitForSettingsSync(); // make sure estimates are consistent
+      var edgeIndex = edge.getIndexes()[1];
+      var expectedSelectivity = (1 + (1 / 1000)) * 0.5;
+      assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -392,13 +397,12 @@ function EdgeIndexSuite () {
 
     testIndexSelectivityRepeatingDocs: function () {
       for (var i = 0; i < 1000; ++i) {
-        if (i > 0) {
-          var edgeIndex = edge.getIndexes()[1];
-          var expectedSelectivity = (1 + (Math.min(i, 20) / i)) * 0.5;
-          assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
-        }
         edge.save(vn + '/from' + (i % 20), vn + '/to' + i, { });
       }
+      internal.waitForSettingsSync(); // make sure estimates are consistent
+      var edgeIndex = edge.getIndexes()[1];
+      var expectedSelectivity = (1 + (20 / 1000)) * 0.5;
+      assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
     },
 
     testIndexSelectivityAfterAbortion: function () {
@@ -407,6 +411,7 @@ function EdgeIndexSuite () {
         docs.push({_from: `${vn}/from${i % 32}`, _to: `${vn}/to${i % 47}`});
       }
       edge.save(docs);
+      internal.waitForSettingsSync(); // make sure estimates are consistent
       let idx = edge.getIndexes()[1];
       let estimateBefore = idx.selectivityEstimate;
       try {
@@ -430,6 +435,7 @@ function EdgeIndexSuite () {
         assertEqual(e.errorMessage, "banana");
         // Insert failed.
         // Validate that estimate is non modified
+        internal.waitForSettingsSync(); // make sure estimates are consistent
         idx = edge.getIndexes()[1];
         assertEqual(idx.selectivityEstimate, estimateBefore);
       }

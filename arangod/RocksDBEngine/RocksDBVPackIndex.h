@@ -146,6 +146,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
       arangodb::StringRef const* = nullptr) const override;
 
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
+  bool needToPersistEstimate() const override;
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 

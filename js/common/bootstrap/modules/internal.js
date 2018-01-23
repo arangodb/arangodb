@@ -303,7 +303,7 @@ global.DEFINE_MODULE('internal', (function () {
     exports.download = global.SYS_DOWNLOAD;
     delete global.SYS_DOWNLOAD;
   }
-  
+
   if (global.SYS_CLUSTER_DOWNLOAD) {
     exports.clusterDownload = global.SYS_CLUSTER_DOWNLOAD;
     delete global.SYS_CLUSTER_DOWNLOAD;
@@ -462,7 +462,7 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief input 
+  // / @brief input
   // //////////////////////////////////////////////////////////////////////////////
 
   if (global.SYS_POLLSTDIN) {
@@ -595,6 +595,10 @@ global.DEFINE_MODULE('internal', (function () {
   if (global.SYS_WAIT) {
     exports.wait = global.SYS_WAIT;
     delete global.SYS_WAIT;
+  }
+
+  if (exports.wait) {
+    exports.waitForSettingsSync = function() { exports.wait(3.0); };
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -775,7 +779,7 @@ global.DEFINE_MODULE('internal', (function () {
             if (structure[key] !== false) {
               if (structure[key] !== true) {
                 if (structure[key] !== null) {
-                  // The null case is for the case one wants to add an option 
+                  // The null case is for the case one wants to add an option
                   // with an equals sign all in the key, which is necessary if
                   // one wants to specify an option multiple times.
                   vec.push(structure[key]);
@@ -1248,7 +1252,7 @@ global.DEFINE_MODULE('internal', (function () {
             if (context.level > 0 && !showFunction) {
               var a = s.split('\n');
               var f = a[0].replace(/^(.*?\)).*$/, '$1');
-              
+
               var m = funcRE.exec(f);
 
               if (m !== null) {

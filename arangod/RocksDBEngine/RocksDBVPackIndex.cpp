@@ -1583,3 +1583,10 @@ void RocksDBVPackIndex::recalculateEstimates() {
 RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {
   return _estimator.get();
 }
+
+bool RocksDBVPackIndex::needToPersistEstimate() const {
+  if (_estimator) {
+    return _estimator->needToPersist();
+  }
+  return false;
+}

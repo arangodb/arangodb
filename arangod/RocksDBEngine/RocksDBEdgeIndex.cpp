@@ -511,6 +511,10 @@ RocksDBCuckooIndexEstimator<uint64_t>* RocksDBEdgeIndex::estimator() {
   return _estimator.get();
 }
 
+bool RocksDBEdgeIndex::needToPersistEstimate() const {
+  return _estimator->needToPersist();
+}
+
 void RocksDBEdgeIndex::batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<LocalDocumentId, VPackSlice>> const& documents,

@@ -273,9 +273,9 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     rocksdb::SequenceNumber latestSeq = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
 
     if (result.ok()) {
-      LOG_TOPIC(TRACE, Logger::ENGINES)
+      /*LOG_TOPIC(TRACE, Logger::ENGINES)
         << "intermediate commit for transaction " << id()
-        << " succeeded at tick " << latestSeq;
+        << " succeeded at tick " << latestSeq;*/
       for (auto& trxCollection : _collections) {
         RocksDBTransactionCollection* collection =
         static_cast<RocksDBTransactionCollection*>(trxCollection);

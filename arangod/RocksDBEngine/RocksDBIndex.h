@@ -150,6 +150,7 @@ class RocksDBIndex : public Index {
                                     bool unique);
 
   virtual RocksDBCuckooIndexEstimator<uint64_t>* estimator();
+  virtual bool needToPersistEstimate() const;
 
  protected:
   inline bool useCache() const { return (_cacheEnabled && _cachePresent); }

@@ -476,12 +476,14 @@ function ClusterCollectionSuite () {
         for(i=0; i < 10; ++i){
           c.save({foo: i});
         }
+        internal.waitForSettingsSync(); // make sure estimates are consistent
         indexes = c.getIndexes(true);
         assertEqual(indexes[1].selectivityEstimate, 1);
 
         for(i=0; i < 10; ++i){
           c.save({foo: i});
         }
+        internal.waitForSettingsSync(); // make sure estimates are consistent
         indexes = c.getIndexes(true);
         assertEqual(indexes[1].selectivityEstimate, 0.5);
 
@@ -500,4 +502,3 @@ function ClusterCollectionSuite () {
 jsunity.run(ClusterCollectionSuite);
 
 return jsunity.done();
-

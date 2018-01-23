@@ -330,3 +330,7 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
 RocksDBCuckooIndexEstimator<uint64_t>* RocksDBIndex::estimator() {
   return nullptr;
 }
+
+bool RocksDBIndex::needToPersistEstimate() const {
+  return false;
+}

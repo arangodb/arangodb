@@ -79,7 +79,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _numberDocuments(0),
       _revisionId(0),
-      _needToPersistIndexEstimates(false),
       _hasGeoIndex(false),
       _primaryIndex(nullptr),
       _cache(nullptr),
@@ -107,7 +106,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _objectId(static_cast<RocksDBCollection const*>(physical)->_objectId),
       _numberDocuments(0),
       _revisionId(0),
-      _needToPersistIndexEstimates(false),
       _hasGeoIndex(false),
       _primaryIndex(nullptr),
       _cache(nullptr),
@@ -747,10 +745,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     iter->Next();
   }
 
-  if (found > 0) {
-    _needToPersistIndexEstimates = true;
-  }
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (state->numCommits() == 0) {
     // check if documents have been deleted
@@ -1375,9 +1369,6 @@ arangodb::Result RocksDBCollection::fillIndexes(
     rocksdb::WriteOptions writeOpts;
     db->Write(writeOpts, batch.GetWriteBatch());
   }
-  if (numDocsWritten > 0) {
-    _needToPersistIndexEstimates = true;
-  }
 
   return res;
 }
@@ -1422,10 +1413,6 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
     }
   }
 
-  if (res.ok()) {
-    _needToPersistIndexEstimates = true;
-  }
-
   return res;
 }
 
@@ -1466,10 +1453,6 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
       // for other errors, set result
       res.reset(tmpres);
     }
-  }
-
-  if (res.ok()) {
-    _needToPersistIndexEstimates = true;
   }
 
   return res;
@@ -1545,10 +1528,6 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
       }
       res.reset(tmpres);
     }
-  }
-
-  if (res.ok()) {
-    _needToPersistIndexEstimates = true;
   }
 
   return res;
@@ -1867,27 +1846,29 @@ std::pair<arangodb::Result, rocksdb::SequenceNumber>
 RocksDBCollection::serializeIndexEstimates(
     rocksdb::Transaction* rtrx, rocksdb::SequenceNumber inputSeq) const {
   auto outputSeq = inputSeq;
-  if (!_needToPersistIndexEstimates) {
-    return std::make_pair(Result{TRI_ERROR_NO_ERROR}, outputSeq);
-  }
-  _needToPersistIndexEstimates = false;
   std::string output;
   for (auto index : getIndexes()) {
     output.clear();
     RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
     TRI_ASSERT(cindex != nullptr);
-    auto outputSeq = cindex->serializeEstimate(output, inputSeq);
-    if (output.size() > sizeof(uint64_t)) {
-      RocksDBKey key;
-      key.constructIndexEstimateValue(cindex->objectId());
-      rocksdb::Slice value(output);
-      rocksdb::Status s =
-          rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
+    if (cindex->needToPersistEstimate()) {
+      auto committedSeq = cindex->serializeEstimate(output, inputSeq);
+      outputSeq = std::min(outputSeq, committedSeq);
+      LOG_TOPIC(TRACE, Logger::ENGINES)
+        << "serialized estimate for index '" << cindex->objectId()
+        << "' valid through seq " << outputSeq;
+      if (output.size() > sizeof(uint64_t)) {
+        RocksDBKey key;
+        key.constructIndexEstimateValue(cindex->objectId());
+        rocksdb::Slice value(output);
+        rocksdb::Status s =
+            rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
 
-      if (!s.ok()) {
-        LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed";
-        rtrx->Rollback();
-        return std::make_pair(rocksutils::convertStatus(s), outputSeq);
+        if (!s.ok()) {
+          LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed";
+          rtrx->Rollback();
+          return std::make_pair(rocksutils::convertStatus(s), outputSeq);
+        }
       }
     }
   }
@@ -1914,6 +1895,10 @@ void RocksDBCollection::recalculateIndexEstimates() {
 
 void RocksDBCollection::recalculateIndexEstimates(
     std::vector<std::shared_ptr<Index>> const& indexes) {
+  // IMPORTANT if this method is called outside of startup/recovery, we may have
+  // issues with estimate integrity; please do not expose via a user-facing
+  // method or endpoint unless the implementation changes
+
   // start transaction to get a collection lock
   auto ctx = transaction::StandaloneContext::Create(_logicalCollection->vocbase());
   arangodb::SingleCollectionTransaction trx(ctx, _logicalCollection->cid(),
@@ -1928,7 +1913,6 @@ void RocksDBCollection::recalculateIndexEstimates(
     TRI_ASSERT(idx != nullptr);
     idx->recalculateEstimates();
   }
-  _needToPersistIndexEstimates = true;
   trx.commit();
 }
 
