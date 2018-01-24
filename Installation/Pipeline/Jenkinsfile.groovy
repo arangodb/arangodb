@@ -1433,6 +1433,7 @@ def createDockerImage(edition, maintainer, stageName) {
     return {
         if (buildStepCheck(os, edition, maintainer)) {
             node(buildJenkins[os]) {
+              echo buildJenkins[os]
                 stage(stageName) {
                     checkoutSource(os, edition)
 
