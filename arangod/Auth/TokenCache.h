@@ -31,6 +31,7 @@
 #include "Basics/Result.h"
 #include "Rest/CommonDefines.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {

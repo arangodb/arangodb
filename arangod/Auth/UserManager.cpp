@@ -63,32 +63,28 @@ auth::UserManager::UserManager(std::unique_ptr<auth::Handler>&& handler)
 
 auth::UserManager::~UserManager() {}
 
-
-// private, must be called with _authInfoLock in write mode
-bool auth::UserManager::parseUsers(VPackSlice const& slice) {
+// Parse the users
+static auth::UserMap ParseUsers(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
-  TRI_ASSERT(_authInfo.empty());
-
+  auth::UserMap result;
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     VPackSlice s = authSlice.resolveExternal();
-
+    
     if (s.hasKey("source") && s.get("source").isString() &&
         s.get("source").copyString() == "LDAP") {
       LOG_TOPIC(TRACE, arangodb::Logger::CONFIG)
-          << "LDAP: skip user in collection _users: "
-          << s.get("user").copyString();
+      << "LDAP: skip user in collection _users: "
+      << s.get("user").copyString();
       continue;
     }
-
-     auth::User user = auth::User::fromDocument(s);
-
+    
     // we also need to insert inactive users into the cache here
     // otherwise all following update/replace/remove operations on the
     // user will fail
-    _authInfo.emplace(user.username(), std::move(user));
+    auth::User user = auth::User::fromDocument(s);
+    result.emplace(user.username(), std::move(user));
   }
-
-  return true;
+  return result;
 }
 
 static std::shared_ptr<VPackBuilder> QueryAllUsers(
@@ -205,41 +201,33 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
 void auth::UserManager::loadFromDB() {
   TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
-
-  auto role = ServerState::instance()->getRole();
-
-  if (role != ServerState::ROLE_SINGLE &&
-      role != ServerState::ROLE_COORDINATOR) {
-    _outdated = false;
+  if (!ServerState::instance()->isSingleServerOrCoordinator()) {
+    _outdated = false; // should not get here
     return;
   }
 
   if (!_outdated) {
     return;
   }
-
   MUTEX_LOCKER(locker, _loadFromDBLock);
-
   // double check to be sure after we got the lock
   if (!_outdated) {
     return;
   }
 
-  WRITE_LOCKER(writeLocker, _authInfoLock);
-  AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
-  _authInfo.clear();
-
   try {
     std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
-    
     if (builder) {
       VPackSlice usersSlice = builder->slice();
       if (usersSlice.length() != 0) {
-        parseUsers(usersSlice);
+        UserMap usermap = ParseUsers(usersSlice);
+        
+        WRITE_LOCKER(writeLocker, _authInfoLock);
+        AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
+        _authInfo.swap(usermap);
+        _outdated = false;
       }
     }
-
-    _outdated = (_authInfo.empty() == true);
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::AUTHENTICATION)
         << "Exception when loading users from db: " << ex.what();
@@ -971,6 +959,7 @@ auth::Level auth::UserManager::canUseCollectionNoLock(std::string const& usernam
 
 /// Only used for testing
 void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
+  MUTEX_LOCKER(guard, _loadFromDBLock);
   WRITE_LOCKER(writeLocker, _authInfoLock);
   _authInfo = newMap;
   _outdated = false;
