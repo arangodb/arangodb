@@ -3,12 +3,22 @@ REPLACE
 
 The *REPLACE* keyword can be used to completely replace documents in a collection. On a
 single server, the replace operation is executed transactionally in an all-or-nothing 
-fashion. For sharded collections, the entire replace operation is not transactional.
+fashion.
+
+If the RocksDB engine is used and intermediate commits are enabled, a query may 
+execute intermediate transaction commits in case the running transaction (AQL
+query) hits the specified size thresholds. In this case, the query's operations 
+carried out so far will be committed and not rolled back in case of a later abort/rollback. 
+That behavior can be controlled by adjusting the intermediate commit settings for 
+the RocksDB engine. 
+
+For sharded collections, the entire query and/or replace operation may not be transactional,
+especially if it involves different shards and/or database servers.
 
 Each *REPLACE* operation is restricted to a single collection, and the 
 [collection name](../../Manual/Appendix/Glossary.html#collection-name) must not be dynamic.
 Only a single *REPLACE* statement per collection is allowed per AQL query, and 
-it cannot be followed by read operations that access the same collection, by
+it cannot be followed by read or write operations that access the same collection, by
 traversal operations, or AQL functions that can read documents.
 The system attributes *_id*, *_key* and *_rev* cannot be replaced, *_from* and *_to* can.
 
