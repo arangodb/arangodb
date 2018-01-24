@@ -250,6 +250,11 @@
         } else {
           message = message + $('#databaseInputName').val();
         }
+      } else {
+        message = message + $('#loginDatabase').val();
+        window.setTimeout(function () {
+          $('#goToDatabase').focus();
+        }, 150);
       }
       $('#goToDatabase').html(message);
     },
