@@ -64,8 +64,9 @@ function checkReplicationFactor(name, fac) {
     }
     let current = ArangoAgency.get('Current/Collections/_system');
     let val = current.arango.Current.Collections['_system'][collectionId];   
-    throw "replicationFactor is not reflected properly in " + 
-          "/Current/Collections/_system/" + collectionId + ": "+ JSON.stringify(val); 
+    expect(true).to.equal(false, "Expected replicationFactor of " + fac + " in collection "
+      + name + " is not reflected properly in " + 
+      "/Current/Collections/_system/" + collectionId + ": "+ JSON.stringify(val));
 };
 
 describe('Update collection properties', function() {
