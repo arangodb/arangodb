@@ -114,8 +114,13 @@ struct OperationCursor {
   }
   
   /// @brief convenience function to retrieve all results
-  void allDocuments(IndexIterator::DocumentCallback const& callback) {
-    while (nextDocument(callback, 1000)) {}
+  void allDocuments(IndexIterator::DocumentCallback const& callback, uint64_t batchSize) {
+    while (nextDocument(callback, batchSize)) {}
+  }
+  
+  /// @brief convenience function to retrieve a single result
+  void oneDocument(IndexIterator::DocumentCallback const& callback) {
+    nextDocument(callback, 1);
   }
 
 /// @brief Skip the next toSkip many elements.
