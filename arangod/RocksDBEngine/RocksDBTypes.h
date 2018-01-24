@@ -75,7 +75,10 @@ enum class RocksDBLogType : char {
   SinglePut = '?',
   SingleRemove = '@',
   DocumentRemoveAsPartOfUpdate = 'A',
-  ViewRename = 'B'
+  ViewRename = 'B',
+#ifdef USE_IRESEARCH
+  IResearchLinkDrop = 'C'
+#endif
 };
 
 enum class RocksDBSettingsType : char {

@@ -55,7 +55,7 @@ class IResearchRocksDBLink final
   }
 
   virtual int drop() override {
-//    writeRocksWalMarker();
+    writeRocksWalMarker();
     return IResearchLink::drop();
   }
 
@@ -142,6 +142,7 @@ class IResearchRocksDBLink final
   }
 
  private:
+  void writeRocksWalMarker();
   IResearchRocksDBLink(
     TRI_idx_iid_t iid,
     arangodb::LogicalCollection* collection
