@@ -254,6 +254,9 @@ arangosh is similar, however, you can only run tests which are intended to be ra
 mocha tests
 -----------
 All tests with -spec in their names are using the [mochajs.org](https://mochajs.org) framework.
+To run those tests, e.g. in the arangosh, use this:
+`const runTest = require("@arangodb/mocha-runner");`
+`runTest(<filepath>, true)`
 
 Javascript framework
 --------------------
