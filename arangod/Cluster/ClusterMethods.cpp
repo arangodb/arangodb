@@ -564,12 +564,10 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   }
 
   if (col->replicationFactor() != other->replicationFactor()) {
-    // TODO: Review do we really silently adjust the replicationFactor?
     col->replicationFactor(other->replicationFactor());
   }
 
   if (col->numberOfShards() != other->numberOfShards()) {
-    // TODO: Review do we really silently adjust the numberOfShards?
     col->numberOfShards(other->numberOfShards());
   }
 
