@@ -44,9 +44,9 @@ class IResearchLink;
 
 class IResearchRocksDBRecoveryHelper : public RocksDBRecoveryHelper {
  public:
-  IResearchRocksDBRecoveryHelper();
+  IResearchRocksDBRecoveryHelper() = default;
 
-  virtual ~IResearchRocksDBRecoveryHelper() override;
+  virtual ~IResearchRocksDBRecoveryHelper() override = default;
 
   virtual void prepare() override;
 
@@ -84,6 +84,7 @@ class IResearchRocksDBRecoveryHelper : public RocksDBRecoveryHelper {
   void dropCollectionFromView(
     TRI_voc_tick_t dbId,
     TRI_voc_cid_t collectionId,
+    TRI_idx_iid_t indexId,
     TRI_voc_cid_t viewId
   );
 

@@ -80,19 +80,11 @@ std::vector<std::shared_ptr<arangodb::Index>> lookupLinks(
 }
 
 arangodb::iresearch::IResearchLink* lookupLink(
-    arangodb::DatabaseFeature& db,
-    TRI_voc_tick_t dbId,
+    TRI_vocbase_t& vocbase,
     TRI_voc_cid_t cid,
     TRI_idx_iid_t iid
 ) {
-  auto* vocbase = db.useDatabase(dbId);
-
-  if (!vocbase) {
-    // invalid dbId
-    return nullptr;
-  }
-
-  auto* col = vocbase->lookupCollection(cid);
+  auto* col = vocbase.lookupCollection(cid);
 
   if (!col) {
     // invalid cid
@@ -119,10 +111,6 @@ NS_END
 
 using namespace arangodb;
 using namespace arangodb::iresearch;
-
-IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper() {}
-
-IResearchRocksDBRecoveryHelper::~IResearchRocksDBRecoveryHelper() {}
 
 void IResearchRocksDBRecoveryHelper::prepare() {
   _dbFeature = DatabaseFeature::DATABASE,
@@ -241,7 +229,8 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
       TRI_voc_tick_t const dbId = RocksDBLogValue::databaseId(blob);
       TRI_voc_cid_t const collectionId = RocksDBLogValue::collectionId(blob);
       TRI_voc_cid_t const viewId = RocksDBLogValue::viewId(blob);
-      dropCollectionFromView(dbId, collectionId, viewId);
+      TRI_idx_iid_t const indexId = RocksDBLogValue::indexId(blob);
+      dropCollectionFromView(dbId, collectionId, indexId, viewId);
     } break;
     default: {
       // shut up the compiler
@@ -261,10 +250,23 @@ void IResearchRocksDBRecoveryHelper::dropCollectionFromAllViews(
       if (arangodb::iresearch::IResearchView::type() != logicalView->type()) {
         continue;
       }
-      auto* view = static_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto* view = dynamic_cast<IResearchView*>(logicalView->getImplementation());
+#else
+      auto* view = static_cast<IResearchView*>(logicalView->getImplementation());
+#endif
+
+      if (!view) {
+        LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "error finding view: '" << view->id() << "': not an iresearch view";
+        return;
+      }
+
       LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
           << "Removing all documents belonging to view " << view->id()
           << " sourced from collection " << collectionId;
+
       view->drop(collectionId);
     }
   }
@@ -273,11 +275,31 @@ void IResearchRocksDBRecoveryHelper::dropCollectionFromAllViews(
 void IResearchRocksDBRecoveryHelper::dropCollectionFromView(
     TRI_voc_tick_t dbId,
     TRI_voc_cid_t collectionId,
+    TRI_idx_iid_t indexId,
     TRI_voc_cid_t viewId
 ) {
   auto* vocbase = _dbFeature->useDatabase(dbId);
 
   if (vocbase) {
+    auto* logicalCollection = vocbase->lookupCollection(collectionId);
+
+    if (!logicalCollection) {
+      LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "error looking up collection '" << collectionId << "': no such collection";
+      return;
+    }
+
+    auto* link = lookupLink(*vocbase, collectionId, indexId);
+
+    if (link) {
+      // don't remove the link if it's there
+      LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "found link '" << indexId
+          << "' of type iresearch in collection '" << collectionId
+          << "' in database '" << dbId << "': skipping drop marker";
+      return;
+    }
+
     auto logicalView = vocbase->lookupView(viewId);
 
     if (!logicalView || IResearchView::type() != logicalView->type()) {
@@ -306,7 +328,7 @@ void IResearchRocksDBRecoveryHelper::dropCollectionFromView(
   }
 }
 
-void IResearchRocksDBRecoveryHelper::reinsertCollectinIntoView(
+void IResearchRocksDBRecoveryHelper::ensureLink(
     TRI_voc_tick_t dbId,
     TRI_voc_cid_t cid,
     arangodb::velocypack::Slice indexSlice
@@ -347,7 +369,7 @@ void IResearchRocksDBRecoveryHelper::reinsertCollectinIntoView(
         << "Index of type 'IResearchLink' with id `" << iid
         << "' in collection '" << cid
         << "' in database '" << dbId
-        << "' already exists: skip create marker";
+        << "' already exists: skipping create marker";
     return;
   }
 
@@ -373,7 +395,7 @@ void IResearchRocksDBRecoveryHelper::reinsertCollectinIntoView(
     return;
   }
 
-  auto* link = lookupLink(*_dbFeature, dbId, cid, iid);
+  auto* link = lookupLink(*vocbase, cid, iid);
 
   if (!link) {
     LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
