@@ -10,7 +10,12 @@ var runTest = require('jsunity').runTest,
   // //////////////////////////////////////////////////////////////////////////////
 
 function runJSUnityTests (tests) {
-  let instanceinfo = JSON.parse(require('internal').env.INSTANCEINFO);
+  let env = require('internal').env;
+  let instanceinfo;
+  if (!env.hasOwnProperty('INSTANCEINFO')) {
+    throw new Error('env.INSTANCEINFO was not set by caller!');
+  }
+  let instanceinfo = JSON.parse(env.INSTANCEINFO);
   if (!instanceinfo) {
     throw new Error('env.INSTANCEINFO was not set by caller!');
   }
