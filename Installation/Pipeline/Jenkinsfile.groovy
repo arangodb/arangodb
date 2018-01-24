@@ -314,8 +314,8 @@ def deleteDirDocker(os) {
 def shellAndPipe(command, logfile) {
     def cmd = command.replaceAll(/"/, "\\\"")
 
-    echo "willi executing ${cmd}"
-    sh "(echo 1 > \"${logfile}.result\" ; ${cmd} 2>&1; echo \$? > \"${logfile}.result\") 2>&1 | ts '[%Y-%m-%d %H:%M:%S]' | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
+    echo "executing ${cmd}"
+    sh "(echo 1 > \"${logfile}.result\" ; ${cmd} ; echo \$? > \"${logfile}.result\") 2>&1 | ts '[%Y-%m-%d %H:%M:%S]' | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
 }
 
 def logStartStage(os, logFile, link) {
@@ -1433,7 +1433,6 @@ def createDockerImage(edition, maintainer, stageName) {
     return {
         if (buildStepCheck(os, edition, maintainer)) {
             node(buildJenkins[os]) {
-              echo buildJenkins[os]
                 stage(stageName) {
                     checkoutSource(os, edition)
 
