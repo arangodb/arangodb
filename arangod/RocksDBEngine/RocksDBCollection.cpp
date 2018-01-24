@@ -1852,6 +1852,9 @@ RocksDBCollection::serializeIndexEstimates(
     RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
     TRI_ASSERT(cindex != nullptr);
     if (cindex->needToPersistEstimate()) {
+      LOG_TOPIC(TRACE, Logger::ENGINES)
+        << "beginning estimate serialization for index '"
+        << cindex->objectId() << "'";
       auto committedSeq = cindex->serializeEstimate(output, inputSeq);
       outputSeq = std::min(outputSeq, committedSeq);
       LOG_TOPIC(TRACE, Logger::ENGINES)

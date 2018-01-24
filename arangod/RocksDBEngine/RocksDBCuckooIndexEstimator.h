@@ -292,6 +292,11 @@ class RocksDBCuckooIndexEstimator {
       _needToPersist.store(havePendingUpdates);
     }
 
+    {
+      WRITE_LOCKER(locker, _lock);
+      _committedSeq = outputSeq;
+    }
+
     return outputSeq;
   }
 
@@ -424,6 +429,7 @@ class RocksDBCuckooIndexEstimator {
       if (_nrCuckood > 0) {
         --_nrCuckood;
       }
+      _needToPersist.store(true);
     }
     return false;
   }
@@ -478,6 +484,9 @@ class RocksDBCuckooIndexEstimator {
       WRITE_LOCKER(locker, _lock);
       _insertBuffers.emplace(seq, std::move(inserts));
       _removalBuffers.emplace(seq, std::move(removals));
+      _needToPersist.store(true);
+      LOG_TOPIC(TRACE, Logger::ENGINES)
+        << "buffered updates with stamp " << seq;
     });
     return res;
   }
@@ -503,6 +512,8 @@ class RocksDBCuckooIndexEstimator {
           if (!_insertBuffers.empty()) {
             auto it = _insertBuffers.begin();
             if (it->first <= commitSeq) {
+              LOG_TOPIC(TRACE, Logger::ENGINES)
+                << "applying insert batch with stamp " << it->first;
               inserts = std::move(it->second);
               _insertBuffers.erase(it);
             }
@@ -512,6 +523,8 @@ class RocksDBCuckooIndexEstimator {
           if (!_removalBuffers.empty()) {
             auto it = _removalBuffers.begin();
             if (it->first <= commitSeq) {
+              LOG_TOPIC(TRACE, Logger::ENGINES)
+                << "applying removal batch with stamp " << it->first;
               removals = std::move(it->second);
               _removalBuffers.erase(it);
             }
@@ -544,7 +557,7 @@ class RocksDBCuckooIndexEstimator {
   }
 
   /// @brief updates and returns the largest safe seq to consider committed
-  rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber current) const {
+  rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber current) {
     WRITE_LOCKER(locker, _lock);
     auto minSeq = current;
 
@@ -554,19 +567,7 @@ class RocksDBCuckooIndexEstimator {
       minSeq = std::min(minSeq, it->first);
     }
 
-    // if we have an unapplied batch of updates with a lower value compare it
-    /*if (!_insertBuffers.empty()) {
-      auto it = _insertBuffers.begin();
-      minSeq = std::min(minSeq, it->first);
-    }
-    if (!_removalBuffers.empty()) {
-      auto it = _removalBuffers.begin();
-      minSeq = std::min(minSeq, it->first);
-    }*/
-
-    // otherwise update current and return it
-    _committedSeq = std::max(_committedSeq, minSeq);
-    return _committedSeq;
+    return minSeq;
   }
 
   uint64_t memoryUsage() const {

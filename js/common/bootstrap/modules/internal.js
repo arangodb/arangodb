@@ -597,8 +597,12 @@ global.DEFINE_MODULE('internal', (function () {
     delete global.SYS_WAIT;
   }
 
-  if (exports.wait) {
-    exports.waitForSettingsSync = function() { exports.wait(3.0); };
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief wait for index selectivity estimate sync
+  // //////////////////////////////////////////////////////////////////////////////
+  if (global.WAIT_FOR_ESTIMATOR_SYNC) {
+    exports.waitForEstimatorSync = global.WAIT_FOR_ESTIMATOR_SYNC;
+    delete global.WAIT_FOR_ESTIMATOR_SYNC;
   }
 
   // //////////////////////////////////////////////////////////////////////////////

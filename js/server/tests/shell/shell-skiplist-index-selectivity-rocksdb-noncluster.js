@@ -77,7 +77,7 @@ function SkiplistIndexSuite() {
         docs.push({value: i % 100});
       }
       collection.save(docs);
-      internal.waitForSettingsSync(); // make sure estimates are consistent
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureSkiplist("value");
       let oldEstimate = idx.selectivityEstimate;
 
@@ -104,7 +104,7 @@ function SkiplistIndexSuite() {
         // Insert failed.
         // Validate that estimate is non modified
         idx = collection.ensureSkiplist("value");
-        internal.waitForSettingsSync(); // make sure estimates are consistent
+        internal.waitForEstimatorSync(); // make sure estimates are consistent
         assertEqual(idx.selectivityEstimate, oldEstimate);
       }
     },

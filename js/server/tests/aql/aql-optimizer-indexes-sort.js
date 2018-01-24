@@ -135,7 +135,9 @@ function optimizerIndexesSortTestSuite () {
       c.ensureHashIndex("value");
       c.ensureHashIndex("value", "value2");
       c.ensureSkiplist("value", "value2");
-      internal.waitForSettingsSync(); // make sure estimates are consistent
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
+
+      print(c.getIndexes(true));
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 SORT i.value, i.value2 RETURN i.value";
 
@@ -173,7 +175,7 @@ function optimizerIndexesSortTestSuite () {
       c.ensureHashIndex("value");
       c.ensureHashIndex("value", "value2");
       c.ensureSkiplist("value", "value2");
-      internal.waitForSettingsSync(); // make sure estimates are consistent
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 9 || i.value == 1 SORT i.value, i.value2 RETURN i.value";
 

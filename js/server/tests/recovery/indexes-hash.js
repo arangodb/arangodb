@@ -85,7 +85,7 @@ function recoverySuite () {
 
   return {
     setUp: function () {
-      internal.waitForSettingsSync(); // make sure estimates are consistent
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
     tearDown: function () {},
 

@@ -1798,7 +1798,7 @@ function optimizeInSuite () {
     tearDownAll: cleanup,
 
     testSingleOptimize: function () {
-      internal.waitForSettingsSync(); // make sure estimates are consistent
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       var vertexQuery = `WITH ${vn}
       FOR v, e, p IN 2 OUTBOUND @startId @@eCol
       FILTER p.vertices[1]._key IN @keys
@@ -1849,7 +1849,7 @@ function optimizeInSuite () {
     },
 
     testCombinedAndOptimize: function () {
-      internal.waitForSettingsSync(); // make sure estimates are consistent
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       var vertexQuery = `WITH ${vn}
       FOR v, e, p IN 2 OUTBOUND @startId @@eCol
       FILTER p.vertices[1]._key IN @keys
@@ -3664,7 +3664,7 @@ function optimizeNonVertexCentricIndexesSuite () {
       let q = `FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[0].foo == 'A'
       RETURN v._id`;
-      internal.waitForSettingsSync(); // make sure estimates are consistent
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
 
       let exp = explain(q, {}).plan.nodes.filter(node => { return node.type === 'TraversalNode'; });
       assertEqual(1, exp.length);
@@ -3686,7 +3686,7 @@ function optimizeNonVertexCentricIndexesSuite () {
       let q = `FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[0].foo == 'A'
       RETURN v._id`;
-      internal.waitForSettingsSync(); // make sure estimates are consistent
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
 
       let exp = explain(q, {}).plan.nodes.filter(node => { return node.type === 'TraversalNode'; });
       assertEqual(1, exp.length);

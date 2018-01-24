@@ -1243,6 +1243,10 @@ std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {
   return std::string();
 }
 
+void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
+  TRI_ASSERT(false);
+}
+
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
   TRI_ASSERT(false);
 }

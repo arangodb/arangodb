@@ -114,7 +114,7 @@ const recoverySuite = function () {
     },
 
     testIndexEstimates: () => {
-      internal.waitForSettingsSync(); // make sure estimates are consistent
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
       for (let i of indexes) {
         switch (i.type) {

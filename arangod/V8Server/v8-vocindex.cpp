@@ -84,10 +84,10 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
     name.append("(<description>)");
     TRI_V8_THROW_EXCEPTION_USAGE(name.c_str());
   }
-  
+
   VPackBuilder builder;
   TRI_V8ToVPackSimple(isolate, builder, args[0]);
-  
+
   VPackBuilder output;
   Result res = methods::Indexes::ensureIndex(collection, builder.slice(),
                                              create, output);
@@ -136,7 +136,7 @@ static void JS_DropIndexVocbaseCol(
   v8::HandleScope scope(isolate);
 
   PREVENT_EMBEDDED_TRANSACTION();
-  
+
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
                                                    WRP_VOCBASE_COL_TYPE);
@@ -148,10 +148,10 @@ static void JS_DropIndexVocbaseCol(
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("dropIndex(<index-handle>)");
   }
-  
+
   VPackBuilder builder;
   TRI_V8ToVPackSimple(isolate, builder, args[0]);
-    
+
   Result res = methods::Indexes::drop(collection, builder.slice());
   if (res.ok()) {
     TRI_V8_RETURN_TRUE();
@@ -181,13 +181,13 @@ static void JS_GetIndexesVocbaseCol(
   if (args.Length() > 0) {
     withFigures = TRI_ObjectToBoolean(args[0]);
   }
-  
+
   VPackBuilder output;
   Result res = methods::Indexes::getAll(collection, withFigures, output);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, output.slice());
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -208,7 +208,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   } else if (args.Length() < 1 || args.Length() > 4) {
     TRI_V8_THROW_EXCEPTION_USAGE("_create(<name>, <properties>, <type>, <options>)");
   }
-  
+
   if (ExecContext::CURRENT != nullptr &&
       !ExecContext::CURRENT->canUseDatabase(vocbase->name(), AuthLevel::RW)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
@@ -228,7 +228,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   // extract the name
   std::string const name = TRI_ObjectToString(args[0]);
-  
+
   VPackBuilder properties;
   VPackSlice propSlice = VPackSlice::emptyObjectSlice();
   if (args.Length() >= 2) {
@@ -241,7 +241,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     }
     propSlice = properties.slice();
   }
-  
+
   // waitForSync can be 3. or 4. parameter
   auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
   bool createWaitsForSyncReplication = cluster->createWaitsForSyncReplication();
@@ -255,7 +255,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     enforceReplicationFactor = TRI_GetOptionalBooleanProperty(isolate,
       obj, "enforceReplicationFactor", enforceReplicationFactor);
   }
-  
+
   v8::Handle<v8::Value> result;
   Result res = methods::Collections::create(vocbase, name, collectionType,
                                             propSlice,
@@ -267,7 +267,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   TRI_V8_RETURN(result);
 }
 

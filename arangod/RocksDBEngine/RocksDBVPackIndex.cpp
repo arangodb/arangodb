@@ -608,7 +608,7 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
     }
   }
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res == TRI_ERROR_NO_ERROR && !_unique) {
     auto state = RocksDBTransactionState::toState(trx);
     for (auto& it : hashes) {
       // The estimator is only useful if we are in a non-unique indexes

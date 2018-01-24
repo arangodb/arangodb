@@ -118,7 +118,7 @@ function CollectionTruncateFailuresSuite() {
 
       // Test Selectivity Estimates
       {
-        internal.waitForSettingsSync(); // make sure estimates are consistent
+        internal.waitForEstimatorSync(); // make sure estimates are consistent
         let indexes = c.getIndexes(true);
         for (let i of indexes) {
           switch (i.type) {
@@ -192,7 +192,7 @@ function CollectionTruncateFailuresSuite() {
 
       // Test Selectivity Estimates
       {
-        internal.waitForSettingsSync(); // make sure estimates are consistent
+        internal.waitForEstimatorSync(); // make sure estimates are consistent
         let indexes = c.getIndexes(true);
         for (let i of indexes) {
           switch (i.type) {
@@ -275,7 +275,7 @@ function CollectionTruncateFailuresSuite() {
       // Test Selectivity Estimates
       // This may be fuzzy...
       {
-        internal.waitForSettingsSync(); // make sure estimates are consistent
+        internal.waitForEstimatorSync(); // make sure estimates are consistent
         let indexes = c.getIndexes(true);
         for (let i of indexes) {
           switch (i.type) {
