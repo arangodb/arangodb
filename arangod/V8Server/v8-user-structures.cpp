@@ -1133,7 +1133,12 @@ class KeySpace {
   
   bool keySet(std::string const& key, double val) {
     TRI_json_t* json = TRI_CreateNumberJson(val);
-    auto element = new KeySpaceElement(key.c_str(), key.size(), json);
+
+    if (json == nullptr) {
+      // OOM
+      return false;
+    }
+    auto element = std::make_unique<KeySpaceElement>(key.c_str(), key.size(), json);
     {
       WRITE_LOCKER(writeLocker, _lock);
       auto it = _hash.find(key);
@@ -1141,14 +1146,14 @@ class KeySpace {
         it->second->json->_value._number = val;
         return true;
       } else {
-        auto it2 = _hash.emplace(key, element);
+        auto it2 = _hash.emplace(key, element.get());
         if (it2.second) {
+          element.release(); // _hash now has ownership
           return true;
         }
       }
     }
     // insertion failed
-    delete element;
     return false;
   }
 
