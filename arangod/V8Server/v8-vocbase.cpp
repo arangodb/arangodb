@@ -87,6 +87,10 @@
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Transactions.h"
 
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -1902,6 +1906,24 @@ static void JS_AuthenticationEnabled(
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_LdapEnabled(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+ 
+#ifdef USE_ENTERPRISE
+  auto ldap = application_features::ApplicationServer::getFeature<LdapFeature>(
+    "Ldap");
+  TRI_ASSERT(ldap != nullptr);
+  TRI_V8_RETURN(v8::Boolean::New(isolate, ldap->isEnabled()));
+#else
+  // LDAP only enabled in enterprise mode
+  TRI_V8_RETURN(v8::False(isolate));
+#endif  
+
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run version check
 ////////////////////////////////////////////////////////////////////////////////
@@ -2278,6 +2300,10 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "AUTHENTICATION_ENABLED"),
                                JS_AuthenticationEnabled, true);
+  
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "LDAP_ENABLED"),
+                               JS_LdapEnabled, true);
 
   TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING(isolate, "TRUSTED_PROXIES"),
