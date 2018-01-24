@@ -77,7 +77,7 @@ function dump (options) {
 
   let results = { failed: 1 };
   results.setup = tu.runInArangosh(options, instanceInfo,
-    tu.makePathUnix('js/server/tests/dump/xxxdump-setup' + cluster + '.js'));
+    tu.makePathUnix('js/server/tests/dump/xxxxdump-setup' + cluster + '.js'));
   results.setup.failed = 1;
 
   if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
