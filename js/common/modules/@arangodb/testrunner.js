@@ -15,7 +15,7 @@ function runJSUnityTests (tests) {
   if (!env.hasOwnProperty('INSTANCEINFO')) {
     throw new Error('env.INSTANCEINFO was not set by caller!');
   }
-  let instanceinfo = JSON.parse(env.INSTANCEINFO);
+  instanceinfo = JSON.parse(env.INSTANCEINFO);
   if (!instanceinfo) {
     throw new Error('env.INSTANCEINFO was not set by caller!');
   }
