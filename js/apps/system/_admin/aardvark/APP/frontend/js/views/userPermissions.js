@@ -292,7 +292,6 @@
         _.each(permissions, function (perms, database) {
           if (perms.collections) {
             var defValue = perms.collections['*'];
-            // console.log(defValue);
             _.each(perms.collections, function (access, collection) {
               if (collection.charAt(0) !== '_' && collection.charAt(0) !== '*') {
                 if (access === 'undefined') {
