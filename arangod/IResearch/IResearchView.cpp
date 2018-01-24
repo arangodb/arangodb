@@ -1559,8 +1559,8 @@ int IResearchView::insert(
 }
 
 arangodb::Result IResearchView::link(
-  TRI_voc_cid_t cid,
-  arangodb::velocypack::Slice const* link /*= nullptr*/
+    TRI_voc_cid_t cid,
+    arangodb::velocypack::Slice const link
 ) {
   if (!_logicalView) {
     return arangodb::Result(
@@ -1586,8 +1586,8 @@ arangodb::Result IResearchView::link(
     arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
   );
 
-  if (link) {
-    builder.add(std::to_string(cid), *link);
+  if (link.isObject()) {
+    builder.add(std::to_string(cid), link);
   }
 
   builder.close();

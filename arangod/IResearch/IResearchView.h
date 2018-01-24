@@ -241,11 +241,11 @@ class IResearchView final: public arangodb::ViewImplementation,
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief link the specified 'cid' to the view using the specified 'link'
-  ///        definition (nullptr == remove only)
+  ///        definition (!link.isObject() == remove only)
   ////////////////////////////////////////////////////////////////////////////////
   arangodb::Result link(
     TRI_voc_cid_t cid,
-    arangodb::velocypack::Slice const* link = nullptr
+    arangodb::velocypack::Slice const link
   );
 
   ///////////////////////////////////////////////////////////////////////////////

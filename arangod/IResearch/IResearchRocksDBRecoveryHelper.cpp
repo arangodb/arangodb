@@ -61,6 +61,43 @@ std::pair<TRI_vocbase_t*, arangodb::LogicalCollection*> lookupDatabaseAndCollect
   return std::make_pair(vocbase, vocbase->lookupCollection(pair.second));
 }
 
+void dropCollectionFromView(
+    arangodb::DatabaseFeature& db,
+    TRI_voc_tick_t dbId,
+    TRI_voc_cid_t collectionId,
+    TRI_voc_cid_t viewId
+) {
+  auto vocbase = db.useDatabase(dbId);
+
+  if (vocbase) {
+    auto logicalView = vocbase->lookupView(viewId);
+
+    if (!logicalView || IResearchView::type() != logicalView->type()) {
+      LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "error looking up view '" << viewId << "': no such view";
+      return;
+    }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* view = dynamic_cast<IResearchView*>(logicalView->getImplementation());
+#else
+    auto* view = static_cast<IResearchView*>(logicalView->getImplementation());
+#endif
+
+    if (!view) {
+      LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "error finding view: '" << viewId << "': not an iresearch view";
+      return;
+    }
+
+    LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "Removing all documents belonging to view " << viewId
+        << " sourced from collection " << collectionId;
+
+    view->drop(collectionId);
+  }
+}
+
 void dropCollectionFromAllViews(
     arangodb::DatabaseFeature& db,
     TRI_voc_tick_t dbId,
@@ -320,34 +357,34 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
         LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
             << "Collection '" << cid
             << "' in database '" << dbId
-            << "' does not contain index of type 'IResearchLink' with id '" << iid << "'";
+            << "' does not contain index of type 'IResearchLink' with id '" << iid << "': skip create marker";
         return;
       }
 
-      LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+      if (!_recoveredIndexes.emplace(dbId, cid, iid).second) {
+        // already there
+        LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "Index of type 'IResearchLink' with id `" << iid <<
+            << "' in collection '" << cid
+            << "' in database '" << dbId
+            << "' already exists: skip create marker";
+        return;
+      }
+
+      LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
           << "found create index marker. databaseId: " << dbId
           << ", collectionId: " << cid;
 
       // re-insert link
-      link->recover(indexSlice);
+      link->recover(true);
     } break;
-    case RocksDBLogType::IndexDrop: {
-      const TRI_voc_tick_t dbId = RocksDBLogValue::databaseId(blob);
-      const TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
-      const TRI_idx_iid_t iid = RocksDBLogValue::indexId(blob);
-      auto* link = lookupLink(*_dbFeature, dbId, cid, iid);
-
-      if (!link) {
-        LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
-            << "Collection '" << cid
-            << "' in database '" << dbId
-            << "' does not contain index of type 'IResearchLink' with id '" << iid << "'";
-        return;
-      }
-
-      // remove link
-      link->recover(arangodb::velocypack::Slice::nullSlice());
-    } break;
+//    case RocksDBLogType::IResearchLinkDrop: {
+//      // check if view still exists, if not ignore
+//      TRI_voc_tick_t dbId = RocksDBLogValue::databaseId(blob);
+//      TRI_voc_cid_t collectionId = RocksDBLogValue::collectionId(blob);
+//      TRI_voc_cid_t viewId = RocksDBLogValue::viewId(blob);
+//      dropCollectionFromView(*_dbFeature, dbId, collectionId, viewId);
+//    } break;
     default: {
       // shut up the compiler
     } break;

@@ -496,7 +496,7 @@ Result IResearchLink::remove(
   return true;
 }
 
-arangodb::Result IResearchLink::recover(arangodb::velocypack::Slice const newDefinition) {
+arangodb::Result IResearchLink::recover(bool insert) {
   if (!_collection) {
     return {TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND}; // current link isn't associated with the collection
   }
@@ -509,9 +509,19 @@ arangodb::Result IResearchLink::recover(arangodb::velocypack::Slice const newDef
     return {TRI_ERROR_ARANGO_VIEW_NOT_FOUND}; // slice has identifier but the current object does not
   }
 
+  if (insert) {
+    // drop only
+    return view->link(_collection->cid(), arangodb::velocypack::Slice::nullSlice());
+  }
+
+  arangodb::velocypack::Builder link;
+
+  if (!json(link, false)) {
+    return {TRI_ERROR_INTERNAL};
+  }
+
   // re-insert link into the view
-  // FIXME TODO why can the current link definition not be used?
-  return view->link(_collection->cid(), &newDefinition);
+  return view->link(_collection->cid(), link.slice());
 }
 
 Index::IndexType IResearchLink::type() const {
