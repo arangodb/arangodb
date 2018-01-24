@@ -313,7 +313,7 @@ describe('Shard distribution', function () {
         // Clean out the server that is scheduled second.
         expect(cleanOutServer(server)).to.not.equal(false);
         expect(waitForCleanout(server)).to.equal(true);
-        expect(waitForSynchronousReplication(followCollection)).to.equal(true);
+        expect(waitForSynchronousReplication(colName)).to.equal(true);
         // Now we have moved around some shards.
         internal.db._create(followCollection, {replicationFactor, numberOfShards, distributeShardsLike: colName});
         expect(waitForSynchronousReplication(followCollection)).to.equal(true);
