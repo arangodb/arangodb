@@ -797,7 +797,7 @@ SECTION("test_link") {
     }
 
     {
-      CHECK((true == viewImpl->link(100).ok()));
+      CHECK((true == viewImpl->link(100, arangodb::velocypack::Slice::nullSlice()).ok()));
       std::set<TRI_voc_cid_t> cids;
       viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       CHECK((0 == cids.size()));
@@ -823,7 +823,7 @@ SECTION("test_link") {
     }
 
     {
-      CHECK((true == viewImpl->link(logicalCollection->cid()).ok()));
+      CHECK((true == viewImpl->link(logicalCollection->cid(), arangodb::velocypack::Slice::nullSlice()).ok()));
       std::set<TRI_voc_cid_t> cids;
       viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       CHECK((0 == cids.size()));
@@ -855,7 +855,7 @@ SECTION("test_link") {
     }
 
     {
-      CHECK((true == viewImpl->link(logicalCollection->cid()).ok()));
+      CHECK((true == viewImpl->link(logicalCollection->cid(), arangodb::velocypack::Slice::nullSlice()).ok()));
       std::set<TRI_voc_cid_t> cids;
       viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       CHECK((0 == cids.size()));
@@ -880,7 +880,7 @@ SECTION("test_link") {
     }
 
     {
-      CHECK((false == viewImpl->link(100, &(arangodb::iresearch::emptyObjectSlice())).ok()));
+      CHECK((false == viewImpl->link(100, arangodb::iresearch::emptyObjectSlice()).ok()));
       std::set<TRI_voc_cid_t> cids;
       viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       CHECK((0 == cids.size()));
@@ -907,7 +907,7 @@ SECTION("test_link") {
     }
 
     {
-      CHECK((true == viewImpl->link(logicalCollection->cid(), &(arangodb::iresearch::emptyObjectSlice())).ok()));
+      CHECK((true == viewImpl->link(logicalCollection->cid(), arangodb::iresearch::emptyObjectSlice()).ok()));
       std::set<TRI_voc_cid_t> cids;
       viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       std::unordered_set<TRI_voc_cid_t> expected = { 100 };
@@ -950,7 +950,7 @@ SECTION("test_link") {
     }
 
     {
-      CHECK((true == viewImpl->link(logicalCollection->cid(), &(arangodb::iresearch::emptyObjectSlice())).ok()));
+      CHECK((true == viewImpl->link(logicalCollection->cid(), arangodb::iresearch::emptyObjectSlice()).ok()));
       std::set<TRI_voc_cid_t> cids;
       viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       std::unordered_set<TRI_voc_cid_t> expected = { 100 };
@@ -1002,7 +1002,7 @@ SECTION("test_link") {
       builder.add("includeAllFields", arangodb::velocypack::Value("abc"));
       builder.close();
       auto slice  = builder.slice();
-      CHECK((false == viewImpl->link(logicalCollection->cid(), &slice).ok()));
+      CHECK((false == viewImpl->link(logicalCollection->cid(), slice).ok()));
       std::set<TRI_voc_cid_t> cids;
       viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       std::unordered_set<TRI_voc_cid_t> expected = { 100 };

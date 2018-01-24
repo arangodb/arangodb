@@ -496,7 +496,7 @@ Result IResearchLink::remove(
   return true;
 }
 
-arangodb::Result IResearchLink::recover(bool insert) {
+arangodb::Result IResearchLink::recover() {
   if (!_collection) {
     return {TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND}; // current link isn't associated with the collection
   }
@@ -507,11 +507,6 @@ arangodb::Result IResearchLink::recover(bool insert) {
 
   if (!view) {
     return {TRI_ERROR_ARANGO_VIEW_NOT_FOUND}; // slice has identifier but the current object does not
-  }
-
-  if (insert) {
-    // drop only
-    return view->link(_collection->cid(), arangodb::velocypack::Slice::nullSlice());
   }
 
   arangodb::velocypack::Builder link;

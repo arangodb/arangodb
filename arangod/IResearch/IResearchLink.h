@@ -161,10 +161,10 @@ class IResearchLink {
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief recover IResearch Link index in a view by dropping existing and
-  ///        optionally creating a new one according to a specified 'insert' arg
+  ///        creating a new one
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Result recover(bool insert);
+  arangodb::Result recover();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief iResearch Link index type enum value
