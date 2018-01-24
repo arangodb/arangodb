@@ -587,6 +587,8 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
     }
     result->emplace(shardId, it->second);
   }
+  // We need to replace the distribute with the cid.
+  col->distributeShardsLike(cidString);
   return result;
 }
 
