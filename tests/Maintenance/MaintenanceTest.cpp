@@ -57,9 +57,7 @@ char const* dbs3Str =
 #include "MaintenanceDBServer0003.json"
 ;
 
-char const* shards =
-  R"=({"s1016002":["PRMR-6a54b311-bfa9-4aa3-b85c-ce8a6d1bd9c7",
-         "PRMR-1f8f158f-bcc3-4bf1-930b-f20f6ab63e9c"]})=";
+std::string PLAN_COL_PATH = "/arango/Plan/Collections/";
 
 Node createNodeFromBuilder(Builder const& builder) {
 
@@ -100,7 +98,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   auto current = createNode(currentStr);
 
   std::vector<std::string> dbsIds;
-  for (auto const& dbs : plan("arango/Plan/DBServers").children()) {
+  for (auto const& dbs : plan("/arango/Plan/DBServers").children()) {
     dbsIds.push_back(dbs.first);
   }
   
@@ -108,7 +106,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     {dbsIds[1], createNode(dbs1Str)}, {dbsIds[2], createNode(dbs2Str)},
                                       {dbsIds[0], createNode(dbs3Str)}};
   
-  // Plan and local in sync
+
   SECTION("In sync should have 0 effects") {
     
     std::vector<ActionDescription> actions;
@@ -126,7 +124,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
 
   }
 
-  // Local additionally has db2 ================================================
+
   SECTION("Local databases one more empty database should be dropped") {
 
     std::vector<ActionDescription> actions;
@@ -143,7 +141,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
 
   }
 
-  // Local additionally has db2 ================================================
+
   SECTION("Local databases one more non empty database should be dropped") {
 
     std::vector<ActionDescription> actions;
@@ -160,7 +158,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
 
   }
 
-  // Local additionally has db2 ================================================
+  
   SECTION("Local databases one more empty database should be dropped") {
 
     std::vector<ActionDescription> actions;
@@ -177,9 +175,9 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
 
   }
 
-
-  // Plan also now has db3 =====================================================
-  SECTION("Add one more collection to plan") {
+  
+  SECTION(
+    "Add one more collection to db2 in plan with shards for all db servers") {
 
     VPackBuilder shards;
     { VPackObjectBuilder s(&shards);
@@ -189,9 +187,11 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
           shards.add(VPackValue(id));
         }}}
 
-    plan("/arango/Plan/Collections/db2/1016001") =
-      *(plan("/arango/Plan/Collections/_system").children().begin()->second);
-    plan("/arango/Plan/Collections/db2/1016001/shards") = shards.slice();
+    std::string colpath = PLAN_COL_PATH + "db2/1016001";
+
+    plan(colpath) =
+      *(plan(PLAN_COL_PATH  + "_system").children().begin()->second);
+    plan(PLAN_COL_PATH  + "db2/1016001/shards") = shards.slice();
 
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
@@ -221,9 +221,9 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
           shards.add(VPackValue(id));
         }}}
 
-    plan("/arango/Plan/Collections/db2/1016001") =
-      *(plan("/arango/Plan/Collections/_system").children().begin()->second);
-    plan("/arango/Plan/Collections/db2/1016001/shards") = shards.slice();
+    plan(PLAN_COL_PATH + "db2/1016001") =
+      *(plan(PLAN_COL_PATH + "_system").children().begin()->second);
+    plan(PLAN_COL_PATH + "db2/1016001/shards") = shards.slice();
 
     for (auto node : localNodes) {
       std::vector<ActionDescription> actions;
@@ -249,7 +249,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
       std::vector<ActionDescription> actions;
       node.second("db2/1111111") =
         arangodb::basics::VelocyPackHelper::EmptyObjectValue();
-      plan("/arango/Plan/Collections/db2") =
+      plan(PLAN_COL_PATH + "db2") =
         arangodb::basics::VelocyPackHelper::EmptyObjectValue();
       
       arangodb::maintenance::diffPlanLocal(
@@ -294,7 +294,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   SECTION(
     "Empty db2 in plan should drop all local db2 collections on all servers") {
 
-    plan("/arango/Plan/Collections/db2") =
+    plan(PLAN_COL_PATH + "db2") =
       arangodb::basics::VelocyPackHelper::EmptyObjectValue();
 
     for (auto& node : localNodes) {
@@ -332,7 +332,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   // Plan also now has db3 =====================================================
   SECTION("Indexes missing in local") {
 
-    plan("/arango/Plan/Collections/_system/1010021/indexes") =
+    plan(PLAN_COL_PATH  + "_system/1010021/indexes") =
       arangodb::basics::VelocyPackHelper::EmptyArrayValue();
 
     for (auto& node : localNodes) {
