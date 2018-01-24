@@ -21,7 +21,7 @@ rr-gps(){
 }
 
 tail-local-cluster-rr(){
-    local data_dir="${1-'../starter_data_dir'}"
+    local data_dir="${1-../starter_data_dir}"
     multitail -f $(find $data_dir -name "arangod.log" | sort)
 }
 
@@ -35,7 +35,7 @@ start-local-cluster-rr(){
     local rr=${rr_path:-$(type -p rr)}
     echo "rr: $rr"
 
-    local data_dir="${1-'../starter_data_dir'}"
+    local data_dir="${1-../starter_data_dir}"
     echo "data_dir: $data_dir"
     shift
 
