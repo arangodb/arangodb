@@ -2592,8 +2592,6 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> avoid = col->avoidServers();
-  size_t replicationFactor = col->replicationFactor();
-  size_t numberOfShards = col->numberOfShards();
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<std::string> dbServers = ci->getCurrentDBServers();
@@ -2615,6 +2613,9 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
     if (col->isSystem()) {
       enforceReplicationFactor = false;
     }
+
+    size_t replicationFactor = col->replicationFactor();
+    size_t numberOfShards = col->numberOfShards();
 
     // the default behaviour however is to bail out and inform the user
     // that the requested replicationFactor is not possible right now
@@ -2655,7 +2656,8 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(
       col->dbName(), col->cid_as_string(),
-      numberOfShards, replicationFactor, waitForSyncReplication, velocy.slice(), errorMsg, 240.0);
+      col->numberOfShards(), col->replicationFactor(),
+      waitForSyncReplication, velocy.slice(), errorMsg, 240.0);
 
   if (myerrno != TRI_ERROR_NO_ERROR) {
     if (errorMsg.empty()) {
