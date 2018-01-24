@@ -1558,6 +1558,55 @@ int IResearchView::insert(
   return TRI_ERROR_NO_ERROR;
 }
 
+arangodb::Result IResearchView::link(
+  TRI_voc_cid_t cid,
+  arangodb::velocypack::Slice const* link /*= nullptr*/
+) {
+  if (!_logicalView) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to find logical view while linking IResearch view '") + std::to_string(id()) + "'"
+    );
+  }
+
+  auto* vocbase = _logicalView->vocbase();
+
+  if (!vocbase) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to find vocbase while linking IResearch view '") + std::to_string(id()) + "'"
+    );
+  }
+
+  arangodb::velocypack::Builder builder;
+
+  builder.openObject();
+  builder.add(
+    std::to_string(cid),
+    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
+  );
+
+  if (link) {
+    builder.add(std::to_string(cid), *link);
+  }
+
+  builder.close();
+
+  std::unordered_set<TRI_voc_cid_t> collections;
+  auto result = updateLinks(collections, *vocbase, *this, builder.slice());
+
+  if (result.ok()) {
+    WriteMutex mutex(_mutex); // '_meta' can be asynchronously read
+    SCOPED_LOCK(mutex);
+
+    collections.insert(_meta._collections.begin(), _meta._collections.end());
+    validateLinks(collections, *vocbase, *this); // remove invalid cids (no such collection or no such link)
+    _meta._collections = std::move(collections);
+  }
+
+  return result;
+}
+
 /*static*/ IResearchView::ptr IResearchView::make(
   arangodb::LogicalView* view,
   arangodb::velocypack::Slice const& info,
@@ -2077,19 +2126,6 @@ arangodb::Result IResearchView::updateProperties(
       builder.close();
       res = updateLinks(collections, *vocbase, *this, builder.slice());
     }
-  }
-
-  // ...........................................................................
-  // if an exception occurs below then it would only affect collection linking
-  // consistency and an update retry would most likely happen
-  // always re-validate '_collections' because may have had externally triggered
-  // collection/link drops
-  // ...........................................................................
-  {
-    SCOPED_LOCK(mutex); // '_meta' can be asynchronously read
-    collections.insert(_meta._collections.begin(), _meta._collections.end());
-    validateLinks(collections, *vocbase, *this); // remove invalid cids (no such collection or no such link)
-    _meta._collections = std::move(collections);
   }
 
   // ...........................................................................

@@ -239,6 +239,15 @@ class IResearchView final: public arangodb::ViewImplementation,
     IResearchLinkMeta const& meta
   );
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief link the specified 'cid' to the view using the specified 'link'
+  ///        definition (nullptr == remove only)
+  ////////////////////////////////////////////////////////////////////////////////
+  arangodb::Result link(
+    TRI_voc_cid_t cid,
+    arangodb::velocypack::Slice const* link = nullptr
+  );
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory
   /// @returns initialized view object

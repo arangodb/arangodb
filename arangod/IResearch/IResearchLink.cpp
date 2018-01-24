@@ -501,8 +501,6 @@ arangodb::Result IResearchLink::recover(arangodb::velocypack::Slice const newDef
     return {TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND}; // current link isn't associated with the collection
   }
 
-  auto const strCid = _collection->cid_as_string();
-
   auto viewMutex = _view->mutex(); // IResearchView can be asynchronously deallocated
   SCOPED_LOCK(viewMutex);
   auto* view = _view->get();
@@ -512,18 +510,8 @@ arangodb::Result IResearchLink::recover(arangodb::velocypack::Slice const newDef
   }
 
   // re-insert link into the view
-  arangodb::velocypack::Builder linksBuilder;
-  linksBuilder.openObject();
-  linksBuilder.add(
-    strCid,
-    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
-  ); // drop link
-  if (newDefinition.isObject()) {
-    linksBuilder.add(strCid, newDefinition);
-  } // add link
-  linksBuilder.close();
-
-  return view->updateProperties(linksBuilder.slice(), true, false);
+  // FIXME TODO why can the current link definition not be used?
+  return view->link(_collection->cid(), &newDefinition);
 }
 
 Index::IndexType IResearchLink::type() const {
