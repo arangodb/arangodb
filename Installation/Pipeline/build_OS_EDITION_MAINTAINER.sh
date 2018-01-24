@@ -106,6 +106,6 @@ function configureBuild {
 ) || exit 1
 
 # the file is huge and taking lots of space and is totally useless on jenkins afterwards
-rm build/arangod/libarangoserver.a || exit 2
+rm build/bin/libarangoserver.a || exit 2
 
 echo "`date +%T` done..."
