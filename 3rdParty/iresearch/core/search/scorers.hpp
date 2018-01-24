@@ -76,7 +76,9 @@ class IRESEARCH_API scorers {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether scorer with a specified name is registered
   ////////////////////////////////////////////////////////////////////////////////
-  static bool exists(const string_ref& name);
+  static bool exists(
+    const string_ref& name, const irs::text_format::type_id& args_format
+  );
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find a scorer by name, or nullptr if not found
@@ -84,7 +86,11 @@ class IRESEARCH_API scorers {
   ///        requires use of DECLARE_FACTORY_DEFAULT() in class definition
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   ////////////////////////////////////////////////////////////////////////////////
-  static sort::ptr get(const string_ref& name, const string_ref& args);
+  static sort::ptr get(
+    const string_ref& name,
+    const irs::text_format::type_id& args_format,
+    const string_ref& args
+  );
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known scorers in lib
@@ -101,7 +107,9 @@ class IRESEARCH_API scorers {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief visit all loaded scorers, terminate early if visitor returns false
   ////////////////////////////////////////////////////////////////////////////////
-  static bool visit(const std::function<bool(const string_ref&)>& visitor);
+  static bool visit(
+    const std::function<bool(const string_ref&, const text_format::type_id&)>& visitor
+  );
 
  private:
   scorers() = delete;

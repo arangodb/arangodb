@@ -153,6 +153,7 @@ struct TRI_vocbase_t {
   bool _isOwnAppsDirectory;
 
   mutable arangodb::basics::ReadWriteLock _collectionsLock;  // collection iterator lock
+  mutable std::atomic<std::thread::id> _collectionsLockWriteOwner; // current thread owning '_collectionsLock' write lock (workaround for non-recusrive ReadWriteLock)
   std::vector<arangodb::LogicalCollection*>
       _collections;  // pointers to ALL collections
   std::vector<arangodb::LogicalCollection*>
@@ -168,6 +169,7 @@ struct TRI_vocbase_t {
       _collectionsByUuid;  // collections by uuid
 
   arangodb::basics::ReadWriteLock _viewsLock;  // views management lock
+  std::atomic<std::thread::id> _viewsLockWriteOwner; // current thread owning '_viewsLock' write lock (workaround for non-recusrive ReadWriteLock)
   std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalView>>
       _viewsByName;  // views by name
   std::unordered_map<TRI_voc_cid_t, std::shared_ptr<arangodb::LogicalView>>

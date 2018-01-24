@@ -38,15 +38,14 @@ class delimited_token_stream: public analyzer, util::noncopyable {
  public:
   DECLARE_ANALYZER_TYPE();
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief args is the delimiter to use
-  ////////////////////////////////////////////////////////////////////////////////
-  DECLARE_FACTORY_DEFAULT(const string_ref& args);
+  // for use with irs::order::add<T>() and default args (static build)
+  DECLARE_FACTORY_DEFAULT(const string_ref& delimiter);
 
-  delimited_token_stream(const irs::string_ref& args);
+  delimited_token_stream(const irs::string_ref& delimiter);
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
+  static void init(); // for trigering registration in a static build
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 

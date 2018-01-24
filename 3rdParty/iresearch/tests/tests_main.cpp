@@ -39,6 +39,16 @@
 
 #include <signal.h> // for signal(...)/raise(...)
 
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4229)
+#endif
+
+  #include <unicode/uclean.h> // for u_cleanup
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4229)
+#endif
+
 #include "tests_shared.hpp"
 #include "tests_config.hpp"
 
@@ -352,6 +362,8 @@ int main( int argc, char* argv[] ) {
   std::cout << "Path to test result directory: " 
             << test_base::test_results_dir() 
             << std::endl;
+
+  u_cleanup(); // cleanup ICU resources
 
   return code;
 }

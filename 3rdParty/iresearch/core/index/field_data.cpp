@@ -25,8 +25,6 @@
 #include "field_data.hpp"
 #include "field_meta.hpp"
 
-#include "document/field.hpp"
-
 #include "formats/formats.hpp"
 
 #include "store/directory.hpp"
@@ -456,7 +454,6 @@ void field_data::init(doc_id_t doc_id) {
   last_start_offs_ = 0;
   max_term_freq_ = 0;
   unq_term_cnt_ = 0;
-  boost_ = 1.f;
   last_doc_ = doc_id;
 }
 
@@ -568,7 +565,6 @@ void field_data::add_term(
 bool field_data::invert(
     token_stream& stream, 
     const flags& features, 
-    float_t boost, 
     doc_id_t id) {
   REGISTER_TIMER_DETAILED();
 
@@ -659,7 +655,6 @@ bool field_data::invert(
     offs_ += offs->end;
   }
 
-  boost_ *= boost;
   return true;
 }
 

@@ -1,5 +1,5 @@
-Creating and Modifying an IResearch View
-========================================
+Creating and Modifying an ArangoSearch View
+===========================================
 
 <!-- js/actions/api-view.js -->
 @startDocuBlock JSF_post_api_view_iresearch
