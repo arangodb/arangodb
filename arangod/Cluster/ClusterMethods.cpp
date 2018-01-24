@@ -2605,8 +2605,10 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
     
     if (otherCid != 0) {
       shards = CloneShardDistribution(ci, col, otherCid);
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+          "Could not find collection " + distributeShardsLike + " to distribute shards like it.");
     }
-    // TODO: Review if other collection is not found, we just do not distributeLike?
   } else {
     // system collections should never enforce replicationfactor
     // to allow them to come up with 1 dbserver
