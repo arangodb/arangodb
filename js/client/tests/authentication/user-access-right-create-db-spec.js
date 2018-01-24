@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require, print */
+/* global describe, beforeEach, afterEach, before, after, it, require, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
@@ -101,12 +101,12 @@ describe('User Rights Management', () => {
               switchUser(name);
             };
 
-            before(() => {
+            beforeEach(() => {
               db._useDatabase('_system');
               rootDropDB();
             });
 
-            after(() => {
+            afterEach(() => {
               rootDropDB();
             });
 
@@ -114,6 +114,57 @@ describe('User Rights Management', () => {
               if (systemLevel['rw'].has(name)) {
                 // User needs rw on _system
                 db._createDatabase(testDBName);
+                expect(rootTestDB()).to.equal(true, 'DB creation reported success, but DB was not found afterwards.');
+              } else {
+                try {
+                  db._createDatabase(testDBName);
+                } catch (e) {
+                  print(e);
+                }
+                expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
+              }
+            });
+            it('create database with root user directly given', () => {
+              if (systemLevel['rw'].has(name)) {
+                // options empty, because there are not options at the moment
+                var options = {};
+                var users = [{username: 'root'}];
+                // User needs rw on _system
+                db._createDatabase(testDBName, options, users);
+                expect(rootTestDB()).to.equal(true, 'DB creation reported success, but DB was not found afterwards.');
+              } else {
+                try {
+                  db._createDatabase(testDBName);
+                } catch (e) {
+                  print(e);
+                }
+                expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
+              }
+            });
+            it('create database with user directly given', () => {
+              if (systemLevel['rw'].has(name)) {
+                // options empty, because there are not options at the moment
+                var options = {};
+                var users = [{username: name}];
+                // User needs rw on _system
+                db._createDatabase(testDBName, options, users);
+                expect(rootTestDB()).to.equal(true, 'DB creation reported success, but DB was not found afterwards.');
+              } else {
+                try {
+                  db._createDatabase(testDBName);
+                } catch (e) {
+                  print(e);
+                }
+                expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
+              }
+            });
+            it('create database with multiple users directly given', () => {
+              if (systemLevel['rw'].has(name)) {
+                // options empty, because there are not options at the moment
+                var options = {};
+                var users = [{username: 'root'}, {username: name}];
+                // User needs rw on _system
+                db._createDatabase(testDBName, options, users);
                 expect(rootTestDB()).to.equal(true, 'DB creation reported success, but DB was not found afterwards.');
               } else {
                 try {
