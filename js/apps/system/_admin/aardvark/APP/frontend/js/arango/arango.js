@@ -987,6 +987,9 @@
       if (type === 'csv') {
         dlType = 'text/csv; charset=utf-8';
       }
+      if (type === 'json') {
+        dlType = 'application/json; charset=utf-8';
+      }
 
       if (dlType) {
         var blob = new Blob([obj], {type: dlType});

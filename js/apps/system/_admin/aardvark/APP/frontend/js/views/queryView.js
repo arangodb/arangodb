@@ -1,7 +1,7 @@
 /* jshint browser: true */
 /* jshint unused: false */
 /* global Backbone, $, setTimeout, localStorage, ace, Storage, window, _, console, btoa */
-/* global _, arangoHelper, numeral, templateEngine, Joi */
+/* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi */
 
 (function () {
   'use strict';
@@ -241,6 +241,7 @@
 
     exportCustomQueries: function () {
       var name;
+      var self = this;
 
       $.ajax('whoAmI?_=' + Date.now()).success(function (data) {
         name = data.user;
@@ -248,8 +249,12 @@
         if (name === null || name === false) {
           name = 'root';
         }
-        var url = 'query/download/' + encodeURIComponent(name);
-        arangoHelper.download(url);
+        if (frontendConfig.ldapEnabled) {
+          self.collection.downloadLocalQueries();
+        } else {
+          var url = 'query/download/' + encodeURIComponent(name);
+          arangoHelper.download(url);
+        }
       });
     },
 
@@ -587,7 +592,7 @@
     },
 
     getCachedQueryAfterRender: function () {
-      if (this.renderComplete === false) {
+      if (this.renderComplete === false && this.aqlEditor) {
         // get cached query if available
         var queryObject = this.getCachedQuery();
         var self = this;
@@ -738,6 +743,7 @@
       this.restoreCachedQueries();
       this.delegateEvents();
       this.restoreQuerySize();
+      this.getCachedQueryAfterRender();
     },
 
     cleanupGraphs: function () {

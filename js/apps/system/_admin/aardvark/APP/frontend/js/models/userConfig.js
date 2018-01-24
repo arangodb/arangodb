@@ -28,7 +28,6 @@ window.UserConfig = Backbone.Model.extend({
           success.call(options.context, model, resp, options);
         }
       })();
-      // return true;
     } else {
       // if ldap is not enabled -> call Backbone's fetch method
       return Backbone.Collection.prototype.fetch.call(this, options);
