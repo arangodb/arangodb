@@ -39,13 +39,11 @@ public:
   // for use with irs::order::add<T>() and default args (static build)
   DECLARE_FACTORY_DEFAULT();
 
-  // for use with irs::order::add(...) (dynamic build) or jSON args (static build)
-  DECLARE_FACTORY_DEFAULT(const string_ref& args);
-
   typedef float_t score_t;
 
   explicit tfidf_sort(bool normalize = WITH_NORMS());
 
+  static void init(); // for trigering registration in a static build
   bool normalize() const { return normalize_; }
   void normalize(bool value) { normalize_ = value; }
 

@@ -278,7 +278,6 @@ Result RocksDBPrimaryIndex::removeInternal(transaction::Methods* trx,
   // acquire rocksdb transaction
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
   Result r = mthds->Delete(_cf, key.ref());
-  // rocksutils::convertStatus(status, rocksutils::StatusHint::index);
   return IndexResult(r.errorNumber(), this);
 }
 
@@ -337,13 +336,6 @@ arangodb::aql::AstNode* RocksDBPrimaryIndex::specializeCondition(
     arangodb::aql::Variable const* reference) const {
   SimpleAttributeEqualityMatcher matcher(IndexAttributes);
   return matcher.specializeOne(this, node, reference);
-}
-
-Result RocksDBPrimaryIndex::postprocessRemove(transaction::Methods* trx,
-                                              rocksdb::Slice const& key,
-                                              rocksdb::Slice const& value) {
-  blackListKey(key.data(), key.size());
-  return Result();
 }
 
 /// @brief create the iterator, for a single attribute, IN operator

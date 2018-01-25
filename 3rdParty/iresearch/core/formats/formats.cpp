@@ -47,7 +47,7 @@ const irs::columnstore_iterator::value_type EOFMAX {
 };
 
 class format_register :
-  public iresearch::generic_register<iresearch::string_ref, iresearch::format::ptr(*)(), format_register> {
+  public irs::tagged_generic_register<irs::string_ref, irs::format::ptr(*)(), irs::string_ref, format_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     std::string filename(FILENAME_PREFIX.size() + key.size(), 0);
@@ -161,16 +161,36 @@ format_registrar::format_registrar(
     format::ptr(*factory)(),
     const char* source /*= nullptr*/
 ) {
-  auto entry = format_register::instance().set(type.name(), factory);
+  irs::string_ref source_ref(source);
+  auto entry = format_register::instance().set(
+    type.name(),
+    factory,
+    source_ref.null() ? nullptr : &source_ref
+  );
 
   registered_ = entry.second;
 
   if (!registered_ && factory != entry.first) {
-    if (source) {
+    auto* registered_source = format_register::instance().tag(type.name());
+
+    if (source && registered_source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering format, ignoring: type '%s' from %s, previously from %s",
+        type.name().c_str(),
+        source,
+        registered_source->c_str()
+      );
+    } else if (source) {
       IR_FRMT_WARN(
         "type name collision detected while registering format, ignoring: type '%s' from %s",
         type.name().c_str(),
         source
+      );
+    } else if (registered_source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering format, ignoring: type '%s', previously from %s",
+        type.name().c_str(),
+        registered_source->c_str()
       );
     } else {
       IR_FRMT_WARN(

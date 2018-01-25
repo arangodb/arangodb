@@ -4088,15 +4088,10 @@ void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq
 
   meta.pos_end = type_limits<type_t::address_t>::invalid();
 
-  if (!tfreq) {
-    meta.freq = integer_traits<uint64_t>::const_max;
-  }
-
   /* write remaining position using
    * variable length encoding */
   if (features_.position()) {
-
-    if (*tfreq > BLOCK_SIZE) {
+    if (meta.freq > BLOCK_SIZE) {
       meta.pos_end = pos_->out->file_pointer() - pos_->start;
     }
 
@@ -4142,6 +4137,10 @@ void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq
         pay_->pay_buf_.clear();
       }
     }
+  }
+
+  if (!tfreq) {
+    meta.freq = integer_traits<uint64_t>::const_max;
   }
 
   /* if we have flushed at least
@@ -4391,7 +4390,7 @@ doc_iterator::ptr postings_reader::iterator(
     doc_in_.get(), pos_in_.get(), pay_in_.get() 
   );
 
-  return MSVC2013_MOVE_WORKAROUND(it);
+  return IMPLICIT_MOVE_WORKAROUND(it);
 }
 
 // ----------------------------------------------------------------------------

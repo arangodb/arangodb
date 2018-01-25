@@ -36,6 +36,8 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/OpenFilesTracker.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
@@ -247,17 +249,16 @@ Result dumpCollection(httpclient::SimpleHttpClient& client,
     // find out whether there are more results to fetch
     bool checkMore = false;
 
-    // TODO: fix hard-coded headers
     bool headerExtracted;
     std::string header = response->getHeaderField(
-        "x-arango-replication-checkmore", headerExtracted);
+        StaticStrings::ReplicationHeaderCheckMore, headerExtracted);
     if (headerExtracted) {
       // first check the basic flag
       checkMore = StringUtils::boolean(header);
       if (checkMore) {
         // TODO: fix hard-coded headers
         // now check if the actual tick has changed
-        header = response->getHeaderField("x-arango-replication-lastincluded",
+        header = response->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded,
                                           headerExtracted);
         if (headerExtracted) {
           uint64_t tick = StringUtils::uint64(header);

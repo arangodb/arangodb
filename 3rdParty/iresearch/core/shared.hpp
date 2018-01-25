@@ -47,7 +47,6 @@
 #if _MSC_VER < 1900 // prior the vc14    
   #define CONSTEXPR
   #define NOEXCEPT throw()
-  #define MOVE_WORKAROUND_MSVC2013(x) std::move(x)
 #else
   #define CONSTEXPR constexpr
   #define NOEXCEPT noexcept 
@@ -81,26 +80,34 @@
   #define ALIGNED_VALUE(_value, _type) _value alignas( _type );
 #endif
 
+// GCC before v5 does not implicitly call the move constructor on local values
+// returned from functions, e.g. std::unique_ptr
+//
 // MSVC2013 doesn't support c++11 in a proper way
 // sometimes it can't choose move constructor for
 // move-only types while returning a value.
-// The following macro tries to avoid potentiol
+// The following macro tries to avoid potential
 // performance problems on other compilers since
 // 'return std::move(x)' prevents such compiler
 // optimizations like 'copy elision'
-#ifndef MSVC2013_MOVE_WORKAROUND
-  #define MSVC2013_MOVE_WORKAROUND(x) x
+#if (defined(__GNUC__) && (__GNUC__ < 5)) \
+    || (defined(_MSC_VER) && _MSC_VER < 1900)
+  #define IMPLICIT_MOVE_WORKAROUND(x) std::move(x)
+#else
+  #define IMPLICIT_MOVE_WORKAROUND(x) x
 #endif
 
-// hook for MSVC2017.3 and MSVC2017.4 optimized code
+// hook for MSVC2017.3, MSVC2017.4 MSVC2017.5 optimized code
 // these versions produce incorrect code when inlining optimizations are enabled
+// for versions @see https://github.com/lordmulder/MUtilities/blob/master/include/MUtils/Version.h
 #if defined(_MSC_VER) \
     && !defined(_DEBUG) \
     && (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) \
-        || ((_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547)))
-  #define MSVC2017_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
+        || ((_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547)) \
+        || ((_MSC_FULL_VER >= 191225830) && (_MSC_FULL_VER <= 191225831)))
+  #define MSVC2017_345_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
-  #define MSVC2017_OPTIMIZED_WORKAROUND(...)
+  #define MSVC2017_345_OPTIMIZED_WORKAROUND(...)
 #endif
 
 // hook for MSVC-only code
@@ -108,6 +115,21 @@
   #define MSVC_ONLY(...) __VA_ARGS__
 #else
   #define MSVC_ONLY(...)
+#endif
+
+// hook for MSVC2015 optimized-only code
+#if defined(_MSC_VER) && !defined(_DEBUG) && _MSC_VER == 1900
+  #define MSVC2015_OPTIMIZED_ONLY(...) __VA_ARGS__
+#else
+  #define MSVC2015_OPTIMIZED_ONLY(...)
+#endif
+
+// hook for MSVC2017-only code (2017.2 || 2017.3/2017.4 || 2017.5)
+#if defined(_MSC_VER) \
+    && (_MSC_VER == 1910 || _MSC_VER == 1911 || _MSC_VER == 1912)
+  #define MSVC2017_ONLY(...) __VA_ARGS__
+#else
+  #define MSVC2017_ONLY(...)
 #endif
 
 // hook for GCC-only code

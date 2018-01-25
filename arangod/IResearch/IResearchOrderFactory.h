@@ -57,13 +57,13 @@ struct OrderFactory {
   ////////////////////////////////////////////////////////////////////////////////
   static bool scorer(
     irs::sort::ptr* scorer,
-    aql::AstNode const& node,
-    QueryContext const& ctx
+    arangodb::aql::AstNode const& node,
+    arangodb::iresearch::QueryContext const& ctx
   );
 
   static bool comparer(
     irs::sort::ptr* scorer,
-    aql::AstNode const& node
+    arangodb::aql::AstNode const& node
   );
 }; // OrderFactory
 

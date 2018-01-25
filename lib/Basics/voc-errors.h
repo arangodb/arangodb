@@ -940,7 +940,7 @@ constexpr int TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS         
 constexpr int TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING                    = 1495;
 
 /// 1496: ERROR_CLUSTER_NOT_LEADER
-/// "no leader"
+/// "not a leader"
 /// Will be raised when an operation is sent to a non-leading server.
 constexpr int TRI_ERROR_CLUSTER_NOT_LEADER                                      = 1496;
 

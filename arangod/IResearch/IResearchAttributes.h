@@ -53,7 +53,7 @@ struct AttributePath: irs::basic_stored_attribute<arangodb::velocypack::Builder>
 struct Transaction: irs::basic_attribute<arangodb::transaction::Methods&> {
   DECLARE_ATTRIBUTE_TYPE();
 
-  Transaction(arangodb::transaction::Methods& trx);
+  explicit Transaction(arangodb::transaction::Methods& trx);
 };
 
 NS_END // attribute

@@ -74,7 +74,7 @@ function IResearchLinkSuite () {
     ////////////////////////////////////////////////////////////////////////////
     testHandlingCreateWithLinks : function () {
       var meta = { links: { 'testCollection' : { includeAllFields: true } } };
-      var view = db._createView("badView", "iresearch", meta);
+      var view = db._createView("badView", "arangosearch", meta);
       var links = view.properties().links;
       assertEqual(links['testCollection'], undefined);
       view.drop();
@@ -85,7 +85,7 @@ function IResearchLinkSuite () {
     ////////////////////////////////////////////////////////////////////////////
     testAddDrop : function () {
       var meta = { links: { 'testCollection' : { includeAllFields: true } } };
-      var view = db._createView("testView", "iresearch", {});
+      var view = db._createView("testView", "arangosearch", {});
       view.properties(meta);
 
       var links = view.properties().links;

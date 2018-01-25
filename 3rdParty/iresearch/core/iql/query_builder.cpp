@@ -212,7 +212,9 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     }
 
     const iresearch::string_ref value_ref(bValueNil ? iresearch::string_ref::nil : iresearch::ref_cast<char>(value));
-    auto tokens = iresearch::analysis::analyzers::get("text", iresearch::locale_utils::name(locale));
+    auto tokens = irs::analysis::analyzers::get(
+      "text", irs::text_format::text, irs::locale_utils::name(locale)
+    );
 
     if (!tokens || !tokens->reset(value_ref)) {
       return false;
