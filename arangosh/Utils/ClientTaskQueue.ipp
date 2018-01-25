@@ -18,26 +18,11 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClientTaskQueue.hpp"
+// namespace arangodb
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/Result.h"
-#include "Basics/Thread.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Utils/ClientManager.hpp"
-
-using namespace arangodb;
-using namespace arangodb::basics;
-using namespace arangodb::httpclient;
-
-namespace arangodb {
 template <typename JobData>
 class ClientWorker : public arangodb::Thread {
  private:
@@ -46,7 +31,7 @@ class ClientWorker : public arangodb::Thread {
 
  public:
   explicit ClientWorker(ClientTaskQueue<JobData>&,
-                        std::unique_ptr<SimpleHttpClient>&&);
+                        std::unique_ptr<httpclient::SimpleHttpClient>&&);
   virtual ~ClientWorker();
 
   bool isIdle() const noexcept;  // not currently processing a job
@@ -56,10 +41,9 @@ class ClientWorker : public arangodb::Thread {
 
  private:
   ClientTaskQueue<JobData>& _queue;
-  std::unique_ptr<SimpleHttpClient> _client;
+  std::unique_ptr<httpclient::SimpleHttpClient> _client;
   std::atomic<bool> _idle;
 };
-}  // namespace arangodb
 
 template <typename JobData>
 ClientTaskQueue<JobData>::ClientTaskQueue(JobProcessor processJob,

@@ -28,17 +28,20 @@
 #include <queue>
 #include <vector>
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/Result.h"
+#include "Basics/Thread.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Utils/ClientManager.hpp"
 
 namespace arangodb {
-class Result;
-namespace httpclient {
-class SimpleHttpClient;
-class SimpleHttpResult;
-}  // namespace httpclient
-
-class ClientManager;
 template <typename JobData>
 class ClientWorker;
 
@@ -164,6 +167,7 @@ class ClientTaskQueue {
 
   friend class ClientWorker<JobData>;
 };
+#include "ClientTaskQueue.ipp"
 }  // namespace arangodb
 
 #endif

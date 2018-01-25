@@ -20,7 +20,9 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClientTaskQueue.tpp"
+#include "ClientTaskQueue.hpp"
 #include "Dump/DumpFeature.h"
+
+using namespace arangodb;
 
 template class ClientTaskQueue<DumpFeatureJobData>;
