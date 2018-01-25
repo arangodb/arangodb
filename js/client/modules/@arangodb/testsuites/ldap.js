@@ -50,7 +50,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // //////////////////////////////////////////////////////////////////////////////
 
 function ldap (options) {
-  print(`DAP FQDN is: ${options.ldapHost}:${options.ldapPort} ${options.caCertFilePath}`);
+  print(`LDAP FQDN is: ${options.ldapHost}:${options.ldapPort} ${options.caCertFilePath}`);
   const results = { failed: 0 };
   const tests = [
     {
@@ -155,7 +155,6 @@ function ldap (options) {
         'ldap.tls': true,
         'ldap.tls-cacert-file': options.caCertFilePath,
         'ldap.tls-cert-check-strategy': 'hard'
-
       },
       user: {
         name: 'fermi',
@@ -178,23 +177,21 @@ function ldap (options) {
     };
   } // if
 
-  if (options.cluster) {
-    print('skipping LDAP tests on cluster!');
-    return {
-      failed: 0,
-      ldap: {
-        failed: 0,
-        status: true,
-        skipped: true
-      }
-    };
-  }
-
   print(CYAN + 'LDAP tests...' + RESET);
   // we append one cleanup directory for the invoking logic...
   let dummyDir = fs.join(fs.getTempPath(), 'ldap_dummy');
   fs.makeDirectory(dummyDir);
   pu.cleanupDBDirectoriesAppend(dummyDir);
+
+  if (options.cluster) {
+    options['server.jwt-secret'] = 'ldap';
+    options.dbServers = 2;
+    options.coordinators = 1;
+
+    for (const test of tests) {
+      test.conf['server.jwt-secret'] = 'ldap';
+    }
+  }
 
   for (const t of tests) {
     let cleanup = true;
@@ -210,7 +207,7 @@ function ldap (options) {
     }
 
     const res = request.post({
-      url: `${adbInstance.arangods[0].url}/_open/auth`,
+      url: `${adbInstance.url}/_open/auth`,
       body: JSON.stringify(
         {
           username: t.user.name,
