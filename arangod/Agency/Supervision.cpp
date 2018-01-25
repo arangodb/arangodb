@@ -391,16 +391,16 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   }
   if (!todelete.empty()) {
     query_t del = std::make_shared<Builder>();
-      { VPackArrayBuilder trxs(del.get());
-        { VPackArrayBuilder trx(del.get());
+    { VPackArrayBuilder trxs(del.get());
+      { VPackArrayBuilder trx(del.get());
+        { VPackObjectBuilder server(del.get());
           for (auto const& srv : todelete) {
-            { VPackObjectBuilder server(del.get());
-              del->add(VPackValue(_agencyPrefix + healthPrefix + srv));
-              { VPackObjectBuilder oper(del.get());
-                del->add("op", VPackValue("delete")); }}}}}
+            del->add(VPackValue(_agencyPrefix + healthPrefix + srv));
+            { VPackObjectBuilder oper(del.get());
+              del->add("op", VPackValue("delete")); }}}}}
     _agent->write(del);
   }
-
+  
   // Do actual monitoring
   for (auto const& machine : machinesPlanned) {
     std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,

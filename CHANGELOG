@@ -100,6 +100,8 @@ devel
 * UI: Shard distribution view now has an accordion view instead of displaying
   all shards of all collections at once.
 
+* Supervision to remove deleted nodes from Health did not function for
+  multiple servers at the same time, as agency transaction was malformed. 
 
 v3.3.3 (XXXX-XX-XX)
 -------------------
