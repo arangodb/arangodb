@@ -234,7 +234,7 @@ bool RocksDBReplicationManager::containsUsedContext() {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   for (auto it : _contexts) {
-    if (it.second->isUsed(false)) {
+    if (it.second->isUsed(true)) {
       return true;
     }
   }

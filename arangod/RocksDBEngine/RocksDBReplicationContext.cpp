@@ -132,6 +132,7 @@ void RocksDBReplicationContext::internalBind(TRI_vocbase_t* vocbase) {
     _trx.reset(
         new transaction::UserTransaction(ctx, {}, {}, {}, transactionOptions));
     auto state = RocksDBTransactionState::toState(_trx.get());
+    state->prepareForParallelReads();
     if (snap != nullptr) {
       state->donateSnapshot(snap);
       TRI_ASSERT(snap->GetSequenceNumber() == state->sequenceNumber());
