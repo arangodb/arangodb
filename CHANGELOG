@@ -1,4 +1,4 @@
-3.4.milestone1
+3.4.milestone0
 --------------
 
 * fix internal issue #478: remove unused and undocumented REST API endpoints
