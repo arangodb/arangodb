@@ -251,8 +251,7 @@ describe('Shard distribution', function () {
       };
 
       const waitForCleanout = function (id) {
-        // let count = 600;
-        let count = 20;
+        let count = 600;
         while (--count > 0) {
           let obj = getCleanedOutServers();
           if (obj.cleanedServers.indexOf(id) >= 0) {
