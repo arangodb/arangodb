@@ -119,7 +119,7 @@ class GeneralCommTask : public SocketTask {
 
  protected:
   GeneralServer* const _server;
-  AuthenticationFeature* _authentication;
+  AuthenticationFeature* _auth;
 
   // protocol to use http, vst
   char const* _protocol = "unknown";

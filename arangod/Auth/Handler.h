@@ -65,18 +65,18 @@ class HandlerResult : public arangodb::Result {
 
 class Handler {
  public:
+  /// Refresh rate for users from this source in seconds
+  virtual double refreshRate() const = 0;
+  virtual auth::Source source() const = 0;
+
+  /// Authenticate user and return user permissions and roles
   virtual HandlerResult authenticate(std::string const& username,
                                      std::string const& password) = 0;
+  /// Read user permissions assuming he was already authenticated once
+  virtual HandlerResult readPermissions(std::string const& username) = 0;
   virtual ~Handler() {}
 };
 
-class DefaultHandler : public Handler {
- public:
-  DefaultHandler() {}
-  HandlerResult authenticate(std::string const& username,
-                             std::string const& password) override;
-  virtual ~DefaultHandler() {}
-};
 }  // auth
 }  // arangodb
 

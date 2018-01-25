@@ -175,7 +175,6 @@ SET(ARANGOD_SOURCES
   Aql/grammar.cpp
   Aql/tokens.cpp
   Auth/Common.cpp
-  Auth/Handler.cpp
   Auth/TokenCache.cpp
   Auth/User.cpp
   Auth/UserManager.cpp

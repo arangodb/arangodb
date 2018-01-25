@@ -68,10 +68,10 @@ GeneralCommTask::GeneralCommTask(EventLoop loop, GeneralServer* server,
       SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout,
                  skipSocketInit),
       _server(server),
-      _authentication(nullptr) {
-  _authentication = application_features::ApplicationServer::getFeature<
+      _auth(nullptr) {
+  _auth = application_features::ApplicationServer::getFeature<
       AuthenticationFeature>("Authentication");
-  TRI_ASSERT(_authentication != nullptr);
+  TRI_ASSERT(_auth != nullptr);
 }
 
 GeneralCommTask::~GeneralCommTask() {
@@ -341,7 +341,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
 rest::ResponseCode GeneralCommTask::canAccessPath(
     GeneralRequest* request) const {
-  if (!_authentication->isActive()) {
+  if (!_auth->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
   }
@@ -372,14 +372,14 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
     ConnectionInfo const& ci = request->connectionInfo();
 
     if (ci.endpointType == Endpoint::DomainType::UNIX &&
-        !_authentication->authenticationUnixSockets()) {
+        !_auth->authenticationUnixSockets()) {
       // no authentication required for unix domain socket connections
       result = rest::ResponseCode::OK;
     }
 #endif
 
     if (result != rest::ResponseCode::OK &&
-        _authentication->authenticationSystemOnly()) {
+        _auth->authenticationSystemOnly()) {
       // authentication required, but only for /_api, /_admin etc.
 
       if (!path.empty()) {

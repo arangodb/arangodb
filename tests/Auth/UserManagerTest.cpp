@@ -43,21 +43,6 @@ namespace arangodb {
 namespace tests {
 namespace auth_info_test {
 
-class TestAuthenticationHandler: public auth::Handler {
- public:
-  TestAuthenticationHandler() {}
-  auth::HandlerResult authenticate(std::string const& username,
-                                    std::string const& password) {
-    
-    std::unordered_map<std::string, auth::Level> permissions {};
-    std::unordered_set<std::string> roles {};
-    auth::Source source = auth::Source::LOCAL;
-    auth::HandlerResult result(permissions, roles, source);
-    return result;
-  }
-  virtual ~TestAuthenticationHandler() {}
-};
-
 class TestQueryRegistry: public QueryRegistry {
  public:
   TestQueryRegistry() {}; 
@@ -71,7 +56,6 @@ class TestDatabaseFeature: public DatabaseFeature {
 
 
 TEST_CASE("🥑🔐 UserManager", "[authentication]") {
-  auto authHandler = std::make_unique<TestAuthenticationHandler>();
   TestQueryRegistry queryRegistry;
 
   auto state = ServerState::instance();
@@ -81,7 +65,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
   DatabaseFeature &databaseFeature = databaseFeatureMock.get();
   DatabaseFeature::DATABASE = &databaseFeature;
 
-  auth::UserManager um(std::move(authHandler));
+  auth::UserManager um;
   um.setQueryRegistry(&queryRegistry);
   
   SECTION("An unknown user will have no access") {

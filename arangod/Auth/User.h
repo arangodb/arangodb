@@ -106,21 +106,24 @@ class User {
   bool hasSpecificDatabase(std::string const& dbname) const;
   bool hasSpecificCollection(std::string const& dbname,
                              std::string const& collectionName) const;
-  
+
   /// Content of `userData` or `extra` fields
   velocypack::Slice userData() const { return _userData.slice(); }
-  
+
   /// Set content of `userData` or `extra` fields
   void setUserData(velocypack::Builder&& b) { _userData = std::move(b); }
-  
+
   /// Content of internal `configData` field, used by the WebUI
   velocypack::Slice configData() const { return _configData.slice(); }
-  
+
   /// Set content of internal `configData` field, used by the WebUI
   void setConfigData(velocypack::Builder&& b) { _configData = std::move(b); }
 
+  /// Time (since epoch) when user was loaded form DB / LDAP
+  double loaded() const { return _loaded; }
+
  private:
-  User(std::string&& key, TRI_voc_rid_t rid) : _key(key), _rev(rid) {}
+  User(std::string&& key, TRI_voc_rid_t rid);
 
   struct DBAuthContext {
     DBAuthContext(auth::Level dbLvl,
@@ -151,9 +154,12 @@ class User {
   std::string _passwordHash;
   std::unordered_map<std::string, DBAuthContext> _dbAccess;
   std::unordered_set<std::string> _roles;
-  
+
   velocypack::Builder _userData;
   velocypack::Builder _configData;
+
+  /// Time when user was loaded form DB / LDAP
+  double _loaded;
 };
 }  // auth
 }  // arangodb

@@ -56,18 +56,15 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-auth::UserManager::UserManager() : _outdated(true),
-_queryRegistry(nullptr),
-_authHandler(nullptr) {}
+auth::UserManager::UserManager()
+    : _outdated(true), _queryRegistry(nullptr), _authHandler(nullptr) {}
 
 auth::UserManager::UserManager(std::unique_ptr<auth::Handler>&& handler)
     : _outdated(true),
       _queryRegistry(nullptr),
       _authHandler(handler.release()) {}
 
-auth::UserManager::~UserManager() {
-  delete _authHandler;
-}
+auth::UserManager::~UserManager() { delete _authHandler; }
 
 // Parse the users
 static auth::UserMap ParseUsers(VPackSlice const& slice) {
@@ -216,7 +213,7 @@ void auth::UserManager::loadFromDB() {
     return;
   }
   MUTEX_LOCKER(guard, _loadFromDBLock);  // must be first
-  if (!_outdated) {                       // double check after we got the lock
+  if (!_outdated) {                      // double check after we got the lock
     return;
   }
 
@@ -315,6 +312,8 @@ Result auth::UserManager::storeUserInternal(auth::User&& entry, bool replace) {
     } else if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {  // user was outdated
       _userCache.erase(entry.username());
       _outdated = true;
+      LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+          << "Cannot update user due to conflict";
     }
   }
   return res;
@@ -495,7 +494,7 @@ Result auth::UserManager::updateUser(std::string const& username,
 
   // we require a consistent view on the user object
   WRITE_LOCKER(writeGuard, _userCacheLock);
-  
+
   auto it = _userCache.find(username);
   if (it == _userCache.end()) {
     return TRI_ERROR_USER_NOT_FOUND;
@@ -625,8 +624,8 @@ Result auth::UserManager::removeAllUsers() {
   Result res;
   {
     // do not get into race conditions with loadFromDB
-    MUTEX_LOCKER(guard, _loadFromDBLock);  // must be first
-    WRITE_LOCKER(writeGuard, _userCacheLock);    // must be second
+    MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
+    WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
 
     for (auto pair = _userCache.cbegin(); pair != _userCache.cend();) {
       auto const& oldEntry = pair->second;
@@ -667,24 +666,24 @@ bool auth::UserManager::checkPassword(std::string const& username,
       af != nullptr && !af->localAuthentication()) {
     return false;
   }
-  
+
   if (it != _userCache.end() && it->second.source() == auth::Source::LOCAL) {
-    auth::User const& auth = it->second;
-    if (auth.isActive()) {
-      return auth.checkPassword(password);
+    auth::User const& user = it->second;
+    if (user.isActive()) {
+      return user.checkPassword(password);
     }
   }
   if (it == _userCache.end() && _authHandler == nullptr) {
-    return false; // nothing more to do here
+    // nothing more to do here
+    return false;
   }
-  
+
   // handle LDAP based authentication
   if (it == _userCache.end() || (it->second.source() != auth::Source::LOCAL)) {
-    
     TRI_ASSERT(_authHandler != nullptr);
     auth::HandlerResult authResult =
-    _authHandler->authenticate(username, password);
-    
+        _authHandler->authenticate(username, password);
+
     if (!authResult.ok()) {
       if (it != _userCache.end()) {  // erase invalid user
         // upgrade read-lock to a write-lock
@@ -694,20 +693,20 @@ bool auth::UserManager::checkPassword(std::string const& username,
       }
       return false;
     }
-      
+
     // user authed, add to _userCache
-    if (authResult.source() == auth::Source::LDAP) {
+    if (authResult.source() != auth::Source::LOCAL) {
       auth::User user =
-      auth::User::newUser(username, password, auth::Source::LDAP);
+          auth::User::newUser(username, password, auth::Source::LDAP);
       user.setRoles(authResult.roles());
       for (auto const& al : authResult.permissions()) {
         user.grantDatabase(al.first, al.second);
       }
-      
+
       // upgrade read-lock to a write-lock
       readGuard.unlock();
       WRITE_LOCKER(writeGuard, _userCacheLock);
-      
+
       it = _userCache.find(username);  // `it` may be invalid already
       if (it != _userCache.end()) {
         it->second = std::move(user);
@@ -728,6 +727,50 @@ bool auth::UserManager::checkPassword(std::string const& username,
   }
 
   return false;
+}
+
+void auth::UserManager::refreshUser(std::string const& username) {
+  if (_authHandler == nullptr || username.empty() ||
+      StringUtils::isPrefix(username, ":role:")) {
+    return;  // ignore
+  }
+  
+  READ_LOCKER(readGuard, _userCacheLock);
+  auto it = _userCache.find(username);
+  if (it == _userCache.end() ||  // no need to refresh non existing users
+      it->second.source() == auth::Source::LOCAL) {
+    return;  // no need to refresh local users
+  }
+
+  if (it != _userCache.end()) {
+    double expiry = it->second.loaded() + _authHandler->refreshRate();
+    if (expiry >= TRI_microtime()) {
+      return;  // not necessary yet
+    }
+  }
+  
+  LOG_TOPIC(INFO, Logger::FIXME) << "Refreshing user rights";
+
+  // now we need to renew the permissions in the user
+  auth::HandlerResult authResult = _authHandler->readPermissions(username);
+
+  // upgrade read-lock to a write-lock
+  readGuard.unlock();
+  WRITE_LOCKER(writeGuard, _userCacheLock);
+
+  if (authResult.ok()) {
+    it = _userCache.find(username);  // `it` may be invalid already
+    if (it == _userCache.end()) {
+      return;  // someone deleted the user while we weren't looking
+    }
+
+    it->second.setRoles(authResult.roles());
+    for (auto const& al : authResult.permissions()) {
+      it->second.grantDatabase(al.first, al.second);
+    }
+  } else {                       // if the result is not ok, assume user is gone
+    _userCache.erase(username);  // `it` may be invalid already
+  }
 }
 
 // worker function for configuredDatabaseAuthLevel
@@ -891,9 +934,16 @@ auth::Level auth::UserManager::canUseCollectionNoLock(
   return level;
 }
 
+double auth::UserManager::refreshExpiry() const {
+  if (_authHandler != nullptr) {
+    return TRI_microtime() + _authHandler->refreshRate();
+  }
+  return 0;
+}
+
 /// Only used for testing
 void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
-  MUTEX_LOCKER(guard, _loadFromDBLock);       // must be first
+  MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
   WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
   _userCache = newMap;
   _outdated = false;

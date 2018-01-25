@@ -315,13 +315,13 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   if (rolesSlice.isArray()) {
     fromDocumentRoles(entry, rolesSlice);
   }
-  
+
   VPackSlice userDataSlice = slice.get("userData");
   if (userDataSlice.isObject() && !userDataSlice.isEmptyObject()) {
     entry._userData.clear();
     entry._userData.add(userDataSlice);
   }
-    
+
   VPackSlice userConfigSlice = slice.get("configData");
   if (userConfigSlice.isObject() && !userConfigSlice.isEmptyObject()) {
     entry._configData.clear();
@@ -337,6 +337,11 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   // build authentication entry
   return entry;
 }
+
+// ===================== Constructor =======================
+
+auth::User::User(std::string&& key, TRI_voc_rid_t rid)
+    : _key(std::move(key)), _rev(rid), _loaded(TRI_microtime()) {}
 
 // ======================= Methods ==========================
 
@@ -412,12 +417,14 @@ VPackBuilder auth::User::toVPackBuilder() const {
       }
     }
   }
-  
-  if (!_userData.isEmpty() && _userData.isClosed() && _userData.slice().isObject()) {
+
+  if (!_userData.isEmpty() && _userData.isClosed() &&
+      _userData.slice().isObject()) {
     builder.add("userData", _userData.slice());
   }
-  
-  if (!_configData.isEmpty() && _configData.isClosed() && _configData.slice().isObject()) {
+
+  if (!_configData.isEmpty() && _configData.isClosed() &&
+      _configData.slice().isObject()) {
     builder.add("configData", _configData.slice());
   }
 

@@ -49,21 +49,25 @@ class TokenCache {
 
  public:
   struct Entry {
+    friend class auth::TokenCache;
+
    public:
     Entry() : _authorized(false), _expiry(0) {}
 
     explicit Entry(std::string const& username, bool a, double t)
         : _username(username), _authorized(a), _expiry(t) {}
 
+    std::string const& username() const { return _username; }
+    bool authorized() const { return _authorized; }
     void setExpiry(double expiry) { _expiry = expiry; }
-    bool expired() { return _expiry != 0 && _expiry < TRI_microtime(); }
+    bool expired() const { return _expiry != 0 && _expiry < TRI_microtime(); }
 
    public:
     /// username
     std::string _username;
     /// User exists and password was checked
     bool _authorized;
-    /// expiration time of this result
+    /// expiration time (in seconds since epoch) of this entry
     double _expiry;
   };
 
@@ -84,16 +88,6 @@ class TokenCache {
   std::string generateJwt(velocypack::Slice const&) const;
 
  private:
-  /// Cached JWT entry
-  /*struct JwtEntry : public auth::Cache::Entry {
-  public:
-    JwtEntry() : auth::Cache::Entry(), _expires(false) {}
-    /// if false ignore expire time
-    bool _expires;
-    std::chrono::system_clock::time_point _expireTime;
-  };*/
-
- private:
   /// Check basic HTTP Authentication header
   TokenCache::Entry checkAuthenticationBasic(std::string const& secret);
   /// Check JWT token contents
@@ -111,6 +105,7 @@ class TokenCache {
 
  private:
   auth::UserManager* const _userManager;
+  /// Timeout in seconds
   double const _authTimeout;
 
   mutable arangodb::basics::ReadWriteLock _basicLock;

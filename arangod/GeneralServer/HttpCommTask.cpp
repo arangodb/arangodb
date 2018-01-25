@@ -852,10 +852,9 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
       
       if (authMethod != AuthenticationMethod::NONE) {
         request->setAuthenticationMethod(authMethod);
-        if (_authentication->isActive()) {
-          auto entry = _authentication->tokenCache()->
-            checkAuthentication(authMethod, auth);
-          request->setAuthorized(entry._authorized);
+        if (_auth->isActive()) {
+          auto entry = _auth->tokenCache()->checkAuthentication(authMethod, auth);
+          request->setAuthorized(entry.authorized());
           request->setUser(std::move(entry._username));
         } else {
           request->setAuthorized(true);

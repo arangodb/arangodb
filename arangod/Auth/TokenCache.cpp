@@ -22,8 +22,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Auth/TokenCache.h"
+#include "TokenCache.h"
+
 #include "Agency/AgencyComm.h"
+#include "Auth/Handler.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadUnlocker.h"
 #include "Basics/VelocyPackHelper.h"
@@ -32,7 +34,6 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
 
 #include <velocypack/Builder.h>
@@ -110,8 +111,9 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
   {
     READ_LOCKER(guard, _basicLock);
     auto const& it = _basicCache.find(secret);
-
     if (it != _basicCache.end() && !it->second.expired()) {
+      // LDAP rights might need to be refreshed
+      _userManager->refreshUser(it->second.username());
       return it->second;
     }
   }
@@ -130,7 +132,6 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
   std::string password = up.substr(n + 1);
 
   bool authorized = _userManager->checkPassword(username, password);
-
   double expiry = _authTimeout;
   if (expiry > 0) {
     expiry += TRI_microtime();
@@ -164,21 +165,22 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
     // insufficient!!
     WRITE_LOCKER(writeLocker, _jwtLock);
     // intentionally copy the entry from the cache
-    auth::TokenCache::Entry entry = _jwtCache.get(jwt);
-    if (entry.expired()) {
+    auth::TokenCache::Entry const& user = _jwtCache.get(jwt);
+    if (user.expired()) {
       try {
         _jwtCache.remove(jwt);
       } catch (std::range_error const&) {
       }
       return auth::TokenCache::Entry();  // unauthorized
     }
-    return entry;
+    // LDAP rights might need to be refreshed
+    _userManager->refreshUser(user.username());
+    return user;
   } catch (std::range_error const&) {
     // mop: not found
   }
 
   std::vector<std::string> const parts = StringUtils::split(jwt, '.');
-
   if (parts.size() != 3) {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Secret contains "
                                               << parts.size() << " parts";
@@ -211,7 +213,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
 
   WRITE_LOCKER(writeLocker, _jwtLock);
   _jwtCache.put(jwt, entry);
-  return (auth::TokenCache::Entry)entry;
+  return entry;
 }
 
 std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(
@@ -276,50 +278,50 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
       parseJson(StringUtils::decodeBase64(body), "jwt body");
   auth::TokenCache::Entry authResult;
   if (bodyBuilder.get() == nullptr) {
-    return authResult;
+    return authResult;  // unauthenticated
   }
 
   VPackSlice const bodySlice = bodyBuilder->slice();
   if (!bodySlice.isObject()) {
-    return authResult;
+    return authResult;  // unauthenticated
   }
 
   VPackSlice const issSlice = bodySlice.get("iss");
   if (!issSlice.isString()) {
-    return authResult;
+    return authResult;  // unauthenticated
   }
 
   if (issSlice.copyString() != "arangodb") {
-    return authResult;
+    return authResult;  // unauthenticated
   }
 
   if (bodySlice.hasKey("preferred_username")) {
     VPackSlice const usernameSlice = bodySlice.get("preferred_username");
     if (!usernameSlice.isString()) {
-      return authResult;
+      return authResult;  // unauthenticated
     }
     authResult._username = usernameSlice.copyString();
   } else if (bodySlice.hasKey("server_id")) {
     // mop: hmm...nothing to do here :D
     // authResult._username = "root";
   } else {
-    return authResult;
+    return authResult;  // unauthenticated
   }
 
   // mop: optional exp (cluster currently uses non expiring jwts)
   if (bodySlice.hasKey("exp")) {
     VPackSlice const expSlice = bodySlice.get("exp");
-
     if (!expSlice.isNumber()) {
-      return authResult;
+      return authResult;  // unauthenticated
     }
 
-    double expires = expSlice.getNumber<uint64_t>() * 1000;
+    // in seconds since epoch
+    double expiresSecs = expSlice.getNumber<double>();
     double now = TRI_microtime();
-    if (now >= expires || expires == 0) {
-      return authResult;
+    if (now >= expiresSecs || expiresSecs == 0) {
+      return authResult;  // unauthenticated
     }
-    authResult._expiry = expires;
+    authResult._expiry = expiresSecs;
   }
 
   authResult._authorized = true;

@@ -90,7 +90,7 @@ void AuthenticationFeature::collectOptions(
                      new BooleanParameter(&_active));
 
   options->addOption("--server.authentication-timeout",
-                     "timeout for the authentication cache (0 = indefinitely)",
+                     "timeout for the authentication cache in seconds (0 = indefinitely)",
                      new DoubleParameter(&_authenticationTimeout));
 
   options->addOption("--server.local-authentication",
@@ -126,18 +126,16 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 void AuthenticationFeature::prepare() {
   TRI_ASSERT(isEnabled());
   
-  std::unique_ptr<auth::Handler> handler;
 #if USE_ENTERPRISE
   if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
           ->isEnabled()) {
-    handler.reset(new LdapAuthenticationHandler());
+    _userManager = new auth::UserManager(std::make_unique<LdapAuthenticationHandler>());
   } else {
-    handler.reset(new auth::DefaultHandler());
+    _userManager = new auth::UserManager();
   }
 #else
-  handler.reset(new DefaultAuthenticationHandler());
+  _userManager = new auth::UserManager();
 #endif
-  _userManager = new auth::UserManager(std::move(handler));
   _authCache = new auth::TokenCache(_userManager, _authenticationTimeout);
   
   std::string jwtSecret = _jwtSecretProgramOption;

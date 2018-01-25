@@ -94,7 +94,11 @@ class UserManager {
   Result removeUser(std::string const& user);
   Result removeAllUsers();
 
+  /// Convenience method to check a password
   bool checkPassword(std::string const& username, std::string const& password);
+
+  /// Convenience method to refresh user rights
+  void refreshUser(std::string const& username);
 
   auth::Level configuredDatabaseAuthLevel(std::string const& username,
                                           std::string const& dbname);
@@ -115,6 +119,9 @@ class UserManager {
   auth::Level canUseCollectionNoLock(std::string const& username,
                                      std::string const& dbname,
                                      std::string const& coll);
+
+  /// Next point at which a rights would need to be refreshed.
+  double refreshExpiry() const;
 
   /// Overwrite internally cached permissions, only use
   /// for testing purposes
