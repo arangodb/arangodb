@@ -1187,6 +1187,7 @@ def testStepParallel(os, edition, maintainer, modeList) {
 // -----------------------------------------------------------------------------
 
 def testResilience(os, engine, type, logFile, runDir) {
+    echo "testResilience"
     def tmpDir = pwd() + "/" + runDir + "/tmp"
 
     fileOperations([
@@ -1321,6 +1322,7 @@ def testResilienceParallel(os, edition, maintainer) {
 // -----------------------------------------------------------------------------
 
 def buildEdition(os, edition, maintainer) {
+    echo "build"
     def archDir  = "${os}-${edition}-${maintainer}"
     def arch     = "${archDir}/01-build"
 
@@ -1360,10 +1362,16 @@ def buildEdition(os, edition, maintainer) {
                 extra += " -DUSE_MAINTAINER_MODE=ON"
             }
 
+    echo "build1"
             powershell "Remove-Item -Force -Recurse ${arch} -ErrorAction SilentlyContinue"
+    echo "build2"
             powershell "New-Item -Force -ItemType Directory ${arch} -ErrorAction SilentlyContinue"
+    echo "build3"
             powershell "New-Item -ItemType Directory -Force -Path build"
+    echo "build4"
+    echo "cd build; ..\\configure\\${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
             powershell "cd build; ..\\configure\\${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
+    echo "build5"
         }
 
         logStopStage(os, logFile)
