@@ -1,5 +1,5 @@
-3.4.milestone0
---------------
+v3.4.milestone0
+---------------
 
 * fix internal issue #478: remove unused and undocumented REST API endpoints
   _admin/statistics/short and _admin/statistics/long.

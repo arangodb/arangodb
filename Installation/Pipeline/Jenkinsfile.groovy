@@ -130,11 +130,11 @@ credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 // source branch for pull requests
 mainBranch = "unknown"
 
-if ("devel" == "devel") {
+if ("milestone0" == "devel") {
     mainBranch = "devel"
 }
 else { 
-    mainBranch = "3.3"
+    mainBranch = "3.4"
 }
 
 if (! env.BRANCH_NAME) {

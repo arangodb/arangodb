@@ -33,7 +33,7 @@ x-content-type-options: nosniff
       } 
     } 
   }, 
-  <span class="hljs-string">"dataPath"</span> : <span class="hljs-string">"iresearch-11593"</span>, 
+  <span class="hljs-string">"dataPath"</span> : <span class="hljs-string">"arangosearch-11559"</span>, 
   <span class="hljs-string">"locale"</span> : <span class="hljs-string">"C"</span>, 
   <span class="hljs-string">"threadsMaxIdle"</span> : <span class="hljs-number">5</span>, 
   <span class="hljs-string">"threadsMaxTotal"</span> : <span class="hljs-number">5</span>, 
