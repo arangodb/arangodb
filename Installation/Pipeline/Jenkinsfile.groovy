@@ -154,15 +154,15 @@ if (env.BRANCH_NAME =~ /^PR-/) {
 branchLabel = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
 
 buildJenkins = [
-    "linux": "linux && build",
-    "mac" : "mac",
-    "windows": "windows"
+    "linux": "linux && build && arangodb",
+    "mac" : "mac && build && arangodb",
+    "windows": "windows && build && arangodb"
 ]
 
 testJenkins = [
-    "linux": "linux && tests",
-    "mac" : "mac",
-    "windows": "windows"
+    "linux": "linux && tests && arangodb",
+    "mac" : "mac && tests && arangodb",
+    "windows": "windows && tests && arangodb"
 ]
 
 def copyFile(os, src, dst) {
@@ -626,7 +626,7 @@ def setBuildsAndTests() {
         runTests = params.RunTests
         runResilience = params.RunResilience
 
-        if (!useLinux && !userMac && !useWindows && !useDocker){
+        if (!useLinux && !useMac && !useWindows && !useDocker){
             throw("No build type selected for custom build!")
         }
 
