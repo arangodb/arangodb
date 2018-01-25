@@ -48,7 +48,7 @@
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_SegfaultDebugging(char const* value);
 #else
-inline constexpr void TRI_SegfaultDebugging(char const*) {}
+inline void TRI_SegfaultDebugging(char const*) {}
 #endif
 
 /// @brief check whether we should fail at a failure point
@@ -62,21 +62,21 @@ inline constexpr bool TRI_ShouldFailDebugging(char const*) { return false; }
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_AddFailurePointDebugging(char const* value);
 #else
-inline constexpr void TRI_AddFailurePointDebugging(char const*) {}
+inline void TRI_AddFailurePointDebugging(char const*) {}
 #endif
 
 /// @brief remove a failure point
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_RemoveFailurePointDebugging(char const* value);
 #else
-inline constexpr void TRI_RemoveFailurePointDebugging(char const*) {}
+inline void TRI_RemoveFailurePointDebugging(char const*) {}
 #endif
 
 /// @brief clear all failure points
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_ClearFailurePointsDebugging();
 #else
-inline constexpr void TRI_ClearFailurePointsDebugging() {}
+inline void TRI_ClearFailurePointsDebugging() {}
 #endif
 
 /// @brief returns whether failure point debugging can be used
