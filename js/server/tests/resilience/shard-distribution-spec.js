@@ -90,7 +90,6 @@ describe('Shard distribution', function () {
             serverCount += 1;
           }
         }
-        console.log("Found health records:", serverCount, health.Health, count);
         if (serverCount >= dbServerCount) {
           break;
         }
@@ -171,8 +170,6 @@ describe('Shard distribution', function () {
       const dist = JSON.parse(all.body).results;
       const orig = dist[colName].Current;
       const fol = dist[followCollection].Current;
-      require("internal").print(orig);
-      require("internal").print(fol);
       const origShards = Object.keys(orig).sort();
       const folShards = Object.keys(fol).sort();
       // Now we have all shard names sorted in alphabetical ordering.
@@ -279,9 +276,6 @@ describe('Shard distribution', function () {
               "_system", collection, s)
           );
           let replicas = ccinfo.map(s => s.servers);
-          if (count % 10 === 0) {
-            console.error(replicas);
-          }
           if (_.every(replicas, x => x.length === replFactor)) {
             return true;
           }
