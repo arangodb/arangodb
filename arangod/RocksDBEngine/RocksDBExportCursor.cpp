@@ -184,6 +184,8 @@ void RocksDBExportCursor::dump(VPackBuilder& builder) {
     }
   } catch (arangodb::basics::Exception const& ex) {
     THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), ex.what());
+  } catch (std::bad_alloc const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY, ex.what());
   } catch (std::exception const& ex) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {

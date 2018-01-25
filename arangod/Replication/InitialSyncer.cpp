@@ -189,7 +189,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
 
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg = "got invalid response from master at " +
-                   std::string(_masterInfo._endpoint) +
+                   _masterInfo._endpoint +
                    ": invalid response type for initial data. expecting array";
 
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -221,9 +221,13 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
     sendFinishBatch();
     errorMsg = ex.what();
     return ex.code();
+  } catch (std::bad_alloc const& ex) {
+    sendFinishBatch();
+    errorMsg = GET_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY, ex.what());
+    return TRI_ERROR_OUT_OF_MEMORY;
   } catch (std::exception const& ex) {
     sendFinishBatch();
-    errorMsg = ex.what();
+    errorMsg = GET_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
     return TRI_ERROR_INTERNAL;
   } catch (...) {
     sendFinishBatch();
@@ -725,8 +729,22 @@ int InitialSyncer::handleCollectionDump(arangodb::LogicalCollection* coll,
       trx.pinData(coll->cid());  // will throw when it fails
 
       if (res.ok()) {
-        res = applyCollectionDump(trx, coll, response.get(),
-                                  markersProcessed, errorMsg);
+        try {
+          res = applyCollectionDump(trx, coll, response.get(),
+                                    markersProcessed, errorMsg);
+        } catch (basics::Exception const& ex) {
+          if (errorMsg.empty()) {
+            res.reset(ex.code(), std::string("caught exception in applyCollectionDump: ") + ex.what());
+          } else {
+            res.reset(ex.code(), std::string("caught exception in applyCollectionDump: ") + errorMsg + ", " + ex.what());
+          }
+        } catch (std::exception const& ex) {
+          if (errorMsg.empty()) {
+            res.reset(TRI_ERROR_INTERNAL, std::string("caught exception in applyCollectionDump: ") + ex.what());
+          } else {
+            res.reset(TRI_ERROR_INTERNAL, std::string("caught exception in applyCollectionDump: ") + errorMsg + ", " + ex.what());
+          }
+        }
         res = trx.finish(res.errorNumber());
       }
     }
@@ -861,7 +879,7 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* coll,
 
   if (res != TRI_ERROR_NO_ERROR) {
     errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": response is no object";
+               _masterInfo._endpoint + ": response is no object";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -943,8 +961,11 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* coll,
     res = EngineSelectorFeature::ENGINE->handleSyncKeys(*this, coll, keysId.copyString(), errorMsg);
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
+  } catch (std::bad_alloc const& ex) {
+    errorMsg = GET_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY, ex.what());
+    res = TRI_ERROR_OUT_OF_MEMORY;
   } catch (std::exception const& ex) {
-    errorMsg = ex.what();
+    errorMsg = GET_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
@@ -1163,10 +1184,24 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
     {
       READ_LOCKER(readLocker, _vocbase->_inventoryLock);
 
-      if (incremental && getSize(col) > 0) {
-        res = handleCollectionSync(col, masterName, _masterInfo._lastLogTick, errorMsg);
-      } else {
-        res = handleCollectionDump(col, masterName, _masterInfo._lastLogTick, errorMsg);
+      try {
+        if (incremental && getSize(col) > 0) {
+          res = handleCollectionSync(col, masterName, _masterInfo._lastLogTick, errorMsg);
+        } else {
+          res = handleCollectionDump(col, masterName, _masterInfo._lastLogTick, errorMsg);
+        }
+      } catch (basics::Exception const& ex) {
+        if (errorMsg.empty()) {
+          res.reset(ex.code(), std::string("caught exception in handleCollectionSync/Dump: ") + ex.what());
+        } else {
+          res.reset(ex.code(), std::string("caught exception in handleCollectionSync/Dump: ") + errorMsg + ", " + ex.what());
+        }
+      } catch (std::exception const& ex) {
+        if (errorMsg.empty()) {
+          res.reset(TRI_ERROR_INTERNAL, std::string("caught exception in handleCollectionSync/Dump: ") + ex.what());
+        } else {
+          res.reset(TRI_ERROR_INTERNAL, std::string("caught exception in handleCollectionSync/Dump: ") + errorMsg + ", " + ex.what());
+        }
       }
 
       if (res.ok()) {
@@ -1314,33 +1349,51 @@ int InitialSyncer::handleInventoryResponse(VPackSlice const& slice,
     collections.emplace_back(parameters, indexes);
   }
 
-  int res;
+  sync_phase_e phase;
+  try {
+    // STEP 1: validate collection declarations from master
+    // ----------------------------------------------------------------------------------
 
-  // STEP 1: validate collection declarations from master
-  // ----------------------------------------------------------------------------------
+    // iterate over all collections from the master...
+    phase = PHASE_VALIDATE;
+    int res = iterateCollections(collections, incremental, errorMsg, phase);
 
-  // iterate over all collections from the master...
-  res = iterateCollections(collections, incremental, errorMsg, PHASE_VALIDATE);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    // STEP 2: drop and re-create collections locally if they are also present on
+    // the master
+    //  ------------------------------------------------------------------------------------
+
+    phase = PHASE_DROP_CREATE;
+    res =
+        iterateCollections(collections, incremental, errorMsg, phase);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    // STEP 3: sync collection data from master and create initial indexes
+    // ----------------------------------------------------------------------------------
+
+    phase = PHASE_DUMP;
+    return iterateCollections(collections, incremental, errorMsg, phase);
+  } catch (basics::Exception const& ex) {
+    if (errorMsg.empty()) {
+      errorMsg = std::string("caught exception in iterateCollections, phase ") + translatePhase(phase) + ": " + ex.what();
+    } else {
+      errorMsg = std::string("caught exception in iterateCollections, phase ") + translatePhase(phase) + ": " + errorMsg + ", " + ex.what();
+    }
+    return ex.code();
+  } catch (std::exception const& ex) {
+    if (errorMsg.empty()) {
+      errorMsg = std::string("caught exception in iterateCollections, phase ") + translatePhase(phase) + ": " + ex.what();
+    } else {
+      errorMsg = std::string("caught exception in iterateCollections, phase ") + translatePhase(phase) + ": " + errorMsg + ", " + ex.what();
+    }
+    return TRI_ERROR_INTERNAL;
   }
-
-  // STEP 2: drop and re-create collections locally if they are also present on
-  // the master
-  //  ------------------------------------------------------------------------------------
-
-  res =
-      iterateCollections(collections, incremental, errorMsg, PHASE_DROP_CREATE);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  // STEP 3: sync collection data from master and create initial indexes
-  // ----------------------------------------------------------------------------------
-
-  return iterateCollections(collections, incremental, errorMsg, PHASE_DUMP);
 }
 
 /// @brief iterate over all collections from an array and apply an action
@@ -1355,12 +1408,28 @@ int InitialSyncer::iterateCollections(
     VPackSlice const parameters = collection.first;
     VPackSlice const indexes = collection.second;
 
-    errorMsg = "";
-    int res =
-        handleCollection(parameters, indexes, incremental, errorMsg, phase);
+    try {
+      errorMsg = "";
+      int res =
+          handleCollection(parameters, indexes, incremental, errorMsg, phase);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    } catch (basics::Exception const& ex) {
+      if (errorMsg.empty()) {
+        errorMsg = std::string("caught exception in handleCollection, phase ") + translatePhase(phase) + ": " + ex.what();
+      } else {
+        errorMsg = std::string("caught exception in handleCollection, phase ") + translatePhase(phase) + ": " + errorMsg + ", " + ex.what();
+      }
+      return ex.code();
+    } catch (std::exception const& ex) {
+      if (errorMsg.empty()) {
+        errorMsg = std::string("caught exception in handleCollection, phase ") + translatePhase(phase) + ": " + ex.what();
+      } else {
+        errorMsg = std::string("caught exception in handleCollection, phase ") + translatePhase(phase) + ": " + errorMsg + ", " + ex.what();
+      }
+      return TRI_ERROR_INTERNAL;
     }
   }
 

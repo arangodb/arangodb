@@ -52,7 +52,7 @@ Exception::Exception(arangodb::Result const& result, char const* file, int line)
 }
 
 Exception::Exception(arangodb::Result&& result, char const* file, int line)
-    : _errorMessage(std::move(result).errorMessage()), //cast to rvalueref so the error stirng gets moved out
+    : _errorMessage(std::move(result).errorMessage()), //cast to rvalueref so the error string gets moved out
       _file(file),
       _line(line),
       _code(result.errorNumber()) {
@@ -103,21 +103,47 @@ char const* Exception::what() const throw() { return _errorMessage.c_str(); }
 
 /// @brief append original error location to message
 void Exception::appendLocation () {
-  if (_code == TRI_ERROR_INTERNAL) {
-    _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + "). Please report this error to arangodb.com";
-  } else if (_code == TRI_ERROR_OUT_OF_MEMORY) {
-    _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + ")";
-  }
+  try {
+    if (_code == TRI_ERROR_INTERNAL) {
+      _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + "). Please report this error to arangodb.com";
+    } else if (_code == TRI_ERROR_OUT_OF_MEMORY) {
+      _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + ")";
+    }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
-  if (WithBackTrace) {
-    _errorMessage += std::string("\n\n");
-    TRI_GetBacktrace(_errorMessage);
-    _errorMessage += std::string("\n\n");
+    if (WithBackTrace) {
+      _errorMessage += std::string("\n\n");
+      TRI_GetBacktrace(_errorMessage);
+      _errorMessage += std::string("\n\n");
+    }
+#endif
+#endif
+  } catch (...) {
+    // this is called from the exception constructor
+    // no exception should escape from here
   }
-#endif
-#endif
+}
+  
+std::string Exception::messageFromException(int code, char const* message, char const* file, int line) {
+  if (message == nullptr) {
+    message = "unknown exception";
+  }
+
+  try {
+    std::string result(message);
+    if (code == TRI_ERROR_INTERNAL) {
+      result += std::string(" (exception location: ") + file + ":" + std::to_string(line) + "). Please report this error to arangodb.com";
+    } else if (code == TRI_ERROR_OUT_OF_MEMORY) {
+      result += std::string(" (exception location: ") + file + ":" + std::to_string(line) + ")";
+    }
+
+    return result;
+  } catch (...) {
+    // this is called from the exception constructor
+    // no exception should escape from here
+    return std::string();
+  }
 }
 
 /// @brief construct an error message from a template string

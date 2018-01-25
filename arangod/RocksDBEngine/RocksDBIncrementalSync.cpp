@@ -382,7 +382,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
 
   if (res != TRI_ERROR_NO_ERROR) {
     errorMsg = "got invalid response from master at " +
-               std::string(syncer._masterInfo._endpoint) +
+               syncer._masterInfo._endpoint +
                ": invalid response is no array";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;

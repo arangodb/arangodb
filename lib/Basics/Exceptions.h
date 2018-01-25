@@ -58,6 +58,9 @@
 #define THROW_ARANGO_EXCEPTION_MESSAGE(code, message) \
   throw arangodb::basics::Exception(code, message, __FILE__, __LINE__)
 
+#define GET_ARANGO_EXCEPTION_MESSAGE(code, message) \
+  arangodb::basics::Exception::messageFromException(code, message, __FILE__, __LINE__)
+
 namespace arangodb {
 namespace basics {
 
@@ -88,6 +91,9 @@ class Exception : public virtual std::exception {
   std::string message() const;
   int code() const noexcept;
   void addToMessage(std::string const&);
+
+  static std::string messageFromException(int code, char const* message, char const* file, int line);
+
  private:
   void appendLocation();
 

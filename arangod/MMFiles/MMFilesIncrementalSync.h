@@ -160,7 +160,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
     Result res = trx.begin();
 
     if (!res.ok()) {
-      errorMsg =std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
+      errorMsg = std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
       res.reset(res.errorNumber(), errorMsg);
       return res.errorNumber();
     }
@@ -273,7 +273,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
 
   if (res != TRI_ERROR_NO_ERROR) {
     errorMsg = "got invalid response from master at " +
-               std::string(syncer._masterInfo._endpoint) +
+               syncer._masterInfo._endpoint +
                ": invalid response is no array";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -383,7 +383,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
     Result res = trx.begin();
 
     if (!res.ok()) {
-      errorMsg =std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
+      errorMsg = std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
       res.reset(res.errorNumber(), res.errorMessage());
       return res.errorNumber();
     }
@@ -674,7 +674,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
 
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg = "got invalid response from master at " +
-                     std::string(syncer._masterInfo._endpoint) +
+                     syncer._masterInfo._endpoint +
                      ": response is no array";
 
           return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
