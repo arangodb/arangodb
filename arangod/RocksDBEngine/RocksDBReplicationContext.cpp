@@ -221,6 +221,13 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     TRI_vocbase_t* vocbase, std::string const& collectionName,
     basics::StringBuffer& buff, uint64_t chunkSize) {
   CollectionIterator* collection{nullptr};
+  auto release = [&]() -> void {
+    if (collection) {
+      WRITE_LOCKER(locker, _contextLock);
+      collection->release();
+    }
+  };
+  TRI_DEFER(release());
   {
     WRITE_LOCKER(writeLocker, _contextLock);
     TRI_ASSERT(vocbase != nullptr);
@@ -237,13 +244,6 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
       return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
   }
-  auto release = [&]() -> void {
-    if (collection) {
-      WRITE_LOCKER(locker, _contextLock);
-      collection->release();
-    }
-  };
-  TRI_DEFER(release());
   READ_LOCKER(readLocker, _contextLock);
 
   // set type
@@ -657,8 +657,8 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
 }
 
 void RocksDBReplicationContext::CollectionIterator::release() {
-  TRI_ASSERT(isUsed);
-  isUsed = false;
+  TRI_ASSERT(isUsed.load());
+  isUsed.store(false);
 }
 
 RocksDBReplicationContext::CollectionIterator*
@@ -669,7 +669,7 @@ RocksDBReplicationContext::getCollectionIterator(TRI_voc_cid_t cid) {
   auto it = _iterators.find(cid);
   if (_iterators.end() != it) {
     // exists, check if used
-    if (!it->second->isUsed) {
+    if (!it->second->isUsed.load()) {
       // unused, select it
       collection = it->second.get();
     }
@@ -690,7 +690,7 @@ RocksDBReplicationContext::getCollectionIterator(TRI_voc_cid_t cid) {
   }
 
   if (collection) {
-    collection->isUsed = true;
+    collection->isUsed.store(true);
   }
 
   return collection;
