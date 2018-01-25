@@ -191,6 +191,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
         af->userManager()->updateUser(
             ExecContext::CURRENT->user(), [&](auth::User& entry) {
               entry.grantCollection(vocbase->name(), name, auth::Level::RW);
+              return TRI_ERROR_NO_ERROR;
             });
       }
       
@@ -206,9 +207,10 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
           ServerState::instance()->isSingleServerOrCoordinator()) {
         // this should not fail, we can not get here without database RW access
         af->userManager()->updateUser(
-            ExecContext::CURRENT->user(), [&](auth::User& entry) {
-              entry.grantCollection(vocbase->name(), name, auth::Level::RW);
-            });
+          ExecContext::CURRENT->user(), [&](auth::User& entry) {
+            entry.grantCollection(vocbase->name(), name, auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
+          });
       }
       func(col);
     }
@@ -463,8 +465,8 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
 
   if (res.ok() && ServerState::instance()->isSingleServerOrCoordinator()) {
     AuthenticationFeature* af = AuthenticationFeature::instance();
-    af->userManager()->enumerateUsers([&](auth::User& entry) {
-      entry.removeCollection(dbname, collName);
+    af->userManager()->enumerateUsers([&](auth::User& entry) -> bool {
+      return entry.removeCollection(dbname, collName);
     });
   }
   return res;

@@ -46,12 +46,11 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-auth::TokenCache::TokenCache(auth::UserManager* um, double timeout) :
-      _userManager(um),
-_authTimeout(timeout),
+auth::TokenCache::TokenCache(auth::UserManager* um, double timeout)
+    : _userManager(um),
+      _authTimeout(timeout),
       _jwtCache(16384),
-      _jwtSecret("")
-       {}
+      _jwtSecret("") {}
 
 auth::TokenCache::~TokenCache() {
   // properly clear structs while using the appropriate locks
@@ -80,8 +79,8 @@ std::string auth::TokenCache::jwtSecret() const noexcept {
 // public called from HttpCommTask.cpp and VstCommTask.cpp
 // should only lock if required, otherwise we will serialize all
 // requests whether we need to or not
-auth::TokenCache::Entry auth::TokenCache::checkAuthentication(AuthenticationMethod authType,
-                                                    std::string const& secret) {
+auth::TokenCache::Entry auth::TokenCache::checkAuthentication(
+    AuthenticationMethod authType, std::string const& secret) {
   switch (authType) {
     case AuthenticationMethod::BASIC:
       return checkAuthenticationBasic(secret);
@@ -100,7 +99,8 @@ void auth::TokenCache::invalidateBasicCache() {
 }
 
 // private
-auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string const& secret) {
+auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
+    std::string const& secret) {
   auto role = ServerState::instance()->getRole();
   if (role != ServerState::ROLE_SINGLE &&
       role != ServerState::ROLE_COORDINATOR) {
@@ -130,7 +130,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string c
   std::string password = up.substr(n + 1);
 
   bool authorized = _userManager->checkPassword(username, password);
-  
+
   double expiry = _authTimeout;
   if (expiry > 0) {
     expiry += TRI_microtime();
@@ -155,7 +155,8 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string c
   return entry;
 }
 
-auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string const& jwt) {
+auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
+    std::string const& jwt) {
   try {
     // note that we need the write lock here because it is an LRU
     // cache. reading from it will move the read entry to the start of
@@ -167,8 +168,9 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
     if (entry.expired()) {
       try {
         _jwtCache.remove(jwt);
-      } catch (std::range_error const&) {}
-      return auth::TokenCache::Entry(); // unauthorized
+      } catch (std::range_error const&) {
+      }
+      return auth::TokenCache::Entry();  // unauthorized
     }
     return entry;
   } catch (std::range_error const&) {
@@ -212,8 +214,8 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
   return (auth::TokenCache::Entry)entry;
 }
 
-std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(std::string const& str,
-                                                  std::string const& hint) {
+std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(
+    std::string const& str, std::string const& hint) {
   std::shared_ptr<VPackBuilder> result;
   VPackParser parser;
   try {
@@ -268,7 +270,8 @@ bool auth::TokenCache::validateJwtHeader(std::string const& header) {
   return true;
 }
 
-auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& body) {
+auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
+    std::string const& body) {
   std::shared_ptr<VPackBuilder> bodyBuilder =
       parseJson(StringUtils::decodeBase64(body), "jwt body");
   auth::TokenCache::Entry authResult;
@@ -323,8 +326,8 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
   return authResult;
 }
 
-bool auth::TokenCache::validateJwtHMAC256Signature(std::string const& message,
-                                           std::string const& signature) {
+bool auth::TokenCache::validateJwtHMAC256Signature(
+    std::string const& message, std::string const& signature) {
   std::string decodedSignature = StringUtils::decodeBase64U(signature);
 
   return verifyHMAC(_jwtSecret.c_str(), _jwtSecret.length(), message.c_str(),
@@ -342,8 +345,7 @@ std::string auth::TokenCache::generateRawJwt(VPackSlice const& body) const {
   }
 
   std::string fullMessage(StringUtils::encodeBase64(headerBuilder.toJson()) +
-                          "." +
-                          StringUtils::encodeBase64(body.toJson()));
+                          "." + StringUtils::encodeBase64(body.toJson()));
 
   std::string signature =
       sslHMAC(_jwtSecret.c_str(), _jwtSecret.length(), fullMessage.c_str(),

@@ -25,15 +25,15 @@
 #ifndef ARANGOD_AUTHENTICATION_USER_H
 #define ARANGOD_AUTHENTICATION_USER_H 1
 
-#include "Basics/Common.h"
 #include "Auth/Common.h"
+#include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace auth {
-  
+
 /// @brief Represents a 'user' entry.
 /// It contains structures to store the access
 /// levels for databases and collections.  The user
@@ -44,7 +44,7 @@ class User {
 
  public:
   static User newUser(std::string const& user, std::string const& pass,
-                               auth::Source source);
+                      auth::Source source);
   static User fromDocument(velocypack::Slice const&);
 
  private:
@@ -55,6 +55,8 @@ class User {
 
  public:
   std::string const& key() const { return _key; }
+  TRI_voc_rid_t rev() const { return _rev; }
+
   std::string const& username() const { return _username; }
   std::string const& passwordMethod() const { return _passwordMethod; }
   std::string const& passwordSalt() const { return _passwordSalt; }
@@ -69,23 +71,26 @@ class User {
 
   void setActive(bool active) { _active = active; }
 
-  std::unordered_set<std::string> roles () const { return _roles; }
-  void setRoles(std::unordered_set<std::string> const& roles) { _roles = roles; }
+  std::unordered_set<std::string> roles() const { return _roles; }
+  void setRoles(std::unordered_set<std::string> const& roles) {
+    _roles = roles;
+  }
 
-  // grant specific access rights for db. The default "*" is also a
-  // valid database name
+  /// grant specific access rights for db. The default "*" is also a
+  /// valid database name
   void grantDatabase(std::string const& dbname, auth::Level level);
 
-  // Removes the entry.
-  void removeDatabase(std::string const& dbname);
+  /// Removes the entry, returns true if entry existed
+  bool removeDatabase(std::string const& dbname);
 
-  // Grant collection rights, "*" is a valid parameter for dbname and
-  // collection.  The combination of "*"/"*" is automatically used for
-  // the root
+  /// Grant collection rights, "*" is a valid parameter for dbname and
+  /// collection.  The combination of "*"/"*" is automatically used for
+  /// the root
   void grantCollection(std::string const& dbname, std::string const& collection,
                        auth::Level level);
 
-  void removeCollection(std::string const& dbname,
+  /// Removes the collection right, returns true if entry existed
+  bool removeCollection(std::string const& dbname,
                         std::string const& collection);
 
   // Resolve the access level for this database. Might fall back to
@@ -96,14 +101,26 @@ class User {
   // special '*' entry if either the database or collection is not
   // found.
   auth::Level collectionAuthLevel(std::string const& dbname,
-                                std::string const& collectionName) const;
+                                  std::string const& collectionName) const;
 
   bool hasSpecificDatabase(std::string const& dbname) const;
   bool hasSpecificCollection(std::string const& dbname,
                              std::string const& collectionName) const;
+  
+  /// Content of `userData` or `extra` fields
+  velocypack::Slice userData() const { return _userData.slice(); }
+  
+  /// Set content of `userData` or `extra` fields
+  void setUserData(velocypack::Builder&& b) { _userData = std::move(b); }
+  
+  /// Content of internal `configData` field, used by the WebUI
+  velocypack::Slice configData() const { return _configData.slice(); }
+  
+  /// Set content of internal `configData` field, used by the WebUI
+  void setConfigData(velocypack::Builder&& b) { _configData = std::move(b); }
 
  private:
-  User() {}
+  User(std::string&& key, TRI_voc_rid_t rid) : _key(key), _rev(rid) {}
 
   struct DBAuthContext {
     DBAuthContext(auth::Level dbLvl,
@@ -115,7 +132,7 @@ class User {
         : _databaseAuthLevel(dbLvl), _collectionAccess(std::move(coll)) {}
 
     auth::Level collectionAuthLevel(std::string const& collectionName,
-                                  bool& notFound) const;
+                                    bool& notFound) const;
 
    public:
     auth::Level _databaseAuthLevel;
@@ -124,8 +141,9 @@ class User {
 
  private:
   std::string _key;
+  TRI_voc_rid_t _rev;
   bool _active = true;
-  auth::Source _source = auth::Source::COLLECTION;
+  auth::Source _source = auth::Source::LOCAL;
 
   std::string _username;
   std::string _passwordMethod;
@@ -133,8 +151,11 @@ class User {
   std::string _passwordHash;
   std::unordered_map<std::string, DBAuthContext> _dbAccess;
   std::unordered_set<std::string> _roles;
+  
+  velocypack::Builder _userData;
+  velocypack::Builder _configData;
 };
-} // auth
-} // arangodb
+}  // auth
+}  // arangodb
 
 #endif

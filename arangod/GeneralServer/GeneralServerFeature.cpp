@@ -265,7 +265,6 @@ void GeneralServerFeature::start() {
   TRI_ASSERT(authentication != nullptr);
   if (authentication->isActive()) {
     authentication->userManager()->outdate();
-    authentication->userManager()->reloadAllUsers();
   }
 }
 

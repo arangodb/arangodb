@@ -37,58 +37,53 @@
 namespace arangodb {
 namespace auth {
 class UserManager;
-  
+
 /// @brief Caches the basic and JWT authentication tokens
 class TokenCache {
-
  public:
   /// Construct authentication cache
   /// @param um UserManager singleton
   /// @param timeout default token expiration timeout
   explicit TokenCache(auth::UserManager* um, double timeout);
   ~TokenCache();
-  
-public:
-  
-struct Entry {
- public:
-  Entry() : _authorized(false), _expiry(0) {}
-
-  explicit Entry(std::string const& username, bool a, double t)
-  : _username(username), _authorized(a), _expiry(t) {}
-
-  void setExpiry(double expiry) { _expiry = expiry; }
-  bool expired() { return _expiry != 0 && _expiry < TRI_microtime(); }
 
  public:
-  /// username
-  std::string _username;
-  /// User exists and password was checked
-  bool _authorized;
-  /// expiration time of this result
-  double _expiry;
-};
+  struct Entry {
+   public:
+    Entry() : _authorized(false), _expiry(0) {}
+
+    explicit Entry(std::string const& username, bool a, double t)
+        : _username(username), _authorized(a), _expiry(t) {}
+
+    void setExpiry(double expiry) { _expiry = expiry; }
+    bool expired() { return _expiry != 0 && _expiry < TRI_microtime(); }
+
+   public:
+    /// username
+    std::string _username;
+    /// User exists and password was checked
+    bool _authorized;
+    /// expiration time of this result
+    double _expiry;
+  };
 
  public:
-  
-  TokenCache::Entry checkAuthentication(arangodb::rest::AuthenticationMethod authType,
-                                        std::string const& secret);
+  TokenCache::Entry checkAuthentication(
+      arangodb::rest::AuthenticationMethod authType, std::string const& secret);
 
   /// Clear the cache of username / password auth
   void invalidateBasicCache();
-  
+
   /// set new jwt secret, regenerate _jetToken
   void setJwtSecret(std::string const&);
   std::string jwtSecret() const noexcept;
   /// Get the jwt token, which should be used for communicatin
   std::string const& jwtToken() const noexcept { return _jwtToken; }
-  
+
   std::string generateRawJwt(velocypack::Slice const&) const;
   std::string generateJwt(velocypack::Slice const&) const;
-  
-  
-private:
-  
+
+ private:
   /// Cached JWT entry
   /*struct JwtEntry : public auth::Cache::Entry {
   public:
@@ -99,37 +94,35 @@ private:
   };*/
 
  private:
-  
   /// Check basic HTTP Authentication header
   TokenCache::Entry checkAuthenticationBasic(std::string const& secret);
   /// Check JWT token contents
   TokenCache::Entry checkAuthenticationJWT(std::string const& secret);
-  
+
   bool validateJwtHeader(std::string const&);
   TokenCache::Entry validateJwtBody(std::string const&);
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
-  
+
   std::shared_ptr<velocypack::Builder> parseJson(std::string const&,
                                                  std::string const&);
-  
+
   /// generate new _jwtToken
   void generateJwtToken();
 
  private:
-  
   auth::UserManager* const _userManager;
   double const _authTimeout;
-  
+
   mutable arangodb::basics::ReadWriteLock _basicLock;
   mutable arangodb::basics::ReadWriteLock _jwtLock;
-  
+
   std::unordered_map<std::string, TokenCache::Entry> _basicCache;
   arangodb::basics::LruCache<std::string, TokenCache::Entry> _jwtCache;
-  
+
   std::string _jwtSecret;
   std::string _jwtToken;
 };
-} // auth
-} // arangodb
+}  // auth
+}  // arangodb
 
 #endif

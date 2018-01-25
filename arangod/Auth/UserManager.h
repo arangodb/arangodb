@@ -39,9 +39,9 @@
 
 namespace arangodb {
 namespace aql {
-  class QueryRegistry;
+class QueryRegistry;
 }
-  
+
 namespace auth {
 class Handler;
 
@@ -53,13 +53,14 @@ typedef std::unordered_map<std::string, auth::User> UserMap;
 /// to avoid unecessary disk access.
 class UserManager {
  public:
+  explicit UserManager();
   explicit UserManager(std::unique_ptr<arangodb::auth::Handler>&&);
   ~UserManager();
 
  public:
-  typedef std::function<void(auth::User&)> UserCallback;
-  typedef std::function<void(auth::User const&)> ConstUserCallback;
-  
+  typedef std::function<Result(auth::User&)> UserCallback;
+  typedef std::function<Result(auth::User const&)> ConstUserCallback;
+
   void setQueryRegistry(aql::QueryRegistry* registry) {
     TRI_ASSERT(registry != nullptr);
     _queryRegistry = registry;
@@ -78,38 +79,33 @@ class UserManager {
   velocypack::Builder allUsers();
   /// Add user from arangodb, do not use for LDAP  users
   Result storeUser(bool replace, std::string const& user,
-                   std::string const& pass, bool active);
-  
+                   std::string const& pass, bool active,
+                   velocypack::Slice extras);
+
   /// Enumerate list of all users
-  Result enumerateUsers(UserCallback const&);
+  Result enumerateUsers(std::function<bool(auth::User&)>&&);
   /// Update specific user
-  Result updateUser(std::string const& user, UserCallback const&);
+  Result updateUser(std::string const& user, UserCallback&&);
   /// Access user without modifying it
-  Result accessUser(std::string const& user, ConstUserCallback const&);
-  
+  Result accessUser(std::string const& user, ConstUserCallback&&);
+
+  /// Serialize user into legacy format for REST API
   velocypack::Builder serializeUser(std::string const& user);
   Result removeUser(std::string const& user);
   Result removeAllUsers();
 
-  velocypack::Builder getConfigData(std::string const& user);
-  Result setConfigData(std::string const& user, velocypack::Slice const& data);
-  velocypack::Builder getUserData(std::string const& user);
-  Result setUserData(std::string const& user, velocypack::Slice const& data);
+  bool checkPassword(std::string const& username, std::string const& password);
 
-  bool checkPassword(std::string const& username,
-                     std::string const& password);
-
-  
   auth::Level configuredDatabaseAuthLevel(std::string const& username,
-                                        std::string const& dbname);
+                                          std::string const& dbname);
   auth::Level configuredCollectionAuthLevel(std::string const& username,
-                                          std::string const& dbname,
-                                          std::string coll);
+                                            std::string const& dbname,
+                                            std::string coll);
   auth::Level canUseDatabase(std::string const& username,
                              std::string const& dbname);
   auth::Level canUseCollection(std::string const& username,
-                             std::string const& dbname,
-                             std::string const& coll);
+                               std::string const& dbname,
+                               std::string const& coll);
 
   // No Lock variants of the above to be used in callbacks
   // Use with CARE! You need to make sure that the lock
@@ -117,8 +113,8 @@ class UserManager {
   auth::Level canUseDatabaseNoLock(std::string const& username,
                                    std::string const& dbname);
   auth::Level canUseCollectionNoLock(std::string const& username,
-                                   std::string const& dbname,
-                                   std::string const& coll);
+                                     std::string const& dbname,
+                                     std::string const& coll);
 
   /// Overwrite internally cached permissions, only use
   /// for testing purposes
@@ -128,7 +124,8 @@ class UserManager {
   // worker function for canUseDatabase
   // must only be called with the read-lock on _authInfoLock being held
   auth::Level configuredDatabaseAuthLevelInternal(std::string const& username,
-                                   std::string const& dbname, size_t depth) const;
+                                                  std::string const& dbname,
+                                                  size_t depth) const;
 
   // internal method called by canUseCollection
   // asserts that collection name is non-empty and already translated
@@ -137,21 +134,30 @@ class UserManager {
                                                     std::string const& dbname,
                                                     std::string const& coll,
                                                     size_t depth) const;
+  /// @brief load users and permissions from local database
   void loadFromDB();
-  bool parseUsers(velocypack::Slice const& slice);
-  Result storeUserInternal(auth::User const& user, bool replace);
+  /// @brief store or replace user object
+  Result storeUserInternal(auth::User&& user, bool replace);
 
  private:
-  basics::ReadWriteLock _authInfoLock;
+  /// Protected the sync process from db, always lock
+  /// before locking _userCacheLock
   Mutex _loadFromDBLock;
+
+  /// Protect the _userCache access
+  basics::ReadWriteLock _userCacheLock;
+
+  /// @brief need to sync _userCache from database
   std::atomic<bool> _outdated;
 
-  UserMap _authInfo;
-  
+  /// Caches permissions and other user info
+  UserMap _userCache;
+
   aql::QueryRegistry* _queryRegistry;
-  std::unique_ptr<arangodb::auth::Handler> _authHandler;
+  /// iterface to external authentication systems like LDAP
+  arangodb::auth::Handler* _authHandler;
 };
-} // auth
-} // arangodb
+}  // auth
+}  // arangodb
 
 #endif

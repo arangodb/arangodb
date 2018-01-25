@@ -114,6 +114,7 @@ void UpgradeFeature::start() {
         ServerState::instance()->isSingleServerOrCoordinator()) {
       um->updateUser("root", [&](auth::User& user) {
         user.updatePassword(init->defaultPassword());
+        return TRI_ERROR_NO_ERROR;
       });
     }
   }
@@ -130,9 +131,10 @@ void UpgradeFeature::start() {
       return;
     }
 
-    res = um->storeUser(true, "root", init->defaultPassword(), true);
+    VPackSlice extras = VPackSlice::noneSlice();
+    res = um->storeUser(true, "root", init->defaultPassword(), true, extras);
     if (res.fail() && res.errorNumber() == TRI_ERROR_USER_NOT_FOUND) {
-      res = um->storeUser(false, "root", init->defaultPassword(), true);
+      res = um->storeUser(false, "root", init->defaultPassword(), true, extras);
     }
 
     if (res.fail()) {

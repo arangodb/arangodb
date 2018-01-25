@@ -29,5 +29,5 @@ using namespace arangodb;
 
 auth::HandlerResult auth::DefaultHandler::authenticate(
     std::string const& username, std::string const& password) {
-  return auth::HandlerResult(TRI_ERROR_USER_NOT_FOUND, auth::Source::COLLECTION);
+  return auth::HandlerResult(TRI_ERROR_USER_NOT_FOUND, auth::Source::LOCAL);
 }

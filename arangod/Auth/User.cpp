@@ -18,14 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author 
+/// @author
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Auth/User.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/StringRef.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
@@ -105,7 +105,7 @@ static int HexHashFromData(std::string const& hashMethod,
 
 static void AddSource(VPackBuilder& builder, auth::Source source) {
   switch (source) {
-    case auth::Source::COLLECTION:
+    case auth::Source::LOCAL:
       builder.add("source", VPackValue("COLLECTION"));
       break;
     case auth::Source::LDAP:
@@ -145,9 +145,9 @@ static auth::Level AuthLevelFromSlice(VPackSlice const& slice) {
 // ============= static ==================
 
 auth::User auth::User::newUser(std::string const& user,
-                                     std::string const& password,
-                                     auth::Source source) {
-  auth::User entry;
+                               std::string const& password,
+                               auth::Source source) {
+  auth::User entry("", 0);
   entry._active = true;
   entry._source = source;
 
@@ -170,7 +170,7 @@ auth::User auth::User::newUser(std::string const& user,
 }
 
 void auth::User::fromDocumentRoles(auth::User& entry,
-                                      VPackSlice const& rolesSlice) {
+                                   VPackSlice const& rolesSlice) {
   for (auto const& it : VPackArrayIterator(rolesSlice)) {
     if (it.isString()) {
       std::string const role = it.copyString();
@@ -181,8 +181,8 @@ void auth::User::fromDocumentRoles(auth::User& entry,
 }
 
 void auth::User::fromDocumentDatabases(auth::User& entry,
-                                          VPackSlice const& databasesSlice,
-                                          VPackSlice const& userSlice) {
+                                       VPackSlice const& databasesSlice,
+                                       VPackSlice const& userSlice) {
   for (auto const& obj : VPackObjectIterator(databasesSlice)) {
     std::string const dbName = obj.key.copyString();
 
@@ -243,15 +243,19 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
 
   VPackSlice const keySlice =
       transaction::helpers::extractKeyFromDocument(slice);
-
   if (!keySlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "cannot extract key");
+                                   "cannot extract _key");
+  }
+
+  TRI_voc_rid_t rev = transaction::helpers::extractRevFromDocument(slice);
+  if (rev == 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "cannot extract _rev");
   }
 
   // extract "user" attribute
   VPackSlice const userSlice = slice.get("user");
-
   if (!userSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "cannot extract username");
@@ -268,7 +272,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
 
   if (!simpleSlice.isObject()) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract simple";
-    return auth::User();
+    return auth::User("", 0);
   }
 
   VPackSlice const methodSlice = simpleSlice.get("method");
@@ -279,7 +283,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
       !hashSlice.isString()) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
         << "cannot extract password internals";
-    return auth::User();
+    return auth::User("", 0);
   }
 
   // extract "active" attribute
@@ -287,13 +291,12 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
 
   if (!activeSlice.isBoolean()) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract active flag";
-    return auth::User();
+    return auth::User("", 0);
   }
 
-  auth::User entry;
-  entry._key = keySlice.copyString();
+  auth::User entry(keySlice.copyString(), rev);
   entry._active = activeSlice.getBool();
-  entry._source = auth::Source::COLLECTION;
+  entry._source = auth::Source::LOCAL;
   entry._username = userSlice.copyString();
   entry._passwordMethod = methodSlice.copyString();
   entry._passwordSalt = saltSlice.copyString();
@@ -311,6 +314,18 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
 
   if (rolesSlice.isArray()) {
     fromDocumentRoles(entry, rolesSlice);
+  }
+  
+  VPackSlice userDataSlice = slice.get("userData");
+  if (userDataSlice.isObject() && !userDataSlice.isEmptyObject()) {
+    entry._userData.clear();
+    entry._userData.add(userDataSlice);
+  }
+    
+  VPackSlice userConfigSlice = slice.get("configData");
+  if (userConfigSlice.isObject() && !userConfigSlice.isEmptyObject()) {
+    entry._configData.clear();
+    entry._configData.add(userConfigSlice);
   }
 
   // ensure the root user always has the right to change permissions
@@ -354,6 +369,9 @@ VPackBuilder auth::User::toVPackBuilder() const {
   if (!_key.empty()) {
     builder.add(StaticStrings::KeyString, VPackValue(_key));
   }
+  if (_rev > 0) {
+    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(_rev)));
+  }
 
   builder.add("user", VPackValue(_username));
   AddSource(builder, _source);
@@ -362,7 +380,7 @@ VPackBuilder auth::User::toVPackBuilder() const {
   {
     VPackObjectBuilder o2(&builder, "authData", true);
     builder.add("active", VPackValue(_active));
-    if (_source == auth::Source::COLLECTION) {
+    if (_source == auth::Source::LOCAL) {
       VPackObjectBuilder o3(&builder, "simple", true);
       builder.add("hash", VPackValue(_passwordHash));
       builder.add("salt", VPackValue(_passwordSalt));
@@ -393,6 +411,14 @@ VPackBuilder auth::User::toVPackBuilder() const {
         }
       }
     }
+  }
+  
+  if (!_userData.isEmpty() && _userData.isClosed() && _userData.slice().isObject()) {
+    builder.add("userData", _userData.slice());
+  }
+  
+  if (!_configData.isEmpty() && _configData.isClosed() && _configData.slice().isObject()) {
+    builder.add("configData", _configData.slice());
   }
 
   return builder;
@@ -425,7 +451,8 @@ void auth::User::grantDatabase(std::string const& dbname, auth::Level level) {
   }
 }
 
-void auth::User::removeDatabase(std::string const& dbname) {
+/// Removes the entry, returns true if entry existed
+bool auth::User::removeDatabase(std::string const& dbname) {
   if (dbname.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Cannot remove rights for empty db name");
@@ -434,12 +461,12 @@ void auth::User::removeDatabase(std::string const& dbname) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN, "Cannot remove access level of 'root' to _system");
   }
-  _dbAccess.erase(dbname);
+  return _dbAccess.erase(dbname) > 0;
 }
 
 void auth::User::grantCollection(std::string const& dbname,
-                                    std::string const& coll,
-                                    auth::Level const level) {
+                                 std::string const& coll,
+                                 auth::Level const level) {
   if (dbname.empty() || coll.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -471,8 +498,9 @@ void auth::User::grantCollection(std::string const& dbname,
   }
 }
 
-void auth::User::removeCollection(std::string const& dbname,
-                                     std::string const& coll) {
+/// Removes the collection right, returns true if entry existed
+bool auth::User::removeCollection(std::string const& dbname,
+                                  std::string const& coll) {
   if (dbname.empty() || coll.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -484,10 +512,11 @@ void auth::User::removeCollection(std::string const& dbname,
                                    "Cannot lower access level of 'root' to "
                                    " a collection in _system");
   }
-  auto it = _dbAccess.find(dbname);
+  auto const& it = _dbAccess.find(dbname);
   if (it != _dbAccess.end()) {
-    it->second._collectionAccess.erase(coll);
+    return it->second._collectionAccess.erase(coll) > 0;
   }
+  return false;
 }
 
 auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {

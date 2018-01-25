@@ -40,9 +40,9 @@ class HandlerResult : public arangodb::Result {
   HandlerResult(int errorNumber, arangodb::auth::Source const& source)
       : Result(errorNumber), _authSource(source) {}
 
-  HandlerResult(
-      std::unordered_map<std::string, auth::Level> const& permissions,
-      std::unordered_set<std::string> const& roles, auth::Source const& source)
+  HandlerResult(std::unordered_map<std::string, auth::Level> const& permissions,
+                std::unordered_set<std::string> const& roles,
+                auth::Source const& source)
       : Result(0),
         _authSource(source),
         _permissions(permissions),
@@ -66,7 +66,7 @@ class HandlerResult : public arangodb::Result {
 class Handler {
  public:
   virtual HandlerResult authenticate(std::string const& username,
-                                            std::string const& password) = 0;
+                                     std::string const& password) = 0;
   virtual ~Handler() {}
 };
 
@@ -77,7 +77,7 @@ class DefaultHandler : public Handler {
                              std::string const& password) override;
   virtual ~DefaultHandler() {}
 };
-} // auth
-} // arangodb
+}  // auth
+}  // arangodb
 
 #endif

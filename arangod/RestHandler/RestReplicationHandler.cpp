@@ -950,9 +950,10 @@ Result RestReplicationHandler::processRestoreCollection(
   ExecContext const* exe = ExecContext::CURRENT;
   if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
       ServerState::instance()->isSingleServer()) {
-    AuthenticationFeature *auth = AuthenticationFeature::instance();
-    auth->userManager()->updateUser(exe->user(), [&](auth::User& entry) {
+    AuthenticationFeature *af = AuthenticationFeature::instance();
+    af->userManager()->updateUser(exe->user(), [&](auth::User& entry) {
       entry.grantCollection(_vocbase->name(), col->name(), auth::Level::RW);
+      return TRI_ERROR_NO_ERROR;
     });
   }
 
@@ -1100,11 +1101,12 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     
     ExecContext const* exe = ExecContext::CURRENT;
     if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
-      AuthenticationFeature *auth = AuthenticationFeature::instance();
-      auth->userManager()->updateUser(ExecContext::CURRENT->user(),
-                     [&](auth::User& entry) {
-                       entry.grantCollection(dbName, col->name(), auth::Level::RW);
-                     });
+      AuthenticationFeature *af = AuthenticationFeature::instance();
+      af->userManager()->updateUser(ExecContext::CURRENT->user(),
+                   [&](auth::User& entry) {
+                     entry.grantCollection(dbName, col->name(), auth::Level::RW);
+                     return TRI_ERROR_NO_ERROR;
+                   });
     }
   } catch (basics::Exception const& ex) {
     // Error, report it.

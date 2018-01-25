@@ -95,15 +95,13 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
   }
   
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  Result r = af->userManager()->storeUser(replace, username, pass, active);
+  auth::UserManager* um = af->userManager();
+  Result r = um->storeUser(replace, username, pass, active, extras.slice());
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
-  if (!extras.isEmpty()) {
-    af->userManager()->setUserData(username, extras.slice());
-  }
 
-  VPackBuilder result = af->userManager()->serializeUser(username);
+  VPackBuilder result = um->serializeUser(username);
   if (!result.isEmpty()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
   }
@@ -141,17 +139,18 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  af->userManager()->updateUser(username, [&](auth::User& entry) {
+  af->userManager()->updateUser(username, [&](auth::User& u) {
     if (args.Length() > 1 && args[1]->IsString()) {
-      entry.updatePassword(TRI_ObjectToString(args[1]));
+      u.updatePassword(TRI_ObjectToString(args[1]));
     }
     if (args.Length() > 2 && args[2]->IsBoolean()) {
-      entry.setActive(TRI_ObjectToBoolean(args[2]));
+      u.setActive(TRI_ObjectToBoolean(args[2]));
     }
+    if (!extras.isEmpty()) {
+      u.setConfigData(std::move(extras));
+    }
+    return TRI_ERROR_NO_ERROR;
   });
-  if (!extras.isEmpty()) {
-    af->userManager()->setUserData(username, extras.slice());
-  }
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -213,9 +212,7 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   AuthenticationFeature* af = AuthenticationFeature::instance();
   af->userManager()->outdate();
-  if (ServerState::instance()->isCoordinator()) {
-    af->userManager()->reloadAllUsers();
-  }
+  af->userManager()->reloadAllUsers(); // noop except on coordinator
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -241,7 +238,10 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   AuthenticationFeature* af = AuthenticationFeature::instance();
   Result r = af->userManager()->updateUser(username,
-          [&](auth::User& entry) { entry.grantDatabase(db, lvl); });
+          [&](auth::User& entry) {
+            entry.grantDatabase(db, lvl);
+            return TRI_ERROR_NO_ERROR;
+          });
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -263,8 +263,10 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   std::string username = TRI_ObjectToString(args[0]);
   std::string db = TRI_ObjectToString(args[1]);
-  Result r = af->userManager()->updateUser(username,
-      [&](auth::User& entry) { entry.removeDatabase(db); });
+  Result r = af->userManager()->updateUser(username, [&](auth::User& entry) {
+        entry.removeDatabase(db);
+        return TRI_ERROR_NO_ERROR;
+      });
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -295,8 +297,10 @@ static void JS_GrantCollection(
     std::string type = TRI_ObjectToString(args[3]);
     lvl = auth::convertToAuthLevel(type);
   }
-  Result r = af->userManager()->updateUser(username,
-      [&](auth::User& entry) { entry.grantCollection(db, coll, lvl); });
+  Result r = af->userManager()->updateUser(username, [&](auth::User& entry) {
+    entry.grantCollection(db, coll, lvl);
+    return TRI_ERROR_NO_ERROR;
+  });
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -317,14 +321,15 @@ static void JS_RevokeCollection(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
   std::string username = TRI_ObjectToString(args[0]);
   std::string db = TRI_ObjectToString(args[1]);
   std::string coll = TRI_ObjectToString(args[2]);
 
+  AuthenticationFeature* af = AuthenticationFeature::instance();
   Result r = af->userManager()->updateUser(
       username, [&](auth::User& entry) {
         entry.removeCollection(db, coll);
+        return TRI_ERROR_NO_ERROR;
       });
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
@@ -347,7 +352,6 @@ static void JS_UpdateConfigData(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  AuthenticationFeature* af = AuthenticationFeature::instance();
   std::string key = TRI_ObjectToString(args[1]);
   VPackBuilder merge;
   if (args.Length() > 2) {
@@ -360,10 +364,17 @@ static void JS_UpdateConfigData(
   } else {
     merge.add(key, VPackSlice::nullSlice());
   }
-  VPackBuilder old = af->userManager()->getConfigData(username);
-  VPackBuilder updated =
-      VelocyPackHelper::merge(old.slice(), merge.slice(), true, true);
-  af->userManager()->setConfigData(username, updated.slice());
+  
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  Result r = af->userManager()->updateUser(username, [&](auth::User& u) {
+    VPackBuilder updated = VelocyPackHelper::merge(u.configData(),
+                                                   merge.slice(), true, true);
+    u.setConfigData(std::move(updated));
+    return TRI_ERROR_NO_ERROR;
+  });
+  if (!r.ok()) {
+    TRI_V8_THROW_EXCEPTION(r);
+  }
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -382,11 +393,20 @@ static void JS_GetConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  VPackBuilder config = af->userManager()->getConfigData(username);
-  if (!config.isEmpty()) {
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, config.slice()));
+  
+  v8::Handle<v8::Value> result;
+  Result r = af->userManager()->accessUser(username, [&](auth::User const& u) {
+    if (u.configData().isObject()) {
+      result = TRI_VPackToV8(isolate, u.configData());
+    }
+    return TRI_ERROR_NO_ERROR;
+  });
+  if (!r.ok()) {
+    TRI_V8_THROW_EXCEPTION(r);
+  } else if (!result.IsEmpty()) {
+    TRI_V8_RETURN(result);
   }
-
+  
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }

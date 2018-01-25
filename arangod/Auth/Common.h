@@ -32,15 +32,15 @@ namespace auth {
 
 /// Supported access levels for data
 enum class Level { NONE = 0, RO = 1, RW = 2 };
-  
+
 /// Supported source types of users sources
-enum class Source { COLLECTION, LDAP };
+enum class Source { LOCAL, LDAP };
 
 auth::Level convertToAuthLevel(velocypack::Slice grants);
 auth::Level convertToAuthLevel(std::string const& grant);
 std::string convertFromAuthLevel(auth::Level lvl);
 
-} // auth
-} // arangodb
+}  // auth
+}  // arangodb
 
 #endif

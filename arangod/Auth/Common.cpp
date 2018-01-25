@@ -59,4 +59,3 @@ std::string arangodb::auth::convertFromAuthLevel(auth::Level lvl) {
     return "none";
   }
 }
-

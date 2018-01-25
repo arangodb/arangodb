@@ -265,6 +265,7 @@ arangodb::Result Databases::create(std::string const& dbName,
           ExecContext::CURRENT->user(), [&](auth::User& entry) {
             entry.grantDatabase(dbName, auth::Level::RW);
             entry.grantCollection(dbName, "*", auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
           });
     }
 
@@ -314,11 +315,12 @@ arangodb::Result Databases::create(std::string const& dbName,
     if (ServerState::instance()->isSingleServer() &&
         ExecContext::CURRENT != nullptr) {
       // ignore errors here Result r =
-      af->userManager()->updateUser(ExecContext::CURRENT->user(),
-                                   [&](auth::User& entry) {
-                                     entry.grantDatabase(dbName, auth::Level::RW);
-                                     entry.grantCollection(dbName, "*", auth::Level::RW);
-                                   });
+      af->userManager()->updateUser(
+          ExecContext::CURRENT->user(), [&](auth::User& entry) {
+             entry.grantDatabase(dbName, auth::Level::RW);
+             entry.grantCollection(dbName, "*", auth::Level::RW);
+             return TRI_ERROR_NO_ERROR;
+           });
     }
 
     V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
@@ -461,8 +463,8 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (ServerState::instance()->isCoordinator() ||
       !ServerState::instance()->isRunningInCluster()) {
-    res = af->userManager()->enumerateUsers([&](auth::User& entry) {
-      entry.removeDatabase(dbName);
+    res = af->userManager()->enumerateUsers([&](auth::User& entry) -> bool {
+      return entry.removeDatabase(dbName);
     });
   }
   return res;

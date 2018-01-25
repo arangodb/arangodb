@@ -844,6 +844,7 @@ void HeartbeatThread::runCoordinator() {
             oldUserVersion = userVersion;
             if (authentication->isActive()) {
               authentication->userManager()->outdate();
+              authentication->tokenCache()->invalidateBasicCache();
             }
           }
         }
