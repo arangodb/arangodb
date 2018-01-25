@@ -280,7 +280,7 @@ describe('Shard distribution', function () {
               "_system", collection, s)
           );
           let replicas = ccinfo.map(s => s.servers);
-          if (count % 10 == 0) {
+          if (count % 10 === 0) {
             console.error(replicas);
           }
           if (_.every(replicas, x => x.length === replFactor)) {
