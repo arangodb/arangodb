@@ -1,8 +1,8 @@
 
 @startDocuBlock JSF_put_api_view_properties_iresearch
-@brief changes properties of an iresearch view
+@brief changes properties of an ArangoSearch view
 
-@RESTHEADER{PUT /_api/view/{view-name}/properties#iresearch, Change properties of an iresearch view}
+@RESTHEADER{PUT /_api/view/{view-name}/properties#iresearch, Change properties of an ArangoSearch view}
 
 @RESTURLPARAMETERS
 
@@ -16,9 +16,6 @@ The set of collection names associated with the properties.
 The link properties. If specified, then *properties*
 should be a JSON object containing the following attributes:
 
-@RESTSTRUCT{boost,JSF_post_api_view_link_props,float,optional,float}
-Multiplier of the rank value computed for documents matching on this field (default: 1.0).
-
 @RESTSTRUCT{includeAllFields,JSF_post_api_view_link_props,boolean,optional,bool}
 The flag determines whether or not to index all fields on a particular level of depth (default: false).
 
@@ -31,9 +28,6 @@ The list of analyzers to be used for indexing of string values (default: ["ident
 @RESTSTRUCT{[field-name],JSF_post_api_view_link_props,object,optional,JSF_post_api_view_link_props_field_props}
 The field properties. If specified, then *properties*
 should be a JSON object containing the following attributes:
-
-@RESTSTRUCT{boost,JSF_post_api_view_link_props_field_props,float,optional,float}
-Multiplier of the rank value computed for documents matching on this field (default: 1.0).
 
 @RESTSTRUCT{includeAllFields,JSF_post_api_view_link_props_field_props,boolean,optional,bool}
 The flag determines whether or not to index all fields on a particular level of depth (default: false).
@@ -96,11 +90,11 @@ memory usage would continue to grow.
 For the case where there are a few inserts/updates, a higher value will impact performance and waste disk space for each
 commit call without any added benefits.
 
+@RESTBODYPARAM{dataPath,string,optional,string}
+The filesystem path where to store persisted view data (default: *"<ArangoDB database path>/arangosearch-<view-id>"*).
+
 @RESTBODYPARAM{locale,string,optional,string}
 The default locale used for queries on analyzed string values (default: *C*).
-
-@RESTBODYPARAM{dataPath,string,optional,string}
-The filesystem path where to store persisted index data (default: *"<ArangoDB database path>/iresearch-<index id>"*).
 
 @RESTBODYPARAM{threadMaxIdle,integer,optional,uint64}
 Maximum idle number of threads for single-run tasks (default: 5).
@@ -119,7 +113,7 @@ On success an object with the following attributes is returned:
 - *id*: The identifier of the view.
 - *name*: The name of the view.
 - *type*: The view type. Valid types are:
-  - iresearch : IResearch view
+  - arangosearch: ArangoSearch view
 - *properties*: The updated properties of the view.
 
 @RESTRETURNCODES
@@ -136,7 +130,7 @@ is returned.
 
 @EXAMPLE_ARANGOSH_RUN{RestIResearchViewPutProperties}
     var viewName = "products";
-    var viewType = "iresearch";
+    var viewType = "arangosearch";
     db._dropView(viewName);
     var view = db._createView(viewName, viewType, {});
     var url = "/_api/view/"+ view.name() + "/properties";

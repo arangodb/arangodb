@@ -156,6 +156,41 @@ irs::sort::ptr make_from_array(
   return ptr;
 }
 
+irs::sort::ptr make_json(const irs::string_ref& args) {
+  if (args.null()) {
+    // default args
+    PTR_NAMED(irs::bm25_sort, ptr);
+    return ptr;
+  }
+
+  rapidjson::Document json;
+
+  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
+    IR_FRMT_ERROR(
+      "Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", 
+      args.c_str()
+    );
+
+    return nullptr;
+  }
+
+  switch (json.GetType()) {
+    case rapidjson::kObjectType:
+      return make_from_object(json, args);
+    case rapidjson::kArrayType:
+      return make_from_array(json, args);
+    default: // wrong type
+      IR_FRMT_ERROR(
+        "Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", 
+        args.c_str()
+      );
+
+      return nullptr;
+  }
+}
+
+REGISTER_SCORER_JSON(irs::bm25_sort, make_json);
+
 NS_END // LOCAL
 
 NS_ROOT
@@ -396,48 +431,17 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
 NS_END // bm25
 
 DEFINE_SORT_TYPE_NAMED(iresearch::bm25_sort, "bm25");
-REGISTER_SCORER_JSON(irs::bm25_sort, irs::bm25_sort::make);
-
 DEFINE_FACTORY_DEFAULT(irs::bm25_sort);
-
-/*static*/ sort::ptr bm25_sort::make(const string_ref& args) {
-  if (args.null()) {
-    // default args
-    PTR_NAMED(bm25_sort, ptr);
-    return ptr;
-  }
-
-  rapidjson::Document json;
-
-  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
-    IR_FRMT_ERROR(
-      "Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", 
-      args.c_str()
-    );
-
-    return nullptr;
-  }
-
-  switch (json.GetType()) {
-    case rapidjson::kObjectType:
-      return make_from_object(json, args);
-    case rapidjson::kArrayType:
-      return make_from_array(json, args);
-    default: // wrong type
-      IR_FRMT_ERROR(
-        "Invalid jSON arguments passed while constructing bm25 scorer, arguments: %s", 
-        args.c_str()
-      );
-
-      return nullptr;
-  }
-}
 
 bm25_sort::bm25_sort(
     float_t k /*= 1.2f*/,
     float_t b /*= 0.75f*/,
     bool normalize /*= false*/
 ): sort(bm25_sort::type()), k_(k), b_(b), normalize_(normalize) {
+}
+
+/*static*/ void bm25_sort::init() {
+  REGISTER_SCORER_JSON(bm25_sort, make_json); // match registration above
 }
 
 sort::prepared::ptr bm25_sort::prepare() const {

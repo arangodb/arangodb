@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <rapidjson/rapidjson/document.h> // for rapidjson::Document
+
 #include "delimited_token_stream.hpp"
 
 NS_LOCAL
@@ -91,17 +93,62 @@ size_t find_delimiter(const irs::bytes_ref& data, const irs::bytes_ref& delim) {
   return data.size();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief args is a jSON encoded object with the following attributes:
+///        "delimiter"(string): the delimiter to use for tokenization <required>
+////////////////////////////////////////////////////////////////////////////////
+irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+  rapidjson::Document json;
+
+  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
+    IR_FRMT_ERROR(
+      "Invalid jSON arguments passed while constructing delimited_token_stream, arguments: %s", 
+      args.c_str()
+    );
+
+    return nullptr;
+  }
+
+  switch (json.GetType()) {
+   case rapidjson::kStringType:
+    return irs::analysis::delimited_token_stream::make(json.GetString());
+   case rapidjson::kObjectType:
+    if (json.HasMember("delimiter") && json["delimiter"].IsString()) {
+      return irs::analysis::delimited_token_stream::make(json["delimiter"].GetString());
+    }
+   default: {} // fall through
+  }
+
+  IR_FRMT_ERROR(
+    "Missing 'delimiter' while constructing delimited_token_stream from jSON arguments: %s",
+    args.c_str()
+  );
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief args is a delimiter to use for tokenization
+////////////////////////////////////////////////////////////////////////////////
+irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
+  PTR_NAMED(irs::analysis::delimited_token_stream, ptr, args);
+
+  return ptr;
+}
+
+REGISTER_ANALYZER_JSON(irs::analysis::delimited_token_stream, make_json);
+REGISTER_ANALYZER_TEXT(irs::analysis::delimited_token_stream, make_text);
+
 NS_END
 
 NS_ROOT
 NS_BEGIN(analysis)
 
 DEFINE_ANALYZER_TYPE_NAMED(delimited_token_stream, "delimited");
-REGISTER_ANALYZER_TEXT(delimited_token_stream, delimited_token_stream::make);
 
-delimited_token_stream::delimited_token_stream(const string_ref& args)
+delimited_token_stream::delimited_token_stream(const string_ref& delimiter)
   : analyzer(delimited_token_stream::type()),
-    delim_(ref_cast<byte_type>(args)) {
+    delim_(ref_cast<byte_type>(delimiter)) {
   attrs_.emplace(offset_);
   attrs_.emplace(payload_);
   attrs_.emplace(term_);
@@ -112,10 +159,15 @@ delimited_token_stream::delimited_token_stream(const string_ref& args)
   }
 }
 
-/*static*/ analyzer::ptr delimited_token_stream::make(const string_ref& args) {
-  PTR_NAMED(delimited_token_stream, ptr, args);
+/*static*/ analyzer::ptr delimited_token_stream::make(
+    const string_ref& delimiter
+) {
+  return make_text(delimiter);
+}
 
-  return ptr;
+/*static*/ void delimited_token_stream::init() {
+  REGISTER_ANALYZER_JSON(delimited_token_stream, make_json); // match registration above
+  REGISTER_ANALYZER_TEXT(delimited_token_stream, make_text); // match registration above
 }
 
 bool delimited_token_stream::next() {
@@ -155,4 +207,4 @@ NS_END // ROOT
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
-// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------

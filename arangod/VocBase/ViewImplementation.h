@@ -69,6 +69,14 @@ class ViewImplementation {
       bool doSync) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief invoke visitor on all collections that a view will return
+  /// @return visitation was successful
+  //////////////////////////////////////////////////////////////////////////////
+  virtual bool visitCollections(
+    std::function<bool(TRI_voc_cid_t)> const& visitor
+  ) const = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are materialized into
   /// the VelocyPack Builder passed into the method. the implementation
   /// is supposed to fill in all its specific properties. The Builder

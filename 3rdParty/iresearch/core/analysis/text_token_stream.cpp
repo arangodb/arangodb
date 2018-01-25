@@ -374,6 +374,64 @@ bool process_term(
   return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief args is a jSON encoded object with the following attributes:
+///        "locale"(string): locale of the analyzer <required>
+///        "ignored_words([string...]): set of words to ignore (missing == use default list)
+////////////////////////////////////////////////////////////////////////////////
+irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+  rapidjson::Document json;
+
+  if (json.Parse(args.c_str(), args.size()).HasParseError()
+      || !json.IsObject()
+      || !json.HasMember("locale")
+      || !json["locale"].IsString()
+     ) {
+    IR_FRMT_WARN("Missing 'locale' while constructing text_token_stream from jSON arguments: %s", args.c_str());
+
+    return nullptr;
+  }
+
+  static const rapidjson::Value empty;
+  auto locale = irs::locale_utils::locale(json["locale"].GetString());
+  auto& ignored_words = json.HasMember("ignored_words") ? json["ignored_words"] : empty;
+  auto& ignored_words_path = json.HasMember("ignored_words_path") ? json["ignored_words_path"] : empty;
+
+  if (!ignored_words.IsArray()) {
+    return ignored_words_path.IsString()
+      ? construct(args, locale, ignored_words_path.GetString())
+      : construct(args, locale)
+      ;
+  }
+
+  ignored_words_t buf;
+
+  for (auto itr = ignored_words.Begin(), end = ignored_words.End(); itr != end; ++itr) {
+    if (!itr->IsString()) {
+      IR_FRMT_WARN("Non-string value in 'ignored_words' while constructing text_token_stream from jSON arguments: %s", args.c_str());
+
+      return nullptr;
+    }
+
+    buf.emplace(itr->GetString());
+  }
+
+  return ignored_words_path.IsString()
+    ? construct(args, locale, ignored_words_path.GetString(), std::move(buf))
+    : construct(args, locale, std::move(buf))
+    ;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief args is a locale name
+////////////////////////////////////////////////////////////////////////////////
+irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
+  return construct(args);
+}
+
+REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, make_json);
+REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, make_text);
+
 NS_END
 
 NS_ROOT
@@ -390,58 +448,6 @@ char const* text_token_stream::STOPWORD_PATH_ENV_VARIABLE = "IRESEARCH_TEXT_STOP
 // -----------------------------------------------------------------------------
 
 DEFINE_ANALYZER_TYPE_NAMED(text_token_stream, "text");
-REGISTER_ANALYZER_JSON(text_token_stream, text_token_stream::make);
-REGISTER_ANALYZER_TEXT(text_token_stream, text_token_stream::make);
-// FIXME TODO split into separate functions for text and jSON formats
-/*static*/ analyzer::ptr text_token_stream::make(const string_ref& args) {
-  // try to parse 'args' as a jSON config
-  try {
-    rapidjson::Document json;
-
-    if (json.Parse(args.c_str(), args.size()).HasParseError()
-        || !json.IsObject()
-        || !json.HasMember("locale")
-        || !json["locale"].IsString()
-       ) {
-      return construct(args); // fallback to parseing 'args' as a locale name
-    }
-
-    static const rapidjson::Value empty;
-    auto locale = irs::locale_utils::locale(json["locale"].GetString());
-    auto& ignored_words = json.HasMember("ignored_words") ? json["ignored_words"] : empty;
-    auto& ignored_words_path = json.HasMember("ignored_words_path") ? json["ignored_words_path"] : empty;
-
-    if (!ignored_words.IsArray()) {
-      return ignored_words_path.IsString()
-        ? construct(args, locale, ignored_words_path.GetString())
-        : construct(args, locale)
-        ;
-    }
-
-    ignored_words_t buf;
-
-    for (auto itr = ignored_words.Begin(), end = ignored_words.End(); itr != end; ++itr) {
-      if (!itr->IsString()) {
-        IR_FRMT_WARN("Non-string value in 'ignored_words' while constructing text_token_stream from jSON arguments: %s", args.c_str());
-
-        return construct(args); // fallback to parseing 'args' as a locale name
-      }
-
-      buf.emplace(itr->GetString());
-    }
-
-    return ignored_words_path.IsString()
-      ? construct(args, locale, ignored_words_path.GetString(), std::move(buf))
-      : construct(args, locale, std::move(buf))
-      ;
-  }
-  catch (...) {
-    IR_FRMT_ERROR("Caught error while constructing text_token_stream from jSON arguments: %s", args.c_str());
-    IR_EXCEPTION();
-  }
-
-  return nullptr;
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -466,6 +472,15 @@ text_token_stream::text_token_stream(
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+/*static*/ void text_token_stream::init() {
+  REGISTER_ANALYZER_JSON(text_token_stream, make_json); // match registration above
+  REGISTER_ANALYZER_TEXT(text_token_stream, make_text); // match registration above
+}
+
+/*static*/ analyzer::ptr text_token_stream::make(const std::locale& locale) {
+  return construct(locale.name(), locale);
+}
 
 bool text_token_stream::reset(const string_ref& data) {
   if (state_->locale.isBogus()) {

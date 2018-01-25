@@ -30,7 +30,7 @@
 NS_LOCAL
 
 class attribute_register:
-  public iresearch::generic_register<iresearch::string_ref, const iresearch::attribute::type_id*, attribute_register> {
+  public irs::tagged_generic_register<irs::string_ref, const irs::attribute::type_id*, irs::string_ref, attribute_register> {
 };
 
 const iresearch::attribute_store EMPTY_ATTRIBUTE_STORE(0);
@@ -102,16 +102,36 @@ attribute_registrar::attribute_registrar(
     const attribute::type_id& type,
     const char* source /*= nullptr*/
 ) {
-  auto entry = attribute_register::instance().set(type.name(), &type);
+  irs::string_ref source_ref(source);
+  auto entry = attribute_register::instance().set(
+    type.name(),
+    &type,
+    source_ref.null() ? nullptr : &source_ref
+  );
 
   registered_ = entry.second;
 
   if (!registered_ && &type != entry.first) {
-    if (source) {
+    auto* registered_source = attribute_register::instance().tag(type.name());
+
+    if (source && registered_source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering attribute, ignoring: type '%s' from %s, previously from %s",
+        type.name().c_str(),
+        source,
+        registered_source->c_str()
+      );
+    } else if (source) {
       IR_FRMT_WARN(
         "type name collision detected while registering attribute, ignoring: type '%s' from %s",
         type.name().c_str(),
         source
+      );
+    } else if (registered_source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering attribute, ignoring: type '%s', previously from %s",
+        type.name().c_str(),
+        registered_source->c_str()
       );
     } else {
       IR_FRMT_WARN(

@@ -368,8 +368,8 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if (testname.indexOf('-iresearch') !== -1 && !options.iresearch) {
-    whichFilter.filter = 'iresearch';
+  if (testname.indexOf('-arangosearch') !== -1 && !options.arangosearch) {
+    whichFilter.filter = 'arangosearch';
     return false;
   }
 

@@ -47,9 +47,6 @@ class bm25_sort : public sort {
   // for use with irs::order::add<T>() and default args (static build)
   DECLARE_FACTORY_DEFAULT();
 
-  // for use with irs::order::add(...) (dynamic build) or jSON args (static build)
-  DECLARE_FACTORY_DEFAULT(const string_ref& args);
-
   typedef float_t score_t;
 
   bm25_sort(float_t k = K(), float_t b = B(), bool normalize = WITH_NORMS());
@@ -59,7 +56,7 @@ class bm25_sort : public sort {
 
   float_t b() const { return b_; }
   void b(float_t b) { b_ = b; }
-
+  static void init(); // for trigering registration in a static build
   bool normalize() const { return normalize_; }
   void normalize(bool value) { normalize_ = value; }
 
