@@ -33,10 +33,13 @@
 #include "Basics/tri-strings.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesWalSlots.h"
+#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
@@ -1267,12 +1270,16 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         std::string nameString = nameSlice.copyString();
 
+        MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
+        std::string const versionFile = engine->versionFilename(databaseId);
+        std::string const versionFileContent = std::string("{\"version\":") + std::to_string(rest::Version::getNumericServerVersion()) + ",\"tasks\":{}}";
+
         // remove already existing database with same name
         vocbase = state->databaseFeature->lookupDatabase(nameString);
 
         if (vocbase != nullptr) {
           TRI_voc_tick_t otherId = vocbase->id();
-
+          
           state->releaseDatabase(otherId);
           // TODO: how to signal a dropDatabase failure here?
           state->databaseFeature->dropDatabase(nameString, true, false);
@@ -1288,6 +1295,15 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES) << "cannot create database "
                                                    << databaseId << ": "
                                                    << TRI_errno_string(res);
+          ++state->errorCount;
+          return state->canContinue();
+        }
+
+        try {
+          basics::FileUtils::spit(versionFile, versionFileContent); 
+        } catch (...) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to store version file '" << versionFile << "' for database "
+                                                   << databaseId;
           ++state->errorCount;
           return state->canContinue();
         }
