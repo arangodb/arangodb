@@ -130,6 +130,7 @@ router.post(prepareServiceRequestBody, (req, res) => {
   ));
   const service = FoxxManager.lookupService(mount);
   res.json(serviceToJson(service));
+  res.status(201);
 })
 .body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
 .queryParam('mount', schemas.mount)
