@@ -1373,7 +1373,8 @@ def buildEdition(os, edition, maintainer) {
             powershell "New-Item -ItemType Directory -Force -Path build"
     echo "build4"
     echo "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru $ENV:WORKSPACE/${logFile}"
-            powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru $ENV:WORKSPACE/${logFile}"
+            //powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru \$ENV:WORKSPACE/${logFile}"
+            powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru \$ENV:WORKSPACE/${logFile}"
     echo "build5"
         }
 
