@@ -133,7 +133,7 @@ mainBranch = "unknown"
 if ("devel" == "devel") {
     mainBranch = "devel"
 }
-else { 
+else {
     mainBranch = "3.3"
 }
 
@@ -162,7 +162,7 @@ buildJenkins = [
 testJenkins = [
     "linux": "linux && tests && arangodb",
     "mac" : "mac && tests && arangodb",
-    "windows": "windows && tests && arangodb && foo" 
+    "windows": "windows && tests && arangodb && foo"
 ]
 
 def copyFile(os, src, dst) {
@@ -224,7 +224,7 @@ def checkEnabledMaintainer(maintainer, os, text) {
 def checkCores(os, runDir) {
     if (os == 'windows') {
         def files = findFiles(glob: "${runDir}/*.dmp")
-        
+
         if (files.length > 0) {
             error("found windows core file")
         }
@@ -245,7 +245,7 @@ def saveCores(os, runDir, name, archRun) {
         powershell "move-item -Force -ErrorAction Ignore ${runDir}/tmp ${archRun}/${name}.tmp"
 
         def files = findFiles(glob: "${runDir}/*.dmp")
-        
+
         if (files.length > 0) {
             for (file in files) {
                 powershell "move-item -Force -ErrorAction Ignore ${file} ${archRun}"
@@ -354,7 +354,7 @@ def logStopStage(os, logFile) {
             def key = ""
             def sep = ""
 
-            for (p in keys) { 
+            for (p in keys) {
                 key = key + sep + p
                 sep = "/"
 
@@ -937,7 +937,7 @@ def getTests(os, edition, maintainer, mode, engine) {
             ["resilience", "resilience", ""]
         ]
     }
- 
+
     return tests
 }
 
@@ -992,7 +992,7 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
                                 "--log.level warning " +
                                 "--javascript.execute UnitTests/unittest.js " +
                                 "${test} -- " +
-                                "${testArgs} " + 
+                                "${testArgs} " +
                                 "--minPort " + (port + testIndex * portInterval) + " " +
                                 "--maxPort " + (port + (testIndex + 1) * portInterval - 1)
 
@@ -1387,7 +1387,7 @@ def buildEdition(os, edition, maintainer) {
         logExceptionStage(os, logFile, logFile, exc)
 
         def msg = exc.toString()
-        
+
         if (os == 'linux' || os == 'mac') {
             sh "echo \"${msg}\" >> ${logFile}"
         }
