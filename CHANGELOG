@@ -60,6 +60,9 @@ v3.3.3 (XXXX-XX-XX)
 
 * fixed incorrect persistence of RAFT vote and term
 
+* internal issue #1726: supervision failed to remove multiple servers
+  from health api.
+
 v3.3.2 (2018-01-04)
 -------------------
 
