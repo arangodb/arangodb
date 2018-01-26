@@ -400,4 +400,123 @@ describe('Foxx service', () => {
     expect(resp.json).to.have.property('test2');
     expect(resp.json.test2).to.not.have.property('current');
   });
+
+  const depPath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'with-dependencies');
+
+  it('empty configuration should be available', () => {
+    FoxxManager.install(basePath, mount);
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.eql({});
+  });
+
+  it('dependencies should be available', () => {
+    FoxxManager.install(depPath, mount);
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.not.have.property('current');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('dependencies should be available after update', () => {
+    FoxxManager.install(depPath, mount);
+    const updateResp = request.patch('/_api/foxx/dependencies', {
+      qs: {
+        mount
+      },
+      body: {
+        test1: '/test'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.have.property('current', '/test');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('dependencies should be available after replace', () => {
+    FoxxManager.install(depPath, mount);
+    const replaceResp = request.put('/_api/foxx/dependencies', {
+      qs: {
+        mount
+      },
+      body: {
+        test1: '/test'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.have.property('current', '/test');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('dependencies should be merged after update', () => {
+    FoxxManager.install(depPath, mount);
+    const replaceResp = request.put('/_api/foxx/dependencies', {
+      qs: {
+        mount
+      },
+      body: {
+        test2: '/test2'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    const updateResp = request.patch('/_api/foxx/dependencies', {
+      qs: {
+        mount
+      },
+      body: {
+        test1: '/test1'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.have.property('current', '/test1');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.have.property('current', '/test2');
+  });
+
+  it('dependencies should be overwritten after replace', () => {
+    FoxxManager.install(depPath, mount);
+    const updateResp = request.patch('/_api/foxx/dependencies', {
+      qs: {
+        mount
+      },
+      body: {
+        test2: '/test2'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    const replaceResp = request.put('/_api/foxx/dependencies', {
+      qs: {
+        mount
+      },
+      body: {
+        test1: '/test'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.have.property('current', '/test');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.not.have.property('current');
+  });
 });
