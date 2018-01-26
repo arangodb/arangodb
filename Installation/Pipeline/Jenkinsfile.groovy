@@ -1333,7 +1333,7 @@ def buildEdition(os, edition, maintainer) {
         folderCreateOperation(arch)
     ])
 
-    def logFile = "${arch}/build.log"
+    def logFile = "./${arch}/build.log"
     echo "logFile: ${logFile}"
 
     try {
