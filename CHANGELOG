@@ -17,9 +17,9 @@ devel
 
 * fix internal issue 1770: collection creation using distributeShardsLike yields
   errors and did not distribute shards correctly in the following cases:
-  1. If numberOfShards * replicationFactor % nrDBServers != 0r
+  1. If numberOfShards * replicationFactor % nrDBServers != 0
      (shards * replication is not divisible by DBServers).
-  2. If there was failover / move shard case on the leading collectionr
+  2. If there was failover / move shard case on the leading collection
      and creating the follower collection afterwards.
 
 * fix internal issue #1439: improve performance of any-iterator for RocksDB
