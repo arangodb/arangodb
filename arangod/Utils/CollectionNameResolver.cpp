@@ -27,6 +27,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/WriteLocker.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -146,15 +147,19 @@ TRI_col_type_e CollectionNameResolver::getCollectionType(
 
 arangodb::LogicalCollection const* CollectionNameResolver::getCollectionStruct(
     std::string const& name) const {
-  auto it = _resolvedNames.find(name);
+  {
+    READ_LOCKER(locker, _nameLock);
+    auto it = _resolvedNames.find(name);
 
-  if (it != _resolvedNames.end()) {
-    return (*it).second;
+    if (it != _resolvedNames.end()) {
+      return (*it).second;
+    }
   }
 
   arangodb::LogicalCollection const* collection = _vocbase->lookupCollection(name);
 
   if (collection != nullptr) {
+    WRITE_LOCKER(locker, _nameLock);
     _resolvedNames.emplace(name, collection);
   }
 
@@ -197,14 +202,20 @@ TRI_col_type_e CollectionNameResolver::getCollectionTypeCluster(
 //////////////////////////////////////////////////////////////////////////////
 
 std::string CollectionNameResolver::getCollectionName(TRI_voc_cid_t cid) const {
-  auto it = _resolvedIds.find(cid);
+  {
+    READ_LOCKER(locker, _idLock);
+    auto it = _resolvedIds.find(cid);
 
-  if (it != _resolvedIds.end()) {
-    return (*it).second;
+    if (it != _resolvedIds.end()) {
+      return (*it).second;
+    }
   }
 
   std::string name = localNameLookup(cid);
-  _resolvedIds.emplace(cid, name);
+  {
+    WRITE_LOCKER(locker, _idLock);
+    _resolvedIds.emplace(cid, name);
+  }
 
   return name;
 }
@@ -217,10 +228,13 @@ std::string CollectionNameResolver::getCollectionName(TRI_voc_cid_t cid) const {
 std::string CollectionNameResolver::getCollectionNameCluster(
     TRI_voc_cid_t cid) const {
   // First check the cache:
-  auto it = _resolvedIds.find(cid);
+  {
+    READ_LOCKER(locker, _idLock);
+    auto it = _resolvedIds.find(cid);
 
-  if (it != _resolvedIds.end()) {
-    return (*it).second;
+    if (it != _resolvedIds.end()) {
+      return (*it).second;
+    }
   }
 
   if (!ServerState::isClusterRole(_serverRole)) {
@@ -229,11 +243,12 @@ std::string CollectionNameResolver::getCollectionNameCluster(
   }
 
   std::string name;
-  
+
   if (ServerState::isDBServer(_serverRole)) {
     // This might be a local system collection:
     name = localNameLookup(cid);
     if (name != "_unknown") {
+      WRITE_LOCKER(locker, _idLock);
       _resolvedIds.emplace(cid, name);
       return name;
     }
@@ -245,9 +260,12 @@ std::string CollectionNameResolver::getCollectionNameCluster(
     try {
       auto ci = ClusterInfo::instance()->getCollection(
           _vocbase->name(), arangodb::basics::StringUtils::itoa(cid));
-    
+
       name = ci->name();
-      _resolvedIds.emplace(cid, name);
+      {
+        WRITE_LOCKER(locker, _idLock);
+        _resolvedIds.emplace(cid, name);
+      }
       return name;
     } catch (...) {
       // most likely collection not found. now try again

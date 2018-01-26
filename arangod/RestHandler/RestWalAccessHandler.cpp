@@ -251,31 +251,31 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     return;
   }
 
-  size_t chunkSize = 1024 * 1024;  
+  size_t chunkSize = 1024 * 1024;
   std::string const& value5 = _request->value("chunkSize", found);
   if (found) {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
     chunkSize = std::min((size_t)128 * 1024 * 1024, chunkSize);
   }
-  
+
   // check if a barrier id was specified in request
   TRI_voc_tid_t barrierId = 0;
   std::string const& value3 = _request->value("barrier", found);
-  
+
   if (found) {
     barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value3));
   }
 
   WalAccessResult result;
-  std::map<TRI_voc_tick_t, MyTypeHandler> handlers;
+  std::map<TRI_voc_tick_t, std::unique_ptr<MyTypeHandler>> handlers;
   VPackOptions opts = VPackOptions::Defaults;
   auto prepOpts = [&handlers, &opts](TRI_vocbase_t* vocbase) {
     auto const& it = handlers.find(vocbase->id());
     if (it == handlers.end()) {
-      auto const& res = handlers.emplace(vocbase->id(), MyTypeHandler(vocbase));
-      opts.customTypeHandler = &(res.first->second);
+      auto const& res = handlers.emplace(vocbase->id(), std::make_unique<MyTypeHandler>(vocbase));
+      opts.customTypeHandler = res.first->second.get();
     } else {
-      opts.customTypeHandler = &(it->second);
+      opts.customTypeHandler = it->second.get();
     }
   };
 

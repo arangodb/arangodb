@@ -22,12 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBReplicationContext.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
-#include "Basics/WriteLocker.h"
+#include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
 #include "Replication/common-defines.h"
 #include "RestServer/DatabaseFeature.h"
@@ -70,8 +69,6 @@ RocksDBReplicationContext::RocksDBReplicationContext(double ttl)
       _trx{},
       _collection{nullptr},
       _lastIteratorOffset{0},
-      _customTypeHandler{},
-      _vpackOptions{Options::Defaults},
       _expires{TRI_microtime() + ttl},
       _isDeleted{false},
       _exclusive{true},
@@ -84,21 +81,21 @@ RocksDBReplicationContext::~RocksDBReplicationContext() {
 TRI_voc_tick_t RocksDBReplicationContext::id() const { return _id; }
 
 uint64_t RocksDBReplicationContext::lastTick() const {
-  READ_LOCKER(locker, _contextLock);
+  MUTEX_LOCKER(locker, _contextLock);
   return _lastTick;
 }
 
 uint64_t RocksDBReplicationContext::count() const {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_collection != nullptr);
-  READ_LOCKER(locker, _contextLock);
+  MUTEX_LOCKER(locker, _contextLock);
   RocksDBCollection* rcoll =
       toRocksDBCollection(_collection->logical.getPhysical());
   return rcoll->numberDocuments(_trx.get());
 }
 
 TRI_vocbase_t* RocksDBReplicationContext::vocbase() const {
-  READ_LOCKER(locker, _contextLock);
+  MUTEX_LOCKER(locker, _contextLock);
   if (!_guard) {
     return nullptr;
   }
@@ -107,12 +104,13 @@ TRI_vocbase_t* RocksDBReplicationContext::vocbase() const {
 
 // creates new transaction/snapshot
 void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
-  WRITE_LOCKER(locker, _contextLock);
+  TRI_ASSERT(_exclusive);
   internalBind(vocbase);
 }
 
-void RocksDBReplicationContext::internalBind(TRI_vocbase_t* vocbase) {
+void RocksDBReplicationContext::internalBind(TRI_vocbase_t* vocbase, bool allowChange) {
   if (!_trx || !_guard || (_guard->database() != vocbase)) {
+    TRI_ASSERT(allowChange);
     rocksdb::Snapshot const* snap = nullptr;
     if (_trx) {
       auto state = RocksDBTransactionState::toState(_trx.get());
@@ -142,15 +140,13 @@ void RocksDBReplicationContext::internalBind(TRI_vocbase_t* vocbase) {
       _guard.reset();
       THROW_ARANGO_EXCEPTION(res);
     }
-    _customTypeHandler = ctx->orderCustomTypeHandler();
-    _vpackOptions.customTypeHandler = _customTypeHandler.get();
     _lastTick = state->sequenceNumber();
   }
 }
 
 int RocksDBReplicationContext::bindCollection(
     TRI_vocbase_t* vocbase, std::string const& collectionIdentifier) {
-  WRITE_LOCKER(locker, _contextLock);
+  TRI_ASSERT(_exclusive);
   TRI_ASSERT(nullptr != _trx);
   internalBind(vocbase);
   TRI_voc_cid_t const id{::normalizeIdentifier(*_trx, collectionIdentifier)};
@@ -221,19 +217,19 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
 RocksDBReplicationResult RocksDBReplicationContext::dump(
     TRI_vocbase_t* vocbase, std::string const& collectionName,
     basics::StringBuffer& buff, uint64_t chunkSize) {
+  TRI_ASSERT(_users > 0 && !_exclusive);
   CollectionIterator* collection{nullptr};
   auto release = [&]() -> void {
     if (collection) {
-      WRITE_LOCKER(locker, _contextLock);
+      MUTEX_LOCKER(locker, _contextLock);
       collection->release();
     }
   };
   TRI_DEFER(release());
   {
-    WRITE_LOCKER(writeLocker, _contextLock);
+    MUTEX_LOCKER(writeLocker, _contextLock);
     TRI_ASSERT(vocbase != nullptr);
-    internalBind(vocbase);
-    if (!_trx) {
+    if (!_trx || !_guard || (_guard->database() != vocbase)) {
       return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
     TRI_voc_cid_t const id{::normalizeIdentifier(*_trx, collectionName)};
@@ -245,13 +241,13 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
       return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
   }
-  READ_LOCKER(readLocker, _contextLock);
+  //MUTEX_LOCKER(readLocker, _contextLock);
 
   // set type
   int type = REPLICATION_MARKER_DOCUMENT;  // documents
   arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
 
-  VPackBuilder builder(&_vpackOptions);
+  VPackBuilder builder(&collection->vpackOptions);
 
   auto cb = [this, collection, &type, &buff, &adapter,
              &builder](LocalDocumentId const& documentId) {
@@ -276,7 +272,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     builder.close();
 
     // note: we need the CustomTypeHandler here
-    VPackDumper dumper(&adapter, &_vpackOptions);
+    VPackDumper dumper(&adapter, &collection->vpackOptions);
     VPackSlice slice = builder.slice();
     dumper.dump(slice);
     buff.appendChar('\n');
@@ -306,7 +302,6 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
 
 arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
                                                           uint64_t chunkSize) {
-  WRITE_LOCKER(locker, _contextLock);
   TRI_ASSERT(_trx);
 
   Result rv;
@@ -373,7 +368,6 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
 arangodb::Result RocksDBReplicationContext::dumpKeys(
     VPackBuilder& b, size_t chunk, size_t chunkSize,
     std::string const& lowKey) {
-  WRITE_LOCKER(locker, _contextLock);
   TRI_ASSERT(_trx);
 
   Result rv;
@@ -454,7 +448,6 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
 arangodb::Result RocksDBReplicationContext::dumpDocuments(
     VPackBuilder& b, size_t chunk, size_t chunkSize, size_t offsetInChunk,
     size_t maxChunkSize, std::string const& lowKey, VPackSlice const& ids) {
-  WRITE_LOCKER(locker, _contextLock);
   TRI_ASSERT(_trx);
 
   Result rv;
@@ -569,27 +562,27 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
 }
 
 double RocksDBReplicationContext::expires() const {
-  READ_LOCKER(locker, _contextLock);
+  MUTEX_LOCKER(locker, _contextLock);
   return _expires;
 }
 
 bool RocksDBReplicationContext::isDeleted() const {
-  READ_LOCKER(locker, _contextLock);
+  MUTEX_LOCKER(locker, _contextLock);
   return _isDeleted;
 }
 
 void RocksDBReplicationContext::deleted() {
-  READ_LOCKER(locker, _contextLock);
+  MUTEX_LOCKER(locker, _contextLock);
   _isDeleted = true;
 }
 
-bool RocksDBReplicationContext::isUsed(bool exclusive) const {
-  READ_LOCKER(locker, _contextLock);
-  return exclusive ? (_users > 0) : _exclusive;
+bool RocksDBReplicationContext::isUsed() const {
+  MUTEX_LOCKER(locker, _contextLock);
+  return (_users > 0);
 }
 
 bool RocksDBReplicationContext::more(std::string const& collectionIdentifier) {
-  READ_LOCKER(locker, _contextLock);
+  MUTEX_LOCKER(locker, _contextLock);
   bool hasMore = false;
   TRI_voc_cid_t id{::normalizeIdentifier(*_trx, collectionIdentifier)};
   if (0 < id) {
@@ -602,10 +595,15 @@ bool RocksDBReplicationContext::more(std::string const& collectionIdentifier) {
   return hasMore;
 }
 
-void RocksDBReplicationContext::use(double ttl, bool exclusive) {
-  WRITE_LOCKER(locker, _contextLock);
+bool RocksDBReplicationContext::use(double ttl, bool exclusive) {
+  MUTEX_LOCKER(locker, _contextLock);
   TRI_ASSERT(!_isDeleted);
-  TRI_ASSERT(!exclusive || 0 == _users);
+
+  if (_exclusive || (exclusive && _users > 0)) {
+    // can't get lock
+    TRI_LogBacktrace();
+    return false;
+  }
 
   ++_users;
   _exclusive = exclusive;
@@ -613,10 +611,11 @@ void RocksDBReplicationContext::use(double ttl, bool exclusive) {
     ttl = DefaultTTL;
   }
   _expires = TRI_microtime() + ttl;
+  return true;
 }
 
 void RocksDBReplicationContext::release() {
-  WRITE_LOCKER(locker, _contextLock);
+  MUTEX_LOCKER(locker, _contextLock);
   TRI_ASSERT(_users > 0);
   --_users;
   if (0 == _users) {
@@ -643,7 +642,9 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
       iter{nullptr},
       currentTick{1},
       isUsed{false},
-      hasMore{true} {
+      hasMore{true},
+      customTypeHandler{},
+      vpackOptions{Options::Defaults} {
   // we are getting into trouble during the dumping of "_users"
   // this workaround avoids the auth check in addCollectionAtRuntime
   ExecContext const* old = ExecContext::CURRENT;
@@ -655,6 +656,9 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   trx.addCollectionAtRuntime(collection.name());
   iter = static_cast<RocksDBCollection*>(logical.getPhysical())
              ->getSortedAllIterator(&trx);
+
+  customTypeHandler = trx.transactionContextPtr()->orderCustomTypeHandler();
+  vpackOptions.customTypeHandler = customTypeHandler.get();
 }
 
 void RocksDBReplicationContext::CollectionIterator::release() {
@@ -678,6 +682,8 @@ RocksDBReplicationContext::getCollectionIterator(TRI_voc_cid_t cid) {
     // try to create one
     LogicalCollection* logical{_trx->vocbase()->lookupCollection(cid)};
     if (nullptr != logical) {
+      TRI_ASSERT(nullptr != logical);
+      TRI_ASSERT(nullptr != _trx);
       auto result =
           _iterators.emplace(cid, new CollectionIterator(*logical, *_trx));
       if (result.second) {

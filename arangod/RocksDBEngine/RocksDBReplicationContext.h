@@ -25,7 +25,7 @@
 #define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
+#include "Basics/Mutex.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
@@ -58,6 +58,9 @@ class RocksDBReplicationContext {
     std::atomic<bool> isUsed;
     bool hasMore;
     ManagedDocumentResult mdr;
+    /// @brief type handler used to render documents
+    std::shared_ptr<arangodb::velocypack::CustomTypeHandler> customTypeHandler;
+    arangodb::velocypack::Options vpackOptions;
 
     void release();
   };
@@ -106,8 +109,8 @@ class RocksDBReplicationContext {
   double expires() const;
   bool isDeleted() const;
   void deleted();
-  bool isUsed(bool exclusive) const;
-  void use(double ttl, bool exclusive);
+  bool isUsed() const;
+  bool use(double ttl, bool exclusive);
   /// remove use flag
   void release();
   bool more(std::string const& collectionIdentifier);
@@ -115,10 +118,10 @@ class RocksDBReplicationContext {
  private:
   void releaseDumpingResources();
   CollectionIterator* getCollectionIterator(TRI_voc_cid_t id);
-  void internalBind(TRI_vocbase_t*);
+  void internalBind(TRI_vocbase_t*, bool allowChange = true);
 
  private:
-  mutable basics::ReadWriteLock _contextLock;
+  mutable Mutex _contextLock;
   TRI_voc_tick_t _id; // batch id
   uint64_t _lastTick; // the time at which the snapshot was taken
   std::unique_ptr<DatabaseGuard> _guard;
@@ -130,10 +133,6 @@ class RocksDBReplicationContext {
 
   /// @brief offset in the collection used with the incremental sync
   uint64_t _lastIteratorOffset;
-
-  /// @brief type handler used to render documents
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> _customTypeHandler;
-  arangodb::velocypack::Options _vpackOptions;
 
   double _expires;
   bool _isDeleted;

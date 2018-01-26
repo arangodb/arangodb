@@ -24,6 +24,7 @@
 #ifndef ARANGOD_UTILS_COLLECTION_NAME_RESOLVER_H
 #define ARANGOD_UTILS_COLLECTION_NAME_RESOLVER_H 1
 
+#include "Basics/ReadWriteLock.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/voc-types.h"
 
@@ -39,10 +40,12 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
 
   explicit CollectionNameResolver(TRI_vocbase_t* vocbase)
-      : _vocbase(vocbase), 
+      : _vocbase(vocbase),
         _serverRole(ServerState::instance()->getRole()),
-        _resolvedNames(), 
-        _resolvedIds() {}
+        _resolvedNames(),
+        _resolvedIds(),
+        _nameLock(),
+        _idLock() {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the resolver
@@ -139,11 +142,11 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_vocbase_t* _vocbase;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief role of server in cluster
   //////////////////////////////////////////////////////////////////////////////
-  
+
   ServerState::RoleEnum _serverRole;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -158,6 +161,9 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
 
   mutable std::unordered_map<TRI_voc_cid_t, std::string> _resolvedIds;
+
+  mutable basics::ReadWriteLock _nameLock;
+  mutable basics::ReadWriteLock _idLock;
 };
 }
 

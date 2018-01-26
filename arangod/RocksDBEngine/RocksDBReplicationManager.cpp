@@ -98,7 +98,7 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl) {
   auto context = std::make_unique<RocksDBReplicationContext>(ttl);
   TRI_ASSERT(context.get() != nullptr);
-  TRI_ASSERT(context->isUsed(false));
+  TRI_ASSERT(context->isUsed());
 
   RocksDBReplicationId const id = context->id();
 
@@ -139,7 +139,7 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
       return false;
     }
 
-    if (context->isUsed(true)) {
+    if (context->isUsed()) {
       // context is in use by someone else. now mark as deleted
       context->deleted();
       return true;
@@ -183,12 +183,11 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(
       return nullptr;
     }
 
-    if (context->isUsed(exclusive)) {
+    bool acquired = context->use(ttl, exclusive);
+    if (!acquired) {
       busy = true;
       return nullptr;
     }
-
-    context->use(ttl, exclusive);
   }
 
   return context;
@@ -202,10 +201,10 @@ void RocksDBReplicationManager::release(RocksDBReplicationContext* context) {
   {
     MUTEX_LOCKER(mutexLocker, _lock);
 
-    TRI_ASSERT(context->isUsed(true));
+    TRI_ASSERT(context->isUsed());
     context->release();
 
-    if (!context->isDeleted()) {
+    if (!context->isDeleted() || context->isUsed()) {
       return;
     }
 
@@ -234,7 +233,7 @@ bool RocksDBReplicationManager::containsUsedContext() {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   for (auto it : _contexts) {
-    if (it.second->isUsed(true)) {
+    if (it.second->isUsed()) {
       return true;
     }
   }
@@ -298,7 +297,7 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
         context->deleted();
       }
 
-      if (context->isUsed(false)) {
+      if (context->isUsed()) {
         // must not physically destroy contexts that are currently used
         ++it;
         continue;
