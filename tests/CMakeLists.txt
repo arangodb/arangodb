@@ -48,10 +48,8 @@ if (USE_IRESEARCH)
   )
 endif ()
 
-# linking is a dark art...workmonitordummy is somehow necessary
 add_executable(
   arangodbtests
-#  ../lib/Basics/WorkMonitorDummy.cpp
   ${CMAKE_SOURCE_DIR}/arangod/RestServer/FlushFeature.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
