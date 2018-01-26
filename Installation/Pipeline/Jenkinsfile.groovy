@@ -156,7 +156,7 @@ branchLabel = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
 buildJenkins = [
     "linux": "linux && build && arangodb",
     "mac" : "mac && build && arangodb",
-    "windows": "windows && build && arangodb && foo"
+    "windows": "foo"
 ]
 
 testJenkins = [
