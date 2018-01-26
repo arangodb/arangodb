@@ -156,13 +156,13 @@ branchLabel = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
 buildJenkins = [
     "linux": "linux && build && arangodb",
     "mac" : "mac && build && arangodb",
-    "windows": "windows && build && arangodb"
+    "windows": "windows && build && arangodb && foo"
 ]
 
 testJenkins = [
     "linux": "linux && tests && arangodb",
     "mac" : "mac && tests && arangodb",
-    "windows": "windows && tests && arangodb"
+    "windows": "windows && tests && arangodb && foo" 
 ]
 
 def copyFile(os, src, dst) {
