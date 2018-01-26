@@ -6,7 +6,8 @@ const FoxxManager = require('@arangodb/foxx/manager');
 const request = require('@arangodb/request');
 const fs = require('fs');
 const internal = require('internal');
-const basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps', 'headers'));
+const path = require('path');
+const basePath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'headers');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const aql = arangodb.aql;
@@ -137,4 +138,121 @@ describe('FoxxApi commit', function () {
     `).toArray().length;
     expect(bundles).to.equal(1);
   });
+});
+
+describe('FoxxApi install', () => {
+  const mount = '/foxx-crud-test';
+  const basePath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'minimal-working-service');
+  var utils = require('@arangodb/foxx/manager-utils');
+  const servicePath = utils.zipDirectory(basePath);
+
+  const serviceServiceMount = '/foxx-crud-test-download';
+  const serviceServicePath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'service-service', 'index.js');
+
+  beforeEach(() => {
+    FoxxManager.install(serviceServicePath, serviceServiceMount);
+  });
+
+  afterEach(() => {
+    try {
+      FoxxManager.uninstall(serviceServiceMount, {force: true});
+    } catch (e) {}
+  });
+
+  afterEach(function () {
+    try {
+      FoxxManager.uninstall(mount, {force: true});
+    } catch (e) {}
+  });
+
+  const cases = [
+    {
+      name: 'localJsFile',
+      request: {
+        qs: {
+          mount
+        },
+        body: {
+          source: path.resolve(basePath, 'index.js')
+        },
+        json: true
+      }
+    },
+    {
+      name: 'localZipFile',
+      request: {
+        qs: {
+          mount
+        },
+        body: {
+          source: servicePath
+        },
+        json: true
+      }
+    },
+    {
+      name: 'localDir',
+      request: {
+        qs: {
+          mount
+        },
+        body: {
+          source: basePath
+        },
+        json: true
+      }
+    },
+    {
+      name: 'jsBuffer',
+      request: {
+        qs: {
+          mount
+        },
+        body: fs.readFileSync(path.resolve(basePath, 'index.js')),
+        contentType: 'application/javascript'
+      }
+    },
+    {
+      name: 'zipBuffer',
+      request: {
+        qs: {
+          mount
+        },
+        body: fs.readFileSync(servicePath),
+        contentType: 'application/zip'
+      }
+    },
+    {
+      name: 'remoteJsFile',
+      request: {
+        qs: {
+          mount
+        },
+        body: {
+          source: `${origin}/_db/${db._name()}${serviceServiceMount}/js`
+        },
+        json: true
+      }
+    },
+    {
+      name: 'remoteZipFile',
+      request: {
+        qs: {
+          mount
+        },
+        body: {
+          source: `${origin}/_db/${db._name()}${serviceServiceMount}/zip`
+        },
+        json: true
+      }
+    }
+  ];
+  for (const c of cases) {
+    it(`over ${c.name} should be available`, () => {
+      const installResp = request.post('/_api/foxx', c.request);
+      expect(installResp.status).to.equal(201);
+      const resp = request.get(c.request.qs.mount);
+      expect(resp.json).to.eql({hello: 'world'});
+    });
+  }
 });
