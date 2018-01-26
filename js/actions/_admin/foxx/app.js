@@ -75,10 +75,10 @@ function resolveAppInfo (appInfo) {
   if (/^git:/i.test(appInfo)) {
     const splitted = appInfo.split(':');
     const baseUrl = process.env.FOXX_BASE_URL || 'https://github.com/';
-    return `${baseUrl}${splitted[1]}/archive/${splitted[2] || 'master'}.zip`;
+    return {source: `${baseUrl}${splitted[1]}/archive/${splitted[2] || 'master'}.zip`};
   }
   if (/^https?:/i.test(appInfo)) {
-    return appInfo;
+    return {source: appInfo};
   }
   if (/^uploads[/\\]tmp-/.test(appInfo)) {
     const tempFile = joinPath(fs.getTempPath(), appInfo);
