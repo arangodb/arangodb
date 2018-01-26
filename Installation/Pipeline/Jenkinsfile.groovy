@@ -644,18 +644,19 @@ def setBuildsAndTests() {
     else if (buildType == "PR Test") {
         restrictions = [
             // OS EDITION MAINTAINER
-            "build-linux-community-maintainer" : true,
-            "build-linux-enterprise-maintainer" : true,
-            "build-mac-enterprise-user" : true,
-            "build-windows-enterprise-maintainer" : true,
+            //"build-linux-community-maintainer" : true,
+            //"build-linux-enterprise-maintainer" : true,
+            //"build-mac-enterprise-user" : true,
+            //"build-windows-enterprise-maintainer" : true,
+            "build-windows-community-user" : true,
 
             // OS EDITION MAINTAINER MODE ENGINE
-            "test-linux-enterprise-maintainer-cluster-rocksdb" : true,
-            "test-linux-community-maintainer-singleserver-mmfiles" : true,
+            //"test-linux-enterprise-maintainer-cluster-rocksdb" : true,
+            //"test-linux-community-maintainer-singleserver-mmfiles" : true,
 
             // OS EDITION MAINTAINER ENGINE TYPE
-            "resilience-linux-enterprise-maintainer-rocksdb-single" : true,
-            "resilience-linux-enterprise-maintainer-mmfiles-single" : true,
+            //"resilience-linux-enterprise-maintainer-rocksdb-single" : true,
+            //"resilience-linux-enterprise-maintainer-mmfiles-single" : true,
         ]
     }
     else if (buildType == "Nightly Test") {
