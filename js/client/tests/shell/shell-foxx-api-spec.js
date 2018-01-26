@@ -160,7 +160,7 @@ describe('Foxx service', () => {
     } catch (e) {}
   });
 
-  afterEach(function () {
+  afterEach(() => {
     try {
       FoxxManager.uninstall(mount, {force: true});
     } catch (e) {}
@@ -272,4 +272,13 @@ describe('Foxx service', () => {
       expect(resp.json).to.eql({hello: 'world'});
     });
   }
+
+  it('uninstalled should not be available', () => {
+    FoxxManager.install(basePath, mount);
+    const delResp = request.delete('/_api/foxx/service', {qs: {mount}});
+    expect(delResp.status).to.equal(204);
+    expect(delResp.body).to.equal('');
+    const resp = request.get(mount);
+    expect(resp.status).to.equal(404);
+  });
 });
