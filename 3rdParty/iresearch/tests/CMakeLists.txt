@@ -8,11 +8,6 @@ find_package(GTestLocal
   REQUIRED
 )
 
-# set test resource directory
-set(IResearch_test_resource_dir
-  ${CMAKE_CURRENT_SOURCE_DIR}/resources
-)
-
 SOURCE_GROUP("analysis" ./analysis/*)
 SOURCE_GROUP("store" ./store/*)
 SOURCE_GROUP("index" ./index/*)
@@ -29,11 +24,6 @@ set(IResearchTests_INCLUDE_DIR
   "${PROJECT_SOURCE_DIR}/tests"
   CACHE INTERNAL
   ""
-)
-
-configure_file( 
-  "${CMAKE_CURRENT_SOURCE_DIR}/tests_config.hpp.in" 
-  "${IReSearch_generated_INCLUDE_DIR}/tests_config.hpp" 
 )
 
 set(IReSearch_tests_sources
@@ -132,6 +122,8 @@ add_executable(${IResearchTests_TARGET_NAME}-shared
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
 )
 
+add_sanitizers(${IResearchTests_TARGET_NAME}-shared)
+
 add_executable(${IResearchTests_TARGET_NAME}-static
   EXCLUDE_FROM_ALL ${IReSearch_sources}
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
@@ -139,6 +131,8 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   ./formats/formats_10_tests.cpp
   ./iql/parser_test.cpp
 )
+
+add_sanitizers(${IResearchTests_TARGET_NAME}-static)
 
 add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-delimited-shared

@@ -214,6 +214,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const override;
 
+  virtual void applyCommitedEstimates(std::vector<uint64_t> const& inserts,
+                                      std::vector<uint64_t> const& removes) override;
+
  private:
   bool isDuplicateOperator(arangodb::aql::AstNode const*,
                            std::unordered_set<int> const&) const;

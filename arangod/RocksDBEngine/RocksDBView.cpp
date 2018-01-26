@@ -95,7 +95,7 @@ void RocksDBView::drop() {
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
   auto status = rocksutils::convertStatus(db->Write(wo, &batch));
   if (!status.ok()) {
-    THROW_ARANGO_EXCEPTION(status.errorNumber());
+    THROW_ARANGO_EXCEPTION(status);
   }
 }
 

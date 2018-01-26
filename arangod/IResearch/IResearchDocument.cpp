@@ -25,10 +25,13 @@
 #include "IResearchFeature.h"
 #include "IResearchViewMeta.h"
 #include "IResearchKludge.h"
+#include "Misc.h"
 
 #include "analysis/token_streams.hpp"
 #include "analysis/token_attributes.hpp"
 
+#include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 
@@ -46,6 +49,21 @@ NS_LOCAL
 // ----------------------------------------------------------------------------
 // --SECTION--                                       FieldIterator dependencies
 // ----------------------------------------------------------------------------
+
+enum AttributeType : uint8_t {
+  AT_REG = arangodb::basics::VelocyPackHelper::AttributeBase,  // regular attribute
+  AT_KEY = arangodb::basics::VelocyPackHelper::KeyAttribute,   // _key
+  AT_REV = arangodb::basics::VelocyPackHelper::RevAttribute,   // _rev
+  AT_ID = arangodb::basics::VelocyPackHelper::IdAttribute,     // _id
+  AT_FROM = arangodb::basics::VelocyPackHelper::FromAttribute, // _from
+  AT_TO = arangodb::basics::VelocyPackHelper::ToAttribute      // _to
+}; // AttributeType
+
+static_assert(
+  arangodb::iresearch::adjacencyChecker<AttributeType>::checkAdjacency<
+    AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG
+  >(), "Values are not adjacent"
+);
 
 irs::string_ref const CID_FIELD("@_CID");
 irs::string_ref const RID_FIELD("@_REV");
@@ -78,6 +96,48 @@ inline void append(std::string& out, size_t value) {
   out.resize(size + written);
 }
 
+inline bool keyFromSlice(
+    VPackSlice keySlice,
+    irs::string_ref& key
+) {
+  // according to Helpers.cpp, see
+  // `transaction::helpers::extractKeyFromDocument`
+  // `transaction::helpers::extractRevFromDocument`
+  // `transaction::helpers::extractIdFromDocument`
+  // `transaction::helpers::extractFromFromDocument`
+  // `transaction::helpers::extractToFromDocument`
+
+  switch (keySlice.type()) {
+    case VPackValueType::SmallInt: // system attribute
+      switch (AttributeType(keySlice.head())) { // system attribute type
+        case AT_REG:
+          return false;
+        case AT_KEY:
+          key = arangodb::StaticStrings::KeyString;
+          break;
+        case AT_REV:
+          key = arangodb::StaticStrings::RevString;
+          break;
+        case AT_ID:
+          return false; // not supported
+        case AT_FROM:
+          key = arangodb::StaticStrings::FromString;
+          break;
+        case AT_TO:
+          key = arangodb::StaticStrings::ToString;
+          break;
+        default:
+          return false;
+      }
+      return true;
+    case VPackValueType::String: // regular attribute
+      key = arangodb::iresearch::getStringRef(keySlice);
+      return true;
+    default: // unsupported
+      return false;
+  }
+}
+
 inline bool canHandleValue(
     VPackSlice const& value,
     arangodb::iresearch::IResearchLinkMeta const& context
@@ -102,7 +162,7 @@ inline bool canHandleValue(
     case VPackValueType::SmallInt:
       return true;
     case VPackValueType::String:
-      return !context._tokenizers.empty();
+      return !context._analyzers.empty();
     case VPackValueType::Binary:
     case VPackValueType::BCD:
     case VPackValueType::Custom:
@@ -127,12 +187,11 @@ inline bool inObjectFiltered(
     arangodb::iresearch::IResearchLinkMeta const*& context,
     arangodb::iresearch::IteratorValue const& value
 ) {
-  // FIXME
-  if (!value.key.isString()) {
+  irs::string_ref key;
+
+  if (!keyFromSlice(value.key, key)) {
     return false;
   }
-
-  auto const key = arangodb::iresearch::getStringRef(value.key);
 
   auto const* meta = findMeta(key, context);
 
@@ -151,12 +210,11 @@ inline bool inObject(
     arangodb::iresearch::IResearchLinkMeta const*& context,
     arangodb::iresearch::IteratorValue const& value
 ) {
-  // FIXME
-  if (!value.key.isString()) {
+  irs::string_ref key;
+
+  if (!keyFromSlice(value.key, key)) {
     return false;
   }
-
-  auto const key = arangodb::iresearch::getStringRef(value.key);
 
   buffer.append(key.c_str(), key.size());
   context = findMeta(key, context);
@@ -209,7 +267,7 @@ inline Filter getFilter(
 
   return valueAcceptors[
     4 * value.isArray()
-      + 2 * meta._nestListValues
+      + 2 * meta._trackListPositions
       + meta._includeAllFields
    ];
 }
@@ -337,7 +395,6 @@ NS_BEGIN(iresearch)
 /*static*/ void Field::setCidValue(Field& field, TRI_voc_cid_t& cid) {
   field._name = CID_FIELD;
   setIdValue(cid, *field._analyzer);
-  field._boost = 1.f;
   field._features = &irs::flags::empty_instance();
 }
 
@@ -353,7 +410,6 @@ NS_BEGIN(iresearch)
 /*static*/ void Field::setRidValue(Field& field, TRI_voc_rid_t& rid) {
   field._name = RID_FIELD;
   setIdValue(rid, *field._analyzer);
-  field._boost = 1.f;
   field._features = &irs::flags::empty_instance();
 }
 
@@ -369,8 +425,7 @@ NS_BEGIN(iresearch)
 Field::Field(Field&& rhs)
   : _features(rhs._features),
     _analyzer(std::move(rhs._analyzer)),
-    _name(std::move(rhs._name)),
-    _boost(rhs._boost) {
+    _name(std::move(rhs._name)) {
   rhs._features = nullptr;
 }
 
@@ -379,9 +434,9 @@ Field& Field::operator=(Field&& rhs) {
     _features = rhs._features;
     _analyzer = std::move(rhs._analyzer);
     _name = std::move(rhs._name);
-    _boost= rhs._boost;
     rhs._features = nullptr;
   }
+
   return *this;
 }
 
@@ -422,28 +477,12 @@ void FieldIterator::reset(
   auto const* context = &linkMeta;
 
   // push the provided 'doc' to stack and initialize current value
-  if (!push(doc, context) || !setValue(topValue().value, *context)) {
+  if (!pushAndSetValue(doc, context)) {
     next();
   }
 }
 
-IResearchLinkMeta const* FieldIterator::nextTop() {
-  auto& name = nameBuffer();
-  auto& level = top();
-  auto& it = level.it;
-  auto const* context = level.meta;
-  auto const filter = level.filter;
-
-  name.resize(level.nameLength);
-  while (it.next() && !filter(name, context, it.value())) {
-    // filtered out
-    name.resize(level.nameLength);
-  }
-
-  return context;
-}
-
-bool FieldIterator::push(VPackSlice slice, IResearchLinkMeta const*& context) {
+bool FieldIterator::pushAndSetValue(VPackSlice slice, IResearchLinkMeta const*& context) {
   auto& name = nameBuffer();
 
   while (isArrayOrObject(slice)) {
@@ -474,16 +513,16 @@ bool FieldIterator::push(VPackSlice slice, IResearchLinkMeta const*& context) {
   }
 
   TRI_ASSERT(context);
-  return true;
+
+  // set value
+  _begin = nullptr;
+  _end = 1 + _begin;                // set surrogate analyzers
+
+  return setRegularAttribute(*context);
 }
 
-bool FieldIterator::setValue(
-    VPackSlice const& value,
-    IResearchLinkMeta const& context
-) {
-  _begin = nullptr;
-  _end = 1 + _begin;               // set surrogate analyzers
-  _value._boost = context._boost;  // set boost
+bool FieldIterator::setRegularAttribute(IResearchLinkMeta const& context) {
+  auto const value = topValue().value;
 
   switch (value.type()) {
     case VPackValueType::None:
@@ -520,20 +559,16 @@ bool FieldIterator::setValue(
     default:
       return false;
   }
-
-  return false;
 }
 
 void FieldIterator::next() {
   TRI_ASSERT(valid());
 
-  auto const& prev = *_begin;
-
-  while (++_begin != _end) {
+  for (auto const* prev = _begin; ++_begin != _end; ) {
     auto& name = nameBuffer();
 
     // remove previous suffix
-    arangodb::iresearch::kludge::unmangleStringField(name, prev);
+    arangodb::iresearch::kludge::unmangleStringField(name, *prev);
 
     // can have multiple analyzers for string values only
     if (setStringValue(topValue().value, name, _value, *_begin)) {
@@ -542,6 +577,23 @@ void FieldIterator::next() {
   }
 
   IResearchLinkMeta const* context;
+
+  auto& name = nameBuffer();
+
+  auto nextTop = [this, &name](){
+    auto& level = top();
+    auto& it = level.it;
+    auto const* context = level.meta;
+    auto const filter = level.filter;
+
+    name.resize(level.nameLength);
+    while (it.next() && !filter(name, context, it.value())) {
+      // filtered out
+      name.resize(level.nameLength);
+    }
+
+    return context;
+  };
 
   do {
     // advance top iterator
@@ -557,11 +609,10 @@ void FieldIterator::next() {
       }
 
       // reset name to previous size
-      nameBuffer().resize(top().nameLength);
+      name.resize(top().nameLength);
     }
 
-  } while (!push(topValue().value, context)
-           || !setValue(topValue().value, *context));
+  } while (!pushAndSetValue(topValue().value, context));
 }
 
 // ----------------------------------------------------------------------------
@@ -640,6 +691,19 @@ bool appendKnownCollections(
     std::unordered_set<TRI_voc_cid_t>& set,
     const irs::index_reader& reader
 ) {
+  auto visitor = [&set](TRI_voc_cid_t cid)->bool {
+    set.emplace(cid);
+
+    return true;
+  };
+
+  return visitReaderCollections(reader, visitor);
+}
+
+bool visitReaderCollections(
+    irs::index_reader const& reader,
+    std::function<bool(TRI_voc_cid_t cid)> const& visitor
+) {
   for(auto& segment: reader) {
     auto* term_reader = segment.field(CID_FIELD);
 
@@ -669,7 +733,9 @@ bool appendKnownCollections(
         return false;
       }
 
-      set.emplace(cid);
+      if (!visitor(cid)) {
+        return false;
+      }
     }
   }
 

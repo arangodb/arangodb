@@ -32,16 +32,6 @@
   #pragma GCC diagnostic pop
 #endif
 
-#if defined(_MSC_VER)
-  #pragma warning(disable: 4229)
-#endif
-
-  #include <unicode/uclean.h> // for u_cleanup
-
-#if defined(_MSC_VER)
-  #pragma warning(default: 4229)
-#endif
-
 #include "gtest/gtest.h"
 #include "tests_config.hpp"
 #include "tests_shared.hpp"
@@ -111,7 +101,7 @@ namespace tests {
         auto locale = boost::locale::generator().generate("en");
         const std::string tmp_str;
 
-        iresearch::analysis::analyzers::get("text", "en"); // stream needed only to load stopwords
+        irs::analysis::analyzers::get("text", irs::text_format::text, "en"); // stream needed only to load stopwords
 
         if (czOldStopwordPath) {
           iresearch::setenv(text_stopword_path_var, sOldStopwordPath.c_str(), true);
@@ -121,8 +111,6 @@ namespace tests {
 
     virtual void TearDown() {
       // Code here will be called immediately after each test (right before the destructor).
-
-      u_cleanup(); // release/free all memory used by ICU
     }
   };
 
@@ -130,7 +118,7 @@ namespace tests {
    public:
     analyzed_string_field(const iresearch::string_ref& name, const iresearch::string_ref& value)
       : templates::string_field(name, value),
-        token_stream_(ir::analysis::analyzers::get("text", "en")) {
+        token_stream_(irs::analysis::analyzers::get("text", irs::text_format::text, "en")) {
       if (!token_stream_) {
         throw std::runtime_error("Failed to get 'text' analyzer for args: en");
       }

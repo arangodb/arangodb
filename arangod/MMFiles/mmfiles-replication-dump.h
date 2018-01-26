@@ -27,8 +27,8 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
+#include "Replication/common-defines.h"
 #include "Transaction/Context.h"
-#include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -37,8 +37,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include <vector>
 
 /// @brief replication dump container
 struct MMFilesReplicationDumpContext {

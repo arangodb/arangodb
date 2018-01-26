@@ -278,7 +278,6 @@ Result RocksDBPrimaryIndex::removeInternal(transaction::Methods* trx,
   // acquire rocksdb transaction
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
   Result r = mthds->Delete(_cf, key.ref());
-  // rocksutils::convertStatus(status, rocksutils::StatusHint::index);
   return IndexResult(r.errorNumber(), this);
 }
 

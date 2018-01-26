@@ -50,7 +50,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // //////////////////////////////////////////////////////////////////////////////
 
 function ldap (options) {
-  print(`DAP FQDN is: ${options.ldapHost}:${options.ldapPort} ${options.caCertFilePath}`);
+  print(`LDAP FQDN is: ${options.ldapHost}:${options.ldapPort} ${options.caCertFilePath}`);
   const results = { failed: 0 };
   const tests = [
     {
