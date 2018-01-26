@@ -554,4 +554,21 @@ describe('Foxx service', () => {
     expect(service).to.have.property('development', false);
     expect(service).to.have.property('legacy', false);
   });
+
+  it('informations should be returned', () => {
+    FoxxManager.install(basePath, mount);
+    const resp = request.get('/_api/foxx/service', {qs: {mount}});
+    const service = resp.json;
+    expect(service).to.have.property('mount', mount);
+    expect(service).to.have.property('name', 'minimal-working-manifest');
+    expect(service).to.have.property('version', '0.0.0');
+    expect(service).to.have.property('development', false);
+    expect(service).to.have.property('legacy', false);
+    expect(service).to.have.property('manifest');
+    expect(service.manifest).to.be.an('object');
+    expect(service).to.have.property('options');
+    expect(service.options).to.be.an('object');
+    expect(service).to.have.property('checksum');
+    expect(service.checksum).to.be.a('string');
+  });
 });
