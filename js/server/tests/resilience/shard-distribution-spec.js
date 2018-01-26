@@ -165,13 +165,26 @@ describe('Shard distribution', function () {
       internal.db._drop(followCollection);
     };
 
+    const shardNumber = function (shard) {
+      // Each shard starts with 's'
+      expect(shard[0]).to.equal('s');
+      // And is followed by a numeric value
+      const nr = parseInt(shard.slice(1));
+      expect(nr).to.be.above(0);
+      return nr
+    };
+
+    const sortShardsNumericly = function (l, r) {
+      return shardNumber(l) - shardNumber(r);
+    };
+
     const compareDistributions = function() {
       const all = request.get(coordinator.url + '/_admin/cluster/shardDistribution');
       const dist = JSON.parse(all.body).results;
       const orig = dist[colName].Current;
       const fol = dist[followCollection].Current;
-      const origShards = Object.keys(orig).sort();
-      const folShards = Object.keys(fol).sort();
+      const origShards = Object.keys(orig).sort(sortShardsNumericly);
+      const folShards = Object.keys(fol).sort(sortShardsNumericly);
       // Now we have all shard names sorted in alphabetical ordering.
       // It needs to be guaranteed that leader + follower of each shard in this ordering is identical.
       expect(origShards).to.have.length.of(folShards.length);
