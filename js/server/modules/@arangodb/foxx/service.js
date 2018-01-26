@@ -393,7 +393,7 @@ module.exports =
                 }
                 res.headers.allow = error.methods.join(', ');
               }
-              if (this.isDevelopment || true) {
+              if (this.isDevelopment) {
                 const err = e.cause || e;
                 body.exception = String(err);
                 if (!err.stack) {
