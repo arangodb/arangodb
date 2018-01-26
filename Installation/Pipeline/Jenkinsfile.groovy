@@ -1334,7 +1334,6 @@ def buildEdition(os, edition, maintainer) {
     ])
 
     def logFile = "${arch}/build.log"
-    echo "logFile: ${logFile}"
 
     try {
         logStartStage(os, logFile, logFile)
@@ -1373,8 +1372,9 @@ def buildEdition(os, edition, maintainer) {
             powershell "New-Item -ItemType Directory -Force -Path build"
     echo "build4"
     echo "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru $ENV:WORKSPACE/${logFile}"
+            echo "logFile: ${logFile}"
             //powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru \$ENV:WORKSPACE/${logFile}"
-            powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru \$ENV:WORKSPACE/${logFile}"
+            powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
     echo "build5"
         }
 
