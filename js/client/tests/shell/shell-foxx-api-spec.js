@@ -140,9 +140,10 @@ describe('FoxxApi commit', function () {
   });
 });
 
-describe('FoxxApi install', () => {
+describe('Foxx service', () => {
   const mount = '/foxx-crud-test';
   const basePath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'minimal-working-service');
+  const itzPath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'itzpapalotl');
   var utils = require('@arangodb/foxx/manager-utils');
   const servicePath = utils.zipDirectory(basePath);
 
@@ -248,9 +249,25 @@ describe('FoxxApi install', () => {
     }
   ];
   for (const c of cases) {
-    it(`over ${c.name} should be available`, () => {
+    it(`installed via ${c.name} should be available`, () => {
       const installResp = request.post('/_api/foxx', c.request);
       expect(installResp.status).to.equal(201);
+      const resp = request.get(c.request.qs.mount);
+      expect(resp.json).to.eql({hello: 'world'});
+    });
+
+    it(`replaced via ${c.name} should be available`, () => {
+      FoxxManager.install(itzPath, c.request.qs.mount);
+      const replaceResp = request.put('/_api/foxx/service', c.request);
+      expect(replaceResp.status).to.equal(200);
+      const resp = request.get(c.request.qs.mount);
+      expect(resp.json).to.eql({hello: 'world'});
+    });
+
+    it(`upgrade via ${c.name} should be available`, () => {
+      FoxxManager.install(itzPath, c.request.qs.mount);
+      const upgradeResp = request.patch('/_api/foxx/service', c.request);
+      expect(upgradeResp.status).to.equal(200);
       const resp = request.get(c.request.qs.mount);
       expect(resp.json).to.eql({hello: 'world'});
     });
