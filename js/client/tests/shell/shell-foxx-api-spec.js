@@ -4,6 +4,7 @@
 const expect = require('chai').expect;
 const FoxxManager = require('@arangodb/foxx/manager');
 const request = require('@arangodb/request');
+const util = require('@arangodb/util');
 const fs = require('fs');
 const internal = require('internal');
 const path = require('path');
@@ -518,5 +519,16 @@ describe('Foxx service', () => {
     expect(resp.json.test1).to.have.property('current', '/test');
     expect(resp.json).to.have.property('test2');
     expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('should be downloadable', () => {
+    FoxxManager.install(basePath, mount);
+    const resp = request.post('/_api/foxx/download', {
+      qs: {mount},
+      encoding: null
+    });
+    expect(resp.status).to.equal(200);
+    expect(resp.headers['content-type']).to.equal('application/zip');
+    expect(util.isZipBuffer(resp.body)).to.equal(true);
   });
 });
