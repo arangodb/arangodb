@@ -571,4 +571,38 @@ describe('Foxx service', () => {
     expect(service).to.have.property('checksum');
     expect(service.checksum).to.be.a('string');
   });
+
+  const scriptPath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'minimal-working-setup-teardown');
+
+  it('list of scripts should be available', () => {
+    FoxxManager.install(scriptPath, mount);
+    const resp = request.get('/_api/foxx/scripts', {qs: {mount}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('setup', 'Setup');
+    expect(resp.json).to.have.property('teardown', 'Teardown');
+  });
+
+  it('script should be available', () => {
+    FoxxManager.install(scriptPath, mount);
+    const col = `${mount}_setup_teardown`.replace(/\//, '').replace(/-/g, '_');
+    expect(db._collection(col)).to.be.an('object');
+    const resp = request.post('/_api/foxx/scripts/teardown', {
+      qs: {mount},
+      body: {},
+      json: true
+    });
+    expect(resp.status).to.equal(200);
+    db._flushCache();
+    expect(db._collection(col)).to.equal(null);
+  });
+
+  it('non-existing script should not be available', () => {
+    FoxxManager.install(scriptPath, mount);
+    const resp = request.post('/_api/foxx/scripts/no', {
+      qs: {mount},
+      body: {},
+      json: true
+    });
+    expect(resp.status).to.equal(400);
+  });
 });
