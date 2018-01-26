@@ -1324,7 +1324,9 @@ def testResilienceParallel(os, edition, maintainer) {
 def buildEdition(os, edition, maintainer) {
     echo "build"
     def archDir  = "${os}-${edition}-${maintainer}"
+    echo "archDir: ${archDir}"
     def arch     = "${archDir}/01-build"
+    echo "arch: ${arch}"
 
     fileOperations([
         folderDeleteOperation(arch),
@@ -1332,6 +1334,7 @@ def buildEdition(os, edition, maintainer) {
     ])
 
     def logFile = "${arch}/build.log"
+    echo "logFile: ${logFile}"
 
     try {
         logStartStage(os, logFile, logFile)
