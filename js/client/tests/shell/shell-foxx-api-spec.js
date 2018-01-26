@@ -531,4 +531,27 @@ describe('Foxx service', () => {
     expect(resp.headers['content-type']).to.equal('application/zip');
     expect(util.isZipBuffer(resp.body)).to.equal(true);
   });
+
+  it('list should allow excluding system services', () => {
+    FoxxManager.install(basePath, mount);
+    const withSystem = request.get('/_api/foxx');
+    const withoutSystem = request.get('/_api/foxx', {qs: {excludeSystem: true}});
+    const numSystemWithSystem = withSystem.json.map(service => service.mount).filter(mount => mount.startsWith('/_')).length;
+    const numSystemWithoutSystem = withoutSystem.json.map(service => service.mount).filter(mount => mount.startsWith('/_')).length;
+    expect(numSystemWithSystem).to.above(0);
+    expect(numSystemWithSystem).to.equal(withSystem.json.length - withoutSystem.json.length);
+    expect(numSystemWithoutSystem).to.equal(0);
+  });
+
+  it('should be contained in service list', () => {
+    FoxxManager.install(basePath, mount);
+    const resp = request.get('/_api/foxx');
+    const service = resp.json.find(service => service.mount === mount);
+    expect(service).to.have.property('name', 'minimal-working-manifest');
+    expect(service).to.have.property('version', '0.0.0');
+    expect(service).to.have.property('provides');
+    expect(service.provides).to.eql({});
+    expect(service).to.have.property('development', false);
+    expect(service).to.have.property('legacy', false);
+  });
 });
