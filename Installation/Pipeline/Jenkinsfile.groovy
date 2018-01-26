@@ -1374,8 +1374,10 @@ def buildEdition(os, edition, maintainer) {
     echo "build4"
     echo "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
             echo "logFile: ${logFile}"
-            //powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru \$ENV:WORKSPACE/${logFile}"
+            workspace="${ENV['WORKSPACE']}"
+            echo "workspace: ${workspace}"
             powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
+            powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${workspace}/${logFile}" //groovy style
     echo "build5"
         }
 
