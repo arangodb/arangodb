@@ -103,12 +103,11 @@ module.exports =
         definition.mount,
         definition.noisy
       );
-      FoxxService.validateServiceFiles(definition.mount, manifest);
+      FoxxService.validateServiceFiles(basePath, manifest);
       return manifest;
     }
 
-    static validateServiceFiles (mount, manifest, rev) {
-      const servicePath = FoxxService.basePath(mount);
+    static validateServiceFiles (servicePath, manifest, rev) {
       if (manifest.main) {
         parseFile(servicePath, manifest.main);
       }
@@ -394,7 +393,7 @@ module.exports =
                 }
                 res.headers.allow = error.methods.join(', ');
               }
-              if (this.isDevelopment) {
+              if (this.isDevelopment || true) {
                 const err = e.cause || e;
                 body.exception = String(err);
                 if (!err.stack) {
