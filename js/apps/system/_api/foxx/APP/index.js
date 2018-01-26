@@ -285,7 +285,7 @@ depsRouter.get((req, res) => {
 depsRouter.patch((req, res) => {
   const warnings = FoxxManager.setDependencies(req.service.mount, {
     dependencies: req.body,
-    replace: true
+    replace: false
   });
   const values = req.service.getDependencies(req.queryParams.minimal);
   if (req.queryParams.minimal) {
