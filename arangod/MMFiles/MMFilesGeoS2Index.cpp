@@ -38,9 +38,58 @@
 
 using namespace arangodb;
 
+/*struct SimpleIterator final : public IndexIterator {
+  char const* typeName() const override { return "s2-index-iterator"; }
+
+  /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
+  SimpleIterator(LogicalCollection* collection, transaction::Methods* trx,
+                 ManagedDocumentResult* mmdr, MMFilesGeoS2Index const* index,
+                 geo::QueryParams&& params)
+  : IndexIterator(collection, trx, mmdr, index),
+  _index(index),
+  _params(std::move(params)) {
+    
+  }
+  
+  /// internal retrieval loop
+  inline bool nextToken(std::function<bool(LocalDocumentId token)>&& cb,
+                        size_t limit) {
+    if (_iter == _intervals.end()) {
+      // we already know that no further results will be returned by the index
+      return false;
+    }
+    
+    while (limit > 0 && _iter != _intervals.end()) {
+      TRI_ASSERT(<#expr#>)
+      /while (limit > 0 && _near.hasNearest()) {
+        if (cb(_near.nearest().document)) {
+          limit--;
+        }
+        _near.popNearest();
+      }
+      // need to fetch more geo results
+      if (limit > 0 && !_near.isDone()) {
+        TRI_ASSERT(!_near.hasNearest());
+        performScan();
+      }*
+      _iter++;
+    }
+    return _iter != _intervals.end();
+  }
+
+
+  void reset() override {  }
+  
+private:
+  MMFilesGeoS2Index const* _index;
+  geo::QueryParams const _params;
+  std::vector<geo::Interval> _intervals;
+  std::vector<geo::Interval>::const_iterator _iter;
+  std::unordered_set<LocalDocumentId> _seen;
+};*/
+
 template <typename CMP = geo::DocumentsAscending>
-class NearIterator final : public IndexIterator {
- public:
+struct NearIterator final : public IndexIterator {
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
                ManagedDocumentResult* mmdr, MMFilesGeoS2Index const* index,
@@ -88,10 +137,10 @@ class NearIterator final : public IndexIterator {
           geo::FilterType const ft = _near.filterType();
           if (ft != geo::FilterType::NONE) {  // expensive test
             geo::ShapeContainer const& filter = _near.filterShape();
-            TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
+            TRI_ASSERT(!filter.empty());
             geo::ShapeContainer test;
             Result res = _index->shape(doc, test);
-            TRI_ASSERT(res.ok());  // this should never fail here
+            TRI_ASSERT(res.ok() && !test.empty());  // this should never fail here
             if (res.fail() ||
                 (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
                 (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
@@ -110,7 +159,7 @@ class NearIterator final : public IndexIterator {
           geo::FilterType const ft = _near.filterType();
           if (ft != geo::FilterType::NONE) {
             geo::ShapeContainer const& filter = _near.filterShape();
-            TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
+            TRI_ASSERT(!filter.empty());
             if (!_collection->readDocument(_trx, token, *_mmdr)) {
               return false;
             }
@@ -201,11 +250,11 @@ class NearIterator final : public IndexIterator {
 MMFilesGeoS2Index::MMFilesGeoS2Index(TRI_idx_iid_t iid,
                                      LogicalCollection* collection,
                                      VPackSlice const& info)
-: MMFilesIndex(iid, collection, info), geo::Index(info) {
+: MMFilesIndex(iid, collection, info),
+  geo::Index(info, _fields) {
   TRI_ASSERT(iid != 0);
   _unique = false;
   _sparse = true;
-  geo::Index::initalize(info, _fields); // initalize mixin fields
   TRI_ASSERT(_variant != geo::Index::Variant::NONE);
 }
 
@@ -366,7 +415,7 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
   // FIXME: <Optimize away>
   params.sorted = true;
   if (params.filterType != geo::FilterType::NONE) {
-    TRI_ASSERT(params.filterShape.type() != geo::ShapeContainer::Type::EMPTY);
+    TRI_ASSERT(!params.filterShape.empty());
     params.filterShape.updateBounds(params);
   }
   //        </Optimize away>

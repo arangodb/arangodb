@@ -4677,9 +4677,9 @@ struct GeoIndexInfo {
   AstNode const* distanceCenterLat = nullptr;
   AstNode const* distanceCenterLng = nullptr;
   AstNode const* minDistance = nullptr;
-  bool minInclusive = false;
+  bool minInclusive = true;
   AstNode const* maxDistance = nullptr;
-  bool maxInclusive = false;
+  bool maxInclusive = true;
 
   // ============ Near Info ============
   bool sorted = false;
@@ -4719,12 +4719,11 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
   TRI_ASSERT(attributeAccess1.first != nullptr);
   TRI_ASSERT(attributeAccess2.first != nullptr);
   
-  // expect access of the for doc.attribute
   ExecutionNode* setter1 = plan->getVarSetBy(attributeAccess1.first->id);
   ExecutionNode* setter2 = plan->getVarSetBy(attributeAccess2.first->id);
   if (setter1 == nullptr || setter1 != setter2 ||
       setter1->getType() != EN::ENUMERATE_COLLECTION) {
-    return false;
+    return false;// expect access of doc.lat, doc.lng or doc.loc[0], doc.loc[1]
   }
     
   //get logical collection
@@ -4794,10 +4793,9 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
     return false; // no attribute access, no index check
   }
   TRI_ASSERT(attributeAccess.first != nullptr);
-  // expect access of the for doc.attribute
   ExecutionNode* setter = plan->getVarSetBy(attributeAccess.first->id);
   if (setter == nullptr || setter->getType() != EN::ENUMERATE_COLLECTION) {
-    return false;
+    return false; // expected access of the for doc.attribute
   }
   
   //get logical collection
@@ -4913,11 +4911,12 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
     return false;
   }
   AstNode* fargs = funcNode->getMemberUnchecked(0);
-  auto func = static_cast<Function const*>(funcNode->getData());
+  Function const* func = static_cast<Function const*>(funcNode->getData());
+  const size_t nArgs = fargs->numMembers();
   // WITHIN(coll, latitude, longitude, radius)
   // NEAR(coll, latitude, longitude, limit)
-  if ((func->name != "WITHIN" && func->name != "NEAR") ||
-      (fargs->numMembers() != 4 && fargs->numMembers() != 3)) {
+  if (!(func->name == "WITHIN" && nArgs == 4) &&
+       !(func->name == "NEAR" && (nArgs == 3 || nArgs == 4))) {
     return false;
   }
   TRI_ASSERT(info.collection == nullptr);
@@ -4925,7 +4924,7 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
   AstNode const* collArg = fargs->getMemberUnchecked(0);
   AstNode const* latArg = fargs->getMemberUnchecked(1);
   AstNode const* lngArg = fargs->getMemberUnchecked(2);
-  AstNode const* rangeArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
+  AstNode const* rArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
   if (!isValueTypeCollection(collArg) || !latArg->isNumericValue() ||
       !lngArg->isNumericValue()) {
     return false;
@@ -4951,13 +4950,12 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
     info.ascending = true; // always ascending
     info.distanceCenterLat = latArg;
     info.distanceCenterLng = lngArg;
-    if (rangeArg != nullptr && rangeArg->isNumericValue()) {
-      if (func->name == "NEAR") {
-        info.actualLimit = rangeArg->getIntValue();
-      } else if (func->name == "WITHIN") {
-        info.maxDistance = rangeArg;
-        info.maxInclusive = true;
-      }
+    if (func->name == "NEAR" && rArg != nullptr) {
+      info.actualLimit = rArg->isNumericValue() ? rArg->getIntValue() : 100;
+    } else if (func->name == "WITHIN") {
+      TRI_ASSERT(rArg != nullptr);
+      info.maxDistance = rArg;
+      info.maxInclusive = true;
     }
     return true;
   }
@@ -5031,17 +5029,19 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
 bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndexInfo& info) {
   // checks @first `smaller` @second
   auto eval = [&](AstNode const* first, AstNode const* second, bool lessequal) -> bool{
-    if (isValueOrReference(second) && info.maxDistance == nullptr &&
+    if (isValueOrReference(second) && // no attribute access
+        info.maxDistance == nullptr && // max distance is not yet set
         checkDistanceFunc(plan, first, /*legacy*/true, info)) {
       TRI_ASSERT(info.index);
       info.maxDistance = second;
-      info.maxInclusive = lessequal;
+      info.maxInclusive = info.maxInclusive && lessequal;
       info.nodesToRemove.insert(node);
       return true;
-    } else if (isValueOrReference(first) && info.minDistance == nullptr &&
+    } else if (isValueOrReference(first) && // no attribute access
+               info.minDistance == nullptr && // min distance is not yet set
                checkDistanceFunc(plan, second, /*legacy*/false, info)) {
       info.minDistance = first;
-      info.minInclusive = lessequal;
+      info.minInclusive = info.minInclusive && lessequal;
       info.nodesToRemove.insert(node);
       return true;
     }
@@ -5199,10 +5199,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
     addLocationArg(args);
     AstNode* func = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("GEO_DISTANCE"), args);
 
-    // maxDistance is only null if NEAR or WITHIN
-    TRI_ASSERT(info.maxDistance != nullptr ||
-               info.sorted && info.ascending);
-
+    TRI_ASSERT(info.maxDistance || info.minDistance || info.sorted);
     if (info.minDistance != nullptr) {
       AstNodeType t = info.minInclusive ? NODE_TYPE_OPERATOR_BINARY_GE : NODE_TYPE_OPERATOR_BINARY_GT;
       cond->andCombine(ast->createNodeBinaryOperator(t, func, info.minDistance));
@@ -5304,12 +5301,15 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
     }
   }
   
-  if (info.actualLimit < SIZE_MAX) { // add LIMIT
+  if (info.actualLimit < SIZE_MAX) { // add or modify LIMIT
     if (ln == nullptr) {
       ln = new LimitNode(plan, plan->nextId(), 0, info.actualLimit);
       plan->registerNode(ln);
       plan->insertAfter(inode, ln);
     } else if (info.actualLimit < ln->limit()) {
+      // LIMIT cannot be modified safely if there is a SORT node
+      // inbetween the enumerate-list / collection node
+      TRI_ASSERT(ln->getFirstDependency()->getType() != EN::SORT);
       ln->setLimit(info.actualLimit);
     }
   }
@@ -5337,6 +5337,9 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
         case EN::FILTER:
         case EN::SORT:
           identifyGeoOptimizationCandidate(plan.get(), current, info);
+          // 1. SortNode abc ASC
+          // 2. LimitNode x,y  <-- cannot reuse LIMIT node here
+          limit = nullptr;
           break;
         case EN::LIMIT: // collect this so we can use it
           limit = static_cast<LimitNode*>(current);

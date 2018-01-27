@@ -194,7 +194,7 @@ class NearUtils {
   GeoDocumentsQueue _buffer;
 
   /// for deduplication of results
-  std::unordered_map<LocalDocumentId, double> _seen;
+  std::unordered_set<LocalDocumentId> _seen;
 
   /// Track the already scanned region
   S2CellUnion _scannedCells;

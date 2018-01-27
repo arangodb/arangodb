@@ -38,12 +38,10 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
-geo::Index::Index(VPackSlice const& info) : _variant(geo::Index::Variant::NONE) {
+geo::Index::Index(VPackSlice const& info,
+                  std::vector<std::vector<basics::AttributeName>> const& fields) : _variant(geo::Index::Variant::NONE) {
   _coverParams.fromVelocyPack(info);
-}
-
-void geo::Index::initalize(VPackSlice const& info,
-                           std::vector<std::vector<basics::AttributeName>> const& fields) {
+  
   if (fields.size() == 1) {
     bool geoJson =
     basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
@@ -74,7 +72,6 @@ void geo::Index::initalize(VPackSlice const& info,
                                    "s2index can only be created with one or two fields.");
   }
 }
-
 Result geo::Index::indexCells(VPackSlice const& doc,
                               std::vector<S2CellId>& cells,
                               geo::Coordinate& centroid) const {
@@ -83,9 +80,15 @@ Result geo::Index::indexCells(VPackSlice const& doc,
     if (loc.isArray()) {
       return GeoUtils::indexCellsLatLng(loc, /*geojson*/true, cells, centroid);
     }
-    S2RegionCoverer coverer;
-    _coverParams.configureS2RegionCoverer(&coverer);
-    return geo::GeoUtils::indexCellsGeoJson(&coverer, loc, cells, centroid);
+    geo::ShapeContainer shape;
+    Result r = geo::GeoJsonParser::parseGeoJson(loc, shape);
+    if (r.ok()) {
+      S2RegionCoverer coverer;
+      _coverParams.configureS2RegionCoverer(&coverer);
+      cells = shape.covering(&coverer);
+      centroid = shape.centroid();
+    }
+    return r;
   } else if (_variant == geo::Index::Variant::COMBINED_LAT_LON) {
     VPackSlice loc = doc.get(_location);
     return GeoUtils::indexCellsLatLng(loc, /*geojson*/false, cells, centroid);

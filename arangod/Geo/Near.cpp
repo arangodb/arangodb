@@ -151,7 +151,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
 
       TRI_ASSERT(cover.empty());  // swap should empty this
       if (!isFilterNone()) {
-        TRI_ASSERT(_params.filterShape.type() != ShapeContainer::Type::EMPTY);
+        TRI_ASSERT(!_params.filterShape.empty());
         for (S2CellId cellId : lookup.cell_ids()) {
           if (_params.filterShape.mayIntersect(cellId)) {
             cover.push_back(cellId);
@@ -206,20 +206,16 @@ void NearUtils<CMP>::reportFound(LocalDocumentId lid,
   _statsFoundLastInterval++;  // we have to estimate scan bounds
   auto const& it = _seen.find(lid);
   if (it == _seen.end()) {
-    _seen.emplace(lid, rad);
+    _seen.emplace(lid);
 
     // possibly expensive point rejection, but saves parsing of document
     if (isFilterContains()) {
-      TRI_ASSERT(_params.filterShape.type() != ShapeContainer::Type::EMPTY);
+      TRI_ASSERT(!_params.filterShape.empty());
       if (!_params.filterShape.contains(&center)) {
         return;
       }
     }
     _buffer.emplace(lid, rad);
-  } else {  // deduplication
-    // this can happen but probably shouldn't if we have just points
-    //LOG_TOPIC(ERR, Logger::FIXME) << "[Duplicate] " << lid;
-    TRI_ASSERT(it->second == rad);  // should never change
   }
 }
 

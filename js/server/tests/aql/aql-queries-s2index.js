@@ -109,11 +109,17 @@ function legacyGeoTestSuite() {
     /// @brief test near function
     ////////////////////////////////////////////////////////////////////////////////
 
-    /*testNear1 : function () {
-      var expected = [ { "distance" : "111194.92664", "latitude" : -1, "longitude" : 0 }, { "distance" : "111194.92664", "latitude" : 0, "longitude" : -1 }, { "distance" : "111194.92664", "latitude" : 0, "longitude" : 1 }, { "distance" : "111194.92664", "latitude" : 1, "longitude" : 0 }, { "distance" : 0, "latitude" : 0, "longitude" : 0 } ];
-      var actual = runQuery("FOR x IN NEAR(" + locations.name() + ", 0, 0, 5, \"distance\") SORT x.distance DESC, x.latitude, x.longitude RETURN x");
+    testNear1 : function () {
+      var expected = [ { "distance" : "111194.92664", "latitude" : -1, "longitude" : 0 }, 
+      { "distance" : "111194.92664", "latitude" : 0, "longitude" : -1 }, 
+      { "distance" : "111194.92664", "latitude" : 0, "longitude" : 1 }, 
+      { "distance" : "111194.92664", "latitude" : 1, "longitude" : 0 }, 
+      { "distance" : 0, "latitude" : 0, "longitude" : 0 } ];
+      var actual = runQuery("FOR x IN NEAR(" + locations.name() + ", 0, 0, 5) " + 
+                            "LET d = DISTANCE(0,0,x.latitude,x.longitude) " + 
+                            "SORT d DESC, x.latitude, x.longitude RETURN MERGE(x, {distance:d})");
       assertEqual(expected, actual);
-    },*/
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test near function
@@ -129,15 +135,23 @@ function legacyGeoTestSuite() {
     /// @brief test near function
     ////////////////////////////////////////////////////////////////////////////////
 
-    /*testNear3 : function () {
-      var expected = [ { "distance" : "14891044.54146", "latitude" : 40, "longitude" : -40 }, { "distance" : "14853029.30724", "latitude" : 40, "longitude" : -39 }, { "distance" : "14815001.47646", "latitude" : 40, "longitude" : -38 } ];
-      var actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, 10000, \"distance\") SORT x.distance DESC LIMIT 3 RETURN x");
+    testNear3 : function () {
+      var expected = [ { "distance" : "14891044.54146", "latitude" : 40, "longitude" : -40 }, 
+                       { "distance" : "14853029.30724", "latitude" : 40, "longitude" : -39 }, 
+                       { "distance" : "14815001.47646", "latitude" : 40, "longitude" : -38 } ];
+      var actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, 10000) " + 
+                            "LET d = DISTANCE(-70,70,x.latitude,x.longitude) " + 
+                            "SORT d DESC LIMIT 3 RETURN MERGE(x, {distance:d})");
       assertEqual(expected, actual);
      
-      let expected = [ {"distance" : "4487652.12954", "latitude" : -37, "longitude" : 26 }, { "distance" : "4485565.93668", "latitude" : -39, "longitude" : 20 }, { "distance" : "4484371.86154" , "latitude" : -38, "longitude" : 23 } ]; 
-      let actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, null, \"distance\") SORT x.distance DESC LIMIT 3 RETURN x");
+      expected = [ {"distance" : "4487652.12954", "latitude" : -37, "longitude" : 26 }, 
+      { "distance" : "4485565.93668", "latitude" : -39, "longitude" : 20 }, 
+      { "distance" : "4484371.86154" , "latitude" : -38, "longitude" : 23 } ]; 
+      actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, null) " + 
+                        "LET d = DISTANCE(-70,70,x.latitude,x.longitude) " +
+                        "SORT d DESC LIMIT 3 RETURN MERGE(x, {distance:d})");
       assertEqual(expected, actual);
-    },*/
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test near function

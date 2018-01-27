@@ -36,6 +36,7 @@
 #include <geometry/s2pointregion.h>
 #include <geometry/s2polygon.h>
 #include <geometry/s2region.h>
+#include <geometry/s2regioncoverer.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -59,64 +60,11 @@ Result ShapeContainer::parseCoordinates(VPackSlice const& json, bool geoJson) {
   if (!lat.isNumber() || !lng.isNumber()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
   }
-
-  _type = Type::S2_POINT;
-  S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
-                                      lng.getNumericValue<double>());
-  _data = new S2PointRegion(ll.ToPoint());
+  
+  resetCoordinates(lat.getNumericValue<double>(),
+                   lng.getNumericValue<double>());
   return TRI_ERROR_NO_ERROR;
 }
-/*
-Result ShapeContainer::parseGeoJson(VPackSlice const& json) {
-  if (!json.isObject()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid GeoJson Object");
-  }
-
-  for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(json)) {
-    if (pair.key.compareString("geoJson") == 0) {
-      return GeoJsonParser::parseGeoJson(pair.value, *this);
-    } else if (pair.key.compareString("circle") == 0) {
-      Result res(TRI_ERROR_BAD_PARAMETER,
-                 "Expecting {circle:{center:"
-                 "[[lat,lng],[lat,lng]], radius:12.0}}");
-      if (!pair.value.isObject()) {
-        return res;
-      }
-
-      VPackSlice lat, lng;
-      VPackSlice cntr = pair.value.get("center");
-      VPackSlice rdsSlice = pair.value.get("radius");
-      if ((!cntr.isArray() && cntr.length() < 2) || !rdsSlice.isNumber() ||
-          !(lat = cntr.at(0)).isNumber() || !(lng = cntr.at(1)).isNumber()) {
-        return res;
-      }
-      S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
-                                          lng.getNumericValue<double>());
-      double rad = rdsSlice.getNumber<double>() / geo::kEarthRadiusInMeters;
-      rad = std::min(std::max(0.0, rad), M_PI);
-
-      S2Cap cap = S2Cap::FromAxisAngle(ll.ToPoint(), S1Angle::Radians(rad));
-      _data = cap.Clone();
-      _type = Type::S2_CAP;
-      return TRI_ERROR_NO_ERROR;
-
-    } else if (pair.key.compareString("rect") == 0) {
-      if (!pair.value.isArray() || pair.value.length() < 2) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "Expecting [[lat1, lng2],[lat2, lng2]]");
-      }
-      std::vector<S2Point> vertices;
-      Result res = GeoJsonParser::parsePoints(pair.value, false, vertices);
-      if (res.ok()) {
-        _data = new S2LatLngRect(S2LatLng(vertices[0]), S2LatLng(vertices[1]));
-        _type = Type::S2_LATLNGRECT;
-      }
-      return res;
-    }
-  }
-
-  return Result(TRI_ERROR_BAD_PARAMETER, "unknown geo filter syntax");
-}*/
 
 ShapeContainer::ShapeContainer(ShapeContainer&& other) noexcept
     : _data(other._data), _type(other._type) {
@@ -193,10 +141,75 @@ geo::Coordinate ShapeContainer::centroid() const noexcept {
       return Coordinate(S2LatLng::Latitude(c).degrees(),
                         S2LatLng::Longitude(c).degrees());
     }
-    default:
+    case ShapeContainer::Type::S2_MULTIPOINT: {
+      S2MultiPointRegion const* pts = (static_cast<S2MultiPointRegion const*>(_data));
+      S2Point c(0,0,0);
+      for (int k = 0; k < pts->num_points(); k++) {
+        c += pts->point(k);
+      }
+      c /= pts->num_points();
+      return Coordinate(S2LatLng::Latitude(c).degrees(),
+                        S2LatLng::Longitude(c).degrees());
+    }
+    case ShapeContainer::Type::S2_MULTIPOLYLINE:{
+      S2MultiPolyline const* lines = (static_cast<S2MultiPolyline const*>(_data));
+      S2Point c(0,0,0);
+      for (int k = 0; k < lines->num_lines(); k++) {
+        c += lines->line(k).GetCentroid();
+      }
+      c /= lines->num_lines();
+      return Coordinate(S2LatLng::Latitude(c).degrees(),
+                        S2LatLng::Longitude(c).degrees());
+    }
+      
+    case ShapeContainer::Type::EMPTY:
       LOG_TOPIC(ERR, Logger::FIXME) << "Invalid GeoShape usage";
       return geo::Coordinate::Invalid();
   }
+}
+
+std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer* coverer) const noexcept {
+  TRI_ASSERT(coverer != nullptr && _data != nullptr);
+  
+  std::vector<S2CellId> cover;
+  switch (_type) {
+    case ShapeContainer::Type::S2_POINT: {
+      S2Point const& c = (static_cast<S2PointRegion const*>(_data))->point();
+      return {S2CellId::FromPoint(c)};
+    }
+    case ShapeContainer::Type::S2_LATLNGRECT:
+    case ShapeContainer::Type::S2_CAP:
+    case ShapeContainer::Type::S2_POLYLINE:
+    case ShapeContainer::Type::S2_POLYGON: {
+      coverer->GetCovering(*_data, &cover);
+      break;
+    }
+    case ShapeContainer::Type::S2_MULTIPOINT: { // multi-optimization
+      S2MultiPointRegion const* pts = (static_cast<S2MultiPointRegion const*>(_data));
+      for (int k = 0; k < pts->num_points(); k++) {
+        cover.emplace_back(S2CellId::FromPoint(pts->point(k)));
+      }
+      break;
+    }
+    case ShapeContainer::Type::S2_MULTIPOLYLINE: { // multi-optimization
+      S2MultiPolyline const* lines = (static_cast<S2MultiPolyline const*>(_data));
+      for (int k = 0; k < lines->num_lines(); k++) {
+        std::vector<S2CellId> tmp;
+        coverer->GetCovering(*lines, &tmp);
+        if (!tmp.empty()) {
+          cover.reserve(cover.size() + tmp.size());
+          cover.insert(cover.end(), tmp.begin(), tmp.end());
+        }
+      }
+      break;
+    }
+      
+    case ShapeContainer::Type::EMPTY:
+      LOG_TOPIC(ERR, Logger::FIXME) << "Invalid GeoShape usage";
+      TRI_ASSERT(false);
+  }
+  
+  return cover;
 }
 
 double ShapeContainer::distanceFrom(geo::Coordinate const& other) const noexcept {
@@ -235,85 +248,6 @@ void ShapeContainer::updateBounds(QueryParams& qp) const noexcept {
   qp.maxDistance = std::max(std::max(a1.radians(), a2.radians()),
                             std::max(a3.radians(), a4.radians())) * kEarthRadiusInMeters;
 }
-
-/*bool ShapeContainer::contains(S2LatLngRect const& rect) const {
-  switch (_type) {
-    case ShapeContainer::Type::S2_POINT:{
-      return rect.is_point() &&
-_data->VirtualContainsPoint(rect.lo().ToPoint());
-    }
-    case ShapeContainer::Type::S2_LATLNGRECT:{
-      return (static_cast<S2LatLngRect const*>(_data))->Contains(rect);
-    }
-
-    case ShapeContainer::Type::S2_CAP:{
-      S2Cap const* cap = (static_cast<S2Cap const*>(_data));
-      return cap->Contains(rect.lo().ToPoint()) &&
-             cap->Contains(rect.hi().ToPoint());
-    }
-
-    case ShapeContainer::Type::S2_POLYLINE:
-      return false; // numerically not well defined
-
-    case ShapeContainer::Type::S2_POLYGON:{
-      // this works as long there is only one shell and n holes i.e.
-      // all geoJson polygons, but not multipolygons
-      S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
-      int num = poly->num_loops();
-      TRI_ASSERT(num >= 1);
-      if (!poly->loop(0)->Contains(&rect)) { // shell needs to contain
-        return false;
-      }
-      for (int k = 1; k < num; k++) {
-        if (poly->loop(k)->Intersects(&rect)) {
-          return false;
-        }
-      }
-      return true;
-    }
-
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-  }
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}*/
-/*bool ShapeContainer::contains(S2Cap const& cap) const {
-  switch (_type) {
-    case ShapeContainer::Type::S2_POINT:{
-      return false;
-    }
-    case ShapeContainer::Type::S2_LATLNGRECT:{
-      // works for exact bounds, which GetRectBound() guarantees
-      return (static_cast<S2LatLngRect
-const*>(_data))->Contains(cap.GetRectBound());
-    }
-
-    case ShapeContainer::Type::S2_CAP:{
-      return (static_cast<S2Cap const*>(_data))->Contains(cap);
-    }
-
-    case ShapeContainer::Type::S2_POLYLINE:
-      return false; // numerically not well defined
-
-    case ShapeContainer::Type::S2_POLYGON:{
-      // this works as long there is only one shell and n holes i.e.
-      // all geoJson polygons, but not multipolygons
-      S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
-      int num = poly->num_loops();
-      TRI_ASSERT(num >= 1);
-      if (!poly->loop(0)->Contains(&rect)) { // shell needs to contain
-        return false;
-      }
-    }
-
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-      break;
-  }
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}*/
 
 bool ShapeContainer::contains(Coordinate const* cc) const {
   S2Point pp = S2LatLng::FromDegrees(cc->latitude, cc->longitude).ToPoint();

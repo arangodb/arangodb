@@ -63,11 +63,8 @@ struct Index {
  protected:
   
   /// @brief Initialize coverParams
-  Index(velocypack::Slice const&);
-  
-  /// initialize _location or _latitude / _longitude
-  void initalize(velocypack::Slice const&,
-                 std::vector<std::vector<arangodb::basics::AttributeName>> const&);
+  Index(velocypack::Slice const&,
+        std::vector<std::vector<basics::AttributeName>> const&);
   
 public:
   

@@ -119,7 +119,7 @@ class RDBNearIterator final : public IndexIterator {
           geo::FilterType const ft = _near.filterType();
           if (ft != geo::FilterType::NONE) {
             geo::ShapeContainer const& filter = _near.filterShape();
-            TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
+            TRI_ASSERT(!filter.empty());
             if (!_collection->readDocument(_trx, token, *_mmdr)) {
               return false;
             }
@@ -225,11 +225,10 @@ RocksDBGeoS2Index::RocksDBGeoS2Index(TRI_idx_iid_t iid,
                                      LogicalCollection* collection,
                                      VPackSlice const& info)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
-      geo::Index(info) {
+      geo::Index(info, _fields) {
   TRI_ASSERT(iid != 0);
   _unique = false;
   _sparse = true;
-  geo::Index::initalize(info, _fields); // initalize mixin fields
   TRI_ASSERT(_variant != geo::Index::Variant::NONE);
 }
 
@@ -336,7 +335,7 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
   // FIXME: <Optimize away>
   params.sorted = true;
   if (params.filterType != geo::FilterType::NONE) {
-    TRI_ASSERT(params.filterShape.type() != geo::ShapeContainer::Type::EMPTY);
+    TRI_ASSERT(!params.filterShape.empty());
     params.filterShape.updateBounds(params);
   }
   //        </Optimize away>

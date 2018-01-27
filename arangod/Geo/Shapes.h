@@ -27,10 +27,10 @@
 
 #include <velocypack/Slice.h>
 #include <string>
-
 #include <geometry/s2cellid.h>
 
 class S2Region;
+class S2RegionCoverer;
 class S2LatLng;
 class S2LatLngRect;
 class S2Cap;
@@ -123,6 +123,8 @@ class ShapeContainer final {
   void resetCoordinates(double lat, double lon) noexcept;
 
   Type type() const { return _type; }
+  inline bool empty() const { return _type == Type::EMPTY; }
+  
   bool isAreaType() const noexcept {
     return _type == Type::S2_POLYGON || _type == Type::S2_CAP ||
            _type == Type::S2_LATLNGRECT;
@@ -130,24 +132,29 @@ class ShapeContainer final {
 
   /// @brief is an empty shape (can be expensive)
   bool isAreaEmpty() const noexcept;
+  
   /// @brief centroid of this shape
   geo::Coordinate centroid() const noexcept;
+  
+  /// @brief generate a cell covering
+  std::vector<S2CellId> covering(S2RegionCoverer*) const noexcept;
+  
   /// @brief distance from center in meters
   double distanceFrom(geo::Coordinate const&) const noexcept;
-  bool mayIntersect(S2CellId) const noexcept ;
   
+  /// @brief may intersect the cell
+  bool mayIntersect(S2CellId) const noexcept;
+  
+  /// @brief update query parameters
   void updateBounds(QueryParams& qp) const noexcept;
 
+  /// contains this region the coordinate
   bool contains(Coordinate const*) const;
-  // bool contains(S2LatLngRect const&) const;
-  // bool contains(S2Cap const&) const;
   bool contains(S2Polyline const*) const;
   bool contains(S2Polygon const*) const;
   bool contains(ShapeContainer const*) const;
 
   bool intersects(Coordinate const*) const;
-  // bool intersects(S2LatLngRect const&) const;
-  // bool intersects(S2Cap const&) const;
   bool intersects(S2Polyline const*) const;
   bool intersects(S2Polygon const*) const;
   bool intersects(ShapeContainer const*) const;

@@ -40,89 +40,6 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
-// TODO implement all this via a ShapeContainer ?
-Result GeoUtils::indexCellsGeoJson(S2RegionCoverer* coverer,
-                                   VPackSlice const& data,
-                                   std::vector<S2CellId>& cells,
-                                   geo::Coordinate& centroid) {
-  if (!data.isObject()) {  // actual geojson
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-  
-  S2LatLng latLng;
-  Result res(TRI_ERROR_NOT_IMPLEMENTED, "GeoJSON type is not supported");
-  GeoJsonParser::GeoJSONType t = GeoJsonParser::parseGeoJSONType(data);
-  switch (t) {
-    case GeoJsonParser::GeoJSONType::POINT: {
-      res = GeoJsonParser::parsePoint(data, latLng);
-      if (res.ok()) {
-        cells.push_back(S2CellId::FromLatLng(latLng));
-      }
-      break;
-    }
-
-    case GeoJsonParser::GeoJSONType::LINESTRING: {
-      S2Polyline line;
-      res = GeoJsonParser::parseLinestring(data, line);
-      if (res.ok()) {
-        coverer->GetCovering(line, &cells);
-        latLng = S2LatLng(line.GetCentroid());
-      }
-      break;
-    }
-
-    case GeoJsonParser::GeoJSONType::POLYGON: {
-      S2Polygon poly;
-      res = GeoJsonParser::parsePolygon(data, poly);
-      if (res.ok()) {
-        coverer->GetCovering(poly, &cells);
-        latLng = S2LatLng(poly.GetCentroid());
-      }
-      break;
-    }
-      
-    case GeoJsonParser::GeoJSONType::MULTI_POINT:{
-      std::vector<S2Point> vertices;
-      res = GeoJsonParser::parsePoints(data, true, vertices);
-      if (res.ok()) {
-        S2Point center(0,0,0);
-        for (S2Point const& v : vertices) {
-          cells.emplace_back(S2CellId::FromPoint(v));
-          center += v;
-        }
-        center /= vertices.size();
-        latLng = S2LatLng(center);
-      }
-      break;
-    }
-      
-    case GeoJsonParser::GeoJSONType::MULTI_LINESTRING: {
-      std::vector<S2Polyline> lines;
-      res = GeoJsonParser::parseMultiLinestring(data, lines);
-      if (res.ok()) {
-        S2Point center(0,0,0);
-        for (S2Polyline const& line : lines) {
-          coverer->GetCovering(line, &cells);
-          center += line.GetCentroid();
-        }
-        center /= lines.size();
-        latLng = S2LatLng(center);
-      }
-      break;
-    }
-      
-    case GeoJsonParser::GeoJSONType::MULTI_POLYGON:
-    case GeoJsonParser::GeoJSONType::GEOMETRY_COLLECTION:
-    case GeoJsonParser::GeoJSONType::UNKNOWN:
-      break;
-  }
-  if (res.ok()) {
-    centroid.latitude = latLng.lat().degrees();
-    centroid.longitude = latLng.lng().degrees();
-  }
-  return res;
-}
-
 Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
                                   std::vector<S2CellId>& cells,
                                   geo::Coordinate& centroid) {
@@ -149,21 +66,6 @@ Result GeoUtils::indexCells(geo::Coordinate const& c,
   cells.emplace_back(S2CellId::FromLatLng(ll));
   return TRI_ERROR_NO_ERROR;
 }
-
-/// parse geoJson (has to be an area) and generate maxium cover
-/*Result GeoCover::scanIntervals(S2RegionCoverer* coverer, VPackSlice const&
-data,
-                               std::vector<Interval>& sortedIntervals) {
-  TRI_ASSERT(isGeoJsonWithArea(data));
-  std::vector<S2CellId> cover;
-  Result res = generateCover(coverer, data, true, cover);
-  if (res.fail()) {
-    return res;
-  }
-  TRI_ASSERT(!cover.empty());
-  scanIntervals(coverer->min_level(), cover, sortedIntervals);
-  return TRI_ERROR_NO_ERROR;
-}*/
 
 /// generate intervalls of list of intervals to scan
 void GeoUtils::scanIntervals(S2RegionCoverer* coverer, S2Region const& region,

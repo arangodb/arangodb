@@ -58,12 +58,6 @@ class GeoUtils {
   GeoUtils() {}
 
  public:
-  /// parses geojson or and turns them into
-  /// a minimal set of cellIds ready for indexing
-  static Result indexCellsGeoJson(S2RegionCoverer* coverer,
-                                  velocypack::Slice const& geoJson,
-                                  std::vector<S2CellId>& cells,
-                                  geo::Coordinate& centroid);
 
   /// Generate a cover cell from an array [lat, lng] or [lng, lat]
   static Result indexCellsLatLng(velocypack::Slice const& data, bool isGeoJson,
