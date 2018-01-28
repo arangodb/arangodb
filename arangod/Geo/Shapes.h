@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2017-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,9 +25,9 @@
 
 #include "Basics/Result.h"
 
+#include <geometry/s2cellid.h>
 #include <velocypack/Slice.h>
 #include <string>
-#include <geometry/s2cellid.h>
 
 class S2Region;
 class S2RegionCoverer;
@@ -40,7 +40,7 @@ class S2Polygon;
 namespace arangodb {
 namespace geo {
 struct QueryParams;
-  
+
 /// coordinate point on the sphere in DEGREES
 struct Coordinate {
  public:
@@ -70,7 +70,7 @@ struct Coordinate {
   bool isValid() const {
     return std::abs(latitude) <= 90.0 && std::abs(longitude) <= 180.0;
   }
-  
+
   std::string toString() const {
     return "(lat: " + std::to_string(latitude) + ", lon: " +
            std::to_string(longitude) + ")";
@@ -80,7 +80,7 @@ struct Coordinate {
   double latitude;   // in degrees
   double longitude;  // in degrees
 };
-  
+
 /// Circle on a sphere
 /*struct Cap {
   Cap(geo::Coordinate cc, double r) : center(cc), radius(r) {}
@@ -124,7 +124,7 @@ class ShapeContainer final {
 
   Type type() const { return _type; }
   inline bool empty() const { return _type == Type::EMPTY; }
-  
+
   bool isAreaType() const noexcept {
     return _type == Type::S2_POLYGON || _type == Type::S2_CAP ||
            _type == Type::S2_LATLNGRECT;
@@ -132,19 +132,19 @@ class ShapeContainer final {
 
   /// @brief is an empty shape (can be expensive)
   bool isAreaEmpty() const noexcept;
-  
+
   /// @brief centroid of this shape
   geo::Coordinate centroid() const noexcept;
-  
+
   /// @brief generate a cell covering
   std::vector<S2CellId> covering(S2RegionCoverer*) const noexcept;
-  
+
   /// @brief distance from center in meters
   double distanceFrom(geo::Coordinate const&) const noexcept;
-  
+
   /// @brief may intersect the cell
   bool mayIntersect(S2CellId) const noexcept;
-  
+
   /// @brief update query parameters
   void updateBounds(QueryParams& qp) const noexcept;
 

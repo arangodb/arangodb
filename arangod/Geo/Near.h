@@ -94,7 +94,7 @@ class NearUtils {
   geo::FilterType filterType() const { return _params.filterType; }
 
   geo::ShapeContainer const& filterShape() const { return _params.filterShape; }
-  
+
   /// @brief all intervals are covered, no more buffered results
   bool isDone() const {
     TRI_ASSERT(_innerBound >= 0 && _innerBound <= _outerBound);
@@ -104,7 +104,7 @@ class NearUtils {
 
   /// @brief has buffered results
   inline bool hasNearest() const {
-    if (allIntervalsCovered()) { // special case when almost done
+    if (allIntervalsCovered()) {  // special case when almost done
       return !_buffer.empty();
     }
     // we need to not return results in the search area
@@ -150,21 +150,22 @@ class NearUtils {
     _innerBound = _maxBound;
     _outerBound = _maxBound;
   }
-  
+
   /// @brief returns true if all possible scan intervals are covered
   inline bool allIntervalsCovered() const noexcept {
-    return (isAcending() && _innerBound == _maxBound && _outerBound == _maxBound) ||
-            (isDescending() && _innerBound == 0 && _outerBound == 0);
+    return (isAcending() && _innerBound == _maxBound &&
+            _outerBound == _maxBound) ||
+           (isDescending() && _innerBound == 0 && _outerBound == 0);
   }
-  
+
   inline bool isFilterNone() const noexcept {
     return _params.filterType == FilterType::NONE;
   }
-  
+
   inline bool isFilterContains() const noexcept {
     return _params.filterType == FilterType::CONTAINS;
   }
-  
+
   inline bool isFilterIntersects() const noexcept {
     return _params.filterType == FilterType::INTERSECTS;
   }

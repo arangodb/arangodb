@@ -23,9 +23,9 @@
 #ifndef ARANGOD_GEO_INDEX_H
 #define ARANGOD_GEO_INDEX_H 1
 
+#include <geometry/s2cellid.h>
 #include "Basics/Result.h"
 #include "Geo/GeoParams.h"
-#include <geometry/s2cellid.h>
 
 namespace arangodb {
 namespace aql {
@@ -33,12 +33,12 @@ struct AstNode;
 struct Variable;
 }
 namespace basics {
-  struct AttributeName;
+struct AttributeName;
 }
 namespace velocypack {
-  class Slice;
+class Slice;
 }
-  
+
 namespace geo {
 struct Coordinate;
 class ShapeContainer;
@@ -46,7 +46,6 @@ struct QueryParams;
 
 /// Mixin for geo indexes
 struct Index {
-  
   /// @brief geo index variants
   enum class Variant : uint8_t {
     NONE = 0,
@@ -59,31 +58,26 @@ struct Index {
     // other geojson object types.
     COMBINED_GEOJSON
   };
-  
+
  protected:
-  
   /// @brief Initialize coverParams
   Index(velocypack::Slice const&,
         std::vector<std::vector<basics::AttributeName>> const&);
-  
-public:
-  
+
+ public:
   /// @brief Parse document and return cells to index
-  Result indexCells(velocypack::Slice const& doc,
-                    std::vector<S2CellId>& cells,
+  Result indexCells(velocypack::Slice const& doc, std::vector<S2CellId>& cells,
                     geo::Coordinate& centroid) const;
-  
-  Result shape(velocypack::Slice const& doc,
-               geo::ShapeContainer& shape) const;
-  
+
+  Result shape(velocypack::Slice const& doc, geo::ShapeContainer& shape) const;
+
   /// @brief Parse AQL condition into query parameters
   /// Public to allow usage by legacy geo indexes
   static void parseCondition(aql::AstNode const* node,
                              aql::Variable const* reference,
                              geo::QueryParams& params);
-  
-private:
-  
+
+ private:
   static geo::Coordinate parseGeoDistance(aql::AstNode const* node,
                                           aql::Variable const* ref);
 
@@ -91,13 +85,13 @@ private:
                                         aql::Variable const* ref);
   static void handleNode(aql::AstNode const* node, aql::Variable const* ref,
                          geo::QueryParams& params);
-  
+
  protected:
   /// @brief immutable region coverer parameters
   geo::RegionCoverParams _coverParams;
   /// @brief the type of geo we support
   geo::Index::Variant _variant;
-  
+
   /// @brief attribute paths
   std::vector<std::string> _location;
   std::vector<std::string> _latitude;

@@ -58,7 +58,6 @@ class GeoUtils {
   GeoUtils() {}
 
  public:
-
   /// Generate a cover cell from an array [lat, lng] or [lng, lat]
   static Result indexCellsLatLng(velocypack::Slice const& data, bool isGeoJson,
                                  std::vector<S2CellId>& cells,

@@ -20,36 +20,37 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Geo/Index.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/Variable.h"
 #include "Geo/GeoJsonParser.h"
-#include "Geo/GeoUtils.h"
 #include "Geo/GeoParams.h"
-#include "Geo/Index.h"
+#include "Geo/GeoUtils.h"
 #include "Geo/Shapes.h"
 
 #include <geometry/s2regioncoverer.h>
+#include <velocypack/Slice.h>
 #include <string>
 #include <vector>
-#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::geo;
 
 geo::Index::Index(VPackSlice const& info,
-                  std::vector<std::vector<basics::AttributeName>> const& fields) : _variant(geo::Index::Variant::NONE) {
+                  std::vector<std::vector<basics::AttributeName>> const& fields)
+    : _variant(geo::Index::Variant::NONE) {
   _coverParams.fromVelocyPack(info);
-  
+
   if (fields.size() == 1) {
     bool geoJson =
-    basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
+        basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
     // geojson means [<longitude>, <latitude>] or
     // json object {type:"<name>, coordinates:[]}.
     _variant = geoJson ? geo::Index::Variant::COMBINED_GEOJSON
-    : geo::Index::Variant::COMBINED_LAT_LON;
-    
+                       : geo::Index::Variant::COMBINED_LAT_LON;
+
     auto& loc = fields[0];
     _location.reserve(loc.size());
     for (auto const& it : loc) {
@@ -68,8 +69,9 @@ geo::Index::Index(VPackSlice const& info,
       _longitude.emplace_back(it.name);
     }
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "s2index can only be created with one or two fields.");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "s2index can only be created with one or two fields.");
   }
 }
 Result geo::Index::indexCells(VPackSlice const& doc,
@@ -78,7 +80,7 @@ Result geo::Index::indexCells(VPackSlice const& doc,
   if (_variant == geo::Index::Variant::COMBINED_GEOJSON) {
     VPackSlice loc = doc.get(_location);
     if (loc.isArray()) {
-      return GeoUtils::indexCellsLatLng(loc, /*geojson*/true, cells, centroid);
+      return GeoUtils::indexCellsLatLng(loc, /*geojson*/ true, cells, centroid);
     }
     geo::ShapeContainer shape;
     Result r = geo::GeoJsonParser::parseGeoJson(loc, shape);
@@ -91,7 +93,7 @@ Result geo::Index::indexCells(VPackSlice const& doc,
     return r;
   } else if (_variant == geo::Index::Variant::COMBINED_LAT_LON) {
     VPackSlice loc = doc.get(_location);
-    return GeoUtils::indexCellsLatLng(loc, /*geojson*/false, cells, centroid);
+    return GeoUtils::indexCellsLatLng(loc, /*geojson*/ false, cells, centroid);
   } else if (_variant == geo::Index::Variant::INDIVIDUAL_LAT_LON) {
     VPackSlice lat = doc.get(_latitude);
     VPackSlice lon = doc.get(_longitude);
@@ -110,14 +112,14 @@ Result geo::Index::shape(velocypack::Slice const& doc,
   if (_variant == geo::Index::Variant::COMBINED_GEOJSON) {
     VPackSlice loc = doc.get(_location);
     if (loc.isArray() && loc.length() >= 2) {
-      return shape.parseCoordinates(loc, /*geoJson*/true);
+      return shape.parseCoordinates(loc, /*geoJson*/ true);
     } else if (loc.isObject()) {
       return geo::GeoJsonParser::parseGeoJson(loc, shape);
     }
     return TRI_ERROR_BAD_PARAMETER;
   } else if (_variant == geo::Index::Variant::COMBINED_LAT_LON) {
     VPackSlice loc = doc.get(_location);
-    return shape.parseCoordinates(loc, /*geoJson*/false);
+    return shape.parseCoordinates(loc, /*geoJson*/ false);
   } else if (_variant == geo::Index::Variant::INDIVIDUAL_LAT_LON) {
     VPackSlice lon = doc.get(_longitude);
     VPackSlice lat = doc.get(_latitude);
@@ -176,7 +178,7 @@ geo::Coordinate geo::Index::parseGeoDistance(aql::AstNode const* args,
 
 // either GEO_DISTANCE or DISTANCE
 geo::Coordinate geo::Index::parseDistFCall(aql::AstNode const* node,
-                                         aql::Variable const* ref) {
+                                           aql::Variable const* ref) {
   TRI_ASSERT(node->type == aql::NODE_TYPE_FCALL);
   aql::AstNode* args = node->getMemberUnchecked(0);
   aql::Function* func = static_cast<aql::Function*>(node->getData());
@@ -189,7 +191,7 @@ geo::Coordinate geo::Index::parseDistFCall(aql::AstNode const* node,
 }
 
 void geo::Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
-                          geo::QueryParams& qp) {
+                            geo::QueryParams& qp) {
   switch (node->type) {
     // Handle GEO_CONTAINS(<geoJson-object>, doc.field)
     // or GEO_INTERSECTS(<geoJson-object>, doc.field)
@@ -205,9 +207,9 @@ void geo::Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       aql::AstNode const* geoJson = args->getMemberUnchecked(0);
       aql::AstNode const* symbol = args->getMemberUnchecked(1);
       TRI_ASSERT(symbol->isArray() && symbol->numMembers() == 2 &&
-                 symbol->getMember(0)->isAttributeAccessForVariable() &&
-                 symbol->getMember(1)->isAttributeAccessForVariable()
-                 || symbol->isAttributeAccessForVariable(ref, true));
+                     symbol->getMember(0)->isAttributeAccessForVariable() &&
+                     symbol->getMember(1)->isAttributeAccessForVariable() ||
+                 symbol->isAttributeAccessForVariable(ref, true));
       TRI_ASSERT(!geoJson->isAttributeAccessForVariable());
 
       // arrays can't occur only handle real GeoJSON
@@ -272,8 +274,8 @@ void geo::Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
 }
 
 void geo::Index::parseCondition(aql::AstNode const* node,
-                              aql::Variable const* reference,
-                              geo::QueryParams& params) {
+                                aql::Variable const* reference,
+                                geo::QueryParams& params) {
   if (aql::Ast::IsAndOperatorType(node->type)) {
     for (size_t i = 0; i < node->numMembers(); i++) {
       handleNode(node->getMemberUnchecked(i), reference, params);

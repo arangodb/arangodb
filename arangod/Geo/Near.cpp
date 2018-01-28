@@ -41,8 +41,8 @@ using namespace arangodb::geo;
 template <typename CMP>
 NearUtils<CMP>::NearUtils(QueryParams&& qp)
     : _params(std::move(qp)),
-      _origin(S2LatLng::FromDegrees(qp.origin.latitude,
-                                    qp.origin.longitude).ToPoint()),
+      _origin(S2LatLng::FromDegrees(qp.origin.latitude, qp.origin.longitude)
+                  .ToPoint()),
       _minBound(_params.minDistanceRad()),
       _maxBound(_params.maxDistanceRad()) {
   TRI_ASSERT(_params.origin.isValid());
@@ -66,7 +66,6 @@ NearUtils<CMP>::NearUtils(QueryParams&& qp)
 
 template <typename CMP>
 void NearUtils<CMP>::reset() {
-
   if (!_seen.empty() || !_buffer.empty()) {
     _seen.clear();
     while (!_buffer.empty()) {
@@ -197,12 +196,14 @@ void NearUtils<CMP>::reportFound(LocalDocumentId lid,
     if ((isAcending() && rad < _innerBound) ||
         (isDescending() && rad > _outerBound) || rad > _maxBound ||
         rad < _minBound) {
-      /*LOG_TOPIC(ERR, Logger::FIXME) << "Rejecting doc with center " << center.toString();
-      LOG_TOPIC(ERR, Logger::FIXME) << "Dist: " << (rad * kEarthRadiusInMeters);//*/
+      /*LOG_TOPIC(ERR, Logger::FIXME) << "Rejecting doc with center " <<
+      center.toString();
+      LOG_TOPIC(ERR, Logger::FIXME) << "Dist: " << (rad *
+      kEarthRadiusInMeters);//*/
       return;
     }
   }
-  
+
   _statsFoundLastInterval++;  // we have to estimate scan bounds
   auto const& it = _seen.find(lid);
   if (it == _seen.end()) {

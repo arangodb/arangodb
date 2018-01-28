@@ -171,21 +171,25 @@ function legacyGeoTestSuite() {
     /// @brief test within function
     ////////////////////////////////////////////////////////////////////////////////
 
-    /*testWithin1 : function () {
+    testWithin1 : function () {
       var expected = [ { "distance" : 0, "latitude" : 0, "longitude" : 0 } ];
-      var actual = runQuery("FOR x IN WITHIN(" + locations.name() + ", 0, 0, 10000, \"distance\") SORT x.latitude, x.longitude RETURN x");
+      var actual = runQuery("FOR x IN WITHIN(" + locations.name() + ", 0, 0, 10000) " + 
+      "LET d = DISTANCE(0,0,x.latitude,x.longitude) " +
+      "SORT x.latitude, x.longitude RETURN MERGE(x, {distance:d})");
       assertEqual(expected, actual);
-    },*/
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test within function
     ////////////////////////////////////////////////////////////////////////////////
 
-    /*testWithin2 : function () {
+    testWithin2 : function () {
       var expected = [ { "distance" : "111194.92664", "latitude" : -1, "longitude" : 0 }, { "distance" : "111194.92664", "latitude" : 0, "longitude" : -1 }, { "distance" : 0, "latitude" : 0, "longitude" : 0 }, { "distance" : "111194.92664", "latitude" : 0, "longitude" : 1 }, { "distance" : "111194.92664", "latitude" : 1, "longitude" : 0 } ];
-      var actual = runQuery("FOR x IN WITHIN(" + locations.name() + ", 0, 0, 150000, \"distance\") SORT x.latitude, x.longitude RETURN x");
+      var actual = runQuery("FOR x IN WITHIN(" + locations.name() + ", 0, 0, 150000) " + 
+      "LET d = DISTANCE(0,0,x.latitude,x.longitude) " +
+      "SORT x.latitude, x.longitude RETURN MERGE(x, {distance:d})");
       assertEqual(expected, actual);
-    },*/
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test within function

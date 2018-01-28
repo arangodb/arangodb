@@ -89,8 +89,7 @@ class GeoJsonParser {
   /// @brief Parse a polygon for IS_IN_POLYGON
   /// @param loop an array of arrays with 2 elements each,
   /// representing the points of the polygon in the format [lat, lon]
-  static Result parseLoop(velocypack::Slice const& loop,
-                          S2Loop& poly);
+  static Result parseLoop(velocypack::Slice const& loop, S2Loop& poly);
 };
 
 }  // namespace geo
