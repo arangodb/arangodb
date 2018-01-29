@@ -1393,7 +1393,7 @@ def buildEdition(os, edition, maintainer) {
         }
         else {
             echo "got error"
-            powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
+            powershell "echo \"${msg}\" | Out-File -filepath ${logFile}.log -append"
         }
 
         throw exc
