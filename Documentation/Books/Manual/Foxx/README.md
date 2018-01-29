@@ -12,12 +12,12 @@ databases without careful optimization.
 ArangoDB allows application developers to write their data access and domain logic
 as microservices running directly within the database with native access to
 in-memory data. The **Foxx microservice framework** makes it easy to extend
-ArangoDB's own REST API with custom HTTP endpoints using modern JavaScript running
+ArangoDB's own RESTful API with custom HTTP endpoints using modern JavaScript running
 on the same V8 engine you know from Node.js and the Google Chrome web browser.
 
 Unlike traditional approaches to storing logic in the database (like stored
 procedures), these microservices can be written as regular structured JavaScript
 applications that can be easily distributed and version controlled. Depending on
-your project's needs Foxx can be used to build anything from optimized REST
+your project's needs Foxx can be used to build anything from optimized RESTful
 endpoints performing complex data access to entire standalone applications
 running directly inside the database.

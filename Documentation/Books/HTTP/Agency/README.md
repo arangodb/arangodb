@@ -347,7 +347,7 @@ In the last case, `"noWait"`, the operation returns immediately, an empty body i
 
 External services to the agency may announce themselves or others to be observers of arbitrary existing or future keys in the key-value-store. The agency must then inform the observing service of any changes to the subtree below the observed key. The notification is done by virtue of POST requests to a required valid URL.
 
-In order to observe any future modification below say `"/a/b/c"`, a observer is announced through posting the below document to the agency’s write REST handler:
+In order to observe any future modification below say `"/a/b/c"`, a observer is announced through posting the below document to the agency’s write RESTful handler:
 
 ```js
 [ { "/a/b/c": 

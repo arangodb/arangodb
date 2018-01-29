@@ -154,7 +154,7 @@ You also need to obtain a client ID and client secret from Twitter:
 
 Note that if you only need read-only access to public information, [you can also use the *clientId* and *clientSecret* directly](https://dev.twitter.com/oauth/application-only) without OAuth 1.0a.
 
-See [Twitter REST API Reference Documentation](https://dev.twitter.com/rest/reference).
+See [Twitter RESTful API Reference Documentation](https://dev.twitter.com/rest/reference).
 
 ### Setting up OAuth 1.0a for XING
 

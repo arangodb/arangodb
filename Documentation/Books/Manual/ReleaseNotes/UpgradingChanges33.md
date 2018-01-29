@@ -50,7 +50,7 @@ Client tools
   target server (the restore server). 
 
 * The option `--compat` has been removed from the arangodump command
-  and the `/_api/replication/dump` REST API endpoint.
+  and the `/_api/replication/dump` RESTful API endpoint.
   In order to create a dump from an ArangoDB 2.8 instance, please use an older
   version of the client tools. Older ArangoDB versions are no longer be supported by 
   the arangodump and arangorestore binaries shipped with 3.3.

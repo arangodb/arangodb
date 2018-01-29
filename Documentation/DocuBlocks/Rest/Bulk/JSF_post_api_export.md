@@ -70,7 +70,7 @@ specified collection. In contrast to other data-producing APIs, the internal
 data structures produced by the export API are more lightweight, so it is
 the preferred way to retrieve all documents from a collection.
 
-Documents are returned in a similar manner as in the `/_api/cursor` REST API. 
+Documents are returned in a similar manner as in the `/_api/cursor` RESTful API. 
 If all documents of the collection fit into the first batch, then no cursor
 will be created, and the result object's *hasMore* attribute will be set to
 *false*. If not all documents fit into the first batch, then the result 

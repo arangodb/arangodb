@@ -177,7 +177,7 @@ db._query({
 }); 
 ```
 
-The `cache` attribute can be set via the HTTP REST API `POST /_api/cursor`, too.
+The `cache` attribute can be set via the HTTP RESTful API `POST /_api/cursor`, too.
 
 Each query result returned will contain a `cached` attribute. This will be set to `true`
 if the result was retrieved from the query cache, and `false` otherwise. Clients can use

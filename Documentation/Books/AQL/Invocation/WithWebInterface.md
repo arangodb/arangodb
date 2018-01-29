@@ -13,7 +13,7 @@ It also provides a feature to explain a query and inspect its execution plan
 (with the *Explain* button). 
 
 Bind parameters can be defined in the right-hand side pane. The format is the
-same as used for bind parameters in the HTTP REST API and in (JavaScript)
+same as used for bind parameters in the HTTP RESTful API and in (JavaScript)
 application code.
  
 Here is an example: 

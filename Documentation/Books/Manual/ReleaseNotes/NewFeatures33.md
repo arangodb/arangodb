@@ -158,7 +158,7 @@ X-Arango-Endpoint: http://[::1]:8531
 ```
 
 Client applications can also detect who the current leader and the followers
-are by calling the `/_api/cluster/endpoints` REST API. This API is accessible
+are by calling the `/_api/cluster/endpoints` RESTful API. This API is accessible
 on leaders and followers alike.
 
 The ArangoDB starter supports starting two servers with asynchronous

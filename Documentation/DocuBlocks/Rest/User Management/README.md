@@ -25,7 +25,7 @@ An optional JSON object with arbitrary extra data about the user.
 @RESTDESCRIPTION
 
 Create a new user. You need server access level *Administrate* in order to
-execute this REST call.
+execute this RESTful call.
 
 @RESTRETURNCODES
 
@@ -87,7 +87,7 @@ The name of the database.
 @RESTDESCRIPTION
 
 Sets the database access levels for the database *dbname* of user *user*. You
-need the *Administrate* server access level in order to execute this REST
+need the *Administrate* server access level in order to execute this RESTful
 call.
 
 @RESTRETURNCODES
@@ -145,7 +145,7 @@ The name of the database.
 Clears the database access level for the database *dbname* of user *user*. As
 consequence the default database access level is used. If there is no defined
 default database access level, it defaults to *No access*. You need permission
-to the *_system* database in order to execute this REST call.
+to the *_system* database in order to execute this RESTful call.
 
 @RESTRETURNCODES
 
@@ -204,7 +204,7 @@ The name of the collection.
 
 Sets the collection access level for the *collection* in the database *dbname*
 for user *user*. You need the *Administrate* server access level in order to
-execute this REST call.
+execute this RESTful call.
 
 @RESTRETURNCODES
 
@@ -266,7 +266,7 @@ Clears the collection access level for the collection *collection* in the
 database *dbname* of user *user*.  As consequence the default collection
 access level is used. If there is no defined default collection access level,
 it defaults to *No access*.  You need permissions to the *_system* database in
-order to execute this REST call.
+order to execute this RESTful call.
 
 @RESTRETURNCODES
 
@@ -316,7 +316,7 @@ Return the full set of access levels for all databases and all collections.
 @RESTDESCRIPTION
 
 Fetch the list of databases available to the specified *user*. You need
-*Administrate* for the server access level in order to execute this REST call.
+*Administrate* for the server access level in order to execute this RESTful call.
 
 The call will return a JSON object with the per-database access
 privileges for the specified user. The *result* object will contain
@@ -513,7 +513,7 @@ An optional JSON object with arbitrary extra data about the user.
 
 Replaces the data of an existing user. The name of an existing user must be
 specified in *user*. You need server access level *Administrate* in order to
-execute this REST call. Additionally, a user can change his/her own data.
+execute this RESTful call. Additionally, a user can change his/her own data.
 
 @RESTRETURNCODES
 
@@ -579,7 +579,7 @@ An optional JSON object with arbitrary extra data about the user.
 
 Partially updates the data of an existing user. The name of an existing user
 must be specified in *user*. You need server access level *Administrate* in
-order to execute this REST call. Additionally, a user can change his/her own
+order to execute this RESTful call. Additionally, a user can change his/her own
 data.
 
 @RESTRETURNCODES
@@ -636,7 +636,7 @@ The name of the user
 @RESTDESCRIPTION
 
 Removes an existing user, identified by *user*.  You need *Administrate* for
-the server access level in order to execute this REST call.
+the server access level in order to execute this RESTful call.
 
 @RESTRETURNCODES
 
@@ -686,7 +686,7 @@ The name of the user
 
 Fetches data about the specified user. You can fetch information about
 yourself or you need the *Administrate* server access level in order to
-execute this REST call.
+execute this RESTful call.
 
 @RESTRETURNCODES
 
@@ -731,7 +731,7 @@ The user with the specified name does not exist.
 @RESTDESCRIPTION
 
 Fetches data about all users.  You need the *Administrate* server access level
-in order to execute this REST call.  Otherwise, you will only get information
+in order to execute this RESTful call.  Otherwise, you will only get information
 about yourself.
 
 The call will return a JSON object with at least the following

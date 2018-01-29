@@ -651,7 +651,7 @@ curl -X POST \
 
 #### Querying connected edges
 
-The REST API for querying connected edges at GET `/_api/edges/<collection>` will now
+The RESTful API for querying connected edges at GET `/_api/edges/<collection>` will now
 make the edge ids unique before returning the connected edges. This is probably desired anyway
 as results will now be returned only once per distinct input edge id. However, it may break 
 client applications that rely on the old behavior.
@@ -668,7 +668,7 @@ All it's features can be replaced using `/_api/gharial` and AQL instead.
 
 ### Simple queries API
 
-The REST routes PUT `/_api/simple/first` and `/_api/simple/last` have been removed
+The RESTful routes PUT `/_api/simple/first` and `/_api/simple/last` have been removed
 entirely. These APIs were responsible for returning the first-inserted and
 last-inserted documents in a collection. This feature was built on cap constraints
 internally, which have been removed in 3.0.
@@ -684,14 +684,14 @@ therefore result in an HTTP 400 error.
 
 ### Log entries API
 
-The REST route HTTP GET `/_admin/log` is now accessible from within all databases. In
+The RESTful route HTTP GET `/_admin/log` is now accessible from within all databases. In
 previous versions of ArangoDB, this route was accessible from within the `_system`
 database only, and an HTTP 403 (Forbidden) was thrown by the server for any access
 from within another database.
 
 ### Figures API
 
-The REST route HTTP GET `/_api/collection/<collection>/figures` will not return the 
+The RESTful route HTTP GET `/_api/collection/<collection>/figures` will not return the 
 following result attributes as they became meaningless in 3.0:
 
 - shapefiles.count
@@ -755,7 +755,7 @@ in ArangoDB 3.0.
 
 ### Replication APIs
 
-The URL parameter "failOnUnknown" was removed from the REST API GET `/_api/replication/dump`.
+The URL parameter "failOnUnknown" was removed from the RESTful API GET `/_api/replication/dump`.
 This parameter controlled whether dumping or replicating edges should fail if one
 of the vertex collections linked in the edge's `_from` or `_to` attributes was not
 present anymore. In this case the `_from` and `_to` values could not be translated into
@@ -786,14 +786,14 @@ The same is true for the collection-specific changes API GET `/_api/replication/
 
 ### User management APIs
 
-The REST API endpoint POST `/_api/user` for adding new users now requires the request to
+The RESTful API endpoint POST `/_api/user` for adding new users now requires the request to
 contain a JSON object with an attribute named `user`, containing the name of the user to
 be created. Previous versions of ArangoDB also checked this attribute, but additionally 
 looked for an attribute `username` if the `user` attribute did not exist. 
 
 ### Undocumented APIs
 
-The following undocumented HTTP REST endpoints have been removed from ArangoDB's REST
+The following undocumented HTTP RESTful endpoints have been removed from ArangoDB's RESTful
 API:
 
 - `/_open/cerberus` and `/_system/cerberus`: these endpoints were intended for some 
@@ -829,7 +829,7 @@ inspect this header and can allow passing ArangoDB web interface credentials (if
 in the browser) to the requesting site. ArangoDB will not forward or provide any credentials.
 
 Setting this option is only required if applications on other hosts need to access the 
-ArangoDB web interface or other HTTP REST APIs from a web browser with the same credentials 
+ArangoDB web interface or other HTTP RESTful APIs from a web browser with the same credentials 
 that the user has entered when logging into the web interface. When a web browser finds 
 the `Access-Control-Allow-Credentials` HTTP response header, it may forward the credentials
 entered into the browser for the ArangoDB web interface login to the other site. 
@@ -1100,7 +1100,7 @@ Miscellaneous changes
 ---------------------
 
 The checksum calculation algorithm for the `collection.checksum()` method and its
-corresponding REST API GET `/_api/collection/<collection</checksum` has changed in 3.0. 
+corresponding RESTful API GET `/_api/collection/<collection</checksum` has changed in 3.0. 
 Checksums calculated in 3.0 will differ from checksums calculated with 2.8 or before.
 
 The ArangoDB server in 3.0 does not read a file `ENDPOINTS` containing a list of 

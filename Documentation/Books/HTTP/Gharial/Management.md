@@ -2,7 +2,7 @@ Manage your graphs
 ==================
 
 The [graph module](../../Manual/Graphs/index.html) provides functions dealing with graph structures.
-Examples will explain the REST API on the [social graph](../../Manual/Graphs/index.html#the-social-graph):
+Examples will explain the RESTful API on the [social graph](../../Manual/Graphs/index.html#the-social-graph):
 
 ![Social Example Graph](../../Manual/Graphs/social_graph.png)
 

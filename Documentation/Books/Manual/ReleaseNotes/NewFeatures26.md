@@ -18,12 +18,12 @@ The following commands have been added for `collection` objects:
 These commands can be used to perform multi-document lookup and removal operations efficiently
 from the ArangoShell. The argument to these operations is an array of document keys.
 
-These commands can also be used via the HTTP REST API. Their endpoints are:
+These commands can also be used via the HTTP RESTful API. Their endpoints are:
 
 * PUT /\_api/simple/lookup-by-keys
 * PUT /\_api/simple/remove-by-keys
 
-### Collection export HTTP REST API
+### Collection export HTTP RESTful API
 
 ArangoDB now provides a dedicated collection export API, which can take snapshots of entire
 collections more efficiently than the general-purpose cursor API. The export API is useful
