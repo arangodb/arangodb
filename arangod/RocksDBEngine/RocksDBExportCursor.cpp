@@ -53,30 +53,24 @@ RocksDBExportCursor::RocksDBExportCursor(
       _resolver(vocbase),
       _restrictions(restrictions),
       _name(name) {
-  // prevent the collection from being unloaded while the export is ongoing
-  // this may throw
-  _collectionGuard.reset(
-      new arangodb::CollectionGuard(vocbase, _name.c_str(), false));
-
-  _collection = _collectionGuard->collection();
-
   _trx.reset(new SingleCollectionTransaction(
       transaction::StandaloneContext::Create(vocbase), _name,
       AccessMode::Type::READ));
 
-  // already locked by guard above
-  _trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
   Result res = _trx->begin();
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
+  LogicalCollection* collection = _trx->documentCollection();
+  TRI_ASSERT(collection != nullptr);
+
   auto rocksCollection =
-      static_cast<RocksDBCollection*>(_collection->getPhysical());
+      static_cast<RocksDBCollection*>(collection->getPhysical());
   _iter = rocksCollection->getAllIterator(_trx.get(), false);
 
-  _size = _collection->numberDocuments(_trx.get());
+  _size = collection->numberDocuments(_trx.get());
   if (limit > 0 && limit < _size) {
     _size = limit;
   }
