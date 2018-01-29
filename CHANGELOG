@@ -11,6 +11,9 @@ v3.2.12 (XXXX-XX-XX)
   bits is lower than before, allowing each shard to store more data and cause
   less evictions from block cache
 
+* fix issue #4393: broken handling of unix domain sockets in
+  JS_Download
+  
 
 v3.2.11 (2018-01-17)
 --------------------
