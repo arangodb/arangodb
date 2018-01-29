@@ -1356,7 +1356,7 @@ def buildEdition(os, edition, maintainer) {
             }
         }
         else if (os == 'windows') {
-            logFile = "./" + logFile
+            //logFile = "./" + logFile
             extra = "-DUSE_CATCH_TESTS=ON -DUSE_FAILURE_TESTS=ON -DDEBUG_SYNC_REPLICATION=ON"
             if( edition == "enterprise"){
                 extra += " -DUSE_ENTERPRISE=ON"
@@ -1375,7 +1375,7 @@ def buildEdition(os, edition, maintainer) {
             workspace="${env.WORKSPACE}"
 
             echo "workspace: ${workspace}"
-            workspace.replace("\\", "/")
+            workspace = workspace.replace("\\", "/")
             echo "workspace: ${workspace}"
 
             echo "logFile: ${logFile}"
