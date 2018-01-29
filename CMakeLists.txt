@@ -767,7 +767,7 @@ endif()
 # IResearch
 # ------------------------------------------------------------------------------
 
-option(USE_IRESEARCH "enable ArangoSearch views" ON)
+option(USE_IRESEARCH "enable ArangoSearch views" OFF)
 
 if(USE_IRESEARCH)
   add_definitions("-DUSE_IRESEARCH=1")
