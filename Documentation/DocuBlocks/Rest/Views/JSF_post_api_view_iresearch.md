@@ -17,8 +17,8 @@ should be a JSON object containing the following attributes:
 @RESTSTRUCT{bytes,JSF_post_api_view_props_consolidation,object,optional,JSF_post_api_view_props_consolidation_bytes}
 Use empty object for default values, i.e. {}
 
-@RESTSTRUCT{intervalStep,JSF_post_api_view_props_consolidation_bytes,integer,optional,uint64}
-Apply consolidation policy with every Nth commit (default: 10, to disable use: 0)
+@RESTSTRUCT{segmentThreshold,JSF_post_api_view_props_consolidation_bytes,integer,optional,uint64}
+Apply consolidation policy IFF {segmentThreshold} >= #segments (default: 300, to disable use: 0)
 
 @RESTSTRUCT{threshold,JSF_post_api_view_props_consolidation_bytes,integer,optional,uint64}
 Consolidate IFF {threshold} > segment_bytes / (all_segment_bytes / #segments) (default: 0.85)
@@ -26,8 +26,8 @@ Consolidate IFF {threshold} > segment_bytes / (all_segment_bytes / #segments) (d
 @RESTSTRUCT{bytes_accum,JSF_post_api_view_props_consolidation,object,optional,JSF_post_api_view_props_consolidation_bytes_accum}
 Use empty object for default values, i.e. {}
 
-@RESTSTRUCT{intervalStep,JSF_post_api_view_props_consolidation_bytes_accum,integer,optional,uint64}
-Apply consolidation policy with every Nth commit (default: 10, to disable use: 0)
+@RESTSTRUCT{segmentThreshold,JSF_post_api_view_props_consolidation_bytes_accum,integer,optional,uint64}
+Apply consolidation policy IFF {segmentThreshold} >= #segments (default: 300, to disable use: 0)
 
 @RESTSTRUCT{threshold,JSF_post_api_view_props_consolidation_bytes_accum,integer,optional,uint64}
 Consolidate IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes (default: 0.85)
@@ -35,8 +35,8 @@ Consolidate IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_by
 @RESTSTRUCT{count,JSF_post_api_view_props_consolidation,object,optional,JSF_post_api_view_props_consolidation_count}
 Use empty object for default values, i.e. {}
 
-@RESTSTRUCT{intervalStep,JSF_post_api_view_props_consolidation_count,integer,optional,uint64}
-Apply consolidation policy with every Nth commit (default: 10, to disable use: 0)
+@RESTSTRUCT{segmentThreshold,JSF_post_api_view_props_consolidation_count,integer,optional,uint64}
+Apply consolidation policy IFF {segmentThreshold} >= #segments (default: 300, to disable use: 0)
 
 @RESTSTRUCT{threshold,JSF_post_api_view_props_consolidation_count,integer,optional,uint64}
 Consolidate IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments) (default: 0.85)
@@ -44,8 +44,8 @@ Consolidate IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #
 @RESTSTRUCT{fill,JSF_post_api_view_props_consolidation,object,optional,JSF_post_api_view_props_consolidation_fill}
 Use empty object for default values, i.e. {}
 
-@RESTSTRUCT{intervalStep,JSF_post_api_view_props_consolidation_fill,integer,optional,uint64}
-Apply consolidation policy with every Nth commit (default: 10, to disable use: 0)
+@RESTSTRUCT{segmentThreshold,JSF_post_api_view_props_consolidation_fill,integer,optional,uint64}
+Apply consolidation policy IFF {segmentThreshold} >= #segments (default: 300, to disable use: 0)
 
 @RESTSTRUCT{threshold,JSF_post_api_view_props_consolidation_fill,integer,optional,uint64}
 Consolidate IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed}) (default: 0.85)

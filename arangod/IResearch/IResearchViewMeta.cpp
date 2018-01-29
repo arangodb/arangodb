@@ -162,13 +162,13 @@ bool initCommitMeta(
         }
 
         static const ConsolidationPolicy& defaultPolicy = ConsolidationPolicy::DEFAULT(policyItr->second);
-        size_t intervalStep = 0;
+        size_t segmentThreshold = 0;
 
         {
           // optional size_t
-          static const std::string subFieldName("intervalStep");
+          static const std::string subFieldName("segmentThreshold");
 
-          if (!arangodb::iresearch::getNumber(intervalStep, value, subFieldName, tmpSeen, defaultPolicy.intervalStep())) {
+          if (!arangodb::iresearch::getNumber(segmentThreshold, value, subFieldName, tmpSeen, defaultPolicy.segmentThreshold())) {
             errorField = fieldName + "=>" + name + "=>" + subFieldName;
 
             return false;
@@ -189,8 +189,8 @@ bool initCommitMeta(
         }
 
         // add only enabled policies
-        if (intervalStep) {
-          meta._consolidationPolicies.emplace_back(policyItr->second, intervalStep, threshold);
+        if (segmentThreshold) {
+          meta._consolidationPolicies.emplace_back(policyItr->second, segmentThreshold, threshold);
         }
       }
     }
@@ -226,7 +226,7 @@ bool jsonCommitMeta(
     arangodb::velocypack::ObjectBuilder subBuilderWrapper(&subBuilder);
 
     for (auto& policy: meta._consolidationPolicies) {
-      if (!policy.intervalStep()) {
+      if (!policy.segmentThreshold()) {
         continue; // do not output disabled consolidation policies
       }
 
@@ -238,7 +238,7 @@ bool jsonCommitMeta(
         {
           arangodb::velocypack::ObjectBuilder policyBuilderWrapper(&policyBuilder);
 
-          policyBuilderWrapper->add("intervalStep", arangodb::velocypack::Value(policy.intervalStep()));
+          policyBuilderWrapper->add("segmentThreshold", arangodb::velocypack::Value(policy.segmentThreshold()));
           policyBuilderWrapper->add("threshold", arangodb::velocypack::Value(policy.threshold()));
         }
 
@@ -260,11 +260,11 @@ NS_BEGIN(iresearch)
 size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::Hash::operator()(
     IResearchViewMeta::CommitMeta::ConsolidationPolicy const& value
 ) const {
-  auto step = value.intervalStep();
+  auto segmentThreshold = value.segmentThreshold();
   auto threshold = value.threshold();
   auto type = value.type();
 
-  return std::hash<decltype(step)>{}(step)
+  return std::hash<decltype(segmentThreshold)>{}(segmentThreshold)
     ^ std::hash<decltype(threshold)>{}(threshold)
     ^ std::hash<size_t>{}(size_t(type))
     ;
@@ -272,9 +272,9 @@ size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::Hash::operator()(
 
 IResearchViewMeta::CommitMeta::ConsolidationPolicy::ConsolidationPolicy(
     IResearchViewMeta::CommitMeta::ConsolidationPolicy::Type type,
-    size_t intervalStep,
+    size_t segmentThreshold,
     float threshold
-): _intervalStep(intervalStep), _threshold(threshold), _type(type) {
+): _segmentThreshold(segmentThreshold), _threshold(threshold), _type(type) {
   switch (type) {
    case Type::BYTES:
     _policy = irs::index_utils::consolidate_bytes(_threshold);
@@ -311,7 +311,7 @@ IResearchViewMeta::CommitMeta::ConsolidationPolicy& IResearchViewMeta::CommitMet
     IResearchViewMeta::CommitMeta::ConsolidationPolicy const& other
 ) {
   if (this != &other) {
-    _intervalStep = other._intervalStep;
+    _segmentThreshold = other._segmentThreshold;
     _policy = other._policy;
     _threshold = other._threshold;
     _type = other._type;
@@ -324,7 +324,7 @@ IResearchViewMeta::CommitMeta::ConsolidationPolicy& IResearchViewMeta::CommitMet
     IResearchViewMeta::CommitMeta::ConsolidationPolicy&& other
 ) noexcept {
   if (this != &other) {
-    _intervalStep = std::move(other._intervalStep);
+    _segmentThreshold = std::move(other._segmentThreshold);
     _policy = std::move(other._policy);
     _threshold = std::move(other._threshold);
     _type = std::move(other._type);
@@ -337,7 +337,7 @@ bool IResearchViewMeta::CommitMeta::ConsolidationPolicy::operator==(
     IResearchViewMeta::CommitMeta::ConsolidationPolicy const& other
 ) const noexcept {
   return _type == other._type
-    && _intervalStep == other._intervalStep
+    && _segmentThreshold == other._segmentThreshold
     && _threshold == other._threshold
     ;
 }
@@ -348,22 +348,22 @@ bool IResearchViewMeta::CommitMeta::ConsolidationPolicy::operator==(
   switch (type) {
     case Type::BYTES:
     {
-      static const ConsolidationPolicy policy(type, 10, 0.85f);
+      static const ConsolidationPolicy policy(type, 300, 0.85f);
       return policy;
     }
   case Type::BYTES_ACCUM:
     {
-      static const ConsolidationPolicy policy(type, 10, 0.85f);
+      static const ConsolidationPolicy policy(type, 300, 0.85f);
       return policy;
     }
   case Type::COUNT:
     {
-      static const ConsolidationPolicy policy(type, 10, 0.85f);
+      static const ConsolidationPolicy policy(type, 300, 0.85f);
       return policy;
     }
   case Type::FILL:
     {
-      static const ConsolidationPolicy policy(type, 10, 0.85f);
+      static const ConsolidationPolicy policy(type, 300, 0.85f);
       return policy;
     }
   default:
@@ -373,8 +373,8 @@ bool IResearchViewMeta::CommitMeta::ConsolidationPolicy::operator==(
   }
 }
 
-size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::intervalStep() const noexcept {
-  return _intervalStep;
+size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::segmentThreshold() const noexcept {
+  return _segmentThreshold;
 }
 
 irs::index_writer::consolidation_policy_t const& IResearchViewMeta::CommitMeta::ConsolidationPolicy::policy() const noexcept {
