@@ -199,24 +199,24 @@ During view modification the following directives apply:
 
     * bytes: (optional; for default values use an empty object: `{}`)
 
-      * intervalStep: (optional, default: `10`; to disable use: `0`)
-        apply consolidation policy with every Nth commit
+      * segmentThreshold: (optional, default: `300`; to disable use: `0`)
+        apply consolidation policy IFF {segmentThreshold} >= #segments
 
       * threshold: (optional; default: `0.85`)
         consolidate `IFF {threshold} > segment_bytes / (all_segment_bytes / #segments)`
 
     * bytes_accum: (optional; for default values use: `{}`)
 
-      * intervalStep: (optional; default: `10`; to disable use: `0`)
-        apply consolidation policy with every Nth commit
+      * segmentThreshold: (optional; default: `300`; to disable use: `0`)
+        apply consolidation policy IFF {segmentThreshold} >= #segments
 
       * threshold: (optional; default: `0.85`)
         consolidate `IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
 
     * count: (optional; for default values use: `{}`)
 
-      * intervalStep: (optional; default: `10`; to disable use: `0`)
-        apply consolidation policy with every Nth commit
+      * segmentThreshold: (optional; default: `300`; to disable use: `0`)
+        apply consolidation policy IFF {segmentThreshold} >= #segments
 
       * threshold: (optional; default: `0.85`)
         consolidate `IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)`
@@ -224,8 +224,8 @@ During view modification the following directives apply:
     * fill: (optional)
       if specified, use empty object for default values, i.e. `{}`
 
-      * intervalStep: (optional; default: `10`; to disable use: `0`)
-        apply consolidation policy with every Nth commit
+      * segmentThreshold: (optional; default: `300`; to disable use: `0`)
+        apply consolidation policy IFF {segmentThreshold} >= #segments
 
       * threshold: (optional; default: `0.85`)
         consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`
