@@ -154,14 +154,14 @@ if (env.BRANCH_NAME =~ /^PR-/) {
 branchLabel = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
 
 buildJenkins = [
-    "linux": "linux && build && arangodb",
-    "mac" : "mac && build && arangodb",
+    "linux": "linux && build && arangodb && foo",
+    "mac" : "mac && build && arangodb && foo",
     "windows": "foo"
 ]
 
 testJenkins = [
-    "linux": "linux && tests && arangodb",
-    "mac" : "mac && tests && arangodb",
+    "linux": "linux && tests && arangodb && foo",
+    "mac" : "mac && tests && arangodb && foo",
     "windows": "windows && tests && arangodb && foo"
 ]
 
