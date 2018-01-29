@@ -1372,11 +1372,14 @@ def buildEdition(os, edition, maintainer) {
     echo "build3"
             powershell "New-Item -ItemType Directory -Force -Path build"
     echo "build4"
-    echo "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
-            echo "logFile: ${logFile}"
             workspace="${env.WORKSPACE}"
+
             echo "workspace: ${workspace}"
-            powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
+            workspace.replace("\\", "/")
+            echo "workspace: ${workspace}
+
+            echo "logFile: ${logFile}"
+            echo "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${workspace}/${logFile}" //groovy style
             powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${workspace}/${logFile}" //groovy style
     echo "build5"
         }
