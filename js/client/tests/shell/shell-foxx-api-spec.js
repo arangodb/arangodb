@@ -687,5 +687,14 @@ describe('Foxx service', () => {
       });
       expect(resp.status).to.equal(400);
     });
+    it(`should return 400 when mount is invalid for ${method} ${url}`, () => {
+      const resp = request({
+        method,
+        url,
+        qs: {mount: '/dev/null'},
+        json: true
+      });
+      expect(resp.status).to.equal(400);
+    });
   }
 });
