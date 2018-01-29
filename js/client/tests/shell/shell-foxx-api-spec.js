@@ -605,4 +605,28 @@ describe('Foxx service', () => {
     });
     expect(resp.status).to.equal(400);
   });
+
+  const echoPath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'echo-script');
+
+  it('should pass argv to script and return exports', () => {
+    FoxxManager.install(echoPath, mount);
+    const argv = {hello: 'world'};
+    const resp = request.post('/_api/foxx/scripts/echo', {
+      qs: {mount},
+      body: argv,
+      json: true
+    });
+    expect(resp.json).to.eql([argv]);
+  });
+
+  it('should treat array script argv like any other script argv', () => {
+    FoxxManager.install(echoPath, mount);
+    const argv = ['yes', 'please'];
+    const resp = request.post('/_api/foxx/scripts/echo', {
+      qs: {mount},
+      body: argv,
+      json: true
+    });
+    expect(resp.json).to.eql([argv]);
+  });
 });
