@@ -1375,8 +1375,8 @@ def buildEdition(os, edition, maintainer) {
     echo "build3"
             powershell "New-Item -ItemType Directory -Force -Path build"
     echo "build4"
-            echo "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
-            powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
+            echo "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build $extra | Add-Content -PassThru $logFile"
+            powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build $extra | Add-Content -PassThru $logFile"
     echo "build5"
         }
 
@@ -1392,7 +1392,7 @@ def buildEdition(os, edition, maintainer) {
         }
         else {
             echo "got error"
-            powershell "echo \"${msg}\" | Out-File -filepath -append ${logFile}"
+            powershell "echo \"${msg}\" | Out-File -filepath -append $logFile"
         }
 
         throw exc
