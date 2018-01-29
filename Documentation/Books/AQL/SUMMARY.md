@@ -46,7 +46,7 @@
   * [Fulltext](Functions/Fulltext.md)
   * [Miscellaneous](Functions/Miscellaneous.md)
 * [Views](Views/README.md)
-  * [ArangoSearch](Views/IResearch.md)
+  * [ArangoSearch](Views/ArangoSearch.md)
 * [Graphs](Graphs/README.md)
   * [Traversals explained](Graphs/TraversalsExplained.md)
   * [Traversals](Graphs/Traversals.md)
