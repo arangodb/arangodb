@@ -4,7 +4,7 @@ v3.3.4 (XXXX-XX-XX)
 * internal issue #1726: supervision failed to remove multiple servers
   from health monitoring at once.
 
-v3.3.3 (XXXX-XX-XX)
+v3.3.3 (2018-01-26)
 -------------------
 
 * fix issue #4272: VERSION file keeps disappearing
