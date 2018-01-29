@@ -1356,7 +1356,9 @@ def buildEdition(os, edition, maintainer) {
             }
         }
         else if (os == 'windows') {
-            //logFile = "./" + logFile
+            workspace="${env.WORKSPACE}"
+            workspace = workspace.replace("\\", "/")
+            logFile = workspace + "/" + logFile
             extra = "-DUSE_CATCH_TESTS=ON -DUSE_FAILURE_TESTS=ON -DDEBUG_SYNC_REPLICATION=ON"
             if( edition == "enterprise"){
                 extra += " -DUSE_ENTERPRISE=ON"
@@ -1372,15 +1374,8 @@ def buildEdition(os, edition, maintainer) {
     echo "build3"
             powershell "New-Item -ItemType Directory -Force -Path build"
     echo "build4"
-            workspace="${env.WORKSPACE}"
-
-            echo "workspace: ${workspace}"
-            workspace = workspace.replace("\\", "/")
-            echo "workspace: ${workspace}"
-
-            echo "logFile: ${logFile}"
-            echo "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${workspace}/${logFile}" //groovy style
-            powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${workspace}/${logFile}" //groovy style
+            powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}" //groovy style
+            powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}" //groovy style
     echo "build5"
         }
 
@@ -1395,7 +1390,7 @@ def buildEdition(os, edition, maintainer) {
             sh "echo \"${msg}\" >> ${logFile}"
         }
         else {
-            powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
+            powershell "echo \"${msg}\" | Out-File -filepath -append ${logFile}"
         }
 
         throw exc
