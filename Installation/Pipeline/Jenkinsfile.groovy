@@ -1376,7 +1376,7 @@ def buildEdition(os, edition, maintainer) {
 
             echo "workspace: ${workspace}"
             workspace.replace("\\", "/")
-            echo "workspace: ${workspace}
+            echo "workspace: ${workspace}"
 
             echo "logFile: ${logFile}"
             echo "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${workspace}/${logFile}" //groovy style
