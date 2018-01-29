@@ -5,7 +5,7 @@
 ArangoSearch is a natively integrated AQL extension making use of the IResearch library.
 
 Arangosearch allows one to:
-* evaluate together documents located in different collections
+* join documents located in different collections to one result list
 * filter documents based on AQL boolean expressions and functions
 * sort the resultset based on how closely each document matched the filter
 
@@ -36,9 +36,9 @@ stages) and scorers (used during the sorting stage) allowing full control over
 the behaviour of the engine.
 
 
-### ArangoSerach Scorers:
+### ArangoSearch Scorers:
 
-ArangoSearch accesses the IResearch scorers directly by their internal names. The
+ArangoSearch accesses scorers directly by their internal names. The
 name (in upper-case) of the scorer is the function name to be used in the
 ['SORT' section](../../AQL/Views/ArangoSearch.html#arangosearch-sort).
 Function arguments, (excluding the first argument), are serialized as a
