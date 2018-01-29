@@ -1,3 +1,9 @@
+v3.3.4 (XXXX-XX-XX)
+-------------------
+
+* internal issue #1726: supervision failed to remove multiple servers
+  from health monitoring at once.
+
 v3.3.3 (XXXX-XX-XX)
 -------------------
 

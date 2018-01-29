@@ -393,12 +393,12 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     query_t del = std::make_shared<Builder>();
       { VPackArrayBuilder trxs(del.get());
         { VPackArrayBuilder trx(del.get());
-          for (auto const& srv : todelete) {
-            { VPackObjectBuilder server(del.get());
+          { VPackObjectBuilder servers(del.get());
+            for (auto const& srv : todelete) {
               del->add(VPackValue(_agencyPrefix + healthPrefix + srv));
               { VPackObjectBuilder oper(del.get());
                 del->add("op", VPackValue("delete")); }}}}}
-    _agent->write(del);
+      _agent->write(del);
   }
 
   // Do actual monitoring
