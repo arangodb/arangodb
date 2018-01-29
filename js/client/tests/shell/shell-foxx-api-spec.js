@@ -629,4 +629,32 @@ describe('Foxx service', () => {
     });
     expect(resp.json).to.eql([argv]);
   });
+
+  it('set devmode should enable devmode', () => {
+    FoxxManager.install(basePath, mount);
+    const resp = request.get('/_api/foxx/service', {
+      qs: {mount},
+      json: true
+    });
+    expect(resp.json.development).to.equal(false);
+    const devResp = request.post('/_api/foxx/development', {
+      qs: {mount},
+      json: true
+    });
+    expect(devResp.json.development).to.equal(true);
+  });
+
+  it('clear devmode should disable devmode', () => {
+    FoxxManager.install(basePath, mount, {development: true});
+    const resp = request.get('/_api/foxx/service', {
+      qs: {mount},
+      json: true
+    });
+    expect(resp.json.development).to.equal(true);
+    const devResp = request.delete('/_api/foxx/development', {
+      qs: {mount},
+      json: true
+    });
+    expect(devResp.json.development).to.equal(false);
+  });
 });
