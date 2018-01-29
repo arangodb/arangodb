@@ -657,4 +657,35 @@ describe('Foxx service', () => {
     });
     expect(devResp.json.development).to.equal(false);
   });
+
+  const routes = [
+    ['GET', '/_api/foxx/service'],
+    ['PATCH', '/_api/foxx/service'],
+    ['PUT', '/_api/foxx/service'],
+    ['DELETE', '/_api/foxx/service'],
+    ['GET', '/_api/foxx/configuration'],
+    ['PATCH', '/_api/foxx/configuration'],
+    ['PUT', '/_api/foxx/configuration'],
+    ['GET', '/_api/foxx/dependencies'],
+    ['PATCH', '/_api/foxx/dependencies'],
+    ['PUT', '/_api/foxx/dependencies'],
+    ['POST', '/_api/foxx/development'],
+    ['DELETE', '/_api/foxx/development'],
+    ['GET', '/_api/foxx/scripts'],
+    ['POST', '/_api/foxx/scripts/xxx'],
+    ['POST', '/_api/foxx/tests'],
+    ['POST', '/_api/foxx/download'],
+    ['GET', '/_api/foxx/readme'],
+    ['GET', '/_api/foxx/swagger']
+  ];
+  for (const [method, url] of routes) {
+    it(`should return 400 when mount is omitted for ${method} ${url}`, () => {
+      const resp = request({
+        method,
+        url,
+        json: true
+      });
+      expect(resp.status).to.equal(400);
+    });
+  }
 });
