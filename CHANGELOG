@@ -75,6 +75,9 @@ v3.3.2 (2018-01-04)
 
 * do not reuse collection ids when restoring collections from a dump, but assign new collection ids, this should prevent collection id conflicts
 
+* fix issue #4393: broken handling of unix domain sockets in
+  JS_Download
+  
 
 v3.3.1 (2017-12-28)
 -------------------

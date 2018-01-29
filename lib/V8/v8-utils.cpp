@@ -811,6 +811,12 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         endpoint = url.substr(6);
       }
       endpoint = "srv://" + endpoint;
+    } else if (url.substr(0, 7) == "unix://") {
+      std::size_t pos = url.find("/_");
+      if (pos != std::string::npos) {
+        endpoint = url.substr(0,pos);
+        relative = url.substr(pos);
+      }
     } else if (!url.empty() && url[0] == '/') {
       size_t found;
       // relative URL. prefix it with last endpoint
@@ -843,7 +849,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
 
     if (ep == nullptr) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid URL");
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER, std::string("invalid URL ") + url);
     }
 
     std::unique_ptr<GeneralClientConnection> connection(
