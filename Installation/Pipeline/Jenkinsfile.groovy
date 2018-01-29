@@ -1375,8 +1375,9 @@ def buildEdition(os, edition, maintainer) {
     echo "build3"
             powershell "New-Item -ItemType Directory -Force -Path build"
     echo "build4"
-            echo "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build $extra | Add-Content -PassThru $logFile"
-            powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build $extra | Add-Content -PassThru $logFile"
+            echo "no angle brackets"
+            echo "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
+            powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
     echo "build5"
         }
 
