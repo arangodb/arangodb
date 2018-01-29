@@ -1,6 +1,7 @@
 v3.2.12 (XXXX-XX-XX)
 --------------------
 
+* fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
 
 * fix internal issue 1770: collection creation using distributeShardsLike yields
   errors and did not distribute shards correctly in the following cases:

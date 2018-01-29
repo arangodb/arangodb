@@ -61,6 +61,7 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
   startsAfter("Upgrade");
   startsAfter("V8Dealer");
   startsAfter("WorkMonitor");
+  startsAfter("Temp");
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

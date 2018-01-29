@@ -2027,6 +2027,7 @@ static void SystemTempPathCleaner(void) {
   char* path = SystemTempPath.get();
 
   if (path != nullptr) {
+    // delete directory iff directory is empty
     TRI_RMDIR(path);
   }
 }
