@@ -60,7 +60,7 @@ class LoggerView final : public ViewImplementation {
 
   virtual bool visitCollections(
     std::function<bool(TRI_voc_cid_t)> const&
-  ) const {
+  ) const override {
     return true; // no collections associated with the logger view
   }
 

@@ -73,7 +73,7 @@ class AqlTransaction : public transaction::Methods {
   Result processCollectionNormal(aql::Collection* collection);
 
   /// @brief documentCollection
-  LogicalCollection* documentCollection(TRI_voc_cid_t cid);
+  LogicalCollection* documentCollection(TRI_voc_cid_t cid) const override;
 
   /// @brief clone, used to make daughter transactions for parts of a
   /// distributed AQL query running on the coordinator

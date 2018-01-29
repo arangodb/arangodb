@@ -118,7 +118,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     c->getIndexesVPack(tmpInner, withFigures, false);
 
     tmp.openArray();
-    for(VPackSlice const& s : VPackArrayIterator(tmpInner.slice())){
+    for(VPackSlice s : VPackArrayIterator(tmpInner.slice())){
       auto id = StringRef(s.get("id"));
       auto found = std::find_if(estimates.begin(),
                                 estimates.end(),
@@ -130,7 +130,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
         tmp.add(s); // just copy
       } else {
         tmp.openObject();
-        for(auto const& i : VPackObjectIterator(s)){
+        for(VPackObjectIterator::ObjectPair i : VPackObjectIterator(s)){
           tmp.add(i.key.copyString(), i.value);
         }
         tmp.add("selectivityEstimate", VPackValue(found->second));
@@ -168,7 +168,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
          cacheWindowedHitRate = 0;
 
   VPackArrayBuilder a(&result);
-  for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
+  for (VPackSlice index : VPackArrayIterator(tmp.slice())) {
     VPackSlice type = index.get("type");
     std::string id = collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR +
                      index.get("id").copyString();

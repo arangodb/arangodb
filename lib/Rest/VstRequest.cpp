@@ -118,10 +118,10 @@ void VstRequest::parseHeaderInformation() {
     _requestPath = vHeader.at(4).copyString();  // request (path)
     VPackSlice params = vHeader.at(5);          // parameter
 
-    for (auto const& it : VPackObjectIterator(params)) {
+    for (VPackObjectIterator::ObjectPair it : VPackObjectIterator(params)) {
       if (it.value.isArray()) {
         vector<string> tmp;
-        for (auto const& itInner : VPackArrayIterator(it.value)) {
+        for (VPackSlice itInner : VPackArrayIterator(it.value)) {
           tmp.emplace_back(itInner.copyString());
         }
         _arrayValues.emplace(it.key.copyString(), move(tmp));
