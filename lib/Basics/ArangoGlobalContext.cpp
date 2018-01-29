@@ -311,6 +311,7 @@ void ArangoGlobalContext::runStartupChecks() {
 #endif
 }
 
+// This function is called at end of TempFeature::start()
 void ArangoGlobalContext::createMiniDumpFilename() {
 #ifdef _WIN32
   miniDumpFilename = TRI_GetTempPath();

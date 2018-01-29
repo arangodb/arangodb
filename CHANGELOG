@@ -1,6 +1,8 @@
 v3.3.3 (XXXX-XX-XX)
 -------------------
 
+* fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
+
 * fix issue #4272: VERSION file keeps disappearing
 
 * fix internal issue #81: quotation marks disappeared when switching table/json
