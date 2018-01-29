@@ -1359,7 +1359,7 @@ def buildEdition(os, edition, maintainer) {
             workspace="${env.WORKSPACE}"
             workspace = workspace.replace("\\", "/")
             logFile = workspace + "/" + logFile
-            //workspace = workspace.replace("/","\\")
+            workspace = workspace.replace("/","\\")
             extra = "-DUSE_CATCH_TESTS=ON -DUSE_FAILURE_TESTS=ON -DDEBUG_SYNC_REPLICATION=ON"
             if( edition == "enterprise"){
                 extra += " -DUSE_ENTERPRISE=ON"
