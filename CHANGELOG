@@ -107,6 +107,9 @@ devel
 * UI: Shard distribution view now has an accordion view instead of displaying
   all shards of all collections at once.
 
+* fix issue #4393: broken handling of unix domain sockets in
+  JS_Download
+  
 
 v3.3.3 (XXXX-XX-XX)
 -------------------
