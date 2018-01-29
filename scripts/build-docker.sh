@@ -15,12 +15,17 @@ DEBIMAGE_NAME="arangodb3-${DEBVERSION}_amd64"
 BUILDDEB_ARGS="--gcc6"
 BUILDDEB_DOCKER_ARGS=""
 
+BUILDDEB_GIT_URL="--enterprise git@github.com:arangodb/enterprise.git"
+if [ ! -z "${GITHUB_AUTH_URL}" ]; then
+    BUILDDEB_GIT_URL="--enterprise {GITHUB_AUTH_URL}"
+fi
+
 DOCKERFILENAME=Dockerfile$(echo ${VERSION} | cut -d '.' -f 1,2 --output-delimiter=).local
 
 for i in $@; do
     if test "$i" == "--enterprise"; then
         DEBIMAGE_NAME="arangodb3e-${DEBVERSION}_amd64"
-        BUILDDEB_ARGS+=" --enterprise git@github.com:arangodb/enterprise.git "
+        BUILDDEB_ARGS+=" $BUILDDEB_GIT_URL "
     fi
     if test "$i" == "--maintainer"; then
         BUILDDEB_ARGS+=" --maintainer"
