@@ -195,6 +195,106 @@ function ReplicationSuite() {
       db._dropDatabase(cn);
     },
     
+    testAqlInsert: function() {
+      db._useDatabase(cn);
+      connectToMaster();
+
+      compare(
+        function(state) {
+          db._create(cn); 
+        },
+
+        function(state) {
+          for (let i = 0; i < 2000; ++i) {
+            db._query("INSERT { _key: \"test" + i + "\", value1: " + i + ", value2: " + (i % 100) + " } IN " + cn);
+          }
+
+          assertEqual(2000, collectionCount(cn));
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+        },
+
+        function(state) {
+          assertEqual(state.checksum, collectionChecksum(cn));
+          assertEqual(state.count, collectionCount(cn));
+          
+          for (let i = 0; i < 2000; ++i) {
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._key == \"test" + i + "\" RETURN doc").toArray(); 
+            assertEqual(1, docs.length);
+            assertEqual("test" + i, docs[0]._key);
+            assertEqual(i, docs[0].value1);
+            assertEqual(i % 100, docs[0].value2);
+          }
+        }
+      );
+    },
+    
+    testAqlRemove: function() {
+      db._useDatabase(cn);
+      connectToMaster();
+
+      compare(
+        function(state) {
+          let c = db._create(cn); 
+          for (let i = 0; i < 100; ++i) {
+            c.insert({ _key: "test" + i, value1: i, value2: (i % 100) });
+          }
+        },
+
+        function(state) {
+          for (let i = 0; i < 100; ++i) {
+            db._query("FOR doc IN " + cn + " FILTER doc.value1 == " + i + " REMOVE doc IN " + cn);
+          }
+
+          assertEqual(0, collectionCount(cn));
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+        },
+
+        function(state) {
+          assertEqual(0, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+          assertEqual(state.count, collectionCount(cn));
+          
+          for (let i = 0; i < 100; ++i) {
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc.value1 == " + i + " RETURN doc").toArray(); 
+            assertEqual(0, docs.length);
+          }
+        }
+      );
+    },
+    
+    testAqlRemoveMulti: function() {
+      db._useDatabase(cn);
+      connectToMaster();
+
+      compare(
+        function(state) {
+          let c = db._create(cn); 
+          for (let i = 0; i < 5000; ++i) {
+            c.insert({ _key: "test" + i, value1: i, value2: (i % 100) });
+          }
+          c.ensureIndex({ type: "hash", fields: ["value2"] });
+        },
+
+        function(state) {
+          for (let i = 0; i < 100; ++i) {
+            db._query("FOR doc IN " + cn + " FILTER doc.value2 == " + i + " REMOVE doc IN " + cn);
+          }
+   
+          assertEqual(0, collectionCount(cn));
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+        },
+
+        function(state) {
+          assertEqual(0, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+          assertEqual(state.count, collectionCount(cn));
+        }
+      );
+    },
+    
     testAqlUpdate: function() {
       db._useDatabase(cn);
       connectToMaster();
@@ -335,6 +435,48 @@ function ReplicationSuite() {
           for (let i = 0; i < 100; ++i) {
             let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/x" + i + "\" RETURN doc").toArray(); 
             assertEqual(10, docs.length);
+            assertEqual("test/x" + i, docs[0]._from);
+            assertEqual("test/y" + i, docs[0]._to);
+          }
+        }
+      );
+    },
+    
+    testAqlUpdateEdgeExtraIndex: function() {
+      db._useDatabase(cn);
+      connectToMaster();
+
+      compare(
+        function(state) {
+          let c = db._createEdgeCollection(cn); 
+          for (let i = 0; i < 100; ++i) {
+            c.insert({ _key: "test" + i, _from: "test/v" + i, _to: "test/y" + i });
+          }
+          c.ensureIndex({ type: "hash", fields: ["_from", "_to"], unique: true });
+        },
+
+        function(state) {
+          for (let i = 0; i < 100; ++i) {
+            db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" UPDATE doc WITH { _from: \"test/x" + i + "\" } IN " + cn);
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+        },
+
+        function(state) {
+          assertEqual(state.checksum, collectionChecksum(cn));
+          assertEqual(state.count, collectionCount(cn));
+          
+          for (let i = 0; i < 100; ++i) {
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" RETURN doc").toArray(); 
+            assertEqual(0, docs.length);
+          }
+
+          for (let i = 0; i < 100; ++i) {
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/x" + i + "\" RETURN doc").toArray(); 
+            assertEqual(1, docs.length);
+            assertEqual("test" + i, docs[0]._key);
             assertEqual("test/x" + i, docs[0]._from);
             assertEqual("test/y" + i, docs[0]._to);
           }
