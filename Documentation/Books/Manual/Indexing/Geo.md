@@ -11,8 +11,15 @@ ArangoDB features an [Google S2](https://github.com/google/s2geometry) based geo
 
 ### GeoJSON
 
+
+GeoJSON is a geospatial data format based on JSON. It defines several different types of JSON objects and
+the way in which they can be combined to represent data about geographic shapes on the earth surface.
+GeoJSON uses a geographic coordinate reference system, World Geodetic System 1984, and units of decimal degrees.
+
+Internallly ArangoDB maps all coordinates onto a unit sphere, distances are projected onto a sphere with the earths
+*Volumetric mean radius* of *6371.008 km*.
 ArangoDB implements a useful subset of the GeoJSON format [(RFC 7946)](https://tools.ietf.org/html/rfc7946).
-Supported object types are listed below:
+We do not support Feature Objects or the GeometryCollection type, supported geometry object types are listed below:
 
 #### Point
 
@@ -157,7 +164,6 @@ The "coordinates" member is an array of Polygon coordinate arrays.
     ]]
   ]
 }
-
 ```
 
 Deprecated info below:
