@@ -170,7 +170,7 @@ Deprecated info below:
 
 --------------------------------
 
-ArangoDB uses Hilbert curves to implement geo-spatial indexes.
+The legacy geo index uses Hilbert curves to implement geo-spatial indexes.
 See this [blog](https://www.arangodb.com/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing)
 for details.
 

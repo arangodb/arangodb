@@ -267,7 +267,7 @@ S2CellId S2CellId::FromFaceIJ(int face, int i, int j) {
   return S2CellId(((static_cast<uint64_t>(n[1]) << 32) + n[0]) * 2 + 1);
 }
 
-S2CellId S2CellId::FromPoint(S2Point const& p) {
+S2CellId S2CellId::FromPoint(S2Point const& p) noexcept {
   double u, v;
   int face = S2::XYZtoFaceUV(p, &u, &v);
   int i = STtoIJ(S2::UVtoST(u));
@@ -275,7 +275,7 @@ S2CellId S2CellId::FromPoint(S2Point const& p) {
   return FromFaceIJ(face, i, j);
 }
 
-S2CellId S2CellId::FromLatLng(S2LatLng const& ll) {
+S2CellId S2CellId::FromLatLng(S2LatLng const& ll) noexcept {
   return FromPoint(ll.ToPoint());
 }
 

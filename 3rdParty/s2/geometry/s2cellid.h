@@ -62,10 +62,10 @@ class S2CellId {
   static int const kPosBits = 2 * kMaxLevel + 1;
   static int const kMaxSize = 1 << kMaxLevel;
 
-  inline explicit S2CellId(uint64_t id) : id_(id) {}
+  inline explicit S2CellId(uint64_t id) noexcept : id_(id) {}
 
   // The default constructor returns an invalid cell id.
-  inline S2CellId() : id_(0) {}
+  inline S2CellId() noexcept : id_(0) {}
   inline static S2CellId None() { return S2CellId(); }
 
   // Returns an invalid cell id guaranteed to be larger than any
@@ -81,10 +81,10 @@ class S2CellId {
 
   // Return the leaf cell containing the given point (a direction
   // vector, not necessarily unit length).
-  static S2CellId FromPoint(S2Point const& p);
+  static S2CellId FromPoint(S2Point const& p) noexcept;
 
   // Return the leaf cell containing the given normalized S2LatLng.
-  static S2CellId FromLatLng(S2LatLng const& ll);
+  static S2CellId FromLatLng(S2LatLng const& ll) noexcept;
 
   // Return the direction vector corresponding to the center of the given
   // cell.  The vector returned by ToPointRaw is not necessarily unit length.

@@ -51,8 +51,8 @@ class S2MultiPolyline : public S2Region {
 
   ~S2MultiPolyline() {}
   
-  int num_lines() const { return lines_.size(); }
-  S2Polyline const& line(int k) const {
+  size_t num_lines() const { return lines_.size(); }
+  S2Polyline const& line(size_t k) const {
     assert(k >= 0 && k < lines_.size());
     //DCHECK_LT(k, lines_.size());
     return lines_[k];

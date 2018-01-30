@@ -44,16 +44,16 @@ struct QueryParams;
 /// coordinate point on the sphere in DEGREES
 struct Coordinate {
  public:
-  Coordinate(double lat, double lon) : latitude(lat), longitude(lon) {}
-  Coordinate(Coordinate&& c) : latitude(c.latitude), longitude(c.longitude) {}
-  Coordinate(Coordinate const& c)
+  Coordinate(double lat, double lon) noexcept : latitude(lat), longitude(lon) {}
+  Coordinate(Coordinate&& c) noexcept : latitude(c.latitude), longitude(c.longitude) {}
+  Coordinate(Coordinate const& c) noexcept
       : latitude(c.latitude), longitude(c.longitude) {}
 
-  static Coordinate fromLatLng(S2LatLng const&);
-  static inline Coordinate Invalid() { return Coordinate(91, 181); }
+  static Coordinate fromLatLng(S2LatLng const&) noexcept;
+  static inline Coordinate Invalid() noexcept { return Coordinate(91, 181); }
 
  public:
-  Coordinate& operator=(Coordinate const& other) {
+  Coordinate& operator=(Coordinate const& other) noexcept {
     latitude = other.latitude;
     longitude = other.longitude;
     return *this;
@@ -120,7 +120,7 @@ class ShapeContainer final {
 
   void reset(std::unique_ptr<S2Region>&& ptr, Type tt) noexcept;
   void reset(S2Region* ptr, Type tt) noexcept;
-  void resetCoordinates(double lat, double lon) noexcept;
+  void resetCoordinates(double lat, double lon);
 
   Type type() const { return _type; }
   inline bool empty() const { return _type == Type::EMPTY; }
@@ -129,9 +129,6 @@ class ShapeContainer final {
     return _type == Type::S2_POLYGON || _type == Type::S2_CAP ||
            _type == Type::S2_LATLNGRECT;
   }
-
-  /// @brief is an empty shape (can be expensive)
-  bool isAreaEmpty() const noexcept;
 
   /// @brief centroid of this shape
   geo::Coordinate centroid() const noexcept;
