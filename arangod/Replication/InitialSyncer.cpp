@@ -73,7 +73,7 @@ InitialSyncer::InitialSyncer(
       _processedCollections(),
       _batchId(0),
       _batchUpdateTime(0),
-      _batchTtl(180),
+      _batchTtl(TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT),
       _includeSystem(false),
       _chunkSize(configuration->_chunkSize),
       _verbose(verbose),
@@ -84,7 +84,7 @@ InitialSyncer::InitialSyncer(
   } else if (_chunkSize < 128 * 1024) {
     _chunkSize = 128 * 1024;
   }
-
+      
   _includeSystem = configuration->_includeSystem;
 }
 
@@ -281,6 +281,8 @@ int InitialSyncer::sendStartBatch(std::string& errorMsg) {
   std::string const progress = "send batch start command to url " + url;
   setProgress(progress);
 
+  double const now = TRI_microtime();
+
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
       rest::RequestType::POST, url, body.c_str(), body.size()));
 
@@ -315,7 +317,7 @@ int InitialSyncer::sendStartBatch(std::string& errorMsg) {
   }
 
   _batchId = StringUtils::uint64(id);
-  _batchUpdateTime = TRI_microtime();
+  _batchUpdateTime = now;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -326,10 +328,10 @@ int InitialSyncer::sendExtendBatch() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  double now = TRI_microtime();
+  double const now = TRI_microtime();
 
-  if (now <= _batchUpdateTime + _batchTtl - 60.0) {
-    // no need to extend the batch yet
+  if (now <= _batchUpdateTime + _batchTtl * 0.25) {
+    // no need to extend the batch yet - only extend it if a quarter of its ttl is already over
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -355,7 +357,7 @@ int InitialSyncer::sendExtendBatch() {
   if (response->wasHttpError()) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
   } else {
-    _batchUpdateTime = TRI_microtime();
+    _batchUpdateTime = now;
   }
 
   return res;

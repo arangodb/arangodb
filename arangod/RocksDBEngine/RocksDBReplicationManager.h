@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "VocBase/replication-common.h"
 
 struct TRI_vocbase_t;
 
@@ -72,7 +73,7 @@ class RocksDBReplicationManager {
 
   RocksDBReplicationContext* find(
       RocksDBReplicationId, bool& isBusy,
-      double ttl = RocksDBReplicationContext::DefaultTTL);
+      double ttl = TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a context for later use

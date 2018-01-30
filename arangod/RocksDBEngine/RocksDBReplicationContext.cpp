@@ -47,8 +47,6 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 using namespace arangodb::velocypack;
 
-double const RocksDBReplicationContext::DefaultTTL = 30 * 60.0;
-
 RocksDBReplicationContext::RocksDBReplicationContext(double ttl)
     : _id(TRI_NewTickServer()),
       _lastTick(0),
@@ -449,7 +447,7 @@ void RocksDBReplicationContext::use(double ttl) {
 
   _isUsed = true;
   if (ttl <= 0.0) {
-    ttl = DefaultTTL;
+    ttl = TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT;
   }
   _expires = TRI_microtime() + ttl;
 }

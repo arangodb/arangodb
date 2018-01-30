@@ -40,10 +40,6 @@ namespace arangodb {
 class DatabaseGuard;
 
 class RocksDBReplicationContext {
- public:
-  /// default time-to-live for contexts
-  static double const DefaultTTL;
-
  private:
   typedef std::function<void(DocumentIdentifierToken const& token)>
       TokenCallback;

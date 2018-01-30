@@ -441,8 +441,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl",
-                                                           RocksDBReplicationContext::DefaultTTL);
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT);
     RocksDBReplicationContext* ctx = _manager->createContext(ttl);
     if (ctx == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -469,7 +468,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       serverId = ctx->id();
     }
 
-    _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+    _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
 
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
@@ -489,11 +488,11 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl
-    double expires = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     int res = TRI_ERROR_NO_ERROR;
     bool busy;
-    RocksDBReplicationContext* ctx = _manager->find(id, busy, expires);
+    RocksDBReplicationContext* ctx = _manager->find(id, busy, ttl);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     if (busy) {
       res = TRI_ERROR_CURSOR_BUSY;
@@ -516,7 +515,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       serverId = ctx->id();
     }
 
-    _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+    _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -684,7 +683,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     if (found) {
       serverId = (TRI_server_id_t)StringUtils::uint64(value);
     }
-    _vocbase->updateReplicationClient(serverId, result.maxTick());
+    _vocbase->updateReplicationClient(serverId, result.maxTick(), TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT);
   }
 }
 
