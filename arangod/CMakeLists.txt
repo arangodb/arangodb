@@ -42,6 +42,7 @@ endif ()
 ## IResearch
 ################################################################################
 
+set (USE_IRESEARCH ON)
 if (USE_IRESEARCH)
   find_package(IResearch REQUIRED)
 

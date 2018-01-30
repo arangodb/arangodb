@@ -155,6 +155,8 @@ else ()
   set(BFD_FOUND FALSE)
 endif()
 
+message("bfd 1")
+
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(BFD
   DEFAULT_MSG
@@ -167,12 +169,16 @@ find_package_handle_standard_args(BFD
   BFD_STATIC_LIB
   BFD_STATIC_LIB_IBERTY
   BFD_STATIC_LIB_Z
+  FAIL_MESSAGE "BFD NOT FOUND"
 )
-message("BFD_INCLUDE_DIR: " ${BFD_INCLUDE_DIR})
-message("BFD_LIBRARY_DIR: " ${BFD_LIBRARY_DIR})
-message("BFD_SHARED_LIBS: " ${BFD_SHARED_LIBS})
-message("BFD_STATIC_LIBS: " ${BFD_STATIC_LIBS})
-message("BFD_SHARED_LIB_RESOURCES: " ${BFD_SHARED_LIB_RESOURCES})
+
+message("bfd 2")
+
+#message("BFD_INCLUDE_DIR: " ${BFD_INCLUDE_DIR})
+#message("BFD_LIBRARY_DIR: " ${BFD_LIBRARY_DIR})
+#message("BFD_SHARED_LIBS: " ${BFD_SHARED_LIBS})
+#message("BFD_STATIC_LIBS: " ${BFD_STATIC_LIBS})
+#message("BFD_SHARED_LIB_RESOURCES: " ${BFD_SHARED_LIB_RESOURCES})
 
 mark_as_advanced(
   BFD_INCLUDE_DIR

@@ -769,6 +769,7 @@ endif()
 
 option(USE_IRESEARCH "enable ArangoSearch views" ON)
 
+
 if(USE_IRESEARCH)
   add_definitions("-DUSE_IRESEARCH=1")
 

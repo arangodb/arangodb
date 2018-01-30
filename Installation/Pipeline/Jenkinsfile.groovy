@@ -133,7 +133,7 @@ mainBranch = "unknown"
 if ("devel" == "devel") {
     mainBranch = "devel"
 }
-else { 
+else {
     mainBranch = "3.3"
 }
 
@@ -154,15 +154,15 @@ if (env.BRANCH_NAME =~ /^PR-/) {
 branchLabel = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
 
 buildJenkins = [
-    "linux": "linux && build && arangodb",
-    "mac" : "mac && build && arangodb",
-    "windows": "windows && build && arangodb"
+    "linux": "linux && build && arangodb && foo",
+    "mac" : "mac && build && arangodb && foo",
+    "windows": "foo"
 ]
 
 testJenkins = [
-    "linux": "linux && tests && arangodb",
-    "mac" : "mac && tests && arangodb",
-    "windows": "windows && tests && arangodb"
+    "linux": "linux && tests && arangodb && foo",
+    "mac" : "mac && tests && arangodb && foo",
+    "windows": "windows && tests && arangodb && foo"
 ]
 
 def copyFile(os, src, dst) {
@@ -224,7 +224,7 @@ def checkEnabledMaintainer(maintainer, os, text) {
 def checkCores(os, runDir) {
     if (os == 'windows') {
         def files = findFiles(glob: "${runDir}/*.dmp")
-        
+
         if (files.length > 0) {
             error("found windows core file")
         }
@@ -245,7 +245,7 @@ def saveCores(os, runDir, name, archRun) {
         powershell "move-item -Force -ErrorAction Ignore ${runDir}/tmp ${archRun}/${name}.tmp"
 
         def files = findFiles(glob: "${runDir}/*.dmp")
-        
+
         if (files.length > 0) {
             for (file in files) {
                 powershell "move-item -Force -ErrorAction Ignore ${file} ${archRun}"
@@ -354,7 +354,7 @@ def logStopStage(os, logFile) {
             def key = ""
             def sep = ""
 
-            for (p in keys) { 
+            for (p in keys) {
                 key = key + sep + p
                 sep = "/"
 
@@ -644,18 +644,19 @@ def setBuildsAndTests() {
     else if (buildType == "PR Test") {
         restrictions = [
             // OS EDITION MAINTAINER
-            "build-linux-community-maintainer" : true,
-            "build-linux-enterprise-maintainer" : true,
-            "build-mac-enterprise-user" : true,
-            "build-windows-enterprise-maintainer" : true,
+            //"build-linux-community-maintainer" : true,
+            //"build-linux-enterprise-maintainer" : true,
+            //"build-mac-enterprise-user" : true,
+            //"build-windows-enterprise-maintainer" : true,
+            "build-windows-community-user" : true,
 
             // OS EDITION MAINTAINER MODE ENGINE
-            "test-linux-enterprise-maintainer-cluster-rocksdb" : true,
-            "test-linux-community-maintainer-singleserver-mmfiles" : true,
+            //"test-linux-enterprise-maintainer-cluster-rocksdb" : true,
+            //"test-linux-community-maintainer-singleserver-mmfiles" : true,
 
             // OS EDITION MAINTAINER ENGINE TYPE
-            "resilience-linux-enterprise-maintainer-rocksdb-single" : true,
-            "resilience-linux-enterprise-maintainer-mmfiles-single" : true,
+            //"resilience-linux-enterprise-maintainer-rocksdb-single" : true,
+            //"resilience-linux-enterprise-maintainer-mmfiles-single" : true,
         ]
     }
     else if (buildType == "Nightly Test") {
@@ -936,7 +937,7 @@ def getTests(os, edition, maintainer, mode, engine) {
             ["resilience", "resilience", ""]
         ]
     }
- 
+
     return tests
 }
 
@@ -991,7 +992,7 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
                                 "--log.level warning " +
                                 "--javascript.execute UnitTests/unittest.js " +
                                 "${test} -- " +
-                                "${testArgs} " + 
+                                "${testArgs} " +
                                 "--minPort " + (port + testIndex * portInterval) + " " +
                                 "--maxPort " + (port + (testIndex + 1) * portInterval - 1)
 
@@ -1187,6 +1188,7 @@ def testStepParallel(os, edition, maintainer, modeList) {
 // -----------------------------------------------------------------------------
 
 def testResilience(os, engine, type, logFile, runDir) {
+    echo "testResilience"
     def tmpDir = pwd() + "/" + runDir + "/tmp"
 
     fileOperations([
@@ -1321,8 +1323,11 @@ def testResilienceParallel(os, edition, maintainer) {
 // -----------------------------------------------------------------------------
 
 def buildEdition(os, edition, maintainer) {
+    echo "build"
     def archDir  = "${os}-${edition}-${maintainer}"
+    echo "archDir: ${archDir}"
     def arch     = "${archDir}/01-build"
+    echo "arch: ${arch}"
 
     fileOperations([
         folderDeleteOperation(arch),
@@ -1351,7 +1356,10 @@ def buildEdition(os, edition, maintainer) {
             }
         }
         else if (os == 'windows') {
-            logFile = "..\\" + logFile
+            workspace="${env.WORKSPACE}"
+            workspace = workspace.replace("\\", "/")
+            logFile = workspace + "/" + logFile
+            workspace = workspace.replace("/","\\")
             extra = "-DUSE_CATCH_TESTS=ON -DUSE_FAILURE_TESTS=ON -DDEBUG_SYNC_REPLICATION=ON"
             if( edition == "enterprise"){
                 extra += " -DUSE_ENTERPRISE=ON"
@@ -1360,10 +1368,17 @@ def buildEdition(os, edition, maintainer) {
                 extra += " -DUSE_MAINTAINER_MODE=ON"
             }
 
+    echo "build1"
             powershell "Remove-Item -Force -Recurse ${arch} -ErrorAction SilentlyContinue"
+    echo "build2"
             powershell "New-Item -Force -ItemType Directory ${arch} -ErrorAction SilentlyContinue"
+    echo "build3"
             powershell "New-Item -ItemType Directory -Force -Path build"
-            powershell "cd build; ..\\configure\\${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
+    echo "build4"
+            echo "no angle brackets"
+            echo "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru -Path \"${logFile}\""
+            powershell "cd build; ../configure/${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru -Path \"${logFile}\""
+    echo "build5"
         }
 
         logStopStage(os, logFile)
@@ -1372,12 +1387,13 @@ def buildEdition(os, edition, maintainer) {
         logExceptionStage(os, logFile, logFile, exc)
 
         def msg = exc.toString()
-        
+
         if (os == 'linux' || os == 'mac') {
             sh "echo \"${msg}\" >> ${logFile}"
         }
         else {
-            powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
+            echo "got error"
+            powershell "echo \"${msg}\" | Out-File -filepath ${logFile}.log -append"
         }
 
         throw exc
