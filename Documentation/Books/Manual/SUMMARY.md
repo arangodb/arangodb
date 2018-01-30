@@ -75,12 +75,9 @@
   * [Working with Edges](Graphs/Edges/README.md)
   * [Pregel](Graphs/Pregel/README.md)
 #
-
-#
 * [Views](Views/README.md)
-#
-  * [ArangoSearch](Views/IResearch.md)
-    * [Analyzers](Views/IResearch/Analyzers.md)
+  * [ArangoSearch](Views/ArangoSearch.md)
+    * [Analyzers](Views/ArangoSearch/Analyzers.md)
 
 * [Foxx Microservices](Foxx/README.md)
   * [At a glance](Foxx/AtAGlance.md)

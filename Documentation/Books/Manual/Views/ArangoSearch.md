@@ -2,8 +2,10 @@
 
 ## What is ArangoSearch
 
-ArangoSearch is a natively integrated AQL extension that allows one to:
-* evaluate together documents located in different collections
+ArangoSearch is a natively integrated AQL extension making use of the IResearch library.
+
+Arangosearch allows one to:
+* join documents located in different collections to one result list
 * filter documents based on AQL boolean expressions and functions
 * sort the resultset based on how closely each document matched the filter
 
@@ -20,11 +22,11 @@ In plain terms this means a user can for example:
 
 ### The IResearch Library
 
-A cross-platform open source indexing and searching engine written in C++,
+IResearch s a cross-platform open source indexing and searching engine written in C++,
 optimized for speed and memory footprint, with source available from:
 https://github.com/iresearch-toolkit/iresearch
 
-A framework for indexing, filtering and sorting of data. The indexing stage can
+IResearch is a framework for indexing, filtering and sorting of data. The indexing stage can
 treat each data item as an atom or use custom 'analyzers' to break the data item
 into sub-atomic pieces tied together with internally tracked metadata.
 
@@ -34,11 +36,11 @@ stages) and scorers (used during the sorting stage) allowing full control over
 the behaviour of the engine.
 
 
-### Scorers:
+### ArangoSearch Scorers:
 
-ArangoDB accesses the IResearch scorers directly by their internal names. The
+ArangoSearch accesses scorers directly by their internal names. The
 name (in upper-case) of the scorer is the function name to be used in the
-['SORT' section](../../AQL/Views/IResearch.html#arangosearch-sort).
+['SORT' section](../../AQL/Views/ArangoSearch.html#arangosearch-sort).
 Function arguments, (excluding the first argument), are serialized as a
 string representation of a JSON array and passed directly to the corresponding
 scorer. The first argument to any scorer function is the reference to the 
@@ -133,7 +135,7 @@ said ArangoSearch view defining the link parameters as per the section
 ### Analyzers:
 
 To simplify query syntax ArangoSearch provides a concept of 
-[named analyzers](IResearch/Analyzers.md) which
+[named analyzers](ArangoSearch/Analyzers.md) which
 are merely aliases for type+configuration of IResearch analyzers. Management of
 named analyzers is exposed via both REST, GUI and JavaScript APIs, e.g.
 
@@ -265,7 +267,7 @@ During view modification the following directives apply:
 ### Link properties
 
 * analyzers: (optional; default: `[ 'identity' ]`)
-  a list of analyzers, by name as defined via the [Analyzers](IResearch/Analyzers.md), that
+  a list of analyzers, by name as defined via the [Analyzers](ArangoSearch/Analyzers.md), that
   should be applied to values of processed document attributes
 
 * fields: (optional; default: `{}`)
