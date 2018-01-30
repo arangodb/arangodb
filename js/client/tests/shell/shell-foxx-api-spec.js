@@ -742,4 +742,16 @@ describe('Foxx service', () => {
       expect(resp.status).to.equal(400);
     });
   }
+
+  it('tests should run', () => {
+    const testPath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'with-tests');
+    FoxxManager.install(testPath, mount);
+    const resp = request.post('/_api/foxx/tests', {qs: { mount }});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('stats');
+    expect(resp.json).to.have.property('tests');
+    expect(resp.json).to.have.property('pending');
+    expect(resp.json).to.have.property('failures');
+    expect(resp.json).to.have.property('passes');
+  });
 });
