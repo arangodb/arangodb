@@ -59,10 +59,12 @@ using namespace arangodb::rest;
 auth::UserManager::UserManager()
     : _outdated(true), _queryRegistry(nullptr), _authHandler(nullptr) {}
 
+#ifdef USE_ENTERPRISE
 auth::UserManager::UserManager(std::unique_ptr<auth::Handler>&& handler)
     : _outdated(true),
       _queryRegistry(nullptr),
       _authHandler(handler.release()) {}
+#endif
 
 auth::UserManager::~UserManager() { delete _authHandler; }
 
@@ -231,6 +233,7 @@ void auth::UserManager::loadFromDB() {
             if (pair->second.source() == auth::Source::LOCAL) {
               pair = _userCache.erase(pair);
             } else {
+#warning FIXME update external user permissions
               pair++;
             }
           }
@@ -673,105 +676,22 @@ bool auth::UserManager::checkPassword(std::string const& username,
       return user.checkPassword(password);
     }
   }
-  if (it == _userCache.end() && _authHandler == nullptr) {
+
+#ifdef USE_ENTERPRISE
+  bool userCached = it != _userCache.end();
+  if (!userCached && _authHandler == nullptr) {
     // nothing more to do here
     return false;
   }
-
-  // handle LDAP based authentication
-  if (it == _userCache.end() || (it->second.source() != auth::Source::LOCAL)) {
-    TRI_ASSERT(_authHandler != nullptr);
-    auth::HandlerResult authResult =
-        _authHandler->authenticate(username, password);
-
-    if (!authResult.ok()) {
-      if (it != _userCache.end()) {  // erase invalid user
-        // upgrade read-lock to a write-lock
-        readGuard.unlock();
-        WRITE_LOCKER(writeGuard, _userCacheLock);
-        _userCache.erase(username);  // `it` may be invalid already
-      }
-      return false;
-    }
-
-    // user authed, add to _userCache
-    if (authResult.source() != auth::Source::LOCAL) {
-      auth::User user =
-          auth::User::newUser(username, password, auth::Source::LDAP);
-      user.setRoles(authResult.roles());
-      for (auto const& al : authResult.permissions()) {
-        user.grantDatabase(al.first, al.second);
-      }
-
-      // upgrade read-lock to a write-lock
-      readGuard.unlock();
-      WRITE_LOCKER(writeGuard, _userCacheLock);
-
-      it = _userCache.find(username);  // `it` may be invalid already
-      if (it != _userCache.end()) {
-        it->second = std::move(user);
-      } else {
-        auto r = _userCache.emplace(username, std::move(user));
-        if (!r.second) {
-          return false;  // insertion failed
-        }
-        it = r.first;
-      }
-      return it->second.isActive();
-      /*auth::User const& auth = it->second;
-      if (auth.isActive()) {
-        return auth.checkPassword(password);
-      }
-      return false;  // inactive user*/
-    }
+  // handle authentication with external system
+  if (!userCached || (it->second.source() != auth::Source::LOCAL)) {
+    return checkPasswordExt(username, password, userCached, readGuard);
   }
+#endif
 
   return false;
 }
 
-void auth::UserManager::refreshUser(std::string const& username) {
-  if (_authHandler == nullptr || username.empty() ||
-      StringUtils::isPrefix(username, ":role:")) {
-    return;  // ignore
-  }
-  
-  READ_LOCKER(readGuard, _userCacheLock);
-  auto it = _userCache.find(username);
-  if (it == _userCache.end() ||  // no need to refresh non existing users
-      it->second.source() == auth::Source::LOCAL) {
-    return;  // no need to refresh local users
-  }
-
-  if (it != _userCache.end()) {
-    double expiry = it->second.loaded() + _authHandler->refreshRate();
-    if (expiry >= TRI_microtime()) {
-      return;  // not necessary yet
-    }
-  }
-  
-  LOG_TOPIC(INFO, Logger::FIXME) << "Refreshing user rights";
-
-  // now we need to renew the permissions in the user
-  auth::HandlerResult authResult = _authHandler->readPermissions(username);
-
-  // upgrade read-lock to a write-lock
-  readGuard.unlock();
-  WRITE_LOCKER(writeGuard, _userCacheLock);
-
-  if (authResult.ok()) {
-    it = _userCache.find(username);  // `it` may be invalid already
-    if (it == _userCache.end()) {
-      return;  // someone deleted the user while we weren't looking
-    }
-
-    it->second.setRoles(authResult.roles());
-    for (auto const& al : authResult.permissions()) {
-      it->second.grantDatabase(al.first, al.second);
-    }
-  } else {                       // if the result is not ok, assume user is gone
-    _userCache.erase(username);  // `it` may be invalid already
-  }
-}
 
 // worker function for configuredDatabaseAuthLevel
 // must only be called with the read-lock on _userCacheLock being held
@@ -785,30 +705,7 @@ auth::Level auth::UserManager::configuredDatabaseAuthLevelInternal(
   }
 
   auto const& entry = it->second;
-  auth::Level level = entry.databaseAuthLevel(dbname);
-
-#ifdef USE_ENTERPRISE
-  // check all roles and use the highest permission from them
-  for (auto const& role : entry.roles()) {
-    if (level == auth::Level::RW) {
-      // we already have highest permission
-      break;
-    }
-
-    // recurse into function, but only one level deep.
-    // this allows us to avoid endless recursion without major overhead
-    if (depth == 0) {
-      auth::Level roleLevel =
-          configuredDatabaseAuthLevelInternal(role, dbname, depth + 1);
-
-      if (level == auth::Level::NONE) {
-        // use the permission of the role we just found
-        level = roleLevel;
-      }
-    }
-  }
-#endif
-  return level;
+  return entry.databaseAuthLevel(dbname);
 }
 
 auth::Level auth::UserManager::configuredDatabaseAuthLevel(
@@ -853,8 +750,8 @@ auth::Level auth::UserManager::configuredCollectionAuthLevelInternal(
   }
 
   auto const& entry = it->second;
-  auth::Level level = entry.collectionAuthLevel(dbname, coll);
-
+  return entry.collectionAuthLevel(dbname, coll);
+/*
 #ifdef USE_ENTERPRISE
   for (auto const& role : entry.roles()) {
     if (level == auth::Level::RW) {
@@ -874,8 +771,7 @@ auth::Level auth::UserManager::configuredCollectionAuthLevelInternal(
       }
     }
   }
-#endif
-  return level;
+#endif*/
 }
 
 auth::Level auth::UserManager::configuredCollectionAuthLevel(
@@ -932,13 +828,6 @@ auth::Level auth::UserManager::canUseCollectionNoLock(
     return auth::Level::RO;
   }
   return level;
-}
-
-double auth::UserManager::refreshExpiry() const {
-  if (_authHandler != nullptr) {
-    return TRI_microtime() + _authHandler->refreshRate();
-  }
-  return 0;
 }
 
 /// Only used for testing

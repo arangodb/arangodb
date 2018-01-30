@@ -41,7 +41,7 @@ class HandlerResult : public arangodb::Result {
       : Result(errorNumber), _authSource(source) {}
 
   HandlerResult(std::unordered_map<std::string, auth::Level> const& permissions,
-                std::unordered_set<std::string> const& roles,
+                std::set<std::string> const& roles,
                 auth::Source const& source)
       : Result(0),
         _authSource(source),
@@ -55,12 +55,12 @@ class HandlerResult : public arangodb::Result {
     return _permissions;
   }
 
-  std::unordered_set<std::string> roles() const { return _roles; }
+  std::set<std::string> roles() const { return _roles; }
 
  protected:
   arangodb::auth::Source _authSource;
   std::unordered_map<std::string, auth::Level> _permissions;
-  std::unordered_set<std::string> _roles;
+  std::set<std::string> _roles;
 };
 
 class Handler {

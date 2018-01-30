@@ -48,7 +48,6 @@ class User {
   static User fromDocument(velocypack::Slice const&);
 
  private:
-  static void fromDocumentRoles(auth::User&, velocypack::Slice const&);
   static void fromDocumentDatabases(auth::User&,
                                     velocypack::Slice const& databases,
                                     velocypack::Slice const& user);
@@ -70,11 +69,6 @@ class User {
   velocypack::Builder toVPackBuilder() const;
 
   void setActive(bool active) { _active = active; }
-
-  std::unordered_set<std::string> roles() const { return _roles; }
-  void setRoles(std::unordered_set<std::string> const& roles) {
-    _roles = roles;
-  }
 
   /// grant specific access rights for db. The default "*" is also a
   /// valid database name
@@ -119,8 +113,13 @@ class User {
   /// Set content of internal `configData` field, used by the WebUI
   void setConfigData(velocypack::Builder&& b) { _configData = std::move(b); }
 
-  /// Time (since epoch) when user was loaded form DB / LDAP
+  /// Time in seconds (since epoch) when user was loaded
   double loaded() const { return _loaded; }
+  
+  std::set<std::string> roles() const { return _roles; }
+  void setRoles(std::set<std::string> const& roles) {
+    _roles = roles;
+  }
 
  private:
   User(std::string&& key, TRI_voc_rid_t rid);
@@ -153,13 +152,17 @@ class User {
   std::string _passwordSalt;
   std::string _passwordHash;
   std::unordered_map<std::string, DBAuthContext> _dbAccess;
-  std::unordered_set<std::string> _roles;
-
+  
   velocypack::Builder _userData;
   velocypack::Builder _configData;
 
   /// Time when user was loaded form DB / LDAP
   double _loaded;
+  
+#ifdef USE_ENTERPRISE
+  /// @brief roles this user has
+  std::set<std::string> _roles;
+#endif
 };
 }  // auth
 }  // arangodb

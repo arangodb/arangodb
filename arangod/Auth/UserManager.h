@@ -41,11 +41,16 @@ namespace arangodb {
 namespace aql {
 class QueryRegistry;
 }
+namespace basics {
+template<typename T>
+class ReadLocker;
+}
 
 namespace auth {
 class Handler;
 
 typedef std::unordered_map<std::string, auth::User> UserMap;
+
 
 /// UserManager is the sole point of access for users and permissions
 /// stored in `_system/_users` as well as in external authentication
@@ -54,7 +59,9 @@ typedef std::unordered_map<std::string, auth::User> UserMap;
 class UserManager {
  public:
   explicit UserManager();
+#ifdef USE_ENTERPRISE
   explicit UserManager(std::unique_ptr<arangodb::auth::Handler>&&);
+#endif
   ~UserManager();
 
  public:
@@ -98,7 +105,11 @@ class UserManager {
   bool checkPassword(std::string const& username, std::string const& password);
 
   /// Convenience method to refresh user rights
+#ifdef USE_ENTERPRISE
   void refreshUser(std::string const& username);
+#else
+  inline void refreshUser(std::string const& username) {}
+#endif
 
   auth::Level configuredDatabaseAuthLevel(std::string const& username,
                                           std::string const& dbname);
@@ -120,12 +131,22 @@ class UserManager {
                                      std::string const& dbname,
                                      std::string const& coll);
 
-  /// Next point at which a rights would need to be refreshed.
-  double refreshExpiry() const;
-
   /// Overwrite internally cached permissions, only use
   /// for testing purposes
   void setAuthInfo(auth::UserMap const& userEntryMap);
+  
+#ifdef USE_ENTERPRISE
+  /// @brief apply roles to user
+  void applyRoles(auth::User&, std::set<std::string> const&) const;
+  
+  /// @brief Check authorization with external system
+  /// @param userCached is the user cached locally
+  /// @param a read guard which may need to be released
+  bool checkPasswordExt(std::string const& username,
+                        std::string const& password,
+                        bool userCached,
+                        basics::ReadLocker<basics::ReadWriteLock>& readGuard);
+#endif
 
  private:
   // worker function for canUseDatabase
@@ -161,8 +182,10 @@ class UserManager {
   UserMap _userCache;
 
   aql::QueryRegistry* _queryRegistry;
+#ifdef USE_ENTERPRISE
   /// iterface to external authentication systems like LDAP
   arangodb::auth::Handler* _authHandler;
+#endif
 };
 }  // auth
 }  // arangodb

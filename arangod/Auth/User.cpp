@@ -169,7 +169,7 @@ auth::User auth::User::newUser(std::string const& user,
   return entry;
 }
 
-void auth::User::fromDocumentRoles(auth::User& entry,
+/*void auth::User::fromDocumentRoles(auth::User& entry,
                                    VPackSlice const& rolesSlice) {
   for (auto const& it : VPackArrayIterator(rolesSlice)) {
     if (it.isString()) {
@@ -178,7 +178,7 @@ void auth::User::fromDocumentRoles(auth::User& entry,
       entry._roles.insert(role);
     }
   }
-}
+}*/
 
 void auth::User::fromDocumentDatabases(auth::User& entry,
                                        VPackSlice const& databasesSlice,
@@ -310,11 +310,10 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   }
 
   // extract "roles" attribute
-  VPackSlice const rolesSlice = slice.get("roles");
-
+  /*VPackSlice const rolesSlice = slice.get("roles");
   if (rolesSlice.isArray()) {
     fromDocumentRoles(entry, rolesSlice);
-  }
+  }*/
 
   VPackSlice userDataSlice = slice.get("userData");
   if (userDataSlice.isObject() && !userDataSlice.isEmptyObject()) {
