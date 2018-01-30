@@ -77,7 +77,7 @@ endif ()
 # ------------------------------------------------------------------------------
 
 set(ARANGODB_VERSION_MAJOR      "3")
-set(ARANGODB_VERSION_MINOR      "3")
+set(ARANGODB_VERSION_MINOR      "4")
 if (NOT DEFINED ARANGODB_VERSION_REVISION)
   set(ARANGODB_VERSION_REVISION   "devel")
 endif()
