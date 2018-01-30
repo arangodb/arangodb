@@ -27,7 +27,7 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "Shell/ClientFeature.h"
-#include "Utils/ManagedDirectory.hpp"
+#include "Utils/ManagedDirectory.h"
 #include "V8Client/ArangoClientHelper.h"
 
 namespace arangodb {

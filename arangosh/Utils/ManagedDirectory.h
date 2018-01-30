@@ -31,6 +31,14 @@
 #endif
 
 namespace arangodb {
+/**
+ * Manages a single directory in the file system, transparently handling
+ * encryption and decryption. Opens/creates and manages file using RAII-style
+ * management.
+ *
+ * If encryption is enabled on the server, new files will be encrypted, and
+ * existing files will be decrypted if applicable.
+ */
 class ManagedDirectory {
  public:
   static constexpr int DefaultReadFlags = O_RDONLY | TRI_O_CLOEXEC;
@@ -51,7 +59,7 @@ class ManagedDirectory {
      * @param flags     The flags to pass to the OS to open the file
      */
     File(ManagedDirectory const& directory, std::string const& filename,
-         int flags) noexcept(false);
+         int flags);
     /**
      * @brief Closes the file if it is still open
      */
@@ -75,7 +83,7 @@ class ManagedDirectory {
      * @param  data   Beginning of data to write
      * @param  length Length of data to write
      */
-    void write(char const* data, size_t length) noexcept(false);
+    void write(char const* data, size_t length);
 
     /**
      * @brief Reads data from the given file, using decryption if enabled
@@ -83,25 +91,25 @@ class ManagedDirectory {
      * @param  length Maximum amount of data to read (no more than buffer
      *                length)
      */
-    ssize_t read(char* buffer, size_t length) noexcept(false);
+    ssize_t read(char* buffer, size_t length);
 
     /**
      * @brief Read file contents into string
      * @return File contents
      */
-    std::string slurp() noexcept(false);
+    std::string slurp();
 
     /**
      * @brief Write a string to file
      * @param content String to write
      */
-    void spit(std::string const& content) noexcept(false);
+    void spit(std::string const& content);
 
     /**
      * @brief Closes file (now, as opposed to when the object is destroyed)
      * @return Reference to file status
      */
-    Result const& close() noexcept(false);
+    Result const& close();
 
    private:
     ManagedDirectory const& _directory;
@@ -122,12 +130,15 @@ class ManagedDirectory {
    * the directory is created, the encryption file will be written, enabling
    * encryption if the `EncryptionFeature` is enabled.
    *
+   * Be sure to check the `status()` after construction to verify that the
+   * directory was opened successfully. If `status().fail()`, the directory
+   * cannot be used safely.
+   *
    * @param path         The path to the directory
    * @param requireEmpty If `true`, opening a non-empty directory will fail
    * @param create       If `true` and directory does not exist, create it
    */
-  ManagedDirectory(std::string const& path, bool requireEmpty,
-                   bool create) noexcept(false);
+  ManagedDirectory(std::string const& path, bool requireEmpty, bool create);
   ~ManagedDirectory() noexcept;
 
  public:
@@ -143,7 +154,7 @@ class ManagedDirectory {
   /**
    * @brief Resets the status to allow for further operation after error
    */
-  void resetStatus() noexcept(false);
+  void resetStatus();
 
   /**
    * @brief Returns the path to the directory under management
@@ -156,13 +167,13 @@ class ManagedDirectory {
    * @param  filename File to retrieve path for
    * @return          Fully qualified filename
    */
-  std::string pathToFile(std::string const& filename) const noexcept(false);
+  std::string pathToFile(std::string const& filename) const;
 
   /**
    * @brief Determines if encryption is enabled on the directory
    * @return `true` if directory is encrypted
    */
-  bool isEncrypted() const noexcept;
+  bool isEncrypted() const;
 
   /**
    * @brief Returns the type of encryption used for the directory
@@ -185,7 +196,7 @@ class ManagedDirectory {
    * @return          Unique pointer to file, if opened
    */
   std::unique_ptr<File> readableFile(std::string const& filename,
-                                     int flags = 0) noexcept(false);
+                                     int flags = 0);
 
   /**
    * @brief Opens a writable file
@@ -195,30 +206,28 @@ class ManagedDirectory {
    * @return           Unique pointer to file, if opened
    */
   std::unique_ptr<File> writableFile(std::string const& filename,
-                                     bool overwrite,
-                                     int flags = 0) noexcept(false);
+                                     bool overwrite, int flags = 0);
 
   /**
    * @brief Write a string to file
    * @param filename Name of file to write to
    * @param content  String to write to file
    */
-  void spitFile(std::string const& filename,
-                std::string const& content) noexcept(false);
+  void spitFile(std::string const& filename, std::string const& content);
 
   /**
    * @brief Read file content into string
    * @param  filename File to read from
    * @return          Contents of file as string
    */
-  std::string slurpFile(std::string const& filename) noexcept(false);
+  std::string slurpFile(std::string const& filename);
 
   /**
    * @brief Read file content and parse into `VPackBuilder`
    * @param  filename File to read from
    * @return          Parsed vpack contents of file
    */
-  VPackBuilder vpackFromJsonFile(std::string const& filename) noexcept(false);
+  VPackBuilder vpackFromJsonFile(std::string const& filename);
 
  private:
 #ifdef USE_ENTERPRISE

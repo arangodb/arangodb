@@ -77,7 +77,6 @@ add_executable(${BIN_ARANGODUMP}
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
   Utils/ClientManager.cpp
-  Utils/ClientTaskQueue.cpp
   Utils/ManagedDirectory.cpp
   ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
 )

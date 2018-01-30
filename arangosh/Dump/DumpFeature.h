@@ -26,8 +26,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Mutex.h"
-#include "Utils/ClientManager.hpp"
-#include "Utils/ClientTaskQueue.hpp"
+#include "Utils/ClientManager.h"
+#include "Utils/ClientTaskQueue.h"
 
 namespace arangodb {
 namespace httpclient {
@@ -37,40 +37,42 @@ class DumpFeature;
 class EncryptionFeature;
 class ManagedDirectory;
 
-struct DumpFeatureStats {
-  DumpFeatureStats(uint64_t b, uint64_t c, uint64_t w) noexcept;
-  std::atomic<uint64_t> totalBatches;
-  std::atomic<uint64_t> totalCollections;
-  std::atomic<uint64_t> totalWritten;
-};
-
-struct DumpFeatureJobData {
-  DumpFeatureJobData(DumpFeature&, ManagedDirectory&, DumpFeatureStats&,
-                     VPackSlice const&, bool const&, bool const&, bool const&,
-                     uint64_t const&, uint64_t const&, uint64_t const&,
-                     uint64_t const&, uint64_t const, std::string const&,
-                     std::string const&, std::string const&) noexcept;
-  DumpFeature& feature;
-  ManagedDirectory& directory;
-  DumpFeatureStats& stats;
-  VPackSlice const collectionInfo;
-  bool const clusterMode;
-  bool const showProgress;
-  bool const dumpData;
-  uint64_t const initialChunkSize;
-  uint64_t const maxChunkSize;
-  uint64_t const tickStart;
-  uint64_t const tickEnd;
-  uint64_t const batchId;
-  std::string const cid;
-  std::string const name;
-  std::string const type;
-};
-extern template class ClientTaskQueue<DumpFeatureJobData>;
-
 class DumpFeature : public application_features::ApplicationFeature {
  public:
-  DumpFeature(application_features::ApplicationServer* server, int& exitCode) noexcept(false);
+  /// @brief Stores stats about the overall dump progress
+  struct Stats {
+    Stats(uint64_t b, uint64_t c, uint64_t w) noexcept;
+    std::atomic<uint64_t> totalBatches;
+    std::atomic<uint64_t> totalCollections;
+    std::atomic<uint64_t> totalWritten;
+  };
+
+  /// @brief Stores all necessary data to dump a single collection or shard
+  struct JobData {
+    JobData(DumpFeature&, ManagedDirectory&, Stats&, VPackSlice const&,
+            bool const&, bool const&, bool const&, uint64_t const&,
+            uint64_t const&, uint64_t const&, uint64_t const&, uint64_t const,
+            std::string const&, std::string const&,
+            std::string const&) noexcept;
+    DumpFeature& feature;
+    ManagedDirectory& directory;
+    Stats& stats;
+    VPackSlice const collectionInfo;
+    bool const clusterMode;
+    bool const showProgress;
+    bool const dumpData;
+    uint64_t const initialChunkSize;
+    uint64_t const maxChunkSize;
+    uint64_t const tickStart;
+    uint64_t const tickEnd;
+    uint64_t const batchId;
+    std::string const cid;
+    std::string const name;
+    std::string const type;
+  };
+
+ public:
+  DumpFeature(application_features::ApplicationServer* server, int& exitCode);
 
  public:
   // for documentation of virtual methods, see `ApplicationFeature`
@@ -85,7 +87,7 @@ class DumpFeature : public application_features::ApplicationFeature {
    * @brief Returns the feature name (for registration with `ApplicationServer`)
    * @return The name of the feature
    */
-  static std::string featureName() noexcept(false);
+  static std::string featureName();
 
   /**
    * @brief Saves a worker error for later handling and clears queued jobs
@@ -94,18 +96,17 @@ class DumpFeature : public application_features::ApplicationFeature {
   void reportError(Result const& error) noexcept;
 
  private:
-  Result runDump(httpclient::SimpleHttpClient& client,
-                 std::string& dbName) noexcept(false);
-  Result runClusterDump(httpclient::SimpleHttpClient& client) noexcept(false);
+  Result runDump(httpclient::SimpleHttpClient& client, std::string& dbName);
+  Result runClusterDump(httpclient::SimpleHttpClient& client);
 
  private:
   int& _exitCode;
 
  private:
   ClientManager _clientManager;
-  ClientTaskQueue<DumpFeatureJobData> _clientTaskQueue;
+  ClientTaskQueue<JobData> _clientTaskQueue;
   std::unique_ptr<ManagedDirectory> _directory;
-  DumpFeatureStats _stats;
+  Stats _stats;
   std::vector<std::string> _collections;
   Mutex _workerErrorLock;
   std::queue<Result> _workerErrors;

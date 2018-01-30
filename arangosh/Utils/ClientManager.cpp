@@ -21,7 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClientManager.hpp"
+#include "ClientManager.h"
 
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
@@ -31,12 +31,12 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-using namespace arangodb;
-using namespace arangodb::basics;
-using namespace arangodb::httpclient;
-
 namespace {
-Result getHttpErrorMessage(SimpleHttpResult* result) noexcept {
+arangodb::Result getHttpErrorMessage(
+    arangodb::httpclient::SimpleHttpResult* result) noexcept {
+  using arangodb::basics::VelocyPackHelper;
+  using arangodb::basics::StringUtils::itoa;
+
   if (!result) {
     // no result to pull from
     return {TRI_ERROR_INTERNAL, "no response from server!"};
@@ -45,7 +45,7 @@ Result getHttpErrorMessage(SimpleHttpResult* result) noexcept {
   int code = TRI_ERROR_NO_ERROR;
   // set base message
   std::string message("got error from server: HTTP " +
-                      StringUtils::itoa(result->getHttpReturnCode()) + " (" +
+                      itoa(result->getHttpReturnCode()) + " (" +
                       result->getHttpReturnMessage() + ")");
 
   // assume vpack body, catch otherwise
@@ -54,13 +54,13 @@ Result getHttpErrorMessage(SimpleHttpResult* result) noexcept {
     VPackSlice const body = parsedBody->slice();
 
     int serverCode =
-        basics::VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
+        VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
     std::string const& serverMessage =
-        basics::VelocyPackHelper::getStringValue(body, "errorMessage", "");
+        VelocyPackHelper::getStringValue(body, "errorMessage", "");
 
     if (serverCode > 0) {
       code = serverCode;
-      message.append(": ArangoError " + StringUtils::itoa(serverCode) + ": " +
+      message.append(": ArangoError " + itoa(serverCode) + ": " +
                      serverMessage);
     }
   } catch (...) {
@@ -69,6 +69,8 @@ Result getHttpErrorMessage(SimpleHttpResult* result) noexcept {
   return {code, std::move(message)};
 }
 }  // namespace
+
+namespace arangodb {
 
 ClientManager::ClientManager(LogTopic& topic) : _topic{topic} {}
 
@@ -86,8 +88,7 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
   try {
     httpClient = client->createHttpClient();
   } catch (...) {
-    LOG_TOPIC(FATAL, _topic)
-        << "cannot create server connection, giving up!";
+    LOG_TOPIC(FATAL, _topic) << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
 
@@ -101,10 +102,9 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
   // now connect by retrieving version
   std::string const versionString = httpClient->getServerVersion();
   if (!httpClient->isConnected()) {
-    LOG_TOPIC(ERR, _topic)
-        << "Could not connect to endpoint '" << client->endpoint()
-        << "', database: '" << dbName << "', username: '" << client->username()
-        << "'";
+    LOG_TOPIC(ERR, _topic) << "Could not connect to endpoint '"
+                           << client->endpoint() << "', database: '" << dbName
+                           << "', username: '" << client->username() << "'";
     LOG_TOPIC(FATAL, _topic)
         << "Error message: '" << httpClient->getErrorMessage() << "'";
 
@@ -121,8 +121,8 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
       rest::Version::parseVersionString(versionString);
   if (version.first < 3) {
     // we can connect to 3.x
-    LOG_TOPIC(ERR, _topic)
-        << "Error: got incompatible server version '" << versionString << "'";
+    LOG_TOPIC(ERR, _topic) << "Error: got incompatible server version '"
+                           << versionString << "'";
 
     if (!force) {
       FATAL_ERROR_EXIT();
@@ -152,13 +152,15 @@ std::string ClientManager::rewriteLocation(void* data,
 }
 
 std::pair<Result, bool> ClientManager::getArangoIsCluster(
-    SimpleHttpClient& client) {
+    httpclient::SimpleHttpClient& client) {
+  using arangodb::basics::VelocyPackHelper;
+
   Result result{TRI_ERROR_NO_ERROR};
-  std::unique_ptr<SimpleHttpResult> response(
+  std::unique_ptr<httpclient::SimpleHttpResult> response(
       client.request(rest::RequestType::GET, "/_admin/server/role", "", 0));
 
   if (response == nullptr || !response->isComplete()) {
-    result = {TRI_ERROR_INTERNAL, "no response from server!"};
+    result.reset(TRI_ERROR_INTERNAL, "no response from server!");
     return {result, false};
   }
 
@@ -168,19 +170,18 @@ std::pair<Result, bool> ClientManager::getArangoIsCluster(
     try {
       std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
       VPackSlice const body = parsedBody->slice();
-      role =
-          basics::VelocyPackHelper::getStringValue(body, "role", "UNDEFINED");
+      role = VelocyPackHelper::getStringValue(body, "role", "UNDEFINED");
     } catch (...) {
       // No Action
     }
   } else {
     if (response->wasHttpError()) {
-      auto result = ::getHttpErrorMessage(response.get());
+      result = ::getHttpErrorMessage(response.get());
       LOG_TOPIC(ERR, _topic)
           << "got error while checking cluster mode: " << result.errorMessage();
       client.setErrorMessage(result.errorMessage(), false);
     } else {
-      result = {TRI_ERROR_INTERNAL};
+      result.reset(TRI_ERROR_INTERNAL);
     }
 
     client.disconnect();
@@ -190,12 +191,14 @@ std::pair<Result, bool> ClientManager::getArangoIsCluster(
 }
 
 std::pair<Result, bool> ClientManager::getArangoIsUsingEngine(
-    SimpleHttpClient& client, std::string const& name) {
+    httpclient::SimpleHttpClient& client, std::string const& name) {
+  using arangodb::basics::VelocyPackHelper;
+
   Result result{TRI_ERROR_NO_ERROR};
-  std::unique_ptr<SimpleHttpResult> response(
+  std::unique_ptr<httpclient::SimpleHttpResult> response(
       client.request(rest::RequestType::GET, "/_api/engine", "", 0));
   if (response == nullptr || !response->isComplete()) {
-    result = {TRI_ERROR_INTERNAL, "no response from server!"};
+    result.reset(TRI_ERROR_INTERNAL, "no response from server!");
     return {result, false};
   }
 
@@ -206,20 +209,18 @@ std::pair<Result, bool> ClientManager::getArangoIsUsingEngine(
     try {
       std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
       VPackSlice const body = parsedBody->slice();
-      engine =
-          basics::VelocyPackHelper::getStringValue(body, "name", "UNDEFINED");
+      engine = VelocyPackHelper::getStringValue(body, "name", "UNDEFINED");
     } catch (...) {
       // No Action
     }
   } else {
     if (response->wasHttpError()) {
       result = ::getHttpErrorMessage(response.get());
-      LOG_TOPIC(ERR, _topic)
-          << "got error while checking storage engine: "
-          << result.errorMessage();
+      LOG_TOPIC(ERR, _topic) << "got error while checking storage engine: "
+                             << result.errorMessage();
       client.setErrorMessage(result.errorMessage(), false);
     } else {
-      result = {TRI_ERROR_INTERNAL};
+      result.reset(TRI_ERROR_INTERNAL);
     }
 
     client.disconnect();
@@ -227,3 +228,5 @@ std::pair<Result, bool> ClientManager::getArangoIsUsingEngine(
 
   return {result, (engine == name)};
 }
+
+}  // namespace arangodb
