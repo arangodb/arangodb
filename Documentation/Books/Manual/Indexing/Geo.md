@@ -5,7 +5,164 @@ Geo Indexes
 
 This is an introduction to ArangoDB's geo indexes.
 
-AQL's geographic features are described in [Geo functions](../../AQL/Functions/Geo.html).
+AQL's geographic utility functions are described in [Geo functions](../../AQL/Functions/Geo.html).
+ArangoDB features an [Google S2](https://github.com/google/s2geometry) based geospatial index.
+
+
+### GeoJSON
+
+ArangoDB implements a useful subset of the GeoJSON format [(RFC 7946)](https://tools.ietf.org/html/rfc7946).
+Supported object types are listed below:
+
+#### Point
+
+The following section of the rfc specifies a [GeoJSON Point](https://tools.ietf.org/html/rfc7946#section-3.1.2):
+
+```
+{
+  "type": "Point",
+  "coordinates": [100.0, 0.0]
+}
+```
+
+#### MultiPoint
+
+The following section of the rfc specifies a [GeoJSON MultiPoint](https://tools.ietf.org/html/rfc7946#section-3.1.7):
+
+```
+{
+  "type": "MultiPoint",
+  "coordinates": [
+    [100.0, 0.0],
+    [101.0, 1.0]
+  ]
+}
+```
+
+
+#### LineString
+
+The following section of the rfc specifies a  [GeoJSON LineString](https://tools.ietf.org/html/rfc7946#section-3.1.4):
+
+```
+{
+  "type": "LineString",
+  "coordinates": [
+    [100.0, 0.0],
+    [101.0, 1.0]
+  ]
+}
+```
+
+#### MultiLineString
+
+The following section of the rfc specifies a  [GeoJSON MultiLineString](https://tools.ietf.org/html/rfc7946#section-3.1.5):
+The "coordinates" member is an array of LineString coordinate arrays:
+
+```
+{
+  "type": "MultiLineString",
+  "coordinates": [
+    [
+      [100.0, 0.0],
+      [101.0, 1.0]
+    ],
+    [
+      [102.0, 2.0],
+      [103.0, 3.0]
+    ]
+  ]
+}
+```
+
+#### Polygon
+
+[GeoJSON polygons](https://tools.ietf.org/html/rfc7946#section-3.1.6) consists of a series of closed
+`LineString` objects (ring-like). These *LineRing* objects consists of four or more vertices with the first
+and last coordinate pairs beeing equal.
+Coordinates of a Polygon are an array of linear ring coordinate arrays.  The first element in the array
+represents the exterior ring.  Any subsequent elements represent interior rings (or holes).
+
+No holes:
+```
+{
+  "type": "Polygon",
+    "coordinates": [
+    [
+      [100.0, 0.0],
+      [101.0, 0.0],
+      [101.0, 1.0],
+      [100.0, 1.0],
+      [100.0, 0.0]
+    ]
+  ]
+}
+```
+
+With holes:
+- The exterior ring should not self-intersect.
+- The interiour rings must be contained in the outer ring
+- Interior rings cannot overlap (or touch) with each other
+
+```
+{
+  "type": "Polygon",
+  "coordinates": [
+    [
+      [100.0, 0.0],
+      [101.0, 0.0],
+      [101.0, 1.0],
+      [100.0, 1.0],
+      [100.0, 0.0]
+    ],
+    [
+      [100.8, 0.8],
+      [100.8, 0.2],
+      [100.2, 0.2],
+      [100.2, 0.8],
+      [100.8, 0.8]
+    ]
+  ]
+}
+```
+
+#### MultiPolygon
+
+The following section of the rfc specifies a  [GeoJSON MultiPolygon](https://tools.ietf.org/html/rfc7946#section-3.1.7):
+The "coordinates" member is an array of Polygon coordinate arrays.
+
+```
+{
+  "type": "MultiPolygon",
+  "coordinates": [
+    [[
+      [102.0, 2.0],
+      [103.0, 2.0],
+      [103.0, 3.0],
+      [102.0, 3.0],
+      [102.0, 2.0]
+    ]],
+    [[
+      [100.0, 0.0],
+      [101.0, 0.0],
+      [101.0, 1.0],
+      [100.0, 1.0],
+      [100.0, 0.0]
+    ], [
+      [100.2, 0.2],
+      [100.2, 0.8],
+      [100.8, 0.8],
+      [100.8, 0.2],
+      [100.2, 0.2]
+    ]]
+  ]
+}
+
+```
+
+Deprecated info below:
+
+--------------------------------
 
 ArangoDB uses Hilbert curves to implement geo-spatial indexes.
 See this [blog](https://www.arangodb.com/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing)
