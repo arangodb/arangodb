@@ -39,6 +39,7 @@ void dump_mem_stats_trace() NOEXCEPT {
 
   // MacOS does not have malloc.h and hence no mallinfo() or malloc_stats()
   #ifndef __APPLE__
+  #ifndef LIBMUSL_BUILD
     // ...........................................................................
     // output mallinfo()
     // ...........................................................................
@@ -75,6 +76,7 @@ Topmost releasable block (keepcost):   %lu\n\
     // output malloc_stats()
     // ...........................................................................
     malloc_stats(); // outputs to stderr
+  #endif
   #endif
 
     // ...........................................................................

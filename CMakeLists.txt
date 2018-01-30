@@ -50,10 +50,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 option(SKIP_PACKAGING "" OFF)
-option(STATIC_EXECUTABLES "" OFF)
+option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
   set(CMAKE_EXE_LINKER_FLAGS "-static")
 endif()
+option(LIBMUSL_BUILD "be libmusl compatible" OFF)
+if (LIBMUSL_BUILD)
+  add_definitions("-DLIBMUSL_BUILD=1")
+endif ()
 
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
@@ -386,6 +390,10 @@ if (CMAKE_COMPILER_IS_CLANG)
     endif()
     list(APPEND BASE_LIBS atomic)
   endif ()
+endif ()
+
+if (LIBMUSL_BUILD)
+  list(APPEND BASE_LIBS execinfo)
 endif ()
 
 # need c++11
