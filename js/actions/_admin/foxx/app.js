@@ -30,6 +30,7 @@
 
 const actions = require('@arangodb/actions');
 const FoxxManager = require('@arangodb/foxx/manager');
+const store = require('@arangodb/foxx/store');
 const request = require('@arangodb/request');
 const db = require('@arangodb').db;
 const ArangoError = require('@arangodb').ArangoError;
@@ -68,7 +69,7 @@ function proxyLocal (method, url, qs, body, headers = {}) {
   return res.body ? JSON.parse(res.body) : null;
 }
 
-function resolveAppInfo (appInfo) {
+function resolveAppInfo (appInfo, refresh) {
   if (!appInfo || typeof appInfo !== 'string') {
     return appInfo;
   }
@@ -102,6 +103,13 @@ function resolveAppInfo (appInfo) {
   }
   if (fs.exists(appInfo)) {
     return fs.readFileSync(appInfo);
+  }
+  if (refresh !== false) {
+    try {
+      store.update();
+    } catch (e) {
+      console.warnStack(e);
+    }
   }
   return {source: appInfo};
 }
@@ -153,9 +161,9 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
-      const appInfo = resolveAppInfo(body.appInfo);
       const mount = body.mount;
       const options = body.options || {};
+      const appInfo = resolveAppInfo(body.appInfo, options.refresh);
       options.mount = mount;
       proxyLocal('POST', '/_api/foxx', options, appInfo, req.headers);
       return FoxxManager.lookupService(mount).simpleJSON();
@@ -194,9 +202,9 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
-      const appInfo = resolveAppInfo(body.appInfo);
       const mount = body.mount;
       const options = body.options || {};
+      const appInfo = resolveAppInfo(body.appInfo, options.refresh);
       options.mount = mount;
       proxyLocal('PUT', '/_api/foxx/service', options, appInfo, req.headers);
       return FoxxManager.lookupService(mount).simpleJSON();
@@ -215,9 +223,9 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
-      const appInfo = resolveAppInfo(body.appInfo);
       const mount = body.mount;
       const options = body.options || {};
+      const appInfo = resolveAppInfo(body.appInfo, options.refresh);
       options.mount = mount;
       proxyLocal('PATCH', '/_api/foxx/service', options, appInfo, req.headers);
       return FoxxManager.lookupService(mount).simpleJSON();
