@@ -103,7 +103,7 @@ function resolveAppInfo (appInfo) {
   if (fs.exists(appInfo)) {
     return fs.readFileSync(appInfo);
   }
-  return appInfo;
+  return {source: appInfo};
 }
 
 // //////////////////////////////////////////////////////////////////////////////
