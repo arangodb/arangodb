@@ -314,6 +314,10 @@ describe('Foxx service', () => {
       json: true
     });
     expect(updateResp.status).to.equal(200);
+    expect(updateResp.json).to.have.property('values');
+    expect(updateResp.json.values).to.have.property('test1', 'test');
+    expect(updateResp.json.values).to.not.have.property('test2');
+    expect(updateResp.json).to.not.have.property('warnings');
     const resp = request.get('/_api/foxx/configuration', {qs: {mount}});
     expect(resp.status).to.equal(200);
     expect(resp.json).to.have.property('test1');
@@ -334,6 +338,11 @@ describe('Foxx service', () => {
       json: true
     });
     expect(replaceResp.status).to.equal(200);
+    expect(replaceResp.json).to.have.property('values');
+    expect(replaceResp.json.values).to.have.property('test1', 'test');
+    expect(replaceResp.json.values).to.not.have.property('test2');
+    expect(replaceResp.json).to.have.property('warnings');
+    expect(replaceResp.json.warnings).to.have.property('test2', 'is required');
     const resp = request.get('/_api/foxx/configuration', {qs: {mount}});
     expect(resp.status).to.equal(200);
     expect(resp.json).to.have.property('test1');
@@ -433,6 +442,10 @@ describe('Foxx service', () => {
       json: true
     });
     expect(updateResp.status).to.equal(200);
+    expect(updateResp.json).to.have.property('values');
+    expect(updateResp.json.values).to.have.property('test1', '/test');
+    expect(updateResp.json.values).not.to.have.property('test2');
+    expect(updateResp.json).to.not.have.property('warnings');
     const resp = request.get('/_api/foxx/dependencies', {qs: {mount}});
     expect(resp.status).to.equal(200);
     expect(resp.json).to.have.property('test1');
@@ -453,6 +466,11 @@ describe('Foxx service', () => {
       json: true
     });
     expect(replaceResp.status).to.equal(200);
+    expect(replaceResp.json).to.have.property('values');
+    expect(replaceResp.json.values).to.have.property('test1', '/test');
+    expect(replaceResp.json.values).to.not.have.property('test2');
+    expect(replaceResp.json).to.have.property('warnings');
+    expect(replaceResp.json.warnings).to.have.property('test2', 'is required');
     const resp = request.get('/_api/foxx/dependencies', {qs: {mount}});
     expect(resp.status).to.equal(200);
     expect(resp.json).to.have.property('test1');
@@ -473,6 +491,11 @@ describe('Foxx service', () => {
       json: true
     });
     expect(replaceResp.status).to.equal(200);
+    expect(replaceResp.json).to.have.property('values');
+    expect(replaceResp.json.values).to.have.property('test2', '/test2');
+    expect(replaceResp.json.values).to.not.have.property('test1');
+    expect(replaceResp.json).to.have.property('warnings');
+    expect(replaceResp.json.warnings).to.have.property('test1', 'is required');
     const updateResp = request.patch('/_api/foxx/dependencies', {
       qs: {
         mount
@@ -483,6 +506,9 @@ describe('Foxx service', () => {
       json: true
     });
     expect(updateResp.status).to.equal(200);
+    expect(updateResp.json).to.have.property('values');
+    expect(updateResp.json.values).to.have.property('test1', '/test1');
+    expect(updateResp.json.values).to.have.property('test2', '/test2');
     const resp = request.get('/_api/foxx/dependencies', {qs: {mount}});
     expect(resp.status).to.equal(200);
     expect(resp.json).to.have.property('test1');
@@ -503,6 +529,10 @@ describe('Foxx service', () => {
       json: true
     });
     expect(updateResp.status).to.equal(200);
+    expect(updateResp.json).to.have.property('values');
+    expect(updateResp.json).to.not.have.property('warnings');
+    expect(updateResp.json.values).to.have.property('test2', '/test2');
+    expect(updateResp.json.values).to.not.have.property('test1');
     const replaceResp = request.put('/_api/foxx/dependencies', {
       qs: {
         mount
@@ -513,6 +543,11 @@ describe('Foxx service', () => {
       json: true
     });
     expect(replaceResp.status).to.equal(200);
+    expect(replaceResp.json).to.have.property('values');
+    expect(replaceResp.json.values).to.have.property('test1', '/test');
+    expect(replaceResp.json.values).to.not.have.property('test2');
+    expect(replaceResp.json).to.have.property('warnings');
+    expect(replaceResp.json.warnings).to.have.property('test2', 'is required');
     const resp = request.get('/_api/foxx/dependencies', {qs: {mount}});
     expect(resp.status).to.equal(200);
     expect(resp.json).to.have.property('test1');
@@ -642,6 +677,11 @@ describe('Foxx service', () => {
       json: true
     });
     expect(devResp.json.development).to.equal(true);
+    const respAfter = request.get('/_api/foxx/service', {
+      qs: {mount},
+      json: true
+    });
+    expect(respAfter.json.development).to.equal(true);
   });
 
   it('clear devmode should disable devmode', () => {
@@ -656,6 +696,11 @@ describe('Foxx service', () => {
       json: true
     });
     expect(devResp.json.development).to.equal(false);
+    const respAfter = request.get('/_api/foxx/service', {
+      qs: {mount},
+      json: true
+    });
+    expect(respAfter.json.development).to.equal(false);
   });
 
   const routes = [
