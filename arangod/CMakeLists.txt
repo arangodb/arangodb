@@ -42,8 +42,8 @@ endif ()
 ## IResearch
 ################################################################################
 
-set (USE_IRESEARCH OFF)
-if (USE_IRESEARCH AND FALSE)
+set (USE_IRESEARCH ON)
+if (USE_IRESEARCH)
   find_package(IResearch REQUIRED)
 
   add_library(${LIB_ARANGO_IRESEARCH}
