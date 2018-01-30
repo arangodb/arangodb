@@ -248,20 +248,6 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
 int rotateActiveJournalOnAllDBServers(std::string const& dbname,
                                       std::string const& collname);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute a shard distribution for a new collection, the list
-/// dbServers must be a list of DBserver ids to distribute across. 
-/// If this list is empty, the complete current list of DBservers is
-/// fetched from ClusterInfo. If shuffle is true, a few random shuffles
-/// are performed before the list is taken. Thus modifies the list.
-////////////////////////////////////////////////////////////////////////////////
-
-std::unordered_map<std::string, std::vector<std::string>> distributeShards(
-    uint64_t numberOfShards,
-    uint64_t replicationFactor,
-    std::vector<std::string>& dbServers,
-    bool warnAboutReplicationFactor);
-
 class ClusterMethods {
  public:
   // wrapper Class for static functions.
