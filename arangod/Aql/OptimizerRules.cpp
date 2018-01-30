@@ -5077,81 +5077,84 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
   }
 }
 
-// checks a single sort or filter node
-void identifyGeoOptimizationCandidate(ExecutionPlan* plan,
-                                      ExecutionNode* en,
-                                      GeoIndexInfo& info) {
-  if (en->getType() == EN::SORT) {
-    // we're looking for "SORT DISTANCE(x,y,a,b)"
-    
-    SortNode* sort = static_cast<SortNode*>(en);
-    SortElementVector const& elements = sort->getElements();
-    if (elements.size() != 1) { // can't do it
-      return;
-    }
-    TRI_ASSERT(elements[0].var != nullptr);
-
-    // find the expression that is bound to the variable
-    // get the expression node that holds the calculation
-    ExecutionNode* setter = plan->getVarSetBy(elements[0].var->id);
-    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-      return; // FIXME does this ever happen
-    }
-    CalculationNode* calc = static_cast<CalculationNode*>(setter);
-    Expression* expr = calc->expression();
-    // the expression must exist and it must have an astNode
-    if (expr == nullptr || expr->node() == nullptr) {
-      return;
-    }
-    
-    bool legacy = elements[0].ascending; // DESC is only supported on s2index
-    if (!info.sorted && checkDistanceFunc(plan, expr->node(), legacy, info)) {
-      info.sorted = true;// do not parse another SORT
-      info.ascending = elements[0].ascending;
-      info.exesToModify.emplace(en, expr);
-      info.nodesToRemove.emplace(expr->node());
-      calc->canRemoveIfThrows(true);
-    }
-  } else if (en->getType() == EN::FILTER) {
-    FilterNode* fn = static_cast<FilterNode*>(en);
-    // filter nodes always have one input variable
-    auto varsUsedHere = fn->getVariablesUsedHere();
-    TRI_ASSERT(varsUsedHere.size() == 1); // does the optimizer do this?
-    // now check who introduced our variable
-    ExecutionNode* setter = plan->getVarSetBy(varsUsedHere[0]->id);
-    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-      return;
-    }
-    CalculationNode* calc = static_cast<CalculationNode*>(setter);
-    Expression* expr = calc->expression();
-    if (expr == nullptr || expr->node() == nullptr) {
-      return;
-    }
-    
-    std::vector<AstNodeType> parents; // parents and current node
-    size_t orsInBranch = 0;
-    Ast::traverseReadOnly(expr->node(),
-                          [&](AstNode const* node, void*){ // pre
-                            parents.push_back(node->type);
-                            if (Ast::IsOrOperatorType(node->type)) {
-                              orsInBranch++;
-                            }
-                          }, [&](AstNode const* node, void*) { // visit
-                            size_t pl = parents.size();
-                            if (orsInBranch == 0 && (pl == 1 || Ast::IsAndOperatorType(parents[pl-2]))) {
-                              // do not visit below OR or into <=, <, >, >= expressions
-                              if (checkGeoFilterExpression(plan, node, info)) {
-                                info.exesToModify.emplace(fn, expr);
-                                calc->canRemoveIfThrows(true);
-                              }
-                            }
-                          }, [&](AstNode const* node, void*) { // post
-                            parents.pop_back();
-                            if (Ast::IsOrOperatorType(node->type)) {
-                              orsInBranch--;
-                            }
-                          }, nullptr);
+static bool optimizeSortNode(ExecutionPlan* plan,
+                             SortNode* sort,
+                             GeoIndexInfo& info) {
+  TRI_ASSERT(sort->getType() == EN::SORT);
+  // we're looking for "SORT DISTANCE(x,y,a,b)"
+  SortElementVector const& elements = sort->getElements();
+  if (elements.size() != 1) { // can't do it
+    return false;
   }
+  TRI_ASSERT(elements[0].var != nullptr);
+  
+  // find the expression that is bound to the variable
+  // get the expression node that holds the calculation
+  ExecutionNode* setter = plan->getVarSetBy(elements[0].var->id);
+  if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+    return false; // setter could be enumerate list node e.g.
+  }
+  CalculationNode* calc = static_cast<CalculationNode*>(setter);
+  Expression* expr = calc->expression();
+  if (expr == nullptr || expr->node() == nullptr) {
+    return false; // the expression must exist and must have an astNode
+  }
+  
+  bool legacy = elements[0].ascending; // DESC is only supported on s2index
+  if (!info.sorted && checkDistanceFunc(plan, expr->node(), legacy, info)) {
+    info.sorted = true;// do not parse another SORT
+    info.ascending = elements[0].ascending;
+    info.exesToModify.emplace(sort, expr);
+    info.nodesToRemove.emplace(expr->node());
+    calc->canRemoveIfThrows(true);
+    return true;
+  }
+  return false;
+}
+
+// checks a single sort or filter node
+static void optimizeFilterNode(ExecutionPlan* plan,
+                               FilterNode* fn,
+                               GeoIndexInfo& info) {
+  TRI_ASSERT(fn->getType() == EN::FILTER);
+
+  // filter nodes always have one input variable
+  auto varsUsedHere = fn->getVariablesUsedHere();
+  TRI_ASSERT(varsUsedHere.size() == 1); // does the optimizer do this?
+  // now check who introduced our variable
+  ExecutionNode* setter = plan->getVarSetBy(varsUsedHere[0]->id);
+  if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+    return; // setter could be enumerate list node e.g.
+  }
+  CalculationNode* calc = static_cast<CalculationNode*>(setter);
+  Expression* expr = calc->expression();
+  if (expr == nullptr || expr->node() == nullptr) {
+    return; // the expression must exist and must have an astNode
+  }
+  
+  std::vector<AstNodeType> parents; // parents and current node
+  size_t orsInBranch = 0;
+  Ast::traverseReadOnly(expr->node(),
+                        [&](AstNode const* node, void*){ // pre
+                          parents.push_back(node->type);
+                          if (Ast::IsOrOperatorType(node->type)) {
+                            orsInBranch++;
+                          }
+                        }, [&](AstNode const* node, void*) { // visit
+                          size_t pl = parents.size();
+                          if (orsInBranch == 0 && (pl == 1 || Ast::IsAndOperatorType(parents[pl-2]))) {
+                            // do not visit below OR or into <=, <, >, >= expressions
+                            if (checkGeoFilterExpression(plan, node, info)) {
+                              info.exesToModify.emplace(fn, expr);
+                              calc->canRemoveIfThrows(true);
+                            }
+                          }
+                        }, [&](AstNode const* node, void*) { // post
+                          parents.pop_back();
+                          if (Ast::IsOrOperatorType(node->type)) {
+                            orsInBranch--;
+                          }
+                        }, nullptr);
 }
 
 // modify plan
@@ -5335,18 +5338,22 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     while (current) {
       switch (current->getType()) {
         case EN::FILTER:
+          optimizeFilterNode(plan.get(), static_cast<FilterNode*>(current), info);
+          break;
         case EN::SORT:
-          identifyGeoOptimizationCandidate(plan.get(), current, info);
-          // 1. SortNode abc ASC
-          // 2. LimitNode x,y  <-- cannot reuse LIMIT node here
-          limit = nullptr;
+          if (!optimizeSortNode(plan.get(), static_cast<SortNode*>(current), info)) {
+            // 1. EnumerateCollectionNode x
+            // 2. SortNode x.abc ASC
+            // 3. LimitNode n,m  <-- cannot reuse LIMIT node here
+            limit = nullptr;
+          }
           break;
         case EN::LIMIT: // collect this so we can use it
           limit = static_cast<LimitNode*>(current);
           break;
         case EN::INDEX:
-        case EN::COLLECT: // FIXME: can probably be removed?
-          info.invalidate();
+        case EN::COLLECT:
+          info.invalidate(); // TODO reset info to original state instead
           break;
         case EN::ENUMERATE_LIST:{
           EnumerateListNode* el = static_cast<EnumerateListNode*>(current);

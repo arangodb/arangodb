@@ -1,82 +1,11 @@
-Geo functions
-=============
 
-Geo index functions
--------------------
-
-AQL offers the following functions to filter data based on
-[geo indexes](../../Manual/Indexing/Geo.html). These functions require the collection to have at
-least one geo index. If no geo index can be found, calling this function will fail
-with an error at runtime. There is no error when explaining the query however.
-
-### NEAR()
-
-`NEAR(coll, latitude, longitude, limit, distanceName) → docArray`
-
-Return at most *limit* documents from collection *coll* that are near *latitude*
-and *longitude*. The result contains at most *limit* documents, returned sorted by
-distance, with closest distances being returned first. If more than *limit* documents
-qualify, with the distance being exactly the same among multiple documents around the
-limit, it is undefined which of the qualifying documents are returned. Optionally,
-the distances in meters between the specified coordinate (*latitude* and *longitude*)
-and the document coordinates can be returned as well. To make use of that, the desired
-attribute  name for the distance result has to be specified in the *distanceName* argument.
-The result documents will contain the distance value in an attribute of that name.
-
-- **coll** (collection): a collection
-- **latitude** (number): the latitude portion of the search coordinate
-- **longitude** (number): the longitude portion of the search coordinate
-- **limit** (number, *optional*): cap the result to at most this number of documents.
-  The default is 100. If more documents than *limit* are found, it is undefined which
-  ones will be returned.
-- **distanceName** (string, *optional*): include the distance to the search coordinate
-  in each document in the result (in meters), using the attribute name *distanceName*
-- returns **docArray** (array): an array of documents, sorted by distance (shortest
-  distance first)
-
-### WITHIN()
-
-`WITHIN(coll, latitude, longitude, radius, distanceName) → docArray`
-
-Return all documents from collection *coll* that are within a radius of *radius*
-around the specified coordinate (*latitude* and *longitude*). The documents returned
-are sorted by distance to the search coordinate, with the closest distances being
-returned first. Optionally, the distance in meters between the search coordinate and
-the document coordinates can be returned as well. To make use of that, an attribute
-name for the distance result has to be specified in the *distanceName* argument.
-The result documents will contain the distance value in an attribute of that name.
-
-- **coll** (collection): a collection
-- **latitude** (number): the latitude portion of the search coordinate
-- **longitude** (number): the longitude portion of the search coordinate
-- **radius** (number): radius in meters
-- **distanceName** (string, *optional*): include the distance to the search coordinate
-  in each document in the result (in meters), using the attribute name *distanceName*
-- returns **docArray** (array): an array of documents, sorted by distance (shortest
-  distance first)
-
-### WITHIN_RECTANGLE()
-
-`WITHIN_RECTANGLE(coll, latitude1, longitude1, latitude2, longitude2) → docArray`
-
-Return all documents from collection *coll* that are positioned inside the bounding
-rectangle with the points (*latitude1*, *longitude1*) and (*latitude2*, *longitude2*).
-There is no guaranteed order in which the documents are returned.
-
-- **coll** (collection): a collection
-- **latitude1** (number): the bottom-left latitude portion of the search coordinate
-- **longitude1** (number): the bottom-left longitude portion of the search coordinate
-- **latitude2** (number): the top-right latitude portion of the search coordinate
-- **longitude2** (number): the top-right longitude portion of the search coordinate
-- returns **docArray** (array): an array of documents, in random order
 
 Geo utility functions
 ---------------------
 
-The following helper functions do **not use any geo index**. On large datasets,
-it is advisable to use them in combination with index-accelerated geo functions
-to limit the number of calls to these non-accelerated functions because of their
-computational costs.
+The following helper functions **can** use geo indexes, but do not have to in all cases.
+You can use all of these functions in combination with each other, and if you have 
+configured a geo index it may be used. For more information see the [geo index page]() 
 
 ### DISTANCE()
 
@@ -98,14 +27,34 @@ which is sufficient for most use cases such as location-aware services.
 DISTANCE(52.5163, 13.3777, 50.9322, 6.94) // 476918.89688380965 (~477km)
 
 // Sort a small number of documents based on distance to Central Park (New York)
-FOR doc IN documentSubset // e.g. documents returned by a traversal
+FOR doc IN doc // e.g. documents returned by a traversal
   SORT DISTANCE(doc.latitude, doc.longitude, 40.78, -73.97)
   RETURN doc
+```
+
+### GEO_DISTANCE()
+
+`GEO_DISTANCE(geoJSONA, geoJSONB) → double`
+
+Return the distance between two GeoJSON objects, measured from the **centroid** of each shape (For a list of supported Types see TODO).
+- **geoJSONA** first GeoJSON object
+- **geoJSONB** second GeoJSON object.
+- returns **double**: the distance between the centroid points of the two objects.
+
+```js
+LET polygon = {type:"Polygon", coordinates: [[[-11.5, 23.5], [-10.5, 26.1], [-11.5, 23.5]]] }
+FOR doc IN collectionName
+  LET distance = GEO_DISTANCE(doc.geometry, polygon) // calculates the distance
+  RETURN distance
 ```
 
 ### IS_IN_POLYGON()
 
 Determine whether a coordinate is inside a polygon.
+
+Note: the *IS_IN_POLYGON* AQL function is **deprecated** as of ArangoDB 3.4.0 in favor of the
+new `GEO_CONTAINS` AQL function, which works with [GeoJSON](https://tools.ietf.org/html/rfc7946)
+Polygons and MultiPolygons.
 
 `IS_IN_POLYGON(polygon, latitude, longitude) → bool`
 
@@ -147,3 +96,110 @@ IS_IN_POLYGON( [ [ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], [ 4, 7 ] )
 // will check if the point (lat 4, lon 7) is contained inside the polygon
 IS_IN_POLYGON( [ [ 0, 0 ], [ 10, 0 ], [ 10, 10 ], [ 0, 10 ] ], [ 7, 4 ], true )
 ```
+
+
+
+Geo Index Functions **(Deprecated)**
+-------------------
+
+Note: Below AQL functions are *deprecated*, please use above geo utility functions.
+
+AQL offers the following functions to filter data based on
+[geo indexes](../../Manual/Indexing/Geo.html). These functions require the collection to have at
+least one geo index. If no geo index can be found, calling this function will fail
+with an error at runtime. There is no error when explaining the query however.
+
+### NEAR()
+
+`NEAR(coll, latitude, longitude, limit, distanceName) → docArray`
+
+Return at most *limit* documents from collection *coll* that are near *latitude*
+and *longitude*. The result contains at most *limit* documents, returned sorted by
+distance, with closest distances being returned first. If more than *limit* documents
+qualify, with the distance being exactly the same among multiple documents around the
+limit, it is undefined which of the qualifying documents are returned. Optionally,
+the distances in meters between the specified coordinate (*latitude* and *longitude*)
+and the document coordinates can be returned as well. To make use of that, the desired
+attribute  name for the distance result has to be specified in the *distanceName* argument.
+The result documents will contain the distance value in an attribute of that name.
+
+- **coll** (collection): a collection
+- **latitude** (number): the latitude portion of the search coordinate
+- **longitude** (number): the longitude portion of the search coordinate
+- **limit** (number, *optional*): cap the result to at most this number of documents.
+  The default is 100. If more documents than *limit* are found, it is undefined which
+  ones will be returned.
+- **distanceName** (string, *optional*): include the distance to the search coordinate
+  in each document in the result (in meters), using the attribute name *distanceName*
+- returns **docArray** (array): an array of documents, sorted by distance (shortest
+  distance first)
+
+
+**Note:** `NEAR` is a *deprecated* AQL function, instead use a query like this:
+
+```js  
+  FOR doc IN doc
+    SORT DISTANCE(doc.latitude, doc.longitude, paramLatitude, paramLongitude) ASC
+    RETURN doc
+ ```
+ Assuming there exists a geo-type index on `latitude` and `longitude`, the optimizer
+ will recognize it and accelerate the query.
+
+### WITHIN()
+  
+  `WITHIN(coll, latitude, longitude, radius, distanceName) → docArray`
+  
+  Return all documents from collection *coll* that are within a radius of *radius*
+  around the specified coordinate (*latitude* and *longitude*). The documents returned
+  are sorted by distance to the search coordinate, with the closest distances being
+  returned first. Optionally, the distance in meters between the search coordinate and
+  the document coordinates can be returned as well. To make use of that, an attribute
+  name for the distance result has to be specified in the *distanceName* argument.
+  The result documents will contain the distance value in an attribute of that name.
+  
+  - **coll** (collection): a collection
+  - **latitude** (number): the latitude portion of the search coordinate
+  - **longitude** (number): the longitude portion of the search coordinate
+  - **radius** (number): radius in meters
+  - **distanceName** (string, *optional*): include the distance to the search coordinate
+    in each document in the result (in meters), using the attribute name *distanceName*
+  - returns **docArray** (array): an array of documents, sorted by distance (shortest
+    distance first)
+
+ **Note:** `WITHIN` is a *deprecated* AQL function, instead use a query like this:
+ 
+ ```js  
+   FOR doc IN doc
+     LET d = DISTANCE(doc.latitude, doc.longitude, paramLatitude, paramLongitude)
+	 FILTER d <= radius
+	 SORT d ASC     
+     RETURN doc
+  ```
+  Assuming there exists a geo-type index on `latitude` and `longitude`, the optimizer
+  will recognize it and accelerate the query.
+
+### WITHIN_RECTANGLE()
+
+`WITHIN_RECTANGLE(coll, latitude1, longitude1, latitude2, longitude2) → docArray`
+
+Return all documents from collection *coll* that are positioned inside the bounding
+rectangle with the points (*latitude1*, *longitude1*) and (*latitude2*, *longitude2*).
+There is no guaranteed order in which the documents are returned.
+
+- **coll** (collection): a collection
+- **latitude1** (number): the bottom-left latitude portion of the search coordinate
+- **longitude1** (number): the bottom-left longitude portion of the search coordinate
+- **latitude2** (number): the top-right latitude portion of the search coordinate
+- **longitude2** (number): the top-right longitude portion of the search coordinate
+- returns **docArray** (array): an array of documents, in random order
+
+ **Note:** `WITHIN_RECTANGLE` is a *deprecated* AQL function, instead use a query using a GeoJSON polygon:
+ 
+ ```js
+   LET rect = {type:"Polygon", coordinates:[[[longitude1, latitude1], ...]]]}
+   FOR doc IN doc
+	 FILTER GEO_CONTAINS(poly, [doc.longitude, doc.latitude])
+     RETURN doc
+  ```
+ Assuming there exists a geo-type index on `latitude` and `longitude`, the optimizer
+ will recognize it and accelerate the query.
