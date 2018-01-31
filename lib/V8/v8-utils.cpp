@@ -584,9 +584,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string url = TRI_ObjectToString(isolate, args[0]);
-
+  std::vector<std::string> endpoints;
+    
   if (!url.empty() && url[0] == '/') {
-    std::vector<std::string> endpoints;
 
     // check if we are a server
     try {
@@ -810,11 +810,10 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
       endpoint = "srv://" + endpoint;
     } else if (url.substr(0, 7) == "unix://") {
-      std::size_t pos = url.find("/_");
-      if (pos != std::string::npos) {
-        endpoint = url.substr(0,pos);
-        relative = url.substr(pos);
-      }
+      // Can only have arrived here if endpoints is non empty
+      TRI_ASSERT(!endpoints.empty());
+      endpoint = endpoints.front();
+      relative = url.substr(endpoint.size());
     } else if (!url.empty() && url[0] == '/') {
       size_t found;
       // relative URL. prefix it with last endpoint
