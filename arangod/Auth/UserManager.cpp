@@ -233,11 +233,13 @@ void auth::UserManager::loadFromDB() {
             if (pair->second.source() == auth::Source::LOCAL) {
               pair = _userCache.erase(pair);
             } else {
-#warning FIXME update external user permissions
               pair++;
             }
           }
           _userCache.insert(usermap.begin(), usermap.end());
+#ifdef USE_ENTERPRISE
+          applyRolesToAllUsers();
+#endif
         }
 
         _outdated = false;
@@ -259,7 +261,7 @@ void auth::UserManager::loadFromDB() {
 
 // private, must be called with _userCacheLock in write mode
 // this method can only be called by users with access to the _system collection
-Result auth::UserManager::storeUserInternal(auth::User&& entry, bool replace) {
+Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replace) {
   if (entry.source() != auth::Source::LOCAL) {
     return TRI_ERROR_USER_EXTERNAL;
   }
@@ -312,6 +314,11 @@ Result auth::UserManager::storeUserInternal(auth::User&& entry, bool replace) {
         _userCache.erase(entry.username());
         _userCache.emplace(entry.username(), auth::User::fromDocument(userDoc));
       }
+#ifdef USE_ENTERPRISE
+      if (StringUtils::isPrefix(entry.username(), ":role:")) {
+        applyRolesToAllUsers(); // we changed a role
+      }
+#endif
     } else if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {  // user was outdated
       _userCache.erase(entry.username());
       _outdated = true;
@@ -355,7 +362,7 @@ void auth::UserManager::createRootUser() {
     user.grantDatabase(StaticStrings::SystemDatabase, auth::Level::RW);
     user.grantDatabase("*", auth::Level::RW);
     user.grantCollection("*", "*", auth::Level::RW);
-    storeUserInternal(std::move(user), false);
+    storeUserInternal(user, false);
   } catch (...) {
     // No action
   }
@@ -443,7 +450,7 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
     user._key = std::move(oldKey);
   }
 
-  Result r = storeUserInternal(std::move(user), replace);
+  Result r = storeUserInternal(user, replace);
   if (r.ok()) {
     reloadAllUsers();
   }
@@ -472,7 +479,7 @@ Result auth::UserManager::enumerateUsers(
   {
     WRITE_LOCKER(writeGuard, _userCacheLock);
     for (auth::User& u : toUpdate) {
-      res = storeUserInternal(std::move(u), true);
+      res = storeUserInternal(u, true);
       if (res.fail()) {
         break;  // do not return, still need to invalidate token cache
       }
@@ -511,7 +518,7 @@ Result auth::UserManager::updateUser(std::string const& username,
   if (r.fail()) {
     return r;
   }
-  r = storeUserInternal(std::move(user), /*replace*/ true);
+  r = storeUserInternal(user, /*replace*/ true);
   // cannot invalidate token cache while holding _userCache write lock
   writeGuard.unlock();
 

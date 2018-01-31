@@ -136,8 +136,11 @@ class UserManager {
   void setAuthInfo(auth::UserMap const& userEntryMap);
   
 #ifdef USE_ENTERPRISE
-  /// @brief apply roles to user
-  void applyRoles(auth::User&, std::set<std::string> const&) const;
+  
+  /// @brief apply roles to all users in cache
+  void applyRolesToAllUsers();
+  /// @brief apply roles to user, must lock _userCacheLock
+  void applyRoles(auth::User&) const;
   
   /// @brief Check authorization with external system
   /// @param userCached is the user cached locally
@@ -165,7 +168,7 @@ class UserManager {
   /// @brief load users and permissions from local database
   void loadFromDB();
   /// @brief store or replace user object
-  Result storeUserInternal(auth::User&& user, bool replace);
+  Result storeUserInternal(auth::User const& user, bool replace);
 
  private:
   /// Protected the sync process from db, always lock
