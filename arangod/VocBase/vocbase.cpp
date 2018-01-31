@@ -1560,7 +1560,7 @@ TRI_vocbase_t::getReplicationClients() {
 }
 
 void TRI_vocbase_t::garbageCollectReplicationClients(double expireStamp) {
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "garbage collecting replication client entries";
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "garbage collecting replication client entries";
   
   WRITE_LOCKER(writeLocker, _replicationClientsLock);
 
