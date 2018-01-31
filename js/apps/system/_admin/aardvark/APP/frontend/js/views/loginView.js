@@ -303,7 +303,11 @@
           continueFunction();
         },
         error: function (data) {
-          $('#noAccess').html('Error (DB: ' + database + '): ' + data.responseJSON.errorMessage);
+          if (data.responseJSON && data.responseJSON.errorMessage) {
+            $('#noAccess').html('Error (DB: ' + database + '): ' + data.responseJSON.errorMessage);
+          } else {
+            $('#noAccess').html('Error (DB: ' + database + '): ' + data.statusText);
+          }
           $('#noAccess').show();
         }
       });
