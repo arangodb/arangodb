@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# This file should be sourced in your bashrc
+
+
+rr-clear(){
+    rm -fr ~/.local/share/rr/*
+}
+
+rr-ps(){
+    for dir in ~/.local/share/rr/*; do
+        echo $dir
+        rr ps $dir | grep -v ^PID
+        echo
+    done
+}
+
+#ps and grep combined
+rr-gps(){
+    rr-ps | grep -B1 "$@"
+}
+
+tail-local-cluster-rr(){
+    local data_dir="${1-../starter_data_dir}"
+    multitail -f $(find $data_dir -name "arangod.log" | sort)
+}
+
+start-local-cluster-rr(){
+    local starter_path=${arangodb_starter_path:-../arangodb-linux-amd64}
+    echo "starter path: $starter_path"
+
+    local engine=${arangodb_starter_engine:-rocksdb}
+    echo "engine: $engine"
+
+    local rr=${rr_path:-$(type -p rr)}
+    echo "rr: $rr"
+
+    local data_dir="${1-../starter_data_dir}"
+    echo "data_dir: $data_dir"
+    shift
+
+
+    ${starter_path} \
+        --starter.debug-cluster \
+        --server.rr "$rr" \
+        --log.verbose \
+        --starter.local \
+        --starter.data-dir "$data_dir" \
+        --server.storage-engine $engine \
+        "$@"
+}
