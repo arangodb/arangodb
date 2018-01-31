@@ -172,6 +172,11 @@ AstNode* Ast::createNodeExample(AstNode const* variable,
 
   return node;
 }
+  
+/// @brief create subquery node
+AstNode* Ast::createNodeSubquery() {
+  return createNode(NODE_TYPE_SUBQUERY);
+}
 
 /// @brief create an AST for node
 AstNode* Ast::createNodeFor(char const* variableName, size_t nameLength,
@@ -187,6 +192,24 @@ AstNode* Ast::createNodeFor(char const* variableName, size_t nameLength,
   AstNode* variable =
       createNodeVariable(variableName, nameLength, isUserDefinedVariable);
   node->addMember(variable);
+  node->addMember(expression);
+
+  return node;
+}
+
+/// @brief create an AST for node, using an existing output variable 
+AstNode* Ast::createNodeFor(Variable* variable, AstNode const* expression) {
+  if (variable == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  AstNode* node = createNode(NODE_TYPE_FOR);
+  node->reserve(2);
+  
+  AstNode* v = createNode(NODE_TYPE_VARIABLE);
+  v->setData(static_cast<void*>(variable));
+
+  node->addMember(v);
   node->addMember(expression);
 
   return node;
@@ -598,7 +621,16 @@ AstNode* Ast::createNodeView(char const* name) {
   AstNode* node = createNode(NODE_TYPE_VIEW);
   node->setStringValue(name, strlen(name));
 
-  return node;
+  auto* collections = _query->collections();
+
+  // all available view implementations allow read-only access to collections
+  if (!collections || collections->add(name, AccessMode::Type::READ)) {
+    return node;
+  }
+
+  _query->registerErrorCustom(TRI_ERROR_INTERNAL, "AQL Collections addition of LogicalView failure while creating VIEW node");
+
+  return nullptr;
 }
 
 /// @brief create an AST reference node
@@ -3451,3 +3483,7 @@ AstNode* Ast::createNode(AstNodeType type) {
 
   return node;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

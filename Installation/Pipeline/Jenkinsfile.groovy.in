@@ -154,15 +154,15 @@ if (env.BRANCH_NAME =~ /^PR-/) {
 branchLabel = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
 
 buildJenkins = [
-    "linux": "linux && build",
-    "mac" : "mac",
-    "windows": "windows"
+    "linux": "linux && build && arangodb",
+    "mac" : "mac && build && arangodb",
+    "windows": "windows && build && arangodb"
 ]
 
 testJenkins = [
-    "linux": "linux && tests",
-    "mac" : "mac",
-    "windows": "windows"
+    "linux": "linux && tests && arangodb",
+    "mac" : "mac && tests && arangodb",
+    "windows": "windows && tests && arangodb"
 ]
 
 def copyFile(os, src, dst) {
@@ -609,6 +609,7 @@ def setBuildsAndTests() {
         useLinux = false
         useMac = false
         useWindows = false
+        useDocker = false
     }
     else if (buildType == "Customized") {
         useLinux = params.Linux
@@ -624,6 +625,11 @@ def setBuildsAndTests() {
 
         runTests = params.RunTests
         runResilience = params.RunResilience
+
+        if (!useLinux && !useMac && !useWindows && !useDocker){
+            throw("No build type selected for custom build!")
+        }
+
     }
     else if (buildType == "Quick Test") {
         restrictions = [
@@ -1345,7 +1351,11 @@ def buildEdition(os, edition, maintainer) {
             }
         }
         else if (os == 'windows') {
-            logFile = "..\\" + logFile
+            echo "starting windows configure and build"
+            workspace = "${env.WORKSPACE}"
+            workspace = workspace.replace("\\", "/")
+            logFile = workspace + "/" + logFile
+
             extra = "-DUSE_CATCH_TESTS=ON -DUSE_FAILURE_TESTS=ON -DDEBUG_SYNC_REPLICATION=ON"
             if( edition == "enterprise"){
                 extra += " -DUSE_ENTERPRISE=ON"
@@ -1357,7 +1367,7 @@ def buildEdition(os, edition, maintainer) {
             powershell "Remove-Item -Force -Recurse ${arch} -ErrorAction SilentlyContinue"
             powershell "New-Item -Force -ItemType Directory ${arch} -ErrorAction SilentlyContinue"
             powershell "New-Item -ItemType Directory -Force -Path build"
-            powershell "cd build; ..\\configure\\${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
+            powershell "cd build; ..\\configure\\${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru -Path \"${logFile}\""
         }
 
         logStopStage(os, logFile)

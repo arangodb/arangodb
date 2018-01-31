@@ -246,7 +246,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config,
   Result res = trx->documentFastPathLocal(vertexShard, StringRef(_key),
                                           mmdr, true);
   if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res.errorNumber());
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   VPackSlice doc(mmdr.vpack());
@@ -358,9 +358,8 @@ void GraphStore<V, E>::_loadVertices(size_t i,
   trx->pinData(cid);  // will throw when it fails
   PregelShard sourceShard = (PregelShard)_config->shardId(vertexShard);
 
-  ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
-      trx->indexScan(vertexShard, transaction::Methods::CursorType::ALL, &mmdr, false);
+      trx->indexScan(vertexShard, transaction::Methods::CursorType::ALL, false);
 
   if (cursor->fail()) {
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",

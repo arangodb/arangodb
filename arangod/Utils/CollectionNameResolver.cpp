@@ -24,10 +24,12 @@
 #include "CollectionNameResolver.h"
 
 #include "Basics/Common.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -42,8 +44,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(
     std::string const& name) const {
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
-    return static_cast<TRI_voc_cid_t>(
-        arangodb::basics::StringUtils::uint64(name));
+    return NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
   }
 
   arangodb::LogicalCollection const* collection = getCollectionStruct(name);
@@ -51,6 +52,13 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(
   if (collection != nullptr) {
     return collection->cid();
   }
+
+  auto view = _vocbase->lookupView(name);
+
+  if (view) {
+    return view->id();
+  }
+
   return 0;
 }
 
@@ -68,7 +76,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
   }
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
-    TRI_voc_cid_t cid = static_cast<TRI_voc_cid_t>(arangodb::basics::StringUtils::uint64(name));
+    TRI_voc_cid_t cid = NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
     // Now validate the cid
     TRI_col_type_e type = getCollectionTypeCluster(getCollectionNameCluster(cid));
     if (type == TRI_COL_TYPE_UNKNOWN) {
@@ -81,10 +89,19 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
     // We have to look up the collection info:
     ClusterInfo* ci = ClusterInfo::instance();
     auto cinfo = ci->getCollection(_vocbase->name(), name);
-    TRI_ASSERT(cinfo != nullptr);
-    return cinfo->cid();
+
+    if (cinfo) {
+      return cinfo->cid();
+    }
+
+    auto vinfo = ci->getView(_vocbase->name(), name);
+
+    if (vinfo) {
+      return vinfo->id();
+    }
   } catch (...) {
   }
+
   return 0;
 }
 
@@ -112,8 +129,7 @@ TRI_col_type_e CollectionNameResolver::getCollectionType(
     std::string const& name) const {
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
-    return getCollectionType(getCollectionName(static_cast<TRI_voc_cid_t>(
-        arangodb::basics::StringUtils::uint64(name))));
+    return getCollectionType(getCollectionName(NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size())));
   }
 
   arangodb::LogicalCollection const* collection = getCollectionStruct(name);
@@ -160,8 +176,7 @@ TRI_col_type_e CollectionNameResolver::getCollectionTypeCluster(
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
     return getCollectionTypeCluster(
-        getCollectionName(static_cast<TRI_voc_cid_t>(
-            arangodb::basics::StringUtils::uint64(name))));
+        getCollectionName(NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size())));
   }
 
   try {
@@ -227,16 +242,17 @@ std::string CollectionNameResolver::getCollectionNameCluster(
   int tries = 0;
 
   while (tries++ < 2) {
-    auto ci = ClusterInfo::instance()->getCollection(
-        _vocbase->name(), arangodb::basics::StringUtils::itoa(cid));
-
-    if (ci == nullptr) {
+    try {
+      auto ci = ClusterInfo::instance()->getCollection(
+          _vocbase->name(), arangodb::basics::StringUtils::itoa(cid));
+    
+      name = ci->name();
+      _resolvedIds.emplace(cid, name);
+      return name;
+    } catch (...) {
+      // most likely collection not found. now try again
       ClusterInfo::instance()->flush();
-      continue;
     }
-    name = ci->name();
-    _resolvedIds.emplace(cid, name);
-    return name;
   }
 
   LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "CollectionNameResolver: was not able to resolve id " << cid;
@@ -255,8 +271,7 @@ std::string CollectionNameResolver::getCollectionName(
       (nameOrId[0] < '0' || nameOrId[0] > '9')) {
     return nameOrId;
   }
-  TRI_voc_cid_t tmp = arangodb::basics::StringUtils::uint64(nameOrId);
-  return getCollectionName(tmp);
+  return getCollectionName(NumberUtils::atoi_zero<TRI_voc_cid_t>(nameOrId.data(), nameOrId.data() + nameOrId.size()));
 }
 
 std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
@@ -298,3 +313,35 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
   }
   return name;
 }
+
+bool CollectionNameResolver::visitCollections(
+    std::function<bool(TRI_voc_cid_t)> const& visitor, TRI_voc_cid_t cid
+) const {
+  if (!_vocbase) {
+    return false; // no way to determine what to visit
+  }
+
+  auto* collection = _vocbase->lookupCollection(cid);
+
+  if (collection) {
+    // TODO resolve smart edge collection CIDs here
+    return visitor(cid);
+  }
+
+  auto view = _vocbase->lookupView(cid);
+
+  if (view) {
+    // each CID in a view might need further resolution
+    return view->visitCollections([this, &visitor, cid](TRI_voc_cid_t ccid)->bool {
+      return ccid == cid ? visitor(ccid) : visitCollections(visitor, ccid);
+    });
+  }
+
+  // no way to determine what to visit
+  // emulate the original behaviour, assume 'cid' is for a regular collection and visit it as is
+  return visitor(cid);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

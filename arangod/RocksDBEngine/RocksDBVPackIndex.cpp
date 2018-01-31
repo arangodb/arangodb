@@ -610,10 +610,11 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
+    auto state = RocksDBTransactionState::toState(trx);
     for (auto& it : hashes) {
       // The estimator is only useful if we are in a non-unique indexes
       TRI_ASSERT(!_unique);
-      _estimator->insert(it);
+      state->trackIndexInsert(_collection->cid(), id(), it);
     }
   }
 
@@ -737,10 +738,11 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
+    auto state = RocksDBTransactionState::toState(trx);
     for (auto& it : hashes) {
       // The estimator is only useful if we are in a non-unique indexes
       TRI_ASSERT(!_unique);
-      _estimator->remove(it);
+      state->trackIndexRemove(_collection->cid(), id(), it);
     }
   }
 
@@ -1015,7 +1017,7 @@ bool RocksDBVPackIndex::supportsFilterCondition(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
-
+  
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
@@ -1080,7 +1082,7 @@ bool RocksDBVPackIndex::supportsFilterCondition(
   if (values == 0) {
     values = 1;
   }
-
+  
   if (attributesCoveredByEquality == _fields.size() && unique()) {
     // index is unique and condition covers all attributes by equality
     if (itemsInIndex == 0) {
@@ -1088,17 +1090,9 @@ bool RocksDBVPackIndex::supportsFilterCondition(
       estimatedCost = 0.0;
       return true;
     }
+  
     estimatedItems = values;
-    estimatedCost = 0.995 * values;
-    if (values > 0) {
-      if (useCache()) {
-        estimatedCost = static_cast<double>(estimatedItems * values);
-      } else {
-        estimatedCost =
-             std::max(static_cast<double>(1),
-                       std::log2(static_cast<double>(itemsInIndex)) * values);
-      }
-    }
+    estimatedCost = static_cast<double>(estimatedItems * values);
     // cost is already low... now slightly prioritize unique indexes
     estimatedCost *= 0.995 - 0.05 * (_fields.size() - 1);
     return true;
@@ -1352,7 +1346,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
               // unsupported right now. Should have been rejected by
               // supportsFilterCondition
               TRI_ASSERT(false);
-              return new EmptyIndexIterator(_collection, trx, mmdr, this);
+              return new EmptyIndexIterator(_collection, trx, this);
           }
           value->toVelocyPackValue(searchValues);
         }
@@ -1588,17 +1582,22 @@ void RocksDBVPackIndex::recalculateEstimates() {
                             bounds.columnFamily());
 }
 
-Result RocksDBVPackIndex::postprocessRemove(transaction::Methods* trx,
-                                            rocksdb::Slice const& key,
-                                            rocksdb::Slice const& value) {
-  if (!unique()) {
-    uint64_t hash = RocksDBVPackIndex::HashForKey(key);
-    _estimator->remove(hash);
-  }
-  return Result();
-}
-
 std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t>
 RocksDBVPackIndex::estimator() const {
   return std::make_pair(_estimator.get(), _estimatorSerializedSeq);
+}
+
+void RocksDBVPackIndex::applyCommitedEstimates(
+    std::vector<uint64_t> const& inserts,
+    std::vector<uint64_t> const& removes) {
+  if (_estimator != nullptr) {
+    // If we have an estimator apply the changes to it.
+    for (auto const& hash : inserts) {
+      _estimator->insert(hash);
+    }
+
+    for (auto const& hash : removes) {
+      _estimator->remove(hash);
+    }
+  }
 }

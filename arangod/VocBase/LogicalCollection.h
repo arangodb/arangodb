@@ -102,7 +102,7 @@ class LogicalCollection {
   static constexpr uint32_t currentVersion() { return VERSION_33; }
 
   /// @brief determine whether a collection name is a system collection name
-  static inline bool IsSystemName(std::string const& name) {
+  static bool IsSystemName(std::string const& name) {
     return (!name.empty() && name[0] == '_');
   }
 
@@ -183,11 +183,8 @@ class LogicalCollection {
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mdr,
-                                                bool reverse);
-  std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mdr);
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, bool reverse);
+  std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
 
   void invokeOnAllElements(
       transaction::Methods* trx,
@@ -260,7 +257,8 @@ class LogicalCollection {
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&,
                                                bool useSystem,
-                                               bool isReady) const;
+                                               bool isReady,
+                                               bool allInSync) const;
 
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
@@ -327,11 +325,11 @@ class LogicalCollection {
 
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& token,
-                    ManagedDocumentResult& result);
+                    ManagedDocumentResult& result) const;
   
   bool readDocumentWithCallback(transaction::Methods* trx,
                                 LocalDocumentId const& token,
-                                IndexIterator::DocumentCallback const& cb);
+                                IndexIterator::DocumentCallback const& cb) const;
 
   /// @brief Persist the connected physical collection.
   ///        This should be called AFTER the collection is successfully

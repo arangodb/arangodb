@@ -281,7 +281,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
   {
     std::locale locale = localeGenerator.generate("en_US.UTF-8");
     std::string sDataASCII = "A E I O U";
-    auto stream = text_token_stream::make("en_US.UTF-8");
+    auto stream = text_token_stream::make(locale);
 
     ASSERT_TRUE(stream->reset(sDataASCII));
 
@@ -308,7 +308,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
     // load stopwords for the 'C' locale that does not have stopwords defined in tests
     std::locale locale = std::locale::classic();
     std::string sDataASCII = "abc";
-    auto stream = text_token_stream::make("C");
+    auto stream = text_token_stream::make(locale);
     auto pStream = stream.get();
 
     ASSERT_EQ(nullptr, pStream);

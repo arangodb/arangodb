@@ -1426,7 +1426,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
         return logfile;
       }
 
-      if (logfile->id() > minId) {
+      if (logfile->id() > minId || !logfile->hasBeenReleased(released)) {
         // abort early
         break;
       }

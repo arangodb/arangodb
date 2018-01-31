@@ -196,6 +196,8 @@ char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
       return "DocumentOperationsPrologue";
     case arangodb::RocksDBLogType::DocumentRemove:
       return "DocumentRemove";
+    case arangodb::RocksDBLogType::DocumentRemoveAsPartOfUpdate:
+      return "IgnoreRemoveAsPartOfUpdate";
     case arangodb::RocksDBLogType::SinglePut:
       return "SinglePut";
     case arangodb::RocksDBLogType::SingleRemove:

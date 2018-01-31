@@ -124,8 +124,8 @@ class OurLessThan {
       _sortRegisters(sortRegisters) {
   }
 
-  bool operator()(std::pair<size_t, size_t> const& a,
-                  std::pair<size_t, size_t> const& b) const {
+  bool operator()(std::pair<uint32_t, uint32_t> const& a,
+                  std::pair<uint32_t, uint32_t> const& b) const {
     for (auto const& reg : _sortRegisters) {
       auto const& lhs = _buffer[a.first]->getValueReference(a.second, std::get<0>(reg));
       auto const& rhs = _buffer[b.first]->getValueReference(b.second, std::get<0>(reg));
@@ -269,17 +269,21 @@ void SortBlock::doSorting() {
   }
   
   // coords[i][j] is the <j>th row of the <i>th block
-  std::vector<std::pair<size_t, size_t>> coords;
+  std::vector<std::pair<uint32_t, uint32_t>> coords;
   coords.reserve(sum);
 
   // install the coords
-  size_t count = 0;
+  // we are intentionally using uint32_t here to save memory and
+  // have better cache utilization
+  uint32_t count = 0;
 
   for (auto const& block : _buffer) {
-    for (size_t i = 0; i < block->size(); i++) {
+    uint32_t const n = static_cast<uint32_t>(block->size());
+    
+    for (uint32_t i = 0; i < n; i++) {
       coords.emplace_back(std::make_pair(count, i));
     }
-    count++;
+    ++count;
   }
 
   // comparison function
@@ -301,7 +305,7 @@ void SortBlock::doSorting() {
     count = 0;
     RegisterId const nrRegs = _buffer.front()->getNrRegs();
 
-    std::unordered_set<AqlValue> cache;
+    std::unordered_map<AqlValue, AqlValue> cache;
 
     // install the rearranged values from _buffer into newbuffer
 
@@ -319,7 +323,6 @@ void SortBlock::doSorting() {
         throw;
       }
 
-      cache.clear();
       // only copy as much as needed!
       for (size_t i = 0; i < sizeNext; i++) {
         for (RegisterId j = 0; j < nrRegs; j++) {
@@ -335,7 +338,7 @@ void SortBlock::doSorting() {
               // the new block already has either a copy or stolen
               // the AqlValue:
               _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-              next->setValue(i, j, (*it));
+              next->setValue(i, j, (*it).second);
             } else {
               // We need to copy a, if it has already been stolen from
               // its original buffer, which we know by looking at the
@@ -349,7 +352,7 @@ void SortBlock::doSorting() {
                   TRI_IF_FAILURE("SortBlock::doSortingCache") {
                     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
                   }
-                  cache.emplace(b);
+                  cache.emplace(a, b);
                 } catch (...) {
                   b.destroy();
                   throw;
@@ -368,8 +371,7 @@ void SortBlock::doSorting() {
                 // It does not matter whether the following works or not,
                 // since the original block keeps its responsibility
                 // for a:
-                _buffer[coords[count].first]->eraseValue(coords[count].second,
-                                                         j);
+                _buffer[coords[count].first]->eraseValue(coords[count].second, j);
               } else {
                 TRI_IF_FAILURE("SortBlock::doSortingNext2") {
                   THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -378,13 +380,12 @@ void SortBlock::doSorting() {
                 // steal it:
                 next->setValue(i, j, a);
                 _buffer[coords[count].first]->steal(a);
-                _buffer[coords[count].first]->eraseValue(coords[count].second,
-                                                         j);
+                _buffer[coords[count].first]->eraseValue(coords[count].second, j);
                 // If this has worked, responsibility is now with the
                 // new block or indeed with us!
                 // If the following does not work, we will create a
                 // few unnecessary copies, but this does not matter:
-                cache.emplace(a);
+                cache.emplace(a, a);
               }
             }
           }

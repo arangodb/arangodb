@@ -757,8 +757,8 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
       }
 
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
-          // We ignore unique_constraint violated if we are not unique
-          res = TRI_ERROR_NO_ERROR;
+        // We ignore unique_constraint violated if we are not unique
+        res = TRI_ERROR_NO_ERROR;
       }
 
       break;
@@ -1283,7 +1283,7 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
                                      // will have _fields many entries.
     TRI_ASSERT(mapping.size() == _fields.size());
     if (!findMatchingConditions(node, reference, mapping, usesIn)) {
-      return new EmptyIndexIterator(_collection, trx, mmdr, this);
+      return new EmptyIndexIterator(_collection, trx, this);
     }
   } else {
     TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {

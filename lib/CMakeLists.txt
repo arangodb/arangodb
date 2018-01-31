@@ -262,3 +262,8 @@ target_link_libraries(${LIB_ARANGO_V8}
     boost_system
     boost_boost
 )
+
+# Enterprise
+if (USE_ENTERPRISE)
+  target_include_directories(${LIB_ARANGO_V8} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()

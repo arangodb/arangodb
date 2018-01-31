@@ -22,15 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "common.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
 #include "VocBase/KeyGenerator.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/ServerIdFeature.h"
-#include "Basics/ArangoGlobalContext.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "IResearch/ExpressionFilter.h"
 #include "tests/Basics/icu-helper.h"
@@ -42,50 +39,14 @@
 
 extern const char* ARGV0; // defined in main.cpp
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief there can be at most one ArangoGlobalConetxt instance because each
-///        instance creation calls TRIAGENS_REST_INITIALIZE() which in tern
-///        calls TRI_InitializeError() which cannot be called multiple times
-////////////////////////////////////////////////////////////////////////////////
-struct singleton_t {
-  // required for DatabasePathFeature and TRI_InitializeErrorMessages()
-  arangodb::ArangoGlobalContext ctx;
+NS_LOCAL
 
-  // required for creation of V* Isolate instances
-  arangodb::V8PlatformFeature v8PlatformFeature;
+NS_END
 
-  singleton_t()
-    : ctx(1, const_cast<char**>(&ARGV0), "."),
-      v8PlatformFeature(nullptr) {
-    v8PlatformFeature.start(); // required for createIsolate()
-  }
+NS_BEGIN(arangodb)
+NS_BEGIN(tests)
 
-  ~singleton_t() {
-    v8PlatformFeature.unprepare();
-  }
-};
-
-static singleton_t* SINGLETON = nullptr;
-
-namespace arangodb {
-namespace tests {
-
-void init(bool withICU /*= false*/) {
-  static singleton_t singleton;
-  SINGLETON = &singleton;
-
-  arangodb::ServerIdFeature::setId(12345);
-  arangodb::KeyGenerator::Initialize();
-
-  if (withICU) {
-    // initialize ICU, required for Utf8Helper which is used by the optimizer
-    IcuInitializer::setup(ARGV0);
-  }
-}
-
-v8::Isolate* v8Isolate() {
-  return SINGLETON ? SINGLETON->v8PlatformFeature.createIsolate() : nullptr;
-}
+void init(bool withICU /*= false*/) {} // nothing to do here
 
 bool assertRules(
     TRI_vocbase_t& vocbase,
@@ -110,13 +71,16 @@ bool assertRules(
   );
 
   auto const res = query.explain();
-  auto const explanation = res.result->slice();
 
-  arangodb::velocypack::ArrayIterator rules(explanation.get("rules"));
+  if (res.result) {
+    auto const explanation = res.result->slice();
 
-  for (auto const rule : rules) {
-    auto const strRule = arangodb::iresearch::getStringRef(rule);
-    expectedRules.erase(strRule);
+    arangodb::velocypack::ArrayIterator rules(explanation.get("rules"));
+
+    for (auto const rule : rules) {
+      auto const strRule = arangodb::iresearch::getStringRef(rule);
+      expectedRules.erase(strRule);
+    }
   }
 
   return expectedRules.empty();
@@ -125,11 +89,12 @@ bool assertRules(
 arangodb::aql::QueryResult executeQuery(
     TRI_vocbase_t& vocbase,
     std::string const& queryString,
-    std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
+    bool waitForSync /* = false*/
 ) {
   auto options = arangodb::velocypack::Parser::fromJson(
 //    "{ \"tracing\" : 1 }"
-    "{ }"
+    waitForSync ? "{ \"waitForSync\": true }" : "{ }"
   );
 
   arangodb::aql::Query query(
@@ -168,8 +133,8 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   );
 }
 
-}
-}
+NS_END // tests
+NS_END // arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

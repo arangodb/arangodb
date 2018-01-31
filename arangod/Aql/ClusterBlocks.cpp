@@ -79,7 +79,6 @@ GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
 }
 
 GatherBlock::~GatherBlock() {
-  DEBUG_BEGIN_BLOCK();
   for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
     for (AqlItemBlock* y : x) {
       delete y;
@@ -87,7 +86,6 @@ GatherBlock::~GatherBlock() {
     x.clear();
   }
   _gatherBlockBuffer.clear();
-  DEBUG_END_BLOCK();
 }
 
 /// @brief initialize
@@ -246,7 +244,7 @@ bool GatherBlock::hasMore() {
 /// @brief getSome
 AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
 
   if (_dependencies.empty()) {
     _done = true;
@@ -308,7 +306,8 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   size_t toSend = (std::min)(available, atMost);  // nr rows in outgoing block
 
   // the following is similar to AqlItemBlock's slice method . . .
-  std::unordered_set<AqlValue> cache;
+  std::vector<std::unordered_map<AqlValue, AqlValue>> cache;
+  cache.resize(_gatherBlockBuffer.size());
 
   // comparison function
   OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters);
@@ -343,9 +342,9 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
       TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
       AqlValue const& x(_gatherBlockBuffer[val.first].front()->getValueReference(val.second, col));
       if (!x.isEmpty()) {
-        auto it = cache.find(x);
+        auto it = cache[val.first].find(x);
 
-        if (it == cache.end()) {
+        if (it == cache[val.first].end()) {
           AqlValue y = x.clone();
           try {
             res->setValue(i, col, y);
@@ -353,9 +352,9 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
             y.destroy();
             throw;
           }
-          cache.emplace(y);
+          cache[val.first].emplace(x, y);
         } else {
-          res->setValue(i, col, (*it));
+          res->setValue(i, col, (*it).second);
         }
       }
     }
@@ -384,6 +383,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
         // more data for the shard for which we have no more local
         // values. 
         getBlock(val.first, atLeast, atMost);
+        cache[val.first].clear();
         // note that if getBlock() returns false here, this is not
         // a problem, because the sort function used takes care of
         // this
@@ -936,7 +936,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
                                            size_t& skipped,
                                            std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
 
@@ -1472,8 +1472,7 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
   
-  traceGetSomeBegin();
-
+  traceGetSomeBegin(atLeast, atMost);
   VPackBuilder builder;
   builder.openObject();
   builder.add("atLeast", VPackValue(atLeast));

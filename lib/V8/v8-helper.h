@@ -24,17 +24,19 @@
 #ifndef ARANGODB_V8_V8__HELPER_H
 #define ARANGODB_V8_V8__HELPER_H 1
 
+#include "Basics/Common.h"
+#include "V8/v8-globals.h"
+#include "V8/v8-conv.h"
 #include "v8-globals.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
-
 #include <v8.h>
 
 namespace arangodb {
 
 inline std::string stringify(v8::Isolate* isolate, v8::Handle<v8::Value> value) {
   // function converts js object to string using JSON.stringify
-	if (value.IsEmpty()) {
+  if (value.IsEmpty()) {
    return std::string{};
   }
   v8::Local<v8::Object> json = isolate->GetCurrentContext()->Global()->Get(TRI_V8_ASCII_STRING(isolate, "JSON"))->ToObject();
@@ -51,21 +53,20 @@ class v8gHelper {
   v8::Isolate* _isolate;
   v8::TryCatch& _tryCatch;
 
-public:
+ public:
   v8gHelper(v8::Isolate* isolate
            ,v8::TryCatch& tryCatch
            ,v8::Handle<v8::Value>& request
            ,v8::Handle<v8::Value>& response
            )
            : _isolate(isolate)
-           , _tryCatch(tryCatch)
-  {
+           , _tryCatch(tryCatch) {
     TRI_GET_GLOBALS();
     _v8g = v8g;
     _v8g->_currentRequest = request;
   }
 
-  void cancel(bool doCancel){
+  void cancel(bool doCancel) {
     if(doCancel){
       _v8g->_canceled=true;
     }
@@ -76,7 +77,7 @@ public:
       return;
     }
 
-    if(_tryCatch.HasCaught() && !_tryCatch.CanContinue()){
+    if(_tryCatch.HasCaught() && !_tryCatch.CanContinue()) {
       _v8g->_canceled=true;
     } else {
       _v8g->_currentRequest = v8::Undefined(_isolate);
@@ -150,9 +151,18 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate, v
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "name")) &&
         object->Has(TRI_V8_ASCII_STRING(isolate, "message"))
        ) {
-      std::string  name = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING(isolate, "name")));
-      std::string  message = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING(isolate, "message")));
-      if(name == "TypeError"){
+      std::string name;
+      v8::String::Utf8Value nameString(object->Get(TRI_V8_ASCII_STRING(isolate, "name")));
+      if (*nameString != nullptr) {
+        name = std::string(*nameString, nameString.length());
+      }
+
+      std::string message;
+      v8::String::Utf8Value messageString(object->Get(TRI_V8_ASCII_STRING(isolate, "message")));
+      if (*messageString != nullptr) {
+        message = std::string(*messageString, messageString.length());
+      }
+      if (name == "TypeError") {
         std::get<2>(rv).reset(TRI_ERROR_TYPE_ERROR, message);
       } else {
         std::get<2>(rv).reset(TRI_ERROR_INTERNAL, name + ": " + message);

@@ -89,6 +89,10 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(
   }
   return nullptr;
 }
+  
+TRI_voc_rid_t PhysicalCollection::newRevisionId() const {
+  return TRI_HybridLogicalClock();
+}
 
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
@@ -172,7 +176,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
     }
   }
   if (!handled) {
-    revisionId = TRI_HybridLogicalClock();
+    revisionId = newRevisionId();
     b.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
   }
 
@@ -309,7 +313,7 @@ int PhysicalCollection::newObjectForInsert(
     }
   }
   if (!handled) {
-    revisionId = TRI_HybridLogicalClock();
+    revisionId = newRevisionId();
     builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
   }
 
@@ -335,7 +339,7 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
     TRI_ASSERT(s.isString());
     builder.add(StaticStrings::KeyString, s);
   }
-  revisionId = TRI_HybridLogicalClock();
+  revisionId = newRevisionId();
   builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
   builder.close();
 }
@@ -384,7 +388,7 @@ void PhysicalCollection::newObjectForReplace(
     }
   }
   if (!handled) {
-    revisionId = TRI_HybridLogicalClock();
+    revisionId = newRevisionId();
     builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
   }
 

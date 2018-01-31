@@ -428,7 +428,7 @@ RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
 double RocksDBEdgeIndex::selectivityEstimateLocal(
     arangodb::StringRef const* attribute) const {
   if (attribute != nullptr && attribute->compare(_directionAttr)) {
-    return 0;
+    return 0.0;
   }
   TRI_ASSERT(_estimator != nullptr);
   return _estimator->computeEstimate();
@@ -470,7 +470,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
   if (r.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
-    _estimator->insert(hash);
+    RocksDBTransactionState::toState(trx)->trackIndexInsert(_collection->cid(), id(), hash);
     return IndexResult();
   } else {
     return IndexResult(r.errorNumber(), this);
@@ -501,7 +501,7 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
   if (res.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
-    _estimator->remove(hash);
+    RocksDBTransactionState::toState(trx)->trackIndexRemove(_collection->cid(), id(), hash);
     return IndexResult();
   } else {
     return IndexResult(res.errorNumber(), this);
@@ -578,13 +578,13 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(_collection, trx, mmdr, this);
+      return new EmptyIndexIterator(_collection, trx, this);
     }
     return createInIterator(trx, mmdr, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(_collection, trx, mmdr, this);
+  return new EmptyIndexIterator(_collection, trx, this);
 }
 
 /// @brief specializes the condition for use with the index
@@ -1000,13 +1000,17 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   }
 }
 
-Result RocksDBEdgeIndex::postprocessRemove(transaction::Methods* trx,
-                                           rocksdb::Slice const& key,
-                                           rocksdb::Slice const& value) {
-  // blacklist keys during truncate
-  blackListKey(key.data(), key.size());
+void RocksDBEdgeIndex::applyCommitedEstimates(
+    std::vector<uint64_t> const& inserts,
+    std::vector<uint64_t> const& removes) {
+  if (_estimator != nullptr) {
+    // If we have an estimator apply the changes to it.
+    for (auto const& hash : inserts) {
+      _estimator->insert(hash);
+    }
 
-  uint64_t hash = RocksDBEdgeIndex::HashForKey(key);
-  _estimator->remove(hash);
-  return Result();
+    for (auto const& hash : removes) {
+      _estimator->remove(hash);
+    }
+  }
 }

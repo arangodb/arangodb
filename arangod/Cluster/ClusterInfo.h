@@ -307,9 +307,11 @@ class ClusterInfo {
   /// @brief ask about a collection
   /// If it is not found in the cache, the cache is reloaded once. The second
   /// argument can be a collection ID or a collection name (both cluster-wide).
+  /// if the collection is not found afterwards, this method will throw an 
+  /// exception
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
+  virtual std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
                                                    CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -318,6 +320,15 @@ class ClusterInfo {
 
   virtual std::vector<std::shared_ptr<LogicalCollection>> const getCollections(
       DatabaseID const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ask about a view
+  /// If it is not found in the cache, the cache is reloaded once. The second
+  /// argument can be a collection ID or a view name (both cluster-wide).
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<LogicalView> getView(
+      DatabaseID const& vocbase, CollectionID const& view
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about current collections from the agency

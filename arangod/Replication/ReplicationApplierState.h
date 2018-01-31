@@ -25,7 +25,7 @@
 #define ARANGOD_REPLICATION_REPLICATION_APPLIER_STATE_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/replication-common.h"
+#include "Replication/common-defines.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -45,6 +45,7 @@ struct ReplicationApplierState {
   ReplicationApplierState();
   ~ReplicationApplierState();
   
+  ReplicationApplierState(ReplicationApplierState const& other) = delete;
   ReplicationApplierState& operator=(ReplicationApplierState const& other);
 
   void reset(bool resetState);

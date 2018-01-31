@@ -24,6 +24,7 @@
 
 #include "TailingSyncer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -142,8 +143,7 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
   std::string const tick = VelocyPackHelper::getStringValue(slice, "tick", "");
 
   if (!tick.empty()) {
-    tooOld = (static_cast<TRI_voc_tick_t>(StringUtils::uint64(
-                  tick.c_str(), tick.size())) < firstRegularTick);
+    tooOld = (NumberUtils::atoi_zero<TRI_voc_tick_t>(tick.data(), tick.data() + tick.size()) < firstRegularTick);
 
     if (tooOld) {
       int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
@@ -161,8 +161,7 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
             VelocyPackHelper::getStringValue(slice, "tid", "");
 
         if (!id.empty()) {
-          TRI_voc_tid_t tid = static_cast<TRI_voc_tid_t>(
-              StringUtils::uint64(id.c_str(), id.size()));
+          TRI_voc_tid_t tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(id.data(), id.data() + id.size());
 
           if (tid > 0 &&
               _ongoingTransactions.find(tid) != _ongoingTransactions.end()) {
@@ -333,8 +332,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
   if (!transactionId.empty()) {
     // operation is part of a transaction
-    tid = static_cast<TRI_voc_tid_t>(
-        StringUtils::uint64(transactionId.c_str(), transactionId.size()));
+    tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(transactionId.data(), transactionId.data() + transactionId.size());
   }
 
   if (tid > 0) { // part of a transaction
@@ -417,8 +415,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
 
   // transaction id
   // note: this is the remote transaction id!
-  TRI_voc_tid_t tid =
-      static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
+  TRI_voc_tid_t tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(id.data(), id.data() + id.size());
 
   auto it = _ongoingTransactions.find(tid);
 
@@ -461,8 +458,7 @@ Result TailingSyncer::abortTransaction(VPackSlice const& slice) {
 
   // transaction id
   // note: this is the remote transaction id!
-  TRI_voc_tid_t const tid =
-      static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
+  TRI_voc_tid_t const tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(id.data(), id.data() + id.size());
 
   auto it = _ongoingTransactions.find(tid);
 
@@ -499,9 +495,8 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
   }
 
   // transaction id
-  // note: this is the remote trasnaction id!
-  TRI_voc_tid_t const tid =
-      static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
+  // note: this is the remote transaction id!
+  TRI_voc_tid_t const tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(id.data(), id.data() + id.size());
 
   auto it = _ongoingTransactions.find(tid);
 
@@ -618,8 +613,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
   std::string const tick = VelocyPackHelper::getStringValue(slice, "tick", "");
 
   if (!tick.empty()) {
-    TRI_voc_tick_t newTick = static_cast<TRI_voc_tick_t>(
-        StringUtils::uint64(tick.c_str(), tick.size()));
+    TRI_voc_tick_t newTick = NumberUtils::atoi_zero<TRI_voc_tick_t>(tick.data(), tick.data() + tick.size());
     if (newTick >= firstRegularTick) {
       WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
       if (newTick > _applier->_state._lastProcessedContinuousTick) {
@@ -1275,20 +1269,20 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
   
   bool found;
   std::string header =
-  response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
+  response->getHeaderField(StaticStrings::ReplicationHeaderFromPresent, found);
   
   if (found) {
     fromIncluded = StringUtils::boolean(header);
   }
   
   // fetch the tick from where we need to start scanning later
-  header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
+  header = response->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded, found);
   if (!found) {
     // we changed the API in 3.3 to use last included
-    header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
+    header = response->getHeaderField(StaticStrings::ReplicationHeaderLastTick, found);
     if (!found) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                    _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTTICK +
+                    _masterInfo._endpoint + ": required header " + StaticStrings::ReplicationHeaderLastTick +
                     " is missing in determine-open-transactions response");
     }
   }
@@ -1395,32 +1389,32 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   }
   
   bool found;
-  std::string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
+  std::string header = response->getHeaderField(StaticStrings::ReplicationHeaderCheckMore, found);
   
   if (!found) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                  _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_CHECKMORE + " is missing");
+                  _masterInfo._endpoint + ": required header " + StaticStrings::ReplicationHeaderCheckMore + " is missing");
   }
   
   bool checkMore = StringUtils::boolean(header);
   
   // was the specified from value included the result?
   bool fromIncluded = false;
-  header = response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
+  header = response->getHeaderField(StaticStrings::ReplicationHeaderFromPresent, found);
   if (found) {
     fromIncluded = StringUtils::boolean(header);
   }
   
   bool active = false;
-  header = response->getHeaderField(TRI_REPLICATION_HEADER_ACTIVE, found);
+  header = response->getHeaderField(StaticStrings::ReplicationHeaderActive, found);
   if (found) {
     active = StringUtils::boolean(header);
   }
   
-  header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
+  header = response->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded, found);
   if (!found) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                  _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED +
+                  _masterInfo._endpoint + ": required header " + StaticStrings::ReplicationHeaderLastIncluded +
                   " is missing in logger-follow response");
   }
   
@@ -1434,10 +1428,10 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
     checkMore = false;
   }
   
-  header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
+  header = response->getHeaderField(StaticStrings::ReplicationHeaderLastTick, found);
   if (!found) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                  _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTTICK +
+                  _masterInfo._endpoint + ": required header " + StaticStrings::ReplicationHeaderLastTick +
                   " is missing in logger-follow response");
   }
   

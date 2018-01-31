@@ -2169,6 +2169,31 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test sha512 function
+////////////////////////////////////////////////////////////////////////////////
+
+    testSha512 : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SHA512()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SHA512(\"foo\", 2)"); 
+      assertEqual([ "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e" ], getQueryResults("RETURN SHA512('')")); 
+      assertEqual([ "f90ddd77e400dfe6a3fcf479b00b1ee29e7015c5bb8cd70f5f15b4886cc339275ff553fc8a053f8ddc7324f45168cffaf81f8c3ac93996f6536eef38e5e40768" ], getQueryResults("RETURN SHA512(' ')")); 
+      assertEqual([ "31bca02094eb78126a517b206a88c73cfa9ec6f704c7030d18212cace820f025f00bf0ea68dbf3f3a5436ca63b53bf7bf80ad8d5de7d8359d0b7fed9dbc3ab99" ], getQueryResults("RETURN SHA512('0')")); 
+      assertEqual([ "4dff4ea340f0a823f15d3f4f01ab62eae0e5da579ccb851f8db9dfe84c58b2b37b89903a740e1ee172da793a6e79d560e5f7f9bd058a12a280433ed6fa46510a" ], getQueryResults("RETURN SHA512('1')")); 
+      assertEqual([ "4fcdd8c15addb15f1e994008677c740848168cd8d32e92d44301ea12b37a93fbd9f0a0468d04789e1f387b395509bd3b998e8aad5e02dd2625f0aac661fb1100" ], getQueryResults("RETURN SHA512('-1')")); 
+      assertEqual([ "5364d359dbe42bfb870d304e46cfefa1d438779ed425e30a3de0948a3e99594e58dfcca0e0da47e561f0718ffaabfe68f50515d2dca1f715acd7fca6808f87e8" ], getQueryResults("RETURN SHA512(' 0')")); 
+      assertEqual([ "3595817cf0e1f1852bc3d279f38df6f899ca963dedd143af810d3c50844a7ca3e0c25be6d3761e9a7010641756110c344ab57e6e5fe3e89a4cb6532705a8c47d" ], getQueryResults("RETURN SHA512('0 ')")); 
+      assertEqual([ "f7fbba6e0636f890e56fbbf3283e524c6fa3204ae298382d624741d0dc6638326e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19594a7eb539453e1ed7" ], getQueryResults("RETURN SHA512('foo')")); 
+      assertEqual([ "9840f9826bba3ddfc3c4872884f51dcbe915a2d42c6a4d0d59ce564e7fe541f15b9a4271554065379709932bc99a71d85f05aacd62457fce5fd131f847de99ec" ], getQueryResults("RETURN SHA512('FOO')")); 
+      assertEqual([ "4abcd2639957cb23e33f63d70659b602a5923fafcfd2768ef79b0badea637e5c837161aa101a557a1d4deacbd912189e2bb11bf3c0c0c70ef7797217da7e8207" ], getQueryResults("RETURN SHA512('Foo')")); 
+      assertEqual([ "0d6fc00052fee1d3ae1880d5dc59b74dd50449ffdea399449223d2c5b792395ce64153b150fc0fc01bfeed30c7347411cfb8a3b17b51fd8aa6c03acfbcd09e7b" ], getQueryResults("RETURN SHA512('FooBar')")); 
+      assertEqual([ "b8ee69b29956b0b56e26d0a25c6a80713c858cf2902a12962aad08d682345646b2d5f193bbe03997543a9285e5932f34baf2c85c89459f25ba1cf43c4410793c" ], getQueryResults("RETURN SHA512('This is a test string')")); 
+      assertEqual([ "80e0e9a3b8b4019546bb30538b4c8934c1afcb98c70a67001ca3a5eb1c243ec217f5e022edfa6aa0afb25a62ac5eef1a87108a3912e015da7bf519d08b4ea704" ], getQueryResults("RETURN SHA512('With\r\nLinebreaks\n')")); 
+      assertEqual([ "04f8ff2682604862e405bf88de102ed7710ac45c1205957625e4ee3e5f5a2241e453614acc451345b91bafc88f38804019c7492444595674e94e8cf4be53817f" ], getQueryResults("RETURN SHA512('null')")); 
+      assertEqual([ "cb0b42c73bc373fa2c695ffb4d4c801571f23397aead7c5b793269801e740ed666f83149b1eed6eaab5f07876236f166da5ae3deb8ab52e85dfd9bdd7c3c9432" ], getQueryResults("RETURN SHA512('[1]')")); 
+      assertEqual([ "1dccad3fad058a29ccef8e003fa71bbabf587431ac5a55fb36268bf7958c5f3cb31116ac9e855ec61bb9b72ecbd484f704bee032707fb0ead24ad2bee97b9a39" ], getQueryResults("RETURN SHA512('[object Object]')")); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test md5 function
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -25,7 +25,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ClusterComm.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -153,13 +153,13 @@ arangodb::Result Databases::create(std::string const& dbName,
   if (options.isNone() || options.isNull()) {
     options = VPackSlice::emptyObjectSlice();
   } else if (!options.isObject()) {
-    return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
   }
   VPackSlice users = inUsers;
   if (users.isNone() || users.isNull()) {
     users = VPackSlice::emptyArraySlice();
   } else if (!users.isArray()) {
-    return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid users slice");
   }
 
   VPackBuilder sanitizedUsers;
@@ -299,7 +299,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     // purposes)
     TRI_voc_tick_t id = 0;
     if (options.hasKey("id")) {
-      id = options.get("id").getUInt();
+      id = basics::VelocyPackHelper::stringUInt64(options, "id");
     }
 
     TRI_vocbase_t* vocbase = nullptr;
@@ -320,6 +320,8 @@ arangodb::Result Databases::create(std::string const& dbName,
                                      entry.grantCollection(dbName, "*", AuthLevel::RW);
                                    });
     }
+
+    TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
 
     V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
     if (ctx == nullptr) {

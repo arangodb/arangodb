@@ -19,7 +19,7 @@ It returns an object with the attributes
 - *id*: The identifier of the view.
 - *name*: The new name of the view.
 - *type*: The view type. Valid types are:
-  - iresearch : IResearch view
+  - arangosearch: ArangoSearch view
 - *properties* : The view properties.
 
 **Note**: this method is not available in a cluster. - ???
@@ -36,7 +36,7 @@ is returned.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestViewPutViewRename}
-    var viewType = "iresearch";
+    var viewType = "arangosearch";
     var viewName = "products1";
     var viewNewName = "newname";
     db._dropView(viewName);

@@ -222,6 +222,7 @@ void AqlFunctionFeature::addTypeCheckFunctions() {
 
   add({"IS_DATESTRING", ".", true, false, true,
        true});
+  add({"IS_KEY", ".", true, false, true, true, &Functions::IsKey});
   add({"TYPENAME", ".", true, false, true, true,
        &Functions::Typename});
 }
@@ -261,7 +262,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"SUBSTITUTE", ".,.|.,.", true, false, true, true});
   add({"MD5", ".", true, false, true, true, &Functions::Md5});
   add({"SHA1", ".", true, false, true, true, &Functions::Sha1});
-  add({"SHA512", ".", true, false, true, true});
+  add({"SHA512", ".", true, false, true, true, &Functions::Sha512});
   add({"HASH", ".", true, false, true, true, &Functions::Hash});
   add({"RANDOM_TOKEN", ".", false, true, true, true, &Functions::RandomToken});
 }
@@ -350,6 +351,8 @@ void AqlFunctionFeature::addListFunctions() {
        &Functions::Unique});
   add({"SORTED_UNIQUE", ".", true, false, true, true,
        &Functions::SortedUnique});
+  add({"SORTED", ".", true, false, true, true,
+       &Functions::Sorted});
   add({"SLICE", ".,.|.", true, false, true, true,
        &Functions::Slice});
   add({"REVERSE", ".", true, false, true,
@@ -401,7 +404,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
        true, true, &Functions::UnsetRecursive});
   add({"KEEP", ".,.|+", true, false, true, true,
        &Functions::Keep});
-  add({"TRANSLATE", ".,.|.", true, false, true, true});
+  add({"TRANSLATE", ".,.|.", true, false, true, true, &Functions::Translate});
   add({"ZIP", ".,.", true, false, true, true,
        &Functions::Zip});
   add({"JSON_STRINGIFY", ".", true, false, true,

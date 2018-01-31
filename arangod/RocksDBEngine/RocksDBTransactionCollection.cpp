@@ -26,6 +26,7 @@
 #include "Cluster/CollectionLockState.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -108,7 +109,10 @@ bool RocksDBTransactionCollection::isLocked(AccessMode::Type accessType,
 
 /// @brief check whether a collection is locked at all
 bool RocksDBTransactionCollection::isLocked() const {
-  if (CollectionLockState::_noLockHeaders != nullptr && _collection != nullptr) {
+  if (_collection == nullptr) {
+    return false;
+  }
+  if (CollectionLockState::_noLockHeaders != nullptr) {
     std::string collName(_collection->name());
     auto it = CollectionLockState::_noLockHeaders->find(collName);
     if (it != CollectionLockState::_noLockHeaders->end()) {
@@ -282,11 +286,36 @@ void RocksDBTransactionCollection::addOperation(
 }
 
 void RocksDBTransactionCollection::commitCounts() {
+  // Update the index estimates.
+  TRI_ASSERT(_collection != nullptr);
+  for (auto const& pair : _trackedIndexOperations) {
+    auto idx = _collection->lookupIndex(pair.first);
+    if (idx == nullptr) {
+      TRI_ASSERT(false); // Index reported estimates, but does not exist
+      continue;
+    }
+    auto ridx = static_cast<RocksDBIndex*>(idx.get());
+    ridx->applyCommitedEstimates(pair.second.first, pair.second.second);
+  }
+
   _initialNumberDocuments = _numInserts - _numRemoves;
   _operationSize = 0;
   _numInserts = 0;
   _numUpdates = 0;
   _numRemoves = 0;
+  _trackedIndexOperations.clear();
+}
+
+void RocksDBTransactionCollection::trackIndexInsert(uint64_t idxObjectId,
+                                                    uint64_t hash) {
+  // First list is Inserts
+  _trackedIndexOperations[idxObjectId].first.emplace_back(hash);
+}
+
+void RocksDBTransactionCollection::trackIndexRemove(uint64_t idxObjectId,
+                                                    uint64_t hash) {
+  // Second list is Removes
+  _trackedIndexOperations[idxObjectId].second.emplace_back(hash);
 }
 
 /// @brief lock a collection
@@ -299,7 +328,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type,
     _lockType = type;
     return TRI_ERROR_NO_ERROR;
   }
-
+  
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     // never lock
     return TRI_ERROR_NO_ERROR;

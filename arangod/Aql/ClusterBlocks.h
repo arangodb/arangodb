@@ -34,6 +34,7 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
+
 struct ClusterCommResult;
 
 namespace aql {

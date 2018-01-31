@@ -263,11 +263,12 @@ class RocksDBEngine final : public StorageEngine {
   void pruneWalFiles();
 
   // management methods for synchronizing with external persistent stores
-  virtual TRI_voc_tick_t currentTick() const;
-  virtual TRI_voc_tick_t releasedTick() const;
-  virtual void releaseTick(TRI_voc_tick_t);
+  virtual TRI_voc_tick_t currentTick() const override;
+  virtual TRI_voc_tick_t releasedTick() const override;
+  virtual void releaseTick(TRI_voc_tick_t) override;
 
  private:
+  void shutdownRocksDBInstance() noexcept;
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key, int& status);
   int removeReplicationApplierConfiguration(RocksDBKey const& key);
   int saveReplicationApplierConfiguration(RocksDBKey const& key, arangodb::velocypack::Slice slice, bool doSync);
@@ -358,11 +359,14 @@ class RocksDBEngine final : public StorageEngine {
 
   // do not release walfiles containing writes later than this
   TRI_voc_tick_t _releasedTick;
+  
+  // use write-throttling
+  bool _useThrottle;
 
   // code to pace ingest rate of writes to reduce chances of compactions getting
-  //  too far behind and blocking incoming writes
+  // too far behind and blocking incoming writes
+  // (will only be set if _useThrottle is true)
   std::shared_ptr<RocksDBThrottle> _listener;
-
 };
 }  // namespace arangodb
 #endif

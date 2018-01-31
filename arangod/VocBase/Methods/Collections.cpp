@@ -90,15 +90,13 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
   if (ServerState::instance()->isCoordinator()) {
     try {
       auto coll = ClusterInfo::instance()->getCollection(vocbase->name(), name);
-      if (coll) {
-        // check authentication after ensuring the collection exists
-        if (exec != nullptr &&
-            !exec->canUseCollection(vocbase->name(), coll->name(), AuthLevel::RO)) {
-          return Result(TRI_ERROR_FORBIDDEN, "No access to collection '" + name + "'");
-        }
-        func(coll.get());
-        return Result();
+      // check authentication after ensuring the collection exists
+      if (exec != nullptr &&
+          !exec->canUseCollection(vocbase->name(), coll->name(), AuthLevel::RO)) {
+        return Result(TRI_ERROR_FORBIDDEN, "No access to collection '" + name + "'");
       }
+      func(coll.get());
+      return Result();
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
@@ -280,22 +278,32 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
       "allowUserKeys", "cid",    "count",  "deleted", "id",   "indexes", "name",
       "path",          "planId", "shards", "status",  "type", "version"};
 
+  // this transaction is held longer than the following if...
   std::unique_ptr<SingleCollectionTransaction> trx;
+
   if (!ServerState::instance()->isCoordinator()) {
-    auto ctx = transaction::V8Context::CreateWhenRequired(coll->vocbase(), true);
-    trx.reset(new SingleCollectionTransaction(ctx, coll->cid(),
-                                              AccessMode::Type::READ));
-    trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
-    Result res = trx->begin();
     // These are only relevant for cluster
     ignoreKeys.insert({"distributeShardsLike", "isSmart", "numberOfShards",
                        "replicationFactor", "shardKeys"});
+    
+    auto ctx = transaction::V8Context::CreateWhenRequired(coll->vocbase(), true);
+    // populate the transaction object (which is used outside this if too)
+    trx.reset(new SingleCollectionTransaction(ctx, coll->cid(),
+                                              AccessMode::Type::READ));
+  
+    // we actually need this hint here, so that the collection is not
+    // loaded if it has status unloaded.
+    trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+
+    Result res = trx->begin();
 
     if (res.fail()) {
       return res;
     }
   }
 
+  // note that we have an ongoing transaction here if we are in single-server
+  // case
   VPackBuilder props = coll->toVelocyPackIgnore(ignoreKeys, true, false);
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackObjectIterator(props.slice()));

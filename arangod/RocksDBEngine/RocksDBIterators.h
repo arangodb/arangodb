@@ -47,7 +47,6 @@ class RocksDBAllIndexIterator final : public IndexIterator {
  public:
   RocksDBAllIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           RocksDBPrimaryIndex const* index, bool reverse);
 
   ~RocksDBAllIndexIterator() {}
@@ -73,7 +72,6 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
   RocksDBAnyIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           RocksDBPrimaryIndex const* index);
 
   ~RocksDBAnyIndexIterator() {}
@@ -90,11 +88,13 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
   static uint64_t newOffset(LogicalCollection* collection,
                             transaction::Methods* trx);
 
+  bool checkIter();
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   RocksDBKeyBounds const _bounds;
   uint64_t _total;
   uint64_t _returned;
+  bool _forward;
 };
 
 /// @brief iterates over the primary index and does lookups
@@ -103,7 +103,6 @@ class RocksDBSortedAllIterator final : public IndexIterator {
  public:
   RocksDBSortedAllIterator(LogicalCollection* collection,
                            transaction::Methods* trx,
-                           ManagedDocumentResult* mmdr,
                            RocksDBPrimaryIndex const* index);
 
   ~RocksDBSortedAllIterator() {}

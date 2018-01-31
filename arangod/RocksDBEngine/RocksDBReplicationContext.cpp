@@ -27,6 +27,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
+#include "Replication/common-defines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -38,7 +39,6 @@
 #include "Transaction/UserTransaction.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
-#include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Dumper.h>
@@ -141,8 +141,7 @@ int RocksDBReplicationContext::bindCollection(
 
     _trx->addCollectionAtRuntime(_collection->name());
     _iter = static_cast<RocksDBCollection*>(_collection->getPhysical())
-                ->getSortedAllIterator(_trx.get(),
-                                       &_mdr);  //_mdr is not used nor updated
+                ->getSortedAllIterator(_trx.get());
     _currentTick = 1;
     _hasMore = true;
   }

@@ -52,6 +52,7 @@
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include "Transaction/Methods.h"
+#include "VocBase/Methods/Collections.h"
 
 #include <boost/optional.hpp>
 #include <tuple>
@@ -930,9 +931,41 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     bool const canUseHashAggregation =
         (!groupVariables.empty() &&
          (!collectNode->hasOutVariable() || collectNode->count()) &&
-         collectNode->getOptions().canUseHashMethod());
-
+         collectNode->getOptions().canUseMethod(CollectOptions::CollectMethod::HASH));
+       
     if (canUseHashAggregation && !opt->runOnlyRequiredRules()) {
+      if (collectNode->getOptions().shouldUseMethod(CollectOptions::CollectMethod::HASH)) {
+        // user has explicitly asked for hash method
+        // specialize existing the CollectNode so it will become a HashedCollectBlock
+        // later. additionally, add a SortNode BEHIND the CollectNode (to sort the
+        // final result)
+        collectNode->aggregationMethod(
+            CollectOptions::CollectMethod::HASH);
+        collectNode->specialized();
+
+        if (!collectNode->isDistinctCommand()) {
+          // add the post-SORT
+          SortElementVector sortElements;
+          for (auto const& v : collectNode->groupVariables()) {
+            sortElements.emplace_back(v.first, true);
+          }
+
+          auto sortNode =
+              new SortNode(plan.get(), plan->nextId(), sortElements, false);
+          plan->registerNode(sortNode);
+
+          TRI_ASSERT(collectNode->hasParent());
+          auto parent = collectNode->getFirstParent();
+          TRI_ASSERT(parent != nullptr);
+
+          sortNode->addDependency(collectNode);
+          parent->replaceDependency(collectNode, sortNode);
+        }
+
+        modified = true;
+        continue;
+      } 
+
       // create a new plan with the adjusted COLLECT node
       std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
 
@@ -946,7 +979,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
       // additionally, add a SortNode BEHIND the CollectNode (to sort the
       // final result)
       newCollectNode->aggregationMethod(
-          CollectOptions::CollectMethod::COLLECT_METHOD_HASH);
+          CollectOptions::CollectMethod::HASH);
       newCollectNode->specialized();
 
       if (!collectNode->isDistinctCommand()) {
@@ -973,7 +1006,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         // this will tell the optimizer to optimize the cloned plan with this
         // specific rule again
         opt->addPlan(std::move(newPlan), rule, true,
-                     static_cast<int>(rule->level - 1));
+                    static_cast<int>(rule->level - 1));
       } else {
         // no need to run this specific rule again on the cloned plan
         opt->addPlan(std::move(newPlan), rule, true);
@@ -988,7 +1021,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     // specialize the CollectNode so it will become a SortedCollectBlock
     // later
     collectNode->aggregationMethod(
-        CollectOptions::CollectMethod::COLLECT_METHOD_SORTED);
+        CollectOptions::CollectMethod::SORTED);
 
     // insert a SortNode IN FRONT OF the CollectNode
     if (!groupVariables.empty()) {
@@ -4342,7 +4375,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
     std::unordered_set<Variable const*> varsUsed;
 
-    current = n;
+    current = n->getFirstParent();
     // now check where the subquery is used
     while (current->hasParent()) {
       if (current->getType() == EN::ENUMERATE_LIST) {
@@ -4457,15 +4490,17 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-static bool isValueTypeString(AstNode* node) {
-  return (node->type == NODE_TYPE_VALUE && node->value.type == VALUE_TYPE_STRING) ||
-  node->type == NODE_TYPE_REFERENCE;
+static bool isValueTypeString(AstNode const* node) {
+  return (node->type == NODE_TYPE_VALUE && node->value.type == VALUE_TYPE_STRING);
+}
+
+static bool isValueTypeCollection(AstNode const* node) {
+  return node->type == NODE_TYPE_COLLECTION || isValueTypeString(node);
 }
 
 static bool isValueTypeNumber(AstNode* node) {
   return (node->type == NODE_TYPE_VALUE && (node->value.type == VALUE_TYPE_INT ||
-                                            node->value.type == VALUE_TYPE_DOUBLE)) ||
-         node->type == NODE_TYPE_REFERENCE;
+                                            node->value.type == VALUE_TYPE_DOUBLE));
 }
 
 static bool applyFulltextOptimization(EnumerateListNode* elnode,
@@ -4505,40 +4540,39 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   AstNode* attrArg = fargs->getMember(1);
   AstNode* queryArg = fargs->getMember(2);
   AstNode* limitArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
-  if ((collArg->type != NODE_TYPE_COLLECTION && collArg->type != NODE_TYPE_VALUE) ||
-      !isValueTypeString(attrArg) || !isValueTypeString(queryArg) ||
+  if (!isValueTypeCollection(collArg) || !isValueTypeString(attrArg) ||
+      !isValueTypeString(queryArg) || // (...  || queryArg->type == NODE_TYPE_REFERENCE)
       (limitArg != nullptr && !isValueTypeNumber(limitArg))) {
     return false;
   }
   
   std::string name = collArg->getString();
   TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
-  aql::Collections* colls = plan->getAst()->query()->collections();
-  aql::Collection const* coll = colls->add(name, AccessMode::Type::READ);
   std::vector<basics::AttributeName> field;
   TRI_ParseAttributeString(attrArg->getString(), field, /*allowExpansion*/false);
   if (field.empty()) {
     return false;
   }
   
-  //check for suitiable indexes
-  std::shared_ptr<LogicalCollection> logical = coll->getCollection();
+  // check for suitable indexes
   std::shared_ptr<arangodb::Index> index;
-  for (auto idx : logical->getIndexes()) {
-    if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-      TRI_ASSERT(idx->fields().size() == 1);
-      if (basics::AttributeName::isIdentical(idx->fields()[0], field, false)) {
-        index = idx;
-        break;
+  methods::Collections::lookup(vocbase, name, [&](LogicalCollection* logical) {
+    for (auto idx : logical->getIndexes()) {
+      if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+        TRI_ASSERT(idx->fields().size() == 1);
+        if (basics::AttributeName::isIdentical(idx->fields()[0], field, false)) {
+          index = idx;
+          break;
+        }
       }
     }
-  }
+  });
   if (!index) { // no index found
     return false;
   }
   
   Ast* ast = plan->getAst();  
-  AstNode* args = ast->createNodeArray(2);
+  AstNode* args = ast->createNodeArray(3 + (limitArg != nullptr ? 0 : 1));
   args->addMember(ast->clone(collArg));  // only so createNodeFunctionCall doesn't throw
   args->addMember(attrArg);
   args->addMember(queryArg);
@@ -4551,6 +4585,19 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   condition->andCombine(cond);
   condition->normalize(plan);
   
+  // we assume by now that collection `name` exists
+  aql::Collections* colls = plan->getAst()->query()->collections();
+  aql::Collection* coll = colls->get(name);
+  if (coll == nullptr) { // TODO: cleanup this mess
+    coll = colls->add(name, AccessMode::Type::READ);
+    if (!ServerState::instance()->isCoordinator()) {
+      TRI_ASSERT(coll != nullptr);
+      coll->setCollection(vocbase->lookupCollection(name));
+      // FIXME: does this need to happen in the coordinator?
+      plan->getAst()->query()->trx()->addCollectionAtRuntime(name);
+    }
+  }
+  
   auto indexNode = new IndexNode(plan, plan->nextId(), vocbase,
                                  coll, elnode->outVariable(),
                                  std::vector<transaction::Methods::IndexHandle>{
@@ -4559,6 +4606,9 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   plan->registerNode(indexNode);
   condition.release();
   plan->replaceNode(elnode, indexNode);
+  // mark removable, because it will not throw for most params
+  // FIXME: technically we need to validate the query parameter
+  calcNode->canRemoveIfThrows(true);
 
   if (limitArg != nullptr && limitNode == nullptr) { // add LIMIT
     size_t limit = static_cast<size_t>(limitArg->getIntValue());
@@ -4573,6 +4623,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
     }
     limitNode->addDependency(indexNode);
   }
+  
   return true;
 }
 

@@ -23,6 +23,7 @@
 
 #include "tests_shared.hpp"
 #include "search/all_filter.hpp"
+#include "search/all_iterator.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/disjunction.hpp"
 #include "search/min_match_disjunction.hpp"
@@ -4405,6 +4406,13 @@ TEST(And_test, optimize_double_negation) {
   ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
 }
 
+TEST(And_test, prepare_empty_filter) {
+  irs::And root;
+  auto prepared = root.prepare(empty_index_reader::instance());
+  ASSERT_NE(nullptr, prepared);
+  ASSERT_EQ(typeid(irs::filter::prepared::empty().get()), typeid(prepared.get()));
+}
+
 TEST(And_test, optimize_single_node) {
   // simple hierarchy
   {
@@ -4424,6 +4432,55 @@ TEST(And_test, optimize_single_node) {
 
     auto prepared = root.prepare(empty_index_reader::instance());
     ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+  }
+}
+
+TEST(And_test, optimize_all_filters) {
+  // single `all` filter
+  {
+    irs::And root;
+    root.add<irs::all>().boost(5.f);
+
+    auto prepared = root.prepare(empty_index_reader::instance());
+    ASSERT_EQ(typeid(irs::all().prepare(empty_index_reader::instance()).get()), typeid(prepared.get()));
+    ASSERT_EQ(5.f, irs::boost::extract(prepared->attributes()));
+  }
+
+  // multiple `all` filters
+  {
+    irs::And root;
+    root.add<irs::all>().boost(5.f);
+    root.add<irs::all>().boost(2.f);
+    root.add<irs::all>().boost(3.f);
+
+    auto prepared = root.prepare(empty_index_reader::instance());
+    ASSERT_EQ(typeid(irs::all().prepare(empty_index_reader::instance()).get()), typeid(prepared.get()));
+    ASSERT_EQ(30.f, irs::boost::extract(prepared->attributes()));
+  }
+
+  // multiple `all` filters + term filter
+  {
+    irs::And root;
+    auto& term = root.add<irs::by_term>();
+    term.field("test_field").term("test_term");
+    root.add<irs::all>().boost(5.f);
+    root.add<irs::all>().boost(2.f);
+
+    auto prepared = root.prepare(empty_index_reader::instance());
+    ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+    ASSERT_EQ(10.f, irs::boost::extract(prepared->attributes()));
+  }
+
+  // `all` filter + term filter
+  {
+    irs::And root;
+    auto& term = root.add<irs::by_term>();
+    term.field("test_field").term("test_term");
+    root.add<irs::all>().boost(5.f);
+
+    auto prepared = root.prepare(empty_index_reader::instance());
+    ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+    ASSERT_EQ(5.f, irs::boost::extract(prepared->attributes()));
   }
 }
 

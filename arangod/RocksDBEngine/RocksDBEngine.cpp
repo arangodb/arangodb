@@ -130,7 +130,8 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
       _intermediateCommitCount(
           transaction::Options::defaultIntermediateCommitCount),
       _pruneWaitTime(10.0),
-      _releasedTick(0) {
+      _releasedTick(0),
+      _useThrottle(true) {
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine and the MMFiles PersistentIndexFeature
   startsAfter("RocksDBOption");
@@ -139,15 +140,34 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
 }
 
 RocksDBEngine::~RocksDBEngine() {
-  // turn off RocksDBThrottle, and release our pointers to it
-  if (nullptr != _listener.get()) {
-    _listener->StopThread();
-    _listener.reset();
-    _options.listeners.clear();
-  } // if
+  shutdownRocksDBInstance(); 
+}
 
-  delete _db;
-  _db = nullptr;
+/// shuts down the RocksDB instance. this is called from unprepare
+/// and the dtor
+void RocksDBEngine::shutdownRocksDBInstance() noexcept {
+  if (_db) {
+    // turn off RocksDBThrottle, and release our pointers to it
+    if (nullptr != _listener.get()) {
+      _listener->StopThread();
+    } // if
+    
+    for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
+      _db->DestroyColumnFamilyHandle(h);
+    }
+    
+    // now prune all obsolete WAL files
+    try {
+      determinePrunableWalFiles(0);
+      pruneWalFiles();
+    } catch (...) {
+      // this is allowed to go wrong on shutdown
+      // we must not throw an exception from here
+    }
+
+    delete _db;
+    _db = nullptr;
+  }
 }
 
 // inherited from ApplicationFeature
@@ -178,6 +198,10 @@ void RocksDBEngine::collectOptions(
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
+  
+  options->addOption("--rocksdb.throttle",
+                     "enable write-throttling",
+                     new BooleanParameter(&_useThrottle));
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -370,8 +394,10 @@ void RocksDBEngine::start() {
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   _options.bloom_locality = 1;
 
-  _listener.reset(new RocksDBThrottle);
-  _options.listeners.push_back(_listener);
+  if (_useThrottle) {
+    _listener.reset(new RocksDBThrottle);
+    _options.listeners.push_back(_listener);
+  }
 
   // this is cfFamilies.size() + 2 ... but _option needs to be set before
   //  building cfFamilies
@@ -508,7 +534,9 @@ void RocksDBEngine::start() {
   }
 
   // give throttle access to families
-  _listener->SetFamilies(cfHandles);
+  if (_useThrottle) {
+    _listener->SetFamilies(cfHandles);
+  }
 
   // set our column families
   RocksDBColumnFamily::_definitions = cfHandles[0];
@@ -611,18 +639,7 @@ void RocksDBEngine::unprepare() {
     return;
   }
 
-  if (_db) {
-    for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
-      _db->DestroyColumnFamilyHandle(h);
-    }
-
-    // now prune all obsolete WAL files
-    determinePrunableWalFiles(0);
-    pruneWalFiles();
-
-    delete _db;
-    _db = nullptr;
-  }
+  shutdownRocksDBInstance();
 }
 
 TransactionManager* RocksDBEngine::createTransactionManager() {
@@ -742,7 +759,7 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
   auto result = rocksutils::convertStatus(res);
 
   if (result.errorNumber() != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(result.errorNumber());
+    THROW_ARANGO_EXCEPTION(result);
   }
 
   VPackSlice fullParameters = RocksDBValue::data(value);
@@ -1206,7 +1223,7 @@ void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
   auto status = rocksutils::convertStatus(res);
 
   if (!status.ok()) {
-    THROW_ARANGO_EXCEPTION(status.errorNumber());
+    THROW_ARANGO_EXCEPTION(status);
   }
 }
 
@@ -1334,7 +1351,7 @@ Result RocksDBEngine::registerRecoveryHelper(
     std::shared_ptr<RocksDBRecoveryHelper> helper) {
   try {
     _recoveryHelpers.emplace_back(helper);
-  } catch (std::bad_alloc const& ex) {
+  } catch (std::bad_alloc const&) {
     return {TRI_ERROR_OUT_OF_MEMORY};
   }
 
