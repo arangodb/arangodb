@@ -1724,10 +1724,38 @@ AqlValue Functions::DateLeapYear(arangodb::aql::Query* query,
     }
   }
 
-  return AqlValue(AqlValueHintBOOL(year_month_day(floor<days>(tp)).is_leap()));
+  return AqlValue(AqlValueHintBool(year_month_day(floor<days>(tp)).year().is_leap()));
 }
 
+/// @brief function DATE_QUARTER
+AqlValue Functions::DateQuarter(arangodb::aql::Query* query,
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
 
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (!value.isString() && !value.isNumber() ) {
+    RegisterInvalidArgumentWarning(query, "DATE_QUARTER");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  system_clock::time_point tp;
+
+  if (value.isNumber()) {
+    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
+  } else {
+    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
+      RegisterWarning(query, "DATE_QUARTER", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  return AqlValue(AqlValueHintUInt(
+    static_cast<uint64_t>(ceil( unsigned(year_month_day(floor<days>(tp)).month()) / 3.0f ))
+  ));
+}
 
 
 

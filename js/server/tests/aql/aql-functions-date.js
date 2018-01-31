@@ -1023,16 +1023,16 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_LEAPYEAR(1, 1))");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_LEAPYEAR(1, 1)))");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_LEAPYEAR(null))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_LEAPYEAR(null))");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_LEAPYEAR(null)))");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_LEAPYEAR(false))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_LEAPYEAR(false))");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_LEAPYEAR(false)))");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_LEAPYEAR([]))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_LEAPYEAR([]))");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_LEAPYEAR([])))");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_LEAPYEAR({}))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_LEAPYEAR({}))");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_LEAPYEAR({})))");
     },
 
@@ -1096,7 +1096,98 @@ function ahuacatlDateFunctionsTestSuite () {
       });
     },
 
-// TODO: DATE_QUARTER()
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_quarter function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDateQuarterInvalid() {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_QUARTER())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_QUARTER()))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_QUARTER(1, 1))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_QUARTER(1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_QUARTER(null))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_QUARTER(null)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_QUARTER(false))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_QUARTER(false)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_QUARTER([]))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_QUARTER([])))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_QUARTER({}))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_QUARTER({})))");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_quarter function
+////////////////////////////////////////////////////////////////////////////////
+
+testDateQuarter() {
+  const values = [
+    [ "2000-04-29", 2 ],
+    [ "2000-04-29Z", 2 ],
+    [ "2000-12-31", 4 ],
+    [ "2000-12-31Z", 4 ],
+    [ "2100-12-31", 4 ],
+    [ "2100-12-31Z", 4 ],
+    [ "2400-12-31", 4 ],
+    [ "2400-12-31Z", 4 ],
+    [ "2012-02-12 13:24:12", 1 ],
+    [ "2012-02-12 13:24:12Z", 1 ],
+    [ "2012-02-12 23:59:59.991", 1 ],
+    [ "2012-02-12 23:59:59.991Z", 1 ],
+    [ "2012-02-12", 1 ],
+    [ "2012-02-12Z", 1 ],
+    [ "2012-02-12T13:24:12Z", 1 ],
+    [ "2012-02-12Z", 1 ],
+    [ "2012-2-12Z", 1 ],
+    [ "1910-01-02T03:04:05Z", 1 ],
+    [ "1910-01-02 03:04:05Z", 1 ],
+    [ "1910-01-02", 1 ],
+    [ "1910-01-02Z", 1 ],
+    [ "1970-01-01T01:05:27", 1 ],
+    [ "1970-01-01T01:05:27Z", 1 ],
+    [ "1970-01-01 01:05:27Z", 1 ],
+    [ "1970-1-1Z", 1 ],
+    [ "1221-02-28T23:59:59Z", 1 ],
+    [ "1221-02-28 23:59:59Z", 1 ],
+    [ '2017-08-28', 3 ],
+    [ '2017-09-11', 3 ],
+    [ "1221-02-28Z", 1 ],
+    [ "1221-2-28Z", 1 ],
+    [ "1000-12-24T04:12:00Z", 4 ],
+    [ "1000-12-24Z", 4 ],
+    [ "1000-12-24 04:12:00Z", 4 ],
+    [ "2016Z", 1 ],
+    [ "2016z", 1 ],
+    [ "2016", 1 ],
+    [ "2016-1Z", 1 ],
+    [ "2016-1z", 1 ],
+    [ "2016-1-1z", 1 ],
+    [ "2016-01-01Z", 1 ],
+    [ "2016-01-01Z", 1 ],
+    [ "  2016-01-01Z", 1 ],
+    [ "  2016-01-01z", 1 ],
+    [ 1399395674000, 2 ],
+    [ 60123, 1 ],
+    [ 1, 1 ],
+    [ 0, 1 ]
+  ];
+
+  values.forEach(function (value) {
+    assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(DATE_QUARTER(@value))", { value: value[0] }));
+    assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(V8(DATE_QUARTER(@value)))", { value: value[0] }));
+  });
+},
+
+
+
+
+
+
+
 // TODO: DATE_DAYS_IN_MONTH()
 
 // TODO: additional ISO duration tests for DATE_ADD() / DATE_SUBTRACT()

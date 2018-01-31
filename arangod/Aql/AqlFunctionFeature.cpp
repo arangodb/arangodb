@@ -444,7 +444,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_LEAPYEAR", ".", true, false, true,
        true, &Functions::DateLeapYear});
   add({"DATE_QUARTER", ".", true, false, true,
-       true});
+       true, &Functions::DateQuarter});
   add({"DATE_DAYS_IN_MONTH", ".", true, false,
        true, true});
   add({"DATE_ADD", ".,.|.", true, false, true, true});
