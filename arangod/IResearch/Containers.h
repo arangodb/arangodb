@@ -51,14 +51,16 @@ template<typename T>
 class AsyncValue {
   typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
  public:
+  AsyncValue(): _readMutex(_mutex) {}
   T get() const { return _value.load(); }
-  ReadMutex mutex() const { return ReadMutex(_mutex); } // prevent modification
+  ReadMutex& mutex() const { return _readMutex; } // prevent modification
 
  protected:
-  mutable irs::async_utils::read_write_mutex _mutex; // read-lock to prevent value modification
+  irs::async_utils::read_write_mutex _mutex; // read-lock to prevent value modification
+  mutable ReadMutex _readMutex; // object that can be referenced by std::unique_lock
   std::atomic<T> _value;
 
-  explicit AsyncValue(T value): _value(value) {}
+  explicit AsyncValue(T value): _readMutex(_mutex), _value(value) {}
 };
 
 ////////////////////////////////////////////////////////////////////////////////
