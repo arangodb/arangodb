@@ -110,6 +110,8 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
   }
 
   TRI_DEFER(_vocbase->replicationApplier()->allowStart());
+  
+  double startTime = TRI_microtime();
 
   try {
     setProgress("fetching master state");
@@ -212,8 +214,15 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
 
     sendFinishBatch();
 
+
     if (res != TRI_ERROR_NO_ERROR && errorMsg.empty()) {
       errorMsg = TRI_errno_string(res);
+    }
+   
+    if (errorMsg.empty()) { 
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "initial synchronization with master successful. took: " << Logger::FIXED(TRI_microtime() - startTime, 6) << " s";
+    } else {
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "initial synchronization with master failed with error '" << errorMsg << "'. took: " << Logger::FIXED(TRI_microtime() - startTime, 6) << " s";
     }
 
     return res;
@@ -240,7 +249,7 @@ int InitialSyncer::sendFlush(std::string& errorMsg) {
       "\"waitForCollectorQueue\":true}";
 
   // send request
-  std::string const progress = "send WAL flush command to url " + url;
+  std::string const progress = "sending WAL flush command to url " + url;
   setProgress(progress);
 
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
@@ -278,7 +287,7 @@ int InitialSyncer::sendStartBatch(std::string& errorMsg) {
   std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
   // send request
-  std::string const progress = "send batch start command to url " + url;
+  std::string const progress = "sending batch start command to url " + url;
   setProgress(progress);
 
   double const now = TRI_microtime();
@@ -340,13 +349,14 @@ int InitialSyncer::sendExtendBatch() {
   std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
   // send request
-  std::string const progress = "send batch extend command to url " + url;
+  std::string const progress = "sending batch extend command to url " + url;
   setProgress(progress);
 
   std::unique_ptr<SimpleHttpResult> response(
       _client->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
+    LOG_TOPIC(WARN, Logger::REPLICATION) << progress << " failed. master did not reply";
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
 
@@ -355,6 +365,7 @@ int InitialSyncer::sendExtendBatch() {
   int res = TRI_ERROR_NO_ERROR;
 
   if (response->wasHttpError()) {
+    LOG_TOPIC(WARN, Logger::REPLICATION) << progress << " failed with error: " << response->getHttpReturnMessage();
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
   } else {
     _batchUpdateTime = now;
@@ -374,7 +385,7 @@ int InitialSyncer::sendFinishBatch() {
                             "?serverId=" + _localServerIdString;
 
     // send request
-    std::string const progress = "send batch finish command to url " + url;
+    std::string const progress = "sending batch finish command to url " + url;
     setProgress(progress);
 
     std::unique_ptr<SimpleHttpResult> response(
@@ -411,7 +422,7 @@ bool InitialSyncer::checkAborted() {
 }
 
 /// @brief apply the data from a collection dump
-int InitialSyncer::applyCollectionDump(transaction::Methods& trx,
+int InitialSyncer::applyCollectionDump(SingleCollectionTransaction& trx,
                                        LogicalCollection* coll,
                                        SimpleHttpResult* response,
                                        uint64_t& markersProcessed,
@@ -426,7 +437,14 @@ int InitialSyncer::applyCollectionDump(transaction::Methods& trx,
   // buffer must end with a NUL byte
   TRI_ASSERT(*end == '\0');
 
-  auto builder = std::make_shared<VPackBuilder>();
+  if (_sharedBuilder == nullptr) {
+    _sharedBuilder = std::make_shared<VPackBuilder>();
+  } else {
+    _sharedBuilder->clear();
+  }
+    
+  std::string const typeString("type");
+  std::string const dataString("data");
 
   while (p < end) {
     char const* q = strchr(p, '\n');
@@ -443,8 +461,8 @@ int InitialSyncer::applyCollectionDump(transaction::Methods& trx,
     TRI_ASSERT(q <= end);
 
     try {
-      builder->clear();
-      VPackParser parser(builder);
+      _sharedBuilder->clear();
+      VPackParser parser(_sharedBuilder);
       parser.parse(p, static_cast<size_t>(q - p));
     } catch (...) {
       // TODO: improve error reporting
@@ -453,7 +471,7 @@ int InitialSyncer::applyCollectionDump(transaction::Methods& trx,
 
     p = q + 1;
 
-    VPackSlice const slice = builder->slice();
+    VPackSlice const slice = _sharedBuilder->slice();
 
     if (!slice.isObject()) {
       errorMsg = invalidMsg;
@@ -462,42 +480,41 @@ int InitialSyncer::applyCollectionDump(transaction::Methods& trx,
     }
 
     TRI_replication_operation_e type = REPLICATION_INVALID;
-    std::string key;
-    std::string rev;
     VPackSlice doc;
 
-    for (auto const& it : VPackObjectIterator(slice)) {
-      std::string const attributeName(it.key.copyString());
-
-      if (attributeName == "type") {
+    for (auto const& it : VPackObjectIterator(slice, true)) {
+      if (it.key.isEqualString(typeString)) {
         if (it.value.isNumber()) {
           type = static_cast<TRI_replication_operation_e>(
               it.value.getNumber<int>());
         }
-      }
-
-      else if (attributeName == "data") {
+      } else if (it.key.isEqualString(dataString)) {
         if (it.value.isObject()) {
           doc = it.value;
         }
       }
     }
 
+    char const* key = nullptr;
+    VPackValueLength keyLength = 0;
+    char const* rev = nullptr;
+    VPackValueLength revLength = 0;
+
     if (!doc.isNone()) {
       VPackSlice value = doc.get(StaticStrings::KeyString);
       if (value.isString()) {
-        key = value.copyString();
+        key = value.getString(keyLength);
       }
 
       value = doc.get(StaticStrings::RevString);
 
       if (value.isString()) {
-        rev = value.copyString();
+        rev = value.getString(revLength);
       }
     }
 
     // key must not be empty, but doc can be empty
-    if (key.empty()) {
+    if (key == nullptr || keyLength == 0) {
       errorMsg = invalidMsg;
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -505,15 +522,15 @@ int InitialSyncer::applyCollectionDump(transaction::Methods& trx,
 
     ++markersProcessed;
 
-    VPackBuilder oldBuilder;
-    oldBuilder.openObject();
-    oldBuilder.add(StaticStrings::KeyString, VPackValue(key));
-    if (!rev.empty()) {
-      oldBuilder.add(StaticStrings::RevString, VPackValue(rev));
+    transaction::BuilderLeaser oldBuilder(&trx);
+    oldBuilder->openObject(true);
+    oldBuilder->add(StaticStrings::KeyString, VPackValuePair(key, keyLength, VPackValueType::String));
+    if (rev != nullptr && revLength > 0) {
+      oldBuilder->add(StaticStrings::RevString, VPackValuePair(rev, revLength, VPackValueType::String));
     }
-    oldBuilder.close();
+    oldBuilder->close();
 
-    VPackSlice const old = oldBuilder.slice();
+    VPackSlice const old = oldBuilder->slice();
 
     int res = applyCollectionDumpMarker(trx, coll, type, old, doc,
                                         errorMsg);
@@ -522,7 +539,7 @@ int InitialSyncer::applyCollectionDump(transaction::Methods& trx,
       return res;
     }
   }
-
+      
   // reached the end
   return TRI_ERROR_NO_ERROR;
 }
@@ -589,6 +606,7 @@ int InitialSyncer::handleCollectionDump(arangodb::LogicalCollection* coll,
     if (batch == 1) {
       headers["X-Arango-Async"] = "store";
     }
+    
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
         rest::RequestType::GET, url, nullptr, 0, headers));
 
@@ -715,6 +733,9 @@ int InitialSyncer::handleCollectionDump(arangodb::LogicalCollection* coll,
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), coll->cid(),
           AccessMode::Type::EXCLUSIVE);
+        
+      trx.addHint(
+          transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
       res = trx.begin();
 
