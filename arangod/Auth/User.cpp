@@ -105,8 +105,8 @@ static int HexHashFromData(std::string const& hashMethod,
 
 static void AddSource(VPackBuilder& builder, auth::Source source) {
   switch (source) {
-    case auth::Source::LOCAL:
-      builder.add("source", VPackValue("COLLECTION"));
+    case auth::Source::LOCAL: // used to be collection
+      builder.add("source", VPackValue("LOCAL"));
       break;
     case auth::Source::LDAP:
       builder.add("source", VPackValue("LDAP"));

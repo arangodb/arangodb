@@ -180,7 +180,6 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
   }
 
   VPackSlice doc = usersSlice.at(0);
-
   if (doc.isExternal()) {
     doc = doc.resolveExternals();
   }
@@ -300,7 +299,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
       if (userDoc.isExternal()) {
         userDoc = userDoc.resolveExternal();
       }
-
+      
       // parse user including document _key
       auth::User created = auth::User::fromDocument(userDoc);
       TRI_ASSERT(!created.key().empty() && created.rev() != 0);
@@ -341,11 +340,12 @@ void auth::UserManager::createRootUser() {
   WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
   auto it = _userCache.find("root");
   if (it != _userCache.end()) {
-    LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "Root already exists";
+    LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "\"root\" already exists";
     return;
   }
   TRI_ASSERT(_userCache.empty());
-
+  LOG_TOPIC(INFO, Logger::AUTHENTICATION) << "Creating user \"root\"";
+  
   try {
     // Attention:
     // the root user needs to have a specific rights grant
@@ -464,11 +464,11 @@ Result auth::UserManager::enumerateUsers(
   std::vector<auth::User> toUpdate;
   {  // users are later updated with rev ID for consistency
     READ_LOCKER(readGuard, _userCacheLock);
-    for (auto& it : _userCache) {
+    for (UserMap::value_type& it : _userCache) {
       if (it.second.source() == auth::Source::LDAP) {
         continue;
       }
-      auth::User user(it.second);
+      auth::User user = it.second; // copy user object
       TRI_ASSERT(!user.key().empty() && user.rev() != 0);
       if (func(user)) {
         toUpdate.emplace_back(std::move(user));
@@ -541,7 +541,7 @@ Result auth::UserManager::accessUser(std::string const& user,
 
   loadFromDB();
   READ_LOCKER(readGuard, _userCacheLock);
-  auto it = _userCache.find(user);
+  UserMap::iterator const& it = _userCache.find(user);
   if (it != _userCache.end()) {
     return func(it->second);
   }
@@ -550,13 +550,19 @@ Result auth::UserManager::accessUser(std::string const& user,
 
 VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
   loadFromDB();
-  // will query db directly, no need for _userCacheLock
-  VPackBuilder doc = QueryUser(_queryRegistry, user);
-  VPackBuilder result;
-  if (!doc.isEmpty()) {
-    ConvertLegacyFormat(doc.slice(), result);
+  
+  READ_LOCKER(readGuard, _userCacheLock);
+
+  UserMap::iterator const& it = _userCache.find(user);
+  if (it != _userCache.end()) {
+    VPackBuilder tmp = it->second.toVPackBuilder();
+    if (!tmp.isEmpty() && !tmp.slice().isNone()) {
+      VPackBuilder result;
+      ConvertLegacyFormat(tmp.slice(), result);
+      return result;
+    }
   }
-  return result;
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_USER_NOT_FOUND); // FIXME do not use
 }
 
 static Result RemoveUserInternal(auth::User const& entry) {

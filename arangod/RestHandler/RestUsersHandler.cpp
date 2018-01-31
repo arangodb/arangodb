@@ -189,16 +189,16 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
 
 /// generate response for /_api/user/database?full=true/false
 void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
-                                              std::string const& user,
+                                              std::string const& username,
                                               bool full) {
   // return list of databases
   VPackBuilder data;
   data.openObject();
-  Result res = um->accessUser(user, [&](auth::User const& entry) {
+  Result res = um->accessUser(username, [&](auth::User const& user) {
     DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-      auth::Level lvl = entry.databaseAuthLevel(vocbase->name());
+      auth::Level lvl = user.databaseAuthLevel(vocbase->name());
       std::string str = "undefined";
-      if (entry.hasSpecificDatabase(vocbase->name())) {
+      if (user.hasSpecificDatabase(vocbase->name())) {
         str = convertFromAuthLevel(lvl);
       }
 
@@ -208,21 +208,21 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
         VPackObjectBuilder b2(&data, "collections", true);
         methods::Collections::enumerate(
             vocbase, [&](LogicalCollection* c) {
-              if (entry.hasSpecificCollection(vocbase->name(), c->name())) {
-                lvl = entry.collectionAuthLevel(vocbase->name(), c->name());
+              if (user.hasSpecificCollection(vocbase->name(), c->name())) {
+                lvl = user.collectionAuthLevel(vocbase->name(), c->name());
                 data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
               } else {
                 data.add(c->name(), VPackValue("undefined"));
               }
             });
-        lvl = um->canUseCollectionNoLock(user, vocbase->name(), "*");
+        lvl = user.collectionAuthLevel(vocbase->name(), "*");
         data.add("*", VPackValue(convertFromAuthLevel(lvl)));
       } else if (lvl != auth::Level::NONE) {  // hide db's without access
         data.add(vocbase->name(), VPackValue(str));
       }
     });
     if (full) {
-      auth::Level lvl = um->canUseDatabaseNoLock(user, "*");
+      auth::Level lvl = user.databaseAuthLevel("*");
       data("*", VPackValue(VPackValueType::Object))(
           "permission", VPackValue(convertFromAuthLevel(lvl)))();
     }
