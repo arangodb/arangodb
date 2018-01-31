@@ -116,10 +116,12 @@ class User {
   /// Time in seconds (since epoch) when user was loaded
   double loaded() const { return _loaded; }
   
-  std::set<std::string> roles() const { return _roles; }
+#ifdef USE_ENTERPRISE
+  std::set<std::string> const& roles() const { return _roles; }
   void setRoles(std::set<std::string> const& roles) {
     _roles = roles;
   }
+#endif
 
  private:
   User(std::string&& key, TRI_voc_rid_t rid);
