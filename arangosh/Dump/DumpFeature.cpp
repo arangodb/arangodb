@@ -89,7 +89,7 @@ arangodb::Result checkHttpResponse(
 
 namespace {
 /// @brief checks that a file pointer is valid and file status is ok
-bool fileOk(arangodb::ManagedDirectory::File* file) noexcept {
+bool fileOk(arangodb::ManagedDirectory::File* file) {
   return (file && file->status().ok());
 }
 }  // namespace
@@ -215,7 +215,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
                                 arangodb::ManagedDirectory::File& file,
                                 std::string const& name,
                                 std::string const& server, uint64_t batchId,
-                                uint64_t minTick, uint64_t maxTick) noexcept {
+                                uint64_t minTick, uint64_t maxTick) {
   using arangodb::basics::StringUtils::boolean;
   using arangodb::basics::StringUtils::itoa;
   using arangodb::basics::StringUtils::uint64;
@@ -315,7 +315,7 @@ namespace {
 arangodb::Result handleCollection(
     arangodb::httpclient::SimpleHttpClient& client,
     arangodb::DumpFeature::JobData& jobData,
-    arangodb::ManagedDirectory::File& file) noexcept {
+    arangodb::ManagedDirectory::File& file) {
   // keep the batch alive
   ::extendBatch(client, "", jobData.batchId);
 
@@ -330,7 +330,7 @@ namespace {
 arangodb::Result handleCollectionCluster(
     arangodb::httpclient::SimpleHttpClient& client,
     arangodb::DumpFeature::JobData& jobData,
-    arangodb::ManagedDirectory::File& file) noexcept {
+    arangodb::ManagedDirectory::File& file) {
   arangodb::Result result{TRI_ERROR_NO_ERROR};
 
   // First we have to go through all the shards, what are they?
@@ -380,7 +380,7 @@ arangodb::Result handleCollectionCluster(
 namespace {
 /// @brief process a single job from the queue
 arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
-                            arangodb::DumpFeature::JobData& jobData) noexcept {
+                            arangodb::DumpFeature::JobData& jobData) {
   arangodb::Result result{TRI_ERROR_NO_ERROR};
 
   // prep hex string of collection name
@@ -434,7 +434,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
 namespace {
 /// @brief handle the result of a single job
 void handleJobResult(std::unique_ptr<arangodb::DumpFeature::JobData>&& jobData,
-                     arangodb::Result const& result) noexcept {
+                     arangodb::Result const& result) {
   if (result.fail()) {
     jobData->feature.reportError(result);
   }
@@ -443,7 +443,7 @@ void handleJobResult(std::unique_ptr<arangodb::DumpFeature::JobData>&& jobData,
 
 namespace arangodb {
 
-DumpFeature::Stats::Stats(uint64_t b, uint64_t c, uint64_t w) noexcept
+DumpFeature::Stats::Stats(uint64_t b, uint64_t c, uint64_t w)
     : totalBatches{b}, totalCollections{c}, totalWritten{w} {}
 
 DumpFeature::JobData::JobData(DumpFeature& feat, ManagedDirectory& dir,
@@ -453,7 +453,7 @@ DumpFeature::JobData::JobData(DumpFeature& feat, ManagedDirectory& dir,
                               uint64_t const& chunkMax, uint64_t const& tStart,
                               uint64_t const& tEnd, uint64_t const batch,
                               std::string const& c, std::string const& n,
-                              std::string const& t) noexcept
+                              std::string const& t)
     : feature{feat},
       directory{dir},
       stats{stat},
@@ -873,7 +873,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client) {
   return {TRI_ERROR_NO_ERROR};
 }
 
-void DumpFeature::reportError(Result const& error) noexcept {
+void DumpFeature::reportError(Result const& error) {
   try {
     MUTEX_LOCKER(lock, _workerErrorLock);
     _workerErrors.emplace(error);

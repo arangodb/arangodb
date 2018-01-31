@@ -33,7 +33,7 @@
 
 namespace {
 arangodb::Result getHttpErrorMessage(
-    arangodb::httpclient::SimpleHttpResult* result) noexcept {
+    arangodb::httpclient::SimpleHttpResult* result) {
   using arangodb::basics::VelocyPackHelper;
   using arangodb::basics::StringUtils::itoa;
 

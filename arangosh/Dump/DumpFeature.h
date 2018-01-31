@@ -41,7 +41,7 @@ class DumpFeature : public application_features::ApplicationFeature {
  public:
   /// @brief Stores stats about the overall dump progress
   struct Stats {
-    Stats(uint64_t b, uint64_t c, uint64_t w) noexcept;
+    Stats(uint64_t b, uint64_t c, uint64_t w);
     std::atomic<uint64_t> totalBatches;
     std::atomic<uint64_t> totalCollections;
     std::atomic<uint64_t> totalWritten;
@@ -53,7 +53,7 @@ class DumpFeature : public application_features::ApplicationFeature {
             bool const&, bool const&, bool const&, uint64_t const&,
             uint64_t const&, uint64_t const&, uint64_t const&, uint64_t const,
             std::string const&, std::string const&,
-            std::string const&) noexcept;
+            std::string const&);
     DumpFeature& feature;
     ManagedDirectory& directory;
     Stats& stats;
@@ -93,7 +93,7 @@ class DumpFeature : public application_features::ApplicationFeature {
    * @brief Saves a worker error for later handling and clears queued jobs
    * @param error Error from a client worker
    */
-  void reportError(Result const& error) noexcept;
+  void reportError(Result const& error);
 
  private:
   Result runDump(httpclient::SimpleHttpClient& client, std::string& dbName);

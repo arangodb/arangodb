@@ -63,20 +63,20 @@ class ManagedDirectory {
     /**
      * @brief Closes the file if it is still open
      */
-    ~File() noexcept;
+    ~File();
 
    public:
     /**
      * @brief Returns a reference to the status of the file
      * @return Reference to result object describing file status
      */
-    Result const& status() const noexcept;
+    Result const& status() const;
 
     /**
      * @brief Returns a reference to the path to the file
      * @return Reference to file path
      */
-    std::string const& path() const noexcept;
+    std::string const& path() const;
 
     /**
      * @brief Writes data to the given file, using encryption if enabled
@@ -139,7 +139,7 @@ class ManagedDirectory {
    * @param create       If `true` and directory does not exist, create it
    */
   ManagedDirectory(std::string const& path, bool requireEmpty, bool create);
-  ~ManagedDirectory() noexcept;
+  ~ManagedDirectory();
 
  public:
   /**
@@ -149,7 +149,7 @@ class ManagedDirectory {
    *
    * @return Reference to result object describing directory status
    */
-  Result const& status() const noexcept;
+  Result const& status() const;
 
   /**
    * @brief Resets the status to allow for further operation after error
@@ -160,7 +160,7 @@ class ManagedDirectory {
    * @brief Returns the path to the directory under management
    * @return Path under management
    */
-  std::string const& path() const noexcept;
+  std::string const& path() const;
 
   /**
    * @brief Build the fully-qualified file name
@@ -179,14 +179,14 @@ class ManagedDirectory {
    * @brief Returns the type of encryption used for the directory
    * @return The type of encryption used (may be "none")
    */
-  std::string const& encryptionType() const noexcept;
+  std::string const& encryptionType() const;
 
 #ifdef USE_ENTERPRISE
   /**
    * @brief Returns a pointer to the `EncryptionFeature` instance
    * @return A pointer to the feature
    */
-  EncryptionFeature const* encryptionFeature() const noexcept;
+  EncryptionFeature const* encryptionFeature() const;
 #endif
 
   /**

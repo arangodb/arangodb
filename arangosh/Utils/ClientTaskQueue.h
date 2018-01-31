@@ -163,7 +163,7 @@ class ClientTaskQueue {
 
    public:
     explicit Worker(ClientTaskQueue<JobData>&,
-                          std::unique_ptr<httpclient::SimpleHttpClient>&&);
+                    std::unique_ptr<httpclient::SimpleHttpClient>&&);
     virtual ~Worker();
 
     bool isIdle() const noexcept;  // not currently processing a job
@@ -197,8 +197,8 @@ class ClientTaskQueue {
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename JobData>
-ClientTaskQueue<JobData>::ClientTaskQueue(JobProcessor processJob,
-                                          JobResultHandler handleJobResult)
+inline ClientTaskQueue<JobData>::ClientTaskQueue(
+    JobProcessor processJob, JobResultHandler handleJobResult)
     : _processJob(processJob), _handleJobResult(handleJobResult) {}
 
 template <typename JobData>
@@ -210,7 +210,7 @@ ClientTaskQueue<JobData>::~ClientTaskQueue() {
 }
 
 template <typename JobData>
-bool ClientTaskQueue<JobData>::spawnWorkers(
+inline bool ClientTaskQueue<JobData>::spawnWorkers(
     ClientManager& manager, uint32_t const& numWorkers) noexcept {
   uint32_t spawned = 0;
   try {
@@ -227,7 +227,7 @@ bool ClientTaskQueue<JobData>::spawnWorkers(
 }
 
 template <typename JobData>
-bool ClientTaskQueue<JobData>::isQueueEmpty() const noexcept {
+inline bool ClientTaskQueue<JobData>::isQueueEmpty() const noexcept {
   bool isEmpty = false;
   try {
     MUTEX_LOCKER(lock, _jobsLock);
@@ -238,7 +238,7 @@ bool ClientTaskQueue<JobData>::isQueueEmpty() const noexcept {
 }
 
 template <typename JobData>
-bool ClientTaskQueue<JobData>::allWorkersBusy() const noexcept {
+inline bool ClientTaskQueue<JobData>::allWorkersBusy() const noexcept {
   try {
     MUTEX_LOCKER(lock, _workersLock);
     for (auto& worker : _workers) {
@@ -252,7 +252,7 @@ bool ClientTaskQueue<JobData>::allWorkersBusy() const noexcept {
 }
 
 template <typename JobData>
-bool ClientTaskQueue<JobData>::allWorkersIdle() const noexcept {
+inline bool ClientTaskQueue<JobData>::allWorkersIdle() const noexcept {
   try {
     MUTEX_LOCKER(lock, _workersLock);
     for (auto& worker : _workers) {
@@ -266,7 +266,7 @@ bool ClientTaskQueue<JobData>::allWorkersIdle() const noexcept {
 }
 
 template <typename JobData>
-bool ClientTaskQueue<JobData>::queueJob(
+inline bool ClientTaskQueue<JobData>::queueJob(
     std::unique_ptr<JobData>&& job) noexcept {
   try {
     MUTEX_LOCKER(lock, _jobsLock);
@@ -279,7 +279,7 @@ bool ClientTaskQueue<JobData>::queueJob(
 }
 
 template <typename JobData>
-void ClientTaskQueue<JobData>::clearQueue() noexcept {
+inline void ClientTaskQueue<JobData>::clearQueue() noexcept {
   try {
     MUTEX_LOCKER(lock, _jobsLock);
     while (!_jobs.empty()) {
@@ -290,7 +290,7 @@ void ClientTaskQueue<JobData>::clearQueue() noexcept {
 }
 
 template <typename JobData>
-void ClientTaskQueue<JobData>::waitForIdle() noexcept {
+inline void ClientTaskQueue<JobData>::waitForIdle() noexcept {
   try {
     while (true) {
       if (isQueueEmpty() && allWorkersIdle()) {
@@ -305,7 +305,7 @@ void ClientTaskQueue<JobData>::waitForIdle() noexcept {
 }
 
 template <typename JobData>
-std::unique_ptr<JobData> ClientTaskQueue<JobData>::fetchJob() noexcept {
+inline std::unique_ptr<JobData> ClientTaskQueue<JobData>::fetchJob() noexcept {
   std::unique_ptr<JobData> job(nullptr);
 
   try {
@@ -323,7 +323,7 @@ std::unique_ptr<JobData> ClientTaskQueue<JobData>::fetchJob() noexcept {
 }
 
 template <typename JobData>
-void ClientTaskQueue<JobData>::waitForWork() noexcept {
+inline void ClientTaskQueue<JobData>::waitForWork() noexcept {
   try {
     if (!isQueueEmpty()) {
       return;
@@ -336,7 +336,7 @@ void ClientTaskQueue<JobData>::waitForWork() noexcept {
 }
 
 template <typename JobData>
-void ClientTaskQueue<JobData>::notifyIdle() noexcept {
+inline void ClientTaskQueue<JobData>::notifyIdle() noexcept {
   try {
     _workersCondition.signal();
   } catch (...) {
@@ -344,7 +344,7 @@ void ClientTaskQueue<JobData>::notifyIdle() noexcept {
 }
 
 template <typename JobData>
-ClientTaskQueue<JobData>::Worker::Worker(
+inline ClientTaskQueue<JobData>::Worker::Worker(
     ClientTaskQueue<JobData>& queue,
     std::unique_ptr<httpclient::SimpleHttpClient>&& client)
     : Thread("Worker"),
@@ -353,17 +353,17 @@ ClientTaskQueue<JobData>::Worker::Worker(
       _idle(true) {}
 
 template <typename JobData>
-ClientTaskQueue<JobData>::Worker::~Worker() {
+inline ClientTaskQueue<JobData>::Worker::~Worker() {
   Thread::shutdown();
 }
 
 template <typename JobData>
-bool ClientTaskQueue<JobData>::Worker::isIdle() const noexcept {
+inline bool ClientTaskQueue<JobData>::Worker::isIdle() const noexcept {
   return _idle.load();
 }
 
 template <typename JobData>
-void ClientTaskQueue<JobData>::Worker::run() {
+inline void ClientTaskQueue<JobData>::Worker::run() {
   while (!isStopping()) {
     std::unique_ptr<JobData> job = _queue.fetchJob();
 

@@ -45,7 +45,7 @@ constexpr auto EncryptionTypeNone = "none";
 
 namespace {
 /// @brief determines whether a given bit flag is set
-inline bool flagIsSet(int value, int flagToCheck) noexcept {
+inline bool flagIsSet(int value, int flagToCheck) {
   TRI_ASSERT(0 != flagToCheck);  // does not work correctly if flag is 0
   return (flagToCheck == (value & flagToCheck));
 }
@@ -53,7 +53,7 @@ inline bool flagIsSet(int value, int flagToCheck) noexcept {
 
 namespace {
 /// @brief determines whether a given bit flag is not set
-inline bool flagNotSet(int value, int flagToCheck) noexcept {
+inline bool flagNotSet(int value, int flagToCheck) {
   TRI_ASSERT(0 != flagToCheck);  // does not work correctly if flag is 0
   return (flagToCheck != (value & flagToCheck));
 }
@@ -61,8 +61,7 @@ inline bool flagNotSet(int value, int flagToCheck) noexcept {
 
 namespace {
 /// @brief Generates a generic I/O error based on the path and flags
-inline arangodb::Result genericError(std::string const& path,
-                                     int flags) noexcept(false) {
+inline arangodb::Result genericError(std::string const& path, int flags) {
   if (::flagIsSet(flags, O_WRONLY)) {
     return {TRI_ERROR_CANNOT_WRITE_FILE, "error while writing file " + path};
   }
@@ -73,7 +72,7 @@ inline arangodb::Result genericError(std::string const& path,
 namespace {
 /// @brief Assembles the file path from the directory and filename
 inline std::string filePath(arangodb::ManagedDirectory const& directory,
-                            std::string const& filename) noexcept(false) {
+                            std::string const& filename) {
   using arangodb::basics::FileUtils::buildFilename;
   return buildFilename(directory.path(), filename);
 }
@@ -82,7 +81,7 @@ inline std::string filePath(arangodb::ManagedDirectory const& directory,
 namespace {
 /// @brief Assembles the file path from the directory path and filename
 inline std::string filePath(std::string const& directory,
-                            std::string const& filename) noexcept(false) {
+                            std::string const& filename) {
   using arangodb::basics::FileUtils::buildFilename;
   return buildFilename(directory, filename);
 }
@@ -90,7 +89,7 @@ inline std::string filePath(std::string const& directory,
 
 namespace {
 /// @brief Opens a file given a path and flags
-inline int openFile(std::string const& path, int flags) noexcept {
+inline int openFile(std::string const& path, int flags) {
   return (::flagIsSet(flags, O_CREAT)
               ? TRI_TRACKED_CREATE_FILE(path.c_str(), flags, S_IRUSR | S_IWUSR)
               : TRI_TRACKED_OPEN_FILE(path.c_str(), flags));
@@ -99,7 +98,7 @@ inline int openFile(std::string const& path, int flags) noexcept {
 
 namespace {
 /// @brief Closes an open file and sets the status
-inline void closeFile(int& fd, arangodb::Result& status) noexcept(false) {
+inline void closeFile(int& fd, arangodb::Result& status) {
   TRI_ASSERT(fd >= 0);
   status = arangodb::Result{TRI_TRACKED_CLOSE_FILE(fd)};
   fd = -1;
@@ -109,7 +108,7 @@ inline void closeFile(int& fd, arangodb::Result& status) noexcept(false) {
 namespace {
 /// @brief determines if a file is writable
 bool isWritable(int fd, int flags, std::string const& path,
-                arangodb::Result& status) noexcept(false) {
+                arangodb::Result& status) {
   if (::flagNotSet(flags, O_WRONLY)) {
     status = {
         TRI_ERROR_CANNOT_WRITE_FILE,
@@ -128,7 +127,7 @@ bool isWritable(int fd, int flags, std::string const& path,
 namespace {
 /// @brief determines if a file is readable
 bool isReadable(int fd, int flags, std::string const& path,
-                arangodb::Result& status) noexcept {
+                arangodb::Result& status) {
   if (::flagIsSet(flags, O_WRONLY)) {
     status = {
         TRI_ERROR_CANNOT_READ_FILE,
@@ -148,7 +147,7 @@ bool isReadable(int fd, int flags, std::string const& path,
 namespace {
 /// @brief Begins encryption for the file and returns the encryption context
 inline std::unique_ptr<arangodb::EncryptionFeature::Context> getContext(
-    arangodb::ManagedDirectory const& directory, int fd, int flags) noexcept {
+    arangodb::ManagedDirectory const& directory, int fd, int flags) {
   if (fd < 0 || directory.encryptionFeature() == nullptr) {
     return {nullptr};
   }
@@ -163,12 +162,10 @@ inline std::unique_ptr<arangodb::EncryptionFeature::Context> getContext(
 namespace {
 /// @brief Generates the initial status for the directory
 #ifdef USE_ENTERPRISE
-arangodb::Result initialStatus(
-    int fd, std::string const& path, int flags,
-    arangodb::EncryptionFeature::Context* context) noexcept(false)
+arangodb::Result initialStatus(int fd, std::string const& path, int flags,
+                               arangodb::EncryptionFeature::Context* context)
 #else
-arangodb::Result initialStatus(int fd, std::string const& path,
-                               int flags) noexcept(false)
+arangodb::Result initialStatus(int fd, std::string const& path, int flags)
 #endif
 {
   if (fd < 0) {
@@ -187,7 +184,7 @@ namespace {
 /// @brief Performs a raw (non-encrypted) write
 inline void rawWrite(int fd, char const* data, size_t length,
                      arangodb::Result& status, std::string const& path,
-                     int flags) noexcept(false) {
+                     int flags) {
   while (length > 0) {
     ssize_t written = TRI_WRITE(fd, data, length);
     if (written < 0) {
@@ -204,7 +201,7 @@ namespace {
 /// @brief Performs a raw (non-decrypted) read
 inline ssize_t rawRead(int fd, char* buffer, size_t length,
                        arangodb::Result& status, std::string const& path,
-                       int flags) noexcept(false) {
+                       int flags) {
   ssize_t bytesRead = TRI_READ(fd, buffer, length);
   if (bytesRead < 0) {
     status = ::genericError(path, flags);
@@ -214,8 +211,7 @@ inline ssize_t rawRead(int fd, char* buffer, size_t length,
 }  // namespace
 
 namespace {
-void readEncryptionFile(std::string const& directory,
-                        std::string& type) noexcept(false) {
+void readEncryptionFile(std::string const& directory, std::string& type) {
   using arangodb::basics::FileUtils::slurp;
   using arangodb::basics::StringUtils::trim;
   type = ::EncryptionTypeNone;
@@ -228,9 +224,8 @@ void readEncryptionFile(std::string const& directory,
 
 namespace {
 #ifdef USE_ENTERPRISE
-void writeEncryptionFile(
-    std::string const& directory, std::string& type,
-    arangodb::EncryptionFeature* encryptionFeature) noexcept(false) {
+void writeEncryptionFile(std::string const& directory, std::string& type,
+                         arangodb::EncryptionFeature* encryptionFeature) {
 #else
 void writeEncryptionFile(std::string const& directory, std::string& type) {
 #endif
@@ -317,13 +312,13 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty,
 #endif
 }
 
-ManagedDirectory::~ManagedDirectory() noexcept {}
+ManagedDirectory::~ManagedDirectory() {}
 
-Result const& ManagedDirectory::status() const noexcept { return _status; }
+Result const& ManagedDirectory::status() const { return _status; }
 
 void ManagedDirectory::resetStatus() { _status.reset(TRI_ERROR_NO_ERROR); }
 
-std::string const& ManagedDirectory::path() const noexcept { return _path; }
+std::string const& ManagedDirectory::path() const { return _path; }
 
 std::string ManagedDirectory::pathToFile(std::string const& filename) const {
   return ::filePath(*this, filename);
@@ -333,12 +328,12 @@ bool ManagedDirectory::isEncrypted() const {
   return (::EncryptionTypeNone != _encryptionType);
 }
 
-std::string const& ManagedDirectory::encryptionType() const noexcept {
+std::string const& ManagedDirectory::encryptionType() const {
   return _encryptionType;
 }
 
 #ifdef USE_ENTERPRISE
-EncryptionFeature const* ManagedDirectory::encryptionFeature() const noexcept {
+EncryptionFeature const* ManagedDirectory::encryptionFeature() const {
   return _encryptionFeature;
 }
 #endif
@@ -452,7 +447,7 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
 }
 
-ManagedDirectory::File::~File() noexcept {
+ManagedDirectory::File::~File() {
   try {
     if (_fd >= 0) {
       ::closeFile(_fd, _status);
@@ -461,13 +456,9 @@ ManagedDirectory::File::~File() noexcept {
   }
 }
 
-Result const& ManagedDirectory::File::status() const noexcept {
-  return _status;
-}
+Result const& ManagedDirectory::File::status() const { return _status; }
 
-std::string const& ManagedDirectory::File::path() const noexcept {
-  return _path;
-}
+std::string const& ManagedDirectory::File::path() const { return _path; }
 
 void ManagedDirectory::File::write(char const* data, size_t length) {
   if (!::isWritable(_fd, _flags, _path, _status)) {
