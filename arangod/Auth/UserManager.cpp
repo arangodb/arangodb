@@ -383,7 +383,7 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
   if (replace) {
     auth::User const& oldEntry = it->second;
     oldKey = oldEntry.key();
-    if (oldEntry.source() == auth::Source::LDAP) {
+    if (oldEntry.source() != auth::Source::LOCAL) {
       return TRI_ERROR_USER_EXTERNAL;
     }
   }
@@ -414,7 +414,7 @@ Result auth::UserManager::enumerateUsers(
   {  // users are later updated with rev ID for consistency
     READ_LOCKER(readGuard, _userCacheLock);
     for (UserMap::value_type& it : _userCache) {
-      if (it.second.source() == auth::Source::LDAP) {
+      if (it.second.source() != auth::Source::LOCAL) {
         continue;
       }
       auth::User user = it.second; // copy user object
@@ -457,7 +457,7 @@ Result auth::UserManager::updateUser(std::string const& username,
   auto it = _userCache.find(username);
   if (it == _userCache.end()) {
     return TRI_ERROR_USER_NOT_FOUND;
-  } else if (it->second.source() == auth::Source::LDAP) {
+  } else if (it->second.source() != auth::Source::LOCAL) {
     return TRI_ERROR_USER_EXTERNAL;
   }
 
@@ -567,7 +567,7 @@ Result auth::UserManager::removeUser(std::string const& user) {
   }
 
   auth::User const& oldEntry = it->second;
-  if (oldEntry.source() == auth::Source::LDAP) {
+  if (oldEntry.source() != auth::Source::LOCAL) {
     return TRI_ERROR_USER_EXTERNAL;
   }
 
@@ -713,27 +713,6 @@ auth::Level auth::UserManager::configuredCollectionAuthLevelInternal(
 
   auto const& entry = it->second;
   return entry.collectionAuthLevel(dbname, coll);
-/*
-#ifdef USE_ENTERPRISE
-  for (auto const& role : entry.roles()) {
-    if (level == auth::Level::RW) {
-      // we already have highest permission
-      return level;
-    }
-
-    // recurse into function, but only one level deep.
-    // this allows us to avoid endless recursion without major overhead
-    if (depth == 0) {
-      auth::Level roleLevel =
-          configuredCollectionAuthLevelInternal(role, dbname, coll, depth + 1);
-
-      if (level == auth::Level::NONE) {
-        // use the permission of the role we just found
-        level = roleLevel;
-      }
-    }
-  }
-#endif*/
 }
 
 auth::Level auth::UserManager::configuredCollectionAuthLevel(
