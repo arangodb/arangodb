@@ -135,59 +135,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   return queryResult.result;
 }
 
-static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
-                              std::string const& user) {
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
-
-  if (vocbase == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "_system db is unknown");
-  }
-
-  // we cannot set this execution context, otherwise the transaction
-  // will ask us again for permissions and we get a deadlock
-  ExecContextScope scope(ExecContext::superuser());
-  std::string const queryStr("FOR u IN _users FILTER u.user == @name RETURN u");
-  auto emptyBuilder = std::make_shared<VPackBuilder>();
-
-  VPackBuilder binds;
-  binds.openObject();
-  binds.add("name", VPackValue(user));
-  binds.close();  // obj
-  arangodb::aql::Query query(false, vocbase,
-                             arangodb::aql::QueryString(queryStr),
-                             std::make_shared<VPackBuilder>(binds),
-                             emptyBuilder, arangodb::aql::PART_MAIN);
-
-  auto queryResult = query.execute(queryRegistry);
-
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
-    }
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        queryResult.code, "Error executing user query: " + queryResult.details);
-  }
-
-  VPackSlice usersSlice = queryResult.result->slice();
-
-  if (usersSlice.isNone() || !usersSlice.isArray()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  if (usersSlice.length() == 0) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_USER_NOT_FOUND);
-  }
-
-  VPackSlice doc = usersSlice.at(0);
-  if (doc.isExternal()) {
-    doc = doc.resolveExternals();
-  }
-  VPackBuilder result;
-  result.add(doc);
-  return result;
-}
-
+/// Convert documents from _system/_users into the format used in
+/// the REST user API and foxx
 static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
   if (doc.isExternal()) {
     doc = doc.resolveExternals();
