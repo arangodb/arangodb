@@ -17,11 +17,11 @@ INCLUDE(CheckCCompilerFlag)
 INCLUDE(FindPerl)
 
 IF(NOT PERL_FOUND)
-	MESSAGE(FATAL "Perl required to build snowball")
+    MESSAGE(FATAL_ERROR "Perl required to build snowball")
 ENDIF()
 
 IF(NOT STEMMER_SOURCE_DIR)
-	MESSAGE(FATAL "Source directory required to build snowball")
+    MESSAGE(FATAL_ERROR "Source directory required to build snowball")
 ENDIF()
 
 SET(CMAKE_CURRENT_SOURCE_DIR "${STEMMER_SOURCE_DIR}")
