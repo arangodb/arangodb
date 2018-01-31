@@ -1,5 +1,47 @@
 devel
 -----
+* fix internal issue #478: remove unused and undocumented REST API endpoints
+  _admin/statistics/short and _admin/statistics/long.
+  These APIs were available in ArangoDB's REST API, but have not been called by
+  ArangoDB itself nor have they been part of the documented API. They have been
+  superseded by other REST APIs and were partially dysfunctional. Therefore
+  these two endpoints have been removed entirely.
+
+* fix issue #4272: VERSION file keeps disappearing
+
+* fix internal issue #81: quotation marks disappeared when switching table/json
+  editor in the query editor ui
+
+* fixed issue #1532: reload users on restore
+
+* fixed internal issue #1475: when restoring a cluster dump to a single server
+  ignore indices of type primary and edge since we mustn't create them here.
+
+* fix internal issue 1770: collection creation using distributeShardsLike yields
+  errors and did not distribute shards correctly in the following cases:
+  1. If numberOfShards * replicationFactor % nrDBServers != 0
+     (shards * replication is not divisible by DBServers).
+  2. If there was failover / move shard case on the leading collection
+     and creating the follower collection afterwards.
+
+* fix internal issue #1439: improve performance of any-iterator for RocksDB
+
+* added option `--rocksdb.throttle` to control whether write-throttling is enabled
+  Write-throttling is turned on by default, to reduce chances of compactions getting
+  too far behind and blocking incoming writes.
+
+* fixed issue #4308: Crash when getter for error.name throws an error (on Windows)
+
+* UI: fixed an issue where a collection name gets wrongly cached within the
+  documents overview of a collection.
+
+* UI: fixed a query editor caching and parsing issue
+
+* issue #4222: Permission error preventing AQL query import / export on webui
+
+* Fixed an issue with the index estimates in RocksDB in the case a transaction is aborted.
+  Former the index estimates were modified if the transaction commited or not.
+  Now they will only be modified if the transaction commited successfully.
 
 * UI: optimized login view for very small screen sizes
 

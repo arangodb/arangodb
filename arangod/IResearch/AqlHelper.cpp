@@ -28,9 +28,11 @@
 #include "Aql/Variable.h"
 #include "IResearchDocument.h"
 #include "IResearchFeature.h"
+#include "Misc.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 
+#define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
 namespace {
@@ -43,23 +45,6 @@ arangodb::aql::AstNodeType const CmpMap[] {
   arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT, // NODE_TYPE_OPERATOR_BINARY_GT: 3 > a  <==> a < 3
   arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE  // NODE_TYPE_OPERATOR_BINARY_GE: 3 >= a <==> a <= 3
 };
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @returns true if values from the specified range [Min;Max] are adjacent
-////////////////////////////////////////////////////////////////////////////////
-template<arangodb::aql::AstNodeType Max>
-constexpr bool checkAdjacency() {
-  return true;
-}
-
-template<
-  arangodb::aql::AstNodeType Max,
-  arangodb::aql::AstNodeType Min,
-  arangodb::aql::AstNodeType... Types
-> constexpr bool checkAdjacency() {
-  return (Max > Min) && (1 == (Max - Min)) && checkAdjacency<Min, Types...>();
-}
 
 }
 
@@ -125,7 +110,7 @@ bool normalizeCmpNode(
     arangodb::aql::AstNode const& in,
     arangodb::aql::Variable const& ref,
     NormalizedCmpNode& out) {
-  static_assert(checkAdjacency<
+  static_assert(adjacencyChecker<arangodb::aql::AstNodeType>::checkAdjacency<
     arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE, arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT,
     arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE, arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT,
     arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE, arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ>(),

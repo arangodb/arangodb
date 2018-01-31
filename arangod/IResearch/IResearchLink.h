@@ -107,7 +107,7 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is loaded into memory
   ////////////////////////////////////////////////////////////////////////////////
-  void load() {} // arangodb::Index override
+  void load(); // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief index comparator, used by the coordinator to detect if the specified
@@ -184,35 +184,27 @@ class IResearchLink {
   );
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @return the associated IResearch view or nullptr if not associated
-  ////////////////////////////////////////////////////////////////////////////////
-  const IResearchView* view() const;
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
   bool init(arangodb::velocypack::Slice const& definition);
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @return the associated IResearch view or nullptr if not associated
+  ////////////////////////////////////////////////////////////////////////////////
+  const IResearchView* view() const;
+
  private:
-  friend bool IResearchView::linkRegister(IResearchLink&); // to call updateView(...)
-  friend IResearchView::~IResearchView(); // to call updateView(...)
+  // FIXME TODO remove once View::updateProperties(...) will be fixed to write
+  // the update delta into the WAL marker instead of the full persisted state
+  friend arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice const&, bool, bool);
 
   LogicalCollection* _collection; // the linked collection
   TRI_voc_cid_t _defaultId; // the identifier of the desired view (iff _view == nullptr)
   TRI_idx_iid_t const _id; // the index identifier
   IResearchLinkMeta _meta; // how this collection should be indexed
   mutable irs::async_utils::read_write_mutex _mutex; // for use with _view to allow asynchronous disassociation
-  IResearchView::sptr _view; // effectively the index itself (nullptr == not associated)
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief update the '_view' pointer under lock and return the original value
-  /// @param isNew this is a new instance of the link for the view
-  ////////////////////////////////////////////////////////////////////////////////
-  IResearchView::sptr updateView(
-      IResearchView::sptr const& view,
-      bool isNew = false
-  );
+  IResearchView::AsyncSelf::ptr _view; // effectively the IResearch datastore itself (nullptr == not associated)
 }; // IResearchLink
 
 ////////////////////////////////////////////////////////////////////////////////

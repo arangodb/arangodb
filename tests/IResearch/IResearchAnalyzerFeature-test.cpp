@@ -29,6 +29,11 @@
 #include "analysis/token_attributes.hpp"
 
 #include "Aql/AqlFunctionFeature.h"
+
+#if USE_ENTERPRISE
+  #include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -106,7 +111,7 @@ private:
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestAnalyzer");
-REGISTER_ANALYZER_TEXT(TestAnalyzer, TestAnalyzer::make);
+REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make);
 
 struct Analyzer {
   irs::string_ref type;
@@ -219,6 +224,10 @@ struct IResearchAnalyzerFeatureSetup {
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE); // QueryRegistryFeature required for instantiation
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+
+    #if USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+    #endif
 
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -575,12 +584,10 @@ SECTION("test_persistence") {
       trx.begin();
       trx.truncate(collection, options);
       trx.insert(collection, arangodb::velocypack::Parser::fromJson("{}")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{                        \"type\": \"identity\", \"properties\": null, \"ref_count\": 42}")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": 12345,        \"type\": \"identity\", \"properties\": null, \"ref_count\": 42}")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid1\",                         \"properties\": null, \"ref_count\": 42}")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid2\", \"type\": 12345,        \"properties\": null, \"ref_count\": 42}")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid3\", \"type\": \"identity\", \"properties\": null                   }")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid4\", \"type\": \"identity\", \"properties\": null, \"ref_count\": -1}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{                        \"type\": \"identity\", \"properties\": null}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": 12345,        \"type\": \"identity\", \"properties\": null}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid1\",                         \"properties\": null}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid2\", \"type\": 12345,        \"properties\": null}")->slice(), options);
       trx.commit();
     }
 
@@ -604,7 +611,7 @@ SECTION("test_persistence") {
     CHECK((expected.empty()));
   }
 
-  // read invalid configuration (duplicate records)
+  // read invalid configuration (duplicate non-identical records)
   {
     {
       std::string collection("_iresearch_analyzers");
@@ -616,8 +623,8 @@ SECTION("test_persistence") {
       );
       trx.begin();
       trx.truncate(collection, options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 42}")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 52}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": \"abc\"}")->slice(), options);
       trx.commit();
     }
 
@@ -637,7 +644,7 @@ SECTION("test_persistence") {
       );
       trx.begin();
       trx.truncate(collection, options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"identity\", \"type\": \"identity\", \"properties\": \"abc\", \"ref_count\": 42}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"identity\", \"type\": \"identity\", \"properties\": \"abc\"}")->slice(), options);
       trx.commit();
     }
 
@@ -657,12 +664,12 @@ SECTION("test_persistence") {
       );
       trx.begin();
       trx.truncate(collection, options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid0\", \"type\": \"identity\", \"properties\": null,                       \"ref_count\": 42}")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid1\", \"type\": \"identity\", \"properties\": true,                       \"ref_count\": 42}")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid2\", \"type\": \"identity\", \"properties\": \"abc\",                    \"ref_count\": 42}")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid3\", \"type\": \"identity\", \"properties\": 3.14,                       \"ref_count\": 42}")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid4\", \"type\": \"identity\", \"properties\": [ 1, \"abc\" ],             \"ref_count\": 42}")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid5\", \"type\": \"identity\", \"properties\": { \"a\": 7, \"b\": \"c\" }, \"ref_count\": 42}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid0\", \"type\": \"identity\", \"properties\": null                      }")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid1\", \"type\": \"identity\", \"properties\": true                      }")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid2\", \"type\": \"identity\", \"properties\": \"abc\"                   }")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid3\", \"type\": \"identity\", \"properties\": 3.14                      }")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid4\", \"type\": \"identity\", \"properties\": [ 1, \"abc\" ]            }")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid5\", \"type\": \"identity\", \"properties\": { \"a\": 7, \"b\": \"c\" }}")->slice(), options);
       trx.commit();
     }
 
@@ -745,16 +752,14 @@ SECTION("test_persistence") {
       );
       trx.begin();
       trx.truncate(collection, options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid0\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 0}")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid1\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 1}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null}")->slice(), options);
       trx.commit();
     }
 
     {
       std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
         { "identity", { "identity", irs::string_ref::nil } },
-        { "valid0", { "identity", irs::string_ref::nil } },
-        { "valid1", { "identity", irs::string_ref::nil } },
+        { "valid", { "identity", irs::string_ref::nil } },
       };
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
 
@@ -774,11 +779,8 @@ SECTION("test_persistence") {
         return true;
       });
       CHECK((expected.empty()));
-      CHECK((1 == feature.erase("valid0")));
-      CHECK((0 == feature.erase("valid1")));
-      CHECK((1 == feature.erase("valid1", true))); // force removal
+      CHECK((1 == feature.erase("valid")));
       CHECK((0 == feature.erase("identity")));
-      CHECK((0 == feature.erase("identity", false))); // force removal
     }
 
     {
@@ -802,358 +804,6 @@ SECTION("test_persistence") {
       CHECK((expected.empty()));
     }
   }
-
-  // update records (reserve/remove pool)
-  {
-    {
-      std::string collection("_iresearch_analyzers");
-      arangodb::OperationOptions options;
-      arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
-        collection,
-        arangodb::AccessMode::Type::WRITE
-      );
-      trx.begin();
-      trx.truncate(collection, options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid0\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 0}")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid1\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 1}")->slice(), options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid2\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 2}")->slice(), options);
-      trx.commit();
-    }
-
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      feature.start();
-      auto pool = feature.get("valid0");
-      CHECK((false == !pool));
-      CHECK((feature.reserve("valid0")));
-      pool = feature.get("valid1");
-      CHECK((false == !pool));
-      CHECK((feature.release("valid1")));
-      CHECK((!feature.release("valid1"))); // no more references
-    }
-
-    // test reserve (remove failure)
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      feature.start();
-      CHECK((0 == feature.erase("valid0")));
-      CHECK((1 == feature.erase("valid1")));
-      auto pool = feature.get("valid0");
-      CHECK((false == !pool));
-      CHECK((feature.release("valid0")));
-    }
-
-    // test remove (remove allowed)
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      feature.start();
-      CHECK((1 == feature.erase("valid0")));
-    }
-  }
-
-  // reserve to overflow (on startup)
-  {
-    {
-      auto refCount = std::to_string(std::numeric_limits<uint64_t>::max());
-      std::string collection("_iresearch_analyzers");
-      arangodb::OperationOptions options;
-      arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
-        collection,
-        arangodb::AccessMode::Type::WRITE
-      );
-      trx.begin();
-      trx.truncate(collection, options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson(std::string("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null, \"ref_count\": ") + refCount + "}")->slice(), options);
-      trx.commit();
-    }
-
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      CHECK((true == !feature.get("valid")));
-      auto pool = feature.ensure("valid");
-      CHECK((false == !pool));
-      CHECK((feature.reserve("valid")));
-      CHECK_THROWS((feature.start()));
-    }
-  }
-
-  // store to overflow (on reserve, reserve valid for 2^32 more reservations)
-  {
-    {
-      auto refCount = std::to_string(std::numeric_limits<int64_t>::max());
-      std::string collection("_iresearch_analyzers");
-      arangodb::OperationOptions options;
-      arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
-        collection,
-        arangodb::AccessMode::Type::WRITE
-      );
-      trx.begin();
-      trx.truncate(collection, options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson(std::string("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null, \"ref_count\": ") + refCount + "}")->slice(), options);
-      trx.commit();
-    }
-
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      feature.start();
-      auto pool = feature.get("valid");
-      CHECK((false == !pool));
-      CHECK((feature.reserve("valid")));
-    }
-
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      CHECK_THROWS((feature.start()));
-    }
-  }
-}
-
-SECTION("test_registration") {
-  auto* database = arangodb::iresearch::getFeature<arangodb::iresearch::SystemDatabaseFeature>();
-  auto vocbase = database->use();
-
-  // reserve pool (not started)
-  {
-    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((true == !feature.get("valid")));
-    auto pool = feature.ensure("valid");
-    CHECK((false == !pool));
-    CHECK((feature.reserve("valid")));
-    CHECK((0 == feature.erase("valid"))); // remove not allowed
-  }
-
-  // reserve static analyzer pool (not started)
-  {
-    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    auto pool = feature.get("identity");
-    CHECK((false == !pool));
-    CHECK((feature.reserve("identity")));
-    CHECK((0 == feature.erase("identity"))); // remove not allowed
-    CHECK((0 == feature.erase("identity", true))); // remove not allowed
-  }
-
-  // release pool (not started)
-  {
-    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((true == !feature.get("valid")));
-    auto pool = feature.ensure("valid");
-    CHECK((false == !pool));
-    CHECK((feature.reserve("valid")));
-    CHECK((feature.reserve("valid"))); // 2nd time
-    CHECK((feature.release("valid")));
-    CHECK((0 == feature.erase("valid"))); // remove not allowed
-    CHECK((feature.release("valid")));
-    CHECK((1 == feature.erase("valid")));
-  }
-
-  // release static analyzer pool (not started)
-  {
-    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    auto pool = feature.get("identity");
-    CHECK((false == !pool));
-    CHECK((feature.reserve("identity")));
-    CHECK((feature.reserve("identity"))); // 2nd time
-    CHECK((feature.release("identity")));
-    CHECK((0 == feature.erase("identity"))); // remove not allowed
-    CHECK((feature.release("identity")));
-    CHECK((0 == feature.erase("identity"))); // remove not allowed
-    CHECK((0 == feature.erase("identity", true))); // remove not allowed
-  }
-
-  // reserve pool (persistance failure)
-  {
-    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    feature.start(); // create configuration collection
-    auto entry = feature.emplace("valid", "identity", nullptr);
-    CHECK((false == !entry.first));
-
-    {
-      // simulate temporary failure
-      auto before = PhysicalCollectionMock::before;
-      auto restore = irs::make_finally([&before]()->void { PhysicalCollectionMock::before = before; });
-      PhysicalCollectionMock::before = []()->void { throw "exception"; };
-
-      CHECK((!feature.reserve("valid")));
-    }
-
-    CHECK((1 == feature.erase("valid"))); // remove allowed
-  }
-
-  // reseve static analyzer pool (persistence failure)
-  {
-    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    feature.start(); // create configuration collection
-    auto pool = feature.get("identity");
-    CHECK((false == !pool));
-
-    {
-      // simulate temporary failure
-      auto before = PhysicalCollectionMock::before;
-      auto restore = irs::make_finally([&before]()->void { PhysicalCollectionMock::before = before; });
-      PhysicalCollectionMock::before = []()->void { throw "exception"; };
-
-      CHECK((feature.reserve("identity")));
-    }
-
-    CHECK((0 == feature.erase("identity"))); // remove not allowed
-    CHECK((0 == feature.erase("identity", true))); // remove not allowed
-  }
-
-  // release pool (persistence failure)
-  {
-    // ensure no persisted configuration present
-    {
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
-      vocbase->dropCollection(collection, true, -1); // drop configuration collection
-    }
-
-    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    feature.start(); // create configuration collection
-    auto entry = feature.emplace("valid", "identity", nullptr);
-    CHECK((false == !entry.first));
-    CHECK((entry.second));
-    CHECK((feature.reserve("valid")));
-
-    {
-      // simulate temporary failure
-      auto before = PhysicalCollectionMock::before;
-      auto restore = irs::make_finally([&before]()->void { PhysicalCollectionMock::before = before; });
-      PhysicalCollectionMock::before = []()->void { throw "exception"; };
-
-      CHECK((!feature.release("valid")));
-    }
-
-    CHECK((0 == feature.erase("valid"))); // remove not allowed
-  }
-
-  // release static analyzer pool (persistence failure)
-  {
-    // ensure no persisted configuration present
-    {
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
-      vocbase->dropCollection(collection, true, -1); // drop configuration collection
-    }
-
-    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    feature.start(); // create configuration collection
-    auto pool = feature.get("identity");
-    CHECK((false == !pool));
-    CHECK((feature.reserve("identity")));
-
-    {
-      // simulate temporary failure
-      auto before = PhysicalCollectionMock::before;
-      auto restore = irs::make_finally([&before]()->void { PhysicalCollectionMock::before = before; });
-      PhysicalCollectionMock::before = []()->void { throw "exception"; };
-
-      CHECK((feature.release("identity")));
-    }
-
-    CHECK((0 == feature.erase("identity"))); // remove not allowed
-    CHECK((0 == feature.erase("identity", true))); // remove not allowed
-  }
-
-  // reserve/release pool (persisted OK)
-  {
-    // ensure no persisted configuration present
-    {
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
-      vocbase->dropCollection(collection, true, -1); // drop configuration collection
-    }
-
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      feature.start();
-      auto entry = feature.emplace("valid", "identity", nullptr);
-      CHECK((false == !entry.first));
-      CHECK((entry.second));
-      CHECK((!feature.release("valid")));
-      CHECK((feature.reserve("valid")));
-      CHECK((0 == feature.erase("valid"))); // remove denied
-    }
-
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      feature.start();
-      auto pool = feature.get("valid");
-      CHECK((false == !pool));
-      CHECK((feature.release("valid")));
-    }
-
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      feature.start();
-      auto pool = feature.get("valid");
-      CHECK((false == !pool));
-      CHECK((!feature.release("valid")));
-      CHECK((1 == feature.erase("valid"))); // remove allowed
-    }
-  }
-
-  // reserve not started + started
-  {
-    // ensure no persisted configuration present
-    {
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
-      vocbase->dropCollection(collection, true, -1); // drop configuration collection
-    }
-
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      feature.start();
-      auto pool = feature.emplace("valid", "identity", nullptr).first;
-      CHECK((false == !pool));
-      CHECK((feature.reserve("valid")));
-    }
-
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      CHECK((true == !feature.get("valid")));
-      auto pool = feature.ensure("valid");
-      CHECK((false == !pool));
-      CHECK((feature.reserve("valid")));
-      feature.start();
-      CHECK((0 == feature.erase("valid"))); // remove denied
-      CHECK((feature.release("valid")));
-      CHECK((0 == feature.erase("valid"))); // remove denied
-      CHECK((feature.release("valid")));
-      CHECK((1 == feature.erase("valid"))); // remove allowed
-    }
-  }
-
-  // reserve identity not started + started
-  {
-    // ensure no persisted configuration present
-    {
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
-      vocbase->dropCollection(collection, true, -1); // drop configuration collection
-    }
-
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      feature.start();
-      auto pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
-      CHECK((false == !pool));
-      CHECK((feature.reserve(pool->name())));
-    }
-
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      auto pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
-      CHECK((false == !pool));
-      CHECK((feature.reserve(pool->name())));
-      feature.start();
-      CHECK((0 == feature.erase(pool->name()))); // remove denied
-      CHECK((feature.release(pool->name())));
-      CHECK((0 == feature.erase(pool->name()))); // remove denied
-      CHECK((feature.release(pool->name())));
-      CHECK((0 == feature.erase(pool->name()))); // remove denied
-      CHECK((0 == feature.erase(pool->name(), true))); // remove denied
-    }
-  }
 }
 
 SECTION("test_remove") {
@@ -1172,7 +822,6 @@ SECTION("test_remove") {
     CHECK((0 == feature.erase("identity")));
     CHECK((false == !feature.get("identity")));
     CHECK((0 == feature.erase("identity")));
-    CHECK((0 == feature.erase("identity", true)));
   }
 
   // remove existing (started)
@@ -1199,7 +848,6 @@ SECTION("test_remove") {
     feature.start();
     CHECK((false == !feature.get("identity")));
     CHECK((0 == feature.erase("identity")));
-    CHECK((0 == feature.erase("identity", true)));
   }
 }
 

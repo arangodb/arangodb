@@ -79,8 +79,10 @@ IResearchRocksDBLink::~IResearchRocksDBLink() {
 }
 
 /*static*/ IResearchRocksDBLink::ptr IResearchRocksDBLink::make(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    arangodb::velocypack::Slice const& definition) noexcept {
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection* collection,
+    arangodb::velocypack::Slice const& definition
+) noexcept {
   try {
     PTR_NAMED(IResearchRocksDBLink, ptr, iid, collection);
 

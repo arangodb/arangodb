@@ -910,25 +910,58 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   tests::document doc3;
   tests::document doc4;
 
+  // norm for 'doc_bytes' in 'doc1' : 1/sqrt(4)
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
     field.name(iresearch::string_ref("doc_bytes"));
     field.value(bytes1);
     field.features().add<iresearch::norm>();
-    field.boost(1.5f);
+  }
+  doc1.insert(std::make_shared<tests::binary_field>()); {
+    auto& field = doc1.indexed.back<tests::binary_field>();
+    field.name(iresearch::string_ref("doc_bytes"));
+    field.value(bytes1);
+    field.features().add<iresearch::norm>();
+  }
+  doc1.insert(std::make_shared<tests::binary_field>()); {
+    auto& field = doc1.indexed.back<tests::binary_field>();
+    field.name(iresearch::string_ref("doc_bytes"));
+    field.value(bytes1);
+    field.features().add<iresearch::norm>();
+  }
+  doc1.insert(std::make_shared<tests::binary_field>()); {
+    auto& field = doc1.indexed.back<tests::binary_field>();
+    field.name(iresearch::string_ref("doc_bytes"));
+    field.value(bytes1);
+    field.features().add<iresearch::norm>();
+  }
+
+  // do not track norms for 'doc_bytes' in 'doc2'
+  doc2.insert(std::make_shared<tests::binary_field>()); {
+    auto& field = doc2.indexed.back<tests::binary_field>();
+    field.name(iresearch::string_ref("doc_bytes"));
+    field.value(bytes2);
   }
   doc2.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc2.indexed.back<tests::binary_field>();
     field.name(iresearch::string_ref("doc_bytes"));
     field.value(bytes2);
   }
+
+  // norm for 'doc_bytes' in 'doc3' : 1/sqrt(2)
   doc3.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc3.indexed.back<tests::binary_field>();
     field.name(iresearch::string_ref("doc_bytes"));
     field.value(bytes3);
     field.features().add<iresearch::norm>();
-    field.boost(2.5f);
   }
+  doc3.insert(std::make_shared<tests::binary_field>()); {
+    auto& field = doc3.indexed.back<tests::binary_field>();
+    field.name(iresearch::string_ref("doc_bytes"));
+    field.value(bytes3);
+    field.features().add<iresearch::norm>();
+  }
+
   doc1.insert(std::make_shared<tests::double_field>()); {
     auto& field = doc1.indexed.back<tests::double_field>();
     field.name(iresearch::string_ref("doc_double"));
@@ -1073,7 +1106,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       );
 
       std::unordered_map<float_t, iresearch::doc_id_t> expected_values{
-        { 1.5f, 1 },
+        { 0.5f, 1 },
       };
 
       auto reader = [&expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
@@ -1435,9 +1468,9 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         features,
         expected_terms
       );
-      
+
       std::unordered_map<float_t, iresearch::doc_id_t> expected_values{
-        { 2.5f, 1 },
+        { float(1./std::sqrt(2)), 1 },
       };
 
       auto reader = [&expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
@@ -1786,10 +1819,10 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       features,
       expected_terms
     );
-      
+
     std::unordered_map<float_t, iresearch::doc_id_t> expected_values{
-      { 1.5f, 1 },
-      { 2.5f, 3 },
+      { 0.5f, 1 },                    // norm value for 'doc_bytes' in 'doc1'
+      { float_t(1/std::sqrt(2)), 3 }, // norm value for 'doc_bytes' in 'doc3'
     };
 
     auto reader = [&expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {

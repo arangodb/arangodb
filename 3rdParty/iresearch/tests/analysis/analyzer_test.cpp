@@ -21,16 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#if defined(_MSC_VER)
-  #pragma warning(disable: 4229)
-#endif
-
-  #include <unicode/uclean.h> // for u_cleanup
-
-#if defined(_MSC_VER)
-  #pragma warning(default: 4229)
-#endif
-
 #include "tests_config.hpp"
 #include "tests_shared.hpp"
 #include "analysis/analyzers.hpp"
@@ -51,7 +41,7 @@ class analyzer_test: public ::testing::Test {
       std::string sOldStopwordPath = czOldStopwordPath == nullptr ? "" : czOldStopwordPath;
 
       iresearch::setenv(text_stopword_path_var, IResearch_test_resource_dir, true);
-      iresearch::analysis::analyzers::get("text", "en"); // stream needed only to load stopwords
+      irs::analysis::analyzers::get("text", irs::text_format::text, "en"); // stream needed only to load stopwords
 
       if (czOldStopwordPath) {
         iresearch::setenv(text_stopword_path_var, sOldStopwordPath.c_str(), true);
@@ -61,8 +51,6 @@ class analyzer_test: public ::testing::Test {
 
   virtual void TearDown() {
     // Code here will be called immediately after each test (right before the destructor).
-
-    u_cleanup(); // release/free all memory used by ICU
   }
 };
 
@@ -89,19 +77,23 @@ TEST_F(analyzer_test, duplicate_register) {
 
   // check required for tests with repeat (static maps are not cleared between runs)
   if (initial_expected) {
-    ASSERT_FALSE(irs::analysis::analyzers::exists("dummy_analyzer"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::string_ref::nil));
+    ASSERT_FALSE(irs::analysis::analyzers::exists("dummy_analyzer", irs::text_format::csv));
+    ASSERT_FALSE(irs::analysis::analyzers::exists("dummy_analyzer", irs::text_format::json));
+    ASSERT_FALSE(irs::analysis::analyzers::exists("dummy_analyzer", irs::text_format::text));
+    ASSERT_FALSE(irs::analysis::analyzers::exists("dummy_analyzer", irs::text_format::xml));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::text_format::csv, irs::string_ref::nil));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::text_format::json, irs::string_ref::nil));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::text_format::text, irs::string_ref::nil));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::text_format::xml, irs::string_ref::nil));
 
     irs::analysis::analyzer_registrar initial0(dummy_analyzer::type(), irs::text_format::csv, &dummy_analyzer::make);
     irs::analysis::analyzer_registrar initial1(dummy_analyzer::type(), irs::text_format::json, &dummy_analyzer::make);
     irs::analysis::analyzer_registrar initial2(dummy_analyzer::type(), irs::text_format::text, &dummy_analyzer::make);
     irs::analysis::analyzer_registrar initial3(dummy_analyzer::type(), irs::text_format::xml, &dummy_analyzer::make);
     ASSERT_EQ(!initial_expected, !initial0);
-    /* FIXME TODO enable once type diferentiation is supported
     ASSERT_EQ(!initial_expected, !initial1);
     ASSERT_EQ(!initial_expected, !initial2);
     ASSERT_EQ(!initial_expected, !initial3);
-    */
   }
 
   initial_expected = false; // next test iteration will not be able to register the same analyzer
@@ -114,13 +106,19 @@ TEST_F(analyzer_test, duplicate_register) {
   ASSERT_TRUE(!duplicate2);
   ASSERT_TRUE(!duplicate3);
 
-  ASSERT_TRUE(irs::analysis::analyzers::exists("dummy_analyzer"));
-  ASSERT_NE(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::string_ref::nil));
+  ASSERT_TRUE(irs::analysis::analyzers::exists("dummy_analyzer", irs::text_format::csv));
+  ASSERT_TRUE(irs::analysis::analyzers::exists("dummy_analyzer", irs::text_format::json));
+  ASSERT_TRUE(irs::analysis::analyzers::exists("dummy_analyzer", irs::text_format::text));
+  ASSERT_TRUE(irs::analysis::analyzers::exists("dummy_analyzer", irs::text_format::xml));
+  ASSERT_NE(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::text_format::csv, irs::string_ref::nil));
+  ASSERT_NE(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::text_format::json, irs::string_ref::nil));
+  ASSERT_NE(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::text_format::text, irs::string_ref::nil));
+  ASSERT_NE(nullptr, irs::analysis::analyzers::get("dummy_analyzer", irs::text_format::xml, irs::string_ref::nil));
 }
 
 TEST_F(analyzer_test, test_load) {
   {
-    auto analyzer = iresearch::analysis::analyzers::get("text", "en");
+    auto analyzer = irs::analysis::analyzers::get("text", irs::text_format::text, "en");
 
     ASSERT_NE(nullptr, analyzer);
     ASSERT_TRUE(analyzer->reset("abc"));
@@ -128,7 +126,7 @@ TEST_F(analyzer_test, test_load) {
 
   // locale with default ingnored_words
   {
-    auto analyzer = iresearch::analysis::analyzers::get("text", "{\"locale\":\"en\"}");
+    auto analyzer = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en\"}");
 
     ASSERT_NE(nullptr, analyzer);
     ASSERT_TRUE(analyzer->reset("abc"));
@@ -136,7 +134,7 @@ TEST_F(analyzer_test, test_load) {
 
   // locale with provided ignored_words
   {
-    auto analyzer = iresearch::analysis::analyzers::get("text", "{\"locale\":\"en\", \"ignored_words\":[\"abc\", \"def\", \"ghi\"]}");
+    auto analyzer = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en\", \"ignored_words\":[\"abc\", \"def\", \"ghi\"]}");
 
     ASSERT_NE(nullptr, analyzer);
     ASSERT_TRUE(analyzer->reset("abc"));
@@ -147,11 +145,11 @@ TEST_F(analyzer_test, test_load) {
   // ...........................................................................
 
   // missing required locale
-  ASSERT_EQ(nullptr, iresearch::analysis::analyzers::get("text", "{}"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{}"));
 
   // invalid ignored_words
-  ASSERT_EQ(nullptr, iresearch::analysis::analyzers::get("text", "{{\"locale\":\"en\", \"ignored_words\":\"abc\"}}"));
-  ASSERT_EQ(nullptr, iresearch::analysis::analyzers::get("text", "{{\"locale\":\"en\", \"ignored_words\":[1, 2, 3]}}"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{{\"locale\":\"en\", \"ignored_words\":\"abc\"}}"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{{\"locale\":\"en\", \"ignored_words\":[1, 2, 3]}}"));
 }
 
 // -----------------------------------------------------------------------------

@@ -21,8 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-//#include "Transaction/Methods.h"
-
 #include "IResearchAttributes.h"
 
 NS_BEGIN(arangodb)

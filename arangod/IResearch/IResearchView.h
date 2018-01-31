@@ -24,6 +24,7 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_H
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_H 1
 
+#include "Containers.h"
 #include "IResearchViewMeta.h"
 
 #include "VocBase/LocalDocumentId.h"
@@ -62,28 +63,15 @@ NS_BEGIN(iresearch)
 
 struct QueryContext;
 
-typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                            Forward declarations
 ///////////////////////////////////////////////////////////////////////////////
 
-class IResearchLink;
 struct IResearchLinkMeta;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                              utility constructs
 ///////////////////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief a cookie/flag denoting validitiy with a read-write mutex to lock
-///        scope for the duration of required operations after ensuring validity
-///////////////////////////////////////////////////////////////////////////////
-struct AsyncValid {
-  irs::async_utils::read_write_mutex _mutex; // read-lock to prevent flag modification
-  bool _valid; // do not need atomic because need to hold lock anyway
-  AsyncValid(bool valid): _valid(valid) {}
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index reader implementation over multiple directory readers
@@ -122,7 +110,7 @@ class CompoundReader final : public irs::index_reader {
 
   class IteratorImpl final : public irs::index_reader::reader_iterator_impl {
    public:
-    IteratorImpl(SubReadersType::const_iterator const& itr)
+    explicit IteratorImpl(SubReadersType::const_iterator const& itr)
       : _itr(itr) {
     }
 
@@ -142,6 +130,8 @@ class CompoundReader final : public irs::index_reader {
    private:
     SubReadersType::const_iterator _itr;
   };
+
+  typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 
   // order is important
   ReadMutex _mutex;
@@ -176,15 +166,24 @@ class IResearchView final: public arangodb::ViewImplementation,
   typedef std::shared_ptr<IResearchView> sptr;
 
   ///////////////////////////////////////////////////////////////////////////////
+  /// @brief AsyncValue holding the view itself, modifiable by IResearchView
+  ///////////////////////////////////////////////////////////////////////////////
+  class AsyncSelf: public AsyncValue<IResearchView*> {
+    friend IResearchView;
+   public:
+    DECLARE_SPTR(AsyncSelf);
+    explicit AsyncSelf(IResearchView* value): AsyncValue(value) {}
+  };
+
+  ///////////////////////////////////////////////////////////////////////////////
   /// @brief destructor to clean up resources
   ///////////////////////////////////////////////////////////////////////////////
   virtual ~IResearchView();
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief append all know collection IDs to the set (from meta and from store)
-  /// @return success
-  ///////////////////////////////////////////////////////////////////////////////
-  bool appendKnownCollections(std::unordered_set<TRI_voc_cid_t>& set) const;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief persist the specified WAL file into permanent storage
+  ////////////////////////////////////////////////////////////////////////////////
+  arangodb::Result commit() override;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this iResearch View
@@ -194,6 +193,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove all documents matching collection 'cid' from this IResearch
   ///        View and the underlying IResearch stores
+  ///        also remove 'cid' from the runtime list of tracked collection IDs
   ////////////////////////////////////////////////////////////////////////////////
   int drop(TRI_voc_cid_t cid);
 
@@ -239,20 +239,6 @@ class IResearchView final: public arangodb::ViewImplementation,
     IResearchLinkMeta const& meta
   );
 
-  CompoundReader snapshot(transaction::Methods& trx);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief count of known links registered with this view
-  ////////////////////////////////////////////////////////////////////////////////
-  size_t linkCount() const noexcept;
-
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief register an iResearch Link with the specified view
-  ///        on success this call will set the '_view' pointer in the link
-  /// @return new registration was successful
-  ///////////////////////////////////////////////////////////////////////////////
-  bool linkRegister(IResearchLink& link);
-
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory
   /// @returns initialized view object
@@ -267,6 +253,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   /// @brief amount of memory in bytes occupied by this iResearch Link
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const;
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
   ///////////////////////////////////////////////////////////////////////////////
@@ -283,6 +270,18 @@ class IResearchView final: public arangodb::ViewImplementation,
     arangodb::LocalDocumentId const& documentId
   );
 
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief 'this' for the lifetime of the view
+  ///        for use with asynchronous calls, e.g. callbacks, links
+  ///////////////////////////////////////////////////////////////////////////////
+  AsyncSelf::ptr self() const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get an index reader containing the currently commited datastore
+  ///        record snapshot
+  ////////////////////////////////////////////////////////////////////////////////
+  CompoundReader snapshot();
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief wait for a flush of all index data to its respective stores
   /// @param maxMsec try not to exceed the specified time, casues partial sync
@@ -297,6 +296,16 @@ class IResearchView final: public arangodb::ViewImplementation,
   static std::string const& type() noexcept;
 
   ///////////////////////////////////////////////////////////////////////////////
+  /// @brief update the view properties via the LogicalView allowing for tracking
+  ///        update via WAL entries
+  ///////////////////////////////////////////////////////////////////////////////
+  arangodb::Result updateLogicalProperties(
+    arangodb::velocypack::Slice const& slice,
+    bool partialUpdate,
+    bool doSync
+  );
+
+  ///////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)
   ///////////////////////////////////////////////////////////////////////////////
   arangodb::Result updateProperties(
@@ -305,10 +314,13 @@ class IResearchView final: public arangodb::ViewImplementation,
     bool doSync
   ) override;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief persist the specified WAL file into permanent storage
-  ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Result commit() override;
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief visit all collection IDs that were added to the view
+  /// @return 'visitor' success
+  ///////////////////////////////////////////////////////////////////////////////
+  bool visitCollections(
+    std::function<bool(TRI_voc_cid_t)> const& visitor
+  ) const override;
 
  private:
   struct DataStore {
@@ -334,7 +346,10 @@ class IResearchView final: public arangodb::ViewImplementation,
       size_t _intervalStep;
 
       std::shared_ptr<irs::index_writer::consolidation_policy_t> _policy;
-      PolicyState(size_t intervalStep, std::shared_ptr<irs::index_writer::consolidation_policy_t> policy);
+      PolicyState(
+        size_t intervalStep,
+        const std::shared_ptr<irs::index_writer::consolidation_policy_t>& policy
+      );
     };
 
     size_t _cleanupIntervalCount;
@@ -342,7 +357,7 @@ class IResearchView final: public arangodb::ViewImplementation,
     std::vector<PolicyState> _consolidationPolicies;
 
     SyncState() noexcept;
-    SyncState(IResearchViewMeta::CommitMeta const& meta);
+    explicit SyncState(IResearchViewMeta::CommitMeta const& meta);
   };
 
   struct TidStore {
@@ -415,13 +430,13 @@ class IResearchView final: public arangodb::ViewImplementation,
   std::condition_variable _asyncCondition; // trigger reload of timeout settings for async jobs
   std::atomic<size_t> _asyncMetaRevision; // arbitrary meta modification id, async jobs should reload if different
   std::mutex _asyncMutex; // mutex used with '_asyncCondition' and associated timeouts
+  AsyncSelf::ptr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
   std::mutex _trxStoreMutex; // mutex used to protect '_storeByTid' against multiple insertions
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   IResearchViewMeta _meta;
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_meta'
   MemoryStoreNode _memoryNodes[2]; // 2 because we just swap them
   MemoryStoreNode* _memoryNode; // points to the current memory store
-  std::unordered_map<TRI_voc_cid_t, IResearchLink*> _registeredLinks; // links that have been registered with this view (used for duplicate registration detection)
   MemoryStoreNode* _toFlush; // points to memory store to be flushed
   MemoryStoreByTid _storeByTid;
   DataStore _storePersisted;
@@ -429,7 +444,6 @@ class IResearchView final: public arangodb::ViewImplementation,
   irs::async_utils::thread_pool _threadPool;
   std::function<void(transaction::Methods* trx)> _transactionCallback;
   std::atomic<bool> _inRecovery;
-  std::shared_ptr<AsyncValid> _valid; // true for the lifetime of the view (for use with asynchronous callbacks)
 };
 
 NS_END // iresearch

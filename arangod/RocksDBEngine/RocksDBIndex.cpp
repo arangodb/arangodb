@@ -102,8 +102,9 @@ rocksdb::Comparator const* RocksDBIndex::comparator() const {
 void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   Index::toVelocyPackFigures(builder);
-  builder.add("cacheInUse", VPackValue(useCache()));
-  if (useCache()) {
+  bool cacheInUse = useCache();
+  builder.add("cacheInUse", VPackValue(cacheInUse));
+  if (cacheInUse) {
     builder.add("cacheSize", VPackValue(_cache->size()));
     auto hitRates = _cache->hitRates();
     double rate = hitRates.first;
@@ -125,7 +126,6 @@ void RocksDBIndex::load() {
 
 void RocksDBIndex::unload() {
   if (useCache()) {
-    // LOG_TOPIC(ERR, Logger::FIXME) << "unload cache";
     destroyCache();
     TRI_ASSERT(!_cachePresent);
   }
@@ -323,4 +323,12 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
 
 std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> RocksDBIndex::estimator() const {
   return std::make_pair(nullptr, 0);
+}
+
+void RocksDBIndex::applyCommitedEstimates(
+    std::vector<uint64_t> const& inserts,
+    std::vector<uint64_t> const& removes) {
+  // This function is required to be overloaded by indexes with Estimates. All other should not call this function.
+  // In Production this call will be ignored, it is not critical
+  TRI_ASSERT(false);
 }

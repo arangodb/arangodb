@@ -39,7 +39,7 @@ function runSetup () {
   var c = db._create('UnitTestsRecoveryDummy');
 
   db._dropView('UnitTestsRecoveryView');
-  var v = db._createView('UnitTestsRecoveryView', 'iresearch', {});
+  var v = db._createView('UnitTestsRecoveryView', 'arangosearch', {});
 
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   v.properties(meta);
@@ -78,7 +78,7 @@ function recoverySuite () {
     testIResearchLinkPopulateDropLinkNoFlushThread: function () {
       var v = db._view('UnitTestsRecoveryView');
       assertEqual(v.name(), 'UnitTestsRecoveryView');
-      assertEqual(v.type(), 'iresearch');
+      assertEqual(v.type(), 'arangosearch');
       var p = v.properties().links;
       assertFalse(p.hasOwnProperty('UnitTestsRecoveryDummy'));
 

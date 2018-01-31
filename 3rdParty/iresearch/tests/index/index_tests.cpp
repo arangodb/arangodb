@@ -24,7 +24,6 @@
 #include "tests_shared.hpp" 
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
-#include "document/field.hpp"
 #include "iql/query_builder.hpp"
 #include "formats/formats_10.hpp"
 #include "search/filter.hpp"
@@ -122,6 +121,52 @@ bool string_field::write(ir::data_output& out) const {
 }
 
 ir::token_stream& string_field::get_tokens() const {
+  REGISTER_TIMER_DETAILED();
+
+  stream_.reset(value_);
+  return stream_;
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                   string_ref_field implemntation
+// ----------------------------------------------------------------------------
+
+string_ref_field::string_ref_field(
+    const irs::string_ref& name,
+    const irs::flags& extra_features /*= irs::flags::empty_instance()*/
+): features_({ irs::frequency::type(), irs::position::type() }) {
+  features_ |= extra_features;
+  this->name(name);
+}
+
+string_ref_field::string_ref_field(
+    const irs::string_ref& name,
+    const irs::string_ref& value,
+    const irs::flags& extra_features /*= irs::flags::empty_instance()*/
+  ): features_({ irs::frequency::type(), irs::position::type() }),
+     value_(value) {
+  features_ |= extra_features;
+  this->name(name);
+}
+
+const irs::flags& string_ref_field::features() const {
+  return features_;
+}
+
+// truncate very long terms
+void string_ref_field::value(const irs::string_ref& str) {
+  const auto size_len = irs::vencode_size_32(irs::byte_block_pool::block_type::SIZE);
+  const auto max_len = (std::min)(str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
+
+  value_ = irs::string_ref(str.c_str(), max_len);
+}
+
+bool string_ref_field::write(irs::data_output& out) const {
+  irs::write_string(out, value_);
+  return true;
+}
+
+irs::token_stream& string_ref_field::get_tokens() const {
   REGISTER_TIMER_DETAILED();
 
   stream_.reset(value_);
@@ -658,7 +703,7 @@ class index_test_case_base : public tests::index_test_base {
       size_t batch_size,
       ir::index_writer::ptr writer = nullptr,
       std::atomic<size_t>* commit_count = nullptr) {
-    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
+    struct csv_doc_template_t: public tests::csv_doc_generator::doc_template {
       virtual void init() {
         clear();
         reserve(2);
@@ -666,7 +711,7 @@ class index_test_case_base : public tests::index_test_base {
         insert(std::make_shared<tests::templates::string_field>("label"));
       }
 
-      virtual void value(size_t idx, const std::string& value) {
+      virtual void value(size_t idx, const irs::string_ref& value) {
         switch(idx) {
          case 0:
           indexed.get<tests::templates::string_field>("id")->value(value);
@@ -735,7 +780,12 @@ class index_test_case_base : public tests::index_test_base {
           }
 
           csv_doc_template_t csv_doc_template;
-          tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+          auto csv_doc_inserter = [&csv_doc_template](irs::segment_writer::document& doc)->bool {
+            doc.insert(irs::action::index, csv_doc_template.indexed.begin(), csv_doc_template.indexed.end());
+            doc.insert(irs::action::store, csv_doc_template.stored.begin(), csv_doc_template.stored.end());
+            return false;
+          };
+          tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
           size_t gen_skip = i;
 
           for(size_t count = 0;; ++count) {
@@ -763,10 +813,7 @@ class index_test_case_base : public tests::index_test_base {
 
             {
               REGISTER_TIMER_NAMED_DETAILED("load");
-              insert(*writer,
-                csv_doc_template.indexed.begin(), csv_doc_template.indexed.end(), 
-                csv_doc_template.stored.begin(), csv_doc_template.stored.end()
-              );
+              ASSERT_TRUE(writer->insert(csv_doc_inserter));
             }
 
             if (count >= writer_batch_size) {
@@ -829,7 +876,7 @@ class index_test_case_base : public tests::index_test_base {
           }
 
           csv_doc_template_t csv_doc_template;
-          tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+          tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
           size_t doc_skip = update_skip;
           size_t gen_skip = i;
 
@@ -1045,12 +1092,12 @@ class index_test_case_base : public tests::index_test_base {
     writer->consolidate(policy, false);
     writer->commit();
 
-    struct dummy_doc_template_t: public tests::delim_doc_generator::doc_template {
+    struct dummy_doc_template_t: public tests::csv_doc_generator::doc_template {
       virtual void init() {}
-      virtual void value(size_t idx, const std::string& value) {};
+      virtual void value(size_t idx, const irs::string_ref& value) {};
     };
     dummy_doc_template_t dummy_doc_template;
-    tests::delim_doc_generator gen(resource("simple_two_column.csv"), dummy_doc_template, ',');
+    tests::csv_doc_generator gen(resource("simple_two_column.csv"), dummy_doc_template);
     size_t docs_count = 0;
 
     // determine total number of docs in source data
@@ -1388,7 +1435,7 @@ class index_test_case_base : public tests::index_test_base {
   }
   
   void concurrent_read_multiple_columns() {
-    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
+    struct csv_doc_template_t: public tests::csv_doc_generator::doc_template {
       virtual void init() {
         clear();
         reserve(2);
@@ -1396,7 +1443,7 @@ class index_test_case_base : public tests::index_test_base {
         insert(std::make_shared<tests::templates::string_field>("label"));
       }
 
-      virtual void value(size_t idx, const std::string& value) {
+      virtual void value(size_t idx, const irs::string_ref& value) {
         switch(idx) {
          case 0:
           indexed.get<tests::templates::string_field>("id")->value(value);
@@ -1410,7 +1457,7 @@ class index_test_case_base : public tests::index_test_base {
     // write columns 
     {
       csv_doc_template_t csv_doc_template;
-      tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+      tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
       const tests::document* doc;
@@ -1437,7 +1484,7 @@ class index_test_case_base : public tests::index_test_base {
 
         ir::doc_id_t expected_id = 0;
         csv_doc_template_t csv_doc_template;
-        tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+        tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
         auto visitor = [&gen, &column_name, &expected_id] (ir::doc_id_t id, const irs::bytes_ref& actual_value) {
           if (id != ++expected_id) {
             return false;
@@ -1479,7 +1526,7 @@ class index_test_case_base : public tests::index_test_base {
 
         ir::doc_id_t expected_id = 0;
         csv_doc_template_t csv_doc_template;
-        tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+        tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
         const tests::document* doc = nullptr;
 
         auto column = segment.column_reader(meta->id);
@@ -1531,7 +1578,7 @@ class index_test_case_base : public tests::index_test_base {
 
         ir::doc_id_t expected_id = 0;
         csv_doc_template_t csv_doc_template;
-        tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+        tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
         const tests::document* doc = nullptr;
 
         auto column = segment.column_reader(meta->id);
@@ -1691,7 +1738,7 @@ class index_test_case_base : public tests::index_test_base {
       } field;
 
       irs::doc_id_t docs_count = 0;
-      auto inserter = [&docs_count, &field](const irs::index_writer::document& doc) {
+      auto inserter = [&docs_count, &field](const irs::segment_writer::document& doc) {
         if (docs_count % 2) {
           doc.insert(irs::action::store, field);
         }
@@ -2477,7 +2524,7 @@ class index_test_case_base : public tests::index_test_base {
       } field;
 
       irs::doc_id_t docs_count = 0;
-      auto inserter = [&docs_count, &field](const irs::index_writer::document& doc) {
+      auto inserter = [&docs_count, &field](const irs::segment_writer::document& doc) {
         doc.insert(irs::action::store, field);
         return ++docs_count < MAX_DOCS;
       };
@@ -3171,7 +3218,7 @@ class index_test_case_base : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto inserter = [&field](const irs::index_writer::document& doc) {
+      auto inserter = [&field](const irs::segment_writer::document& doc) {
         doc.insert(irs::action::store, field);
         return ++field.value < MAX_DOCS;
       };
@@ -3925,7 +3972,7 @@ class index_test_case_base : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto inserter = [&field](const irs::index_writer::document& doc) {
+      auto inserter = [&field](const irs::segment_writer::document& doc) {
         doc.insert(irs::action::store, field);
         return ++field.value < MAX_DOCS;
       };
@@ -4827,7 +4874,7 @@ class index_test_case_base : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto inserter = [&inserted, &field](const irs::index_writer::document& doc) {
+      auto inserter = [&inserted, &field](const irs::segment_writer::document& doc) {
         if (field.value % 2 ) {
           doc.insert(irs::action::store, field);
           ++inserted;
@@ -5864,7 +5911,7 @@ class index_test_case_base : public tests::index_test_base {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
       ASSERT_NE(nullptr, writer);
 
-      auto inserter = [&field, &names](irs::index_writer::document& doc) {
+      auto inserter = [&field, &names](irs::segment_writer::document& doc) {
         for (auto& name : names) {
           field.name_ = name;
           doc.insert(irs::action::index, field);
@@ -6062,7 +6109,7 @@ class index_test_case_base : public tests::index_test_base {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
       ASSERT_NE(nullptr, writer);
 
-      auto inserter = [&field, &names](irs::index_writer::document& doc) {
+      auto inserter = [&field, &names](irs::segment_writer::document& doc) {
         for (auto& name : names) {
           field.name_ = name;
           doc.insert(irs::action::store, field);
@@ -6539,7 +6586,7 @@ class index_test_case_base : public tests::index_test_base {
   }
 
   void read_write_doc_attributes_big() {
-    struct csv_doc_template_t: public tests::delim_doc_generator::doc_template {
+    struct csv_doc_template_t: public tests::csv_doc_generator::doc_template {
       virtual void init() {
         clear();
         reserve(2);
@@ -6547,7 +6594,7 @@ class index_test_case_base : public tests::index_test_base {
         insert(std::make_shared<tests::templates::string_field>("label"));
       }
 
-      virtual void value(size_t idx, const std::string& value) {
+      virtual void value(size_t idx, const irs::string_ref& value) {
         switch(idx) {
          case 0:
           indexed.get<tests::templates::string_field>("id")->value(value);
@@ -6559,7 +6606,7 @@ class index_test_case_base : public tests::index_test_base {
     };
 
     csv_doc_template_t csv_doc_template;
-    tests::delim_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template, ',');
+    tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
     size_t docs_count = 0;
 
     // write attributes 
@@ -7337,7 +7384,7 @@ class index_test_case_base : public tests::index_test_base {
     bool states[max];
     std::fill(std::begin(states), std::end(states), true);
 
-    auto bulk_inserter = [&i, &max, &states](irs::index_writer::document& doc) mutable {
+    auto bulk_inserter = [&i, &max, &states](irs::segment_writer::document& doc) mutable {
       auto& state = states[i];
       switch (i) {
         case 0: { // doc0
