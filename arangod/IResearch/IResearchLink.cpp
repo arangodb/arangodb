@@ -511,9 +511,11 @@ arangodb::Result IResearchLink::recover() {
 
   arangodb::velocypack::Builder link;
 
+  link.openObject();
   if (!json(link, false)) {
     return {TRI_ERROR_INTERNAL};
   }
+  link.close();
 
   // re-insert link into the view
   return view->link(_collection->cid(), link.slice());
