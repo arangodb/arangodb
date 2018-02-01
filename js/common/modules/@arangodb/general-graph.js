@@ -387,7 +387,7 @@ var bindEdgeCollections = function (self, edgeCollections) {
         data = from;
         from = data._from;
         to = data._to;
-      } else if (typeof from === 'object' && typeof to === 'object') {
+      } else if (typeof from === 'object' && typeof to === 'object' && data === undefined) {
         data = from;
         options = to;
         from = data._from;
