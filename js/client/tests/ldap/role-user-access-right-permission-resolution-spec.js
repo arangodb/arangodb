@@ -68,7 +68,7 @@ const createUsers = () => {
               },
               config: {
                 username: user.name,
-                userrole: user.role
+                username: user.role
               }
             });
           }
@@ -79,13 +79,13 @@ const createUsers = () => {
 };
 
 const createRole = (user) => {
-  users.save(':role:' + user.config.userrole, null, true);
-  users.grantDatabase(':role:' + user.config.userrole, user.db.name, user.db.permission);
-  users.grantCollection(':role:' + user.config.userrole, user.db.name, user.col.name, user.col.permission);
+  users.save(':role:' + user.config.username, null, true);
+  users.grantDatabase(':role:' + user.config.username, user.db.name, user.db.permission);
+  users.grantCollection(':role:' + user.config.username, user.db.name, user.col.name, user.col.permission);
 };
 
 const removeRole = (user) => {
-  users.remove(':role:' + user.config.userrole);
+  users.remove(':role:' + user.config.username);
 };
 
 describe('User Rights Management', () => {
@@ -103,7 +103,7 @@ describe('User Rights Management', () => {
 
   it('should test permission for', () => {
     for (const user of userSet) {
-      describe(`user ${user.name} with their role ${user.config.userrole}`, () => {
+      describe(`user ${user.name} with their role ${user.config.username}`, () => {
         before(() => {
           createRole(user);
         });
@@ -111,20 +111,20 @@ describe('User Rights Management', () => {
           removeRole(user);
         });
         it('on database', () => {
-          const permission = users.permission(':role:' + user.config.userrole, '_system');
+          const permission = users.permission(':role:' + user.config.username, '_system');
           expect(permission).to.equal(user.db.permission,
             'Expected different permission for _system');
         });
         it('on collection', () => {
-          const permission = users.permission(':role:' + user.config.userrole, '_system', colName);
+          const permission = users.permission(':role:' + user.config.username, '_system', colName);
           expect(permission).to.equal(user.col.permission);
         });
         it('on collection after revoking database level permission', () => {
-          users.revokeCollection(':role:' + user.config.userrole, '_system', colName);
+          users.revokeCollection(':role:' + user.config.username, '_system', colName);
           users.reload();
-          const permission = users.permission(':role:' + user.config.userrole, user.db.name, colName);
+          const permission = users.permission(':role:' + user.config.username, user.db.name, colName);
 
-          let result = users.permissionFull(':role:' + user.config.userrole);
+          let result = users.permissionFull(':role:' + user.config.username);
           let collPerm;
           if (user.db.name !== '*') {
             collPerm = result[user.db.name].collections['*'];
@@ -136,12 +136,12 @@ describe('User Rights Management', () => {
           expect(permission).to.equal(collPerm);
         });
         it('on database after revoking database level permission', () => {
-          users.revokeDatabase(':role:' + user.config.userrole, user.db.name);
+          users.revokeDatabase(':role:' + user.config.username, user.db.name);
           users.reload();
 
-          let result = users.permissionFull(':role:' + user.config.userrole);
+          let result = users.permissionFull(':role:' + user.config.username);
           const dbPerm = result['*'].permission;
-          const permission = users.permission(':role:' + user.config.userrole, user.db.name);
+          const permission = users.permission(':role:' + user.config.username, user.db.name);
 
           expect(permission).to.equal(dbPerm,
             'Expected different permission for _system');
