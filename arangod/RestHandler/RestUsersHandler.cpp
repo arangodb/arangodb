@@ -196,13 +196,13 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
   data.openObject();
   Result res = um->accessUser(username, [&](auth::User const& user) {
     DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
+      
       auth::Level lvl = user.databaseAuthLevel(vocbase->name());
-      std::string str = "undefined";
-      if (user.hasSpecificDatabase(vocbase->name())) {
-        str = convertFromAuthLevel(lvl);
-      }
-
       if (full) {
+        std::string str = "undefined";
+        if (user.hasSpecificDatabase(vocbase->name())) {
+          str = convertFromAuthLevel(lvl);
+        }
         VPackObjectBuilder b(&data, vocbase->name(), true);
         data.add("permission", VPackValue(str));
         VPackObjectBuilder b2(&data, "collections", true);
@@ -218,7 +218,7 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
         lvl = user.collectionAuthLevel(vocbase->name(), "*");
         data.add("*", VPackValue(convertFromAuthLevel(lvl)));
       } else if (lvl != auth::Level::NONE) {  // hide db's without access
-        data.add(vocbase->name(), VPackValue(str));
+        data.add(vocbase->name(), VPackValue(convertFromAuthLevel(lvl)));
       }
     });
     if (full) {
