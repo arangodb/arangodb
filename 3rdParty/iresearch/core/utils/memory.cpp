@@ -83,7 +83,6 @@ Topmost releasable block (keepcost):   %lu\n\
     malloc_stats(); // outputs to stderr
   #endif
   #endif
-  #endif
 
     // ...........................................................................
     // output stacktrace
