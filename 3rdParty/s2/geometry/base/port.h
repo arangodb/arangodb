@@ -37,6 +37,7 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "definer.h"
 #ifdef SWIG
 %include "third_party/absl/base/port.h"
 #endif
