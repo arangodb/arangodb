@@ -197,8 +197,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
  private:
 
-  std::string _directionAttr;
-  bool _isFromIndex;
+  std::string const _directionAttr;
+  bool const _isFromIndex;
 
   /// @brief A fixed size library to estimate the selectivity of the index.
   /// On insertion of a document we have to insert it into the estimator,

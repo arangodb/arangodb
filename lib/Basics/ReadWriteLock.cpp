@@ -81,10 +81,12 @@ bool ReadWriteLock::tryReadLock() {
 /// @brief releases the read-lock or write-lock
 void ReadWriteLock::unlock() {
   std::unique_lock<std::mutex> guard(_mut);
+  TRI_ASSERT(_state >= -1);
   if (_state == -1) {
     _state = 0;
     _bell.notify_all();
   } else {
+    TRI_ASSERT(_state > 0);
     _state -= 1;
     if (_state == 0) {
       _bell.notify_all();
