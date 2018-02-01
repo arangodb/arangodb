@@ -134,11 +134,7 @@ function setResponse (res, name, body, code) {
   if (body._rev) {
     res.set('etag', body._rev);
   }
-  res.json({
-    error: false,
-    [name]: body,
-    code
-  });
+  res.json({ error: false, [name]: body, code });
 }
 
 function matchVertexRevision (req, rev) {
@@ -204,6 +200,12 @@ const definitionEdgeCollectionName = joi.string()
 
 const waitForSyncFlag = phpCompatFlag
   .description('define if the request should wait until synced to disk.');
+
+const returnOldFlag = phpCompatFlag
+  .description('define if the request should wait return the old version of the updated document.');
+
+const returnNewFlag = phpCompatFlag
+  .description('define if the request should wait return the new version of the updated document.');
 
 const vertexKey = joi.string()
   .description('_key attribute of one specific vertex');
@@ -549,13 +551,14 @@ router.delete('/:graph/edge/:definition', function (req, res) {
 
 router.post('/:graph/vertex/:collection', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
+  const returnNew = Boolean(req.queryParams.returnNew);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
   const g = loadGraph(name);
   checkCollection(g, collection);
   let meta;
   try {
-    meta = g[collection].save(req.body, {waitForSync});
+    meta = g[collection].save(req.body, {waitForSync, returnNew});
   } catch (e) {
     if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_INVALID_EDGE.code) {
       throw Object.assign(
@@ -570,6 +573,7 @@ router.post('/:graph/vertex/:collection', function (req, res) {
   .pathParam('graph', graphName)
   .pathParam('collection', vertexCollectionName)
   .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnNew', returnNewFlag)
   .body(joi.any().required(), 'The document to be stored')
   .error('bad request', 'The edge definition is invalid.')
   .error('not found', 'Graph or collection not found.')
@@ -607,6 +611,8 @@ router.get('/:graph/vertex/:collection/:key', function (req, res) {
 
 router.put('/:graph/vertex/:collection/:key', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
+  const returnOld = Boolean(req.queryParams.returnOld);
+  const returnNew = Boolean(req.queryParams.returnNew);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
@@ -626,13 +632,15 @@ router.put('/:graph/vertex/:collection/:key', function (req, res) {
     throw e;
   }
   matchVertexRevision(req, doc._rev);
-  const meta = g[collection].replace(id, req.body, {waitForSync});
+  const meta = g[collection].replace(id, req.body, {waitForSync, returnOld, returnNew});
   setResponse(res, 'vertex', meta, waitForSync ? OK : ACCEPTED);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', vertexCollectionName)
   .pathParam('key', vertexKey)
   .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnOld', returnOldFlag)
+  .queryParam('returnNew', returnNewFlag)
   .body(joi.any().required(), 'The document to be stored')
   .error('bad request', 'The vertex is invalid.')
   .error('not found', 'The vertex does not exist.')
@@ -645,6 +653,8 @@ router.put('/:graph/vertex/:collection/:key', function (req, res) {
 router.patch('/:graph/vertex/:collection/:key', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
   const keepNull = Boolean(req.queryParams.keepNull);
+  const returnOld = Boolean(req.queryParams.returnOld);
+  const returnNew = Boolean(req.queryParams.returnNew);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
@@ -664,13 +674,15 @@ router.patch('/:graph/vertex/:collection/:key', function (req, res) {
     throw e;
   }
   matchVertexRevision(req, doc._rev);
-  const meta = g[collection].update(id, req.body, {waitForSync, keepNull});
+  const meta = g[collection].update(id, req.body, {waitForSync, keepNull, returnOld, returnNew});
   setResponse(res, 'vertex', meta, waitForSync ? OK : ACCEPTED);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', vertexCollectionName)
   .pathParam('key', vertexKey)
   .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnOld', returnOldFlag)
+  .queryParam('returnNew', returnNewFlag)
   .queryParam('keepNull', keepNullFlag)
   .body(joi.any().required(), 'The values that should be modified')
   .error('bad request', 'The vertex is invalid.')
@@ -730,6 +742,8 @@ router.delete('/:graph/vertex/:collection/:key', function (req, res) {
 // Edge Operations
 
 router.post('/:graph/edge/:collection', function (req, res) {
+  const waitForSync = Boolean(req.queryParams.waitForSync);
+  const returnNew = Boolean(req.queryParams.returnNew);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
   if (!req.body._from || !req.body._to) {
@@ -742,7 +756,7 @@ router.post('/:graph/edge/:collection', function (req, res) {
   checkCollection(g, collection);
   let meta;
   try {
-    meta = g[collection].save(req.body);
+    meta = g[collection].save(req.body, {waitForSync, returnNew});
   } catch (e) {
     if (e.errorNum !== errors.ERROR_GRAPH_INVALID_EDGE.code) {
       throw Object.assign(
@@ -752,10 +766,12 @@ router.post('/:graph/edge/:collection', function (req, res) {
     }
     throw e;
   }
-  setResponse(res, 'edge', meta, ACCEPTED);
+  setResponse(res, 'edge', meta, waitForSync ? CREATED : ACCEPTED);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', edgeCollectionName)
+  .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnNew', returnNewFlag)
   .body(joi.object().required(), 'The edge to be stored. Has to contain _from and _to attributes.')
   .error('bad request', 'The edge is invalid.')
   .error('not found', 'Graph or collection not found.')
@@ -793,6 +809,8 @@ router.get('/:graph/edge/:collection/:key', function (req, res) {
 
 router.put('/:graph/edge/:collection/:key', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
+  const returnOld = Boolean(req.queryParams.returnOld);
+  const returnNew = Boolean(req.queryParams.returnNew);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
@@ -812,13 +830,15 @@ router.put('/:graph/edge/:collection/:key', function (req, res) {
     throw e;
   }
   matchVertexRevision(req, doc._rev);
-  const meta = g[collection].replace(id, req.body, {waitForSync});
+  const meta = g[collection].replace(id, req.body, {waitForSync, returnOld, returnNew});
   setResponse(res, 'edge', meta, waitForSync ? OK : ACCEPTED);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', edgeCollectionName)
   .pathParam('key', edgeKey)
   .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnOld', returnOldFlag)
+  .queryParam('returnNew', returnNewFlag)
   .body(joi.any().required(), 'The document to be stored. _from and _to attributes are ignored')
   .error('bad request', 'The edge is invalid.')
   .error('not found', 'The edge does not exist.')
@@ -830,6 +850,8 @@ router.put('/:graph/edge/:collection/:key', function (req, res) {
 
 router.patch('/:graph/edge/:collection/:key', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
+  const returnOld = Boolean(req.queryParams.returnOld);
+  const returnNew = Boolean(req.queryParams.returnNew);
   const keepNull = Boolean(req.queryParams.keepNull);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
@@ -850,13 +872,15 @@ router.patch('/:graph/edge/:collection/:key', function (req, res) {
     throw e;
   }
   matchVertexRevision(req, doc._rev);
-  const meta = g[collection].update(id, req.body, {waitForSync, keepNull});
+  const meta = g[collection].update(id, req.body, {waitForSync, keepNull, returnOld, returnNew});
   setResponse(res, 'edge', meta, waitForSync ? OK : ACCEPTED);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', edgeCollectionName)
   .pathParam('key', edgeKey)
   .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnOld', returnOldFlag)
+  .queryParam('returnNew', returnNewFlag)
   .queryParam('keepNull', keepNullFlag)
   .body(joi.any().required(), 'The values that should be modified. _from and _to attributes are ignored')
   .error('bad request', 'The edge is invalid.')

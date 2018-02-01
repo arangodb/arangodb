@@ -110,9 +110,12 @@ describe ArangoDB do
         return doc
       end
 
-      def create_vertex (waitForSync, graph_name, collection, body)
+      def create_vertex (waitForSync, graph_name, collection, body, options = {})
         cmd = vertex_endpoint(graph_name, collection)
         cmd = cmd + "?waitForSync=#{waitForSync}"
+        options.each do |key,value|
+          cmd = cmd + "&" + key + "=" + value.to_s
+        end
         doc = ArangoDB.post(cmd, :body => JSON.dump(body))
         return doc
       end
@@ -123,36 +126,48 @@ describe ArangoDB do
         return doc
       end
 
-      def update_vertex (waitForSync, graph_name, collection, key, body, keepNull = '')
+      def update_vertex (waitForSync, graph_name, collection, key, body, keepNull = '', options = {})
         cmd = vertex_endpoint(graph_name, collection, key)
         cmd = cmd + "?waitForSync=#{waitForSync}"
         if keepNull != '' then
           cmd = cmd + "&keepNull=#{keepNull}"
         end
+        options.each do |key,value|
+          cmd = cmd + "&" + key + "=" + value.to_s
+        end
         doc = ArangoDB.patch(cmd, :body => JSON.dump(body))
         return doc
       end
 
-      def replace_vertex (waitForSync, graph_name, collection, key, body)
+      def replace_vertex (waitForSync, graph_name, collection, key, body, options = {})
         cmd = vertex_endpoint(graph_name, collection, key)
         cmd = cmd + "?waitForSync=#{waitForSync}"
+        options.each do |key,value|
+          cmd = cmd + "&" + key + "=" + value.to_s
+        end
         doc = ArangoDB.put(cmd, :body => JSON.dump(body))
         return doc
       end
 
-      def delete_vertex (waitForSync, graph_name, collection, key)
+      def delete_vertex (waitForSync, graph_name, collection, key, options = {})
         cmd = vertex_endpoint(graph_name, collection, key)
         cmd = cmd + "?waitForSync=#{waitForSync}"
+        options.each do |key,value|
+          cmd = cmd + "&" + key + "=" + value.to_s
+        end
         doc = ArangoDB.delete(cmd)
         return doc
       end
 
 
-      def create_edge (waitForSync, graph_name, collection, from, to, body)
+      def create_edge (waitForSync, graph_name, collection, from, to, body, options = {})
         cmd = edge_endpoint(graph_name, collection)
         cmd = cmd + "?waitForSync=#{waitForSync}"
         body["_from"] = from
         body["_to"] = to
+        options.each do |key,value|
+          cmd = cmd + "&" + key + "=" + value.to_s
+        end
         doc = ArangoDB.post(cmd, :body => JSON.dump(body))
         return doc
       end
@@ -163,26 +178,35 @@ describe ArangoDB do
         return doc
       end
 
-      def update_edge (waitForSync, graph_name, collection, key, body, keepNull = '')
+      def update_edge (waitForSync, graph_name, collection, key, body, keepNull = '', options = {})
         cmd = edge_endpoint(graph_name, collection, key)
         cmd = cmd + "?waitForSync=#{waitForSync}"
         if keepNull != '' then
           cmd = cmd + "&keepNull=#{keepNull}"
         end
+        options.each do |key,value|
+          cmd = cmd + "&" + key + "=" + value.to_s
+        end
         doc = ArangoDB.patch(cmd, :body => JSON.dump(body))
         return doc
       end
 
-      def replace_edge (waitForSync, graph_name, collection, key, body)
+      def replace_edge (waitForSync, graph_name, collection, key, body, options = {})
         cmd = edge_endpoint(graph_name, collection, key)
         cmd = cmd + "?waitForSync=#{waitForSync}"
+        options.each do |key,value|
+          cmd = cmd + "&" + key + "=" + value.to_s
+        end
         doc = ArangoDB.put(cmd, :body => JSON.dump(body))
         return doc
       end
 
-      def delete_edge (waitForSync, graph_name, collection, key)
+      def delete_edge (waitForSync, graph_name, collection, key, options = {})
         cmd = edge_endpoint(graph_name, collection, key)
         cmd = cmd + "?waitForSync=#{waitForSync}"
+        options.each do |key,value|
+          cmd = cmd + "&" + key + "=" + value.to_s
+        end
         doc = ArangoDB.delete(cmd)
         return doc
       end
@@ -418,6 +442,19 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(sync ? 201 : 202)
             doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
           end
+          
+          it "can create a vertex, returnNew" do
+            name = "Alice"
+            doc = create_vertex( sync, graph_name, user_collection, {"name" => name}, { "returnNew" => "true" })
+            doc.code.should eq(sync ? 201 : 202)
+            doc.parsed_response['error'].should eq(false)
+            doc.parsed_response['code'].should eq(sync ? 201 : 202)
+            doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
+            
+            doc.parsed_response['vertex']['old'].should eq(nil)
+            doc.parsed_response['vertex']['new']['_key'].should_not eq(nil)
+            doc.parsed_response['vertex']['new']['name'].should eq(name)
+          end
 
           it "can get a vertex" do
             name = "Alice"
@@ -465,6 +502,36 @@ describe ArangoDB do
             oldTag.should_not eq(doc.headers['etag'])
             doc.parsed_response['vertex']['_key'].should eq(key)
           end
+          
+          it "can replace a vertex, returnOld" do
+            name = "Alice"
+            doc = create_vertex( sync, graph_name, user_collection, {"name" => name})
+            key = doc.parsed_response['vertex']['_key']
+            oldTag = doc.parsed_response['vertex']['_rev']
+            oldTag.should eq(doc.headers['etag'])
+            name = "Bob"
+
+            doc = replace_vertex( sync, graph_name, user_collection, key, {"name2" => name}, { "returnOld" => "true", "returnNew" => true })
+            doc.code.should eq(sync ? 200 : 202)
+            doc.parsed_response['error'].should eq(false)
+            doc.parsed_response['code'].should eq(sync ? 200 : 202)
+            doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
+            doc.parsed_response['vertex']['_key'].should eq(key)
+            
+            doc.parsed_response['vertex']['old']['_key'].should eq(key)
+            doc.parsed_response['vertex']['old']['name'].should eq("Alice")
+            doc.parsed_response['vertex']['old']['name2'].should eq(nil)
+            doc.parsed_response['vertex']['new']['_key'].should eq(key)
+            doc.parsed_response['vertex']['new']['name'].should eq(nil)
+            doc.parsed_response['vertex']['new']['name2'].should eq("Bob")
+
+            doc = get_vertex(graph_name, user_collection, key)
+            doc.parsed_response['vertex']['name'].should eq(nil)
+            doc.parsed_response['vertex']['name2'].should eq(name)
+            doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
+            oldTag.should_not eq(doc.headers['etag'])
+            doc.parsed_response['vertex']['_key'].should eq(key)
+          end
 
           it "can not replace a non existing vertex" do
             key = "unknownKey"
@@ -488,6 +555,33 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(sync ? 200 : 202)
             doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
             doc.parsed_response['vertex']['_key'].should eq(key)
+
+            doc = get_vertex(graph_name, user_collection, key)
+            doc.parsed_response['vertex']['name'].should eq(name)
+            doc.parsed_response['vertex']['name2'].should eq(name2)
+            doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
+            doc.parsed_response['vertex']['_key'].should eq(key)
+          end
+          
+          it "can update a vertex, returnOld" do
+            name = "Alice"
+            doc = create_vertex( sync, graph_name, user_collection, {"name" => name})
+            key = doc.parsed_response['vertex']['_key']
+            name2 = "Bob"
+
+            doc = update_vertex( sync, graph_name, user_collection, key, {"name2" => name2}, "", { "returnOld" => "true", "returnNew" => "true" })
+            doc.code.should eq(sync ? 200 : 202)
+            doc.parsed_response['error'].should eq(false)
+            doc.parsed_response['code'].should eq(sync ? 200 : 202)
+            doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
+            doc.parsed_response['vertex']['_key'].should eq(key)
+           
+            doc.parsed_response['vertex']['old']['_key'].should eq(key)
+            doc.parsed_response['vertex']['old']['name'].should eq(name)
+            doc.parsed_response['vertex']['old']['name2'].should eq(nil)
+            doc.parsed_response['vertex']['new']['_key'].should eq(key)
+            doc.parsed_response['vertex']['new']['name'].should eq(name)
+            doc.parsed_response['vertex']['new']['name2'].should eq(name2)
 
             doc = get_vertex(graph_name, user_collection, key)
             doc.parsed_response['vertex']['name'].should eq(name)
@@ -552,7 +646,7 @@ describe ArangoDB do
             doc.parsed_response['errorMessage'].should include("document not found")
             doc.parsed_response['code'].should eq(404)
           end
-
+          
           it "can not delete a non existing vertex" do
             key = "unknownKey"
 
@@ -587,10 +681,27 @@ describe ArangoDB do
             v2.code.should eq(sync ? 201 : 202)
             v2 = v2.parsed_response['vertex']['_id']
             doc = create_edge( sync, graph_name, friend_collection, v1, v2, {})
-            doc.code.should eq(202)
+            doc.code.should eq(sync ? 201 : 202)
             doc.parsed_response['error'].should eq(false)
-            doc.parsed_response['code'].should eq(202)
+            doc.parsed_response['code'].should eq(sync ? 201 : 202)
             doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
+          end
+          
+          it "can create an edge, returnNew" do
+            v1 = create_vertex( sync, graph_name, user_collection, {})
+            v1.code.should eq(sync ? 201 : 202)
+            v1 = v1.parsed_response['vertex']['_id']
+            v2 = create_vertex( sync, graph_name, user_collection, {})
+            v2.code.should eq(sync ? 201 : 202)
+            v2 = v2.parsed_response['vertex']['_id']
+            doc = create_edge( sync, graph_name, friend_collection, v1, v2, { "value" => "foo" }, { "returnNew" => "true" })
+            doc.code.should eq(sync ? 201 : 202)
+            doc.parsed_response['error'].should eq(false)
+            doc.parsed_response['code'].should eq(sync ? 201 : 202)
+            doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
+            
+            doc.parsed_response['edge']['old'].should eq(nil)
+            doc.parsed_response['edge']['new']['value'].should eq("foo")
           end
 
           it "can get an edge" do
@@ -602,7 +713,7 @@ describe ArangoDB do
             v2 = v2.parsed_response['vertex']['_id']
             type = "married"
             doc = create_edge( sync, graph_name, friend_collection, v1, v2, {"type" => type})
-            doc.code.should eq(202)
+            doc.code.should eq(sync ? 201 : 202)
             key = doc.parsed_response['edge']['_key']
 
             doc = get_edge(graph_name, friend_collection, key)
@@ -633,7 +744,7 @@ describe ArangoDB do
             v2 = v2.parsed_response['vertex']['_id']
             type = "married"
             doc = create_edge( sync, graph_name, friend_collection, v1, v2, {"type" => type})
-            doc.code.should eq(202)
+            doc.code.should eq(sync ? 201 : 202)
             key = doc.parsed_response['edge']['_key']
             oldTag = doc.parsed_response['edge']['_rev']
             oldTag.should eq(doc.headers['etag'])
@@ -645,6 +756,48 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(sync ? 200 : 202)
             doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
             doc.parsed_response['edge']['_key'].should eq(key)
+
+            doc = get_edge(graph_name, friend_collection, key)
+            doc.parsed_response['edge']['type2'].should eq(type)
+            doc.parsed_response['edge']['type'].should eq(nil)
+            doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
+            oldTag.should_not eq(doc.headers['etag'])
+            doc.parsed_response['edge']['_key'].should eq(key)
+          end
+          
+          it "can replace an edge, returnOld" do
+            v1 = create_vertex( sync, graph_name, user_collection, {})
+            v1.code.should eq(sync ? 201 : 202)
+            v1 = v1.parsed_response['vertex']['_id']
+            v2 = create_vertex( sync, graph_name, user_collection, {})
+            v2.code.should eq(sync ? 201 : 202)
+            v2 = v2.parsed_response['vertex']['_id']
+            type = "married"
+            doc = create_edge( sync, graph_name, friend_collection, v1, v2, {"type" => type})
+            doc.code.should eq(sync ? 201 : 202)
+            key = doc.parsed_response['edge']['_key']
+            oldTag = doc.parsed_response['edge']['_rev']
+            oldTag.should eq(doc.headers['etag'])
+            type = "divorced"
+
+            doc = replace_edge( sync, graph_name, friend_collection, key, {"type2" => type, "_from" => v1, "_to" => v2}, { "returnOld" => "true", "returnNew" => "true" })
+            doc.code.should eq(sync ? 200 : 202)
+            doc.parsed_response['error'].should eq(false)
+            doc.parsed_response['code'].should eq(sync ? 200 : 202)
+            doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
+            doc.parsed_response['edge']['_key'].should eq(key)
+
+            doc.parsed_response['edge']['old']['_key'].should eq(key)
+            doc.parsed_response['edge']['old']['type'].should eq("married")
+            doc.parsed_response['edge']['old']['type2'].should eq(nil)
+            doc.parsed_response['edge']['old']['_from'].should eq(v1)
+            doc.parsed_response['edge']['old']['_to'].should eq(v2)
+
+            doc.parsed_response['edge']['new']['_key'].should eq(key)
+            doc.parsed_response['edge']['new']['type'].should eq(nil)
+            doc.parsed_response['edge']['new']['type2'].should eq("divorced")
+            doc.parsed_response['edge']['new']['_from'].should eq(v1)
+            doc.parsed_response['edge']['new']['_to'].should eq(v2)
 
             doc = get_edge(graph_name, friend_collection, key)
             doc.parsed_response['edge']['type2'].should eq(type)
@@ -673,7 +826,7 @@ describe ArangoDB do
             v2 = v2.parsed_response['vertex']['_id']
             type = "married"
             doc = create_edge( sync, graph_name, friend_collection, v1, v2, {"type" => type})
-            doc.code.should eq(202)
+            doc.code.should eq(sync ? 201 : 202)
             key = doc.parsed_response['edge']['_key']
             type2 = "divorced"
 
@@ -691,6 +844,43 @@ describe ArangoDB do
             doc.parsed_response['edge']['_key'].should eq(key)
           end
           
+          it "can update an edge, returnOld" do
+            v1 = create_vertex( sync, graph_name, user_collection, {})
+            v1.code.should eq(sync ? 201 : 202)
+            v1 = v1.parsed_response['vertex']['_id']
+            v2 = create_vertex( sync, graph_name, user_collection, {})
+            v2.code.should eq(sync ? 201 : 202)
+            v2 = v2.parsed_response['vertex']['_id']
+            type = "married"
+            doc = create_edge( sync, graph_name, friend_collection, v1, v2, {"type" => type})
+            doc.code.should eq(sync ? 201 : 202)
+            key = doc.parsed_response['edge']['_key']
+            type2 = "divorced"
+
+            doc = update_edge( sync, graph_name, friend_collection, key, {"type2" => type2}, "", { "returnOld" => "true", "returnNew" => "true" })
+            doc.code.should eq(sync ? 200 : 202)
+            doc.parsed_response['error'].should eq(false)
+            doc.parsed_response['code'].should eq(sync ? 200 : 202)
+            doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
+            doc.parsed_response['edge']['_key'].should eq(key)
+            doc.parsed_response['edge']['old']['_key'].should eq(key)
+            doc.parsed_response['edge']['old']['type'].should eq("married")
+            doc.parsed_response['edge']['old']['type2'].should eq(nil)
+            doc.parsed_response['edge']['old']['_from'].should eq(v1)
+            doc.parsed_response['edge']['old']['_to'].should eq(v2)
+            doc.parsed_response['edge']['new']['_key'].should eq(key)
+            doc.parsed_response['edge']['new']['type'].should eq("married")
+            doc.parsed_response['edge']['new']['type2'].should eq("divorced")
+            doc.parsed_response['edge']['new']['_from'].should eq(v1)
+            doc.parsed_response['edge']['new']['_to'].should eq(v2)
+
+            doc = get_edge(graph_name, friend_collection, key)
+            doc.parsed_response['edge']['type'].should eq(type)
+            doc.parsed_response['edge']['type2'].should eq(type2)
+            doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
+            doc.parsed_response['edge']['_key'].should eq(key)
+          end
+          
           it "can update an edge keepNull default(true)" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1.code.should eq(sync ? 201 : 202)
@@ -700,7 +890,7 @@ describe ArangoDB do
             v2 = v2.parsed_response['vertex']['_id']
             type = "married"
             doc = create_edge( sync, graph_name, friend_collection, v1, v2, {"type" => type})
-            doc.code.should eq(202)
+            doc.code.should eq(sync ? 201 : 202)
             key = doc.parsed_response['edge']['_key']
 
             doc = update_edge( sync, graph_name, friend_collection, key, {"type" => nil}, "")
@@ -720,7 +910,7 @@ describe ArangoDB do
             v2 = v2.parsed_response['vertex']['_id']
             type = "married"
             doc = create_edge( sync, graph_name, friend_collection, v1, v2, {"type" => type})
-            doc.code.should eq(202)
+            doc.code.should eq(sync ? 201 : 202)
             key = doc.parsed_response['edge']['_key']
 
             doc = update_edge( sync, graph_name, friend_collection, key, {"type" => nil}, true)
@@ -740,7 +930,7 @@ describe ArangoDB do
             v2 = v2.parsed_response['vertex']['_id']
             type = "married"
             doc = create_edge( sync, graph_name, friend_collection, v1, v2, {"type" => type})
-            doc.code.should eq(202)
+            doc.code.should eq(sync ? 201 : 202)
             key = doc.parsed_response['edge']['_key']
 
             doc = update_edge( sync, graph_name, friend_collection, key, {"type" => nil}, false)
@@ -769,7 +959,7 @@ describe ArangoDB do
             v2 = v2.parsed_response['vertex']['_id']
             type = "married"
             doc = create_edge( sync, graph_name, friend_collection, v1, v2, {"type" => type})
-            doc.code.should eq(202)
+            doc.code.should eq(sync ? 201 : 202)
             key = doc.parsed_response['edge']['_key']
 
             doc = delete_edge( sync, graph_name, friend_collection, key)
