@@ -335,7 +335,8 @@ void IResearchRocksDBRecoveryHelper::ensureLink(
 ) {
   if (!indexSlice.isObject()) {
     LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
-        << "cannot recover index for collection: invalid marker";
+        << "Cannot recover index for the collection '" << cid
+        << "' in the database '" << dbId << "' : invalid marker";
     return;
   }
 
@@ -358,7 +359,9 @@ void IResearchRocksDBRecoveryHelper::ensureLink(
     iid = idSlice.getNumber<TRI_idx_iid_t>();
   } else {
     LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "invalid value for attribute 'id', expected `String` or `Number`, got '"
+        << "Cannot recover index for the collection '" << cid
+        << "' in the database '" << dbId
+        << "' : invalid value for attribute 'id', expected 'String' or 'Number', got '"
         << idSlice.typeName() << "'";
     return;
   }
@@ -367,8 +370,8 @@ void IResearchRocksDBRecoveryHelper::ensureLink(
     // already there
     LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
         << "Index of type 'IResearchLink' with id `" << iid
-        << "' in collection '" << cid
-        << "' in database '" << dbId
+        << "' in the collection '" << cid
+        << "' in the database '" << dbId
         << "' already exists: skipping create marker";
     return;
   }
@@ -378,8 +381,8 @@ void IResearchRocksDBRecoveryHelper::ensureLink(
   if (!vocbase) {
     // if the underlying database is gone, we can go on
     LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "cannot create index for collection " << cid
-        << " in database " << dbId << ": "
+        << "Cannot create index for the collection '" << cid
+        << "' in the database '" << dbId << "' : "
         << TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return;
   }
@@ -389,8 +392,8 @@ void IResearchRocksDBRecoveryHelper::ensureLink(
   if (!col) {
     // if the underlying collection gone, we can go on
     LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "cannot create index for collection " << cid
-        << " in database " << dbId << ": "
+        << "Cannot create index for the collection '" << cid
+        << "' in the database '" << dbId << "' : "
         << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return;
   }
@@ -400,15 +403,21 @@ void IResearchRocksDBRecoveryHelper::ensureLink(
   if (!link) {
     LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
         << "Collection '" << cid
-        << "' in database '" << dbId
+        << "' in the database '" << dbId
         << "' does not contain index of type 'IResearchLink' with id '" << iid << "': skip create marker";
     return;
   }
 
   LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
-      << "found create index marker. databaseId: " << dbId
-      << ", collectionId: " << cid;
+      << "found create index marker, databaseId: '" << dbId
+      << "', collectionId: '" << cid << "'";
 
   // re-insert link
-  link->recover();
+  if (link->recover().fail()) {
+    LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "Failed to recover the link '" << iid
+        << "' to the collection '" << cid
+        << "' in the database '" << dbId;
+    return;
+  }
 }
