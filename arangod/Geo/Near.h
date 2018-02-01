@@ -85,7 +85,7 @@ class NearUtils {
   typedef std::priority_queue<Document, std::vector<Document>, CMP>
       GeoDocumentsQueue;
 
-  NearUtils(geo::QueryParams&& params);
+  NearUtils(geo::QueryParams&& params) noexcept;
 
  public:
   /// @brief get cell covering target coordinate (at max level)

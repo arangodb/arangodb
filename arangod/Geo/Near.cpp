@@ -39,7 +39,7 @@ using namespace arangodb;
 using namespace arangodb::geo;
 
 template <typename CMP>
-NearUtils<CMP>::NearUtils(QueryParams&& qp)
+NearUtils<CMP>::NearUtils(QueryParams&& qp) noexcept
     : _params(std::move(qp)),
       _origin(S2LatLng::FromDegrees(qp.origin.latitude, qp.origin.longitude)
                   .ToPoint()),

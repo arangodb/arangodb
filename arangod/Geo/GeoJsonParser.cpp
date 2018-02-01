@@ -76,14 +76,9 @@ GeoJsonParser::GeoJSONType GeoJsonParser::parseGeoJSONType(
   }
 
   VPackSlice type = geoJSON.get("type");
-  // VPackSlice coordinates = geoJSON.get("coordinates");
-
   if (!type.isString()) {
     return GeoJSONType::UNKNOWN;
-  } /*else if (!coordinates.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "Invalid GeoJSON coordinates format.");
-  }*/
+  }
 
   std::string typeStr = type.copyString();
   if (icompare(typeStr, GEOJSON_TYPE_POINT)) {

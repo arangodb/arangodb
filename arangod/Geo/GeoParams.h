@@ -84,7 +84,7 @@ struct RegionCoverParams {
 };
 
 struct QueryParams {
-  QueryParams()
+  QueryParams() noexcept
       : origin(geo::Coordinate::Invalid()),
         cover(queryMaxCoverCells, queryWorstLevel, queryBestLevel) {}
 
