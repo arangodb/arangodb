@@ -387,19 +387,19 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 /// parse the WAL with the above handler parser class
 Result RocksDBRecoveryManager::parseRocksWAL() {
   Result rv;
-  std::unique_ptr<WBReader> handler;
+  Result shutdownRv;
 
   try {
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-    for (auto helper : engine->recoveryHelpers()) {
+    for (auto& helper : engine->recoveryHelpers()) {
       helper->prepare();
     }
 
     // Tell the WriteBatch reader the transaction markers to look for
-    handler = std::make_unique<WBReader>(engine->settingsManager()->counterSeqs());
+    WBReader handler(engine->settingsManager()->counterSeqs());
 
-    auto minTick = std::min(engine->settingsManager()->earliestSeqNeeded(),
+    auto const minTick = std::min(engine->settingsManager()->earliestSeqNeeded(),
                             engine->releasedTick());
     std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
     rocksdb::Status s = _db->GetUpdatesSince(
@@ -407,13 +407,13 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
 
     rv = rocksutils::convertStatus(s);
 
-    if(rv.ok()){
+    if (rv.ok()) {
       while (iterator->Valid()) {
         s = iterator->status();
         if (s.ok()) {
           rocksdb::BatchResult batch = iterator->GetBatch();
-          handler->currentSeqNum = batch.sequence;
-          s = batch.writeBatchPtr->Iterate(handler.get());
+          handler.currentSeqNum = batch.sequence;
+          s = batch.writeBatchPtr->Iterate(&handler);
         }
 
 
@@ -428,11 +428,10 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
         iterator->Next();
       }
 
-      if(rv.ok()){
+      if (rv.ok()) {
         LOG_TOPIC(TRACE, Logger::ENGINES)
-            << "finished WAL scan with " << handler->deltas.size();
-        for (std::pair<uint64_t, RocksDBSettingsManager::CounterAdjustment> pair :
-             handler->deltas) {
+            << "finished WAL scan with " << handler.deltas.size();
+        for (auto& pair : handler.deltas) {
           engine->settingsManager()->updateCounter(pair.first, pair.second);
           LOG_TOPIC(TRACE, Logger::ENGINES)
               << "WAL recovered " << pair.second.added() << " PUTs and "
@@ -440,16 +439,16 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
         }
       }
     }
+
+    shutdownRv = handler.shutdownWBReader();
   } CATCH_TO_RESULT(rv,TRI_ERROR_INTERNAL);
 
-  auto shutdownRv = handler->shutdownWBReader();
+  if (rv.ok()) {
+    return shutdownRv;
+  }
 
-  if(rv.ok()) {
-    rv = std::move(shutdownRv);
-  } else {
-    if(shutdownRv.fail()){
-      rv.reset(rv.errorNumber(), rv.errorMessage() + " - " + shutdownRv.errorMessage());
-    }
+  if (shutdownRv.fail()) {
+    rv.reset(rv.errorNumber(), rv.errorMessage() + " - " + shutdownRv.errorMessage());
   }
 
   return rv;

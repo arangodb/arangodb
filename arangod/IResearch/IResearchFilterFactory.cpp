@@ -687,7 +687,7 @@ bool fromInArray(
 
     bool attributeAccessFound = false;
     for (size_t i = 0; i < n; ++i) {
-      attributeAccessFound |= bool(arangodb::iresearch::checkAttributeAccess(
+      attributeAccessFound |= (nullptr != arangodb::iresearch::checkAttributeAccess(
         valueNode->getMemberUnchecked(i), *ctx.ref
       ));
     }
