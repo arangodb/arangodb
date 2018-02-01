@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for TypedResult class
+/// @brief test suite for ResultValue class
 ///
 /// @file
 ///
@@ -34,8 +34,8 @@ using namespace arangodb;
 using namespace std;
 
 
-TypedResult<int> function_a(int i){
-  return TypedResult<int>(i);
+ResultValue<int> function_a(int i){
+  return ResultValue<int>(i);
 }
 
 Result function_b(){
@@ -62,41 +62,51 @@ TEST_CASE("ResultTest", "[string]") {
 /// @brief test_StringBuffer1
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_ResultTest1") {
+SECTION("testResultTest1") {
   int  integer = 43;
-  int& integer_lvalue_ref = integer;
-  int const&  integer_lvalue_cref = integer;
-  int* integer_ptr = &integer;
+  int& integerLvalueRef = integer;
+  int const&  integerLvalue_cref = integer;
+  int* integerPtr = &integer;
   std::string str = "arangodb rocks";
 
-  struct no_move {
+  struct noMove {
     int member = 4;
-    no_move() = default;
-    no_move(no_move&&) = delete;
-    no_move& operator=(no_move&&) = default;
+    noMove() = default;
+    noMove(noMove&&) = delete;
+    noMove& operator=(noMove&&) = default;
   };
 
-  TypedResult<int>        int_result(integer);
-  CHECK((std::is_same<decltype(int_result.value), int>::value));
+  struct noMoveAssign {
+    int member = 4;
+    noMoveAssign() = default;
+    noMoveAssign(noMoveAssign&&) = default;
+    noMoveAssign& operator=(noMoveAssign&&) = delete;
+  };
 
-  TypedResult<int&>       lvalue_ref_int_result(integer_lvalue_ref);
-  CHECK((std::is_same<decltype(lvalue_ref_int_result.value), int&>::value));
+  ResultValue<int>        intResult(integer);
+  CHECK((std::is_same<decltype(intResult.value), int>::value));
 
-  TypedResult<int const&> lvalue_cref_int_result(integer_lvalue_cref);
-  CHECK((std::is_same<decltype(lvalue_cref_int_result.value), int const&>::value));
+  ResultValue<int&>       lvaluerefIntResult(integerLvalueRef);
+  CHECK((std::is_same<decltype(lvaluerefIntResult.value), int&>::value));
 
-  TypedResult<int> rvalue_int_result(std::move(integer_lvalue_ref));
-  CHECK((std::is_same<decltype(rvalue_int_result.value), int>::value));
+  ResultValue<int const&> lvalue_crefIntResult(integerLvalue_cref);
+  CHECK((std::is_same<decltype(lvalue_crefIntResult.value), int const&>::value));
 
-  TypedResult<int*> int_ptr_result(integer_ptr);
-  CHECK((std::is_same<decltype(int_ptr_result.value), int*>::value));
+  ResultValue<int> rvalueIntResult(std::move(integerLvalueRef));
+  CHECK((std::is_same<decltype(rvalueIntResult.value), int>::value));
 
-  TypedResult<std::string> string_result{str};
-  TypedResult<std::string> string_move_result{std::move(str)};
+  ResultValue<int*> intPtrResult(integerPtr);
+  CHECK((std::is_same<decltype(intPtrResult.value), int*>::value));
 
-  TypedResult<no_move>  no_move_result(no_move{});
+  ResultValue<std::string> stringResult{str};
+  std::cout << "stringMoveResult" << endl;
+  ResultValue<std::string> stringMoveResult{std::move(str)};
 
-  function_b();
+  ResultValue<noMove>  noMoveResult(noMove{});
+  std::cout << "noMoveAssign" << endl;
+  ResultValue<noMoveAssign>  noMoveAssignResult(noMoveAssign{});
+
+  //function_b();
 
 }
 

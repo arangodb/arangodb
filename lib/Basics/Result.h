@@ -126,7 +126,7 @@ class Result {
 
 
 template <typename T>
-struct TypedResult {
+struct ResultValue {
   //exception to the rule: "value instead of _value" to allow easier access to members
   using ValueType = T;
   ValueType value;
@@ -135,58 +135,134 @@ private:
   Result _result;
 
 public:
-  TypedResult() noexcept(std::is_nothrow_default_constructible<std::string>::value &&
-                         std::is_nothrow_default_constructible<T>::value
-                        )= default;
+  //// constructors
+  // default
+  ResultValue() = default;
+  //ResultValue(ResultValue&&) = delete;
+  //ResultValue(ResultValue const&) = delete;
 
+
+  //// constructors
+  // value / not moveable (copy copy) or ref
   template <bool x = std::is_lvalue_reference<T>::value ||
                      ( !std::is_move_constructible<T>::value &&
                        !std::is_move_assignable<T>::value )
-           ,typename std::enable_if<x>::type* = nullptr
+           ,typename std::enable_if<x,int>::type = 0
            >
-  TypedResult(ValueType value
-             ,int error = TRI_ERROR_NO_ERROR
-             ,std::string message = ""
+  ResultValue(ValueType value
+             ,Result const& res = {}
              )
     : value(value)
     , _valid(true)
-    ,_result(error, std::move(message))
+    ,_result(std::move(res))
     {
       std::cerr << "copy" << std::endl;
     }
 
+  template <bool x = std::is_lvalue_reference<T>::value ||
+                     ( !std::is_move_constructible<T>::value &&
+                       !std::is_move_assignable<T>::value )
+           ,typename std::enable_if<x,int>::type = 0
+           >
+  ResultValue(ValueType value
+             ,Result && res
+             )
+    : value(value)
+    , _valid(true)
+    ,_result(std::move(res))
+    {
+      std::cerr << "lvalue / copy" << std::endl;
+    }
+
+  // value (copy / move) - result (copy)
   template <int x = !std::is_lvalue_reference<T>::value
                     && std::is_move_constructible<T>::value
-           ,typename std::enable_if<x>::type* = nullptr
+           ,typename std::enable_if<x,int>::type = 0
            >
-  TypedResult(ValueType value
-             ,int error = TRI_ERROR_NO_ERROR
-             ,std::string message = ""
+  ResultValue(T value
+             ,Result const& res = {}
              )
     : value(std::move(value))
     , _valid(true)
-    ,_result(error, std::move(message))
+    ,_result(std::move(res))
     {
-      std::cerr << "move" << std::endl;
+      std::cerr << "lvalue / move" << std::endl;
+    }
+
+  template <int x = !std::is_lvalue_reference<T>::value
+                    && std::is_move_constructible<T>::value
+           ,typename std::enable_if<x,int>::type = 0
+           >
+  ResultValue(ValueType value
+             ,Result&& res
+             )
+    : value(std::move(value))
+    , _valid(true)
+    ,_result(std::move(res))
+    {
+      std::cerr << "lvalue / move" << std::endl;
+    }
+
+  // // value (move / move) - result (copy)
+  // template <uint x = !std::is_lvalue_reference<T>::value
+  //                   && std::is_move_constructible<T>::value
+  //          ,typename std::enable_if<x,int>::type = 0
+  //          >
+  // ResultValue(T&& value
+  //            ,Result const& res = {}
+  //            )
+  //   : value(std::move(value))
+  //   , _valid(true)
+  //   ,_result(std::move(res))
+  //   {
+  //     std::cerr << "rvalue / move" << std::endl;
+  //   }
+
+  // template <uint x = !std::is_lvalue_reference<T>::value
+  //                   && std::is_move_constructible<T>::value
+  //          ,typename std::enable_if<x,int>::type = 0
+  //          >
+  // ResultValue(ValueType&& value
+  //            ,Result&& res
+  //            )
+  //   : value(std::move(value))
+  //   , _valid(true)
+  //   ,_result(std::move(res))
+  //   {
+  //     std::cerr << "rvalue / move" << std::endl;
+  //   }
+
+  // rvalue assign only (move assign)
+  template <std::uint32_t x = !std::is_lvalue_reference<T>::value &&
+                              !std::is_move_constructible<T>::value &&
+                               std::is_move_assignable<T>::value
+           ,typename std::enable_if<x,int>::type = 0
+           >
+  ResultValue(ValueType&& value
+             ,Result const& res = {}
+             )
+    : _valid(true)
+    ,_result(res)
+    {
+      value = std::move(value);
+      std::cerr << "rvalue / move assign" << std::endl;
     }
 
   template <std::uint32_t x = !std::is_lvalue_reference<T>::value &&
                               !std::is_move_constructible<T>::value &&
                                std::is_move_assignable<T>::value
-           ,typename std::enable_if<x>::type* = nullptr
+           ,typename std::enable_if<x,int>::type = 0
            >
-  TypedResult(ValueType&& value
-             ,int error = TRI_ERROR_NO_ERROR
-             ,std::string message = ""
+  ResultValue(ValueType&& value
+             ,Result&& res
              )
     : _valid(true)
-    ,_result(error, std::move(message))
+    ,_result(std::move(res))
     {
       value = std::move(value);
-      std::cerr << "move assign" << std::endl;
+      std::cerr << "rvalue / move assign" << std::endl;
     }
 
-  //TODO add more constructors
 
   // forward to result's functions
   int errorNumber() const { return _result.errorNumber(); }
@@ -201,7 +277,7 @@ public:
   // this function does not modify the value - it behaves exactly as it
   // does for the standalone result
   template <typename ...Args>
-  TypedResult& reset(Args&&... args) {
+  ResultValue& reset(Args&&... args) {
     _result.reset(std::forward<Args>(args)...);
     return *this;
   }
