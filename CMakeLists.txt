@@ -508,21 +508,21 @@ option(USE_BACKTRACE
   OFF
 )
 
+# iresearch uses backtrace anyway, so we need to find and link libexecinfo
+# for the case that we are on libmusl and not on glibc
+find_package(Backtrace)
+
 if (USE_BACKTRACE)
   if (MSVC)
     set(BT_LIBS "Dbghelp" CACHE path "Debug Helper libraries")
   else ()
-    set(BT_LIBS "" CACHE path "Debug Helper libraries")
+    set(BT_LIBS ${Backtrace_LIBRARY} CACHE path "Debug Helper libraries")
   endif ()
 
   add_definitions("-DARANGODB_ENABLE_BACKTRACE=1")
 else ()
-  set(BT_LIBS "" CACHE path "Debug Helper libraries")
+  set(BT_LIBS ${Backtrace_LIBRARY} CACHE path "Debug Helper libraries")
 endif ()
-
-# iresearch uses backtrace anyway, so we need to find and link libexecinfo
-# for the case that we are on libmusl and not on glibc
-find_package(Backtrace)
 
 ################################################################################
 ## ASSEMBLER OPTIMIZATIONS
