@@ -1400,7 +1400,7 @@ AqlValue Functions::DateDayOfWeek(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isString() && !value.isNumber() ) {
     RegisterInvalidArgumentWarning(query, "DATE_DAYOFWEEK");
@@ -1431,7 +1431,7 @@ AqlValue Functions::DateYear(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isString() && !value.isNumber() ) {
     RegisterInvalidArgumentWarning(query, "DATE_YEAR");
@@ -1461,7 +1461,7 @@ AqlValue Functions::DateMonth(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isString() && !value.isNumber() ) {
     RegisterInvalidArgumentWarning(query, "DATE_MONTH");
@@ -1491,7 +1491,7 @@ AqlValue Functions::DateDay(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isString() && !value.isNumber() ) {
     RegisterInvalidArgumentWarning(query, "DATE_DAY");
@@ -1521,7 +1521,7 @@ AqlValue Functions::DateHour(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isString() && !value.isNumber() ) {
     RegisterInvalidArgumentWarning(query, "DATE_HOUR");
@@ -1551,7 +1551,7 @@ AqlValue Functions::DateMinute(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isString() && !value.isNumber() ) {
     RegisterInvalidArgumentWarning(query, "DATE_MINUTE");
@@ -1581,7 +1581,7 @@ AqlValue Functions::DateSecond(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isString() && !value.isNumber() ) {
     RegisterInvalidArgumentWarning(query, "DATE_SECOND");
@@ -1611,7 +1611,7 @@ AqlValue Functions::DateMillisecond(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isString() && !value.isNumber() ) {
     RegisterInvalidArgumentWarning(query, "DATE_MILLISECOND");
@@ -1643,7 +1643,7 @@ AqlValue Functions::DateDayOfYear(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isString() && !value.isNumber() ) {
     RegisterInvalidArgumentWarning(query, "DATE_DAYOFYEAR");
@@ -1674,7 +1674,7 @@ AqlValue Functions::DateIsoWeek(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isString() && !value.isNumber() ) {
     RegisterInvalidArgumentWarning(query, "DATE_ISOWEEK");
@@ -1705,7 +1705,7 @@ AqlValue Functions::DateLeapYear(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isString() && !value.isNumber() ) {
     RegisterInvalidArgumentWarning(query, "DATE_LEAPYEAR");
@@ -1733,7 +1733,7 @@ AqlValue Functions::DateQuarter(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   if (!value.isString() && !value.isNumber() ) {
     RegisterInvalidArgumentWarning(query, "DATE_QUARTER");
