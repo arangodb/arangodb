@@ -127,6 +127,9 @@ class Result {
 
 template <typename T>
 struct ResultValue {
+  //TODO: - remove use of iostream
+  //      - add constructors that take the result as rvalue reference
+
   //exception to the rule: "value instead of _value" to allow easier access to members
   using ValueType = T;
   ValueType value;
@@ -136,17 +139,9 @@ private:
 
 public:
   //// constructors
-  // default
-  ResultValue() = default;
-  //ResultValue(ResultValue&&) = delete;
-  //ResultValue(ResultValue const&) = delete;
 
-
-  //// constructors
-  // value / not moveable (copy copy) or ref
+  // handling lvalue references
   template <bool x = std::is_lvalue_reference<T>::value
-                     || ( !std::is_move_constructible<T>::value &&
-                          !std::is_move_assignable<T>::value )
            ,typename std::enable_if<x,int>::type = 0
            >
   ResultValue(ValueType value
@@ -154,30 +149,29 @@ public:
              )
     : value(value)
     , _valid(true)
-    ,_result(std::move(res))
+    , _result(res)
     {
-      std::cerr << "lvalue copy" << std::endl;
+      std::cerr << "lvalue ref / 0 copy" << std::endl;
     }
 
 
-  // value (copy / move) - result (copy)
-  template <int x = !std::is_reference<T>::value &&
-                     std::is_move_constructible<T>::value
+  // handling lvalues
+  template <int x = !std::is_reference<T>::value
            ,typename std::enable_if<x,int>::type = 0
            >
-  ResultValue(ValueType value
+  ResultValue(ValueType const& value
              ,Result const& res = {}
              )
-    : value(std::move(value))
+    : value(value) //copy here
     , _valid(true)
-    ,_result(std::move(res))
+    , _result(res)
     {
-      std::cerr << "lvalue / move" << std::endl;
+      std::cerr << "lvalue / 1 copy" << std::endl;
     }
 
-  // value (move / move) - result (copy)
-  template <uint x = !std::is_reference<T>::value &&
-                      std::is_move_constructible<T>::value
+  // handling rvalue - copy
+  template <std::uint32_t x = !std::is_reference<T>::value &&
+                               std::is_move_constructible<T>::value
            ,typename std::enable_if<x,int>::type = 0
            >
   ResultValue(ValueType&& value
@@ -185,14 +179,14 @@ public:
              )
     : value(std::move(value))
     , _valid(true)
-    ,_result(std::move(res))
+    , _result(res)
     {
-      std::cerr << "rvalue / move" << std::endl;
+      std::cerr << "rvalue / 0 copy" << std::endl;
     }
 
 
-  //rvalue assign only (move assign)
-  template <std::uint32_t x = !std::is_reference<T>::value &&
+  // handling rvalue - assign
+  template <std::uint64_t x = !std::is_reference<T>::value &&
                               !std::is_move_constructible<T>::value &&
                                std::is_move_assignable<T>::value
            ,typename std::enable_if<x,int>::type = 0
@@ -201,13 +195,11 @@ public:
              ,Result const& res = {}
              )
     : _valid(true)
-    ,_result(res)
+    , _result(res)
     {
       value = std::move(value);
       std::cerr << "rvalue / move assign" << std::endl;
     }
-
-
 
   // forward to result's functions
   int errorNumber() const { return _result.errorNumber(); }

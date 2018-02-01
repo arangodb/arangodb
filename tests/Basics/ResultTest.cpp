@@ -65,7 +65,7 @@ TEST_CASE("ResultTest", "[string]") {
 SECTION("testResultTest1") {
   int  integer = 43;
   int& integerLvalueRef = integer;
-  int const&  integerLvalue_cref = integer;
+  int const&  integerLvalueCref = integer;
   int* integerPtr = &integer;
   std::string str = "arangodb rocks";
 
@@ -83,28 +83,37 @@ SECTION("testResultTest1") {
     noMoveAssign& operator=(noMoveAssign&&) = delete;
   };
 
-  ResultValue<int>        intResult(integer);
+  std::cout << "int - int - copy" << endl;
+  ResultValue<int> intResult(integer);
   CHECK((std::is_same<decltype(intResult.value), int>::value));
 
-  ResultValue<int&>       lvaluerefIntResult(integerLvalueRef);
+  std::cout << "int& - int& - copy" << endl;
+  ResultValue<int&> lvaluerefIntResult(integerLvalueRef);
   CHECK((std::is_same<decltype(lvaluerefIntResult.value), int&>::value));
 
-  ResultValue<int const&> lvalue_crefIntResult(integerLvalue_cref);
-  CHECK((std::is_same<decltype(lvalue_crefIntResult.value), int const&>::value));
+  std::cout << "int const& - int const& - copy" << endl;
+  ResultValue<int const&> lvalueCrefIntResult(integerLvalueCref);
+  CHECK((std::is_same<decltype(lvalueCrefIntResult.value), int const&>::value));
 
-  ResultValue<int> rvalueIntResult(std::move(integerLvalueRef));
+  std::cout << "int - int& - copy" << endl;
+  ResultValue<int> rvalueIntResult(integerLvalueRef);
   CHECK((std::is_same<decltype(rvalueIntResult.value), int>::value));
 
+  std::cout << "int* - int* - copy" << endl;
   ResultValue<int*> intPtrResult(integerPtr);
   CHECK((std::is_same<decltype(intPtrResult.value), int*>::value));
 
+  std::cout << "string - strint - copy" << endl;
   ResultValue<std::string> stringResult{str};
-  std::cout << "stringMoveResult" << endl;
+
+  std::cout << "stringMoveResult - move" << endl;
   ResultValue<std::string> stringMoveResult{std::move(str)};
 
+  std::cout << "noMoveAssign - move" << endl;
   ResultValue<noMove>  noMoveResult(noMove{});
-  std::cout << "noMoveAssign" << endl;
-  ResultValue<noMoveAssign>  noMoveAssignResult(noMoveAssign{});
+
+  std::cout << "noMoveAssign - move" << endl;
+  ResultValue<noMoveAssign>  noMoveAssignResult{noMoveAssign{}};
 
   //function_b();
 
