@@ -122,7 +122,7 @@ describe('User Rights Management', () => {
 
             it('create database', () => {
               print(name);
-              print(users.permissionFull(name));
+              print(users.permission(name));
               if (users.permission(name)._system === 'rw') {
                 // User needs rw on _system
                 db._createDatabase(testDBName);

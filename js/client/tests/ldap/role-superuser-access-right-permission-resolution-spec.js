@@ -98,7 +98,7 @@ describe('User Rights Management', () => {
 
   it('should test permission for', () => {
     for (const user of userSet) {
-      if (user.name === 'user1') {
+      if (user.name === 'arangoadmin') {
         describe(`user ${user.name} with their role ${user.config.username}`, () => {
           before(() => {
             createRole(user);
