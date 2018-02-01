@@ -54,10 +54,6 @@ option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
   set(CMAKE_EXE_LINKER_FLAGS "-static")
 endif()
-option(LIBMUSL_BUILD "be libmusl compatible" OFF)
-if (LIBMUSL_BUILD)
-  add_definitions("-DLIBMUSL_BUILD=1")
-endif ()
 
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
@@ -392,10 +388,6 @@ if (CMAKE_COMPILER_IS_CLANG)
   endif ()
 endif ()
 
-if (LIBMUSL_BUILD)
-  list(APPEND BASE_LIBS execinfo)
-endif ()
-
 # need c++11
 # XXX this should really be set on a per target level using cmake compile_features capabilties
 set(CMAKE_CXX_STANDARD 11)
@@ -527,6 +519,10 @@ if (USE_BACKTRACE)
 else ()
   set(BT_LIBS "" CACHE path "Debug Helper libraries")
 endif ()
+
+# iresearch uses backtrace anyway, so we need to find and link libexecinfo
+# for the case that we are on libmusl and not on glibc
+find_package(Backtrace)
 
 ################################################################################
 ## ASSEMBLER OPTIMIZATIONS
