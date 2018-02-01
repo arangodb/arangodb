@@ -49,7 +49,8 @@ class RDBNearIterator final : public IndexIterator {
                   geo::QueryParams&& params)
       : IndexIterator(collection, trx, mmdr, index),
         _index(index),
-        _near(std::move(params)) {
+        _near(std::move(params),
+              index->variant() == geo::Index::Variant::GEOJSON) {
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
     rocksdb::ReadOptions options = mthds->readOptions();
     TRI_ASSERT(options.prefix_same_as_start);
@@ -239,8 +240,7 @@ void RocksDBGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   _coverParams.toVelocyPack(builder);
-  builder.add("geoJson",
-              VPackValue(_variant == geo::Index::Variant::COMBINED_GEOJSON));
+  builder.add("geoJson", VPackValue(_variant == geo::Index::Variant::GEOJSON));
   // geo indexes are always non-unique
   // geo indexes are always sparse.
   builder.add("unique", VPackValue(false));
@@ -290,10 +290,9 @@ bool RocksDBGeoS2Index::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (n == 1) {
-    bool geoJson1 =
-        basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
-    bool geoJson2 = _variant == geo::Index::Variant::COMBINED_GEOJSON;
-    if (geoJson1 != geoJson2) {
+    bool gj1 = basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
+    bool gj2 = _variant == geo::Index::Variant::GEOJSON;
+    if (gj1 != gj2) {
       return false;
     }
   }

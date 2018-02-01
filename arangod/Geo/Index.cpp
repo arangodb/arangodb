@@ -48,7 +48,7 @@ geo::Index::Index(VPackSlice const& info,
         basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
     // geojson means [<longitude>, <latitude>] or
     // json object {type:"<name>, coordinates:[]}.
-    _variant = geoJson ? geo::Index::Variant::COMBINED_GEOJSON
+    _variant = geoJson ? geo::Index::Variant::GEOJSON
                        : geo::Index::Variant::COMBINED_LAT_LON;
 
     auto& loc = fields[0];
@@ -77,7 +77,7 @@ geo::Index::Index(VPackSlice const& info,
 Result geo::Index::indexCells(VPackSlice const& doc,
                               std::vector<S2CellId>& cells,
                               geo::Coordinate& centroid) const {
-  if (_variant == geo::Index::Variant::COMBINED_GEOJSON) {
+  if (_variant == geo::Index::Variant::GEOJSON) {
     VPackSlice loc = doc.get(_location);
     if (loc.isArray()) {
       return GeoUtils::indexCellsLatLng(loc, /*geojson*/ true, cells, centroid);
@@ -109,7 +109,7 @@ Result geo::Index::indexCells(VPackSlice const& doc,
 
 Result geo::Index::shape(velocypack::Slice const& doc,
                          geo::ShapeContainer& shape) const {
-  if (_variant == geo::Index::Variant::COMBINED_GEOJSON) {
+  if (_variant == geo::Index::Variant::GEOJSON) {
     VPackSlice loc = doc.get(_location);
     if (loc.isArray() && loc.length() >= 2) {
       return shape.parseCoordinates(loc, /*geoJson*/ true);

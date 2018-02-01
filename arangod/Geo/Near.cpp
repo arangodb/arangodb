@@ -39,12 +39,13 @@ using namespace arangodb;
 using namespace arangodb::geo;
 
 template <typename CMP>
-NearUtils<CMP>::NearUtils(QueryParams&& qp) noexcept
+NearUtils<CMP>::NearUtils(QueryParams&& qp, bool dedup) noexcept
     : _params(std::move(qp)),
       _origin(S2LatLng::FromDegrees(qp.origin.latitude, qp.origin.longitude)
                   .ToPoint()),
       _minBound(_params.minDistanceRad()),
-      _maxBound(_params.maxDistanceRad()) {
+      _maxBound(_params.maxDistanceRad()),
+      _deduplicate(dedup) {
   TRI_ASSERT(_params.origin.isValid());
   qp.cover.configureS2RegionCoverer(&_coverer);
   reset();
@@ -204,20 +205,23 @@ void NearUtils<CMP>::reportFound(LocalDocumentId lid,
     }
   }
 
-  _statsFoundLastInterval++;  // we have to estimate scan bounds
-  auto const& it = _seen.find(lid);
-  if (it == _seen.end()) {
-    _seen.emplace(lid);
-
-    // possibly expensive point rejection, but saves parsing of document
-    if (isFilterContains()) {
-      TRI_ASSERT(!_params.filterShape.empty());
-      if (!_params.filterShape.contains(&center)) {
-        return;
-      }
+  if (_deduplicate) { // FIXME: can we use a template instead ?
+    _statsFoundLastInterval++;  // we have to estimate scan bounds
+    auto const& it = _seen.find(lid);
+    if (it != _seen.end()) {
+      return; // deduplication
     }
-    _buffer.emplace(lid, rad);
+    _seen.emplace(lid);
   }
+
+  // possibly expensive point rejection, but saves parsing of document
+  if (isFilterContains()) {
+    TRI_ASSERT(!_params.filterShape.empty());
+    if (!_params.filterShape.contains(&center)) {
+      return;
+    }
+  }
+  _buffer.emplace(lid, rad);
 }
 
 template <typename CMP>

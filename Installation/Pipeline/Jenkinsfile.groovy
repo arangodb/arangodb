@@ -134,7 +134,7 @@ if ("devel" == "devel") {
     mainBranch = "devel"
 }
 else { 
-    mainBranch = "3.3"
+    mainBranch = "3.4"
 }
 
 if (! env.BRANCH_NAME) {

@@ -56,7 +56,7 @@ struct Index {
     // geojson object or legacy coordinate
     // pair [<longitude>, <latitude>]. Should also support
     // other geojson object types.
-    COMBINED_GEOJSON
+    GEOJSON
   };
 
  protected:
@@ -76,6 +76,8 @@ struct Index {
   static void parseCondition(aql::AstNode const* node,
                              aql::Variable const* reference,
                              geo::QueryParams& params);
+  
+  geo::Index::Variant variant() const { return _variant; }
 
  private:
   static geo::Coordinate parseGeoDistance(aql::AstNode const* node,

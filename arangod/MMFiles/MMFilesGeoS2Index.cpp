@@ -96,7 +96,8 @@ struct NearIterator final : public IndexIterator {
                geo::QueryParams&& params)
       : IndexIterator(collection, trx, mmdr, index),
         _index(index),
-        _near(std::move(params)) {
+        _near(std::move(params),
+              index->variant() == geo::Index::Variant::GEOJSON) {
     estimateDensity();
   }
 
@@ -269,8 +270,7 @@ void MMFilesGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
   // RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   MMFilesIndex::toVelocyPack(builder, withFigures, forPersistence);
   _coverParams.toVelocyPack(builder);
-  builder.add("geoJson",
-              VPackValue(_variant == geo::Index::Variant::COMBINED_GEOJSON));
+  builder.add("geoJson", VPackValue(_variant == geo::Index::Variant::GEOJSON));
   // geo indexes are always non-unique
   // geo indexes are always sparse.
   builder.add("unique", VPackValue(false));
@@ -322,7 +322,7 @@ bool MMFilesGeoS2Index::matchesDefinition(VPackSlice const& info) const {
   if (n == 1) {
     bool geoJson1 =
         basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
-    bool geoJson2 = _variant == geo::Index::Variant::COMBINED_GEOJSON;
+    bool geoJson2 = _variant == geo::Index::Variant::GEOJSON;
     if (geoJson1 != geoJson2) {
       return false;
     }

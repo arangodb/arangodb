@@ -85,7 +85,8 @@ class NearUtils {
   typedef std::priority_queue<Document, std::vector<Document>, CMP>
       GeoDocumentsQueue;
 
-  NearUtils(geo::QueryParams&& params) noexcept;
+  NearUtils(geo::QueryParams&& params,
+            bool deduplicate) noexcept;
 
  public:
   /// @brief get cell covering target coordinate (at max level)
@@ -180,6 +181,11 @@ class NearUtils {
   double const _minBound = 0;
   /// max distance on the unit spherer or M_PI
   double const _maxBound = M_PI;
+  
+  /// Enable additional deduplication
+  bool const _deduplicate;
+  /// for deduplication of results
+  std::unordered_set<LocalDocumentId> _seen;
 
   /// Amount to increment by (in radians on unit sphere)
   double _boundDelta = 0.0;
@@ -193,9 +199,6 @@ class NearUtils {
 
   /// buffer of found documents
   GeoDocumentsQueue _buffer;
-
-  /// for deduplication of results
-  std::unordered_set<LocalDocumentId> _seen;
 
   /// Track the already scanned region
   S2CellUnion _scannedCells;

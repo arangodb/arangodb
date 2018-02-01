@@ -132,7 +132,7 @@ geo::Coordinate ShapeContainer::centroid() const noexcept {
       S2MultiPolyline const* lines =
           (static_cast<S2MultiPolyline const*>(_data));
       S2Point c(0, 0, 0);
-      for (int k = 0; k < lines->num_lines(); k++) {
+      for (size_t k = 0; k < lines->num_lines(); k++) {
         c += lines->line(k).GetCentroid();
       }
       c /= lines->num_lines();
@@ -174,7 +174,7 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer* coverer) const
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {  // multi-optimization
       S2MultiPolyline const* lines =
           (static_cast<S2MultiPolyline const*>(_data));
-      for (int k = 0; k < lines->num_lines(); k++) {
+      for (size_t k = 0; k < lines->num_lines(); k++) {
         std::vector<S2CellId> tmp;
         coverer->GetCovering(*lines, &tmp);
         if (!tmp.empty()) {
