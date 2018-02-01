@@ -33,18 +33,13 @@
 const expect = require('chai').expect;
 const users = require('@arangodb/users');
 const db = require('@arangodb').db;
+const helper = require('@arangodb/user-helper');
 
 const colName = 'PermissionsTestCollection';
 const rightLevels = ['rw', 'ro', 'none'];
 const dbs = ['*', '_system'];
 const cols = ['*', colName];
-const defUsers = [
-  {
-    name: 'user1',
-    role: 'role1',
-    password: 'password'
-  }
-];
+const defUsers = helper.ldapUsers;
 const userSet = new Set();
 const internal = require('internal');
 
@@ -68,7 +63,7 @@ const createUsers = () => {
               },
               config: {
                 username: user.name,
-                username: user.role
+                userrole: user.role
               }
             });
           }

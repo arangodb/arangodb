@@ -34,6 +34,7 @@ const optionsDocumentation = [
   '   - `ldapPort : Port of the ldap server'
 ];
 
+const helper = require('@arangodb/user-helper');
 const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/process-utils');
@@ -67,11 +68,7 @@ const tests = {
       'ldap.superuser-role': 'adminrole',
       'log.level': 'ldap=trace'
     },
-    user: {
-      name: 'user1',
-      pass: 'password',
-      role: 'role1'
-    }
+    user: helper.ldapUsers
   }
 };
 
@@ -141,7 +138,7 @@ function startLdap (options) {
       body: JSON.stringify(
         {
           username: t.user.name,
-          password: t.user.pass
+          password: t.user.password
         })
     });
 
@@ -169,7 +166,7 @@ function startLdap (options) {
   return results;
 }
 
-function authenticationLdapRoleClient (options) {
+function authenticationLdap (options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
     return {
@@ -183,6 +180,26 @@ function authenticationLdapRoleClient (options) {
   const opts = parseOptions(options);
 
   print(CYAN + 'Client LDAP Authentication tests...' + RESET);
+  let testCases = tu.scanTestPath('js/client/tests/authentication');
+
+  print(opts.ldapModeRoles);
+  return tu.performTests(options, testCases, 'authentication', tu.runInArangosh, opts.ldapModeRoles.conf);
+}
+
+function authenticationLdapRoleClient (options) {
+  if (options.skipLdap === true) {
+    print('skipping Ldap Authentication tests!');
+    return {
+      authenticationLdapPermissions: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+
+  const opts = parseOptions(options);
+
+  print(CYAN + 'Client LDAP Permissoin tests...' + RESET);
   let testCases = tu.scanTestPath('js/client/tests/ldap');
 
   print(opts.ldapModeRoles);
@@ -192,6 +209,7 @@ function authenticationLdapRoleClient (options) {
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   // testFns['ldap_start'] = startLdap;
   testFns['ldap_permissions'] = authenticationLdapRoleClient;
+  testFns['ldap_authentication'] = authenticationLdap;
 
   // defaultFns.push('ldap'); // turn off ldap tests by default
   // turn off ldap tests by default.
