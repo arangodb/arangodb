@@ -23,7 +23,7 @@
 #ifndef ARANGODB_BASICS_DATETIME_H
 #define ARANGODB_BASICS_DATETIME_H 1
 
-#include <3rdParty/date/date.h>
+#include <3rdParty/date/include/date/date.h>
 #include <boost/algorithm/string.hpp>
 
 namespace arangodb {

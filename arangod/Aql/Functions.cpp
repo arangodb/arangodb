@@ -60,7 +60,7 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-#include <3rdParty/date/date.h>
+#include <3rdParty/date/include/date/date.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;

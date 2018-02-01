@@ -17,6 +17,11 @@
 * Project Home: https://curl.haxx.se/
 * License: [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/curl/curl-7.50.3/COPYING)
 
+### date 2.4
+
+* Project Home: https://github.com/HowardHinnant/date
+* License: [free as-is license](https://github.com/HowardHinnant/date/blob/master/LICENSE.txt)
+
 ### fasthash
 
 * Project Home: https://code.google.com/p/fast-hash/
