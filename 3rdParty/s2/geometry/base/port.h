@@ -261,6 +261,10 @@ namespace base {
 // _BIG_ENDIAN
 #include <endian.h>
 
+#ifndef __BYTE_ORDER
+#error Does not define byte order
+#endif
+
 #elif defined(__APPLE__)
 
 // BIG_ENDIAN
@@ -270,7 +274,7 @@ namespace base {
 #define __LITTLE_ENDIAN LITTLE_ENDIAN
 #define __BIG_ENDIAN BIG_ENDIAN
 
-#endif
+#endif // defined OS_LINUX || defined OS_ANDROID || defined(__ANDROID__)
 
 // defines __BYTE_ORDER for MSVC
 #ifdef _MSC_VER
@@ -291,17 +295,7 @@ namespace base {
 #define IS_BIG_ENDIAN
 #endif
 
-#elif defined(__BYTE_ORDER__)
-
-#if __BYTE_ORDER__ == __LITTLE_ENDIAN
-#define IS_LITTLE_ENDIAN
-#endif
-
-#if __BYTE_ORDER__ == __BIG_ENDIAN
-#define IS_BIG_ENDIAN
-#endif
-
-#else  // __BYTE_ORDER__
+#else  // __BYTE_ORDER
 
 #if defined(__LITTLE_ENDIAN__)
 #define IS_LITTLE_ENDIAN
