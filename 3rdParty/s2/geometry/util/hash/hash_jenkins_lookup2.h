@@ -70,11 +70,11 @@ static inline void mix(uint64_t& a, uint64_t& b, uint64_t& c) {     // 64bit ver
 // but that seems overly verbose.]
 
 #if !defined(NEED_ALIGNED_LOADS) && defined(IS_LITTLE_ENDIAN)
-static inline uint64 Word64At(const char *ptr) {
+static inline uint64_t Word64At(const char *ptr) {
   return UNALIGNED_LOAD64(ptr);
 }
 
-static inline uint32 Word32At(const char *ptr) {
+static inline uint32_t Word32At(const char *ptr) {
   return UNALIGNED_LOAD32(ptr);
 }
 
@@ -104,9 +104,9 @@ static inline uint32 Word32At(const char *ptr) {
 //   == 0x8281 - 0x8080 - 0x8000 - 0x80
 //   == 0x8281 - 0x8080 - 0x8080
 
-static inline uint32 Google1At(const char *ptr) {
-  uint32 t = UNALIGNED_LOAD32(ptr);
-  uint32 masked = t & 0x80808080;
+static inline uint32_t Google1At(const char *ptr) {
+  uint32_t t = UNALIGNED_LOAD32(ptr);
+  uint32_t masked = t & 0x80808080;
   return t - masked - masked;
 }
 
