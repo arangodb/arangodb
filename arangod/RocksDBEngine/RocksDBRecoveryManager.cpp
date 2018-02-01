@@ -399,7 +399,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     // Tell the WriteBatch reader the transaction markers to look for
     WBReader handler(engine->settingsManager()->counterSeqs());
 
-    auto minTick = std::min(engine->settingsManager()->earliestSeqNeeded(),
+    auto const minTick = std::min(engine->settingsManager()->earliestSeqNeeded(),
                             engine->releasedTick());
     std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
     rocksdb::Status s = _db->GetUpdatesSince(
@@ -444,11 +444,11 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
   } CATCH_TO_RESULT(rv,TRI_ERROR_INTERNAL);
 
   if (rv.ok()) {
-    rv = std::move(shutdownRv);
-  } else {
-    if (shutdownRv.fail()) {
-      rv.reset(rv.errorNumber(), rv.errorMessage() + " - " + shutdownRv.errorMessage());
-    }
+    return shutdownRv;
+  }
+
+  if (shutdownRv.fail()) {
+    rv.reset(rv.errorNumber(), rv.errorMessage() + " - " + shutdownRv.errorMessage());
   }
 
   return rv;
