@@ -1,4 +1,8 @@
 /* jshint strict: false */
+TODO:
+  - impl: arangod/VocBase/Methods/AqlFunctions.cpp
+  - verschieben common->client; wrapper um rest api
+
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief AQL user functions management
