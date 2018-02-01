@@ -4,10 +4,11 @@
 #include <cstring>
 #include <cassert>
 
-#include <math.h>
+#include <cmath>
 #include <algorithm>
 using std::min;
 using std::max;
+using std::signbit;
 using std::swap;
 using std::reverse;
 

@@ -5,6 +5,7 @@
 #ifndef BASE_INT128_H_
 #define BASE_INT128_H_
 
+#include <cassert>
 #include <cstdint>
 #include <iostream>
 
