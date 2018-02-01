@@ -128,16 +128,7 @@ resilienceRepo = 'http://c1:8088/github.com/arangodb/resilience-tests'
 credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 
 // source branch for pull requests
-def getGitBranchName() {
-    return scm.branches[0].name
-}
-
-mainBranch = getGitBranchName()
-
-if (! env.BRANCH_NAME) {
-    env.BRANCH_NAME = mainBranch
-}
-
+mainBranch = "devel"
 sourceBranchLabel = env.BRANCH_NAME
 
 if (env.BRANCH_NAME =~ /^PR-/) {
