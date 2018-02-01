@@ -282,6 +282,7 @@ namespace base {
 // using the above endian definitions from endian.h if
 // endian.h was included
 #ifdef __BYTE_ORDER
+
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define IS_LITTLE_ENDIAN
 #endif
@@ -290,7 +291,17 @@ namespace base {
 #define IS_BIG_ENDIAN
 #endif
 
-#else  // __BYTE_ORDER
+#elif defined(__BYTE_ORDER__)
+
+#if __BYTE_ORDER__ == __LITTLE_ENDIAN
+#define IS_LITTLE_ENDIAN
+#endif
+
+#if __BYTE_ORDER__ == __BIG_ENDIAN
+#define IS_BIG_ENDIAN
+#endif
+
+#else  // __BYTE_ORDER__
 
 #if defined(__LITTLE_ENDIAN__)
 #define IS_LITTLE_ENDIAN
