@@ -39,6 +39,12 @@ void dump_mem_stats_trace() NOEXCEPT {
 
   // MacOS does not have malloc.h and hence no mallinfo() or malloc_stats()
   #ifndef __APPLE__
+
+  // The following macro exists only in GLIBC, where we have mallinfo().
+  // If it is not defined, we assume to be on libmusl or something like this
+  // where we do not have mallinfo.
+
+  #ifdef M_ARENA_MAX
     // ...........................................................................
     // output mallinfo()
     // ...........................................................................
@@ -75,6 +81,7 @@ Topmost releasable block (keepcost):   %lu\n\
     // output malloc_stats()
     // ...........................................................................
     malloc_stats(); // outputs to stderr
+  #endif
   #endif
 
     // ...........................................................................
