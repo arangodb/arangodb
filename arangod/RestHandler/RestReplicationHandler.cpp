@@ -1540,17 +1540,8 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
   
   // look up the collection
   try {
-    CollectionGuard guard(_vocbase, name.c_str());
-
-    LogicalCollection* collection = guard.collection();
-
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, collection->cid(),
-                                    AccessMode::Type::EXCLUSIVE);
-
-    // collection status lock was already acquired by collection guard 
-    // above
-    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+    SingleCollectionTransaction trx(ctx, name, AccessMode::Type::EXCLUSIVE);
     
     Result res = trx.begin();
 
@@ -1560,6 +1551,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
       THROW_ARANGO_EXCEPTION(res);
     }
 
+    LogicalCollection* collection = trx.documentCollection();
     auto physical = collection->getPhysical();
     TRI_ASSERT(physical != nullptr);
     for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {

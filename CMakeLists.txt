@@ -50,9 +50,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 option(SKIP_PACKAGING "" OFF)
-option(STATIC_EXECUTABLES "" OFF)
+option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
-  set(CMAKE_EXE_LINKER_FLAGS "-static -no-pie")
+  set(CMAKE_EXE_LINKER_FLAGS "-static")
 endif()
 
 # be verbose about flags used
@@ -77,7 +77,7 @@ endif ()
 # ------------------------------------------------------------------------------
 
 set(ARANGODB_VERSION_MAJOR      "3")
-set(ARANGODB_VERSION_MINOR      "3")
+set(ARANGODB_VERSION_MINOR      "4")
 if (NOT DEFINED ARANGODB_VERSION_REVISION)
   set(ARANGODB_VERSION_REVISION   "devel")
 endif()
@@ -148,12 +148,6 @@ configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h"
   NEWLINE_STYLE UNIX
-)
-
-configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Pipeline/Jenkinsfile.groovy.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Pipeline/Jenkinsfile.groovy"
-  NEWLINE_STYLE UNIX @ONLY
 )
 
 if (NOT DEFINED GENERATE_BUILD_DATE OR GENERATE_BUILD_DATE)
@@ -508,16 +502,20 @@ option(USE_BACKTRACE
   OFF
 )
 
+# iresearch uses backtrace anyway, so we need to find and link libexecinfo
+# for the case that we are on libmusl and not on glibc
+find_package(Backtrace)
+
 if (USE_BACKTRACE)
   if (MSVC)
     set(BT_LIBS "Dbghelp" CACHE path "Debug Helper libraries")
   else ()
-    set(BT_LIBS "" CACHE path "Debug Helper libraries")
+    set(BT_LIBS ${Backtrace_LIBRARY} CACHE path "Debug Helper libraries")
   endif ()
 
   add_definitions("-DARANGODB_ENABLE_BACKTRACE=1")
 else ()
-  set(BT_LIBS "" CACHE path "Debug Helper libraries")
+  set(BT_LIBS ${Backtrace_LIBRARY} CACHE path "Debug Helper libraries")
 endif ()
 
 ################################################################################

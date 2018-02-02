@@ -71,7 +71,7 @@ arangodb::Result globalRocksDBPut(rocksdb::ColumnFamilyHandle* cf,
   TRI_ASSERT(cf != nullptr);
   auto status = globalRocksDB()->Put(options, cf, key, val);
   return convertStatus(status);
-};
+}
 
 arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle* cf,
                                      rocksdb::Slice const& key,
@@ -79,12 +79,12 @@ arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle* cf,
   TRI_ASSERT(cf != nullptr);
   auto status = globalRocksDB()->Delete(options, cf, key);
   return convertStatus(status);
-};
+}
 
 uint64_t latestSequenceNumber() {
   auto seq = globalRocksDB()->GetLatestSequenceNumber();
   return static_cast<uint64_t>(seq);
-};
+}
 
 void addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
                           TRI_voc_cid_t cid) {
