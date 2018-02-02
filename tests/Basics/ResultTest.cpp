@@ -48,10 +48,6 @@ Result function_b(){
       rv.reset(rv.errorNumber(), "error in function_b: " + rv.errorMessage());
     }
 
-    if(false){
-      rv.reset(23, std::string("the result is not valid because some other condition did not hold"));
-    }
-
     return rv.takeResult(); //still move the result forward
 }
 
@@ -83,39 +79,67 @@ SECTION("testResultTest1") {
     noMoveAssign& operator=(noMoveAssign&&) = delete;
   };
 
-  std::cout << "int - int - copy" << endl;
-  ResultValue<int> intResult(integer);
-  CHECK((std::is_same<decltype(intResult.value), int>::value));
-
-  std::cout << "int& - int& - copy" << endl;
-  ResultValue<int&> lvaluerefIntResult(integerLvalueRef);
-  CHECK((std::is_same<decltype(lvaluerefIntResult.value), int&>::value));
-
-  std::cout << "int const& - int const& - copy" << endl;
-  ResultValue<int const&> lvalueCrefIntResult(integerLvalueCref);
-  CHECK((std::is_same<decltype(lvalueCrefIntResult.value), int const&>::value));
-
-  std::cout << "int - int& - copy" << endl;
-  ResultValue<int> rvalueIntResult(integerLvalueRef);
-  CHECK((std::is_same<decltype(rvalueIntResult.value), int>::value));
-
-  std::cout << "int* - int* - copy" << endl;
+// pointer and ref
+#ifdef RESULT_DEBUG
+  std::cout << "\nint* - int* - copy" << endl;
+#endif
   ResultValue<int*> intPtrResult(integerPtr);
   CHECK((std::is_same<decltype(intPtrResult.value), int*>::value));
 
-  std::cout << "string - strint - copy" << endl;
+#ifdef RESULT_DEBUG
+  std::cout << "\nint& - int& - copy" << endl;
+#endif
+  ResultValue<int&> lvalueRefIntResult(integerLvalueRef);
+  CHECK((std::is_same<decltype(lvalueRefIntResult.value), int&>::value));
+
+#ifdef RESULT_DEBUG
+  std::cout << "\nint const& - int const& - copy" << endl;
+#endif
+  ResultValue<int const&> lvalueCrefIntResult(integerLvalueCref);
+  CHECK((std::is_same<decltype(lvalueCrefIntResult.value), int const&>::value));
+
+// lvalues
+#ifdef RESULT_DEBUG
+  std::cout << "\nint - int - copy" << endl;
+#endif
+  ResultValue<int> intResult(integer);
+  CHECK((std::is_same<decltype(intResult.value), int>::value));
+
+#ifdef RESULT_DEBUG
+  std::cout << "\nint - int& - copy" << endl;
+#endif
+  ResultValue<int> lvalueIntResult(integerLvalueRef);
+  CHECK((std::is_same<decltype(lvalueIntResult.value), int>::value));
+
+#ifdef RESULT_DEBUG
+  std::cout << "\nstring - string - copy" << endl;
+#endif
   ResultValue<std::string> stringResult{str};
+  CHECK((std::is_same<decltype(stringResult.value), std::string>::value));
 
-  std::cout << "stringMoveResult - move" << endl;
+// rvalues / xvalues
+#ifdef RESULT_DEBUG
+  std::cout << "\nstring - string&& - move" << endl;
+#endif
   ResultValue<std::string> stringMoveResult{std::move(str)};
+  CHECK((std::is_same<decltype(stringMoveResult.value), std::string>::value));
 
-  std::cout << "noMoveAssign - move" << endl;
+#ifdef RESULT_DEBUG
+  std::cout << "\nnoMove - noMove&& - move" << endl;
+#endif
   ResultValue<noMove>  noMoveResult(noMove{});
+  CHECK((std::is_same<decltype(noMoveResult.value), noMove>::value));
 
-  std::cout << "noMoveAssign - move" << endl;
+#ifdef RESULT_DEBUG
+  std::cout << "\nnoMoveAssign - noMoveAssign&& - move" << endl;
+#endif
   ResultValue<noMoveAssign>  noMoveAssignResult{noMoveAssign{}};
+  CHECK((std::is_same<decltype(noMoveAssignResult.value), noMoveAssign>::value));
 
-  //function_b();
+#ifdef RESULT_DEBUG
+  std::cout << "\nfunction_b" << endl;
+#endif
+  function_b();
 
 }
 

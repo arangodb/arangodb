@@ -27,8 +27,13 @@
 
 #include "Basics/Common.h"
 #include <type_traits>
-#include <iostream>
 #include <cstdint>
+
+
+#define RESULT_DEBUG true
+#ifdef RESULT_DEBUG
+  #include <iostream>
+#endif
 
 namespace arangodb {
 
@@ -127,8 +132,7 @@ class Result {
 
 template <typename T>
 struct ResultValue {
-  //TODO: - remove use of iostream
-  //      - add constructors that take the result as rvalue reference
+  //TODO: - fix / change formating to prevent Steemann going insane
 
   //exception to the rule: "value instead of _value" to allow easier access to members
   using ValueType = T;
@@ -138,10 +142,11 @@ private:
   Result _result;
 
 public:
-  //// constructors
+//// constructors
 
-  // handling lvalue references
-  template <bool x = std::is_lvalue_reference<T>::value
+  // handling lvalue references and pointers
+  template <bool x = std::is_lvalue_reference<T>::value ||
+                     std::is_pointer<T>::value
            ,typename std::enable_if<x,int>::type = 0
            >
   ResultValue(ValueType value
@@ -151,12 +156,32 @@ public:
     , _valid(true)
     , _result(res)
     {
-      std::cerr << "lvalue ref / 0 copy" << std::endl;
+#ifdef RESULT_DEBUG
+      std::cerr << "ctor: lvalue ref / pointer - 0 copy" << std::endl;
+#endif
     }
+
+  template <bool x = std::is_lvalue_reference<T>::value ||
+                     std::is_pointer<T>::value
+           ,typename std::enable_if<x,int>::type = 0
+           >
+  ResultValue(ValueType value
+             ,Result&& res
+             )
+    : value(value)
+    , _valid(true)
+    , _result(std::move(res))
+    {
+#ifdef RESULT_DEBUG
+      std::cerr << "ctor: lvalue ref / pointer - 0 copy" << std::endl;
+#endif
+    }
+  // handling lvalue references and pointers - end
 
 
   // handling lvalues
-  template <int x = !std::is_reference<T>::value
+  template <int x = !std::is_reference<T>::value &&
+                    !std::is_pointer<T>::value
            ,typename std::enable_if<x,int>::type = 0
            >
   ResultValue(ValueType const& value
@@ -166,10 +191,30 @@ public:
     , _valid(true)
     , _result(res)
     {
-      std::cerr << "lvalue / 1 copy" << std::endl;
+#ifdef RESULT_DEBUG
+      std::cerr << "ctor: lvalue - 1 copy" << std::endl;
+#endif
     }
 
-  // handling rvalue - copy
+  template <int x = !std::is_reference<T>::value &&
+                    !std::is_pointer<T>::value
+           ,typename std::enable_if<x,int>::type = 0
+           >
+  ResultValue(ValueType const& value
+             ,Result&& res
+             )
+    : value(value) //copy here
+    , _valid(true)
+    , _result(std::move(res))
+    {
+#ifdef RESULT_DEBUG
+      std::cerr << "ctor: lvalue - 1 copy" << std::endl;
+#endif
+    }
+  // handling lvalues - end
+
+
+  // handling rvalue / copy
   template <std::uint32_t x = !std::is_reference<T>::value &&
                                std::is_move_constructible<T>::value
            ,typename std::enable_if<x,int>::type = 0
@@ -181,11 +226,30 @@ public:
     , _valid(true)
     , _result(res)
     {
-      std::cerr << "rvalue / 0 copy" << std::endl;
+#ifdef RESULT_DEBUG
+      std::cerr << "ctor: rvalue (move ctor) - 0 copy" << std::endl;
+#endif
     }
 
+  template <std::uint32_t x = !std::is_reference<T>::value &&
+                               std::is_move_constructible<T>::value
+           ,typename std::enable_if<x,int>::type = 0
+           >
+  ResultValue(ValueType&& value
+             ,Result && res
+             )
+    : value(std::move(value))
+    , _valid(true)
+    , _result(std::move(res))
+    {
+#ifdef RESULT_DEBUG
+      std::cerr << "ctor: rvalue (move ctor) - 0 copy" << std::endl;
+#endif
+    }
+  // handling rvalue / copy - end
 
-  // handling rvalue - assign
+
+  // handling rvalue / assign
   template <std::uint64_t x = !std::is_reference<T>::value &&
                               !std::is_move_constructible<T>::value &&
                                std::is_move_assignable<T>::value
@@ -198,8 +262,29 @@ public:
     , _result(res)
     {
       value = std::move(value);
-      std::cerr << "rvalue / move assign" << std::endl;
+#ifdef RESULT_DEBUG
+      std::cerr << "ctor: rvalue (move assign) - 0 copy" << std::endl;
+#endif
     }
+
+  template <std::uint64_t x = !std::is_reference<T>::value &&
+                              !std::is_move_constructible<T>::value &&
+                               std::is_move_assignable<T>::value
+           ,typename std::enable_if<x,int>::type = 0
+           >
+  ResultValue(ValueType&& value
+             ,Result&& res
+             )
+    : _valid(true)
+    , _result(std::move(res))
+    {
+      value = std::move(value);
+#ifdef RESULT_DEBUG
+      std::cerr << "ctor: rvalue (move assign) - 0 copy" << std::endl;
+#endif
+    }
+  // handling rvalue / assign - end
+
 
   // forward to result's functions
   int errorNumber() const { return _result.errorNumber(); }
