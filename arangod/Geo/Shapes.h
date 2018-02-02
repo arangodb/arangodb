@@ -25,7 +25,7 @@
 
 #include "Basics/Result.h"
 
-#include <geometry/s2cellid.h>
+#include <s2/s2cell_id.h>
 #include <velocypack/Slice.h>
 #include <string>
 

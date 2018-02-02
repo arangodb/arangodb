@@ -25,6 +25,7 @@
 #include "Logger.h"
 
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/Common.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -33,6 +34,7 @@
 #include "Basics/files.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogThread.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -1,0 +1,642 @@
+//
+// Copyright 2017 The Abseil Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// -----------------------------------------------------------------------------
+// File: int128.h
+// -----------------------------------------------------------------------------
+//
+// This header file defines 128-bit integer types. Currently, this file defines
+// `uint128`, an unsigned 128-bit integer; a signed 128-bit integer is
+// forthcoming.
+
+#ifndef S2_THIRD_PARTY_ABSL_NUMERIC_INT128_H_
+#define S2_THIRD_PARTY_ABSL_NUMERIC_INT128_H_
+
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <iosfwd>
+#include <limits>
+
+#include "s2/third_party/absl/base/config.h"
+#include "s2/third_party/absl/base/integral_types.h"
+#include "s2/third_party/absl/base/macros.h"
+#include "s2/third_party/absl/base/port.h"
+
+namespace absl {
+
+// uint128
+//
+// An unsigned 128-bit integer type. The API is meant to mimic an intrinsic type
+// as closely as is practical, including exhibiting undefined behavior in
+// analogous cases (e.g. division by zero). This type is intended to be a
+// drop-in replacement once C++ supports an intrinsic `uint128_t` type; when
+// that occurs, existing uses of `uint128` will continue to work using that new
+// type.
+//
+// Note: code written with this type will continue to compile once `uint128_t`
+// is introduced, provided the replacement helper functions
+// `Uint128(Low|High)64()` and `MakeUint128()` are made.
+//
+// A `uint128` supports the following:
+//
+//   * Implicit construction from integral types
+//   * Explicit conversion to integral types
+//
+// Additionally, if your compiler supports `__int128`, `uint128` is
+// interoperable with that type. (Abseil checks for this compatibility through
+// the `ABSL_HAVE_INTRINSIC_INT128` macro.)
+//
+// However, a `uint128` differs from intrinsic integral types in the following
+// ways:
+//
+//   * Errors on implicit conversions that do not preserve value (such as
+//     loss of precision when converting to float values).
+//   * Requires explicit construction from and conversion to floating point
+//     types.
+//   * Conversion to integral types requires an explicit static_cast() to
+//     mimic use of the `-Wnarrowing` compiler flag.
+//
+// Example:
+//
+//     float y = absl::Uint128Max();  // Error. uint128 cannot be implicitly
+//                                    // converted to float.
+//
+//     absl::uint128 v;
+//     absl::uint64_t i = v;                         // Error
+//     absl::uint64_t i = static_cast<uint64_t>(v);  // OK
+//
+class alignas(16) uint128 {
+ public:
+  uint128() = default;
+
+  // Constructors from arithmetic types
+  constexpr uint128(int v);                 // NOLINT(runtime/explicit)
+  constexpr uint128(unsigned int v);        // NOLINT(runtime/explicit)
+  constexpr uint128(long v);                // NOLINT(runtime/int)
+  constexpr uint128(unsigned long v);       // NOLINT(runtime/int)
+  constexpr uint128(long long v);           // NOLINT(runtime/int)
+  constexpr uint128(unsigned long long v);  // NOLINT(runtime/int)
+#ifdef ABSL_HAVE_INTRINSIC_INT128
+  constexpr uint128(__int128 v);           // NOLINT(runtime/explicit)
+  constexpr uint128(unsigned __int128 v);  // NOLINT(runtime/explicit)
+#endif  // ABSL_HAVE_INTRINSIC_INT128
+  explicit uint128(float v);
+  explicit uint128(double v);
+  explicit uint128(long double v);
+
+  // Assignment operators from arithmetic types
+  uint128& operator=(int v);
+  uint128& operator=(unsigned int v);
+  uint128& operator=(long v);                // NOLINT(runtime/int)
+  uint128& operator=(unsigned long v);       // NOLINT(runtime/int)
+  uint128& operator=(long long v);           // NOLINT(runtime/int)
+  uint128& operator=(unsigned long long v);  // NOLINT(runtime/int)
+#ifdef ABSL_HAVE_INTRINSIC_INT128
+  uint128& operator=(__int128 v);
+  uint128& operator=(unsigned __int128 v);
+#endif  // ABSL_HAVE_INTRINSIC_INT128
+
+  // Conversion operators to other arithmetic types
+  constexpr explicit operator bool() const;
+  constexpr explicit operator char() const;
+  constexpr explicit operator signed char() const;
+  constexpr explicit operator unsigned char() const;
+  constexpr explicit operator char16_t() const;
+  constexpr explicit operator char32_t() const;
+  constexpr explicit operator wchar_t() const;
+  constexpr explicit operator short() const;  // NOLINT(runtime/int)
+  // NOLINTNEXTLINE(runtime/int)
+  constexpr explicit operator unsigned short() const;
+  constexpr explicit operator int() const;
+  constexpr explicit operator unsigned int() const;
+  constexpr explicit operator long() const;  // NOLINT(runtime/int)
+  // NOLINTNEXTLINE(runtime/int)
+  constexpr explicit operator unsigned long() const;
+  // NOLINTNEXTLINE(runtime/int)
+  constexpr explicit operator long long() const;
+  // NOLINTNEXTLINE(runtime/int)
+  constexpr explicit operator unsigned long long() const;
+#ifdef ABSL_HAVE_INTRINSIC_INT128
+  constexpr explicit operator __int128() const;
+  constexpr explicit operator unsigned __int128() const;
+#endif  // ABSL_HAVE_INTRINSIC_INT128
+  explicit operator float() const;
+  explicit operator double() const;
+  explicit operator long double() const;
+
+  // Trivial copy constructor, assignment operator and destructor.
+
+  // Arithmetic operators.
+  uint128& operator+=(uint128 other);
+  uint128& operator-=(uint128 other);
+  uint128& operator*=(uint128 other);
+  // Long division/modulo for uint128.
+  uint128& operator/=(uint128 other);
+  uint128& operator%=(uint128 other);
+  uint128 operator++(int);
+  uint128 operator--(int);
+  uint128& operator<<=(int);
+  uint128& operator>>=(int);
+  uint128& operator&=(uint128 other);
+  uint128& operator|=(uint128 other);
+  uint128& operator^=(uint128 other);
+  uint128& operator++();
+  uint128& operator--();
+
+  // Uint128Low64()
+  //
+  // Returns the lower 64-bit value of a `uint128` value.
+  friend constexpr uint64 Uint128Low64(uint128 v);
+
+  // Uint128High64()
+  //
+  // Returns the higher 64-bit value of a `uint128` value.
+  friend constexpr uint64 Uint128High64(uint128 v);
+
+  // MakeUInt128()
+  //
+  // Constructs a `uint128` numeric value from two 64-bit unsigned integers.
+  // Note that this factory function is the only way to construct a `uint128`
+  // from integer values greater than 2^64.
+  //
+  // Example:
+  //
+  //   absl::uint128 big = absl::MakeUint128(1, 0);
+  friend constexpr uint128 MakeUint128(uint64_t high, uint64_t low);
+
+  // Uint128Max()
+  //
+  // Returns the highest value for a 128-bit unsigned integer.
+  friend constexpr uint128 Uint128Max();
+
+ private:
+  constexpr uint128(uint64_t high, uint64_t low);
+
+  // TODO(user) Update implementation to use __int128 once all users of
+  // uint128 are fixed to not depend on alignof(uint128) == 8. Also add
+  // alignas(16) to class definition to keep alignment consistent across
+  // platforms.
+#if defined(ABSL_IS_LITTLE_ENDIAN)
+  uint64_t lo_;
+  uint64_t hi_;
+#elif defined(ABSL_IS_BIG_ENDIAN)
+  uint64_t hi_;
+  uint64_t lo_;
+#else  // byte order
+#error "Unsupported byte order: must be little-endian or big-endian."
+#endif  // byte order
+};
+
+// Prefer to use the constexpr `Uint128Max()`.
+//
+// TODO(absl-team) deprecate kuint128max once migration tool is released.
+
+// allow uint128 to be logged
+extern std::ostream& operator<<(std::ostream& os, uint128 v);
+
+// TODO(user) add operator>>(std::istream&, uint128)
+
+// TODO(absl-team): Implement signed 128-bit type
+
+
+// TODO(absl-team) add operator>>(std::istream&, int128)
+
+// --------------------------------------------------------------------------
+//                      Implementation details follow
+// --------------------------------------------------------------------------
+
+constexpr uint128 MakeUint128(uint64_t high, uint64_t low) {
+  return uint128(high, low);
+}
+
+constexpr uint128 Uint128Max() {
+  return uint128(std::numeric_limits<uint64_t>::max(),
+                 std::numeric_limits<uint64_t>::max());
+}
+
+// Assignment from integer types.
+
+inline uint128& uint128::operator=(int v) { return *this = uint128(v); }
+
+inline uint128& uint128::operator=(unsigned int v) {
+  return *this = uint128(v);
+}
+
+inline uint128& uint128::operator=(long v) {  // NOLINT(runtime/int)
+  return *this = uint128(v);
+}
+
+// NOLINTNEXTLINE(runtime/int)
+inline uint128& uint128::operator=(unsigned long v) {
+  return *this = uint128(v);
+}
+
+// NOLINTNEXTLINE(runtime/int)
+inline uint128& uint128::operator=(long long v) {
+  return *this = uint128(v);
+}
+
+// NOLINTNEXTLINE(runtime/int)
+inline uint128& uint128::operator=(unsigned long long v) {
+  return *this = uint128(v);
+}
+
+#ifdef ABSL_HAVE_INTRINSIC_INT128
+inline uint128& uint128::operator=(__int128 v) {
+  return *this = uint128(v);
+}
+
+inline uint128& uint128::operator=(unsigned __int128 v) {
+  return *this = uint128(v);
+}
+#endif  // ABSL_HAVE_INTRINSIC_INT128
+
+// Shift and arithmetic operators.
+
+inline uint128 operator<<(uint128 lhs, int amount) { return lhs <<= amount; }
+
+inline uint128 operator>>(uint128 lhs, int amount) { return lhs >>= amount; }
+
+inline uint128 operator+(uint128 lhs, uint128 rhs) { return lhs += rhs; }
+
+inline uint128 operator-(uint128 lhs, uint128 rhs) { return lhs -= rhs; }
+
+inline uint128 operator*(uint128 lhs, uint128 rhs) { return lhs *= rhs; }
+
+inline uint128 operator/(uint128 lhs, uint128 rhs) { return lhs /= rhs; }
+
+inline uint128 operator%(uint128 lhs, uint128 rhs) { return lhs %= rhs; }
+
+constexpr uint64 Uint128Low64(uint128 v) { return v.lo_; }
+
+constexpr uint64 Uint128High64(uint128 v) { return v.hi_; }
+
+// Constructors from integer types.
+
+#if defined(ABSL_IS_LITTLE_ENDIAN)
+
+constexpr uint128::uint128(uint64_t high, uint64_t low)
+    : lo_(low), hi_(high) {}
+
+constexpr uint128::uint128(int v)
+    : lo_(v), hi_(v < 0 ? std::numeric_limits<uint64_t>::max() : 0) {}
+constexpr uint128::uint128(long v)  // NOLINT(runtime/int)
+    : lo_(v), hi_(v < 0 ? std::numeric_limits<uint64_t>::max() : 0) {}
+constexpr uint128::uint128(long long v)  // NOLINT(runtime/int)
+    : lo_(v), hi_(v < 0 ? std::numeric_limits<uint64_t>::max() : 0) {}
+
+constexpr uint128::uint128(unsigned int v) : lo_(v), hi_(0) {}
+// NOLINTNEXTLINE(runtime/int)
+constexpr uint128::uint128(unsigned long v) : lo_(v), hi_(0) {}
+// NOLINTNEXTLINE(runtime/int)
+constexpr uint128::uint128(unsigned long long v) : lo_(v), hi_(0) {}
+
+#ifdef ABSL_HAVE_INTRINSIC_INT128
+constexpr uint128::uint128(__int128 v)
+    : lo_(static_cast<uint64_t>(v & ~uint64_t{0})),
+      hi_(static_cast<uint64_t>(static_cast<unsigned __int128>(v) >> 64)) {}
+constexpr uint128::uint128(unsigned __int128 v)
+    : lo_(static_cast<uint64_t>(v & ~uint64_t{0})),
+      hi_(static_cast<uint64_t>(v >> 64)) {}
+#endif  // ABSL_HAVE_INTRINSIC_INT128
+
+#elif defined(ABSL_IS_BIG_ENDIAN)
+
+constexpr uint128::uint128(uint64_t high, uint64_t low)
+    : hi_(high), lo_(low) {}
+
+constexpr uint128::uint128(int v)
+    : hi_(v < 0 ? std::numeric_limits<uint64_t>::max() : 0), lo_(v) {}
+constexpr uint128::uint128(long v)  // NOLINT(runtime/int)
+    : hi_(v < 0 ? std::numeric_limits<uint64_t>::max() : 0), lo_(v) {}
+constexpr uint128::uint128(long long v)  // NOLINT(runtime/int)
+    : hi_(v < 0 ? std::numeric_limits<uint64_t>::max() : 0), lo_(v) {}
+
+constexpr uint128::uint128(unsigned int v) : hi_(0), lo_(v) {}
+// NOLINTNEXTLINE(runtime/int)
+constexpr uint128::uint128(unsigned long v) : hi_(0), lo_(v) {}
+// NOLINTNEXTLINE(runtime/int)
+constexpr uint128::uint128(unsigned long long v) : hi_(0), lo_(v) {}
+
+#ifdef ABSL_HAVE_INTRINSIC_INT128
+constexpr uint128::uint128(__int128 v)
+    : hi_(static_cast<uint64_t>(static_cast<unsigned __int128>(v) >> 64)),
+      lo_(static_cast<uint64_t>(v & ~uint64_t{0})) {}
+constexpr uint128::uint128(unsigned __int128 v)
+    : hi_(static_cast<uint64_t>(v >> 64)),
+      lo_(static_cast<uint64_t>(v & ~uint64_t{0})) {}
+#endif  // ABSL_HAVE_INTRINSIC_INT128
+
+#else  // byte order
+#error "Unsupported byte order: must be little-endian or big-endian."
+#endif  // byte order
+
+// Conversion operators to integer types.
+
+constexpr uint128::operator bool() const { return lo_ || hi_; }
+
+constexpr uint128::operator char() const { return static_cast<char>(lo_); }
+
+constexpr uint128::operator signed char() const {
+  return static_cast<signed char>(lo_);
+}
+
+constexpr uint128::operator unsigned char() const {
+  return static_cast<unsigned char>(lo_);
+}
+
+constexpr uint128::operator char16_t() const {
+  return static_cast<char16_t>(lo_);
+}
+
+constexpr uint128::operator char32_t() const {
+  return static_cast<char32_t>(lo_);
+}
+
+constexpr uint128::operator wchar_t() const {
+  return static_cast<wchar_t>(lo_);
+}
+
+// NOLINTNEXTLINE(runtime/int)
+constexpr uint128::operator short() const { return static_cast<short>(lo_); }
+
+constexpr uint128::operator unsigned short() const {  // NOLINT(runtime/int)
+  return static_cast<unsigned short>(lo_);            // NOLINT(runtime/int)
+}
+
+constexpr uint128::operator int() const { return static_cast<int>(lo_); }
+
+constexpr uint128::operator unsigned int() const {
+  return static_cast<unsigned int>(lo_);
+}
+
+// NOLINTNEXTLINE(runtime/int)
+constexpr uint128::operator long() const { return static_cast<long>(lo_); }
+
+constexpr uint128::operator unsigned long() const {  // NOLINT(runtime/int)
+  return static_cast<unsigned long>(lo_);            // NOLINT(runtime/int)
+}
+
+constexpr uint128::operator long long() const {  // NOLINT(runtime/int)
+  return static_cast<long long>(lo_);            // NOLINT(runtime/int)
+}
+
+constexpr uint128::operator unsigned long long() const {  // NOLINT(runtime/int)
+  return static_cast<unsigned long long>(lo_);            // NOLINT(runtime/int)
+}
+
+#ifdef ABSL_HAVE_INTRINSIC_INT128
+constexpr uint128::operator __int128() const {
+  return (static_cast<__int128>(hi_) << 64) + lo_;
+}
+
+constexpr uint128::operator unsigned __int128() const {
+  return (static_cast<unsigned __int128>(hi_) << 64) + lo_;
+}
+#endif  // ABSL_HAVE_INTRINSIC_INT128
+
+// Conversion operators to floating point types.
+
+inline uint128::operator float() const {
+  return static_cast<float>(lo_) + std::ldexp(static_cast<float>(hi_), 64);
+}
+
+inline uint128::operator double() const {
+  return static_cast<double>(lo_) + std::ldexp(static_cast<double>(hi_), 64);
+}
+
+inline uint128::operator long double() const {
+  return static_cast<long double>(lo_) +
+         std::ldexp(static_cast<long double>(hi_), 64);
+}
+
+// Comparison operators.
+
+inline bool operator==(uint128 lhs, uint128 rhs) {
+  return (Uint128Low64(lhs) == Uint128Low64(rhs) &&
+          Uint128High64(lhs) == Uint128High64(rhs));
+}
+
+inline bool operator!=(uint128 lhs, uint128 rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator<(uint128 lhs, uint128 rhs) {
+  return (Uint128High64(lhs) == Uint128High64(rhs))
+             ? (Uint128Low64(lhs) < Uint128Low64(rhs))
+             : (Uint128High64(lhs) < Uint128High64(rhs));
+}
+
+inline bool operator>(uint128 lhs, uint128 rhs) {
+  return (Uint128High64(lhs) == Uint128High64(rhs))
+             ? (Uint128Low64(lhs) > Uint128Low64(rhs))
+             : (Uint128High64(lhs) > Uint128High64(rhs));
+}
+
+inline bool operator<=(uint128 lhs, uint128 rhs) {
+  return (Uint128High64(lhs) == Uint128High64(rhs))
+             ? (Uint128Low64(lhs) <= Uint128Low64(rhs))
+             : (Uint128High64(lhs) <= Uint128High64(rhs));
+}
+
+inline bool operator>=(uint128 lhs, uint128 rhs) {
+  return (Uint128High64(lhs) == Uint128High64(rhs))
+             ? (Uint128Low64(lhs) >= Uint128Low64(rhs))
+             : (Uint128High64(lhs) >= Uint128High64(rhs));
+}
+
+// Unary operators.
+
+inline uint128 operator-(uint128 val) {
+  uint64_t hi = ~Uint128High64(val);
+  uint64_t lo = ~Uint128Low64(val) + 1;
+  if (lo == 0) ++hi;  // carry
+  return MakeUint128(hi, lo);
+}
+
+inline bool operator!(uint128 val) {
+  return !Uint128High64(val) && !Uint128Low64(val);
+}
+
+// Logical operators.
+
+inline uint128 operator~(uint128 val) {
+  return MakeUint128(~Uint128High64(val), ~Uint128Low64(val));
+}
+
+inline uint128 operator|(uint128 lhs, uint128 rhs) {
+  return MakeUint128(Uint128High64(lhs) | Uint128High64(rhs),
+                           Uint128Low64(lhs) | Uint128Low64(rhs));
+}
+
+inline uint128 operator&(uint128 lhs, uint128 rhs) {
+  return MakeUint128(Uint128High64(lhs) & Uint128High64(rhs),
+                           Uint128Low64(lhs) & Uint128Low64(rhs));
+}
+
+inline uint128 operator^(uint128 lhs, uint128 rhs) {
+  return MakeUint128(Uint128High64(lhs) ^ Uint128High64(rhs),
+                           Uint128Low64(lhs) ^ Uint128Low64(rhs));
+}
+
+inline uint128& uint128::operator|=(uint128 other) {
+  hi_ |= other.hi_;
+  lo_ |= other.lo_;
+  return *this;
+}
+
+inline uint128& uint128::operator&=(uint128 other) {
+  hi_ &= other.hi_;
+  lo_ &= other.lo_;
+  return *this;
+}
+
+inline uint128& uint128::operator^=(uint128 other) {
+  hi_ ^= other.hi_;
+  lo_ ^= other.lo_;
+  return *this;
+}
+
+// Shift and arithmetic assign operators.
+
+inline uint128& uint128::operator<<=(int amount) {
+  assert(amount >= 0);   // Negative shifts are undefined.
+  assert(amount < 128);  // Shifts of >= 128 are undefined.
+
+  // uint64_t shifts of >= 64 are undefined, so we will need some
+  // special-casing.
+  if (amount < 64) {
+    if (amount != 0) {
+      hi_ = (hi_ << amount) | (lo_ >> (64 - amount));
+      lo_ = lo_ << amount;
+    }
+  } else {
+    hi_ = lo_ << (amount - 64);
+    lo_ = 0;
+  }
+  return *this;
+}
+
+inline uint128& uint128::operator>>=(int amount) {
+  assert(amount >= 0);   // Negative shifts are undefined.
+  assert(amount < 128);  // Shifts of >= 128 are undefined.
+
+  // uint64_t shifts of >= 64 are undefined, so we will need some
+  // special-casing.
+  if (amount < 64) {
+    if (amount != 0) {
+      lo_ = (lo_ >> amount) | (hi_ << (64 - amount));
+      hi_ = hi_ >> amount;
+    }
+  } else {
+    lo_ = hi_ >> (amount - 64);
+    hi_ = 0;
+  }
+  return *this;
+}
+
+inline uint128& uint128::operator+=(uint128 other) {
+  hi_ += other.hi_;
+  uint64_t lolo = lo_ + other.lo_;
+  if (lolo < lo_)
+    ++hi_;
+  lo_ = lolo;
+  return *this;
+}
+
+inline uint128& uint128::operator-=(uint128 other) {
+  hi_ -= other.hi_;
+  if (other.lo_ > lo_) --hi_;
+  lo_ -= other.lo_;
+  return *this;
+}
+
+inline uint128& uint128::operator*=(uint128 other) {
+#if defined(ABSL_HAVE_INTRINSIC_INT128)
+  // TODO(user) Remove once alignment issues are resolved and unsigned __int128
+  // can be used for uint128 storage.
+  *this = static_cast<unsigned __int128>(*this) *
+          static_cast<unsigned __int128>(other);
+  return *this;
+#else   // ABSL_HAVE_INTRINSIC128
+  uint64_t a32 = lo_ >> 32;
+  uint64_t a00 = lo_ & 0xffffffff;
+  uint64_t b32 = other.lo_ >> 32;
+  uint64_t b00 = other.lo_ & 0xffffffff;
+  hi_ = hi_ * other.lo_ + lo_ * other.hi_ + a32 * b32;
+  lo_ = a00 * b00;
+  *this += uint128(a32 * b00) << 32;
+  *this += uint128(a00 * b32) << 32;
+  return *this;
+#endif  // ABSL_HAVE_INTRINSIC128
+}
+
+// Increment/decrement operators.
+
+inline uint128 uint128::operator++(int) {
+  uint128 tmp(*this);
+  *this += 1;
+  return tmp;
+}
+
+inline uint128 uint128::operator--(int) {
+  uint128 tmp(*this);
+  *this -= 1;
+  return tmp;
+}
+
+inline uint128& uint128::operator++() {
+  *this += 1;
+  return *this;
+}
+
+inline uint128& uint128::operator--() {
+  *this -= 1;
+  return *this;
+}
+
+
+
+namespace int128_internal {
+
+// Casts from unsigned to signed while preserving the underlying binary
+// representation.
+constexpr int64_t BitCastToSigned(uint64_t v) {
+  // Casting an unsigned integer to a signed integer of the same
+  // width is implementation defined behavior if the source value would not fit
+  // in the destination type. We step around it with a roundtrip bitwise not
+  // operation to make sure this function remains constexpr. Clang, GCC, and
+  // MSVC optimize this to a no-op on x86-64.
+  return v & (uint64_t{1} << 63) ? ~static_cast<int64_t>(~v)
+                                 : static_cast<int64_t>(v);
+}
+
+}  // namespace int128_internal
+
+
+#if defined(ABSL_HAVE_INTRINSIC_INT128)
+#include "s2/third_party/absl/numeric/int128_have_intrinsic.inc"
+#else  // ABSL_HAVE_INTRINSIC_INT128
+#include "s2/third_party/absl/numeric/int128_no_intrinsic.inc"
+#endif  // ABSL_HAVE_INTRINSIC_INT128
+
+}  // namespace absl
+
+
+
+
+#endif  // S2_THIRD_PARTY_ABSL_NUMERIC_INT128_H_

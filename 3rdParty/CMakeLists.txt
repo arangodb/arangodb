@@ -189,9 +189,17 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.50.3)
 ## Google S2
 ################################################################################
 
+set(GFLAGS_INTTYPES_FORMAT "C99")
+set(GFLAGS_BUILD_STATIC_LIBS On)
+set(GFLAGS_BUILD_gflags_LIB Off)
+set(GFLAGS_BUILD_gflags_nothreads_LIB On)
+set(GFLAGS_IS_SUBPROJECT On)
+add_subdirectory(gflags)
+
 set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
 set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/s2)
+set(GFLAGS_LIBRARIES gflags)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/s2geometry)
 
 ################################################################################
 ## SNAPPY
