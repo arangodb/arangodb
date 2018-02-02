@@ -60,7 +60,7 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-#include <3rdParty/date/include/date/date.h>
+#include <date/date.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -1755,6 +1755,43 @@ AqlValue Functions::DateQuarter(arangodb::aql::Query* query,
     static_cast<uint64_t>(ceil( unsigned(year_month_day(floor<days>(tp)).month()) / 3.0f ))
   ));
 }
+
+/// @brief function DATE_DAYS_IN_MONTH
+AqlValue Functions::DateDaysInMonth(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
+
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!value.isString() && !value.isNumber() ) {
+    RegisterInvalidArgumentWarning(query, "DATE_DAYS_IN_MONTH");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  system_clock::time_point tp;
+
+  if (value.isNumber()) {
+    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
+  } else {
+    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
+      RegisterWarning(query, "DATE_DAYS_IN_MONTH", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+   auto yearMonthDay = year_month_day(floor<days>(tp));
+
+  return AqlValue(AqlValueHintUInt(
+    static_cast<uint64_t>(unsigned(
+      (year{yearMonthDay.year()}/yearMonthDay.month()/last).day()
+    ))
+  ));
+}
+
+
+
 
 
 

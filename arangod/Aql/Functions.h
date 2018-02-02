@@ -190,6 +190,8 @@ struct Functions {
                                  VPackFunctionParameters const&);
     static AqlValue DateQuarter(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
+    static AqlValue DateDaysInMonth(arangodb::aql::Query*, transaction::Methods*,
+                                    VPackFunctionParameters const&);
 
 
    static AqlValue Passthru(arangodb::aql::Query*, transaction::Methods*,

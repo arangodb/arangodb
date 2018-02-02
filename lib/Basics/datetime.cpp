@@ -23,7 +23,6 @@
 #include "Basics/datetime.h"
 #include "lib/Basics/StringUtils.h"
 
-#include <boost/algorithm/string.hpp>
 #include <iostream>
 #include <vector>
 #include <regex>
