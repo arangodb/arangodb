@@ -110,7 +110,7 @@ var validateName = function (name) {
 var stringifyFunction = function (code, name) {
   'use strict';
 
-  if (typeof code === 'function') {
+  if (typeof code === 'function') {//// TODO: das soll der wrapper code machen
     code = String(code) + '\n';
   }
 

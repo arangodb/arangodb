@@ -12,37 +12,27 @@ namespace arangodb {
     
   }
   // will do some AQLFOO: and return true if it deleted one 
-  Result unregisterUserFunction(
-                                TRI_vocbase_t* vocbase,
-                                std::string const& functionName
-                                );
+  Result unregisterUserFunction(TRI_vocbase_t* vocbase,
+                                std::string const& functionName);
   
   // will do some AQLFOO, and return the number of deleted
-  Result unregisterUserFunctionsGroup(
-                                      TRI_vocbase_t* vocbase,
+  Result unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
                                       std::string const& functionFilterPrefix,
-                                      int& deleteCount
-                                      );
+                                      int& deleteCount);
 
 
   // documentation: will pull v8 context, or allocate if non already used
   
   // needs the V8 context to test the function to throw evenual errors:
-  Result registerUserFunction(
-                              TRI_vocbase_t* vocbase,
-                              //// todo : drinnen: isolate get current / oder neues v8::Isolate*,
+  Result registerUserFunction(TRI_vocbase_t* vocbase,
                               velocypack::Slice userFunction,
-
-                              bool& replacedExisting
-                              );
+                              bool& replacedExisting);
 
 
   // todo: document which result builder state is expected
   // will do some AQLFOO:
-  Result toArrayUserFunctions(
-                              TRI_vocbase_t* vocbase,
+  Result toArrayUserFunctions(TRI_vocbase_t* vocbase,
                               std::string const& functionFilterPrefix,
-                              velocypack::Builder& result
-                              );
+                              velocypack::Builder& result);
 }
 #endif

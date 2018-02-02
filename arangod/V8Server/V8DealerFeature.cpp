@@ -51,6 +51,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/v8-actions.h"
+#include "V8Server/v8-user-functions.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/vocbase.h"
 
@@ -1249,7 +1250,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
                    FileUtils::buildFilename(directory, "common/modules") + sep +
                    FileUtils::buildFilename(directory, "node");
       }
-
+      TRI_InitV8UserFunctions(isolate, localContext);
       TRI_InitV8UserStructures(isolate, localContext);
       TRI_InitV8Buffer(isolate, localContext);
       TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
