@@ -49,8 +49,18 @@ static uint64_t parseVersion(char const* str, size_t len) {
     } else if (c == '.') {
       result = result * 100 + tmp;
       tmp = 0;
-    }  // ignore other characters
+    } else {
+      // stop at first other character (e.g. "3.4.devel")
+      while (result > 0 && result < 10000) {
+        // do we have 5 digits already? if we, then boost the version
+        // number accordingly. this can happen for version strings
+        // such as "3.4.devel" or "4.devel"
+        result *= 100;
+      }
+      break;
+    }
   }
+
   return result + tmp;
 }
 
