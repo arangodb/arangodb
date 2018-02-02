@@ -107,7 +107,7 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t* vocbase, bool upgrade) {
 
     LOG_TOPIC(ERR, Logger::STARTUP)
         << "It seems like you are running ArangoDB on a database directory"
-        << "that was created with a newer version of ArangoDB. Maybe this"
+        << " that was created with a newer version of ArangoDB. Maybe this"
         << " is what you wanted but it is not supported by ArangoDB.";
 
     return UpgradeResult(TRI_ERROR_BAD_PARAMETER, vinfo.status);
