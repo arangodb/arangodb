@@ -283,7 +283,10 @@ class Condition {
   AstNode* collapse(AstNode const*);
 
   /// @brief converts binary logical operators into n-ary operators
-  AstNode* transformNode(AstNode*);
+  AstNode* transformNodePreorder(AstNode*);
+
+  /// @brief converts binary logical operators into n-ary operators
+  AstNode* transformNodePostorder(AstNode*);
 
   /// @brief Creates a top-level OR node if it does not already exist, and make
   /// sure that all second level nodes are AND nodes. Additionally, this step

@@ -479,7 +479,8 @@ void Condition::normalize(ExecutionPlan* plan) {
     return;
   }
 
-  _root = transformNode(_root);
+  _root = transformNodePreorder(_root);
+  _root = transformNodePostorder(_root);
   _root = fixRoot(_root, 0);
 
   optimize(plan);
@@ -502,7 +503,8 @@ void Condition::normalize() {
     return;
   }
 
-  _root = transformNode(_root);
+  _root = transformNodePreorder(_root);
+  _root = transformNodePostorder(_root);
   _root = fixRoot(_root, 0);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1304,7 +1306,7 @@ void normalizeCompare(AstNode* node) {
 }
 
 /// @brief converts binary logical operators into n-ary operators
-AstNode* Condition::transformNode(AstNode* node) {
+AstNode* Condition::transformNodePreorder(AstNode* node) {
   if (node == nullptr) {
     return nullptr;
   }
@@ -1318,31 +1320,79 @@ AstNode* Condition::transformNode(AstNode* node) {
     // create a new n-ary node
     node = _ast->createNode(Ast::NaryOperatorType(old->type));
     node->reserve(2);
-    node->addMember(old->getMember(0));
-    node->addMember(old->getMember(1));
+    node->addMember(transformNodePreorder(old->getMember(0)));
+    node->addMember(transformNodePreorder(old->getMember(1)));
+
+    return node;
   }
 
-  TRI_ASSERT(node->type != NODE_TYPE_OPERATOR_BINARY_AND &&
-             node->type != NODE_TYPE_OPERATOR_BINARY_OR);
+
+  if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+    // push down logical negations
+    auto sub = node->getMemberUnchecked(0);
+
+    if (sub->type == NODE_TYPE_OPERATOR_NARY_AND ||
+        sub->type == NODE_TYPE_OPERATOR_BINARY_AND ||
+        sub->type == NODE_TYPE_OPERATOR_NARY_OR ||
+        sub->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      size_t const n = sub->numMembers();
+
+      AstNode* newOperator = nullptr;
+      if (sub->type == NODE_TYPE_OPERATOR_NARY_AND ||
+          sub->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+        // ! (a && b)  =>  (! a) || (! b)
+        newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_OR);
+      } else {
+        // ! (a || b)  =>  (! a) && (! b)
+        newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_AND);
+      }
+
+      for (size_t i = 0; i < n; ++i) {
+        auto negated = transformNodePreorder(_ast->createNodeUnaryOperator(
+            NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMemberUnchecked(i)));
+        auto optimized = _ast->optimizeNotExpression(negated);
+        newOperator->addMember(optimized);
+      }
+
+      return transformNodePreorder(newOperator);
+    } /*else if (sub->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+      // eliminate double-negatives
+    }*/
+
+    node->changeMember(0, transformNodePreorder(sub));
+    return node;
+  }
+
+  // normalize any comparisons in place
+  normalizeCompare(node);
+
+  return node;
+}
+
+/// @brief converts binary logical operators into n-ary operators
+AstNode* Condition::transformNodePostorder(AstNode* node) {
+  if (node == nullptr ) {
+    return node;
+  }
 
   if (node->type == NODE_TYPE_OPERATOR_NARY_AND) {
-    bool processChildren = false;
+    bool distributeOverChildren = false;
     bool mustCollapse = false;
     size_t const n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
       // process subnodes first
-      auto sub = transformNode(node->getMemberUnchecked(i));
+      auto sub = transformNodePostorder(node->getMemberUnchecked(i));
       node->changeMember(i, sub);
 
       if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {
-        processChildren = true;
+        distributeOverChildren = true;
       } else if (sub->type == NODE_TYPE_OPERATOR_NARY_AND) {
         mustCollapse = true;
       }
     }
 
-    if (processChildren) {
+    if (distributeOverChildren) {
       // we found an AND with at least one OR child, e.g.
       //        AND
       //   OR          c
@@ -1376,11 +1426,19 @@ AstNode* Condition::transformNode(AstNode* node) {
         auto andOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_AND);
         andOperator->reserve(numPermutations);
 
+        bool mustCollapseAnd = false;
         for (size_t i = 0; i < numPermutations; ++i) {
           auto const& state = permutationStates[i];
-          andOperator->addMember(state.getValue()->clone(_ast));
+          auto sub = state.getValue()->clone(_ast);
+          if (sub->type == NODE_TYPE_OPERATOR_NARY_AND) {
+            mustCollapseAnd = true;
+          }
+          andOperator->addMember(sub);
         }
 
+        if (mustCollapseAnd) {
+          andOperator = collapse(andOperator);
+        }
         newOperator->addMember(andOperator);
 
         // now permute
@@ -1402,7 +1460,7 @@ AstNode* Condition::transformNode(AstNode* node) {
         }
       }
 
-      node = transformNode(newOperator);
+      node = newOperator;
     }
 
     if (mustCollapse) {
@@ -1417,7 +1475,7 @@ AstNode* Condition::transformNode(AstNode* node) {
     bool mustCollapse = false;
 
     for (size_t i = 0; i < n; ++i) {
-      auto sub = transformNode(node->getMemberUnchecked(i));
+      auto sub = transformNodePostorder(node->getMemberUnchecked(i));
       node->changeMember(i, sub);
 
       if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {
@@ -1432,40 +1490,7 @@ AstNode* Condition::transformNode(AstNode* node) {
     return node;
   }
 
-  if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
-    // push down logical negations
-    auto sub = node->getMemberUnchecked(0);
-
-    if (sub->type == NODE_TYPE_OPERATOR_NARY_AND ||
-        sub->type == NODE_TYPE_OPERATOR_BINARY_AND ||
-        sub->type == NODE_TYPE_OPERATOR_NARY_OR ||
-        sub->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      size_t const n = sub->numMembers();
-
-      AstNode* newOperator = nullptr;
-      if (sub->type == NODE_TYPE_OPERATOR_NARY_AND ||
-          sub->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-        // ! (a && b)  =>  (! a) || (! b)
-        newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_OR);
-      } else {
-        // ! (a || b)  =>  (! a) && (! b)
-        newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_AND);
-      }
-
-      for (size_t i = 0; i < n; ++i) {
-        auto negated = transformNode(_ast->createNodeUnaryOperator(
-            NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMemberUnchecked(i)));
-        auto optimized = _ast->optimizeNotExpression(negated);
-        newOperator->addMember(optimized);
-      }
-
-      return transformNode(newOperator);
-    }
-
-    node->changeMember(0, transformNode(sub));
-  }
-
-  normalizeCompare(node);
+  // we only need to handle nary and/or, the rest was handled in preorder
 
   return node;
 }
