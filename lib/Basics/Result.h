@@ -30,7 +30,7 @@
 #include <cstdint>
 
 
-#define RESULT_DEBUG true
+//#define RESULT_DEBUG true
 #ifdef RESULT_DEBUG
   #include <iostream>
 #endif
@@ -144,13 +144,15 @@ private:
 public:
 //// constructors
 
+  ResultValue() = default;
+
   // handling lvalue references and pointers
-  template <bool x = std::is_lvalue_reference<T>::value ||
-                     std::is_pointer<T>::value
-           ,typename std::enable_if<x,int>::type = 0
+  template < bool x = std::is_lvalue_reference<T>::value ||
+                      std::is_pointer<T>::value
+           , typename std::enable_if<x,int>::type = 0
            >
-  ResultValue(ValueType value
-             ,Result const& res = {}
+  ResultValue( ValueType value
+             , Result const& res = {}
              )
     : value(value)
     , _valid(true)
@@ -161,12 +163,12 @@ public:
 #endif
     }
 
-  template <bool x = std::is_lvalue_reference<T>::value ||
-                     std::is_pointer<T>::value
-           ,typename std::enable_if<x,int>::type = 0
+  template < bool x = std::is_lvalue_reference<T>::value ||
+                      std::is_pointer<T>::value
+           , typename std::enable_if<x,int>::type = 0
            >
-  ResultValue(ValueType value
-             ,Result&& res
+  ResultValue( ValueType value
+             , Result&& res
              )
     : value(value)
     , _valid(true)
@@ -180,12 +182,12 @@ public:
 
 
   // handling lvalues
-  template <int x = !std::is_reference<T>::value &&
-                    !std::is_pointer<T>::value
-           ,typename std::enable_if<x,int>::type = 0
+  template < int x = !std::is_reference<T>::value &&
+                     !std::is_pointer<T>::value
+           , typename std::enable_if<x,int>::type = 0
            >
-  ResultValue(ValueType const& value
-             ,Result const& res = {}
+  ResultValue( ValueType const& value
+             , Result const& res = {}
              )
     : value(value) //copy here
     , _valid(true)
@@ -196,12 +198,12 @@ public:
 #endif
     }
 
-  template <int x = !std::is_reference<T>::value &&
-                    !std::is_pointer<T>::value
-           ,typename std::enable_if<x,int>::type = 0
+  template < int x = !std::is_reference<T>::value &&
+                     !std::is_pointer<T>::value
+           , typename std::enable_if<x,int>::type = 0
            >
-  ResultValue(ValueType const& value
-             ,Result&& res
+  ResultValue( ValueType const& value
+             , Result&& res
              )
     : value(value) //copy here
     , _valid(true)
@@ -215,12 +217,12 @@ public:
 
 
   // handling rvalue / copy
-  template <std::uint32_t x = !std::is_reference<T>::value &&
-                               std::is_move_constructible<T>::value
-           ,typename std::enable_if<x,int>::type = 0
+  template < std::uint32_t x = !std::is_reference<T>::value &&
+                                std::is_move_constructible<T>::value
+           , typename std::enable_if<x,int>::type = 0
            >
-  ResultValue(ValueType&& value
-             ,Result const& res = {}
+  ResultValue( ValueType&& value
+             , Result const& res = {}
              )
     : value(std::move(value))
     , _valid(true)
@@ -231,12 +233,12 @@ public:
 #endif
     }
 
-  template <std::uint32_t x = !std::is_reference<T>::value &&
-                               std::is_move_constructible<T>::value
-           ,typename std::enable_if<x,int>::type = 0
+  template < std::uint32_t x = !std::is_reference<T>::value &&
+                                std::is_move_constructible<T>::value
+           , typename std::enable_if<x,int>::type = 0
            >
-  ResultValue(ValueType&& value
-             ,Result && res
+  ResultValue( ValueType&& value
+             , Result && res
              )
     : value(std::move(value))
     , _valid(true)
@@ -250,35 +252,37 @@ public:
 
 
   // handling rvalue / assign
-  template <std::uint64_t x = !std::is_reference<T>::value &&
-                              !std::is_move_constructible<T>::value &&
-                               std::is_move_assignable<T>::value
-           ,typename std::enable_if<x,int>::type = 0
+  template < std::uint64_t x = !std::is_reference<T>::value &&
+                               !std::is_move_constructible<T>::value &&
+                                std::is_move_assignable<T>::value
+           , typename std::enable_if<x,int>::type = 0
            >
-  ResultValue(ValueType&& value
-             ,Result const& res = {}
+  ResultValue( ValueType&& val
+             , Result const& res = {}
              )
-    : _valid(true)
+    : value()
+    , _valid(true)
     , _result(res)
     {
-      value = std::move(value);
+      this->value = std::move(value);
 #ifdef RESULT_DEBUG
       std::cerr << "ctor: rvalue (move assign) - 0 copy" << std::endl;
 #endif
     }
 
-  template <std::uint64_t x = !std::is_reference<T>::value &&
-                              !std::is_move_constructible<T>::value &&
-                               std::is_move_assignable<T>::value
-           ,typename std::enable_if<x,int>::type = 0
+  template < std::uint64_t x = !std::is_reference<T>::value &&
+                               !std::is_move_constructible<T>::value &&
+                                std::is_move_assignable<T>::value
+           , typename std::enable_if<x,int>::type = 0
            >
-  ResultValue(ValueType&& value
-             ,Result&& res
+  ResultValue( ValueType&& val
+             , Result&& res
              )
-    : _valid(true)
+    : value()
+    , _valid(true)
     , _result(std::move(res))
     {
-      value = std::move(value);
+      this->value = std::move(value);
 #ifdef RESULT_DEBUG
       std::cerr << "ctor: rvalue (move assign) - 0 copy" << std::endl;
 #endif
@@ -305,9 +309,10 @@ public:
   }
 
   // some functions to retrieve the internal result
-  Result  copyResult() const &  { return _result; }
-  Result  takeResult() { return std::move(_result); }
-  Result& getResult() const &  { return _result; }
+  Result  copyResult() const &  { return _result; }          // object is lvalue
+  Result  copyResult() &&  { return std::move(_result); }    // object is rvalue
+  Result  takeResult() { return std::move(_result); }        // all value types
+  Result& getResult() const &  { return _result; }           // get only on lvalues
 
   // check if we have valid result value - this is not mandatory
   // it allows us to use values instead of pointers if an optional result is required

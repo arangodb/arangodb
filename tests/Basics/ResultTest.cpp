@@ -34,6 +34,110 @@ using namespace arangodb;
 using namespace std;
 
 
+struct Verbose {
+  bool byDefault = false;
+  bool byCopy = false;
+  bool byMove = false;
+  bool byAssign = false;
+  bool byMoveAssign = false;
+
+  Verbose() :  byDefault(true) {}
+  Verbose(Verbose const&) :  byCopy(true) {}
+  Verbose(Verbose &&) :  byMove(true) {}
+
+  Verbose& operator=(Verbose &){
+    byMoveAssign = true;
+    return *this;
+  }
+
+  Verbose& operator=(Verbose &&){
+    byMoveAssign = true;
+    return *this;
+  }
+
+  void show(){
+#ifdef RESULT_DEBUG
+    std::cout << std::boolalpha   << std::endl
+              << " default: "      << byDefault << std::endl
+              << " copy: "        << byCopy << std::endl
+              << " move: "        << byMove << std::endl
+              << " assign: "      << byAssign << std::endl
+              << " move assign: " << byMoveAssign << std::endl
+              ;
+#endif
+  }
+
+};
+
+
+// Helper Classes
+struct VerboseNoMoveCtor {
+  bool byDefault = false;
+  bool byCopy = false;
+  bool byMove = false;
+  bool byAssign = false;
+  bool byMoveAssign = false;
+
+  VerboseNoMoveCtor() :  byDefault(true) {}
+  VerboseNoMoveCtor(VerboseNoMoveCtor const&) :  byCopy(true) {}
+  VerboseNoMoveCtor(VerboseNoMoveCtor &&) = delete;
+
+  VerboseNoMoveCtor& operator=(VerboseNoMoveCtor const&){
+    byAssign = true;
+    return *this;
+  }
+
+  VerboseNoMoveCtor& operator=(VerboseNoMoveCtor &&){
+    byMoveAssign = true;
+    return *this;
+  }
+
+  void show(){
+#ifdef RESULT_DEBUG
+    std::cout << std::boolalpha   << std::endl
+              << " default: "      << byDefault << std::endl
+              << " copy: "        << byCopy << std::endl
+              << " move: "        << byMove << std::endl
+              << " assign: "      << byAssign << std::endl
+              << " move assign: " << byMoveAssign << std::endl
+              ;
+#endif
+  }
+
+};
+
+struct VerboseNoMoveAssign {
+  bool byDefault = false;
+  bool byCopy = false;
+  bool byMove = false;
+  bool byAssign = false;
+  bool byMoveAssign = false;
+
+  VerboseNoMoveAssign() :  byDefault(true) {}
+  VerboseNoMoveAssign(VerboseNoMoveAssign const&) :  byCopy(true) {}
+  VerboseNoMoveAssign(VerboseNoMoveAssign &&) :  byMove(true) {}
+  VerboseNoMoveAssign& operator=(VerboseNoMoveAssign &&) = delete;
+
+  VerboseNoMoveAssign& operator=(VerboseNoMoveAssign const&){
+    byAssign = true;
+    return *this;
+  }
+
+  void show(){
+#ifdef RESULT_DEBUG
+    std::cout << std::boolalpha   << std::endl
+              << " default: "      << byDefault << std::endl
+              << " copy: "        << byCopy << std::endl
+              << " move: "        << byMove << std::endl
+              << " assign: "      << byAssign << std::endl
+              << " move assign: " << byMoveAssign << std::endl
+              ;
+#endif
+  }
+
+};
+// Helper Classes
+
 ResultValue<int> function_a(int i){
   return ResultValue<int>(i);
 }
@@ -65,19 +169,7 @@ SECTION("testResultTest1") {
   int* integerPtr = &integer;
   std::string str = "arangodb rocks";
 
-  struct noMove {
-    int member = 4;
-    noMove() = default;
-    noMove(noMove&&) = delete;
-    noMove& operator=(noMove&&) = default;
-  };
 
-  struct noMoveAssign {
-    int member = 4;
-    noMoveAssign() = default;
-    noMoveAssign(noMoveAssign&&) = default;
-    noMoveAssign& operator=(noMoveAssign&&) = delete;
-  };
 
 // pointer and ref
 #ifdef RESULT_DEBUG
@@ -124,31 +216,29 @@ SECTION("testResultTest1") {
   ResultValue<std::string> stringMoveResult{std::move(str)};
   CHECK((std::is_same<decltype(stringMoveResult.value), std::string>::value));
 
-#ifdef RESULT_DEBUG
-  std::cout << "\nnoMove - noMove&& - move" << endl;
-#endif
-  ResultValue<noMove>  noMoveResult(noMove{});
-  CHECK((std::is_same<decltype(noMoveResult.value), noMove>::value));
 
-#ifdef RESULT_DEBUG
-  std::cout << "\nnoMoveAssign - noMoveAssign&& - move" << endl;
-#endif
-  ResultValue<noMoveAssign>  noMoveAssignResult{noMoveAssign{}};
-  CHECK((std::is_same<decltype(noMoveAssignResult.value), noMoveAssign>::value));
 
 #ifdef RESULT_DEBUG
   std::cout << "\nfunction_b" << endl;
 #endif
   function_b();
 
-}
+  ResultValue<Verbose> res1;
+  CHECK((res1.value.byDefault));
+
+  ResultValue<Verbose> res2{{}};
+  CHECK((res2.value.byMove));
+
+  ResultValue<VerboseNoMoveCtor> res3{{}};
+  res3.value.show();
+  CHECK((res3.value.byMoveAssign));
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
 
-}
+}}
 
 // Local Variables:
 // mode: outline-minor
