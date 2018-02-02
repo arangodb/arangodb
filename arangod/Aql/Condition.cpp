@@ -1326,7 +1326,6 @@ AstNode* Condition::transformNodePreorder(AstNode* node) {
     return node;
   }
 
-
   if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
     // push down logical negations
     auto sub = node->getMemberUnchecked(0);
@@ -1354,12 +1353,14 @@ AstNode* Condition::transformNodePreorder(AstNode* node) {
         newOperator->addMember(optimized);
       }
 
-      return transformNodePreorder(newOperator);
-    } /*else if (sub->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+      return newOperator;//transformNodePreorder(newOperator);
+    } else if (sub->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
       // eliminate double-negatives
-    }*/
+      return transformNodePreorder(sub->getMemberUnchecked(0));
+    }
 
     node->changeMember(0, transformNodePreorder(sub));
+
     return node;
   }
 
@@ -1391,6 +1392,12 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
         mustCollapse = true;
       }
     }
+
+    if (mustCollapse) {
+      node = collapse(node);
+      mustCollapse = false;
+    }
+
 
     if (distributeOverChildren) {
       // we found an AND with at least one OR child, e.g.
