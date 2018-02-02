@@ -138,6 +138,15 @@ if (USE_IRESEARCH)
     set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
   endif()
 
+  if(NOT PERL_FOUND)
+    set(PERL_FOUND TRUE) # suppress error for Perl not-found
+
+    # MSVC will execute ADD_CUSTOM_COMMAND even though OUTPUT is already present
+    if(MSVC)
+      set(PERL_EXECUTABLE echo)
+    endif()
+  endif()
+
   set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
   set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
   set(UNWIND_ROOT "invalid")
