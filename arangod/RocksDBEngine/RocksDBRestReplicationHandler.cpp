@@ -442,7 +442,16 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT);
-    RocksDBReplicationContext* ctx = _manager->createContext(ttl);
+    
+    bool found;
+    std::string const& value = _request->value("serverId", found);
+    TRI_server_id_t serverId = 0;
+
+    if (found) {
+      serverId = (TRI_server_id_t)StringUtils::uint64(value);
+    }
+
+    RocksDBReplicationContext* ctx = _manager->createContext(_vocbase, ttl, serverId);
     if (ctx == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unable to create replication context");
@@ -458,16 +467,9 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.close();
 
     // add client
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-    TRI_server_id_t serverId = 0;
-
-    if (found) {
-      serverId = (TRI_server_id_t)StringUtils::uint64(value);
-    } else {
+    if (serverId == 0) {
       serverId = ctx->id();
     }
-
     _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
 
     generateResult(rest::ResponseCode::OK, b.slice());

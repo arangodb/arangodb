@@ -45,7 +45,7 @@ class RocksDBReplicationContext {
       TokenCallback;
 
  public:
-  explicit RocksDBReplicationContext(double ttl);
+  RocksDBReplicationContext(TRI_vocbase_t* vocbase, double ttl, TRI_server_id_t server_id);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const; //batchId
@@ -110,6 +110,8 @@ class RocksDBReplicationContext {
                               arangodb::LogicalCollection const* r);
 
  private:
+  TRI_vocbase_t* _vocbase;
+  TRI_server_id_t const _serverId;
   TRI_voc_tick_t _id; // batch id
   uint64_t _lastTick; // the time at which the snapshot was taken
   uint64_t _currentTick; // shows how often dump was called
@@ -123,6 +125,7 @@ class RocksDBReplicationContext {
   uint64_t _lastIteratorOffset;
   std::unique_ptr<DatabaseGuard> _guard;
 
+  double const _ttl;
   double _expires;
   bool _isDeleted;
   bool _isUsed;

@@ -209,6 +209,9 @@ struct TRI_vocbase_t {
   void setState(State state) { _state = state; }
   // the ttl value is amount of seconds after which the client entry will
   // expire and may be garbage-collected
+  void updateReplicationClient(TRI_server_id_t, double ttl);
+  // the ttl value is amount of seconds after which the client entry will
+  // expire and may be garbage-collected
   void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t, double ttl);
   // reutrn all replication clients registered
   std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>

@@ -1515,6 +1515,28 @@ void TRI_vocbase_t::addReplicationApplier(TRI_replication_applier_t* applier) {
 }
 
 /// @brief note the progress of a connected replication client
+/// this only updates the ttl
+void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl) {
+  if (ttl <= 0.0) {
+    ttl = TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT;
+  }
+  double const expires = TRI_microtime() + ttl;
+
+  WRITE_LOCKER(writeLocker, _replicationClientsLock);
+
+  try {
+    auto it = _replicationClients.find(serverId);
+
+    if (it != _replicationClients.end()) {
+      (*it).second.first = expires;
+    }
+  } catch (...) {
+    // silently fail...
+    // all we would be missing is the progress information of a slave
+  }
+}
+
+/// @brief note the progress of a connected replication client
 void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
                                             TRI_voc_tick_t lastFetchedTick,
                                             double ttl) {
