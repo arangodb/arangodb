@@ -211,7 +211,7 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
   
   LOG_TOPIC(DEBUG, Logger::REPLICATION)
       << "requesting replication applier start for " << _databaseName << ". initialTick: " << initialTick
-      << ", useTick: " << useTick;
+      << ", useTick: " << useTick << ", barrierId: " << barrierId;
 
   if (_configuration._endpoint.empty()) {
     Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
@@ -223,6 +223,16 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
     Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
     setErrorNoLock(r);
     THROW_ARANGO_EXCEPTION(r);
+  }
+
+  {
+    VPackBuilder b;
+    b.openObject();
+    _configuration.toVelocyPack(b, false, false);
+    b.close();
+
+    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+        << "starting applier with configuration " << b.slice().toJson();
   }
 
   // reset error

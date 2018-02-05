@@ -90,6 +90,8 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
   
   setAborted(false);
 
+  double const startTime = TRI_microtime();
+
   try {
     setProgress("fetching master state");
 
@@ -151,6 +153,8 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
 
     // all done here
     sendFinishBatch();
+
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "initial synchronization with master took: " << Logger::FIXED(TRI_microtime() - startTime, 6) << " s. status: " << r.errorMessage();
     return r;
   } catch (arangodb::basics::Exception const& ex) {
     sendFinishBatch();
@@ -197,7 +201,7 @@ Result DatabaseInitialSyncer::sendFlush() {
       "\"waitForCollectorQueue\":true}";
 
   // send request
-  std::string const progress = "send WAL flush command to url " + url;
+  std::string const progress = "sending WAL flush command to url " + url;
   setProgress(progress);
 
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
@@ -227,6 +231,8 @@ Result DatabaseInitialSyncer::applyCollectionDump(transaction::Methods& trx,
   TRI_ASSERT(*end == '\0');
 
   auto builder = std::make_shared<VPackBuilder>();
+  std::string const typeString("type");
+  std::string const dataString("data");
 
   while (p < end) {
     char const* q = strchr(p, '\n');
@@ -260,51 +266,41 @@ Result DatabaseInitialSyncer::applyCollectionDump(transaction::Methods& trx,
     }
 
     TRI_replication_operation_e type = REPLICATION_INVALID;
-    std::string key;
     VPackSlice doc;
 
-    for (auto const& it : VPackObjectIterator(slice)) {
-      std::string const attributeName(it.key.copyString());
-
-      if (attributeName == "type") {
+    for (auto const& it : VPackObjectIterator(slice, true)) {
+      if (it.key.isEqualString(typeString)) {
         if (it.value.isNumber()) {
           type = static_cast<TRI_replication_operation_e>(
               it.value.getNumber<int>());
         }
-      }
-
-      else if (attributeName == "data") {
+      } else if (it.key.isEqualString(dataString)) {
         if (it.value.isObject()) {
           doc = it.value;
         }
       }
     }
 
+    char const* key = nullptr;
+    VPackValueLength keyLength = 0;
+
     if (!doc.isNone()) {
       VPackSlice value = doc.get(StaticStrings::KeyString);
       if (value.isString()) {
-        key = value.copyString();
+        key = value.getString(keyLength);
       }
-
-      /* TODO: rev is currently not used
-      value = doc.get(StaticStrings::RevString);
-
-      if (value.isString()) {
-        rev = value.copyString();
-      }
-      */
     }
 
     // key must not be empty, but doc can be empty
-    if (key.empty()) {
+    if (key == nullptr || keyLength == 0) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, invalidMsg);
     }
 
     ++markersProcessed;
 
     transaction::BuilderLeaser oldBuilder(&trx);
-    oldBuilder->openObject();
-    oldBuilder->add(StaticStrings::KeyString, VPackValue(key));
+    oldBuilder->openObject(true);
+    oldBuilder->add(StaticStrings::KeyString, VPackValuePair(key, keyLength, VPackValueType::String));
     oldBuilder->close();
 
     VPackSlice const old = oldBuilder->slice();
@@ -487,6 +483,9 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(vocbase()), coll->cid(),
         AccessMode::Type::EXCLUSIVE);
+
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     Result res = trx.begin();
 
