@@ -94,8 +94,8 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 /// there are active contexts
 //////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl) {
-  auto context = std::make_unique<RocksDBReplicationContext>(ttl);
+RocksDBReplicationContext* RocksDBReplicationManager::createContext(TRI_vocbase_t* vocbase, double ttl, TRI_server_id_t serverId) {
+  auto context = std::make_unique<RocksDBReplicationContext>(vocbase, ttl, serverId);
   TRI_ASSERT(context.get() != nullptr);
   TRI_ASSERT(context->isUsed());
 

@@ -232,12 +232,12 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBOperationResult insertDocument(
       arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
-      arangodb::velocypack::Slice const& doc, bool& waitForSync) const;
+      arangodb::velocypack::Slice const& doc, OperationOptions& options) const;
 
   arangodb::RocksDBOperationResult removeDocument(
       arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
       arangodb::velocypack::Slice const& doc, bool isUpdate,
-      bool& waitForSync) const;
+      OperationOptions& options) const;
 
   arangodb::RocksDBOperationResult lookupDocument(
       transaction::Methods* trx, arangodb::velocypack::Slice const& key,
@@ -246,7 +246,7 @@ class RocksDBCollection final : public PhysicalCollection {
   arangodb::RocksDBOperationResult updateDocument(
       transaction::Methods* trx, TRI_voc_rid_t oldRevisionId,
       arangodb::velocypack::Slice const& oldDoc, TRI_voc_rid_t newRevisionId,
-      arangodb::velocypack::Slice const& newDoc, bool& waitForSync) const;
+      arangodb::velocypack::Slice const& newDoc, OperationOptions& options) const;
 
   arangodb::Result lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
                                        arangodb::ManagedDocumentResult&,
