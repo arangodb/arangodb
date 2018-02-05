@@ -1648,6 +1648,7 @@ SECTION("test_unregister_link") {
       CHECK((1 == cids.size()));
 
       auto factory = [](arangodb::LogicalView*, arangodb::velocypack::Slice const&, bool isNew)->std::unique_ptr<arangodb::ViewImplementation>{ return nullptr; };
+      logicalCollection->getIndexes()[0]->unload(); // release view reference to prevent deadlock due to ~IResearchView() waiting for IResearchLink::unload()
       logicalView->spawnImplementation(factory, createJson->slice(), true); // ensure destructor for ViewImplementation is called
       CHECK((false == logicalCollection->getIndexes().empty()));
     }
@@ -1739,6 +1740,7 @@ SECTION("test_tracked_cids") {
     }
 
     CHECK((expected.empty()));
+    logicalCollection->getIndexes()[0]->unload(); // release view reference to prevent deadlock due to ~IResearchView() waiting for IResearchLink::unload()
   }
 
   // test drop via link before open (TRI_vocbase_t::createView(...) will call open())

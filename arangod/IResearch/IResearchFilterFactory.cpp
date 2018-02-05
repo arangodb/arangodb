@@ -1208,6 +1208,7 @@ bool fromFuncExists(
 }
 
 // PHRASE(<attribute>, <value> [, <offset>, <value>, ...], <analyzer>)
+// PHRASE(<attribute>, '[' <value> [, <offset>, <value>, ...] ']', <analyzer>)
 bool fromFuncPhrase(
     irs::boolean_filter* filter,
     arangodb::iresearch::QueryContext const& ctx,
@@ -1240,7 +1241,10 @@ bool fromFuncPhrase(
     return false;
   }
 
+  // ...........................................................................
   // 1st argument defines a field
+  // ...........................................................................
+
   auto const* fieldArg = arangodb::iresearch::checkAttributeAccess(
     args.getMemberUnchecked(0), *ctx.ref
   );
@@ -1251,38 +1255,9 @@ bool fromFuncPhrase(
     return false;
   }
 
-  // 2nd argument defines a value
-  auto const* valueArg = args.getMemberUnchecked(1);
-
-  if (!valueArg) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-      << "'PHRASE' AQL function: 2nd argument is invalid";
-    return false;
-  }
-
-  irs::string_ref value;
-  arangodb::iresearch::ScopedAqlValue inputValue(*valueArg);
-
-  if (filter || inputValue.isConstant()) {
-    if (!inputValue.execute(ctx)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-          << "'PHRASE' AQL function: Failed to evaluate 2nd argument";
-      return false;
-    }
-
-    if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != inputValue.type()) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-          << "'PHRASE' AQL function: 2nd argument has invalid type '" << inputValue.type()
-          << "' (string expected)";
-      return false;
-    }
-
-    if (!inputValue.getString(value)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-          << "'PHRASE' AQL function: Unable to parse 2nd argument as string";
-      return false;
-    }
-  }
+  // ...........................................................................
+  // last argument defines the analyzer to use
+  // ...........................................................................
 
   auto const* analyzerArg = args.getMemberUnchecked(argc - 1);
 
@@ -1336,6 +1311,66 @@ bool fromFuncPhrase(
     }
   }
 
+  // ...........................................................................
+  // 2nd argument defines a value
+  // ...........................................................................
+
+  auto const* valueArg = args.getMemberUnchecked(1);
+
+  if (!valueArg) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'PHRASE' AQL function: 2nd argument is invalid";
+    return false;
+  }
+
+  auto* valueArgs = &args;
+  size_t valueArgsBegin = 1;
+  size_t valueArgsEnd = argc - 1;
+
+  if (valueArg->isArray()) {
+    valueArgs = valueArg;
+    valueArgsBegin = 0;
+    valueArgsEnd = valueArg->numMembers();
+
+    if (!(valueArgsEnd & 1)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "'PHRASE' AQL function: 2nd argument has an invalid number of members (must be an odd number)";
+      return false;
+    }
+
+    valueArg = valueArgs->getMemberUnchecked(valueArgsBegin);
+
+    if (!valueArg) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "'PHRASE' AQL function: 2nd argument has an invalid member at offset: " << valueArg;
+      return false;
+    }
+  }
+
+  irs::string_ref value;
+  arangodb::iresearch::ScopedAqlValue inputValue(*valueArg);
+
+  if (filter || inputValue.isConstant()) {
+    if (!inputValue.execute(ctx)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "'PHRASE' AQL function: Failed to evaluate 2nd argument";
+      return false;
+    }
+
+    if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != inputValue.type()) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "'PHRASE' AQL function: 2nd argument has invalid type '" << inputValue.type()
+          << "' (string expected)";
+      return false;
+    }
+
+    if (!inputValue.getString(value)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "'PHRASE' AQL function: Unable to parse 2nd argument as string";
+      return false;
+    }
+  }
+
   irs::by_phrase* phrase = nullptr;
 
   if (filter) {
@@ -1359,8 +1394,8 @@ bool fromFuncPhrase(
   decltype(fieldArg) offsetArg = nullptr;
   size_t offset = 0;
 
-  for (size_t idx = 2, end = argc - 1; idx < end; idx += 2) {
-    offsetArg = args.getMemberUnchecked(idx);
+  for (size_t idx = valueArgsBegin + 1, end = valueArgsEnd; idx < end; idx += 2) {
+    offsetArg = valueArgs->getMemberUnchecked(idx);
 
     if (!offsetArg) {
       LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
@@ -1368,7 +1403,7 @@ bool fromFuncPhrase(
       return false;
     }
 
-    valueArg = args.getMemberUnchecked(idx + 1);
+    valueArg = valueArgs->getMemberUnchecked(idx + 1);
 
     if (!valueArg) {
       LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
@@ -1659,16 +1694,30 @@ NS_BEGIN(iresearch)
 ) {
   auto filter = irs::And::make();
 
+  FilterFactory::filter(static_cast<irs::And&>(*filter), cid, rid);
+
+  return std::move(filter);
+}
+
+/*static*/ irs::filter& FilterFactory::filter(
+    irs::boolean_filter& buf,
+    TRI_voc_cid_t cid,
+    TRI_voc_rid_t rid
+) {
   // filter matching on cid and rid
-  static_cast<irs::And&>(*filter).add<irs::by_term>()
+  auto& filter = buf.add<irs::And>();
+
+  // filter matching on cid
+  filter.add<irs::by_term>()
     .field(DocumentPrimaryKey::CID()) // set field
     .term(DocumentPrimaryKey::encode(cid)); // set value
 
-  static_cast<irs::And&>(*filter).add<irs::by_term>()
+  // filter matching on rid
+  filter.add<irs::by_term>()
     .field(DocumentPrimaryKey::RID()) // set field
     .term(DocumentPrimaryKey::encode(rid)); // set value
 
-  return std::move(filter);
+  return filter;
 }
 
 /*static*/ bool FilterFactory::filter(

@@ -1980,7 +1980,7 @@ arangodb::Result IResearchView::updateProperties(
               if (index && arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()) {
                 auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
 
-                if (link && link->_defaultId == id() && !link->_view->get()) {
+                if (link && link->_defaultId == id() && !link->view()) {
                   arangodb::velocypack::Builder linkBuilder;
                   bool valid;
 

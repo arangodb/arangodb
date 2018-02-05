@@ -150,12 +150,6 @@ configure_file(
   NEWLINE_STYLE UNIX
 )
 
-configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Pipeline/Jenkinsfile.groovy.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Pipeline/Jenkinsfile.groovy"
-  NEWLINE_STYLE UNIX @ONLY
-)
-
 if (NOT DEFINED GENERATE_BUILD_DATE OR GENERATE_BUILD_DATE)
   set(GENERATE_BUILD_DATE ON CACHE INTERNAL "whether we should generate the build date")
   configure_file(
