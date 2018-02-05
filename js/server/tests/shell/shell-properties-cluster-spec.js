@@ -210,8 +210,6 @@ describe('Update collection properties with distributeShardsLike, ', function() 
         }
     });
 });
-<<<<<<< HEAD:js/server/tests/shell/shell-properties-cluster-spec.js
-=======
 
 describe('Replication factor constraints', function() {
     beforeEach(function() {
@@ -268,4 +266,3 @@ describe('Replication factor constraints', function() {
         expect(db[cn2].properties()['distributeShardsLike']).to.equal(cn1);
     });
 });
->>>>>>> 67f7679... Bug fix/distribute shards like (#4415):js/server/tests/shell/shell-collection-properties-cluster-spec.js
