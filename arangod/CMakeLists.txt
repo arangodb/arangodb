@@ -300,6 +300,7 @@ SET(ARANGOD_SOURCES
   Geo/GeoJsonParser.cpp
   Geo/GeoParams.cpp
   Geo/Near.cpp
+  Geo/ShapeContainer.cpp
   Geo/Shapes.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
@@ -522,7 +523,7 @@ target_link_libraries(arangoserver
   ${ROCKSDB_LIBS}
   ${LIB_ARANGO_IRESEARCH}
   gflags
-  s2geometry
+  s2
   boost_boost
   boost_system
   ${SYSTEM_LIBRARIES}

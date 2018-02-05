@@ -28,7 +28,7 @@
 #include "Geo/GeoJsonParser.h"
 #include "Geo/GeoParams.h"
 #include "Geo/GeoUtils.h"
-#include "Geo/Shapes.h"
+#include "Geo/ShapeContainer.h"
 
 #include <s2/s2region_coverer.h>
 #include <velocypack/Slice.h>

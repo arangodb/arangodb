@@ -39,7 +39,7 @@
 #include "Geo/GeoParams.h"
 #include "Geo/GeoUtils.h"
 #include "Geo/GeoJsonParser.h"
-#include "Geo/Shapes.h"
+#include "Geo/ShapeContainer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Random/UniformCharacter.h"

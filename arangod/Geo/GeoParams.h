@@ -23,7 +23,7 @@
 #ifndef ARANGOD_GEO_GEO_PARAMS_H
 #define ARANGOD_GEO_GEO_PARAMS_H 1
 
-#include "Geo/Shapes.h"
+#include "Geo/ShapeContainer.h"
 #include "VocBase/voc-types.h"
 
 #include <s2/s2region_coverer.h>

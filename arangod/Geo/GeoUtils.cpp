@@ -24,7 +24,7 @@
 #include "GeoUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Geo/GeoJsonParser.h"
-#include "Geo/Shapes.h"
+#include "Geo/ShapeContainer.h"
 #include "Logger/Logger.h"
 
 #include <s2/s2latlng.h>

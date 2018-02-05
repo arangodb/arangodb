@@ -23,7 +23,7 @@
 
 #include "GeoJsonParser.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Geo/Shapes.h"
+#include "Geo/ShapeContainer.h"
 #include "Logger/Logger.h"
 
 #include <velocypack/Iterator.h>

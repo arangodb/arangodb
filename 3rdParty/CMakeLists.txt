@@ -199,7 +199,7 @@ add_subdirectory(gflags)
 set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
 set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
 set(GFLAGS_LIBRARIES gflags)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/s2geometry)
+add_subdirectory(s2geometry)
 
 ################################################################################
 ## SNAPPY
