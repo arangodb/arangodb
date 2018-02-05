@@ -531,7 +531,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
     TRI_ASSERT(_seenBeginTransaction && !_singleOp);
     TRI_vocbase_t* vocbase = loadVocbase(_currentDbId);
     if (vocbase != nullptr) { // we be in shutdown
-      _builder.openObject();
+      _builder.openObject(true);
       _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
       _builder.add("type", VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_COMMIT)));
       _builder.add("db", VPackValue(vocbase->name()));
@@ -685,14 +685,20 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
                            0, latestTick);
   }
 
+  if (chunkSize < 16384) {
+    // we need to have some sensible minimum
+    chunkSize = 16384;
+  }
+
   // we need to check if the builder is bigger than the chunksize,
   // only after we printed a full WriteBatch. Otherwise a client might
   // never read the full writebatch
+  LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "WAL tailing call. tick start: " << tickStart << ", tick end: " << tickEnd << ", chunk size: " << chunkSize;
   while (iterator->Valid() && lastTick <= tickEnd &&
          handler->responseSize() < chunkSize) {
     s = iterator->status();
     if (!s.ok()) {
-      LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan: "
+      LOG_TOPIC(ERR, Logger::ROCKSDB) << "error during WAL scan: "
                                       << s.ToString();
       break;  // s is considered in the end
     }
@@ -716,7 +722,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
     s = batch.writeBatchPtr->Iterate(handler.get());
 
     if (!s.ok()) {
-      LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan: "
+      LOG_TOPIC(ERR, Logger::ROCKSDB) << "error during WAL scan: "
                                       << s.ToString();
       break;  // s is considered in the end
     }
