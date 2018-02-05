@@ -111,6 +111,7 @@ RestHandler* RestHandlerFactory::createHandler(
     case ServerState::Mode::REDIRECT:
     case ServerState::Mode::TRYAGAIN: {
       if (path.find("/_admin/shutdown") == std::string::npos &&
+          path.find("/_admin/cluster/health") == std::string::npos &&
           path.find("/_admin/server/role") == std::string::npos &&
           path.find("/_api/agency/agency-callbacks") == std::string::npos &&
           path.find("/_api/cluster/") == std::string::npos &&
