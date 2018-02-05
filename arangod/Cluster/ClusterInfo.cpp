@@ -1140,6 +1140,14 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   std::string const name =
       arangodb::basics::VelocyPackHelper::getStringValue(json, "name", "");
 
+  std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
+  if (json.hasKey("distributeShardsLike")) {
+    auto const otherCidString = json.get("distributeShardsLike").copyString();
+    if (!otherCidString.empty()) {
+      otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
+    }
+  }
+
   {
     // check if a collection with the same name is already planned
     loadPlan();
@@ -1249,24 +1257,23 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
+  VPackBuilder builder;
+  builder.add(json);
+
+
   std::vector<AgencyOperation> opers (
     { AgencyOperation("Plan/Collections/" + databaseName + "/" + collectionID,
-                      AgencyValueOperationType::SET, json),
+                      AgencyValueOperationType::SET, builder.slice()),
       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
 
   std::vector<AgencyPrecondition> precs;
 
-  std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
-  if (json.hasKey("distributeShardsLike")) {
-    auto const otherCidString = json.get("distributeShardsLike").copyString();
-    if (!otherCidString.empty()) {
-      otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
-      // Any of the shards locked?
-      for (auto const& shard : *otherCidShardMap) {
-        precs.emplace_back(
-          AgencyPrecondition("Supervision/Shards/" + shard.first,
-                             AgencyPrecondition::Type::EMPTY, true));
-      }
+  // Any of the shards locked?
+  if (otherCidShardMap != nullptr) {
+    for (auto const& shard : *otherCidShardMap) {
+      precs.emplace_back(
+        AgencyPrecondition("Supervision/Shards/" + shard.first,
+                           AgencyPrecondition::Type::EMPTY, true));
     }
   }
 
@@ -2902,7 +2909,3 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   }
   return ret;
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

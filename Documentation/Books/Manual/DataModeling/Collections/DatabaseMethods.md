@@ -143,17 +143,14 @@ to the [naming conventions](../NamingConventions/README.md).
   servers holding copies take over, usually without an error being
   reported.
 
+- *distributeShardsLike* distribute the shards of this collection
+  cloning the shard distribution of another.
+
   When using the *Enterprise* version of ArangoDB the replicationFactor
   may be set to "satellite" making the collection locally joinable
   on every database server. This reduces the number of network hops
   dramatically when using joins in AQL at the costs of reduced write
   performance on these collections.
-
-- *distributeShardsLike* distribute the shards of this collection
-  cloning the shard distribution of another. If this value is set
-  it will copy *replicationFactor* and *numberOfShards* from the
-  other collection, the attributes in this collection will be 
-  ignored and can be ommited.
 
 
 `db._create(collection-name, properties, type)`
