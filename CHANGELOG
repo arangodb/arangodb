@@ -44,6 +44,8 @@ devel
 
 * fixed issue #4308: Crash when getter for error.name throws an error (on Windows)
 
+* UI: fixed an login issue with ldap authentication enabled
+
 * UI: fixed an issue where a collection name gets wrongly cached within the
   documents overview of a collection.
 
