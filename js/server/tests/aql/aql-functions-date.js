@@ -1186,6 +1186,30 @@ testDateQuarter() {
 /// @brief test DATE_DAYS_IN_MONTH function
 ////////////////////////////////////////////////////////////////////////////////
 
+testDateDaysInMonthInvalid() {
+  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_DAYS_IN_MONTH())");
+  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_DAYS_IN_MONTH()))");
+
+  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_DAYS_IN_MONTH(1, 1))");
+  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_DAYS_IN_MONTH(1, 1)))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DAYS_IN_MONTH(null))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DAYS_IN_MONTH(null)))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DAYS_IN_MONTH(false))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DAYS_IN_MONTH(false)))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DAYS_IN_MONTH([]))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DAYS_IN_MONTH([])))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DAYS_IN_MONTH({}))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DAYS_IN_MONTH({})))");
+},
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test DATE_DAYS_IN_MONTH function
+////////////////////////////////////////////////////////////////////////////////
+
 testDateDaysInMonth() {
   const values = [
     [ "2000-04-29", 30 ],
