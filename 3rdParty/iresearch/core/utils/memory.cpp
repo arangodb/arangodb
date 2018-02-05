@@ -24,7 +24,7 @@
 #ifndef _MSC_VER
   #include <execinfo.h> // for backtrace(...)
 
-  #ifndef __APPLE__
+  #if !defined(__APPLE__) && defined(__GLIBC__)
     #include <malloc.h>
   #endif
 #endif
@@ -38,13 +38,9 @@ void dump_mem_stats_trace() NOEXCEPT {
   #ifndef _MSC_VER
 
   // MacOS does not have malloc.h and hence no mallinfo() or malloc_stats()
-  #ifndef __APPLE__
-
-  // The following macro exists only in GLIBC, where we have mallinfo().
-  // If it is not defined, we assume to be on libmusl or something like this
-  // where we do not have mallinfo.
-
-  #ifdef M_ARENA_MAX
+  // libmusl does no define mallinfo() or malloc_stats() in malloc.h
+  // enable mallinfo() and malloc_stats() for GLIBC only
+  #if !defined(__APPLE__) && defined(__GLIBC__)
     // ...........................................................................
     // output mallinfo()
     // ...........................................................................
@@ -81,7 +77,6 @@ Topmost releasable block (keepcost):   %lu\n\
     // output malloc_stats()
     // ...........................................................................
     malloc_stats(); // outputs to stderr
-  #endif
   #endif
 
     // ...........................................................................
