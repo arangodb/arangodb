@@ -74,8 +74,9 @@ LogicalCollection* RestIndexHandler::collection(
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief get database infos
+// / @brief get index infos
 // //////////////////////////////////////////////////////////////////////////////
+
 RestStatus RestIndexHandler::getIndexes() {
   std::shared_ptr<LogicalCollection> tmpColl;
   std::vector<std::string> const& suffixes = _request->suffixes();

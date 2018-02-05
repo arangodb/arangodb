@@ -323,8 +323,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true, \"tokenizers\": [ \"test_analyzer\", \"identity\" ] },"
-        "\"testCollection1\": { \"includeAllFields\": true, \"tokenizers\": [ \"test_analyzer\", \"identity\" ] }"
+        "\"testCollection0\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true, \"trackListPositions\": true },"
+        "\"testCollection1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
       "}}"
     );
     CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));

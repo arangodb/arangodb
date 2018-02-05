@@ -54,9 +54,7 @@ function iResearchAqlTestSuite () {
           "UnitTestsCollection": { 
             includeAllFields: true,
             fields: {
-              text: {
-                tokenizers: [ "text_en" ]
-              }
+              text: { analyzers: [ "text_en" ] }
             }
           }
         }
@@ -300,10 +298,15 @@ function iResearchAqlTestSuite () {
 //    },
 
     testPhraseFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, 'quick brown fox jumps', 'text_en') RETURN doc", null, { waitForSync: true }).json;
+      var result0 = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, 'quick brown fox jumps', 'text_en') RETURN doc", null, { waitForSync: true }).json;
 
-      assertEqual(result.length, 1);
-      assertEqual(result[0].name, 'full');
+      assertEqual(result0.length, 1);
+      assertEqual(result0[0].name, 'full');
+
+      var result1 = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') RETURN doc", null, { waitForSync: true }).json;
+
+      assertEqual(result1.length, 1);
+      assertEqual(result1[0].name, 'full');
     },
 
     testExistsFilter : function () {

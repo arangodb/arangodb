@@ -93,22 +93,22 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(Object === properties.commit.consolidate.constructor);
       assertEqual(4, Object.keys(properties.commit.consolidate).length);
       assertTrue(Object === properties.commit.consolidate.bytes.constructor);
-      assertEqual(10, properties.commit.consolidate.bytes.intervalStep);
+      assertEqual(300, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
       assertTrue(Object === properties.commit.consolidate.bytes_accum.constructor);
-      assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
       assertTrue(Object === properties.commit.consolidate.count.constructor);
-      assertEqual(10, properties.commit.consolidate.count.intervalStep);
+      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertTrue(Object === properties.commit.consolidate.fill.constructor);
-      assertEqual(10, properties.commit.consolidate.fill.intervalStep);
+      assertEqual(300, properties.commit.consolidate.fill.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.fill.threshold.toFixed(6));
 
       meta = { commit: {
         commitIntervalMsec: 10000,
         consolidate: {
-          bytes: { intervalStep: 20, threshold: 0.5 },
+          bytes: { segmentThreshold: 20, threshold: 0.5 },
           bytes_accum: {},
           count: {}
         }
@@ -122,18 +122,18 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(Object === properties.commit.consolidate.constructor);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
       assertTrue(Object === properties.commit.consolidate.bytes.constructor);
-      assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
       assertTrue(Object === properties.commit.consolidate.bytes_accum.constructor);
-      assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
       assertTrue(Object === properties.commit.consolidate.count.constructor);
-      assertEqual(10, properties.commit.consolidate.count.intervalStep);
+      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
 
       meta = { commit: {
         cleanupIntervalStep: 20,
-        consolidate: { count: { intervalStep: 30, threshold: 0.75 } }
+        consolidate: { count: { segmentThreshold: 30, threshold: 0.75 } }
       } };
       view.properties(meta, false); // full update
       properties = view.properties();
@@ -144,7 +144,7 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(Object === properties.commit.consolidate.constructor);
       assertEqual(1, Object.keys(properties.commit.consolidate).length);
       assertTrue(Object === properties.commit.consolidate.count.constructor);
-      assertEqual(30, properties.commit.consolidate.count.intervalStep);
+      assertEqual(30, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.75).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
 
 
@@ -226,12 +226,12 @@ function iResearchFeatureAqlTestSuite () {
 
       var meta = { links: {
         "TestCollection0": {},
-        "TestCollection1": { includeAllFields: true, trackListPositions: true, tokenizers: [ "text_en"] },
+        "TestCollection1": { analyzers: [ "text_en"], includeAllFields: true, trackListPositions: true },
         "TestCollection2": { fields: {
           "b": { fields: { "b1": {} } },
           "c": { includeAllFields: true },
           "d": { trackListPositions: true },
-          "e": { tokenizers: [ "text_de"] }
+          "e": { analyzers: [ "text_de"] }
         } }
       } };
       view.properties(meta, true); // partial update
@@ -246,10 +246,10 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(false, properties.links.TestCollection0.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection0.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection0.trackListPositions);
-      assertTrue(Array === properties.links.TestCollection0.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection0.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection0.tokenizers[0].constructor);
-      assertEqual("identity", properties.links.TestCollection0.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection0.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection0.analyzers.length);
+      assertTrue(String === properties.links.TestCollection0.analyzers[0].constructor);
+      assertEqual("identity", properties.links.TestCollection0.analyzers[0]);
 
 
       assertTrue(Object === properties.links.TestCollection1.constructor);
@@ -259,10 +259,10 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(true, properties.links.TestCollection1.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection1.trackListPositions);
-      assertTrue(Array === properties.links.TestCollection1.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection1.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection1.tokenizers[0].constructor);
-      assertEqual("text_en", properties.links.TestCollection1.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection1.analyzers.length);
+      assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
+      assertEqual("text_en", properties.links.TestCollection1.analyzers[0]);
 
 
       assertTrue(Object === properties.links.TestCollection2.constructor);
@@ -279,19 +279,19 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(Boolean === properties.links.TestCollection2.fields.d.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection2.fields.d.trackListPositions);
 
-      assertTrue(Array === properties.links.TestCollection2.fields.e.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection2.fields.e.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection2.fields.e.tokenizers[0].constructor);
-      assertEqual("text_de", properties.links.TestCollection2.fields.e.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection2.fields.e.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection2.fields.e.analyzers.length);
+      assertTrue(String === properties.links.TestCollection2.fields.e.analyzers[0].constructor);
+      assertEqual("text_de", properties.links.TestCollection2.fields.e.analyzers[0]);
 
       assertTrue(Boolean === properties.links.TestCollection2.includeAllFields.constructor);
       assertEqual(false, properties.links.TestCollection2.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection2.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection2.trackListPositions);
-      assertTrue(Array === properties.links.TestCollection2.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection2.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection2.tokenizers[0].constructor);
-      assertEqual("identity", properties.links.TestCollection2.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection2.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection2.analyzers.length);
+      assertTrue(String === properties.links.TestCollection2.analyzers[0].constructor);
+      assertEqual("identity", properties.links.TestCollection2.analyzers[0]);
 
       meta = { links: { "TestCollection0": null, "TestCollection2": {} } };
       view.properties(meta, true); // partial update
@@ -306,10 +306,10 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(true, properties.links.TestCollection1.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection1.trackListPositions);
-      assertTrue(Array === properties.links.TestCollection1.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection1.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection1.tokenizers[0].constructor);
-      assertEqual("text_en", properties.links.TestCollection1.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection1.analyzers.length);
+      assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
+      assertEqual("text_en", properties.links.TestCollection1.analyzers[0]);
 
 
       assertTrue(Object === properties.links.TestCollection2.constructor);
@@ -319,10 +319,10 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(false, properties.links.TestCollection2.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection2.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection2.trackListPositions);
-      assertTrue(Array === properties.links.TestCollection2.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection2.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection2.tokenizers[0].constructor);
-      assertEqual("identity", properties.links.TestCollection2.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection2.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection2.analyzers.length);
+      assertTrue(String === properties.links.TestCollection2.analyzers[0].constructor);
+      assertEqual("identity", properties.links.TestCollection2.analyzers[0]);
 
       meta = { links: { "TestCollection0": { includeAllFields: true }, "TestCollection1": {} } };
       view.properties(meta, false); // full update
@@ -337,10 +337,10 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(true, properties.links.TestCollection0.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection0.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection0.trackListPositions);
-      assertTrue(Array === properties.links.TestCollection0.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection0.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection0.tokenizers[0].constructor);
-      assertEqual("identity", properties.links.TestCollection0.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection0.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection0.analyzers.length);
+      assertTrue(String === properties.links.TestCollection0.analyzers[0].constructor);
+      assertEqual("identity", properties.links.TestCollection0.analyzers[0]);
 
 
       assertTrue(Object === properties.links.TestCollection1.constructor);
@@ -350,10 +350,10 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(false, properties.links.TestCollection1.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection1.trackListPositions);
-      assertTrue(Array === properties.links.TestCollection1.tokenizers.constructor);
-      assertEqual(1, properties.links.TestCollection1.tokenizers.length);
-      assertTrue(String === properties.links.TestCollection1.tokenizers[0].constructor);
-      assertEqual("identity", properties.links.TestCollection1.tokenizers[0]);
+      assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
+      assertEqual(1, properties.links.TestCollection1.analyzers.length);
+      assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
+      assertEqual("identity", properties.links.TestCollection1.analyzers[0]);
     },
 
     testViewCreate: function() {
@@ -465,7 +465,7 @@ function iResearchFeatureAqlTestSuite () {
         commit: {
           commitIntervalMsec: 10000,
           consolidate: {
-            bytes: { intervalStep: 20, threshold: 0.5 },
+            bytes: { segmentThreshold: 20, threshold: 0.5 },
             bytes_accum: {},
             count: {}
           }
@@ -484,11 +484,11 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10000, properties.commit.commitIntervalMsec);
       assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.count.intervalStep);
+      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("TestPath", properties.dataPath);
       assertEqual("de_DE.UTF-8", properties.locale);
@@ -518,7 +518,7 @@ function iResearchFeatureAqlTestSuite () {
         commit: {
           commitIntervalMsec: 10000,
           consolidate: {
-            bytes: { intervalStep: 20, threshold: 0.5 },
+            bytes: { segmentThreshold: 20, threshold: 0.5 },
             bytes_accum: {},
             count: {}
           }
@@ -541,11 +541,11 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10000, properties.commit.commitIntervalMsec);
       assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.count.intervalStep);
+      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("TestPath", properties.dataPath);
       assertEqual("de_DE.UTF-8", properties.locale);
@@ -575,7 +575,7 @@ function iResearchFeatureAqlTestSuite () {
         commit: {
           commitIntervalMsec: 10000,
           consolidate: {
-            bytes: { intervalStep: 20, threshold: 0.5 },
+            bytes: { segmentThreshold: 20, threshold: 0.5 },
             bytes_accum: {},
             count: {}
           }
@@ -598,11 +598,11 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10000, properties.commit.commitIntervalMsec);
       assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.count.intervalStep);
+      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("TestPath", properties.dataPath);
       assertEqual("de_DE.UTF-8", properties.locale);
@@ -635,7 +635,7 @@ function iResearchFeatureAqlTestSuite () {
         commit: {
           commitIntervalMsec: 10000,
           consolidate: {
-            bytes: { intervalStep: 20, threshold: 0.5 },
+            bytes: { segmentThreshold: 20, threshold: 0.5 },
             bytes_accum: {},
             count: {}
           }
@@ -658,11 +658,11 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10000, properties.commit.commitIntervalMsec);
       assertEqual(5000, properties.commit.commitTimeoutMsec);
       assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertEqual(20, properties.commit.consolidate.bytes.intervalStep);
+      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
       assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.bytes_accum.intervalStep);
+      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(10, properties.commit.consolidate.count.intervalStep);
+      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
       assertEqual("TestPath", properties.dataPath);
       assertEqual("de_DE.UTF-8", properties.locale);
