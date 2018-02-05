@@ -239,10 +239,6 @@ describe('Replication factor constraints', function() {
         }
     });
 
-    it('should allow to create a collection with more replicas than dbservers when explicitly requested', function() {
-        db._create(cn1, {replicationFactor: 5}, {enforceReplicationFactor: false});
-    });
-
     it('check replication factor of system collections', function() {
         ["_appbundles", "_apps", "_aqlfunctions", "_frontend", "_graphs",
          "_iresearch_analyzers", "_jobs", "_modules", "_queues", "_routing",
