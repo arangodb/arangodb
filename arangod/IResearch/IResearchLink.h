@@ -160,6 +160,13 @@ class IResearchLink {
   );
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief recover IResearch Link index in a view by dropping existing and
+  ///        creating a new one
+  /// @return success
+  ////////////////////////////////////////////////////////////////////////////////
+  arangodb::Result recover();
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief iResearch Link index type enum value
   ////////////////////////////////////////////////////////////////////////////////
   arangodb::Index::IndexType type() const; // arangodb::Index override
@@ -199,12 +206,22 @@ class IResearchLink {
   // the update delta into the WAL marker instead of the full persisted state
   friend arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice const&, bool, bool);
 
+  class ViewRef {
+   public:
+    ViewRef(IResearchView::AsyncSelf::ptr const& view);
+    IResearchView* get() const noexcept;
+
+   private:
+    std::unique_lock<irs::async_utils::read_write_mutex::read_mutex> _lock;
+    IResearchView::AsyncSelf::ptr _view;
+  };
+
   LogicalCollection* _collection; // the linked collection
   TRI_voc_cid_t _defaultId; // the identifier of the desired view (iff _view == nullptr)
   TRI_idx_iid_t const _id; // the index identifier
   IResearchLinkMeta _meta; // how this collection should be indexed
   mutable irs::async_utils::read_write_mutex _mutex; // for use with _view to allow asynchronous disassociation
-  IResearchView::AsyncSelf::ptr _view; // effectively the IResearch datastore itself (nullptr == not associated)
+  ViewRef _view; // effectively the IResearch datastore itself (nullptr == not associated)
 }; // IResearchLink
 
 ////////////////////////////////////////////////////////////////////////////////

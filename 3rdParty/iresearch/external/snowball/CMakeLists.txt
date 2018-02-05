@@ -17,11 +17,11 @@ INCLUDE(CheckCCompilerFlag)
 INCLUDE(FindPerl)
 
 IF(NOT PERL_FOUND)
-    MESSAGE(FATAL_ERROR "Perl required to build snowball")
+	MESSAGE(FATAL "Perl required to build snowball")
 ENDIF()
 
 IF(NOT STEMMER_SOURCE_DIR)
-    MESSAGE(FATAL_ERROR "Source directory required to build snowball")
+	MESSAGE(FATAL "Source directory required to build snowball")
 ENDIF()
 
 SET(CMAKE_CURRENT_SOURCE_DIR "${STEMMER_SOURCE_DIR}")
@@ -227,6 +227,7 @@ ADD_CUSTOM_TARGET(modules DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/libstemmer/module
 SET(STEMMER_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/libstemmer/libstemmer.c")
 ADD_CUSTOM_TARGET(stemmer_deps ALL)
 ADD_DEPENDENCIES(stemmer_deps modules)
+ADD_DEPENDENCIES(stemmer_deps snowball) # ADD_CUSTOM_COMMAND(... DEPENDS snowball) does not always seem to apply
 
 gen_stem("${LIBSTEM_ALGORITHMS}" "UTF_8")
 gen_stem("${KOI8_ALGORITHMS}" "KOI8_R")

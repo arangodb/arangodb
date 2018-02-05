@@ -138,10 +138,18 @@ if (USE_IRESEARCH)
     set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
   endif()
 
+  if(NOT PERL_FOUND)
+    set(PERL_FOUND TRUE) # suppress error for Perl not-found
+
+    # MSVC will execute ADD_CUSTOM_COMMAND even though OUTPUT is already present
+    if(MSVC)
+      set(PERL_EXECUTABLE echo)
+    endif()
+  endif()
+
   set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
   set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
   set(UNWIND_ROOT "invalid")
-  set(USE_IQL OFF CACHE BOOL "Use IQL" FORCE) # skip IQL
 
   set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
   find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
@@ -151,6 +159,8 @@ if (USE_IRESEARCH)
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)
     "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
   )
+
+  file(COPY "${IRESEARCH_ROOT}.build/" DESTINATION "${IRESEARCH_BUILD_DIR}" FILES_MATCHING PATTERN "*")
   add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
   unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
