@@ -234,39 +234,54 @@ function selfHeal () {
     }
   }
 
-  const rootPath = FoxxService.rootPath();
-  for (const relPath of fs.listTree(rootPath)) {
-    if (!relPath) {
-      continue;
+  modified = cleanupOrphanedServices(
+    knownServicePaths,
+    knownBundlePaths
+  ) || modified;
+
+  return modified;
+}
+
+function cleanupOrphanedServices (knownServicePaths, knownBundlePaths) {
+  let modified = false;
+
+  function traverseServices (basePath) {
+    if (!fs.isDirectory(basePath)) {
+      return;
     }
-    const basename = path.basename(relPath);
-    if (basename.toUpperCase() !== 'APP') {
-      continue;
-    }
-    const basePath = path.resolve(rootPath, relPath);
-    if (!knownServicePaths.includes(basePath)) {
-      modified = true;
-      try {
-        fs.removeDirectoryRecursive(basePath, true);
-        console.debug(`Deleted orphaned service folder ${basePath}`);
-      } catch (e) {
-        console.warnStack(e, `Failed to delete orphaned service folder ${basePath}`);
+    for (const relPath of fs.list(basePath)) {
+      const absPath = path.resolve(basePath, relPath);
+      if (relPath.toUpperCase() !== 'APP') {
+        traverseServices(absPath);
+      } else if (!knownServicePaths.includes(absPath)) {
+        modified = true;
+        try {
+          fs.removeDirectoryRecursive(absPath, true);
+          console.debug(`Deleted orphaned service folder ${absPath}`);
+        } catch (e) {
+          console.warnStack(e, `Failed to delete orphaned service folder ${absPath}`);
+        }
       }
     }
   }
 
-  const bundlesPath = FoxxService.rootBundlePath();
-  for (const relPath of fs.listTree(bundlesPath)) {
-    if (!relPath) {
+  const servicesRoot = FoxxService.rootPath();
+  for (const name of fs.list(servicesRoot)) {
+    if (name === '_appbundles') {
       continue;
     }
-    const bundlePath = path.resolve(bundlesPath, relPath);
-    if (!knownBundlePaths.includes(bundlePath)) {
+    traverseServices(path.resolve(servicesRoot, name));
+  }
+
+  const bundlesRoot = FoxxService.rootBundlePath();
+  for (const relPath of fs.list(bundlesRoot)) {
+    const absPath = path.resolve(bundlesRoot, relPath);
+    if (!knownBundlePaths.includes(absPath)) {
       try {
-        fs.remove(bundlePath);
-        console.debug(`Deleted orphaned service bundle ${bundlePath}`);
+        fs.remove(absPath);
+        console.debug(`Deleted orphaned service bundle ${absPath}`);
       } catch (e) {
-        console.warnStack(e, `Failed to delete orphaned service bundle ${bundlePath}`);
+        console.warnStack(e, `Failed to delete orphaned service bundle ${absPath}`);
       }
     }
   }
