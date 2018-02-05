@@ -276,6 +276,8 @@ class S2CellUnion final : public S2Region {
 
   // Return true if two cell unions are different.
   friend bool operator!=(const S2CellUnion& x, const S2CellUnion& y);
+  
+  void Add(std::vector<S2CellId> const&);
 
   ////////////////////////////////////////////////////////////////////////
   // S2Region interface (see s2region.h for details):

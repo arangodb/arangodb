@@ -498,7 +498,7 @@ bool S2CellUnion::Decode(Decoder* const decoder) {
   }
 
   vector<S2CellId> temp_cell_ids(num_cells);
-  for (int i = 0; i < num_cells; ++i) {
+  for (size_t i = 0; i < num_cells; ++i) {
     if (!temp_cell_ids[i].Decode(decoder)) return false;
   }
   cell_ids_.swap(temp_cell_ids);
@@ -508,3 +508,10 @@ bool S2CellUnion::Decode(Decoder* const decoder) {
 bool S2CellUnion::Contains(const S2Point& p) const {
   return Contains(S2CellId(p));
 }
+
+void S2CellUnion::Add(std::vector<S2CellId> const& other) {
+  cell_ids_.reserve(cell_ids_.size() + other.size());
+  cell_ids_.insert(cell_ids_.end(), other.begin(), other.end());
+  Normalize();
+}
+

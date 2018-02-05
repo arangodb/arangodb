@@ -26,16 +26,16 @@
 #include "Geo/GeoParams.h"
 #include "Logger/Logger.h"
 
-#include <geometry/s2.h>
-#include <geometry/s2cap.h>
-#include <geometry/s2cell.h>
-#include <geometry/s2latlngrect.h>
-#include <geometry/s2multipointregion.h>
-#include <geometry/s2multipolyline.h>
-#include <geometry/s2pointregion.h>
-#include <geometry/s2polygon.h>
-#include <geometry/s2region.h>
-#include <geometry/s2regioncoverer.h>
+#include <s2/s2metrics.h>
+#include <s2/s2cap.h>
+#include <s2/s2cell.h>
+#include <s2/s2latlng_rect.h>
+#include <s2/s2multipoint_region.h>
+#include <s2/s2multipolyline.h>
+#include <s2/s2point_region.h>
+#include <s2/s2polygon.h>
+#include <s2/s2region.h>
+#include <s2/s2region_coverer.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -98,15 +98,6 @@ geo::Coordinate ShapeContainer::centroid() const noexcept {
       return Coordinate(S2LatLng::Latitude(c).degrees(),
                         S2LatLng::Longitude(c).degrees());
     }
-    case ShapeContainer::Type::S2_LATLNGRECT: {
-      S2LatLng latLng = (static_cast<S2LatLngRect const*>(_data))->GetCenter();
-      return Coordinate::fromLatLng(latLng);
-    }
-    case ShapeContainer::Type::S2_CAP: {
-      S2Point const& c = (static_cast<S2Cap const*>(_data))->axis();
-      return Coordinate(S2LatLng::Latitude(c).degrees(),
-                        S2LatLng::Longitude(c).degrees());
-    }
     case ShapeContainer::Type::S2_POLYLINE: {
       S2Point const& c = (static_cast<S2Polyline const*>(_data))->GetCentroid();
       return Coordinate(S2LatLng::Latitude(c).degrees(),
@@ -154,10 +145,8 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer* coverer) const
   switch (_type) {
     case ShapeContainer::Type::S2_POINT: {
       S2Point const& c = (static_cast<S2PointRegion const*>(_data))->point();
-      return {S2CellId::FromPoint(c)};
+      return {S2CellId(c)};
     }
-    case ShapeContainer::Type::S2_LATLNGRECT:
-    case ShapeContainer::Type::S2_CAP:
     case ShapeContainer::Type::S2_POLYLINE:
     case ShapeContainer::Type::S2_POLYGON: {
       coverer->GetCovering(*_data, &cover);
@@ -167,7 +156,7 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer* coverer) const
       S2MultiPointRegion const* pts =
           (static_cast<S2MultiPointRegion const*>(_data));
       for (int k = 0; k < pts->num_points(); k++) {
-        cover.emplace_back(S2CellId::FromPoint(pts->point(k)));
+        cover.emplace_back(S2CellId(pts->point(k)));
       }
       break;
     }
@@ -249,12 +238,6 @@ bool ShapeContainer::contains(Coordinate const* cc) const {
     case ShapeContainer::Type::S2_POINT: {
       return (static_cast<S2PointRegion const*>(_data))->Contains(pp);
     }
-    case ShapeContainer::Type::S2_LATLNGRECT: {
-      return (static_cast<S2LatLngRect const*>(_data))->Contains(pp);
-    }
-    case ShapeContainer::Type::S2_CAP: {
-      return (static_cast<S2Cap const*>(_data))->Contains(pp);
-    }
     case ShapeContainer::Type::S2_POLYLINE: {
       return PolylineContains(static_cast<S2Polyline const*>(_data), pp);
     }
@@ -278,52 +261,33 @@ bool ShapeContainer::contains(Coordinate const* cc) const {
   }
 }
 
-bool ShapeContainer::contains(S2Polyline const* otherLine) const {
+bool ShapeContainer::contains(S2Polyline const* other) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT:
     case ShapeContainer::Type::S2_MULTIPOINT: {
       return false;  // rect.is_point() && rect.lo() == S2LatLng
     }
-    case ShapeContainer::Type::S2_LATLNGRECT: {
-      S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
-      return rect->Contains(*otherLine);
-    }
-    case ShapeContainer::Type::S2_CAP: {
-      // FIXME: why do we need the complement here at all ?
-      S2Cap cmp = (static_cast<S2Cap const*>(_data))->Complement();
-      // calculate angle between complement cap center and closest point on
-      // polygon
-      int ignored;
-      S1Angle angle(cmp.axis(), otherLine->Project(cmp.axis(), &ignored));
-      // if angle is bigger than complement cap angle, than the polyline is
-      // contained
-      // we need to use the complement otherwise we would test for intersection
-      return angle.radians() >= cmp.angle().radians();
-    }
 
     case ShapeContainer::Type::S2_POLYLINE: {
       S2Polyline const* ll = static_cast<S2Polyline const*>(_data);
-      return ll->ApproxEquals(otherLine, 1e-6);
+      return ll->ApproxEquals(*other, S1Angle::Radians(1e-6));
     }
 
     case ShapeContainer::Type::S2_POLYGON: {
       // FIXME this seems to be incomplete
       S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
-      std::vector<S2Polyline*> cut;
-      TRI_DEFER(for (S2Polyline* pp : cut) { delete pp; });
-      poly->IntersectWithPolyline(otherLine, &cut);
-      if (cut.size() != 1) {
-        return false;  // is clipping holes or no edg
+      auto cuts = poly->IntersectWithPolyline(*other);
+      if (cuts.size() != 1) {
+        return false;  // is clipping holes or no edge
       }
-
       // The line may be in the polygon
-      return cut[0]->NearlyCoversPolyline(*otherLine, S1Angle::Degrees(1e-10));
+      return cuts[0]->NearlyCovers(*other, S1Angle::Degrees(1e-10));
     }
       
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       S2MultiPolyline const* mpl = static_cast<S2MultiPolyline const*>(_data);
       for (size_t k = 0; k < mpl->num_lines(); k++) {
-        if (mpl->line(k).ApproxEquals(otherLine, 1e-6)) {
+        if (mpl->line(k).ApproxEquals(*other, S1Angle::Degrees(1e-6))) {
           return true;
         }
       }
@@ -342,32 +306,13 @@ bool ShapeContainer::contains(S2Polygon const* poly) const {
     case ShapeContainer::Type::S2_MULTIPOINT: {
       return false;  // rect.is_point() && rect.lo() == S2LatLng
     }
-    case ShapeContainer::Type::S2_LATLNGRECT: {
-      // works for exact bounds, which GetRectBound() guarantees
-      return (static_cast<S2LatLngRect const*>(_data))
-          ->Contains(poly->GetRectBound());
-    }
-    case ShapeContainer::Type::S2_CAP: {
-      // FIXME: why do we need the complement here at all ?
-      S2Cap cmp = (static_cast<S2Cap const*>(_data))->Complement();
-      // calculate angle between complement cap center and closest point on
-      // polygon
-      S1Angle angle(cmp.axis(), poly->Project(cmp.axis()));
-      // if angle is bigger than complement cap angle, than the polyline is
-      // contained
-      // we need to use the complement otherwise we would test for intersection
-      return angle.radians() >= cmp.angle().radians();
-    }
-
     case ShapeContainer::Type::S2_POLYLINE:
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       return false;  // numerically not well defined
     }
-
     case ShapeContainer::Type::S2_POLYGON: {
       return (static_cast<S2Polygon const*>(_data))->Contains(poly);
     }
-
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
       return false;
@@ -378,32 +323,23 @@ bool ShapeContainer::contains(ShapeContainer const* cc) const {
   switch (cc->_type) {
     case ShapeContainer::Type::S2_POINT: {
       S2Point const& p = static_cast<S2PointRegion*>(cc->_data)->point();
-      return _data->VirtualContainsPoint(p);
+      return _data->Contains(p);
     }
-    case ShapeContainer::Type::S2_LATLNGRECT:
-    case ShapeContainer::Type::S2_CAP: {
-      TRI_ASSERT(false);
-      return false;
-    }
-
     case ShapeContainer::Type::S2_POLYLINE: {
       return contains(static_cast<S2Polyline const*>(cc->_data));
     }
-
     case ShapeContainer::Type::S2_POLYGON: {
       return contains(static_cast<S2Polygon const*>(cc->_data));
     }
-
     case ShapeContainer::Type::S2_MULTIPOINT: {
       auto pts = static_cast<S2MultiPointRegion const*>(cc->_data);
       for (int k = 0; k < pts->num_points(); k++) {
-        if (!_data->VirtualContainsPoint(pts->point(k))) {
+        if (!_data->Contains(pts->point(k))) {
           return false;
         }
       }
       return true;
     }
-
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       auto lines = static_cast<S2MultiPolyline const*>(cc->_data);
       for (size_t k = 0; k < lines->num_lines(); k++) {
@@ -436,27 +372,14 @@ bool ShapeContainer::intersects(S2Polyline const* otherLine) const {
       }
       return false;
     }
-    case ShapeContainer::Type::S2_LATLNGRECT: {
-      S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
-      return rect->Intersects(*otherLine);
-    }
-    case ShapeContainer::Type::S2_CAP: {
-      S2Cap const* cap = static_cast<S2Cap const*>(_data);
-      // calculate angle between cap center and closest point on polygon
-      int ignored;
-      S1Angle angle(cap->axis(), otherLine->Project(cap->axis(), &ignored));
-      return angle.radians() <= cap->angle().radians();
-    }
     case ShapeContainer::Type::S2_POLYLINE: {
       S2Polyline const* ll = static_cast<S2Polyline const*>(_data);
       return ll->Intersects(otherLine);
     }
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
-      std::vector<S2Polyline*> cut;
-      TRI_DEFER(for (S2Polyline* pp : cut) { delete pp; });
-      poly->IntersectWithPolyline(otherLine, &cut);
-      return cut.size() > 0;
+      auto cuts = poly->IntersectWithPolyline(*otherLine);
+      return !cuts.empty();
     }
 
     case ShapeContainer::Type::S2_MULTIPOINT:
@@ -472,24 +395,6 @@ bool ShapeContainer::intersects(S2Polygon const* otherPoly) const {
     case ShapeContainer::Type::S2_POINT: {
       S2Point const& p = static_cast<S2PointRegion*>(_data)->point();
       return otherPoly->Contains(p);
-    }
-    case ShapeContainer::Type::S2_LATLNGRECT: {
-      S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
-      for (int k = 0; k < otherPoly->num_loops(); k++) {
-        S2Loop* loop = otherPoly->loop(k);
-        for (int v = 0; v < loop->num_vertices(); v++) {
-          if (rect->Contains(loop->vertex(v))) {
-            return true;
-          }
-        }
-      }
-      return false;
-    }
-    case ShapeContainer::Type::S2_CAP: {
-      S2Cap const* cap = static_cast<S2Cap const*>(_data);
-      // calculate angle between cap center and closest point on polygon
-      S1Angle angle(cap->axis(), otherPoly->Project(cap->axis()));
-      return angle.radians() <= cap->angle().radians();
     }
     case ShapeContainer::Type::S2_POLYLINE: {
       LOG_TOPIC(ERR, Logger::FIXME)
@@ -512,14 +417,8 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
   switch (cc->_type) {
     case ShapeContainer::Type::S2_POINT: {
       S2Point const& p = static_cast<S2PointRegion*>(cc->_data)->point();
-      return _data->VirtualContainsPoint(p);  // same
+      return _data->Contains(p);  // same
     }
-    case ShapeContainer::Type::S2_LATLNGRECT:
-    case ShapeContainer::Type::S2_CAP: {
-      TRI_ASSERT(false);
-      return false;
-    }
-
     case ShapeContainer::Type::S2_POLYLINE: {
       return intersects(static_cast<S2Polyline const*>(cc->_data));
     }
@@ -531,7 +430,7 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
     case ShapeContainer::Type::S2_MULTIPOINT: {
       auto pts = static_cast<S2MultiPointRegion const*>(cc->_data);
       for (int k = 0; k < pts->num_points(); k++) {
-        if (_data->VirtualContainsPoint(pts->point(k))) {
+        if (_data->Contains(pts->point(k))) {
           return true;
         }
       }

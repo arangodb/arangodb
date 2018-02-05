@@ -99,8 +99,6 @@ class ShapeContainer final {
   enum class Type {
     EMPTY = 0,
     S2_POINT,
-    S2_LATLNGRECT,
-    S2_CAP,
     S2_POLYLINE,
     S2_POLYGON,
     S2_MULTIPOINT,
@@ -126,8 +124,7 @@ class ShapeContainer final {
   inline bool empty() const { return _type == Type::EMPTY; }
 
   bool isAreaType() const noexcept {
-    return _type == Type::S2_POLYGON || _type == Type::S2_CAP ||
-           _type == Type::S2_LATLNGRECT;
+    return _type == Type::S2_POLYGON;
   }
 
   /// @brief centroid of this shape

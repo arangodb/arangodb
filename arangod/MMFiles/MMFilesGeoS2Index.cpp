@@ -231,7 +231,7 @@ struct NearIterator final : public IndexIterator {
   void estimateDensity() {
     MMFilesGeoS2Index::IndexTree const& tree = _index->tree();
     if (!tree.empty()) {
-      S2CellId cell = S2CellId::FromPoint(_near.origin());
+      S2CellId cell = S2CellId(_near.origin());
       auto it = tree.upper_bound(cell);
       if (it == tree.end()) {
         it = tree.lower_bound(cell);

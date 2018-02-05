@@ -202,7 +202,7 @@ class RDBNearIterator final : public IndexIterator {
   /// find the first indexed entry to estimate the # of entries
   /// around our target coordinates
   void estimateDensity() {
-    S2CellId cell = S2CellId::FromPoint(_near.origin());
+    S2CellId cell = S2CellId(_near.origin());
 
     RocksDBKeyLeaser key(_trx);
     key->constructS2IndexValue(_index->objectId(), cell.id(), 1);

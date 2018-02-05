@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2017-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,11 +26,10 @@
 
 #include "Basics/Result.h"
 
-#include <velocypack/Slice.h>
+#include <s2/s2point.h>
 #include <cstdint>
+#include <velocypack/Slice.h>
 #include <vector>
-
-#include <geometry/s2.h>
 
 class S2LatLng;
 class S2Loop;

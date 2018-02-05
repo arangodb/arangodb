@@ -30,7 +30,7 @@
 #include "VocBase/LocalDocumentId.h"
 
 #include <btree/btree_map.h>
-#include <geometry/s2cellid.h>
+#include <s2/s2cell_id.h>
 #include <velocypack/Builder.h>
 
 namespace arangodb {

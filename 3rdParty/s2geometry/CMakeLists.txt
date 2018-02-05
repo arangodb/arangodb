@@ -88,6 +88,8 @@ add_library(s2 SHARED
             src/s2/s2measures.cc
             src/s2/s2metrics.cc
             src/s2/s2min_distance_targets.cc
+            src/s2/s2multipoint_region.cc
+            src/s2/s2multipolyline.cc
             src/s2/s2padded_cell.cc
             src/s2/s2point_compression.cc
             src/s2/s2point_region.cc

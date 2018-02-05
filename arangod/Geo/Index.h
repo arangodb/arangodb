@@ -23,9 +23,10 @@
 #ifndef ARANGOD_GEO_INDEX_H
 #define ARANGOD_GEO_INDEX_H 1
 
-#include <geometry/s2cellid.h>
 #include "Basics/Result.h"
 #include "Geo/GeoParams.h"
+
+#include <s2/s2cell_id.h>
 
 namespace arangodb {
 namespace aql {

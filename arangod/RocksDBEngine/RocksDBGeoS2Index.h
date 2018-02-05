@@ -28,7 +28,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/voc-types.h"
 
-#include <geometry/s2cellid.h>
+#include <s2/s2cell_id.h>
 #include <velocypack/Builder.h>
 
 class S2Region;

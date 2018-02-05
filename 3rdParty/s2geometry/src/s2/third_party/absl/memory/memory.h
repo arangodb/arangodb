@@ -82,7 +82,7 @@ struct MakeUniqueResult<T[N]> {
 
 }  // namespace memory_internal
 
-#if __cplusplus >= 201402L || defined(_MSC_VER) || defined(TRI_ADDED_MAKE_UNIQUE)
+#if __cplusplus >= 201402L || defined(_MSC_VER)
 using std::make_unique;
 #else
 // -----------------------------------------------------------------------------

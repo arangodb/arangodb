@@ -23,8 +23,6 @@
 #ifndef ARANGOD_GLOG_SHAM_LOGGING_H
 #define ARANGOD_GLOG_SHAM_LOGGING_H
 
-#include "Basics/Common.h"
-
 #include <iostream>
 
 namespace google {

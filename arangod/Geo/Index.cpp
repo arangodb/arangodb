@@ -30,7 +30,7 @@
 #include "Geo/GeoUtils.h"
 #include "Geo/Shapes.h"
 
-#include <geometry/s2regioncoverer.h>
+#include <s2/s2region_coverer.h>
 #include <velocypack/Slice.h>
 #include <string>
 #include <vector>
@@ -85,8 +85,7 @@ Result geo::Index::indexCells(VPackSlice const& doc,
     geo::ShapeContainer shape;
     Result r = geo::GeoJsonParser::parseGeoJson(loc, shape);
     if (r.ok()) {
-      S2RegionCoverer coverer;
-      _coverParams.configureS2RegionCoverer(&coverer);
+      S2RegionCoverer coverer(_coverParams.regionCovererOpts());
       cells = shape.covering(&coverer);
       centroid = shape.centroid();
     }

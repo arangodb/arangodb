@@ -27,13 +27,8 @@
 #include "Geo/Shapes.h"
 #include "Logger/Logger.h"
 
-#include <geometry/s2.h>
-#include <geometry/s2cap.h>
-#include <geometry/s2loop.h>
-#include <geometry/s2polygon.h>
-#include <geometry/s2polyline.h>
-#include <geometry/s2regioncoverer.h>
-
+#include <s2/s2latlng.h>
+#include <s2/s2region_coverer.h>
 #include <string>
 #include <vector>
 
@@ -55,7 +50,7 @@ Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
   centroid.latitude = lat.getNumericValue<double>();
   centroid.longitude = lon.getNumericValue<double>();
   S2LatLng ll = S2LatLng::FromDegrees(centroid.latitude, centroid.longitude);
-  cells.emplace_back(S2CellId::FromLatLng(ll));
+  cells.emplace_back(ll);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -63,7 +58,7 @@ Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
 Result GeoUtils::indexCells(geo::Coordinate const& c,
                             std::vector<S2CellId>& cells) {
   S2LatLng ll = S2LatLng::FromDegrees(c.latitude, c.longitude);
-  cells.emplace_back(S2CellId::FromLatLng(ll));
+  cells.emplace_back(ll);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -73,7 +68,7 @@ void GeoUtils::scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
   std::vector<S2CellId> cover;
   coverer->GetCovering(region, &cover);
   TRI_ASSERT(!cover.empty());
-  scanIntervals(coverer->min_level(), cover, sortedIntervals);
+  scanIntervals(coverer->options().min_level(), cover, sortedIntervals);
 }
 
 /// will return all the intervals including the cells containing them

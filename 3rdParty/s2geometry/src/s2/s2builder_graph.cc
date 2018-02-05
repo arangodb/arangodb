@@ -302,7 +302,7 @@ void Graph::CanonicalizeLoopOrder(const vector<InputEdgeId>& min_input_ids,
   // we still end up preserving the original cyclic vertex order.
   int pos = 0;
   bool saw_gap = false;
-  for (int i = 1; i < loop->size(); ++i) {
+  for (size_t i = 1; i < loop->size(); ++i) {
     int cmp = min_input_ids[(*loop)[i]] - min_input_ids[(*loop)[pos]];
     if (cmp < 0) {
       saw_gap = true;

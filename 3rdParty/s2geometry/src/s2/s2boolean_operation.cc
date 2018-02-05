@@ -87,7 +87,7 @@ extern bool s2builder_verbose;
 
 namespace {  // Anonymous namespace for helper classes.
 
-using std::make_unique;
+using absl::make_unique;
 using std::make_pair;
 using std::max;
 using std::min;
@@ -199,7 +199,7 @@ static vector<EdgeId> GetInputEdgeChainOrder(
   // chain order (e.g.  AB, BC, CD).
   vector<pair<VertexId, EdgeId>> vmap;     // Map from source vertex to edge id.
   vector<int> indegree(g.num_vertices());  // Restricted to current input edge.
-  for (int end, begin = 0; begin < order.size(); begin = end) {
+  for (size_t end, begin = 0; begin < order.size(); begin = end) {
     // Gather the edges that came from a single input edge.
     InputEdgeId input_id = input_ids[order[begin]];
     for (end = begin; end < order.size(); ++end) {
@@ -210,7 +210,7 @@ static vector<EdgeId> GetInputEdgeChainOrder(
     // Build a map from the source vertex of each edge to its edge id,
     // and also compute the indegree at each vertex considering only the edges
     // that came from the current input edge.
-    for (int i = begin; i < end; ++i) {
+    for (size_t i = begin; i < end; ++i) {
       EdgeId e = order[i];
       vmap.push_back(make_pair(g.edge(e).first, e));
       indegree[g.edge(e).second] += 1;
@@ -219,12 +219,12 @@ static vector<EdgeId> GetInputEdgeChainOrder(
 
     // Find the starting edge for building the edge chain.
     EdgeId next = g.num_edges();
-    for (int i = begin; i < end; ++i) {
+    for (size_t i = begin; i < end; ++i) {
       EdgeId e = order[i];
       if (indegree[g.edge(e).first] == 0) next = e;
     }
     // Build the edge chain.
-    for (int i = begin; ;) {
+    for (size_t i = begin; ;) {
       order[i] = next;
       VertexId v = g.edge(next).second;
       indegree[v] = 0;  // Clear as we go along.
@@ -314,7 +314,7 @@ GraphEdgeClipper::GraphEdgeClipper(
       input_ids_(g.input_edge_id_set_ids()),
       order_(GetInputEdgeChainOrder(g_, input_ids_)),
       rank_(order_.size()) {
-  for (int i = 0; i < order_.size(); ++i) {
+  for (size_t i = 0; i < order_.size(); ++i) {
     rank_[order_[i]] = i;
   }
 }
@@ -337,7 +337,7 @@ void GraphEdgeClipper::Run() {
   bool invert_b = false;
   bool reverse_a = false;
   auto next = input_crossings_.begin();
-  for (int i = 0; i < order_.size(); ++i) {
+  for (size_t i = 0; i < order_.size(); ++i) {
     // For each input edge (the "A" input edge), gather all the input edges
     // that cross it (the "B" input edges).
     InputEdgeId a_input_id = input_ids_[order_[i]];
@@ -444,7 +444,7 @@ void GraphEdgeClipper::Run() {
     // up the edge crossings in the correct order.  (The multiplicity is
     // almost always either 0 or 1 except in very rare cases.)
     int multiplicity = inside + a_num_crossings[0];
-    for (int ai = 1; ai < a_vertices.size(); ++ai) {
+    for (size_t ai = 1; ai < a_vertices.size(); ++ai) {
       if (multiplicity != 0) {
         a_isolated[ai - 1] = a_isolated[ai] = false;
       }
@@ -466,7 +466,7 @@ void GraphEdgeClipper::Run() {
     // Output any isolated polyline vertices.
     // TODO(ericv): Only do this if an output layer wants degenerate edges.
     if (input_dimensions_[a_input_id] != 0) {
-      for (int ai = 0; ai < a_vertices.size(); ++ai) {
+      for (size_t ai = 0; ai < a_vertices.size(); ++ai) {
         if (a_isolated[ai]) {
           AddEdge(Graph::Edge(a_vertices[ai], a_vertices[ai]), a_input_id);
         }
@@ -663,7 +663,7 @@ bool GraphEdgeClipper::EdgeChainOnLeft(
   loop.insert(loop.end(), loop.begin(), loop.begin() + 2);
   // Now B is to the left of A if and only if the loop is counterclockwise.
   double sum = 0;
-  for (int i = 2; i < loop.size(); ++i) {
+  for (size_t i = 2; i < loop.size(); ++i) {
     sum += S2::TurnAngle(g_.vertex(loop[i - 2]), g_.vertex(loop[i - 1]),
                          g_.vertex(loop[i]));
   }
@@ -735,7 +735,7 @@ void EdgeClippingLayer::Build(const Graph& g, S2Error* error) {
                    &new_edges, &new_input_edge_ids).Run();
   if (s2builder_verbose) {
     std::cout << "Edges after clipping: " << std::endl;
-    for (int i = 0; i < new_edges.size(); ++i) {
+    for (size_t i = 0; i < new_edges.size(); ++i) {
       std::cout << "  " << new_input_edge_ids[i] << " (" << new_edges[i].first
                 << ", " << new_edges[i].second << ")" << std::endl;
     }
@@ -758,7 +758,7 @@ void EdgeClippingLayer::Build(const Graph& g, S2Error* error) {
     vector<S2Builder::Graph> layer_graphs;  // No default constructor.
     layer_graphs.reserve(3);
     // Separate the edges according to their dimension.
-    for (int i = 0; i < new_edges.size(); ++i) {
+    for (size_t i = 0; i < new_edges.size(); ++i) {
       int d = input_dimensions_[new_input_edge_ids[i]];
       layer_edges[d].push_back(new_edges[i]);
       layer_input_edge_ids[d].push_back(new_input_edge_ids[i]);
@@ -2008,7 +2008,7 @@ bool S2BooleanOperation::Impl::Build(S2Error* error) {
   // expect vertices closer than the full "snap_radius" to be snapped.
   options.set_idempotent(false);
   builder_ = make_unique<S2Builder>(options);
-  builder_->StartLayer(std::make_unique<EdgeClippingLayer>(
+  builder_->StartLayer(make_unique<EdgeClippingLayer>(
       &op_->layers_, &input_dimensions_, &input_crossings_));
 
   // Polygons with no edges are assumed to be empty.  It is the responsibility

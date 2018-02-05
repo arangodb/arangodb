@@ -522,7 +522,7 @@ target_link_libraries(arangoserver
   ${ROCKSDB_LIBS}
   ${LIB_ARANGO_IRESEARCH}
   gflags
-  s2geo
+  s2geometry
   boost_boost
   boost_system
   ${SYSTEM_LIBRARIES}

@@ -29,15 +29,12 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <geometry/s2.h>
-#include <geometry/s2loop.h>
-#include <geometry/s2multipointregion.h>
-#include <geometry/s2multipolyline.h>
-#include <geometry/s2pointregion.h>
-#include <geometry/s2polygon.h>
-#include <geometry/s2polyline.h>
-#include <geometry/strings/split.h>
-#include <geometry/strings/strutil.h>
+#include <s2/s2loop.h>
+#include <s2/s2multipoint_region.h>
+#include <s2/s2multipolyline.h>
+#include <s2/s2point_region.h>
+#include <s2/s2polygon.h>
+#include <s2/s2polyline.h>
 
 #include <string>
 #include <vector>
@@ -343,19 +340,16 @@ Result GeoJsonParser::parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) {
     }
   }
 
-  std::vector<S2Loop*> ptrs;
-  for (auto const& ll : loops) {
-    ptrs.emplace_back(ll.get());
-  }
-  if (!S2Polygon::IsValid(ptrs)) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid polygon");
-  }
-  poly.Init(&ptrs);
-  TRI_ASSERT(poly.IsValid());
 
-  for (std::unique_ptr<S2Loop>& ll : loops) {
-    ll.release();
+  /*if (!S2Polygon::IsValid(ptrs)) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid polygon");
+  }*/
+  if (loops.size() == 1) {
+    poly.Init(std::move(loops[0]));
+  } else if (loops.size() > 1) {
+    poly.InitNested(std::move(loops));
   }
+  TRI_ASSERT(poly.IsValid());
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -376,12 +370,13 @@ Result GeoJsonParser::parseLinestring(VPackSlice const& geoJson,
   Result res = parsePoints(geoJson, /*geoJson*/ true, vertices);
   if (res.ok()) {
     removeAdjacentDuplicates(vertices);  // no need for duplicates
-    if (vertices.size() < 2 || !S2Polyline::IsValid(vertices)) {
+    if (vertices.size() < 2) {
       return Result(TRI_ERROR_BAD_PARAMETER,
                     "Invalid LineString, adjacent "
                     "vertices must not be identical or antipodal.");
     }
     linestring.Init(vertices);
+    TRI_ASSERT(linestring.IsValid());
   }
   return res;
 };
@@ -405,13 +400,12 @@ Result GeoJsonParser::parseMultiLinestring(VPackSlice const& geoJson,
     if (!linestring.isArray()) {
       return Result(TRI_ERROR_BAD_PARAMETER, "Invalid MultiLineString");
     }
-    S2Polyline polyline;
+    ll.emplace_back(S2Polyline());
     // can handle linestring array
-    Result res = parseLinestring(linestring, polyline);
+    Result res = parseLinestring(linestring, ll.back());
     if (res.fail()) {
       return res;
     }
-    ll.emplace_back(std::move(polyline));
   }
   return TRI_ERROR_NO_ERROR;
 }

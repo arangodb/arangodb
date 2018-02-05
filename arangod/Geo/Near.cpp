@@ -26,10 +26,11 @@
 #include "Geo/GeoUtils.h"
 #include "Logger/Logger.h"
 
-#include <geometry/s2latlng.h>
-#include <geometry/s2region.h>
-#include <geometry/s2regioncoverer.h>
-#include <geometry/s2regionintersection.h>
+#include <s2/s2latlng.h>
+#include <s2/s2metrics.h>
+#include <s2/s2region.h>
+#include <s2/s2region_coverer.h>
+#include <s2/s2region_intersection.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -45,9 +46,9 @@ NearUtils<CMP>::NearUtils(QueryParams&& qp, bool dedup) noexcept
                   .ToPoint()),
       _minBound(_params.minDistanceRad()),
       _maxBound(_params.maxDistanceRad()),
-      _deduplicate(dedup) {
+      _deduplicate(dedup),
+      _coverer(qp.cover.regionCovererOpts()) {
   TRI_ASSERT(_params.origin.isValid());
-  qp.cover.configureS2RegionCoverer(&_coverer);
   reset();
   TRI_ASSERT(_params.sorted);
   TRI_ASSERT(_maxBound > 0 && _maxBound <= M_PI);
@@ -123,17 +124,16 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   std::vector<S2CellId> cover;
   if (_innerBound == _minBound) {
     // LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] 0 to something";
-    S2Cap ob = S2Cap::FromAxisAngle(_origin, S1Angle::Radians(_outerBound));
+    S2Cap ob = S2Cap(_origin, S1Angle::Radians(_outerBound));
     _coverer.GetCovering(ob, &cover);
   } else if (_innerBound > _minBound) {
     // LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] something inbetween";
     // create a search ring
-    std::vector<S2Region*> regions;
-    S2Cap ib = S2Cap::FromAxisAngle(_origin, S1Angle::Radians(_innerBound));
-    regions.push_back(new S2Cap(ib.Complement()));
-    S2Cap ob = S2Cap::FromAxisAngle(_origin, S1Angle::Radians(_outerBound));
-    regions.push_back(new S2Cap(ob));
-    S2RegionIntersection ring(&regions);
+    std::vector<std::unique_ptr<S2Region>> regions;
+    S2Cap ib(_origin, S1Angle::Radians(_innerBound));
+    regions.push_back(std::make_unique<S2Cap>(ib.Complement()));
+    regions.push_back(std::make_unique<S2Cap>(_origin, S1Angle::Radians(_outerBound)));
+    S2RegionIntersection ring(std::move(regions));
     _coverer.GetCovering(ring, &cover);
   } else {  // invalid bounds
     TRI_ASSERT(false);
@@ -144,10 +144,8 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   if (!cover.empty()) {  // not sure if this can ever happen
     if (_scannedCells.num_cells() != 0) {
       // substract already scanned areas from cover
-      S2CellUnion coverUnion;
-      coverUnion.InitSwap(&cover);
-      S2CellUnion lookup;
-      lookup.GetDifference(&coverUnion, &_scannedCells);
+      S2CellUnion coverUnion(std::move(cover));
+      S2CellUnion lookup = coverUnion.Difference(_scannedCells);
 
       TRI_ASSERT(cover.empty());  // swap should empty this
       if (!isFilterNone()) {

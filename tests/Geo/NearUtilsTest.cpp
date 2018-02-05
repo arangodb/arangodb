@@ -25,14 +25,13 @@
 #include "Basics/Common.h"
 #include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
-//#include "btree/btree.h"
 #include "Geo/Near.h"
 #include "Geo/GeoUtils.h"
 #include "VocBase/voc-types.h"
 
-#include <geometry/s1angle.h>
-#include <geometry/s2.h>
-#include <geometry/s2latlng.h>
+#include <s2/s1angle.h>
+#include <s2/s2metrics.h>
+#include <s2/s2latlng.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;

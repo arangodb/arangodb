@@ -83,7 +83,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message given that a condition is true
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 #define LOG_IF(a, cond)                                               \
   !(arangodb::Logger::isEnabled((arangodb::LogLevel::a)) && (cond))   \
       ? (void)0                                                       \
@@ -91,7 +91,7 @@
                                   << (arangodb::LogLevel::a)          \
                                   << arangodb::Logger::LINE(__LINE__) \
                                   << arangodb::Logger::FILE(__FILE__) \
-                                  << arangodb::Logger::FUNCTION(__FUNCTION__))
+                                  << arangodb::Logger::FUNCTION(__FUNCTION__))*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic given that a condition is true

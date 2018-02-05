@@ -47,6 +47,12 @@ class S2Polyline final : public S2Region {
   // Creates an empty S2Polyline that should be initialized by calling Init()
   // or Decode().
   S2Polyline();
+  S2Polyline(S2Polyline&& other) :
+    s2debug_override_(other.s2debug_override_),
+    num_vertices_(other.num_vertices_),
+    vertices_(std::move(other.vertices_)) {
+      other.num_vertices_ = 0;
+    }
 
   // Convenience constructors that call Init() with the given vertices.
   explicit S2Polyline(const std::vector<S2Point>& vertices);

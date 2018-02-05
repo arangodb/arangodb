@@ -27,11 +27,11 @@
 #include "Geo/GeoUtils.h"
 #include "VocBase/LocalDocumentId.h"
 
-#include <geometry/s2cap.h>
-#include <geometry/s2cellid.h>
-#include <geometry/s2cellunion.h>
-#include <geometry/s2region.h>
-#include <geometry/s2regioncoverer.h>
+#include <s2/s2cap.h>
+#include <s2/s2cell_id.h>
+#include <s2/s2cell_union.h>
+#include <s2/s2region.h>
+#include <s2/s2region_coverer.h>
 #include <queue>
 #include <type_traits>
 #include <vector>

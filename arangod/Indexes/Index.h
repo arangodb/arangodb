@@ -296,7 +296,9 @@ class Index {
                                               ManagedDocumentResult*,
                                               arangodb::aql::AstNode const*,
                                               arangodb::aql::Variable const*,
-                                              IndexIteratorOptions const&) = 0;
+                                              IndexIteratorOptions const&) {
+    return nullptr; // IResearch will never use this
+  };
 
   virtual arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;

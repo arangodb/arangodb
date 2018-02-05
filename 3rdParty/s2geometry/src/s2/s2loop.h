@@ -50,7 +50,7 @@ class S2Cell;
 class S2CrossingEdgeQuery;
 class S2Error;
 class S2Loop;
-class S2XYZFaceSiTi;
+struct S2XYZFaceSiTi;
 namespace s2builderutil { class S2PolygonLayer; }
 
 // An S2Loop represents a simple spherical polygon.  It consists of a single

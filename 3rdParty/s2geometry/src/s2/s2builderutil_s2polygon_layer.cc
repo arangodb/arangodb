@@ -22,7 +22,7 @@
 #include "s2/third_party/absl/memory/memory.h"
 #include "s2/s2debug.h"
 
-using std::make_unique;
+using absl::make_unique;
 using std::make_pair;
 using std::pair;
 using std::unique_ptr;

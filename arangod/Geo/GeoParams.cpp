@@ -23,9 +23,10 @@
 #include "GeoParams.h"
 #include "Basics/Common.h"
 
-#include <geometry/s1angle.h>
-#include <geometry/s2cap.h>
-#include <geometry/s2regioncoverer.h>
+#include <s2/s1angle.h>
+#include <s2/s2cap.h>
+#include <s2/s2metrics.h>
+#include <s2/s2region_coverer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -65,12 +66,12 @@ void RegionCoverParams::toVelocyPack(VPackBuilder& builder) const {
   builder.add("bestIndexedLevel", VPackValue(bestIndexedLevel));
 }
 
-void RegionCoverParams::configureS2RegionCoverer(
-    S2RegionCoverer* coverer) const {
-  // This is a soft limit, only levels are strict
-  coverer->set_max_cells(maxNumCoverCells);
-  coverer->set_min_level(worstIndexedLevel);
-  coverer->set_max_level(bestIndexedLevel);
+S2RegionCoverer::Options RegionCoverParams::regionCovererOpts() const {
+  S2RegionCoverer::Options opts;
+  opts.set_max_cells(maxNumCoverCells); // This is a soft limit
+  opts.set_min_level(worstIndexedLevel); // Levels are a strict limit
+  opts.set_max_level(bestIndexedLevel);
+  return opts;
 }
 
 double geo::QueryParams::minDistanceRad() const noexcept {

@@ -57,8 +57,8 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "V8Server/v8-collection.h"
 
-#include <geometry/s2latlngrect.h>
-#include <geometry/s2loop.h>
+#include <s2/s2latlng_rect.h>
+#include <s2/s2loop.h>
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
 #include <velocypack/Collection.h>
