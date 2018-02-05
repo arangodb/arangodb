@@ -349,7 +349,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     }
 
     DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-      vocbase->updateReplicationClient(serverId, InitialSyncer::defaultBatchTimeout, result.lastIncludedTick());
+      vocbase->updateReplicationClient(serverId, result.lastIncludedTick(), InitialSyncer::defaultBatchTimeout);
     });
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "WAL tailing after " << tickStart
       << ", lastIncludedTick " << result.lastIncludedTick()
