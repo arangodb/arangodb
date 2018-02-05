@@ -58,7 +58,7 @@ inline static std::vector<std::string> split(const std::string& str,
 
   if (!key.empty() && key.front() == '/') { key.erase(0,1); }
   if (!key.empty() && key.back()  == '/') { key.pop_back(); }
-  
+
   std::string::size_type p = 0;
   std::string::size_type q;
   while ((q = key.find(separator, p)) != std::string::npos) {
@@ -431,7 +431,7 @@ bool Node::handle<SET>(VPackSlice const& slice) {
   if (val.isObject()) {
     if (val.hasKey("op")) {  // No longer a keyword but a regular key "op"
       if (_children.find("op") == _children.end()) {
-        
+
         _children["op"] = std::make_shared<Node>("op", this);
       }
       *(_children["op"]) = val.get("op");
@@ -533,10 +533,10 @@ template <> bool Node::handle<ERASE>(VPackSlice const& slice) {
       << "Operator erase with non-positive integer position is illegal: "
       << slice.toJson();
   }
-  
+
   Builder tmp;
   { VPackArrayBuilder t(&tmp);
-    
+
     if (this->slice().isArray()) {
       if (haveVal) {
         for (auto const& old : VPackArrayIterator(this->slice())) {
@@ -558,9 +558,9 @@ template <> bool Node::handle<ERASE>(VPackSlice const& slice) {
         }
       }
     }
-    
+
   }
-  
+
   *this = tmp.slice();
   return true;
 }
@@ -656,7 +656,7 @@ bool Node::handle<OBSERVE>(VPackSlice const& slice) {
   if (!slice.hasKey("url")) return false;
   if (!slice.get("url").isString()) return false;
   std::string url(slice.get("url").copyString()), uri(this->uri());
-  
+
   // check if such entry exists
   if (!observedBy(url)) {
     store().observerTable().emplace(
@@ -675,7 +675,7 @@ bool Node::handle<UNOBSERVE>(VPackSlice const& slice) {
   if (!slice.hasKey("url")) return false;
   if (!slice.get("url").isString()) return false;
   std::string url(slice.get("url").copyString()), uri(this->uri());
-  
+
   // delete in both cases a single entry (ensured above)
   // breaking the iterators is fine then
   auto ret = store().observerTable().equal_range(url);
@@ -833,6 +833,10 @@ std::vector<std::string> Node::exists(
   for (auto const& sub : rel) {
     auto it = cur->children().find(sub);
     if (it != cur->children().end() &&
+        ///
+        /// is _ttl sent to other agents as a fixed value?  wondering
+        ///  if steady_clock could be used
+        ///
         (it->second->_ttl == std::chrono::system_clock::time_point() ||
          it->second->_ttl >= std::chrono::system_clock::now())) {
       cur = it->second.get();
