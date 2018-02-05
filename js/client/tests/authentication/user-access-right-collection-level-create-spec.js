@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require, beforeEach*/
+/* global describe, before, after, it, require*/
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
@@ -40,11 +40,12 @@ const colName = helper.colName;
 const rightLevels = helper.rightLevels;
 
 const userSet = helper.userSet;
+const roleSet = helper.roleSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
 
-const arango = require('internal').arango;
+// const arango = require('internal').arango;
 const db = require('internal').db;
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
@@ -52,31 +53,37 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const switchUser = (user, dbname) => {
-  arango.reconnect(arango.getEndpoint(), dbname, user, '');
-};
-
-switchUser('root', '_system');
+helper.switchUser('root', '_system');
 helper.removeAllUsers();
 
 describe('User Rights Management', () => {
-
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
-  it('should check if all users are created', () => {
-    switchUser('root', '_system');
-    expect(userSet.size).to.equal(helper.userCount);
-    for (let name of userSet) {
-      expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
-    }
-  });
+  if (!helper.isLdapEnabledExternal()) {
+    it('should check if all users are created', () => {
+      helper.switchUser('root', '_system');
+      expect(userSet.size).to.equal(helper.userCount);
+      for (let name of userSet) {
+        expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
+      }
+    });
+  }
+  if (helper.isLdapEnabledExternal()) {
+    it('should check if all roles are created', () => {
+      helper.switchUser('root', '_system');
+      expect(roleSet.size).to.equal(helper.roleCount);
+      for (let role of roleSet) {
+        expect(users.document(role.role), `Could not find role: ${role.role}`).to.not.be.undefined;
+      }
+    });
+  }
 
   it('should test rights for', () => {
     for (let name of userSet) {
       let canUse = false;
       try {
-        switchUser(name, dbName);
+        helper.switchUser(name, dbName);
         canUse = true;
       } catch (e) {
         canUse = false;
@@ -86,15 +93,15 @@ describe('User Rights Management', () => {
 
         describe(`user ${name}`, () => {
           before(() => {
-            switchUser(name, dbName);
+            helper.switchUser(name, dbName);
           });
 
           describe('update on collection level', () => {
             const rootTestCollection = (switchBack = true) => {
-              switchUser('root', dbName);
+              helper.switchUser('root', dbName);
               let col = db._collection(colName);
               if (switchBack) {
-                switchUser(name, dbName);
+                helper.switchUser(name, dbName);
               }
               return col !== null;
             };
@@ -103,7 +110,7 @@ describe('User Rights Management', () => {
               if (rootTestCollection(false)) {
                 db._collection(colName).truncate({ compact: false });
               }
-              switchUser(name, dbName);
+              helper.switchUser(name, dbName);
             };
 
             describe('create a document', () => {
@@ -202,5 +209,3 @@ describe('User Rights Management', () => {
     }
   });
 });
-
-

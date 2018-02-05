@@ -36,6 +36,7 @@ const tasks = require('@arangodb/tasks');
 const pu = require('@arangodb/process-utils');
 const users = require('@arangodb/users');
 const internal = require('internal');
+const helper = require('@arangodb/user-helper');
 const download = internal.download;
 const keySpaceId = 'task_update_user_keyspace';
 const taskId = "task_update_user_periodic";
@@ -78,10 +79,6 @@ const executeJS = (code) => {
     httpOptions);
 };
 
-const switchUser = (user) => {
-  arango.reconnect(arango.getEndpoint(), '_system', user, '');
-};
-
 const waitForTaskStart = () => {
   let i = 50;
   while (--i > 0) {
@@ -115,11 +112,11 @@ describe('User Rights Management', () => {
     users.grantDatabase("bob", "_system", "rw");
     users.grantCollection("bob", "_system", "*", "rw");
 
-    switchUser("bob");
+    helper.switchUser("bob");
     expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
   });
   after(() => {
-    switchUser("root", "_system");
+    helper.switchUser("root", "_system");
     users.remove("bob");
     dropKeySpace(keySpaceId);
     try {
@@ -129,7 +126,7 @@ describe('User Rights Management', () => {
   });
 
   it('test cancelling periodic tasks', () => {
-      switchUser("bob");
+      helper.switchUser("bob");
       setKey(keySpaceId, "bob");
 
       tasks.register({
@@ -144,7 +141,7 @@ describe('User Rights Management', () => {
       internal.print("Started task, now waiting...");
       waitForTaskStart();
 
-      switchUser("root", "_system");
+      helper.switchUser("root", "_system");
       internal.print("Downgrading rights");
 
       // should cause the task to stop eventually

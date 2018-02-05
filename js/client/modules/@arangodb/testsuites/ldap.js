@@ -66,7 +66,9 @@ const tests = {
       'ldap.basedn': 'dc=arangodb,dc=com',
       'ldap.roles-attribute-name': 'sn',
       'ldap.superuser-role': 'adminrole',
-      'log.level': 'ldap=trace'
+      'log.level': 'ldap=trace',
+      'javascript.allow-admin-execute': 'true',
+      'server.local-authentication': 'true'
     },
     user: helper.ldapUsers
   }
@@ -166,26 +168,6 @@ function startLdap (options) {
   return results;
 }
 
-function authenticationLdap (options) {
-  if (options.skipLdap === true) {
-    print('skipping Ldap Authentication tests!');
-    return {
-      authenticationLdap: {
-        status: true,
-        skipped: true
-      }
-    };
-  }
-
-  const opts = parseOptions(options);
-
-  print(CYAN + 'Client LDAP Authentication tests...' + RESET);
-  let testCases = tu.scanTestPath('js/client/tests/authentication');
-
-  print(opts.ldapModeRoles);
-  return tu.performTests(options, testCases, 'authentication', tu.runInArangosh, opts.ldapModeRoles.conf);
-}
-
 function authenticationLdapRoleClient (options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
@@ -200,7 +182,8 @@ function authenticationLdapRoleClient (options) {
   const opts = parseOptions(options);
 
   print(CYAN + 'Client LDAP Permissoin tests...' + RESET);
-  let testCases = tu.scanTestPath('js/client/tests/ldap');
+  // let testCases = tu.scanTestPath('js/client/tests/ldap');
+  let testCases = tu.scanTestPath('js/client/tests/authentication');
 
   print(opts.ldapModeRoles);
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRoles.conf);
@@ -208,8 +191,7 @@ function authenticationLdapRoleClient (options) {
 
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   // testFns['ldap_start'] = startLdap;
-  testFns['ldap_permissions'] = authenticationLdapRoleClient;
-  testFns['ldap_authentication'] = authenticationLdap;
+  testFns['ldap'] = authenticationLdapRoleClient;
 
   // defaultFns.push('ldap'); // turn off ldap tests by default
   // turn off ldap tests by default.

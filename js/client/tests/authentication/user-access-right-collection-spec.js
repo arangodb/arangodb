@@ -53,11 +53,7 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const switchUser = (user, dbname) => {
-  arango.reconnect(arango.getEndpoint(), dbname, user, '');
-};
-
-switchUser('root', '_system');
+helper.switchUser('root', '_system');
 helper.removeAllUsers();
 
 describe('User Rights Management', () => {
@@ -65,7 +61,7 @@ describe('User Rights Management', () => {
   after(helper.removeAllUsers);
 
   it('should check if all users are created', () => {
-    switchUser('root', '_system');
+    helper.switchUser('root', '_system');
     expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
       expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
@@ -76,7 +72,7 @@ describe('User Rights Management', () => {
     for (let name of userSet) {
       let canUse = false;
       try {
-        switchUser(name, dbName);
+        helper.switchUser(name, dbName);
         canUse = true;
       } catch (e) {
         canUse = false;
@@ -85,15 +81,15 @@ describe('User Rights Management', () => {
       if (canUse) {
         describe(`user ${name}`, () => {
           before(() => {
-            switchUser(name, dbName);
+            helper.switchUser(name, dbName);
           });
 
           describe('administrate on db level', () => {
             const rootTestCollection = (switchBack = true) => {
-              switchUser('root', dbName);
+              helper.switchUser('root', dbName);
               let col = db._collection(testColName);
               if (switchBack) {
-                switchUser(name, dbName);
+                helper.switchUser(name, dbName);
               }
               return col !== null;
             };
@@ -102,7 +98,7 @@ describe('User Rights Management', () => {
               if (rootTestCollection(false)) {
                 db._drop(testColName);
               }
-              switchUser(name, dbName);
+              helper.switchUser(name, dbName);
             };
 
             const rootCreateCollection = () => {
@@ -116,7 +112,7 @@ describe('User Rights Management', () => {
                   users.grantCollection(name, dbName, testColName, 'rw');
                 }
               }
-              switchUser(name, dbName);
+              helper.switchUser(name, dbName);
             };
 
             describe('create a', () => {

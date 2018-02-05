@@ -52,9 +52,6 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const switchUser = (user) => {
-  arango.reconnect(arango.getEndpoint(), '_system', user, '');
-};
 helper.removeAllUsers();
 
 describe('User Rights Management', () => {
@@ -65,7 +62,7 @@ describe('User Rights Management', () => {
     for (let name of userSet) {
       let canUse = false;
       try {
-        switchUser(name);
+        helper.switchUser(name);
         canUse = true;
       } catch (e) {
         canUse = false;
@@ -75,21 +72,21 @@ describe('User Rights Management', () => {
         describe(`user ${name}`, () => {
           before(() => {
             // What are defaults if unchanged?
-            switchUser(name);
+            helper.switchUser(name);
           });
 
           describe('administrate on server level', () => {
             const rootTestUser = (switchBack = true) => {
-              switchUser('root');
+              helper.switchUser('root');
               try {
                 const u = users.document(testUser);
                 if (switchBack) {
-                  switchUser(name);
+                  helper.switchUser(name);
                 }
                 return u !== undefined;
               } catch (e) {
                 if (switchBack) {
-                  switchUser(name);
+                  helper.switchUser(name);
                 }
                 return false;
               }
@@ -99,7 +96,7 @@ describe('User Rights Management', () => {
               if (rootTestUser(false)) {
                 users.remove(testUser);
               }
-              switchUser(name);
+              helper.switchUser(name);
             };
 
             before(() => {
