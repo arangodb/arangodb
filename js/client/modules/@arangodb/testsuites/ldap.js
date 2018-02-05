@@ -69,8 +69,7 @@ const tests = {
       'log.level': 'ldap=trace',
       'javascript.allow-admin-execute': 'true',
       'server.local-authentication': 'true'
-    },
-    user: helper.ldapUsers
+    }
   }
 };
 

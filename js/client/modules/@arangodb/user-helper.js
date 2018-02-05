@@ -55,14 +55,6 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const ldapUsers = [
-  {
-    name: 'arangoadmin',
-    role: 'adminrole',
-    password: 'abc'
-  }
-];
-
 // The Naming Convention will be
 // UnitTest_server-level_db-level_col-level
 //
@@ -237,7 +229,6 @@ exports.dbLevel = dbLevel;
 exports.colLevel = colLevel;
 exports.userSet = userSet;
 exports.roleSet = roleSet;
-exports.ldapUsers = ldapUsers;
 exports.namePrefix = namePrefix;
 exports.dbName = dbName;
 exports.colName = colName;
