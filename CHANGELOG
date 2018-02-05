@@ -1,6 +1,8 @@
 v3.2.12 (XXXX-XX-XX)
 --------------------
 
+* fix timeout issues in replication client expiration
+
 * fix issue #4272: VERSION file keeps disappearing
 
 * fix internal issue #81: quotation marks disappeared when switching table/json

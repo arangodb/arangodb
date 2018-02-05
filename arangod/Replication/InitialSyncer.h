@@ -30,6 +30,7 @@
 #include "Replication/Syncer.h"
 #include "Utils/SingleCollectionTransaction.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 class TRI_replication_applier_configuration_t;
@@ -156,7 +157,7 @@ class InitialSyncer : public Syncer {
   bool checkAborted();
 
   /// @brief apply the data from a collection dump
-  int applyCollectionDump(transaction::Methods&, LogicalCollection*,
+  int applyCollectionDump(SingleCollectionTransaction&, LogicalCollection*,
                           httpclient::SimpleHttpResult*, uint64_t&,
                           std::string&);
 
@@ -237,6 +238,7 @@ class InitialSyncer : public Syncer {
   // the leader was etc.
   bool _skipCreateDrop;
 
+  std::shared_ptr<velocypack::Builder> _sharedBuilder;
 };
 }
 

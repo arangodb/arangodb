@@ -62,6 +62,7 @@
 #include "VocBase/PhysicalView.h"
 #include "VocBase/ViewImplementation.h"
 #include "VocBase/replication-applier.h"
+#include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
 #include <thread>
@@ -1514,18 +1515,48 @@ void TRI_vocbase_t::addReplicationApplier(TRI_replication_applier_t* applier) {
 }
 
 /// @brief note the progress of a connected replication client
+/// this only updates the ttl
+void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl) {
+  if (ttl <= 0.0) {
+    ttl = TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT;
+  }
+  double const expires = TRI_microtime() + ttl;
+
+  WRITE_LOCKER(writeLocker, _replicationClientsLock);
+
+  try {
+    auto it = _replicationClients.find(serverId);
+
+    if (it != _replicationClients.end()) {
+      (*it).second.first = expires;
+    }
+  } catch (...) {
+    // silently fail...
+    // all we would be missing is the progress information of a slave
+  }
+}
+
+/// @brief note the progress of a connected replication client
 void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
-                                            TRI_voc_tick_t lastFetchedTick) {
+                                            TRI_voc_tick_t lastFetchedTick,
+                                            double ttl) {
+  if (ttl <= 0.0) {
+    ttl = TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT;
+  }
+  double const expires = TRI_microtime() + ttl;
+
   WRITE_LOCKER(writeLocker, _replicationClientsLock);
 
   try {
     auto it = _replicationClients.find(serverId);
 
     if (it == _replicationClients.end()) {
+      // insert new client entry
       _replicationClients.emplace(
-          serverId, std::make_pair(TRI_microtime(), lastFetchedTick));
+          serverId, std::make_pair(expires, lastFetchedTick));
     } else {
-      (*it).second.first = TRI_microtime();
+      // update an existing client entry
+      (*it).second.first = expires;
       if (lastFetchedTick > 0) {
         (*it).second.second = lastFetchedTick;
       }
@@ -1550,16 +1581,18 @@ TRI_vocbase_t::getReplicationClients() {
   return result;
 }
 
-void TRI_vocbase_t::garbageCollectReplicationClients(double ttl) {
+void TRI_vocbase_t::garbageCollectReplicationClients(double expireStamp) {
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "garbage collecting replication client entries";
+  
   WRITE_LOCKER(writeLocker, _replicationClientsLock);
 
   try {
-    double now = TRI_microtime();
-    auto it = _replicationClients.cbegin();
-    while (it != _replicationClients.cend()) {
-      double lastUpdate = it->second.first;
-      double diff = now - lastUpdate;
-      if (diff > ttl) {
+    auto it = _replicationClients.begin();
+
+    while (it != _replicationClients.end()) {
+      double const expires = it->second.first;
+      if (expireStamp > expires) {
+        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "removing expired replication client for server id " << it->first;
         it = _replicationClients.erase(it);
       } else {
         ++it;

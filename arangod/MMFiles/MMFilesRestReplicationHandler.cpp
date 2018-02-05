@@ -368,7 +368,7 @@ void MMFilesRestReplicationHandler::insertClient(
     TRI_server_id_t serverId = (TRI_server_id_t)StringUtils::uint64(value);
 
     if (serverId > 0) {
-      _vocbase->updateReplicationClient(serverId, lastServedTick);
+      _vocbase->updateReplicationClient(serverId, lastServedTick, TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT);
     }
   }
 }
