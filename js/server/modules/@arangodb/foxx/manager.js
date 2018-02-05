@@ -530,24 +530,22 @@ function _prepareService (serviceInfo, options = {}) {
       fs.move(tempFile, tempBundlePath);
     } else if (serviceInfo instanceof Buffer) {
       // Buffer (js)
-      const manifest = JSON.stringify({main: 'index.js'}, null, 4);
-      fs.makeDirectoryRecursive(tempServicePath);
-      fs.writeFileSync(path.join(tempServicePath, 'index.js'), serviceInfo);
-      fs.writeFileSync(path.join(tempServicePath, 'manifest.json'), manifest);
-      utils.zipDirectory(tempServicePath, tempBundlePath);
+      _buildServiceBundleFromScript(tempServicePath, tempBundlePath, serviceInfo);
     } else if (/^https?:/i.test(serviceInfo)) {
       // Remote path
       const tempFile = downloadServiceBundleFromRemote(serviceInfo);
-      extractServiceBundle(tempFile, tempServicePath);
-      fs.move(tempFile, tempBundlePath);
+      try {
+        _buildServiceFromFile(tempServicePath, tempBundlePath, tempFile);
+      } finally {
+        fs.remove(tempFile);
+      }
     } else if (fs.exists(serviceInfo)) {
       // Local path
       if (fs.isDirectory(serviceInfo)) {
         utils.zipDirectory(serviceInfo, tempBundlePath);
         extractServiceBundle(tempBundlePath, tempServicePath);
       } else {
-        extractServiceBundle(serviceInfo, tempServicePath);
-        fs.copyFile(serviceInfo, tempBundlePath);
+        _buildServiceFromFile(tempServicePath, tempBundlePath, serviceInfo);
       }
     } else {
       // Foxx Store
@@ -591,6 +589,24 @@ function _prepareService (serviceInfo, options = {}) {
     } catch (e2) {}
     throw e;
   }
+}
+
+function _buildServiceFromFile (tempServicePath, tempBundlePath, filePath) {
+  try {
+    extractServiceBundle(filePath, tempServicePath);
+  } catch (e) {
+    _buildServiceBundleFromScript(tempServicePath, tempBundlePath, fs.readFileSync(filePath));
+    return;
+  }
+  fs.copyFile(filePath, tempBundlePath);
+}
+
+function _buildServiceBundleFromScript (tempServicePath, tempBundlePath, jsBuffer) {
+  const manifest = JSON.stringify({main: 'index.js'}, null, 4);
+  fs.makeDirectoryRecursive(tempServicePath);
+  fs.writeFileSync(path.join(tempServicePath, 'index.js'), jsBuffer);
+  fs.writeFileSync(path.join(tempServicePath, 'manifest.json'), manifest);
+  utils.zipDirectory(tempServicePath, tempBundlePath);
 }
 
 function _buildServiceInPath (mount, tempServicePath, tempBundlePath) {
