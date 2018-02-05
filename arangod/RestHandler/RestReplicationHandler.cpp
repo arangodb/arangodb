@@ -1279,6 +1279,11 @@ Result RestReplicationHandler::processRestoreUsersBatch(
   TRI_ASSERT(queryRegistry != nullptr);
 
   auto queryResult = query.execute(queryRegistry);
+
+  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+    "Authentication");
+  authentication->authInfo()->outdate();
+  
   return Result{queryResult.code};
 }
 
@@ -1535,17 +1540,8 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
   
   // look up the collection
   try {
-    CollectionGuard guard(_vocbase, name.c_str());
-
-    LogicalCollection* collection = guard.collection();
-
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, collection->cid(),
-                                    AccessMode::Type::EXCLUSIVE);
-
-    // collection status lock was already acquired by collection guard 
-    // above
-    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+    SingleCollectionTransaction trx(ctx, name, AccessMode::Type::EXCLUSIVE);
     
     Result res = trx.begin();
 
@@ -1555,12 +1551,24 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
       THROW_ARANGO_EXCEPTION(res);
     }
 
+    LogicalCollection* collection = trx.documentCollection();
     auto physical = collection->getPhysical();
     TRI_ASSERT(physical != nullptr);
     for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
       std::shared_ptr<arangodb::Index> idx;
 
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
+      if (! ServerState::instance()->isCoordinator()) {
+        arangodb::velocypack::Slice value = idxDef.get("type");
+        if (value.isString()) {
+          std::string const typeString = value.copyString();
+          if ((typeString == "primary") ||(typeString == "edge")) {
+            LOG_TOPIC(DEBUG, Logger::FIXME) << "processRestoreIndexes silently ignoring primary or edge index: " <<
+              idxDef.toJson();
+            continue;
+          }
+        }
+      }
 
       res = physical->restoreIndex(&trx, idxDef, idx);
 

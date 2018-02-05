@@ -151,9 +151,18 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate, v
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "name")) &&
         object->Has(TRI_V8_ASCII_STRING(isolate, "message"))
        ) {
-      std::string  name = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING(isolate, "name")));
-      std::string  message = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING(isolate, "message")));
-      if(name == "TypeError"){
+      std::string name;
+      v8::String::Utf8Value nameString(object->Get(TRI_V8_ASCII_STRING(isolate, "name")));
+      if (*nameString != nullptr) {
+        name = std::string(*nameString, nameString.length());
+      }
+
+      std::string message;
+      v8::String::Utf8Value messageString(object->Get(TRI_V8_ASCII_STRING(isolate, "message")));
+      if (*messageString != nullptr) {
+        message = std::string(*messageString, messageString.length());
+      }
+      if (name == "TypeError") {
         std::get<2>(rv).reset(TRI_ERROR_TYPE_ERROR, message);
       } else {
         std::get<2>(rv).reset(TRI_ERROR_INTERNAL, name + ": " + message);

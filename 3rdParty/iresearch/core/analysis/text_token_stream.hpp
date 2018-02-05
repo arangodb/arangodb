@@ -60,13 +60,8 @@ class text_token_stream : public analyzer, util::noncopyable {
 
   DECLARE_ANALYZER_TYPE();
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief args is a locale name, TODO use below if switching to JSON config
-  /// @brief args is a jSON encoded object with the following attributes:
-  ///        "locale"(string): locale of the analyzer <required>
-  ///        "ignored_words([string...]): set of words to ignore (missing == use default list)
-  ////////////////////////////////////////////////////////////////////////////////
-  DECLARE_FACTORY_DEFAULT(const string_ref& args);
+  // for use with irs::order::add<T>() and default args (static build)
+  DECLARE_FACTORY_DEFAULT(const std::locale& locale);
 
   text_token_stream(
     const std::locale& locale,
@@ -75,6 +70,7 @@ class text_token_stream : public analyzer, util::noncopyable {
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
+  static void init(); // for trigering registration in a static build
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 

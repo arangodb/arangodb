@@ -209,3 +209,9 @@ value is specified in bytes.
 
 If the number of operations in a transaction reaches this value, the transaction
 is committed automatically and a new transaction is started.
+
+`--rocksdb.throttle`
+
+If enabled, throttles the ingest rate of writes if necessary to reduce chances 
+of compactions getting too far behind and blocking incoming writes. This option
+is `true` by default.

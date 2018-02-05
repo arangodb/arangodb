@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBRestReplicationHandler.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
@@ -287,14 +288,14 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   _response->setContentType(rest::ContentType::DUMP);
 
   // set headers
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                          checkMore ? "true" : "false");
   _response->setHeaderNC(
-      TRI_REPLICATION_HEADER_LASTINCLUDED,
+      StaticStrings::ReplicationHeaderLastIncluded,
       StringUtils::itoa((length == 0) ? 0 : result.maxTick()));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, StringUtils::itoa(latest));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick, StringUtils::itoa(latest));
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderActive, "true");
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                          result.minTickIncluded() ? "true" : "false");
 
   if (length > 0) {
@@ -340,9 +341,9 @@ void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
   generateResult(rest::ResponseCode::OK, VPackSlice::emptyArraySlice());
   // rocksdb only includes finished transactions in the WAL.
   _response->setContentType(rest::ContentType::DUMP);
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, "0");
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick, "0");
   // always true to satisfy continuous syncer
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT, "true");
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent, "true");
 }
 
 void RocksDBRestReplicationHandler::handleCommandInventory() {
@@ -724,11 +725,11 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
   response->setContentType(rest::ContentType::DUMP);
   // set headers
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                          (context->more() ? "true" : "false"));
 
   _response->setHeaderNC(
-      TRI_REPLICATION_HEADER_LASTINCLUDED,
+      StaticStrings::ReplicationHeaderLastIncluded,
       StringUtils::itoa((dump.length() == 0) ? 0 : result.maxTick()));
 
   // transfer ownership of the buffer contents

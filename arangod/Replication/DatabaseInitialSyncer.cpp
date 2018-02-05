@@ -458,10 +458,10 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
     }
 
     bool found;
-    std::string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
+    std::string header = response->getHeaderField(StaticStrings::ReplicationHeaderCheckMore, found);
     if (!found) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                    _masterInfo._endpoint + url + ": required header " + TRI_REPLICATION_HEADER_CHECKMORE +
+                    _masterInfo._endpoint + url + ": required header " + StaticStrings::ReplicationHeaderCheckMore +
                     " is missing in dump response");
     }
 
@@ -469,11 +469,11 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
     bool checkMore = StringUtils::boolean(header);
 
     if (checkMore) {
-      header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED,
+      header = response->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded,
                                         found);
       if (!found) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                      _masterInfo._endpoint + url + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED
+                      _masterInfo._endpoint + url + ": required header " + StaticStrings::ReplicationHeaderLastIncluded
                       + " is missing in dump response");
       }
 

@@ -523,16 +523,10 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
     TRI_ASSERT(!simulate32Client()); // < 3.3 should never get here
     if (col->isSystem()) {
       TRI_ASSERT(col->globallyUniqueId() == col->name());
-      CollectionGuard guard(vocbase, col);
-      if (guard.collection() == nullptr) {
-        return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-      }
+      
       SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
-                                      guard.collection()->cid(), AccessMode::Type::WRITE);
+                                      col->cid(), AccessMode::Type::WRITE);
     
-      // already locked by guard above
-      trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
-
       Result res = trx.begin();
       if (!res.ok()) {
         return res;
@@ -625,16 +619,8 @@ Result Syncer::createIndex(VPackSlice const& slice) {
   }
 
   try {
-    CollectionGuard guard(vocbase, col);
-    if (guard.collection() == nullptr) {
-      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    }
-
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
-                                    guard.collection()->cid(), AccessMode::Type::WRITE);
-
-    // already locked by guard above
-    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+                                    col->cid(), AccessMode::Type::WRITE);
 
     Result res = trx.begin();
 
@@ -642,7 +628,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
       return res;
     }
 
-    auto physical = guard.collection()->getPhysical();
+    auto physical = trx.documentCollection()->getPhysical();
     TRI_ASSERT(physical != nullptr);
     std::shared_ptr<arangodb::Index> idx;
     res = physical->restoreIndex(&trx, indexSlice, idx);

@@ -50,9 +50,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 option(SKIP_PACKAGING "" OFF)
-option(STATIC_EXECUTABLES "" OFF)
+option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
-  set(CMAKE_EXE_LINKER_FLAGS "-static -no-pie")
+  set(CMAKE_EXE_LINKER_FLAGS "-static")
 endif()
 
 # be verbose about flags used
@@ -63,6 +63,7 @@ set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
 
 if (USE_ENTERPRISE)
+  add_definitions("-DUSE_ENTERPRISE=1")
   add_subdirectory(enterprise)
 endif ()
 
@@ -76,8 +77,10 @@ endif ()
 # ------------------------------------------------------------------------------
 
 set(ARANGODB_VERSION_MAJOR      "3")
-set(ARANGODB_VERSION_MINOR      "3")
-set(ARANGODB_VERSION_REVISION   "devel")
+set(ARANGODB_VERSION_MINOR      "4")
+if (NOT DEFINED ARANGODB_VERSION_REVISION)
+  set(ARANGODB_VERSION_REVISION   "devel")
+endif()
 set(ARANGODB_PACKAGE_REVISION   "1")
 # version for the windows rc file needs to be numeric:
 if (ARANGODB_VERSION_REVISION GREATER -1)
@@ -145,12 +148,6 @@ configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h"
   NEWLINE_STYLE UNIX
-)
-
-configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Pipeline/Jenkinsfile.groovy.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Pipeline/Jenkinsfile.groovy"
-  NEWLINE_STYLE UNIX @ONLY
 )
 
 if (NOT DEFINED GENERATE_BUILD_DATE OR GENERATE_BUILD_DATE)
@@ -505,16 +502,20 @@ option(USE_BACKTRACE
   OFF
 )
 
+# iresearch uses backtrace anyway, so we need to find and link libexecinfo
+# for the case that we are on libmusl and not on glibc
+find_package(Backtrace)
+
 if (USE_BACKTRACE)
   if (MSVC)
     set(BT_LIBS "Dbghelp" CACHE path "Debug Helper libraries")
   else ()
-    set(BT_LIBS "" CACHE path "Debug Helper libraries")
+    set(BT_LIBS ${Backtrace_LIBRARY} CACHE path "Debug Helper libraries")
   endif ()
 
   add_definitions("-DARANGODB_ENABLE_BACKTRACE=1")
 else ()
-  set(BT_LIBS "" CACHE path "Debug Helper libraries")
+  set(BT_LIBS ${Backtrace_LIBRARY} CACHE path "Debug Helper libraries")
 endif ()
 
 ################################################################################
@@ -613,13 +614,7 @@ endfunction()
 # ------------------------------------------------------------------------------
 
 if (USE_JEMALLOC)
-  add_subdirectory(3rdParty/jemalloc)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
-
-  include_directories("${JEMALLOC_HOME}/include")
-  link_directories("${JEMALLOC_HOME}/lib")
-
-  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB})
 
   if (LINUX OR DARWIN)
     add_definitions("-DARANGODB_MMAP_JEMALLOC=1")
@@ -770,7 +765,7 @@ endif()
 # IResearch
 # ------------------------------------------------------------------------------
 
-option(USE_IRESEARCH OFF)
+option(USE_IRESEARCH "enable ArangoSearch views" ON)
 
 if(USE_IRESEARCH)
   add_definitions("-DUSE_IRESEARCH=1")
@@ -794,14 +789,11 @@ endif()
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/boost)
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
-
-add_subdirectory(3rdParty/rocksdb)
 
 add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
 include_directories(${ROCKSDB_INCLUDE_DIR})

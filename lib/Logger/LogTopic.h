@@ -71,10 +71,6 @@ class LogTopic {
   }
 
  private:
-  static Mutex _namesLock;
-  static std::map<std::string, LogTopic*> _names;
-
- private:
   size_t const _id;
   std::string const _name;
   std::string _displayName;

@@ -6,6 +6,8 @@
 
 include(ExternalProject)
 
+remove_definitions("-DUSE_ENTERPRISE=1")
+
 ################################################################################
 ## V8 and ICU
 ################################################################################
@@ -136,6 +138,15 @@ if (USE_IRESEARCH)
     set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
   endif()
 
+  if(NOT PERL_FOUND)
+    set(PERL_FOUND TRUE) # suppress error for Perl not-found
+
+    # MSVC will execute ADD_CUSTOM_COMMAND even though OUTPUT is already present
+    if(MSVC)
+      set(PERL_EXECUTABLE echo)
+    endif()
+  endif()
+
   set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
   set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
   set(UNWIND_ROOT "invalid")
@@ -148,6 +159,8 @@ if (USE_IRESEARCH)
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)
     "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
   )
+
+  file(COPY "${IRESEARCH_ROOT}.build/" DESTINATION "${IRESEARCH_BUILD_DIR}" FILES_MATCHING PATTERN "*")
   add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
   unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
@@ -187,6 +200,31 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.50.3)
 ################################################################################
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
+
+################################################################################
+## JEMALLOC
+################################################################################
+
+if (USE_JEMALLOC)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
+  include_directories("${JEMALLOC_HOME}/include")
+  link_directories("${JEMALLOC_HOME}/lib")
+  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB})
+endif ()
+
+################################################################################
+## BOOST
+################################################################################
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
+set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
+
+################################################################################
+## ROCKSDB
+################################################################################
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
+include_directories(${ROCKSDB_INCLUDE_DIR})
 
 ################################################################################
 ## LINK_DIRECTORIES

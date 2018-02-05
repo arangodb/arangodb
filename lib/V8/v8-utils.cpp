@@ -4559,9 +4559,7 @@ void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-extern void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                          std::string const& startupPath,
-                          std::string const& modules);
+extern void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
 void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                      std::string const& startupPath,
@@ -4818,5 +4816,5 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate, "SYS_PLATFORM"),
                                TRI_V8_ASCII_STRING(isolate, TRI_PLATFORM));
 
-  TRI_InitV8Env(isolate, context, startupPath, modules);
+  TRI_InitV8Env(isolate, context);
 }
