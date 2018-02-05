@@ -42,7 +42,7 @@ var unregisterFunction = function (name) {
 
   var func = null;
   if (UNREGISTER_AQL_USER_FUNCTION(name)) {
-    internal.reloadAqlFunctions();
+    require('@arangodb/aql').reload();
     return true;
   } else {
     return false;
@@ -58,7 +58,7 @@ var unregisterFunctionsGroup = function (group) {
   var deleted = UNREGISTER_AQL_USER_FUNCTION_GROUP(group);
 
   if (deleted > 0) {
-    internal.reloadAqlFunctions();
+    require('@arangodb/aql').reload();
   }
 
   return deleted;
@@ -68,18 +68,18 @@ var unregisterFunctionsGroup = function (group) {
 // / @brief was docuBlock aqlFunctionsRegister
 // //////////////////////////////////////////////////////////////////////////////
 
-var registerFunction = function (name, code, isDeterministic) {
+var registerFunction = function (name, code, isDeterministic = false) {
 
   if (typeof code === 'function') {
     code = String(code) + '\n';
   }
 
-  return REGISTER_AQL_USER_FUNCTION({
+  let result = REGISTER_AQL_USER_FUNCTION({
     name: name,
     code: code,
     isDeterministic: isDeterministic
   });
-  internal.reloadAqlFunctions();
+  require('@arangodb/aql').reload();
 
   return result;
 };

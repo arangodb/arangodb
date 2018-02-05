@@ -36,7 +36,10 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8DealerFeature.h"
+#include "Transaction/Methods.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 
@@ -51,10 +54,17 @@ using namespace arangodb;
 
 namespace {
 std::string collectionName("_aqlfunctions");
-std::regex const funcRegEx("[a-zA-Z0-9_]+(::[a-zA-Z0-9_]+)+", std::regex::ECMAScript);
+  // Must not start with `_`, may contain alphanumerical characters, should have at least one set of double colons followed by more alphanumerical characters.
+std::regex const funcRegEx("[a-zA-Z0-9][a-zA-Z0-9_]*(::[a-zA-Z0-9_]+)+", std::regex::ECMAScript);
+  // we may filter less restrictive:
+std::regex const funcFilterRegEx("[a-zA-Z0-9_]+(::[a-zA-Z0-9_]*)+", std::regex::ECMAScript);
 
 bool isValidFunctionName(std::string const& testName) {
   return std::regex_match(testName, funcRegEx);
+}
+
+bool isValidFunctionNameFilter(std::string const& testName) {
+  return std::regex_match(testName, funcFilterRegEx);
 }
 
 
@@ -69,7 +79,7 @@ void reloadAqlUserFunctions() {
 // will do some AQLFOO: and return true if it deleted one 
 Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
                                         std::string const& functionName) {
-  if (functionName.empty() || !isValidFunctionName(functionName)) {
+  if (functionName.empty() || !isValidFunctionNameFilter(functionName)) {
     return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
                   std::string("Error deleting AQL User Function: '") +
                   functionName +
@@ -84,7 +94,9 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
   std::shared_ptr<VPackBuilder> binds;
   binds.reset(new VPackBuilder);
   binds->openObject();
-  binds->add("fnName", VPackValue(functionName));
+  std::string UCFN = basics::StringUtils::toupper(functionName);
+
+  binds->add("fnName", VPackValue(UCFN));
   binds->add("@col", VPackValue(collectionName));
   binds->close();  // obj
 
@@ -116,7 +128,6 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
   }
 
   reloadAqlUserFunctions();
-  // TODO: Reload!
   return Result();
 }
   
@@ -128,7 +139,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
   if (functionFilterPrefix.empty()) {
     return Result(TRI_ERROR_BAD_PARAMETER);
   }
-  if (!isValidFunctionName(functionFilterPrefix)) {
+  if (!isValidFunctionNameFilter(functionFilterPrefix)) {
     return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
                   std::string("Error deleting AQL User Function: '") +
                   functionFilterPrefix +
@@ -201,8 +212,21 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   }
   
   std::string name = vname.copyString();
-  auto refCode = StringRef(userFunction.get("code"));
-  std::string code = std::string("(") + refCode.toString() + "\n)";
+
+  if (!isValidFunctionName(name)) {
+    return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
+                  std::string("Error creating AQL User Function: '") +
+                  name +
+                  "' is not a valid name.");
+  }
+  auto cvString = userFunction.get("code");
+  if (!cvString.isString()) {
+        return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
+                      "expecting function or string");
+  }
+  std::string tmp = cvString.copyString();
+  
+  std::string code = std::string("(") + tmp + "\n)";
   bool isDeterministic = userFunction.get("isDeterministic").getBool();
   /// TODO ^^^ error handling
   
@@ -220,8 +244,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
 
   {
     std::string testCode("(function() { var callback = ");
-    testCode += refCode.toString();
-    testCode.append("; return callback; })()");
+    testCode += tmp + "; return callback; })()";
     v8::HandleScope scope(isolate);
 
 
@@ -267,6 +290,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   oneFunctionDocument.add("name", VPackValue(name));
   oneFunctionDocument.add("code", VPackValue(code));
   oneFunctionDocument.add("isDeterministic", VPackValue(isDeterministic));
+  oneFunctionDocument.close();
   
   arangodb::OperationOptions opOptions;
   opOptions.isRestore = false;
@@ -284,23 +308,40 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
 
   if (!res.ok()) {
     // TODO: this comes from the RestVocbaseBaseHandler generateTransactionError(collectionName, res, "");
-    return false;
+    return res;
+  }
+  
+  std::unique_ptr<ManagedDocumentResult> mmdr;
+  transaction::BuilderLeaser searchBuilder(&trx);
+  searchBuilder->add(VPackValue(_key));
+  arangodb::velocypack::Builder existDocument;
+  Result exists;
+  try {
+    exists = trx.documentFastPath(collectionName, mmdr.get(), searchBuilder->slice(), existDocument, false);
+  } catch (arangodb::basics::Exception const& ex) {
+    exists.reset(ex.code());
   }
 
-  arangodb::OperationResult result =
-    trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
-
+  arangodb::OperationResult result;
+  if (exists.ok()){
+    result = trx.replace(collectionName, oneFunctionDocument.slice(), opOptions);
+  }
+  else {
+    result = trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
+  }
   // Will commit if no error occured.
   // or abort if an error occured.
   // result stays valid!
   res = trx.finish(result.result);
 
   if (result.fail()) {
+    printf("resultfail\n");
     // TODO: this comes from the RestVocbaseBaseHandler     generateTransactionError(result);
     return res;
   }
 
   if (!res.ok()) {
+    printf("result not ok\n");
     // TODO: this comes from the RestVocbaseBaseHandler     generateTransactionError(collectionName, res, "");
     return res;
   }
@@ -309,19 +350,19 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   return res;
 }
 
-
 // todo: document which result builder state is expected
 // will do some AQLFOO:
 Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
                                       std::string const& functionFilterPrefix,
                                       velocypack::Builder& result) {
-
+  /*
   if (!functionFilterPrefix.empty() && !isValidFunctionName(functionFilterPrefix)) {
     return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
                   std::string("Error filtering AQL User Function: '") +
                   functionFilterPrefix +
                   "' contains invalid characters");
   }
+  */
   std::string filter;
 
   std::shared_ptr<VPackBuilder> binds;
@@ -337,7 +378,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
         (uc[uc.length() - 2 ] != ':')) {
       uc += "::";
     }
-    filter = std::string("UPPER(LEFT(function.name, @fnLength)) == @ucName");
+    filter = std::string(" FILTER LEFT(function._key, @fnLength) == @ucName ");
     binds->add("fnLength", VPackValue(uc.length()));
     binds->add("ucName", VPackValue(uc));
   }
@@ -345,7 +386,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
   binds->close();  // obj
   
   std::string aql("FOR function IN @@col");
-  aql.append(filter + " RETURN function");
+  aql.append(filter + "RETURN function");
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(aql),
                              binds, nullptr, arangodb::aql::PART_MAIN);
@@ -363,28 +404,35 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
                   queryResult.details);
   }
 
-  VPackSlice usersFunctionsSlice = queryResult.result->slice();
+  auto usersFunctionsSlice = queryResult.result->slice();
 
   if (!usersFunctionsSlice.isArray()) {
     return Result(TRI_ERROR_INTERNAL, "bad query result for AQL User Functions");
   }
-  
   result.openArray();
   std::string tmp;
   for (auto const& it : VPackArrayIterator(usersFunctionsSlice)) {
-    auto name = it.get("name");
-    auto fn = it.get("code");
-    if (name.isString() && fn.isString() && (fn.length() > 2)) {
+    VPackSlice itt;
+    if (it.isExternal()) {
+        itt = it.resolveExternal();
+    }
+    else {
+      itt = it;
+    }
+
+    if (!itt.isObject()) {
+      /// std::cout << "it is not an object? "<< itt.toJson() << " but rather: " << itt.typeName() << std::endl;
+    }
+    auto name = itt.get("name");
+    auto fn = itt.get("code");
+    auto ref=StringRef(fn);
+    if (name.isString() && fn.isString() && (ref.length() > 2)) {
+      ref = ref.substr(1, ref.length() - 2);
+      tmp = basics::StringUtils::trim(ref.toString());
+
       VPackBuilder oneFunction;
       oneFunction.openObject();
       oneFunction.add("name", name);
-
-
-      auto ref=StringRef(fn);
-      ref = ref.substr(1, ref.length() - 2);
-      tmp = basics::StringUtils::trim(ref.toString());
-      
-      //oneFunction.add("code", VPackValuePair(ref.data(), ref.length(), VPackValueType::String));
       oneFunction.add("code", VPackValue(tmp));
       oneFunction.close();
       result.add(oneFunction.slice());

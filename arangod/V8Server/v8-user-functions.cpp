@@ -81,7 +81,7 @@ static void JS_RegisterAqlUserFunction(v8::FunctionCallbackInfo<v8::Value> const
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (args.Length() != 3) {
+  if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("REGISTER_AQL_USER_FUNCTION(<name>, <functionbody> [, <isDeterministic>])");
   }
 
@@ -110,19 +110,20 @@ static void JS_GetAqlUserFunctions(v8::FunctionCallbackInfo<v8::Value> const& ar
   }
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
   
-  velocypack::Builder result;
+  std::shared_ptr<VPackBuilder> result;
 
+  result.reset(new VPackBuilder);
   std::string functionFilterPrefix;
   if (args.Length() >= 1) {
     functionFilterPrefix = TRI_ObjectToString(args[0]);
   }
-  Result rv = toArrayUserFunctions(vocbase, functionFilterPrefix, result);
+  Result rv = toArrayUserFunctions(vocbase, functionFilterPrefix, *result.get());
 
   if (rv.fail()) {
     TRI_V8_THROW_EXCEPTION(rv);
   }
 
-  v8::Handle<v8::Value> v8result = TRI_VPackToV8(isolate, result.slice());
+  v8::Handle<v8::Value> v8result = TRI_VPackToV8(isolate, result->slice());
 
   TRI_V8_RETURN(v8result);
   TRI_V8_TRY_CATCH_END;
