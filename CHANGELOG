@@ -1,4 +1,4 @@
-v3.3.3 (XXXX-XX-XX)
+v3.3.4 (XXXX-XX-XX)
 -------------------
 
 
@@ -13,6 +13,11 @@ v3.3.3 (XXXX-XX-XX)
 
 * fixed issue #4395: If your foxx app includes an `APP` folder it got accidently removed by selfhealing
          this is not the case anymore.
+
+
+v3.3.3 (2018-01-16)
+-------------------
+
 
 * fix issue #4272: VERSION file keeps disappearing
 
