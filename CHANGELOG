@@ -1,4 +1,10 @@
-v3.3.3 (XXXX-XX-XX)
+v3.3.4 (XXXX-XX-XX)
+-------------------
+
+* fix timeout issues in replication client expiration
+
+
+v3.3.3 (2018-01-26)
 -------------------
 
 * fix issue #4272: VERSION file keeps disappearing
