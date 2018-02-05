@@ -74,7 +74,7 @@ const ldapUsers = [
 // d == DEFAULT
 
 exports.removeAllUsers = () => {
-  let ldapEnabled = isLdapEnabled();
+  ldapEnabled = isLdapEnabled();
 
   for (let sys of rightLevels) {
     for (let db of rightLevels) {
@@ -115,13 +115,17 @@ const executeJS = (code) => {
 };
 
 const isLdapEnabled = () => {
-  let res = executeJS('return require("internal").ldapEnabled()');
-  try {
-    res = JSON.parse(res.body);
-  } catch (ignore) {
-    res = false;
+  if (ldapEnabled) {
+    return ldapEnabled;
+  } else {
+    let res = executeJS('return require("internal").ldapEnabled()');
+    try {
+      res = JSON.parse(res.body);
+    } catch (ignore) {
+      res = false;
+    }
+    return res;
   }
-  return res;
 };
 
 exports.isLdapEnabledExternal = () => {

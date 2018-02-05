@@ -160,39 +160,78 @@ describe('User Rights Management', () => {
               rootDropUser();
             });
 
-            it('drop a user', () => {
-              setKey(keySpaceId, name);
-              const taskId = 'task_drop_user_' + name;
-              const task = {
-                id: taskId,
-                name: taskId,
-                command: `(function (params) {
+            if (helper.isLdapEnabledExternal) {
+              it('drop a role', () => {
+                if (name !== 'arangoadmin') {
+                  setKey(keySpaceId, name);
+                  name = ':role:' + name;
+                  const taskId = 'task_drop_user_' + name;
+                  const task = {
+                    id: taskId,
+                    name: taskId,
+                    command: `(function (params) {
+                    try {
+                    require('@arangodb/users').remove('${testUser}');
+                    } finally {
+                    global.KEY_SET('${keySpaceId}', '${name}', true);
+                    }
+                    })(params);`
+                  };
+                  if (systemLevel['rw'].has(name)) {
+                    if (systemLevel['rw'].has(name)) {
+                      tasks.register(task);
+                      wait(keySpaceId, name);
+                      expect(rootTestUser()).to.equal(false, 'Drop role stated success, but role still found.');
+                    } else {
+                      tasks.register(task);
+                      wait(keySpaceId, name);
+                      expect(rootTestUser()).to.equal(true, 'managed to drop role with insufficient rights');
+                    }
+                  } else {
+                    try {
+                      tasks.register(task);
+                      expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    } catch (e) {
+                      expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    }
+                  }
+                }
+              });
+            } else {
+              it('drop a user', () => {
+                setKey(keySpaceId, name);
+                const taskId = 'task_drop_user_' + name;
+                const task = {
+                  id: taskId,
+                  name: taskId,
+                  command: `(function (params) {
                   try {
                     require('@arangodb/users').remove('${testUser}');
                   } finally {
                     global.KEY_SET('${keySpaceId}', '${name}', true);
                   }
-                })(params);`
-              };
-              if (systemLevel['rw'].has(name)) {
+                  })(params);`
+                };
                 if (systemLevel['rw'].has(name)) {
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(rootTestUser()).to.equal(false, 'Drop user stated success, but user still found.');
+                  if (systemLevel['rw'].has(name)) {
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(rootTestUser()).to.equal(false, 'Drop user stated success, but user still found.');
+                  } else {
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(rootTestUser()).to.equal(true, 'managed to drop user with insufficient rights');
+                  }
                 } else {
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(rootTestUser()).to.equal(true, 'managed to drop user with insufficient rights');
+                  try {
+                    tasks.register(task);
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  } catch (e) {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                  }
                 }
-              } else {
-                try {
-                  tasks.register(task);
-                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
-                } catch (e) {
-                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
-                }
-              }
-            });
+              });
+            }
           });
         });
       }
