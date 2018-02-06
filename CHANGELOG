@@ -4,8 +4,29 @@ v3.3.4 (XXXX-XX-XX)
 * internal issue #1726: supervision failed to remove multiple servers
   from health monitoring at once.
 
+
 v3.3.3 (2018-01-26)
 -------------------
+
+* fix inconvenience: If we want to start server with a non-existing
+  --javascript.app-path it will now be created (if possible)
+
+* fixed: REST API `POST _api/foxx` now returns HTTP code 201 on success, as documented.
+         returned 200 before.
+
+* fixed: REST API `PATCH _api/foxx/dependencies` now updates the existing dependencies
+         instead of replacing them.
+
+* fixed: Foxx upload of single javascript file. You now can upload via http-url pointing
+         to a javascript file.
+
+* fixed issue #4395: If your foxx app includes an `APP` folder it got
+         accidently removed by selfhealing this is not the case anymore.
+
+
+v3.3.3 (2018-01-16)
+-------------------
+
 
 * fix issue #4272: VERSION file keeps disappearing
 
