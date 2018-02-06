@@ -177,7 +177,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
                   "<endpoint> must be a valid endpoint");
     return;
   }
-
+  
   std::string const database =
       VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
   std::string const username =
@@ -285,6 +285,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
+  
+  grantTemporaryRights();
 
   // start initial synchronization
   TRI_voc_tick_t lastLogTick = 0;
