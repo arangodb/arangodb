@@ -183,8 +183,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 ################################################################################
 ## cURL
 ################################################################################
-# be aware that we patched the curl cmake so it doesn't install anything
-# so we don't collide with other curl packages
 
 set(ENABLE_MANUAL OFF CACHE type BOOL)
 set(BUILD_CURL_EXE OFF CACHE type BOOL)
@@ -195,7 +193,7 @@ set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
 set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
 # mop: super important...if this is off curl will not handle request timeouts < 1000ms
 set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0 EXCLUDE_FROM_ALL)
 
 ################################################################################
 ## SNAPPY
