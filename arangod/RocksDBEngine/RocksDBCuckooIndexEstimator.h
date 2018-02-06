@@ -323,22 +323,14 @@ class RocksDBCuckooIndexEstimator {
 
   double computeEstimate() {
     READ_LOCKER(locker, _lock);
-    if (_nrTotal == 0) {
+    if (0 == (_nrTotal + _nrCuckood)) {
+      TRI_ASSERT(0 == _nrTotal);
+      TRI_ASSERT(0 == _nrCuckood);
       // If we do not have any documents we have a rather constant estimate.
-      return 1;
+      return 1.0;
     }
-
-    double total = 0;
-    for (uint32_t b = 0; b < _size; ++b) {
-      for (size_t i = 0; i < SlotsPerBucket; ++i) {
-        uint32_t* c = findCounter(b, i);
-        total += *c;
-      }
-    }
-    if (total == 0) {
-      return 1;
-    }
-    return _nrUsed / total;
+    return (static_cast<double>(_nrUsed) /
+            static_cast<double>(_nrTotal + _nrCuckood));
   }
 
   bool lookup(Key const& k) const {
@@ -384,12 +376,13 @@ class RocksDBCuckooIndexEstimator {
       if (slot.isEmpty()) {
         // Free slot insert ourself.
         slot.init(fingerprint);
-        _nrUsed++;
+        ++_nrUsed;
+        TRI_ASSERT(_nrUsed > 0);
       } else {
         TRI_ASSERT(slot.isEqual(fingerprint));
         slot.increase();
       }
-      _nrTotal++;
+      ++_nrTotal;
       _needToPersist.store(true);
     }
     return true;
@@ -412,13 +405,13 @@ class RocksDBCuckooIndexEstimator {
     bool found = false;
     {
       WRITE_LOCKER(guard, _lock);
-      _nrTotal--;
+      --_nrTotal;
       Slot slot = findSlotNoCuckoo(pos1, pos2, fingerprint, found);
       if (found) {
         if (!slot.decrease()) {
           // Removed last element. Have to remove
           slot.reset();
-          _nrUsed--;
+          --_nrUsed;
         }
         _needToPersist.store(true);
         return true;
@@ -435,6 +428,9 @@ class RocksDBCuckooIndexEstimator {
   }
 
   uint64_t capacity() const { return _size * SlotsPerBucket; }
+
+  // not thread safe. called only during tests
+  uint64_t nrTotal() const { return _nrTotal; }
 
   // not thread safe. called only during tests
   uint64_t nrUsed() const { return _nrUsed; }
@@ -482,11 +478,20 @@ class RocksDBCuckooIndexEstimator {
                        std::vector<Key>&& removals) {
     Result res = basics::catchVoidToResult([&]() -> void {
       WRITE_LOCKER(locker, _lock);
-      _insertBuffers.emplace(seq, std::move(inserts));
-      _removalBuffers.emplace(seq, std::move(removals));
-      _needToPersist.store(true);
-      LOG_TOPIC(TRACE, Logger::ENGINES)
-        << "buffered updates with stamp " << seq;
+      bool foundSomething = false;
+      if (!inserts.empty()) {
+        _insertBuffers.emplace(seq, std::move(inserts));
+        foundSomething = true;
+      }
+      if (!removals.empty()) {
+        _removalBuffers.emplace(seq, std::move(removals));
+        foundSomething = true;
+      }
+      if (foundSomething) {
+        _needToPersist.store(true);
+        LOG_TOPIC(TRACE, Logger::ENGINES)
+            << "buffered updates with stamp " << seq;
+      }
     });
     return res;
   }
@@ -512,9 +517,8 @@ class RocksDBCuckooIndexEstimator {
           if (!_insertBuffers.empty()) {
             auto it = _insertBuffers.begin();
             if (it->first <= commitSeq) {
-              LOG_TOPIC(TRACE, Logger::ENGINES)
-                << "applying insert batch with stamp " << it->first;
               inserts = std::move(it->second);
+              TRI_ASSERT(!inserts.empty());
               _insertBuffers.erase(it);
             }
           }
@@ -523,9 +527,8 @@ class RocksDBCuckooIndexEstimator {
           if (!_removalBuffers.empty()) {
             auto it = _removalBuffers.begin();
             if (it->first <= commitSeq) {
-              LOG_TOPIC(TRACE, Logger::ENGINES)
-                << "applying removal batch with stamp " << it->first;
               removals = std::move(it->second);
+              TRI_ASSERT(!removals.empty());
               _removalBuffers.erase(it);
             }
           }
