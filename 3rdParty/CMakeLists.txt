@@ -183,6 +183,8 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 ################################################################################
 ## cURL
 ################################################################################
+# be aware that we patched the curl cmake so it doesn't install anything
+# so we don't collide with other curl packages
 
 set(ENABLE_MANUAL OFF CACHE type BOOL)
 set(BUILD_CURL_EXE OFF CACHE type BOOL)
