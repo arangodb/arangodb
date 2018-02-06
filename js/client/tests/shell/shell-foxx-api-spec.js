@@ -1117,6 +1117,23 @@ describe('Foxx service', () => {
     expect(util.isZipBuffer(resp.body)).to.equal(true);
   });
 
+  const readmePath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'with-readme');
+
+  it('should deliver the readme', () => {
+    FoxxManager.install(readmePath, mount);
+    const resp = request.get('/_api/foxx/readme', {qs: {mount}});
+    expect(resp.status).to.equal(200);
+    expect(resp.headers['content-type']).to.equal('text/plain; charset=utf-8');
+    expect(resp.body).to.equal('Please read this.');
+  });
+
+  it('should indicate a missing readme', () => {
+    FoxxManager.install(basePath, mount);
+    const resp = request.get('/_api/foxx/readme', {qs: {mount}});
+    expect(resp.status).to.equal(204);
+    expect(resp.body).to.equal('');
+  });
+
   it('list should allow excluding system services', () => {
     FoxxManager.install(basePath, mount);
     const withSystem = request.get('/_api/foxx');
