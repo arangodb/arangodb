@@ -292,6 +292,20 @@ describe('Foxx service', () => {
     expect(resp.json).to.eql({});
   });
 
+  it('empty non-minimal configuration should be available', () => {
+    FoxxManager.install(basePath, mount);
+    const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: false}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.eql({});
+  });
+
+  it('empty minimal configuration should be available', () => {
+    FoxxManager.install(basePath, mount);
+    const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: true}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.eql({});
+  });
+
   it('configuration should be available', () => {
     FoxxManager.install(confPath, mount);
     const resp = request.get('/_api/foxx/configuration', {qs: {mount}});
@@ -300,6 +314,23 @@ describe('Foxx service', () => {
     expect(resp.json.test1).to.not.have.property('current');
     expect(resp.json).to.have.property('test2');
     expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('non-minimal configuration should be available', () => {
+    FoxxManager.install(confPath, mount);
+    const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: false}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.not.have.property('current');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('minimal configuration should be available', () => {
+    FoxxManager.install(confPath, mount);
+    const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: true}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.eql({});
   });
 
   it('configuration should be available after update', () => {
@@ -326,6 +357,56 @@ describe('Foxx service', () => {
     expect(resp.json.test2).to.not.have.property('current');
   });
 
+  it('non-minimal configuration should be available after update', () => {
+    FoxxManager.install(confPath, mount);
+    const updateResp = request.patch('/_api/foxx/configuration', {
+      qs: {
+        mount,
+        minimal: false
+      },
+      body: {
+        test1: 'test'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    expect(updateResp.json).to.have.property('test1');
+    expect(updateResp.json.test1).to.have.property('current', 'test');
+    expect(updateResp.json.test1).to.not.have.property('warning');
+    expect(updateResp.json).to.have.property('test2');
+    expect(updateResp.json.test2).to.not.have.property('current');
+    expect(updateResp.json.test2).to.not.have.property('warning');
+    const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: false}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.have.property('current', 'test');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('minimal configuration should be available after update', () => {
+    FoxxManager.install(confPath, mount);
+    const updateResp = request.patch('/_api/foxx/configuration', {
+      qs: {
+        mount,
+        minimal: true
+      },
+      body: {
+        test1: 'test'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    expect(updateResp.json).to.have.property('values');
+    expect(updateResp.json.values).to.have.property('test1', 'test');
+    expect(updateResp.json.values).to.not.have.property('test2');
+    expect(updateResp.json).to.not.have.property('warnings');
+    const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: true}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1', 'test');
+    expect(resp.json).to.not.have.property('test2');
+  });
+
   it('configuration should be available after replace', () => {
     FoxxManager.install(confPath, mount);
     const replaceResp = request.put('/_api/foxx/configuration', {
@@ -349,6 +430,57 @@ describe('Foxx service', () => {
     expect(resp.json.test1).to.have.property('current', 'test');
     expect(resp.json).to.have.property('test2');
     expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('non-minimal configuration should be available after replace', () => {
+    FoxxManager.install(confPath, mount);
+    const replaceResp = request.put('/_api/foxx/configuration', {
+      qs: {
+        mount,
+        minimal: false
+      },
+      body: {
+        test1: 'test'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    expect(replaceResp.json).to.have.property('test1');
+    expect(replaceResp.json.test1).to.have.property('current', 'test');
+    expect(replaceResp.json.test1).to.not.have.property('warning');
+    expect(replaceResp.json).to.have.property('test2');
+    expect(replaceResp.json.test2).to.not.have.property('current');
+    expect(replaceResp.json.test2).to.have.property('warning', 'is required');
+    const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: false}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.have.property('current', 'test');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('minimal configuration should be available after replace', () => {
+    FoxxManager.install(confPath, mount);
+    const replaceResp = request.put('/_api/foxx/configuration', {
+      qs: {
+        mount,
+        minimal: true
+      },
+      body: {
+        test1: 'test'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    expect(replaceResp.json).to.have.property('values');
+    expect(replaceResp.json.values).to.have.property('test1', 'test');
+    expect(replaceResp.json.values).to.not.have.property('test2');
+    expect(replaceResp.json).to.have.property('warnings');
+    expect(replaceResp.json.warnings).to.have.property('test2', 'is required');
+    const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: true}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1', 'test');
+    expect(resp.json).to.not.have.property('test2');
   });
 
   it('configuration should be merged after update', () => {
@@ -381,6 +513,68 @@ describe('Foxx service', () => {
     expect(resp.json.test2).to.have.property('current', 'test2');
   });
 
+  it('non-minimal configuration should be merged after update', () => {
+    FoxxManager.install(confPath, mount);
+    const replaceResp = request.put('/_api/foxx/configuration', {
+      qs: {
+        mount,
+        minimal: false
+      },
+      body: {
+        test2: 'test2'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    const updateResp = request.patch('/_api/foxx/configuration', {
+      qs: {
+        mount,
+        minimal: false
+      },
+      body: {
+        test1: 'test1'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: false}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.have.property('current', 'test1');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.have.property('current', 'test2');
+  });
+
+  it('minimal configuration should be merged after update', () => {
+    FoxxManager.install(confPath, mount);
+    const replaceResp = request.put('/_api/foxx/configuration', {
+      qs: {
+        mount,
+        minimal: true
+      },
+      body: {
+        test2: 'test2'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    const updateResp = request.patch('/_api/foxx/configuration', {
+      qs: {
+        mount,
+        minimal: true
+      },
+      body: {
+        test1: 'test1'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: true}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1', 'test1');
+    expect(resp.json).to.have.property('test2', 'test2');
+  });
+
   it('configuration should be overwritten after replace', () => {
     FoxxManager.install(confPath, mount);
     const updateResp = request.patch('/_api/foxx/configuration', {
@@ -411,11 +605,87 @@ describe('Foxx service', () => {
     expect(resp.json.test2).to.not.have.property('current');
   });
 
+  it('non-minimal configuration should be overwritten after replace', () => {
+    FoxxManager.install(confPath, mount);
+    const updateResp = request.patch('/_api/foxx/configuration', {
+      qs: {
+        mount,
+        minimal: false
+      },
+      body: {
+        test2: 'test2'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    const replaceResp = request.put('/_api/foxx/configuration', {
+      qs: {
+        mount,
+        minimal: false
+      },
+      body: {
+        test1: 'test'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: false}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.have.property('current', 'test');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('minimal configuration should be overwritten after replace', () => {
+    FoxxManager.install(confPath, mount);
+    const updateResp = request.patch('/_api/foxx/configuration', {
+      qs: {
+        mount,
+        minimal: true
+      },
+      body: {
+        test2: 'test2'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    const replaceResp = request.put('/_api/foxx/configuration', {
+      qs: {
+        mount,
+        minimal: true
+      },
+      body: {
+        test1: 'test'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: true}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1', 'test');
+    expect(resp.json).not.to.have.property('test2');
+  });
+
   const depPath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'with-dependencies');
 
   it('empty configuration should be available', () => {
     FoxxManager.install(basePath, mount);
     const resp = request.get('/_api/foxx/dependencies', {qs: {mount}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.eql({});
+  });
+
+  it('empty non-minimal configuration should be available', () => {
+    FoxxManager.install(basePath, mount);
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount, minimal: false}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.eql({});
+  });
+
+  it('empty minimal configuration should be available', () => {
+    FoxxManager.install(basePath, mount);
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount, minimal: true}});
     expect(resp.status).to.equal(200);
     expect(resp.json).to.eql({});
   });
@@ -428,6 +698,23 @@ describe('Foxx service', () => {
     expect(resp.json.test1).to.not.have.property('current');
     expect(resp.json).to.have.property('test2');
     expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('non-minimal dependencies should be available', () => {
+    FoxxManager.install(depPath, mount);
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount, minimal: false}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.not.have.property('current');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('minimal dependencies should be available', () => {
+    FoxxManager.install(depPath, mount);
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount, minimal: true}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.eql({});
   });
 
   it('dependencies should be available after update', () => {
@@ -452,6 +739,56 @@ describe('Foxx service', () => {
     expect(resp.json.test1).to.have.property('current', '/test');
     expect(resp.json).to.have.property('test2');
     expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('non-minimal dependencies should be available after update', () => {
+    FoxxManager.install(depPath, mount);
+    const updateResp = request.patch('/_api/foxx/dependencies', {
+      qs: {
+        mount,
+        minimal: false
+      },
+      body: {
+        test1: '/test'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    expect(updateResp.json).to.have.property('test1');
+    expect(updateResp.json.test1).to.have.property('current', '/test');
+    expect(updateResp.json.test1).to.not.have.property('warning');
+    expect(updateResp.json).to.have.property('test2');
+    expect(updateResp.json.test2).to.not.have.property('current');
+    expect(updateResp.json.test2).to.not.have.property('warning');
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount, minimal: false}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.have.property('current', '/test');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('minimal dependencies should be available after update', () => {
+    FoxxManager.install(depPath, mount);
+    const updateResp = request.patch('/_api/foxx/dependencies', {
+      qs: {
+        mount,
+        minimal: true
+      },
+      body: {
+        test1: '/test'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    expect(updateResp.json).to.have.property('values');
+    expect(updateResp.json.values).to.have.property('test1', '/test');
+    expect(updateResp.json.values).not.to.have.property('test2');
+    expect(updateResp.json).to.not.have.property('warnings');
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount, minimal: true}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1', '/test');
+    expect(resp.json).to.not.have.property('test2');
   });
 
   it('dependencies should be available after replace', () => {
@@ -479,6 +816,57 @@ describe('Foxx service', () => {
     expect(resp.json.test2).to.not.have.property('current');
   });
 
+  it('non-minimal dependencies should be available after replace', () => {
+    FoxxManager.install(depPath, mount);
+    const replaceResp = request.put('/_api/foxx/dependencies', {
+      qs: {
+        mount,
+        minimal: false
+      },
+      body: {
+        test1: '/test'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    expect(replaceResp.json).to.have.property('test1');
+    expect(replaceResp.json.test1).to.have.property('current', '/test');
+    expect(replaceResp.json.test1).to.not.have.property('warning');
+    expect(replaceResp.json).to.have.property('test2');
+    expect(replaceResp.json.test2).to.not.have.property('current');
+    expect(replaceResp.json.test2).to.have.property('warning', 'is required');
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount, minimal: false}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.have.property('current', '/test');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('minimal dependencies should be available after replace', () => {
+    FoxxManager.install(depPath, mount);
+    const replaceResp = request.put('/_api/foxx/dependencies', {
+      qs: {
+        mount,
+        minimal: true
+      },
+      body: {
+        test1: '/test'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    expect(replaceResp.json).to.have.property('values');
+    expect(replaceResp.json.values).to.have.property('test1', '/test');
+    expect(replaceResp.json.values).to.not.have.property('test2');
+    expect(replaceResp.json).to.have.property('warnings');
+    expect(replaceResp.json.warnings).to.have.property('test2', 'is required');
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount, minimal: true}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1', '/test');
+    expect(resp.json).to.not.have.property('test2');
+  });
+
   it('dependencies should be merged after update', () => {
     FoxxManager.install(depPath, mount);
     const replaceResp = request.put('/_api/foxx/dependencies', {
@@ -492,8 +880,8 @@ describe('Foxx service', () => {
     });
     expect(replaceResp.status).to.equal(200);
     expect(replaceResp.json).to.have.property('values');
-    expect(replaceResp.json.values).to.have.property('test2', '/test2');
     expect(replaceResp.json.values).to.not.have.property('test1');
+    expect(replaceResp.json.values).to.have.property('test2', '/test2');
     expect(replaceResp.json).to.have.property('warnings');
     expect(replaceResp.json.warnings).to.have.property('test1', 'is required');
     const updateResp = request.patch('/_api/foxx/dependencies', {
@@ -515,6 +903,86 @@ describe('Foxx service', () => {
     expect(resp.json.test1).to.have.property('current', '/test1');
     expect(resp.json).to.have.property('test2');
     expect(resp.json.test2).to.have.property('current', '/test2');
+  });
+
+  it('non-minimal dependencies should be merged after update', () => {
+    FoxxManager.install(depPath, mount);
+    const replaceResp = request.put('/_api/foxx/dependencies', {
+      qs: {
+        mount,
+        minimal: false
+      },
+      body: {
+        test2: '/test2'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    expect(replaceResp.json).to.have.property('test1');
+    expect(replaceResp.json.test1).to.have.property('warning', 'is required');
+    expect(replaceResp.json).to.have.property('test2');
+    expect(replaceResp.json.test2).to.have.property('current', '/test2');
+    const updateResp = request.patch('/_api/foxx/dependencies', {
+      qs: {
+        mount,
+        minimal: false
+      },
+      body: {
+        test1: '/test1'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    expect(updateResp.json).to.have.property('test1');
+    expect(updateResp.json.test1).to.have.property('current', '/test1');
+    expect(updateResp.json.test1).to.not.have.property('warning');
+    expect(updateResp.json).to.have.property('test2');
+    expect(updateResp.json.test2).to.have.property('current', '/test2');
+    expect(updateResp.json.test2).to.not.have.property('warning');
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount, minimal: false}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.have.property('current', '/test1');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.have.property('current', '/test2');
+  });
+
+  it('minimal dependencies should be merged after update', () => {
+    FoxxManager.install(depPath, mount);
+    const replaceResp = request.put('/_api/foxx/dependencies', {
+      qs: {
+        mount,
+        minimal: true
+      },
+      body: {
+        test2: '/test2'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    expect(replaceResp.json).to.have.property('values');
+    expect(replaceResp.json.values).to.have.property('test2', '/test2');
+    expect(replaceResp.json.values).to.not.have.property('test1');
+    expect(replaceResp.json).to.have.property('warnings');
+    expect(replaceResp.json.warnings).to.have.property('test1', 'is required');
+    const updateResp = request.patch('/_api/foxx/dependencies', {
+      qs: {
+        mount,
+        minimal: true
+      },
+      body: {
+        test1: '/test1'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    expect(updateResp.json).to.have.property('values');
+    expect(updateResp.json.values).to.have.property('test1', '/test1');
+    expect(updateResp.json.values).to.have.property('test2', '/test2');
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount, minimal: true}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1', '/test1');
+    expect(resp.json).to.have.property('test2', '/test2');
   });
 
   it('dependencies should be overwritten after replace', () => {
@@ -554,6 +1022,88 @@ describe('Foxx service', () => {
     expect(resp.json.test1).to.have.property('current', '/test');
     expect(resp.json).to.have.property('test2');
     expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('non-minimal dependencies should be overwritten after replace', () => {
+    FoxxManager.install(depPath, mount);
+    const updateResp = request.patch('/_api/foxx/dependencies', {
+      qs: {
+        mount,
+        minimal: false
+      },
+      body: {
+        test2: '/test2'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    expect(updateResp.json).to.have.property('test1');
+    expect(updateResp.json.test1).to.not.have.property('current');
+    expect(updateResp.json.test1).to.not.have.property('warning');
+    expect(updateResp.json).to.have.property('test2');
+    expect(updateResp.json.test2).to.have.property('current', '/test2');
+    expect(updateResp.json.test2).to.not.have.property('warning');
+    const replaceResp = request.put('/_api/foxx/dependencies', {
+      qs: {
+        mount,
+        minimal: false
+      },
+      body: {
+        test1: '/test'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    expect(replaceResp.json).to.have.property('test1');
+    expect(replaceResp.json.test1).to.have.property('current', '/test');
+    expect(replaceResp.json.test1).to.not.have.property('warning');
+    expect(replaceResp.json.test2).to.not.have.property('current');
+    expect(replaceResp.json.test2).to.have.property('warning', 'is required');
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount, minimal: false}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1');
+    expect(resp.json.test1).to.have.property('current', '/test');
+    expect(resp.json).to.have.property('test2');
+    expect(resp.json.test2).to.not.have.property('current');
+  });
+
+  it('minimal dependencies should be overwritten after replace', () => {
+    FoxxManager.install(depPath, mount);
+    const updateResp = request.patch('/_api/foxx/dependencies', {
+      qs: {
+        mount,
+        minimal: true
+      },
+      body: {
+        test2: '/test2'
+      },
+      json: true
+    });
+    expect(updateResp.status).to.equal(200);
+    expect(updateResp.json).to.have.property('values');
+    expect(updateResp.json).to.not.have.property('warnings');
+    expect(updateResp.json.values).to.have.property('test2', '/test2');
+    expect(updateResp.json.values).to.not.have.property('test1');
+    const replaceResp = request.put('/_api/foxx/dependencies', {
+      qs: {
+        mount,
+        minimal: true
+      },
+      body: {
+        test1: '/test'
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    expect(replaceResp.json).to.have.property('values');
+    expect(replaceResp.json.values).to.have.property('test1', '/test');
+    expect(replaceResp.json.values).to.not.have.property('test2');
+    expect(replaceResp.json).to.have.property('warnings');
+    expect(replaceResp.json.warnings).to.have.property('test2', 'is required');
+    const resp = request.get('/_api/foxx/dependencies', {qs: {mount, minimal: true}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('test1', '/test');
+    expect(resp.json).to.not.have.property('test2');
   });
 
   it('should be downloadable', () => {
