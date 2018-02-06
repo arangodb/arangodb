@@ -491,6 +491,7 @@ arangodb::Result IResearchLink::recover() {
     return {TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND}; // current link isn't associated with the collection
   }
 
+  // do not acquire `_mutex` lock here, since it causes deadlock
   auto* view = _view.get();
 
   if (!view) {
@@ -499,9 +500,11 @@ arangodb::Result IResearchLink::recover() {
 
   arangodb::velocypack::Builder link;
 
+  link.openObject();
   if (!json(link, false)) {
     return {TRI_ERROR_INTERNAL};
   }
+  link.close();
 
   // re-insert link into the view
   return view->link(_collection->cid(), link.slice());
