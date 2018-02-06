@@ -596,8 +596,9 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
       new WALParser(vocbase, includeSystem, collectionId, builder));
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
 
+  uint64_t since = std::max(tickStart - 1, (uint64_t)0);
   rocksdb::Status s = static_cast<rocksdb::DB*>(globalRocksDB())
-                          ->GetUpdatesSince(tickStart, &iterator);
+                          ->GetUpdatesSince(since, &iterator);
   if (!s.ok()) {  // TODO do something?
     auto converted = convertStatus(s, rocksutils::StatusHint::wal);
     return {converted.errorNumber(), lastTick};
@@ -614,7 +615,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
       rocksdb::BatchResult batch = iterator->GetBatch();
       TRI_ASSERT(lastTick == tickStart || batch.sequence >= lastTick);
 
-      if (!fromTickIncluded && batch.sequence >= tickStart &&
+      if (!fromTickIncluded && batch.sequence <= tickStart &&
           batch.sequence <= tickEnd) {
         fromTickIncluded = true;
       }
@@ -635,7 +636,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
         LOG_TOPIC(_LOG, Logger::ROCKSDB) << "End WriteBatch written-tick: "
                                          << lastWrittenTick;
         handler->endBatch();
-        if (!fromTickIncluded && lastTick >= tickStart && lastTick <= tickEnd) {
+        if (!fromTickIncluded && lastTick <= tickStart && lastTick <= tickEnd) {
           fromTickIncluded = true;
         }
       } else {

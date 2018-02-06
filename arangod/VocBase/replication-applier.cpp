@@ -870,7 +870,7 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick,
 
   LOG_TOPIC(DEBUG, Logger::REPLICATION)
       << "requesting replication applier start. initialTick: " << initialTick
-      << ", useTick: " << useTick;
+      << ", useTick: " << useTick << ", barrierId: " << barrierId;
 
   // wait until previous applier thread is shut down
   while (!wait(10 * 1000))
@@ -894,6 +894,16 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick,
   if (_configuration._database.empty()) {
     return doSetError(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
                       "no database configured");
+  }
+  
+  {
+    VPackBuilder b;
+    b.openObject();
+    _configuration.toVelocyPack(false, b);
+    b.close();
+
+    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+        << "starting applier with configuration " << b.slice().toJson();
   }
 
   auto syncer = std::make_unique<arangodb::ContinuousSyncer>(_vocbase, &_configuration, initialTick, useTick, barrierId);

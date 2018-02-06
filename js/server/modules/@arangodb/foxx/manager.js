@@ -234,39 +234,54 @@ function selfHeal () {
     }
   }
 
-  const rootPath = FoxxService.rootPath();
-  for (const relPath of fs.listTree(rootPath)) {
-    if (!relPath) {
-      continue;
+  modified = cleanupOrphanedServices(
+    knownServicePaths,
+    knownBundlePaths
+  ) || modified;
+
+  return modified;
+}
+
+function cleanupOrphanedServices (knownServicePaths, knownBundlePaths) {
+  let modified = false;
+
+  function traverseServices (basePath) {
+    if (!fs.isDirectory(basePath)) {
+      return;
     }
-    const basename = path.basename(relPath);
-    if (basename.toUpperCase() !== 'APP') {
-      continue;
-    }
-    const basePath = path.resolve(rootPath, relPath);
-    if (!knownServicePaths.includes(basePath)) {
-      modified = true;
-      try {
-        fs.removeDirectoryRecursive(basePath, true);
-        console.debug(`Deleted orphaned service folder ${basePath}`);
-      } catch (e) {
-        console.warnStack(e, `Failed to delete orphaned service folder ${basePath}`);
+    for (const relPath of fs.list(basePath)) {
+      const absPath = path.resolve(basePath, relPath);
+      if (relPath.toUpperCase() !== 'APP') {
+        traverseServices(absPath);
+      } else if (!knownServicePaths.includes(absPath)) {
+        modified = true;
+        try {
+          fs.removeDirectoryRecursive(absPath, true);
+          console.debug(`Deleted orphaned service folder ${absPath}`);
+        } catch (e) {
+          console.warnStack(e, `Failed to delete orphaned service folder ${absPath}`);
+        }
       }
     }
   }
 
-  const bundlesPath = FoxxService.rootBundlePath();
-  for (const relPath of fs.listTree(bundlesPath)) {
-    if (!relPath) {
+  const servicesRoot = FoxxService.rootPath();
+  for (const name of fs.list(servicesRoot)) {
+    if (name === '_appbundles') {
       continue;
     }
-    const bundlePath = path.resolve(bundlesPath, relPath);
-    if (!knownBundlePaths.includes(bundlePath)) {
+    traverseServices(path.resolve(servicesRoot, name));
+  }
+
+  const bundlesRoot = FoxxService.rootBundlePath();
+  for (const relPath of fs.list(bundlesRoot)) {
+    const absPath = path.resolve(bundlesRoot, relPath);
+    if (!knownBundlePaths.includes(absPath)) {
       try {
-        fs.remove(bundlePath);
-        console.debug(`Deleted orphaned service bundle ${bundlePath}`);
+        fs.remove(absPath);
+        console.debug(`Deleted orphaned service bundle ${absPath}`);
       } catch (e) {
-        console.warnStack(e, `Failed to delete orphaned service bundle ${bundlePath}`);
+        console.warnStack(e, `Failed to delete orphaned service bundle ${absPath}`);
       }
     }
   }
@@ -533,34 +548,25 @@ function _prepareService (serviceInfo, options = {}) {
       fs.move(tempFile, tempBundlePath);
     } else if (serviceInfo instanceof Buffer) {
       // Buffer (js)
-      const manifest = JSON.stringify({main: 'index.js'}, null, 4);
-      fs.makeDirectoryRecursive(tempServicePath);
-      fs.writeFileSync(path.join(tempServicePath, 'index.js'), serviceInfo);
-      fs.writeFileSync(path.join(tempServicePath, 'manifest.json'), manifest);
-      utils.zipDirectory(tempServicePath, tempBundlePath);
+      _buildServiceBundleFromScript(tempServicePath, tempBundlePath, serviceInfo);
     } else if (/^https?:/i.test(serviceInfo)) {
       // Remote path
       const tempFile = downloadServiceBundleFromRemote(serviceInfo);
-      extractServiceBundle(tempFile, tempServicePath);
-      fs.move(tempFile, tempBundlePath);
+      try {
+        _buildServiceFromFile(tempServicePath, tempBundlePath, tempFile);
+      } finally {
+        fs.remove(tempFile);
+      }
     } else if (fs.exists(serviceInfo)) {
       // Local path
       if (fs.isDirectory(serviceInfo)) {
         utils.zipDirectory(serviceInfo, tempBundlePath);
         extractServiceBundle(tempBundlePath, tempServicePath);
       } else {
-        extractServiceBundle(serviceInfo, tempServicePath);
-        fs.copyFile(serviceInfo, tempBundlePath);
+        _buildServiceFromFile(tempServicePath, tempBundlePath, serviceInfo);
       }
     } else {
       // Foxx Store
-      if (options.refresh) {
-        try {
-          store.update();
-        } catch (e) {
-          console.warnStack(e);
-        }
-      }
       const info = store.installationInfo(serviceInfo);
       if (!info) {
         throw new ArangoError({
@@ -601,6 +607,24 @@ function _prepareService (serviceInfo, options = {}) {
     } catch (e2) {}
     throw e;
   }
+}
+
+function _buildServiceFromFile (tempServicePath, tempBundlePath, filePath) {
+  try {
+    extractServiceBundle(filePath, tempServicePath);
+  } catch (e) {
+    _buildServiceBundleFromScript(tempServicePath, tempBundlePath, fs.readFileSync(filePath));
+    return;
+  }
+  fs.copyFile(filePath, tempBundlePath);
+}
+
+function _buildServiceBundleFromScript (tempServicePath, tempBundlePath, jsBuffer) {
+  const manifest = JSON.stringify({main: 'index.js'}, null, 4);
+  fs.makeDirectoryRecursive(tempServicePath);
+  fs.writeFileSync(path.join(tempServicePath, 'index.js'), jsBuffer);
+  fs.writeFileSync(path.join(tempServicePath, 'manifest.json'), manifest);
+  utils.zipDirectory(tempServicePath, tempBundlePath);
 }
 
 function _buildServiceInPath (mount, tempServicePath, tempBundlePath) {
