@@ -1134,6 +1134,22 @@ describe('Foxx service', () => {
     expect(resp.body).to.equal('');
   });
 
+  it('should provide a swagger description', () => {
+    FoxxManager.install(basePath, mount);
+    const resp = request.get('/_api/foxx/swagger', {qs: {mount}});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.have.property('swagger', '2.0');
+    expect(resp.json).to.have.property('basePath', `/_db/${db._name()}${mount}`);
+    expect(resp.json).to.have.property('info');
+    expect(resp.json.info).to.have.property('title', 'minimal-working-manifest');
+    expect(resp.json.info).to.have.property('description', '');
+    expect(resp.json.info).to.have.property('version', '0.0.0');
+    expect(resp.json.info).to.have.property('license');
+    expect(resp.json).to.have.property('paths');
+    expect(resp.json.paths).to.have.property('/');
+    expect(resp.json.paths['/']).to.have.property('get');
+  });
+
   it('list should allow excluding system services', () => {
     FoxxManager.install(basePath, mount);
     const withSystem = request.get('/_api/foxx');
