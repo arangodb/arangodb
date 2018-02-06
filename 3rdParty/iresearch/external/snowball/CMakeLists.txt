@@ -246,7 +246,13 @@ else()
   ADD_LIBRARY(stemmer-shared SHARED ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
 endif()
 
-ADD_LIBRARY(stemmer-static STATIC ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
+ADD_LIBRARY(stemmer-static STATIC
+  ${SNOWBALL_RUNTIME}
+  ${STEMMER_SOURCES})
+
+set(LIBSTEMMER_H_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set_target_properties(stemmer-static PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${LIBSTEMMER_H_DIR}")
 
 ADD_DEPENDENCIES(stemmer-shared stemmer_deps)
 ADD_DEPENDENCIES(stemmer-static stemmer_deps)
