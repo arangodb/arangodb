@@ -45,7 +45,6 @@ const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
 
-const arango = require('internal').arango;
 const db = require('internal').db;
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
@@ -60,13 +59,15 @@ describe('User Rights Management', () => {
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
-  it('should check if all users are created', () => {
-    helper.switchUser('root', '_system');
-    expect(userSet.size).to.equal(helper.userCount);
-    for (let name of userSet) {
-      expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
-    }
-  });
+  if (!helper.isLdapEnabledExternal()) {
+    it('should check if all users are created', () => {
+      helper.switchUser('root', '_system');
+      expect(userSet.size).to.equal(helper.userCount);
+      for (let name of userSet) {
+        expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
+      }
+    });
+  }
 
   it('should test rights for', () => {
     for (let name of userSet) {
@@ -184,4 +185,3 @@ describe('User Rights Management', () => {
     }
   });
 });
-

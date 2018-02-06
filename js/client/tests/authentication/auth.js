@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var arango = require("@arangodb").arango;
+var helper = require('@arangodb/user-helper');
 var db = require("internal").db;
 var users = require("@arangodb/users");
 var request = require('@arangodb/request');

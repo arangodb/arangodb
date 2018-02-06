@@ -68,6 +68,15 @@ for (let l of rightLevels) {
 exports.removeAllUsers = () => {
   ldapEnabled = isLdapEnabled();
 
+  if (ldapEnabled) {
+    // create special arangoadmin role and add root alike permissions
+    try {
+      users.remove(':role:adminrole');
+    } catch (e) {
+      // If the user does not exist
+    }
+  }
+
   for (let sys of rightLevels) {
     for (let db of rightLevels) {
       for (let col of rightLevels) {
@@ -163,6 +172,11 @@ exports.generateAllUsers = () => {
     db._useDatabase('_system');
   }
 
+  if (ldapEnabled) {
+    // create special arangoadmin role and add root alike permissions
+    users.save(':role:adminrole', null, true);
+  }
+
   for (let sys of rightLevels) {
     for (let db of rightLevels) {
       for (let col of rightLevels) {
@@ -185,6 +199,7 @@ exports.generateAllUsers = () => {
 
         if (ldapEnabled) {
           users.grantDatabase(role, '_system', sys);
+          users.grantDatabase(':role:adminrole', '_system', sys);
         } else {
           users.grantDatabase(name, '_system', sys);
         }
@@ -198,6 +213,7 @@ exports.generateAllUsers = () => {
 
         if (ldapEnabled) {
           users.grantDatabase(role, dbName, db);
+          users.grantDatabase(':role:adminrole', dbName, db);
         } else {
           users.grantDatabase(name, dbName, db);
         }
@@ -210,6 +226,7 @@ exports.generateAllUsers = () => {
 
         if (ldapEnabled) {
           users.grantCollection(role, dbName, colName, col);
+          users.grantCollection(':role:adminrole', dbName, colName, col);
         } else {
           users.grantCollection(name, dbName, colName, col);
         }

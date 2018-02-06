@@ -34,12 +34,12 @@ const optionsDocumentation = [
   '   - `ldapPort : Port of the ldap server'
 ];
 
-const helper = require('@arangodb/user-helper');
+// const helper = require('@arangodb/user-helper');
 const _ = require('lodash');
-const fs = require('fs');
-const pu = require('@arangodb/process-utils');
+// const fs = require('fs');
+// const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
-const request = require('@arangodb/request');
+// const request = require('@arangodb/request');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -66,7 +66,7 @@ const tests = {
       'ldap.basedn': 'dc=arangodb,dc=com',
       'ldap.roles-attribute-name': 'sn',
       'ldap.superuser-role': 'adminrole',
-      'log.level': 'ldap=trace',
+      // 'log.level': 'ldap=trace',
       'javascript.allow-admin-execute': 'true',
       'server.local-authentication': 'true'
     }
@@ -87,6 +87,7 @@ function parseOptions (options) {
   return toReturn;
 }
 
+/*
 function startLdap (options) {
   const results = { failed: 0 };
   const opts = parseOptions(options);
@@ -166,6 +167,7 @@ function startLdap (options) {
   print(results);
   return results;
 }
+*/
 
 function authenticationLdapRoleClient (options) {
   if (options.skipLdap === true) {
