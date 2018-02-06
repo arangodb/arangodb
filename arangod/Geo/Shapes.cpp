@@ -21,25 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Shapes.h"
-#include "Basics/voc-errors.h"
-#include "Geo/GeoJsonParser.h"
-#include "Geo/GeoParams.h"
-#include "Logger/Logger.h"
 
-#include <s2/s2metrics.h>
-#include <s2/s2cap.h>
-#include <s2/s2cell.h>
-#include <s2/s2latlng_rect.h>
-#include <s2/s2multipoint_region.h>
-#include <s2/s2multipolyline.h>
-#include <s2/s2point_region.h>
-#include <s2/s2polygon.h>
-#include <s2/s2region.h>
-#include <s2/s2region_coverer.h>
-
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include <s2/s2latlng.h>
 
 using namespace arangodb;
 using namespace arangodb::geo;

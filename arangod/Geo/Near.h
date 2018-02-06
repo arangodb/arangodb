@@ -120,7 +120,7 @@ class NearUtils {
   geo::Document const& nearest() const {
     TRI_ASSERT(isAcending() && (isFilterIntersects() ||
                                 _buffer.top().distRad <= _innerBound) ||
-               isDescending() && _buffer.top().distRad >= _outerBound);
+               (isDescending() && _buffer.top().distRad >= _outerBound));
     return _buffer.top();
   }
 

@@ -149,7 +149,7 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
     params.ascending = true;
     geo::NearUtils<geo::DocumentsAscending> near(std::move(params), false);
     
-    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, SIZE_T_MAX);
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, SIZE_MAX);
     std::set<LocalDocumentId> unique;
     REQUIRE(result.size() == counter);
     
@@ -245,7 +245,7 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
     params.ascending = false;
     geo::NearUtils<geo::DocumentsDescending> near(std::move(params), false);
 
-    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, SIZE_T_MAX);
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, SIZE_MAX);
     std::set<LocalDocumentId> unique;
     REQUIRE(result.size() == counter);
     
