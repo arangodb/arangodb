@@ -1404,16 +1404,19 @@ testDateDaysInMonth() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDateTimestampInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_TIMESTAMP()");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_TIMESTAMP(1, 1, 1, 1, 1, 1, 1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_TIMESTAMP())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_TIMESTAMP()))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_TIMESTAMP(1, 1, 1, 1, 1, 1, 1, 1))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_TIMESTAMP(1, 1, 1, 1, 1, 1, 1, 1)))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test date_timestamp function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDateTimestamp : function () {
-      var values = [
+    testDateTimestamp() {
+      const values = [
         [ "2000-04-29", 956966400000 ],
         [ "2000-04-29Z", 956966400000 ],
         [ "2012-02-12 13:24:12", 1329053052000 ],
@@ -1477,8 +1480,8 @@ testDateDaysInMonth() {
       ];
 
       values.forEach(function (value) {
-        var actual = getQueryResults("RETURN DATE_TIMESTAMP(@value)", { value: value[0] });
-        assertEqual([ value[1] ], actual);
+        assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(DATE_TIMESTAMP(@value))", { value: value[0] }));
+        assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(V8(DATE_TIMESTAMP(@value)))", { value: value[0] }));
       }); 
     },
 

@@ -427,7 +427,7 @@ void AqlFunctionFeature::addDateFunctions() {
   // date functions
   add({"DATE_NOW", "", false, false, true, true, &Functions::DateNow});
   add({"DATE_TIMESTAMP", ".|.,.,.,.,.,.", 
-       true, false, true, true});
+       true, false, true, true, &Functions::DateTimestamp});
   add({"DATE_ISO8601", ".|.,.,.,.,.,.", true,
        false, true, true});
   add({"DATE_DAYOFWEEK", ".", true, false, true,

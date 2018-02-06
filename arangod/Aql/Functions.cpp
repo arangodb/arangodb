@@ -1393,6 +1393,77 @@ AqlValue Functions::DateNow(arangodb::aql::Query* query,
     //dur = duration_cast< duration<uint64_t, std::milli>>(system_clock::now().time_since_epoch() ) .count();
 }
 
+/// @brief function DATE_TIMESTAMP
+AqlValue Functions::DateTimestamp(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
+
+  if (parameters.size() == 1) {
+    AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+
+    if (!value.isString() && !value.isNumber() ) {
+      RegisterInvalidArgumentWarning(query, "DATE_DAYOFWEEK");
+      return AqlValue(AqlValueHintNull());
+    }
+
+    system_clock::time_point tp;
+
+    if (value.isNumber()) {
+      tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
+    } else {
+      if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
+        RegisterWarning(query, "DATE_TIMESTAMP",
+          TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+        return AqlValue(AqlValueHintNull());
+      }
+    }
+
+    return AqlValue(AqlValueHintInt(duration_cast<milliseconds>(tp.time_since_epoch()).count()));
+    // YMD is a must
+  } else if (parameters.size() >= 3 && parameters.size() <= 7) {
+    for (uint8_t i = 0; i < parameters.size(); i++) {
+      if (!ExtractFunctionParameterValue(parameters, i).isNumber()) {
+        RegisterInvalidArgumentWarning(query, "DATE_TIMESTAMP");
+        return AqlValue(AqlValueHintNull());
+      }
+    }
+
+    year_month_day ymd = year{static_cast<int>(ExtractFunctionParameterValue(parameters, 0).toInt64(trx))}/
+      static_cast<int>(ExtractFunctionParameterValue(parameters, 1).toInt64(trx))/
+      static_cast<int>(ExtractFunctionParameterValue(parameters, 2).toInt64(trx));
+
+    hours h(0);
+    minutes m(0);
+    seconds s(0);
+    milliseconds ms(0);
+
+    if (parameters.size() >= 4) {
+      h = hours((ExtractFunctionParameterValue(parameters, 3).toInt64(trx)));
+    }
+
+    if (parameters.size() >= 5) {
+      m = minutes((ExtractFunctionParameterValue(parameters, 4).toInt64(trx)));
+    }
+
+    if (parameters.size() >= 6) {
+      s = seconds((ExtractFunctionParameterValue(parameters, 5).toInt64(trx)));
+    }
+
+    if (parameters.size() >= 7) {
+      ms = milliseconds((ExtractFunctionParameterValue(parameters, 6).toInt64(trx)));
+    }
+
+    auto time = sys_days(ymd) + h + m + s + ms;
+
+    return AqlValue(AqlValueHintInt(duration_cast<milliseconds>(time.time_since_epoch()).count() ));
+  }
+
+  RegisterInvalidArgumentWarning(query, "DATE_TIMESTAMP");
+  return AqlValue(AqlValueHintNull());
+}
+
 /// @brief function DATE_DAYOFWEEK
 AqlValue Functions::DateDayOfWeek(arangodb::aql::Query* query,
                                   transaction::Methods* trx,
